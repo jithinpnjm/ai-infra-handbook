@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Verbosity flags as zoom levels</title>
+  <desc>Ansible verbosity flags from none to -vvvvv showing increasing detail levels</desc>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Verbosity flags as zoom levels</text>
+
+  
+  <g id="row-none">
+    <rect x="60" y="120" width="1480" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="101" y="160" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="115" y="154" width="20" height="10" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    <path d="M113 178 h24 M113 188 h24 M113 198 h16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <rect x="180" y="145" width="190" height="75" rx="10" fill="#207448"/>
+    <text x="275" y="193" text-anchor="middle" font-size="32" font-weight="bold" fill="#ffffff" font-family="ui-monospace, monospace">none</text>
+    
+    <rect x="395" y="145" width="1125" height="75" rx="10" fill="#ffffff" stroke="#c3dac8" stroke-width="2"/>
+    <text x="425" y="191" font-size="26" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">task names, results, recap</text>
+  </g>
+
+  
+  <g id="row-v">
+    <rect x="60" y="265" width="1480" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="97" y="300" width="56" height="55" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="97" y1="318" x2="153" y2="318" stroke="#207448" stroke-width="4"/>
+    <path d="M108 333 l8 6 l-8 6" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="124" y1="345" x2="142" y2="345" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <rect x="180" y="290" width="190" height="75" rx="10" fill="#207448"/>
+    <text x="275" y="338" text-anchor="middle" font-size="32" font-weight="bold" fill="#ffffff" font-family="ui-monospace, monospace">-v</text>
+    
+    <rect x="395" y="290" width="1125" height="75" rx="10" fill="#ffffff" stroke="#c3dac8" stroke-width="2"/>
+    <text x="425" y="336" font-size="26" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">module return data (rc, stdout, stderr)</text>
+  </g>
+
+  
+  <g id="row-vv">
+    <rect x="60" y="410" width="1480" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M101 454 h18 l5 7 h26 a4 4 0 0 1 4 4 v30 a6 6 0 0 1 -6 6 h-47 a6 6 0 0 1 -6 -6 v-35 a6 6 0 0 1 6 -6 z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M116 486 h10 v-12 h12" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <rect x="180" y="435" width="190" height="75" rx="10" fill="#207448"/>
+    <text x="275" y="483" text-anchor="middle" font-size="32" font-weight="bold" fill="#ffffff" font-family="ui-monospace, monospace">-vv</text>
+    
+    <rect x="395" y="435" width="1125" height="75" rx="10" fill="#ffffff" stroke="#c3dac8" stroke-width="2"/>
+    <text x="425" y="481" font-size="26" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">task paths, false_condition for skipped tasks, file loading</text>
+  </g>
+
+  
+  <g id="row-vvv">
+    <rect x="60" y="555" width="1480" height="125" rx="16" fill="#fdf6ee" stroke="#db8129" stroke-width="3"/>
+    
+    <rect x="97" y="590" width="56" height="55" rx="8" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="97" y1="608" x2="153" y2="608" stroke="#db8129" stroke-width="4"/>
+    <path d="M108 623 l8 6 l-8 6" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <rect x="126" y="625" width="14" height="12" rx="2" fill="none" stroke="#db8129" stroke-width="3"/>
+    <path d="M129 625 v-4 a4 4 0 0 1 8 0 v4" fill="none" stroke="#db8129" stroke-width="3"/>
+    
+    <rect x="180" y="580" width="190" height="75" rx="10" fill="#db8129"/>
+    <text x="275" y="628" text-anchor="middle" font-size="32" font-weight="bold" fill="#ffffff" font-family="ui-monospace, monospace">-vvv</text>
+    
+    <rect x="395" y="580" width="1125" height="75" rx="10" fill="#ffffff" stroke="#f3d5ba" stroke-width="2"/>
+    <text x="425" y="626" font-size="26" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">SSH command lines, remote temp paths, module args</text>
+  </g>
+
+  
+  <g id="row-vvvv">
+    <rect x="60" y="700" width="1480" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M112 746 v14 M138 746 v14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M103 760 h44 v16 a8 8 0 0 1 -8 8 h-28 a8 8 0 0 1 -8 -8 z" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="125" y1="784" x2="125" y2="798" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <rect x="180" y="725" width="190" height="75" rx="10" fill="#207448"/>
+    <text x="275" y="773" text-anchor="middle" font-size="32" font-weight="bold" fill="#ffffff" font-family="ui-monospace, monospace">-vvvv</text>
+    
+    <rect x="395" y="725" width="1125" height="75" rx="10" fill="#ffffff" stroke="#c3dac8" stroke-width="2"/>
+    <text x="425" y="771" font-size="26" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">connection plugin internals, very noisy</text>
+  </g>
+
+  
+  <g id="row-vvvvv">
+    <rect x="60" y="845" width="1480" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="125" cy="908" rx="12" ry="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M117 894 a8 8 0 0 1 16 0" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M121 890 l-5 -6 M129 890 l5 -6" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M103 902 h10 M137 902 h10 M103 914 h10 M137 914 h10 M105 924 l8 -4 M137 920 l8 4" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <rect x="180" y="870" width="190" height="75" rx="10" fill="#207448"/>
+    <text x="275" y="918" text-anchor="middle" font-size="32" font-weight="bold" fill="#ffffff" font-family="ui-monospace, monospace">-vvvvv</text>
+    
+    <rect x="395" y="870" width="1125" height="75" rx="10" fill="#ffffff" stroke="#c3dac8" stroke-width="2"/>
+    <text x="425" y="916" font-size="26" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">everything including WinRM and SSH raw debugging</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="1005" width="1480" height="75" rx="12" fill="#207448"/>
+    <text x="800" y="1052" text-anchor="middle" font-size="28" font-weight="bold" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif">most problems are visible at -vvv</text>
+  </g>
+</svg>

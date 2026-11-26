@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
+  <title>One ping through the capture chain: where the copy is taken</title>
+  <desc>Visual infographic explaining packet capture path through the Linux kernel network stack, showing AF_PACKET tap placement, packet copying to ring buffer, offload effects, and bidirectionality.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-reply" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1190" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">One ping through the capture chain:</tspan>
+    <tspan x="800" dy="56">where the copy is taken</tspan>
+  </text>
+
+  
+  <path d="M 1397 220 L 1397 175 L 40 175" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-reply)"/>
+  
+  
+  <text x="945" y="156" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">the same capture sees both directions</text>
+
+  
+
+  
+  <rect x="50" y="220" width="280" height="330" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="85" cy="255" r="22" fill="#207448"/>
+  <text x="85" y="263" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(162, 235)">
+    <rect x="0" y="0" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="14" y="10" width="28" height="22" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="8" y1="42" x2="8" y2="49" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="42" x2="18" y2="49" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="42" x2="28" y2="49" stroke="#207448" stroke-width="3"/>
+    <line x1="38" y1="42" x2="38" y2="49" stroke="#207448" stroke-width="3"/>
+    <line x1="48" y1="42" x2="48" y2="49" stroke="#207448" stroke-width="3"/>
+  </g>
+  
+  <text x="190" y="380" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="190" dy="0">NIC receives the</tspan>
+    <tspan x="190" dy="38">echo request</tspan>
+  </text>
+
+  
+  <line x1="330" y1="385" x2="365" y2="385" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="365" y="220" width="280" height="330" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="400" cy="255" r="22" fill="#207448"/>
+  <text x="400" y="263" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(477, 235)">
+    <rect x="0" y="0" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0 0 L 28 22 L 56 0" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="10" y1="30" x2="46" y2="30" stroke="#207448" stroke-width="3" stroke-dasharray="4 3"/>
+  </g>
+  
+  <text x="505" y="360" text-anchor="middle" fill="#303a36">
+    <tspan x="505" dy="0" font-family="sans-serif" font-size="26" font-weight="bold">Driver wraps the</tspan>
+    <tspan x="505" dy="38" font-family="sans-serif" font-size="26" font-weight="bold">frame in an</tspan>
+    <tspan x="505" dy="38" font-family="monospace" font-size="26" font-weight="bold">sk_buff</tspan>
+  </text>
+
+  
+  <line x1="645" y1="385" x2="680" y2="385" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="680" y="220" width="530" height="330" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="715" cy="255" r="22" fill="#db8129"/>
+  <text x="715" y="263" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(920, 234)">
+    <path d="M 0 0 L 50 0 L 32 24 L 32 46 L 18 46 L 18 24 Z" fill="none" stroke="#db8129" stroke-width="4"/>
+    <circle cx="25" cy="11" r="4" fill="#db8129"/>
+  </g>
+  
+  <text x="945" y="324" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="945" dy="0">AF_PACKET socket with the</tspan>
+    <tspan x="945" dy="32">BPF filter that libpcap compiled;</tspan>
+    <tspan x="945" dy="32">matching packets are copied into</tspan>
+    <tspan x="945" dy="32">a memory-mapped ring buffer;</tspan>
+    <tspan x="945" dy="32">the kernel discards non-matching</tspan>
+    <tspan x="945" dy="32">packets at the door</tspan>
+  </text>
+
+  
+  <line x1="1210" y1="385" x2="1245" y2="385" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1245" y="220" width="305" height="330" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1280" cy="255" r="22" fill="#207448"/>
+  <text x="1280" y="263" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1369, 235)">
+    <rect x="0" y="0" width="56" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="0" y="16" width="56" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="0" y="32" width="56" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  
+  <text x="1397" y="360" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1397" dy="0">Normal stack runs</tspan>
+    <tspan x="1397" dy="38">and produces</tspan>
+    <tspan x="1397" dy="38">the reply</tspan>
+  </text>
+
+  
+
+  
+  <line x1="945" y1="550" x2="945" y2="605" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="705" y="605" width="480" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <text x="945" y="642" text-anchor="middle" fill="#303a36">
+    <tspan x="945" dy="0" font-family="sans-serif" font-size="24" font-weight="bold">ring buffer, then </tspan><tspan font-family="monospace" font-size="24" font-weight="bold">libpcap</tspan><tspan font-family="sans-serif" font-size="24" font-weight="bold">,</tspan>
+    <tspan x="945" dy="32" font-family="sans-serif" font-size="24" font-weight="bold">then </tspan><tspan font-family="monospace" font-size="24" font-weight="bold">tcpdump</tspan>
+  </text>
+
+  
+
+  
+  <rect x="50" y="725" width="480" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="74" y="790" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="74" dy="0">Receive: tap comes before</tspan>
+    <tspan x="74" dy="36">most of the stack but after</tspan>
+    <tspan x="74" dy="36">GRO merging by default</tspan>
+  </text>
+
+  
+  <rect x="560" y="725" width="480" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="584" y="760" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="584" dy="0">Transmit: tap comes before</tspan>
+    <tspan x="584" dy="32">the NIC, so checksum offload</tspan>
+    <tspan x="584" dy="32">shows bad checksums and TSO</tspan>
+    <tspan x="584" dy="32">makes packets look larger</tspan>
+    <tspan x="584" dy="32">than the MTU</tspan>
+  </text>
+
+  
+  <rect x="1070" y="725" width="480" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1094" y="775" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">If a packet vanished before</tspan>
+    <tspan x="1094" dy="34">the tap, the capture shows</tspan>
+    <tspan x="1094" dy="34">nothing; the loss happened</tspan>
+    <tspan x="1094" dy="34">earlier on the path</tspan>
+  </text>
+
+  
+
+  <rect x="50" y="960" width="1500" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="998" font-size="24" fill="#303a36">
+    <tspan font-family="sans-serif">for exact wire frames: </tspan><tspan font-family="monospace">ethtool -K eth0 tso off gso off gro off rx off tx off</tspan><tspan font-family="sans-serif">,</tspan>
+    <tspan x="80" dy="34" font-family="sans-serif">or capture on a mirror port or TAP</tspan>
+  </text>
+
+  
+
+  <rect x="50" y="1080" width="1500" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="1124" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A capture is a camera at one point on the path</text>
+</svg>

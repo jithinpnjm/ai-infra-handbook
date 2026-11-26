@@ -1,0 +1,163 @@
+#!/usr/bin/env python3
+import pathlib
+
+svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>RBAC verbs mapped to HTTP methods</title>
+  <desc>Visual mapping of Kubernetes RBAC verbs to HTTP methods, highlighting shared GET permissions and monitoring agent verb requirements.</desc>
+
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="80" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">RBAC verbs mapped to HTTP methods</text>
+
+  <!-- Left Table Container -->
+  <!-- Column Headers -->
+  <g>
+    <rect x="80" y="115" width="970" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="140" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Verb</text>
+    <text x="360" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">HTTP method</text>
+    <text x="770" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Meaning</text>
+  </g>
+
+  <!-- Row 1: create | POST | Create a new resource -->
+  <g>
+    <rect x="80" y="175" width="970" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="95" y="185" width="115" height="46" rx="6" fill="#e8f1ea"/>
+    <text x="152" y="217" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">create</text>
+    <rect x="295" y="185" width="130" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="360" y="217" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">POST</text>
+    <text x="530" y="217" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Create a new resource</text>
+  </g>
+
+  <!-- Row 2: delete | DELETE | Delete an existing resource -->
+  <g>
+    <rect x="80" y="251" width="970" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="95" y="261" width="115" height="46" rx="6" fill="#e8f1ea"/>
+    <text x="152" y="293" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">delete</text>
+    <rect x="295" y="261" width="130" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="360" y="293" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">DELETE</text>
+    <text x="530" y="293" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Delete an existing resource</text>
+  </g>
+
+  <!-- Row 3: patch | PATCH | Modify via a partial change -->
+  <g>
+    <rect x="80" y="327" width="970" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="95" y="337" width="115" height="46" rx="6" fill="#e8f1ea"/>
+    <text x="152" y="369" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">patch</text>
+    <rect x="295" y="337" width="130" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="360" y="369" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">PATCH</text>
+    <text x="530" y="369" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Modify via a partial change</text>
+  </g>
+
+  <!-- Row 4: update | PUT | Modify via a complete object -->
+  <g>
+    <rect x="80" y="403" width="970" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="95" y="413" width="115" height="46" rx="6" fill="#e8f1ea"/>
+    <text x="152" y="445" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">update</text>
+    <rect x="295" y="413" width="130" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="360" y="445" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">PUT</text>
+    <text x="530" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Modify via a complete object</text>
+  </g>
+
+  <!-- Orange container: Three rows get, list and watch with orange outline -->
+  <g>
+    <rect x="80" y="479" width="970" height="310" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+    <!-- Row 5: get -->
+    <rect x="95" y="492" width="115" height="46" rx="6" fill="#e8f1ea"/>
+    <text x="152" y="524" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">get</text>
+    <text x="530" y="524" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Get a resource</text>
+
+    <!-- Row 6: list -->
+    <rect x="95" y="568" width="115" height="46" rx="6" fill="#e8f1ea"/>
+    <text x="152" y="600" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">list</text>
+    <text x="530" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">List a collection</text>
+
+    <!-- Row 7: watch -->
+    <rect x="95" y="644" width="115" height="46" rx="6" fill="#e8f1ea"/>
+    <text x="152" y="676" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">watch</text>
+    <text x="530" y="676" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Watch for streaming updates</text>
+
+    <!-- Bracket for get, list, watch -->
+    <path d="M 225 515 L 245 515 C 255 515 255 580 265 591 C 255 602 255 667 245 667 L 225 667" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="265" y1="591" x2="295" y2="591" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Shared GET Pill -->
+    <rect x="295" y="568" width="130" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="360" y="600" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">GET</text>
+
+    <!-- Bracket Label inside the orange container -->
+    <rect x="95" y="720" width="940" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="565" y="755" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Same HTTP method, different permission</text>
+  </g>
+
+  <!-- Row 8: proxy | Connect via a streaming WebSocket proxy -->
+  <g>
+    <rect x="80" y="800" width="970" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="95" y="810" width="115" height="46" rx="6" fill="#e8f1ea"/>
+    <text x="152" y="842" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">proxy</text>
+    
+    <!-- Connector line from proxy to GET pill -->
+    <path d="M 210 833 L 360 833 L 360 622" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+    <circle cx="210" cy="833" r="4" fill="#207448"/>
+
+    <text x="530" y="842" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Connect via a streaming WebSocket proxy</text>
+  </g>
+
+  <!-- Side Card for a Monitoring Agent -->
+  <g>
+    <rect x="1080" y="115" width="440" height="751" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    <!-- Monitoring Agent Icon -->
+    <g transform="translate(1300, 165)">
+      <!-- Monitor / Screen outline -->
+      <rect x="-36" y="-28" width="72" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <line x1="-36" y1="8" x2="36" y2="8" stroke="#207448" stroke-width="2"/>
+      <!-- Stand -->
+      <path d="M -10 20 L -16 32 L 16 32 L 10 20 Z" fill="#207448"/>
+      <!-- Pulse / radar trace inside monitor -->
+      <path d="M -24 -4 L -12 -4 L -6 -16 L 4 10 L 12 -4 L 24 -4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Sub-card 1: Allowed permissions -->
+    <g>
+      <rect x="1105" y="240" width="390" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <!-- Green check icon -->
+      <circle cx="1300" cy="305" r="30" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+      <path d="M 1286 305 L 1296 315 L 1316 295" fill="none" stroke="#207448" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <text x="1300" y="385" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+        <tspan x="1300" dy="0">Needs list and</tspan>
+        <tspan x="1300" dy="36">watch on pods</tspan>
+      </text>
+    </g>
+
+    <!-- Sub-card 2: Denied / Not needed permissions -->
+    <g>
+      <rect x="1105" y="495" width="390" height="345" rx="12" fill="#ffffff" stroke="#c53030" stroke-width="2"/>
+      
+      <!-- Red cross icon -->
+      <circle cx="1300" cy="565" r="30" fill="#fdf0f0" stroke="#c53030" stroke-width="4"/>
+      <path d="M 1287 552 L 1313 578 M 1313 552 L 1287 578" fill="none" stroke="#c53030" stroke-width="4.5" stroke-linecap="round"/>
+
+      <text x="1300" y="650" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+        <tspan x="1300" dy="0">create, update,</tspan>
+        <tspan x="1300" dy="36">delete</tspan>
+      </text>
+
+      <!-- Not needed label -->
+      <rect x="1205" y="745" width="190" height="52" rx="8" fill="#fdf0f0" stroke="#c53030" stroke-width="2"/>
+      <text x="1300" y="781" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c53030" text-anchor="middle">Not needed</text>
+    </g>
+  </g>
+
+  <!-- Bottom Note / Takeaway Bar -->
+  <g>
+    <rect x="80" y="895" width="1440" height="66" rx="12" fill="#207448"/>
+    <text x="800" y="937" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Start each Role from the smallest verb set the workload needs.</text>
+  </g>
+</svg>'''
+
+pathlib.Path("candidate_rbac.svg").write_text(svg)
+print("candidate_rbac.svg written successfully!")

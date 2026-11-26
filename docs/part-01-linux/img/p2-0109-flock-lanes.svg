@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Two cron runs collide, and flock makes the second one exit</title>
+  <desc>A swimlane diagram illustrating how flock prevents concurrent cron job overlap.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Two cron runs collide, and</tspan>
+    <tspan x="800" dy="56">flock makes the second one exit</tspan>
+  </text>
+
+  
+  <rect x="50" y="150" width="450" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(257, 162)">
+    <circle cx="18" cy="18" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 18 10 L 18 18 L 25 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="275" y="232" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">cron run A</text>
+
+  
+  <rect x="545" y="150" width="510" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(786, 160)">
+    <rect x="5" y="14" width="18" height="15" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 9 14 L 9 9 A 5 5 0 0 1 19 9 L 19 14" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="800" y="232" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">lock file /var/lock/mytool.lock</text>
+
+  
+  <rect x="1100" y="150" width="450" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1307, 162)">
+    <circle cx="18" cy="18" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 18 10 L 18 18 L 25 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="1325" y="232" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">cron run B</text>
+
+  
+  <rect x="50" y="270" width="450" height="665" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.9" />
+  <rect x="545" y="270" width="510" height="665" rx="12" fill="#eef4f0" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.9" />
+  <rect x="1100" y="270" width="450" height="665" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,6" opacity="0.9" />
+
+  
+  <rect x="740" y="455" width="120" height="400" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(786, 520)">
+    <rect x="5" y="14" width="18" height="15" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 9 14 L 9 9 A 5 5 0 0 1 19 9 L 19 14" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+
+  
+  <rect x="65" y="295" width="420" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="102" cy="335" r="22" fill="#207448" />
+  <text x="102" y="343" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <g transform="translate(425, 315)">
+    <path d="M 0 0 L 16 0 L 26 10 L 26 34 L 0 34 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <path d="M 16 0 L 16 10 L 26 10" fill="none" stroke="#207448" stroke-width="2.5" />
+  </g>
+  <text x="135" y="343" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">exec 9 &gt; lock file</text>
+  <text x="82" y="385" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="82" dy="0">opening the file on</tspan>
+    <tspan x="82" dy="30">file descriptor 9</tspan>
+  </text>
+
+  
+  <path d="M 440 470 L 736 470" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
+  <circle cx="462" cy="435" r="22" fill="#207448" />
+  <text x="462" y="443" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="495" y="443" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">flock -n 9 succeeds</text>
+
+  
+  <rect x="65" y="530" width="420" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="102" cy="568" r="22" fill="#207448" />
+  <text x="102" y="576" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <g transform="translate(425, 550)">
+    <circle cx="15" cy="15" r="9" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 15 2 L 15 6 M 15 24 L 15 28 M 2 15 L 6 15 M 24 15 L 28 15" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+  <text x="82" y="618" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="82" dy="0">work runs, lock held</tspan>
+    <tspan x="82" dy="32">until the script exits</tspan>
+  </text>
+
+  
+  <line x1="275" y1="665" x2="275" y2="855" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" />
+
+  
+  <path d="M 1210 640 L 864 640" stroke="#db8129" stroke-width="3.5" fill="none" marker-end="url(#arrow-orange)" />
+  <circle cx="1185" cy="605" r="22" fill="#db8129" />
+  <text x="1185" y="613" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="915" y="613" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">flock -n 9 fails</text>
+
+  
+  <line x1="1100" y1="715" x2="1550" y2="715" stroke="#303a36" stroke-width="4" stroke-dasharray="14,10" />
+  <rect x="1215" y="693" width="220" height="44" rx="8" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+  <text x="1325" y="723" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">overlap blocked</text>
+
+  
+  <rect x="1115" y="775" width="420" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="1152" cy="815" r="22" fill="#207448" />
+  <text x="1152" y="823" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <g transform="translate(1480, 800)">
+    <rect x="0" y="0" width="22" height="30" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 12 15 L 26 15 M 20 9 L 26 15 L 20 21" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1132" y="860" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1132" dy="0">prints already running</tspan>
+    <tspan x="1132" dy="32">and exits 0</tspan>
+  </text>
+
+  
+  <rect x="50" y="960" width="1500" height="75" rx="10" fill="#eaeeea" stroke="#b0beba" stroke-width="1.5" />
+  <g transform="translate(75, 980)">
+    <circle cx="18" cy="18" r="16" fill="none" stroke="#4a5550" stroke-width="2.5" />
+    <line x1="18" y1="16" x2="18" y2="26" stroke="#4a5550" stroke-width="3" stroke-linecap="round" />
+    <circle cx="18" cy="11" r="2" fill="#4a5550" />
+  </g>
+  <text x="125" y="1006" font-family="sans-serif" font-size="24" font-weight="bold" fill="#4a5550">The kernel releases the lock when the process dies, even after a crash.</text>
+
+  
+  <rect x="50" y="1055" width="1500" height="70" rx="10" fill="#207448" />
+  <text x="800" y="1098" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Hand-made lock files race and stay behind after a crash.</text>
+</svg>

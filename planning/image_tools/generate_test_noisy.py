@@ -1,0 +1,199 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
+
+svg_code = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Eleven long requests leave room for five normal ones</title>
+  <desc>KV cache arithmetic and multi-tenant noisy-neighbour control comparing normal request capacity of 137 against GPU capacity collapse to 5 requests when 11 long requests run.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Eleven long requests leave room for five normal ones</text>
+
+  <!-- ==================== LEFT COLUMN: KV Arithmetic and Capacity Bars ==================== -->
+  <rect x="50" y="115" width="730" height="785" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  <!-- Left Card 1: KV Arithmetic Assumptions -->
+  <g id="kv-arithmetic-assumptions">
+    <rect x="70" y="135" width="690" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Processor chip / arithmetic unit (56x56) -->
+    <g transform="translate(90, 162)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4"/>
+      <rect x="18" y="18" width="20" height="20" rx="2"/>
+      <line x1="18" y1="3" x2="18" y2="10"/>
+      <line x1="28" y1="3" x2="28" y2="10"/>
+      <line x1="38" y1="3" x2="38" y2="10"/>
+      <line x1="18" y1="46" x2="18" y2="53"/>
+      <line x1="28" y1="46" x2="28" y2="53"/>
+      <line x1="38" y1="46" x2="38" y2="53"/>
+      <line x1="3" y1="18" x2="10" y2="18"/>
+      <line x1="3" y1="28" x2="10" y2="28"/>
+      <line x1="3" y1="38" x2="10" y2="38"/>
+      <line x1="46" y1="18" x2="53" y2="18"/>
+      <line x1="46" y1="28" x2="53" y2="28"/>
+      <line x1="46" y1="38" x2="53" y2="38"/>
+    </g>
+    <text x="165" y="180" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">KV arithmetic with 147,456 B per token</tspan>
+      <tspan x="165" dy="36">and a 50.6 GB KV budget (assumed)</tspan>
+    </text>
+  </g>
+
+  <!-- Left Card 2: One normal request -->
+  <g id="request-normal">
+    <rect x="70" y="260" width="690" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <!-- Icon: Compact normal request document (44x44) -->
+    <g transform="translate(95, 285)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="4" width="24" height="34" rx="3"/>
+      <line x1="16" y1="12" x2="28" y2="12"/>
+      <line x1="16" y1="20" x2="28" y2="20"/>
+      <line x1="16" y1="28" x2="22" y2="28"/>
+    </g>
+    <text x="165" y="298" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">One normal request:</tspan>
+      <tspan x="165" dy="35" font-size="25" font-weight="normal">2,500 tokens = 0.37 GB</tspan>
+    </text>
+  </g>
+
+  <!-- Left Card 3: One long request -->
+  <g id="request-long">
+    <rect x="70" y="370" width="690" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <!-- Icon: Stacked large request documents (44x44) -->
+    <g transform="translate(95, 395)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="14" y="8" width="24" height="30" rx="3"/>
+      <path d="M9 32 V8 A3 3 0 0 1 12 5 H31"/>
+      <line x1="20" y1="16" x2="32" y2="16"/>
+      <line x1="20" y1="24" x2="32" y2="24"/>
+    </g>
+    <text x="165" y="408" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">One long request:</tspan>
+      <tspan x="165" dy="35" font-size="25" font-weight="normal">30,000 tokens = 4.42 GB</tspan>
+    </text>
+  </g>
+
+  <!-- Left Card 4: Bar A - Normal requests alone -->
+  <g id="bar-a">
+    <rect x="70" y="480" width="690" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="95" y="514" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="95" dy="0">normal requests alone:</tspan>
+      <tspan x="95" dy="34" font-size="26" fill="#207448">50.6 / 0.369 = 137 fit</tspan>
+    </text>
+    <!-- Visual Bar A: Full capacity for 137 normal requests -->
+    <rect x="95" y="562" width="640" height="26" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="95" y="562" width="640" height="26" rx="6" fill="#207448"/>
+  </g>
+
+  <!-- Left Card 5: Bar B - Long requests fill GPU -->
+  <g id="bar-b">
+    <rect x="70" y="620" width="690" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="95" y="654" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="95" dy="0">long requests that fill the GPU:</tspan>
+      <tspan x="95" dy="34" font-size="26" fill="#207448">50.6 / 4.42 = 11</tspan>
+    </text>
+    <!-- Visual Bar B: 11 long requests take 48.66 GB of 50.6 GB (96.2%) -->
+    <rect x="95" y="702" width="640" height="26" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="95" y="702" width="615" height="26" rx="6" fill="#207448"/>
+  </g>
+
+  <!-- Left Card 6: Bar C - Left for others (Orange Highlight) -->
+  <g id="bar-c">
+    <rect x="70" y="760" width="690" height="125" rx="12" fill="#fbeee2" stroke="#db8129" stroke-width="3"/>
+    <text x="95" y="794" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">
+      <tspan x="95" dy="0">left for others when 11 long run:</tspan>
+      <tspan x="95" dy="34" font-size="26">50.6 - 48.7 = 1.94 GB = 5 requests</tspan>
+    </text>
+    <!-- Visual Bar C: Only 1.94 GB left (3.8% of capacity = 25px out of 640px) -->
+    <rect x="95" y="842" width="640" height="26" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <rect x="95" y="842" width="25" height="26" rx="4" fill="#db8129"/>
+  </g>
+
+  <!-- ==================== RIGHT COLUMN: Mitigations & Protection ==================== -->
+  <rect x="820" y="115" width="730" height="785" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  <!-- Right Card 1: Per-Tenant Cap at 25% -->
+  <g id="card-cap">
+    <rect x="840" y="135" width="690" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Shield with quota ceiling (56x56) -->
+    <g transform="translate(865, 165)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 8 L48 16 C48 36 28 50 28 50 C28 50 8 36 8 16 Z"/>
+      <line x1="16" y1="28" x2="40" y2="28"/>
+      <circle cx="28" cy="20" r="3" fill="#207448"/>
+      <path d="M22 38 L28 33 L34 38"/>
+    </g>
+    <text x="945" y="185" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="945" dy="0">cap at 25 percent of KV:</tspan>
+      <tspan x="945" dy="38" font-size="28" fill="#207448">12.65 / 4.42 = 2 long requests</tspan>
+    </text>
+    <!-- Visual: 25% Cap Bar preserving 75% for others -->
+    <rect x="945" y="255" width="550" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="945" y="255" width="138" height="32" rx="6" fill="#207448"/>
+  </g>
+
+  <!-- Right Card 2: Failure Line / Router Trap -->
+  <g id="card-failure">
+    <rect x="840" y="375" width="690" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Router / network node warning (56x56) -->
+    <g transform="translate(865, 420)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <line x1="28" y1="16" x2="28" y2="30"/>
+      <circle cx="28" cy="38" r="2.5" fill="#207448"/>
+      <path d="M12 16 L20 20 L12 24"/>
+      <path d="M44 32 L36 36 L44 40"/>
+    </g>
+    <text x="945" y="415" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="945" dy="0">cap is per replica but the router</tspan>
+      <tspan x="945" dy="36">sends all of the tenant's</tspan>
+      <tspan x="945" dy="36">long requests to one replica:</tspan>
+      <tspan x="945" dy="36">the cap must hold across the pool</tspan>
+    </text>
+  </g>
+
+  <!-- Right Card 3: Isolation Tiers -->
+  <g id="card-isolation">
+    <rect x="840" y="640" width="690" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Tiered isolation layers (56x56) -->
+    <g transform="translate(865, 680)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="10" rx="3"/>
+      <rect x="8" y="24" width="40" height="10" rx="3"/>
+      <rect x="8" y="38" width="40" height="10" rx="3"/>
+      <circle cx="15" cy="15" r="2" fill="#207448"/>
+      <circle cx="15" cy="29" r="2" fill="#207448"/>
+      <circle cx="15" cy="43" r="2" fill="#207448"/>
+    </g>
+    <text x="945" y="680" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="945" dy="0">shared pool, long-context pool,</tspan>
+      <tspan x="945" dy="38">dedicated endpoint</tspan>
+    </text>
+    <!-- Visual: 3 isolation tier blocks -->
+    <g transform="translate(945, 755)">
+      <rect x="0" y="0" width="165" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <rect x="185" y="0" width="175" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <rect x="380" y="0" width="170" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    </g>
+  </g>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR ==================== -->
+  <g id="takeaway-headline">
+    <rect x="50" y="930" width="1500" height="160" rx="14" fill="#207448" stroke="#185635" stroke-width="2"/>
+    <!-- Icon: Key finding / lightbulb (56x56) -->
+    <g transform="translate(85, 965)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M16 26 A14 14 0 1 1 40 26 C40 31 35 34 35 39 H21 C21 34 16 31 16 26 Z"/>
+      <line x1="21" y1="45" x2="35" y2="45"/>
+      <line x1="24" y1="51" x2="32" y2="51"/>
+      <line x1="28" y1="4" x2="28" y2="8"/>
+      <line x1="10" y1="12" x2="14" y2="15"/>
+      <line x1="46" y1="12" x2="42" y2="15"/>
+    </g>
+    <text x="170" y="995" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      <tspan x="170" dy="0">eleven long requests take capacity from 137 down to 5 for everyone else:</tspan>
+      <tspan x="170" dy="48" fill="#e8f1ea">the case for charging by cost (tokens x context), not request count</tspan>
+    </text>
+  </g>
+</svg>"""
+
+with open("test_candidate_noisy.svg", "w") as f:
+    f.write(svg_code.strip())
+
+print("Updated test_candidate_noisy.svg successfully")

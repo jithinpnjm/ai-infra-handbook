@@ -1,0 +1,283 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A decision tree, an alert-to-cause table and a classifier</title>
+  <desc>Troubleshooting decision tree mapping inference latency and errors to root causes and mitigation actions</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A decision tree, an alert-to-cause table and a classifier</text>
+
+  
+  <g id="node-A">
+    <rect x="120" y="75" width="1360" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(144, 82)">
+      <polygon points="28,5 4,49 52,49" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+      <line x1="28" y1="18" x2="28" y2="34" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="2.5" fill="#207448"/>
+    </g>
+    <text x="224" y="120" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Latency or errors up</text>
+  </g>
+
+  
+  <line x1="430" y1="145" x2="430" y2="185" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <g id="node-B">
+    <rect x="120" y="185" width="620" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(144, 205)">
+      <path d="M 8,42 A 20,20 0 1,1 48,42" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="28" y1="36" x2="14" y2="40" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="28" cy="36" r="3" fill="#207448"/>
+      <line x1="12" y1="30" x2="16" y2="31" stroke="#207448" stroke-width="2"/>
+      <line x1="28" y1="16" x2="28" y2="21" stroke="#207448" stroke-width="2"/>
+      <line x1="44" y1="30" x2="40" y2="31" stroke="#207448" stroke-width="2"/>
+    </g>
+    <text x="224" y="227" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Tokens/s zero</text>
+    <text x="224" y="259" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">with work queued?</text>
+  </g>
+
+  
+  <line x1="740" y1="233" x2="860" y2="233" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="776" y="205" width="48" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="226" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <g id="node-H">
+    <rect x="860" y="185" width="620" height="96" rx="12" fill="#fdf4eb" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(884, 205)">
+      <rect x="12" y="12" width="32" height="32" rx="4" stroke="#db8129" stroke-width="3.5" fill="none"/>
+      <line x1="20" y1="5" x2="20" y2="12" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="28" y1="5" x2="28" y2="12" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="36" y1="5" x2="36" y2="12" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="20" y1="44" x2="20" y2="51" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="28" y1="44" x2="28" y2="51" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="36" y1="44" x2="36" y2="51" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="5" y1="20" x2="12" y2="20" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="5" y1="28" x2="12" y2="28" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="5" y1="36" x2="12" y2="36" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="44" y1="20" x2="51" y2="20" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="44" y1="28" x2="51" y2="28" stroke="#db8129" stroke-width="2.5"/>
+      <line x1="44" y1="36" x2="51" y2="36" stroke="#db8129" stroke-width="2.5"/>
+      <path d="M 22,20 L 34,36 M 34,20 L 22,36" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="964" y="227" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hang or Xid:</text>
+    <text x="964" y="259" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">drain, capture, restart</text>
+  </g>
+
+  
+  <line x1="430" y1="281" x2="430" y2="331" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="368" y="292" width="44" height="28" rx="6" fill="#f5f8f5" stroke="#303a36" stroke-width="1.5"/>
+  <text x="390" y="313" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
+
+  
+  
+  <g id="node-C">
+    <rect x="120" y="331" width="620" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(144, 351)">
+      <rect x="6" y="6" width="44" height="44" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="6" y1="18" x2="50" y2="18" stroke="#207448" stroke-width="3.5" stroke-dasharray="3,3"/>
+      <path d="M 36,36 L 20,36 M 26,30 L 20,36 L 26,42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="224" y="373" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">KV usage near 1</text>
+    <text x="224" y="405" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and preemptions?</text>
+  </g>
+
+  
+  <line x1="740" y1="379" x2="860" y2="379" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="776" y="351" width="48" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <g id="node-K">
+    <rect x="860" y="331" width="620" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(884, 351)">
+      <line x1="10" y1="6" x2="10" y2="50" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="46" y1="6" x2="46" y2="50" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="10" y1="16" x2="46" y2="40" stroke="#207448" stroke-width="3.5"/>
+      <line x1="10" y1="40" x2="46" y2="16" stroke="#207448" stroke-width="3.5"/>
+    </g>
+    <text x="964" y="373" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">KV exhaustion:</text>
+    <text x="964" y="405" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">cut admission</text>
+  </g>
+
+  
+  <line x1="430" y1="427" x2="430" y2="477" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="368" y="438" width="44" height="28" rx="6" fill="#f5f8f5" stroke="#303a36" stroke-width="1.5"/>
+  <text x="390" y="459" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
+
+  
+  
+  <g id="node-D">
+    <rect x="120" y="477" width="620" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(144, 497)">
+      <path d="M 6,48 L 50,48" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 8,48 Q 16,10 24,10 Q 32,34 50,44" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </g>
+    <text x="224" y="519" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Prompt tail heavy,</text>
+    <text x="224" y="551" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">ITL up?</text>
+  </g>
+
+  
+  <line x1="740" y1="525" x2="860" y2="525" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="776" y="497" width="48" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="518" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <g id="node-L">
+    <rect x="860" y="477" width="620" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(884, 497)">
+      <path d="M 8,14 L 28,14 L 48,6" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M 8,42 L 28,42 L 48,50" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <line x1="28" y1="24" x2="48" y2="24" stroke="#207448" stroke-width="3" stroke-dasharray="4,3"/>
+    </g>
+    <text x="964" y="519" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Long-context HOL:</text>
+    <text x="964" y="551" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">isolate long prompts</text>
+  </g>
+
+  
+  <line x1="430" y1="573" x2="430" y2="623" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="368" y="584" width="44" height="28" rx="6" fill="#f5f8f5" stroke="#303a36" stroke-width="1.5"/>
+  <text x="390" y="605" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
+
+  
+  
+  <g id="node-E">
+    <rect x="120" y="623" width="620" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(144, 643)">
+      <rect x="6" y="6" width="44" height="44" rx="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <path d="M 28,18 A 10,10 0 1,1 19,32" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+      <path d="M 28,23 L 28,33 M 24,29 L 28,33 L 32,29" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="224" y="665" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ready below desired</text>
+    <text x="224" y="697" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">or many loading?</text>
+  </g>
+
+  
+  <line x1="740" y1="671" x2="860" y2="671" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="776" y="643" width="48" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="664" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <g id="node-S">
+    <rect x="860" y="623" width="620" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(884, 643)">
+      <circle cx="28" cy="28" r="18" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="28" y1="4" x2="28" y2="52" stroke="#207448" stroke-width="3"/>
+      <line x1="4" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="964" y="665" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Shrink, herd or</text>
+    <text x="964" y="697" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">probe kills</text>
+  </g>
+
+  
+  <line x1="430" y1="719" x2="430" y2="769" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="368" y="730" width="44" height="28" rx="6" fill="#f5f8f5" stroke="#303a36" stroke-width="1.5"/>
+  <text x="390" y="751" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
+
+  
+  
+  <g id="node-F">
+    <rect x="120" y="769" width="620" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(144, 789)">
+      <rect x="6" y="34" width="44" height="10" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="6" y="20" width="44" height="10" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="6" y="6" width="44" height="10" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <line x1="28" y1="-4" x2="28" y2="3" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="224" y="811" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Waiting high,</text>
+    <text x="224" y="843" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">batch full?</text>
+  </g>
+
+  
+  <line x1="740" y1="817" x2="860" y2="817" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="776" y="789" width="48" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="810" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <g id="node-Q">
+    <rect x="860" y="769" width="620" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(884, 789)">
+      <rect x="18" y="18" width="20" height="20" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <path d="M 14,28 L 4,28 M 9,23 L 4,28 L 9,33" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 42,28 L 52,28 M 47,23 L 52,28 L 47,33" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="964" y="811" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Capacity: scale</text>
+    <text x="964" y="843" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">or shed</text>
+  </g>
+
+  
+  <line x1="430" y1="865" x2="430" y2="915" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="368" y="876" width="44" height="28" rx="6" fill="#f5f8f5" stroke="#303a36" stroke-width="1.5"/>
+  <text x="390" y="897" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
+
+  
+  
+  <g id="node-G">
+    <rect x="120" y="915" width="620" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(144, 935)">
+      <rect x="6" y="6" width="44" height="44" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="6" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="2"/>
+      <line x1="6" y1="34" x2="50" y2="34" stroke="#207448" stroke-width="2"/>
+      <path d="M 22,42 L 27,46 L 36,38" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </g>
+    <text x="224" y="957" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Infra green,</text>
+    <text x="224" y="989" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">finish_reason moved?</text>
+  </g>
+
+  
+  <line x1="740" y1="963" x2="860" y2="963" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="776" y="935" width="48" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="956" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <g id="node-X">
+    <rect x="860" y="915" width="620" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(884, 935)">
+      <path d="M 28,10 A 18,18 0 1,0 44,30" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+      <path d="M 22,10 L 29,10 L 29,17" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="964" y="957" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Quality or skew:</text>
+    <text x="964" y="989" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">roll back</text>
+  </g>
+
+  
+  <line x1="430" y1="1011" x2="430" y2="1061" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="368" y="1022" width="44" height="28" rx="6" fill="#f5f8f5" stroke="#303a36" stroke-width="1.5"/>
+  <text x="390" y="1043" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
+
+  
+  <g id="node-Y">
+    <rect x="120" y="1061" width="620" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(144, 1081)">
+      <rect x="8" y="8" width="40" height="44" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <path d="M 20,8 L 20,5 A 2,2 0 0,1 22,3 L 34,3 A 2,2 0 0,1 36,5 L 36,8" stroke="#207448" stroke-width="2.5" fill="none"/>
+      <line x1="18" y1="20" x2="38" y2="20" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="18" y1="30" x2="38" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="18" y1="40" x2="32" y2="40" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="224" y="1103" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Check retries,</text>
+    <text x="224" y="1135" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">tenants, versions</text>
+  </g>
+</svg>

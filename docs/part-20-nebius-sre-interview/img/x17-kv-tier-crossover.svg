@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>A cache tier pays only when loading a prefix is much faster than recomputing it</title>
+  <desc>Horizontal bar chart comparing recompute prefill time with NVMe and host RAM load times for a 2,000-token prefix, with a prefix capacity fit table.</desc>
+
+  <defs>
+    
+    <g id="icon-disk-cylinder">
+      <ellipse cx="28" cy="14" rx="20" ry="8" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M 8 14 V 42 C 8 46.4 17 50 28 50 C 39 50 48 46.4 48 42 V 14" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M 8 28 C 8 32.4 17 36 28 36 C 39 36 48 32.4 48 28" fill="none" stroke="#db8129" stroke-width="3"/>
+    </g>
+
+    
+    <g id="icon-chip">
+      <rect x="12" y="12" width="32" height="32" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="20" y="20" width="16" height="16" rx="2" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="4" x2="20" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="4" x2="28" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="4" x2="36" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="20" y1="44" x2="20" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="44" x2="28" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="44" x2="36" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="20" x2="12" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="28" x2="12" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="36" x2="12" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="44" y1="20" x2="52" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="44" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="44" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <g id="icon-compute">
+      <rect x="8" y="8" width="40" height="40" rx="8" fill="none" stroke="#718079" stroke-width="4"/>
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#718079" stroke-width="3"/>
+      <line x1="28" y1="12" x2="28" y2="18" stroke="#718079" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="38" x2="28" y2="44" stroke="#718079" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="28" x2="18" y2="28" stroke="#718079" stroke-width="3" stroke-linecap="round"/>
+      <line x1="38" y1="28" x2="44" y2="28" stroke="#718079" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A cache tier pays only when loading a prefix</tspan>
+    <tspan x="800" dy="54">is much faster than recomputing it</tspan>
+  </text>
+
+  
+  <rect x="50" y="160" width="940" height="740" rx="16" fill="#ffffff" stroke="#c4d6c8" stroke-width="2"/>
+
+  
+  <line x1="840" y1="230" x2="840" y2="870" stroke="#718079" stroke-width="3" stroke-dasharray="8,6"/>
+  <rect x="715" y="180" width="250" height="42" rx="8" fill="#e8f1ea" stroke="#718079" stroke-width="1.5"/>
+  <text x="840" y="209" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">recompute time</text>
+
+  
+  <g id="bar-1-group">
+    <use href="#icon-compute" x="80" y="185"/>
+    <text x="155" y="205" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="155" dy="0">Recompute prefill at assumed </tspan>
+      <tspan x="155" dy="34">400 TFLOPS effective: 82 ms</tspan>
+    </text>
+    
+    <rect x="80" y="260" width="760" height="52" rx="8" fill="#b8c4bc" stroke="#718079" stroke-width="2.5"/>
+  </g>
+
+  
+  <g id="bar-2-group">
+    <use href="#icon-disk-cylinder" x="80" y="355"/>
+    <text x="155" y="392" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">Load from NVMe at 7 GB/s: 42 ms</text>
+    
+    <rect x="80" y="425" width="389" height="52" rx="8" fill="#fdf0e2" stroke="#db8129" stroke-width="3.5"/>
+    
+    <rect x="80" y="495" width="760" height="96" rx="10" fill="#fef6ed" stroke="#db8129" stroke-width="1.5"/>
+    <text x="100" y="534" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="100" dy="0">NVMe is only about twice as fast as recomputing, </tspan>
+      <tspan x="100" dy="34">so the slow tier barely pays</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bar-3-group">
+    <use href="#icon-chip" x="80" y="635"/>
+    <text x="155" y="655" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="155" dy="0">Load from host RAM at </tspan>
+      <tspan x="155" dy="34">128 GB/s times 50 percent: 4.6 ms</tspan>
+    </text>
+    
+    <rect x="80" y="710" width="43" height="52" rx="8" fill="#207448" stroke="#165233" stroke-width="2.5"/>
+    
+    <rect x="80" y="780" width="760" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="100" y="819" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">RAM clearly pays</text>
+  </g>
+
+  
+  <rect x="1030" y="160" width="520" height="740" rx="16" fill="#ffffff" stroke="#c4d6c8" stroke-width="2"/>
+
+  
+  <g id="fit-row-1">
+    <rect x="1055" y="210" width="470" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1080" y="285" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="1080" dy="0">GPU KV budget 50.6 GB </tspan>
+      <tspan x="1080" dy="38">fits 171 prefixes</tspan>
+    </text>
+  </g>
+
+  
+  <g id="fit-row-2">
+    <rect x="1055" y="440" width="470" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1080" y="515" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="1080" dy="0">host RAM 512 GB </tspan>
+      <tspan x="1080" dy="38">fits 1,736</tspan>
+    </text>
+  </g>
+
+  
+  <g id="fit-row-3">
+    <rect x="1055" y="670" width="470" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1080" y="745" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="1080" dy="0">NVMe 8 TB </tspan>
+      <tspan x="1080" dy="38">fits 27,126</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="50" y="935" width="1500" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="982" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Justify each cache tier with a load-versus-recompute number.</text>
+</svg>

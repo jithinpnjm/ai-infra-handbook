@@ -30,6 +30,10 @@ Read this chapter as a framework you fill in, not a script you memorise. Every f
 
 ### 1. The round has two shapes and one skill
 
+![Three interview rooms, a final hour with a team leader, a project deep dive and a hiring-manager conversation, each with a different source and preparation.](./img/p2-2028-round-shapes.svg)
+
+*Figure 20.28.1. The project round appears in three rooms, a final hour, a deep dive and a hiring-manager conversation, and each needs different preparation.*
+
 Consider the same question arriving in three different rooms. A team leader asks it in a friendly talk, a hiring manager asks it in a conversation about your career, and an engineer asks it in a formal deep dive. The skill underneath all three is the same. You explain a real system, you give reasons for your choices, and you admit what went wrong without flinching.
 
 | Shape | What the source says | Evidence | What to prepare |
@@ -46,6 +50,10 @@ Think about what a deep dive does to a thin story. The interviewer asks why you 
 
 ### 2. Picking the one project
 
+![A flow for picking one project by scoring six tests, keeping it only with at least five honest yeses, then filling the dossier and rehearsing.](./img/p2-2028-project-gate.svg)
+
+*Figure 20.28.2. Pick one project by scoring six tests and keeping it only with at least five honest yeses, then fill the dossier and rehearse it.*
+
 Imagine two candidate projects on your list. One has the most impressive name, and the other is the one you spent a long night fixing during an outage. The wrong way to pick is to choose the impressive name. The right way is to choose the project where you can survive five levels of questions. Each level asks about the thing you just said, so a project you only watched falls apart early.
 
 Score each candidate on six tests, and write yes or no against each one. You need an honest yes on at least five. The first test asks whether you made or shaped the key decisions, not just carried them out. The second asks whether it ran in production or under real load, so that something could actually break. The third asks whether you can state at least five numbers about it. The fourth asks whether something went wrong and you know the root cause. The fifth asks whether it touches what this job does, such as Kubernetes, observability, automation or reliability. The sixth asks whether you can name a decision you would now make differently. Be strict with yourself here. A test you pass only because you were in the room is not the same as a test you pass because you made the call.
@@ -54,22 +62,19 @@ Your own background should give you the candidates, and the markers below are on
 
 Match the choice to the role. For a Token Factory role, the best project is the one closest to reliability, performance and observability. A service that real people depended on fits that role better than a toolchain, even a clever one. Ask yourself which story would make the team leader lean forward.
 
-```mermaid
-flowchart TD
-  A["List 3 candidate projects"] --> B["Score 6 tests"]
-  B --> C{"5 or more yes?"}
-  C -->|"no"| D["Drop it, or keep as 2nd story"]
-  C -->|"yes"| E["Fill the dossier"]
-  E --> F{"Checker clean?"}
-  F -->|"no"| E
-  F -->|"yes"| G["Rehearse 2 min, 10 min, 90 min"]
-```
+![Picking the one project](./img/m20-28-1.svg)
+
+*Figure 20.28.3. Picking the one project, as a diagram.*
 
 **Choose the project where you know the numbers and the mistakes, not the one that sounds biggest.**
 
 A quick test is to ask yourself which question you could answer in your sleep. If the answer is the question about the design, you know the shape of the project. If the answer is the question about what broke, you know the project itself. Both belong in your story, and the second is usually the one that persuades a senior interviewer that you were there.
 
 ### 3. The one-page dossier
+
+![Nine parts of a one-page project dossier in story order, with decisions and failures marked as the two parts that decide the round](./img/x28-dossier-nine-parts.svg)
+
+*Figure 20.28.4. Project dossier: nine parts in the order a story is told, with decisions and failures as the two parts that most shape the deep dive.*
 
 Imagine a blank page on your desk and a deadline to fill it. Writing the project down is how you find out what you do not know, because the gaps show up quickly on paper. The dossier has nine parts. Context, role and team, constraints, numbers, architecture, decisions, failures, what you would change, and metrics of success. Each part answers a question an interviewer will ask. The order is also the order a good story is told, from why the project existed to how you would know it worked.
 
@@ -196,6 +201,10 @@ Writing first also protects you from a common trap, which is rehearsing a story 
 
 ### 4. What the interviewer asks at each part, and the shape of a good answer
 
+![A table of seven dossier parts with the probing question and the shape of an answer that holds up.](./img/p3-2028-probe-answer-shapes.svg)
+
+*Figure 20.28.5. For every claim in the dossier know the next question and have one number ready.*
+
 Imagine the interviewer with your dossier open, pointing at one line and asking the next question. The best preparation is knowing the probe that follows each section. Below, each part has the question that tends to come, and the answer shape that holds up under it. These are my reasoning about how technical interviewers probe, not a record of Nebius questions.
 
 On context, the probe is "Why did this need doing at all?" A good answer states the pain in one sentence a non-engineer would follow, then the number that showed it was real. Systems Performance, chapter 2, lists the opening questions of any investigation. Those questions ask why you think there is a problem, whether it ever worked well, what changed recently, who is affected and what the environment is. They make a short and disciplined opening for your own context.
@@ -218,6 +227,14 @@ Practise the follow-up as its own exercise. Take one claim from your dossier and
 
 ### 5. Talking about trade-offs and mistakes honestly
 
+![Five ordered parts of a mistake story beside three traps: blame-shifting, false certainty and the streetlight habit.](./img/p3-2028-mistake-story.svg)
+
+*Figure 20.28.6. State the cost of every decision and the cause of every failure, and own your share.*
+
+![Four parts of a trade-off sentence: the constraint, the choice over the alternative, the accepted cost, and the condition that would revisit it](./img/x28-tradeoff-sentence-parts.svg)
+
+*Figure 20.28.7. Trade-off sentence: name the constraint, the choice over the alternative, the cost you accepted, and the condition that would make you revisit.*
+
 Think of the interviewer as someone who has been paged at a bad hour and still remembers it. An interviewer who has run production systems has made expensive mistakes of their own, and they are listening for whether you have made some too. A project with no flaws sounds like a project you only watched from the side.
 
 Practise the trade-off sentence until it comes out without thought. It has four parts. Given this constraint, I chose A over B, accepting this cost, and I would revisit if this condition changed. For example, "Given a two-week deadline, I chose [YOUR CHOICE] over [YOUR ALTERNATIVE], accepting [YOUR COST], and I would revisit when load passes [YOUR NUMBER]." The sentence is short, it shows you saw alternatives, and it shows you know when the decision expires.
@@ -234,6 +251,10 @@ A useful habit is to keep a short list of the costs you accepted, one per decisi
 
 ### 6. Why Nebius, why SRE, why inference
 
+![Three answer cards, each pairing a public fact with a true fact about the candidate.](./img/p3-2028-why-card.svg)
+
+*Figure 20.28.8. Tie each answer to one public fact and one true fact about you.*
+
 Consider the interviewer asking "Why Nebius?" with a pen ready. These three questions are easy to answer badly. A weak answer is generic praise, the kind you could give to any company. A strong answer links a fact about the company or the role to something true about you. The fact can come from Nebius's public material, but the true part has to come from your own work, so you supply that part yourself.
 
 For why Nebius, use public facts only. Token Factory offers serverless and dedicated endpoints behind an OpenAI-compatible API, with a control plane kept separate from a region-specific data plane. In plain words, the control plane is where you manage settings, and the data plane is where your users' requests travel. Dedicated endpoints let a customer choose GPU type, replicas and region. A Nebius case study, tagged vendor in the plan, describes lessons such as stopping retry amplification and fixing aggressive liveness probes that restarted healthy workers. Retry amplification means a small slowdown makes clients retry, and the retries add load that makes the slowdown worse. Pick one lesson and say why it interests you. For example: "The case study about probes restarting healthy workers is a failure I recognise from [YOUR EXPERIENCE]." Do not claim to know how Nebius runs its internals. Nebius has not published them.
@@ -247,6 +268,10 @@ For why inference, say what is different about it. Inference means running a tra
 Before the call, write your answer on one card. The first part is the public fact, with the page you read it from. The second part is your true experience. Keep the card short. If you cannot fill the first part from a page you have actually read, drop that part rather than guess at it.
 
 ### 7. Questions to ask the team leader
+
+![A table of six questions for the team leader on on-call, SLOs, incidents, GPU fleet, roadmap and team split.](./img/p3-2028-questions-for-leader.svg)
+
+*Figure 20.28.9. Listen to how the leader answers as much as to what they say.*
 
 Imagine the last few minutes of the hour, when the team leader asks whether you have any questions. An hour with a team leader is also your chance to interview them. Good questions show you think about operations, not perks. Ask five or six real ones. Do not ask anything the posting or website already answers, because that signals you did not read either.
 
@@ -283,6 +308,10 @@ Keep notes of the factual details you gave, such as the notice period and your a
 
 ### 9. The first-90-days answer
 
+![Three stages of a first-90-days plan: listen and map in month one, small safe improvements in month two, and one owned reliability improvement with a number in month three](./img/x28-first-90-days.svg)
+
+*Figure 20.28.10. First 90 days: learn before changing anything, then ship small measured fixes, then own one reliability improvement with a target.*
+
 Imagine a hiring manager with a notepad asking, "What would you do in your first 90 days?" The question tests judgment. The wrong answer is a list of grand changes. The right answer shows that you learn first and change second. A new engineer who rewrites the alerts in the first few days has not yet learned why the old ones exist.
 
 A good shape has three stages. In the first month, you listen and map. You shadow on-call, read recent post-mortems, learn the SLOs and the alerts that page, and draw the request path for a token API from edge to GPU. You fix nothing big yet. The point of the first month is to build a picture the team recognises, so that your later changes fit into it.
@@ -302,6 +331,10 @@ If the interviewer pushes for a bigger first move, you can say that you would br
 Rehearse these five answers out loud, and time each one with a phone. The numbers in brackets are yours to fill. Speaking is a different skill from reading, so the timer is what turns a sound answer into one you can give under pressure.
 
 ### "Walk me through the project in two minutes"
+
+![Six ordered steps for a two minute project walkthrough, with short templates for the follow-up questions.](./img/p3-2028-two-minute-walkthrough.svg)
+
+*Figure 20.28.11. Say the order first and close by naming the decision you want to go deeper on.*
 
 Consider the first question of the round, asked by someone who has not read your CV yet. Speak in this order. Start with one sentence on why the project existed. Then give one on your role and the team size. Describe the shape of the system in three components. Name the two biggest decisions. Give the result, with one before-and-after number. Close with "the part I would like to go deeper on is" and name the most interesting decision. Expect a follow-up on whichever part you mention last, so end on your strongest point. State [YOUR NUMBER] for scale and [YOUR NUMBER] for the result.
 
@@ -350,6 +383,10 @@ Now run the checker. In the lab you will see that it flags the weak version. A c
 Running the checker on your own draft is a useful habit even when the draft feels finished. The flags it raises are often the same ones a sharp reader raises, and the check costs you a minute.
 
 ### Scenario 3: a five-level ladder on one decision
+
+![Five-step ladder of follow-up questions on one decision, with an honest side branch when no test was run](./img/x28-five-level-ladder.svg)
+
+*Figure 20.28.12. Five-level ladder: each follow-up digs one level deeper, and a missing test is named as a gap rather than covered with an invented figure.*
 
 Consider an interviewer who keeps asking one more question about the same decision. Interviewers dig on a single point until they reach the bottom of it. Prepare this ladder for your best decision.
 

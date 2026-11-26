@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Variables, facts and templates: three jobs, like the recipe card, the plate and the plating</title>
+  <desc>Infographic illustrating how variables, facts, and templates work together in configuration management, contrasting playbook drift with centralized difference management.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Variables, facts and templates: three jobs,</text>
+  <text x="800" y="118" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">like the recipe card, the plate and the plating</text>
+
+  
+  
+  <rect x="40" y="145" width="740" height="195" rx="12" fill="#fdf6ee" stroke="#db8129" stroke-width="3" />
+  
+  
+  <g transform="translate(68, 175)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 10 L 8 46" />
+    <path d="M 8 28 C 18 28 26 18 36 18 L 48 18" />
+    <path d="M 8 36 C 20 36 28 46 38 46 L 48 46" />
+    <polyline points="42,12 48,18 42,24" />
+    <polyline points="42,40 48,46 42,52" />
+  </g>
+
+  
+  <text x="145" y="180" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">a second batch of servers arrives from a</tspan>
+    <tspan x="145" dy="30">different purchase order; copying the playbook</tspan>
+    <tspan x="145" dy="30">and editing three lines works for one batch;</tspan>
+    <tspan x="145" dy="30">by the fourth batch there are four playbooks</tspan>
+    <tspan x="145" dy="30">that drift apart and a fix lands in one</tspan>
+    <tspan x="145" dy="30">and misses the others</tspan>
+  </text>
+
+  
+  <rect x="820" y="145" width="740" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(848, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="36" height="46" rx="4" />
+    <line x1="14" y1="18" x2="34" y2="18" />
+    <line x1="14" y1="28" x2="34" y2="28" />
+    <line x1="14" y1="38" x2="26" y2="38" />
+    <circle cx="44" cy="40" r="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <polyline points="40,40 43,43 48,37" stroke="#207448" stroke-width="3" />
+  </g>
+
+  
+  <text x="925" y="195" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="925" dy="0">a playbook that reads its differences</tspan>
+    <tspan x="925" dy="36">from data stays one playbook, and the</tspan>
+    <tspan x="925" dy="36">differences live in one place</tspan>
+  </text>
+
+  
+  <rect x="40" y="365" width="1520" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(68, 385)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="44" height="42" rx="4" />
+    <line x1="14" y1="18" x2="38" y2="18" />
+    <line x1="14" y1="27" x2="30" y2="27" />
+    <line x1="14" y1="36" x2="22" y2="36" />
+    <circle cx="36" cy="34" r="4" fill="#207448" />
+  </g>
+
+  
+  <text x="140" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0">some nodes have 8 GPUs and others 4; H100 and A100;</tspan>
+    <tspan x="140" dy="34">ConnectX-7 and BlueField NICs; each rack with its own management subnet</tspan>
+  </text>
+
+  
+
+  
+  <rect x="40" y="490" width="740" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  
+  <g transform="translate(68, 532)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="4" width="40" height="52" rx="4" />
+    <line x1="14" y1="16" x2="22" y2="16" />
+    <line x1="28" y1="16" x2="38" y2="16" />
+    <line x1="14" y1="28" x2="22" y2="28" />
+    <line x1="28" y1="28" x2="38" y2="28" />
+    <line x1="14" y1="40" x2="22" y2="40" />
+    <line x1="28" y1="40" x2="38" y2="40" />
+  </g>
+
+  
+  <text x="140" y="546" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold" fill="#207448">Variables: </tspan>
+    <tspan font-size="25">what you intend</tspan>
+    <tspan x="140" dy="44" font-size="25">(the recipe card)</tspan>
+  </text>
+
+  
+  <rect x="820" y="490" width="740" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g transform="translate(848, 532)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="26" cy="36" rx="20" ry="10" />
+    <circle cx="34" cy="22" r="12" />
+    <line x1="43" y1="31" x2="52" y2="40" />
+  </g>
+
+  
+  <text x="920" y="546" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold" fill="#207448">Facts: </tspan>
+    <tspan font-size="25">what each host actually is</tspan>
+    <tspan x="920" dy="44" font-size="25">(the cook's check of what is on the plate)</tspan>
+  </text>
+
+  
+  <line x1="410" y1="635" x2="410" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="1190" y1="635" x2="1190" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="180" y="675" width="1240" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g transform="translate(212, 706)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="46" height="46" rx="6" />
+    <line x1="4" y1="24" x2="50" y2="24" />
+    <line x1="24" y1="24" x2="24" y2="52" />
+    <circle cx="37" cy="38" r="4" fill="#207448" />
+  </g>
+
+  
+  <text x="285" y="724" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold" fill="#207448">Templates: </tspan>
+    <tspan font-size="25">combine both into the finished config</tspan>
+    <tspan x="285" dy="42" font-size="25">(the plating template)</tspan>
+  </text>
+
+  
+  <line x1="800" y1="795" x2="800" y2="835" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="180" y="835" width="1240" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g transform="translate(212, 852)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="34" height="44" rx="4" />
+    <polyline points="26,6 26,18 40,18" />
+    <line x1="14" y1="28" x2="30" y2="28" />
+    <line x1="14" y1="38" x2="26" y2="38" />
+  </g>
+
+  
+  <text x="285" y="890" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">Slurm, NCCL, chrony, netplan, Prometheus configuration</text>
+
+  
+  <rect x="40" y="950" width="1520" height="125" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(68, 985)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 12 Q 26 6 46 12 L 46 48 Q 26 42 6 48 Z" />
+    <line x1="26" y1="9" x2="26" y2="44" />
+  </g>
+
+  
+  <text x="140" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0">Slurm: the job scheduler; NCCL: NVIDIA's library for moving data between GPUs;</tspan>
+    <tspan x="140" dy="33">chrony: keeps clocks in step; netplan: Ubuntu's network configuration tool;</tspan>
+    <tspan x="140" dy="33">Prometheus: a metrics collector</tspan>
+  </text>
+
+  
+  <rect x="40" y="1098" width="1520" height="74" rx="10" fill="#207448" />
+  <text x="800" y="1145" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">When a plate comes out wrong you can ask which part gave the wrong answer</text>
+
+</svg>

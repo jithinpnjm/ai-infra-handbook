@@ -68,9 +68,17 @@ Exceptions do more than report errors. They play five common roles in ordinary P
 
 ### Mechanics
 
+![The enter, body and exit steps of a LookingGlass context manager where __exit__ returns True to suppress ZeroDivisionError, with the contextmanager generator form and ExitStack.](./img/p3-0305-ctxmgr-enter-exit.svg)
+
+*Figure 3.5.1. __exit__ always runs, returning True suppresses the exception, and the generator form needs try and finally around the yield.*
+
+![Exception chaining with from, implicit chaining and from None, plus the rule that the except as variable is unbound after the block so the exception must be copied to another name.](./img/p3-0305-chain-and-unbind.svg)
+
+*Figure 3.5.2. raise from sets __cause__ to make an error translation explicit, and the as variable is deleted when the except block ends.*
+
 ![The try statement flow](./img/s05-trycycle.svg)
 
-*Figure 3.5.1. Exception mechanics: finally runs whether the body succeeds, is handled, or fails unhandled.*
+*Figure 3.5.3. Exception mechanics: finally runs whether the body succeeds, is handled, or fails unhandled.*
 
 An **exception** is an object that represents an error or an unusual condition. When you raise one, Python unwinds the call stack, which is the chain of functions currently waiting on each other. It keeps unwinding until it finds a matching handler. If no handler exists, the program prints a traceback and exits with status 1.
 
@@ -102,7 +110,7 @@ An exception object gives you several handles. These include `exc.args`, `str(ex
 
 ![Mechanics](./img/m3-05-1.svg)
 
-*Figure 3.5.2. Mechanics, as a diagram.*
+*Figure 3.5.4. Mechanics, as a diagram.*
 
 **The `except Exc as var:` scope rule.** The name var lives only inside its `except` block. Python **automatically unbinds it (`del var`) when that block exits**, even if var held a value before the `try`. The reason is the traceback. An exception's `__traceback__` attribute points at the stack frames, and those frames hold their local variables. If var stayed bound, the exception would point back at itself through the frame, and that loop is a reference cycle. A cycle delays garbage collection and keeps memory in use. If you need the exception object after the `try` statement finishes, assign it to a separate variable inside the handler:
 
@@ -293,6 +301,10 @@ Because nothing catches this one, the default handler prints the usual traceback
 
 ### Termination actions with `finally`
 
+![A finally block runs on success and on an error, but after an error control does not return to the statement after the try.](./img/p2-0305-finally-paths.svg)
+
+*Figure 3.5.5. A finally block runs whether or not the body raises, but after an error control never returns to the code after the try.*
+
 Some steps must run no matter how a block ends. Closing a file is the usual example, because a half-open file holds data in a buffer that nobody will flush. The `finally` clause guarantees that these closing steps run, whether or not your program raised an exception. Putting cleanup code after a call is a weak fix, because that code never runs when the call raises an error.
 
 ```python
@@ -351,6 +363,14 @@ Backtracking means undoing the work already done before a jump back to an earlie
 You can still build backtracking yourself. Pair exceptions with logic that unwinds your assignments. Generators, covered in *Learning Python*, chapter 20, do not backtrack fully either. They save their state and resume when `next()` asks for the next value. For more on true backtracking, look at books on AI or at the Prolog and Icon languages.
 
 ### Nested try statements
+
+![An ExceptionGroup of IndexError, TypeError and SyntaxError passing through two except* handlers that each consume their match, leaving the SyntaxError for the top-level traceback.](./img/p3-0305-exception-group.svg)
+
+*Figure 3.5.6. Each except* clause takes the exceptions it matches and passes the rest upward until the group is fully handled.*
+
+![Three nested functions where a TypeError is caught by the most recent try, re-raised with a bare raise and caught again, with the finally-only and loop variants and what survives an exception.](./img/p3-0305-nested-try-routing.svg)
+
+*Figure 3.5.7. The most recently entered matching try handles the exception first, and an outer handler runs only if the inner one re-raises.*
 
 Real programs often put one `try` inside another. A `try` can also sit in a function that another `try` calls. Both cases follow one rule, and it helps to know that rule before you read a traceback.
 
@@ -537,6 +557,10 @@ The *Learning Python* version uses a bare `except:`. This handbook prefers `exce
 
 ### Exception idioms
 
+![Three exception idioms: raising Exitloop to leave three nested loops, EOFError ending an input loop and Found or Failure exceptions replacing sentinel return values.](./img/p3-0305-exceptions-as-signals.svg)
+
+*Figure 3.5.8. A raise can leave several loops at once, EOFError marks the end of input, and exceptions can return results that no sentinel value could.*
+
 Exceptions do more than report errors. Several common patterns use them as a control-flow tool. Each pattern is a small, structured way to jump somewhere else in the program, and each one is worth adding to your vocabulary.
 
 ### Breaking out of several loops
@@ -705,6 +729,10 @@ The testing tools in the development section below, `doctest` and PyUnit, go fur
 
 ### sys.exc_info, sys.exception, and tracebacks
 
+![Three panels on assert and python -O, warnings with stacklevel, and the three equal ways to read the current exception, with traceback.print_exc writing to a file.](./img/p3-0305-assert-warn-excinfo.svg)
+
+*Figure 3.5.9. assert disappears under python -O, stacklevel 2 blames the caller, and sys.exception returns the same instance as sys.exc_info()[1].*
+
 The `sys.exc_info` result gives a handler a generic way to see the exception it is handling. That is most useful with an empty `except`, which catches everything, because you can then look at what actually arrived.
 
 ```python
@@ -791,6 +819,14 @@ ZeroDivisionError: division by zero
 On Windows, type plays the role that `cat` plays here. The `traceback` module has more options for customizing this output. For more on traceback objects, see a Python reference.
 
 ### Exception design tips and gotchas
+
+![Three failure stories of a bare except swallowing sys.exit, a misspelled dictionary name turning into silent None and an inner catch-all hiding IndexError, with category classes as the fix.](./img/p3-0305-too-broad-narrow.svg)
+
+*Figure 3.5.10. A bare except catches SystemExit and NameError typos, while catching a category superclass handles future subclasses without edits.*
+
+![BaseException has Exception as one child, where ordinary errors live, and KeyboardInterrupt and SystemExit as separate children, so except Exception misses them.](./img/p2-0305-baseexception-tree.svg)
+
+*Figure 3.5.11. KeyboardInterrupt and SystemExit sit beside Exception under BaseException, so an except Exception clause lets Ctrl-C and sys.exit through.*
 
 Most exception mistakes come from design choices, not from syntax. Exceptions are easy to use in Python. The hard part is choosing how specific each `except` should be, and how much code to put inside each `try`.
 
@@ -897,6 +933,14 @@ This part of *Learning Python* ended with a survey of design concepts, common ex
 
 ### Error-handling strategy for tools and services
 
+![A table of eight error-handling rules from failing fast to timeouts everywhere, beside the conventional exit codes 0, 1, 2, 126, 127, 128 plus N, 130, 143 and 75.](./img/p3-0305-eight-rules.svg)
+
+*Figure 3.5.12. Validate early, handle only what you can recover from, report partial failure honestly, and use conventional exit codes.*
+
+![A main function returns exit code 2 for expected errors, 130 for an interrupt, 1 for unexpected bugs with a traceback, and 0 or 1 depending on whether any item failed.](./img/p2-0305-main-exit-codes.svg)
+
+*Figure 3.5.13. A main function returns 2 for expected errors, 130 for Ctrl-C, 1 for unexpected bugs, and 0 or 1 depending on partial failure.*
+
 1. **Fail fast on programmer errors and invalid input.** Validate config and arguments at the boundary, right away, with clear messages.
 2. **Handle expected operational failures where you can do something sensible.** Network timeouts, missing files, 404s and lock contention are the usual examples. You can retry with backoff, skip with a log, fall back, or translate the failure into a domain error.
 3. **Do not catch what you cannot handle.** Let unexpected exceptions bubble up to one top-level handler, which logs the traceback and exits non-zero.
@@ -934,9 +978,13 @@ Conventional exit codes are worth knowing, because they are the only part of a f
 
 ## 2. Logging
 
+![Logging rules for levels, lazy percent-s formatting, one logger per module, NullHandler for libraries and destinations from stderr to rotating files and structured JSON lines.](./img/p3-0305-logging-setup.svg)
+
+*Figure 3.5.14. Applications configure handlers once at startup, libraries only add NullHandler, and log calls use percent-s so formatting happens only when emitted.*
+
 ![How logging moves a record](./img/s05-logging.svg)
 
-*Figure 3.5.3. Logging: a logger drops records below its level, then a handler and a formatter send the rest to a destination.*
+*Figure 3.5.15. Logging: a logger drops records below its level, then a handler and a formatter send the rest to a destination.*
 
 A job fails halfway through a sweep of the fleet, and someone opens the terminal where it ran. The window is full of progress lines, the useful one has scrolled away, and the output was piped into a file that the next run overwrote. The normal output of a program is rarely enough at that moment. You need to know which host failed, when it failed and what the script was trying to do.
 
@@ -982,6 +1030,10 @@ Many production failures come down to files like these. Both problems start with
 
 ### `open()` and modes
 
+![The path of written data from the Python buffer through flush to the OS and fsync to disk, with the open modes, buffering options and large file reading techniques.](./img/p3-0305-flush-fsync.svg)
+
+*Figure 3.5.16. flush moves data to the OS, fsync moves it to disk, and with closes the file even when an exception occurs.*
+
 ```python
 with open(path, "r", encoding="utf-8", errors="strict", newline=None) as f: ...
 # modes: 'r' read text, 'w' truncate+write, 'a' append, 'x' exclusive create (fails if exists), '+' read/write, 'b' binary
@@ -1023,7 +1075,7 @@ Prefer `pathlib` over string manipulation and `os.path`. A `Path` object knows h
 
 ![Atomic replace for safe writes](./img/s05-atomic.svg)
 
-*Figure 3.5.4. Safe writes: write a temp file, then replace the target in one step so readers never see half a file.*
+*Figure 3.5.17. Safe writes: write a temp file, then replace the target in one step so readers never see half a file.*
 
 Writing a file in place can leave it truncated. That happens if the process crashes or the disk fills up, and readers may see partial content in the meantime. The safer pattern writes to a temporary file in the same directory, which keeps it on the same file system. It then flushes and fsyncs the file, and finally calls `os.replace()`, which performs an atomic rename. Readers see the old file or the new one, never a half-written mixture.
 
@@ -1053,9 +1105,17 @@ Python offers `tempfile.TemporaryDirectory()`, `NamedTemporaryFile(delete=False)
 
 ### Permissions, ownership and umask
 
+![Unsafe and safe ways to create secret files, check-then-create races and temp files, with advisory flock for overlapping runs and the tarfile path traversal warning.](./img/p3-0305-secure-create.svg)
+
+*Figure 3.5.18. Create secrets with O_EXCL and 0600 in one step, let mkstemp pick temp names, and attempt then handle instead of check then create.*
+
 Several calls manage permissions and ownership: `os.chmod`, `os.chown`, `os.umask`, `Path.chmod`, and `stat` modes such as `stat.S_IRUSR`. `os.access` also exists, but beware of TOCTOU races with it. Create secret files with restrictive modes from the start, using `os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600)`. Do not create the file first and chmod it afterward, because the file is readable to others while it waits. Check your `0o` octal literals carefully.
 
 ### Locking and races
+
+![A check-then-create sequence leaves a gap another process can enter, while an exclusive open fails in one step, and a non-blocking flock lets only one instance run.](./img/p2-0305-toctou-lock.svg)
+
+*Figure 3.5.19. Checking whether a file exists before creating it leaves a race gap, while an exclusive open and a non-blocking flock avoid it.*
 
 Concurrent scripts can corrupt shared state. A cron job may overlap with its own previous run, or two operators may run the same tool at once. Several options guard against this. A **lock file** can use `fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)`, which is advisory and is released when the process exits. Advisory means the kernel enforces it only for programs that ask for the lock. You can also create the file exclusively with `os.open(path, O_CREAT | O_EXCL)`, use the `filelock` library, wrap the `flock` command, or use database or etcd leases for distributed locks.
 
@@ -1079,6 +1139,18 @@ Archives come from `tarfile`, `zipfile`, `gzip`, `bz2`, `lzma` and `zlib`. Be ca
 Use the atomic pattern for any file that other processes read, and test it on your network file system.
 
 ## 4. Text, bytes and encodings in practice
+
+![A table of Unicode comparison traps, composed versus decomposed café, casefold, shaving accents with NFD and NFC, locale sorting and str versus bytes digit patterns, plus struct.pack layout.](./img/p3-0305-unicode-compare.svg)
+
+*Figure 3.5.20. Two strings that look identical can differ in code points until you normalize them, and a bytes regex matches only ASCII digits.*
+
+![The string AÄBèC at 5 characters, 7 UTF-8 bytes and 5 Latin-1 bytes, the four Python encoding settings, error handlers, surrogateescape and BOM prefixes.](./img/p3-0305-encoding-settings.svg)
+
+*Figure 3.5.21. The same five characters take 7 bytes in UTF-8 and 5 in Latin-1, and locale defaults differ between hosts, so always pass the encoding.*
+
+![Bytes are decoded to str at the input boundary, handled as str in the program, and encoded back to bytes at the output boundary, with decode and encode errors marked.](./img/p2-0305-decode-boundary.svg)
+
+*Figure 3.5.22. Data is decoded from bytes to str at input, handled as str in the program, and encoded back to bytes at output.*
 
 At 3 a.m. a sweep over ten thousand log files stops on one file with `UnicodeDecodeError`. The other files were fine. This one was written by a tool with a different locale, and the script asked Python to read it as UTF-8 without ever saying so. A file that decodes cleanly on your laptop can fail inside a container with a different locale. The cause is almost always an encoding that was assumed rather than stated. The fix starts with knowing what kind of data you hold at each point in the program.
 
@@ -1119,6 +1191,10 @@ For terminal output, print ANSI colours only when `sys.stdout.isatty()` is true,
 Decode at the input boundary, keep `str` in the middle, and encode at the output boundary.
 
 ## 5. Data formats
+
+![A table of JSON, YAML, TOML, CSV and INI with their purpose, safe call and trap, including the Norway problem and yaml.load, plus which time function to use.](./img/p3-0305-format-traps.svg)
+
+*Figure 3.5.23. Use safe_load for YAML, newline empty for CSV, and aware UTC datetimes with monotonic clocks for durations.*
 
 A node-pool config writes `region: no` for Norway, and the YAML loader hands the program a boolean False. A metrics export contains a `NaN` that the next tool in the chain refuses to read. Configuration and data arrive in many shapes, and each parser has its own traps. The examples below show the safe call for each format.
 
@@ -1162,9 +1238,13 @@ A cleanup script collects a file name from a directory listing and pastes it int
 
 ### Safe defaults
 
+![Two shell injection stories beside safe subprocess.run arguments and the flow of a run() helper that logs, supports dry run, applies a timeout and turns failures into OpsError.](./img/p3-0305-injection-and-run.svg)
+
+*Figure 3.5.24. An argument list stops a space or semicolon from becoming a second command, and a run() helper adds logging, dry run, timeout and clear errors.*
+
 ![Safe defaults for subprocess.run](./img/s05-subproc.svg)
 
-*Figure 3.5.5. Safe subprocess defaults: pass an argument list, set a timeout, and raise on a non-zero exit.*
+*Figure 3.5.25. Safe subprocess defaults: pass an argument list, set a timeout, and raise on a non-zero exit.*
 
 ```python
 import subprocess, shlex
@@ -1193,6 +1273,14 @@ Always set `timeout`. For services and daemons, use `Popen` and manage the lifec
 Use `input="data"` to send text to stdin. Set `stdin=subprocess.DEVNULL` so an interactive prompt cannot hang your script. Use `stdout=subprocess.DEVNULL` to discard output. For encoding, set `text=True` with an explicit `encoding`, or keep the output as bytes. The old name for `text` is `universal_newlines`.
 
 ### Streaming, pipelines and process control
+
+![Three lanes for streaming a child with a monotonic deadline, building a dmesg grep tail pipeline without a shell and killing a whole process group, with zombie and deadlock notes.](./img/p3-0305-process-tree.svg)
+
+*Figure 3.5.26. Stream with a deadline, close the first pipe end so SIGPIPE works, and use a new session so killpg can end the whole tree.*
+
+![A child process fills its stderr pipe while the parent waits for stdout to end, so each side waits for the other and the job hangs.](./img/p2-0305-pipe-deadlock.svg)
+
+*Figure 3.5.27. A child that fills its stderr pipe blocks while the parent waits for stdout to end, so the two wait on each other and the job hangs.*
 
 ```python
 # Stream output line by line (long-running command), still bounded by a deadline
@@ -1267,6 +1355,10 @@ This section shows how a Python program can read that world: its environment, it
 
 ### Environment, arguments, process info
 
+![A comparison of running a script by hand versus under cron or systemd, with the calls that read the process environment, usable CPUs, /proc, /sys and psutil and the container limit trap.](./img/p3-0305-cron-vs-shell.svg)
+
+*Figure 3.5.28. Under cron or systemd the Python, PATH, working directory and terminal differ, and inside containers psutil can report host totals instead of your limit.*
+
 ```python
 import os, sys, platform, socket, getpass, pwd, resource
 os.environ.get("HOME"); os.environ["X"] = "1"; os.getenv("X", "default"); os.environ.copy()
@@ -1294,9 +1386,13 @@ Reading `/proc` and `/sys` directly is cheap, and it needs no extra dependency. 
 
 ### Signals and graceful shutdown
 
+![A timeline of SIGTERM setting a stop flag, the loop finishing its item and cleanup, the grace period ending in SIGKILL, and the PID 1 zombie and signal forwarding caveat with tini.](./img/p3-0305-sigterm-pid1.svg)
+
+*Figure 3.5.29. Set a flag in the handler, finish the in-flight item inside the grace period, and use an init process so PID 1 reaps zombies and forwards signals.*
+
 ![Graceful shutdown with a signal handler](./img/s05-signals.svg)
 
-*Figure 3.5.6. Graceful shutdown: the signal handler sets a flag, the loop finishes its item, then cleanup runs.*
+*Figure 3.5.30. Graceful shutdown: the signal handler sets a flag, the loop finishes its item, then cleanup runs.*
 
 ```python
 import signal, threading
@@ -1356,6 +1452,10 @@ Python's tools form layers. Built-in types such as strings, lists and dictionari
 Try one checker early, since it can teach you to spot common Python mistakes.
 
 ## 8. A template for robust operational scripts
+
+![The flow of the drain_nodes script from argument parsing and signal handlers to node selection, a cordon and drain loop with a failure budget and JSON output, with the checklist of qualities.](./img/p3-0305-drain-template.svg)
+
+*Figure 3.5.31. The template returns exit codes from main, previews with dry run, isolates each node with a failure budget and keeps logs on stderr and results on stdout.*
 
 The pieces from this chapter only pay off when they are assembled into one shape. The script below drains Kubernetes nodes by label, and it is short enough to read in one sitting. Every technique it uses has already appeared above.
 
@@ -1464,6 +1564,10 @@ Next, on any machine with Python 3.11 or later (the interactive shell steps belo
 12. Clean up when you are done.
 
 ## 10. Common mistakes
+
+![A grouped table of mistakes in exceptions, files, subprocesses, global state, re-runs, signals and untrusted input, each with its fix.](./img/p3-0305-mistakes.svg)
+
+*Figure 3.5.32. Most mistakes are too-broad handlers, unsafe file and process handling, shared global state and scripts that are not safe to re-run.*
 
 A cleanup script runs twice because its lock was checked before it was taken, and the second run deletes the checkpoint the first one was writing. A log file is empty because the process died before its buffer reached the disk. By now you have met most of these failures as stories, and the stories repeat across teams. The list below is the short version.
 

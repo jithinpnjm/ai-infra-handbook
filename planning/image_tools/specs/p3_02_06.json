@@ -1,0 +1,152 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-listen-queues",
+  "title": "The two queues behind listen(): where a busy server drops connections",
+  "spec": "A left to right flow through a server. Client sends 'SYN' into box 'SYN queue: half-open connections, size set by tcp_max_syn_backlog'. Server replies 'SYN-ACK'. Client returns 'ACK' moving the entry into box 'Accept queue: completed handshakes waiting for accept(), size min(backlog, net.core.somaxconn)'. Arrow from the accept queue to 'application accept() loop'. Two failure callouts. Callout 1 on the accept queue (orange) 'queue full: the server drops the final ACK or ignores the SYN; the client believes it is connected and retransmits; latency spikes of 1, 3 and 7 seconds; nstat counters ListenOverflows and ListenDrops climb'. Callout 2 on the SYN queue 'SYN flood or sudden burst fills it; fix with net.ipv4.tcp_syncookies=1: the kernel encodes the connection state in the SYN-ACK sequence number, so no queue entry is needed, at the cost of losing some options (a clinic that hands each visitor a ticket instead of keeping a waiting list)'. Right fix list 'raise somaxconn to 4096 or more', 'set the application backlog too, such as nginx listen ... backlog=', 'Go's net.Listen uses somaxconn', 'fix any slow accept() loop, because that loop is what fills the queue', 'ss -ltn shows queue length in Recv-Q'. Bottom bar: 'Check ListenOverflows before you change any setting'.",
+  "anchor": "## 4. The handshake, data transfer and teardown",
+  "alt": "A SYN queue and an accept queue behind listen with the final ACK dropped when the accept queue is full, the 1, 3 and 7 second retry spikes, SYN cookies and the fixes.",
+  "cap": "A full accept queue drops the final ACK and the client retries after 1, 3 and 7 seconds, while SYN cookies protect the SYN queue."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-connect-errors",
+  "title": "What the client sees when a connection fails, and where to look",
+  "spec": "A four row table with columns 'Error the client sees', 'What actually happened on the wire', 'Where to look'. Row 'Connection refused (ECONNREFUSED)': 'a RST came back: host reachable, nobody listening on that port, or a firewall using reject --tcp-reset', 'the listener: somebody was home and said no'. Row 'Connection timed out (ETIMEDOUT)': 'no reply to the SYNs, retried with exponential backoff 1, 2, 4 seconds and so on; tcp_syn_retries=6 gives about 127 seconds', 'route and firewall or security group, host down: nobody answered the door at all' (orange). Row 'No route to host or Network is unreachable': 'ICMP unreachable from a router, or no local route', 'the routing table (chapter 2.5)'. Row 'Connection reset by peer': 'a RST during an established connection', 'peer crashed, app closed with unread data, firewall or NAT state expired, load balancer idle timeout'. Left small drawing of a SYN timeline with arrows at 0, 1, 3, 7 seconds marked 'SYN retried' for the timeout case versus a single 'SYN then RST' for the refused case. Bottom bar: 'A refusal means the host answered, so look at the listener; a timeout means the SYNs never got a reply, so look at the route and firewall'.",
+  "anchor": "## 4. The handshake, data transfer and teardown",
+  "alt": "A table of connection refused, timed out, no route to host and reset by peer, with what happened on the wire and where to look for each, and SYN retries at 1, 2, 4 seconds.",
+  "cap": "A refusal means a RST came back so look at the listener, while a timeout means silence so look at the route and firewall."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-state-counts",
+  "title": "Socket state counts as symptoms",
+  "spec": "A table with the state on the left, a count bar icon, and the reading on the right. Header command 'ss -tan state <state>' and 'ss -s'. Rows: 'many SYN-SENT': 'you cannot reach the remote service'. 'many SYN-RECV': 'a SYN flood or a slow handshake'. 'many ESTAB with high Recv-Q': 'the local application is not reading'. 'many CLOSE-WAIT' (orange): 'a leak in your application: the peer has closed but your code never called close(); look at the application code before you touch any kernel setting'. 'many FIN-WAIT-2': 'the remote side is not closing its end'. 'many TIME-WAIT': 'normal churn from short connections'. Right panel 'TIME_WAIT in detail': 'the active closer waits 2 x MSL, 60 seconds on Linux, hard-coded', 'absorbs delayed duplicates and lets the closer resend its last ACK', 'a problem only for a client making many short connections to one destination (ports run out) or clients behind NAT', 'half-close: shutdown(SHUT_WR) sends a FIN but the side can still read', 'a RST ends the connection at once and throws away unsent data'. State list strip 'LISTEN, SYN-SENT, SYN-RECV, ESTAB, FIN-WAIT-1/2, CLOSE-WAIT, LAST-ACK, TIME-WAIT, CLOSING'. Bottom bar: 'TIME_WAIT is protocol hygiene, and CLOSE_WAIT that keeps growing is a leak'.",
+  "anchor": "### TCP states in the field",
+  "alt": "A table mapping many sockets in SYN-SENT, SYN-RECV, CLOSE-WAIT, FIN-WAIT-2 and TIME-WAIT to their likely meaning, with TIME_WAIT details.",
+  "cap": "The count of sockets in each TCP state is a symptom: SYN-SENT means unreachable, CLOSE-WAIT means an application leak, TIME-WAIT is normal churn."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-direction-ports",
+  "title": "Who started the connection: reading ephemeral and well-known ports in netstat",
+  "spec": "Top: the three netstat lines as monospace rows 'tcp 0 0 10.23.2.4:47626 10.194.79.125:5222 ESTABLISHED', 'tcp 0 0 10.23.2.4:41475 172.19.52.144:6667 ESTABLISHED', 'tcp 0 0 10.23.2.4:57132 192.168.231.135:22 ESTABLISHED'. For the first row, two arrows: from local port 47626 labelled 'looks dynamically assigned: an ephemeral port chosen by the client' and from remote port 5222 labelled 'a known service port'. Conclusion 'so your machine is probably the client'. Right panel 'The 4-tuple': 'source IP, source port, destination IP, destination port identify a connection; a server accepts a very large number of connections on one port because each has its own 4-tuple'. Contrast panel 'Where exhaustion happens': 'on the client side: one source address to one destination address and port leaves only the source port to vary, about 28k ports (net.ipv4.ip_local_port_range defaults to 32768 to 60999), and TIME_WAIT drains them too' (orange). Port ranges strip 'well-known 0 to 1023 (SSH 22, DNS 53, HTTP 80, HTTPS 443, Kubernetes API 6443), registered 1024 to 49151, ephemeral above; only the superuser can listen on 1 to 1023'. Commands 'netstat -nt, netstat -ntl, lsof, ss -tlnp'. Listener note 'a listener on 0.0.0.0 accepts connections on every interface; one on 127.0.0.53 accepts only local connections, as systemd-resolved does'. Bottom bar: 'If the local port is well known, a remote host probably started the connection'.",
+  "anchor": "### Ports, connections and netstat",
+  "alt": "Three netstat connection lines annotated to show an ephemeral local port and a well-known remote port meaning the machine is the client, with the 4-tuple and client-side port exhaustion.",
+  "cap": "An ephemeral local port with a well-known remote port means this machine started the connection, and port exhaustion happens on the client side."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-nagle-delayed-ack",
+  "title": "The Nagle and delayed ACK deadlock: about 40 ms added to a small request",
+  "spec": "A sequence diagram with two lanes 'Sender (Nagle on)' and 'Receiver (delayed ACK)'. Step 1 'send a 4-byte header' arrow goes to the receiver and is sent at once. Step 2 'send a 100-byte body: held back by Nagle, waiting for the ACK of the header' shown as a held box on the sender. Step 3 on the receiver 'delayed ACK: waits to send an ACK, up to 40 ms on Linux' shown as a held box. A circular arrow labelled 'each is politely waiting for the other' in orange. Step 4 after the delay 'ACK finally sent' then 'body released'. Timeline bar showing 'about 40 ms added to the exchange'. Right panel 'Three fixes': '1 TCP_NODELAY disables Nagle in latency-sensitive services: gRPC, Redis clients and NCCL's sockets set it', '2 coalesce writes with writev, MSG_MORE or TCP_CORK instead of splitting a message across several small writes (or one single write)', '3 TCP_QUICKACK where it is needed'. Note 'Receivers acknowledge every second full segment, or after a short wait; quickack modes override'. Bottom bar: 'A notorious latency bug in RPC-style protocols that write twice and then read'.",
+  "anchor": "## 5. Reliability: ACKs, retransmission and the RTO",
+  "alt": "A sender with Nagle holding a 100 byte body while the receiver waits to send a delayed ACK, a circular wait that adds about 40 ms, with the three fixes.",
+  "cap": "Nagle waits for an ACK and the delayed ACK waits to send one, adding about 40 ms until TCP_NODELAY or a single write fixes it."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-sack-reorder",
+  "title": "SACK, tail loss probe and reordering: smarter recovery and its false alarms",
+  "spec": "Three panels. Panel 'SACK': a sender window of numbered segments with one hole. Upper lane 'Without SACK: the receiver can only say what is missing after the first hole, so the sender resends everything after it (go-back-N style), or recovery takes several RTTs'. Lower lane 'With SACK (RFC 2018): the receiver reports the ranges it holds above the gap, the sender resends only the missing segment'. Keep on with 'net.ipv4.tcp_sack=1 (default)'; 'timestamps tcp_timestamps=1 give an RTT sample on every ACK and cost 12 bytes per segment'. Panel 'RACK-TLP': 'RACK detects loss by time rather than packet count; TLP, the tail loss probe, resends the last segment after about 2 RTT, avoiding a full RTO when the tail of a burst is lost'. Panel 'Reordering looks like loss' (orange): 'parallel paths, multi-queue NICs and ECMP flaps deliver packets out of order; duplicate ACKs follow; TCP may retransmit data that was never lost; Linux adapts its reordering threshold, but heavy reordering lowers throughput'; commands 'nstat | grep -i reorder' and 'TcpExtTCPSACKReorder'. Footer comparison 'RTO: timer expires, RTO doubles (exponential backoff), cwnd collapses to one segment or the initial window, slow start restarts; RTO = SRTT + 4 x RTTVAR, min 200 ms (TCP_RTO_MIN), max 120 s, tcp_retries2=15 is about 15 minutes' versus 'Fast retransmit: three duplicate ACKs, resend at once, halve the window, keep the pipe full'. Bottom bar: 'When duplicate ACKs appear, look for reordering before you assume loss'.",
+  "anchor": "## 5. Reliability: ACKs, retransmission and the RTO",
+  "alt": "Recovery with and without SACK, RACK and tail loss probe, and reordering that looks like loss, with the RTO versus fast retransmit costs.",
+  "cap": "SACK lets the sender resend only the missing segment, and reordering can look like loss because it also produces duplicate ACKs."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-window-scale",
+  "title": "The 16-bit window problem and the window-scale fix",
+  "spec": "Left: the field. A box 'Window field: 16 bits, tops out at 65,535 bytes' labelled 'far too small for modern paths'. Arrow to a second box 'Window-scale option: multiplies the field by 2^shift, shift 0 to 14, windows up to about 1 GiB; negotiated only in the SYN'. Middle worked example: 'A 100 Gb/s link with a 1 ms RTT: bandwidth-delay product 12.5 MB; needs a scale factor of at least 8'. Second line 'lab checks: 12.5 MB needs shift 8; 87.5 MB; 125.0 MB'. Right: consequence chain. 'Throughput of one connection is about window / RTT'. 'A 4 MB window over a 70 ms RTT on a 10 Gb/s link tops out at about 457 Mb/s, no matter how fast the NIC is' (orange). 'The sender runs out of permitted data and waits for ACKs'. 'That is why rclone, aws s3 cp and gsutil open many parallel connections'. Failure strip 'a middlebox that strips options on the SYN cripples every connection through it: the classic slow only through the firewall ticket'. Settings 'tcp_window_scaling=1; ss -ti shows rcv_space; Wireshark zero window means the receiving application is the bottleneck, not the network'. Bottom bar: 'Keep window scaling on and watch for middleboxes that strip the option'.",
+  "anchor": "## 6. Flow control: the sliding window",
+  "alt": "The 65,535 byte limit of the 16 bit window field and the window-scale option, a 12.5 MB BDP needing shift 8, and the 4 MB over 70 ms limit of about 457 Mb/s.",
+  "cap": "Window scaling multiplies the 16 bit window field, and a 4 MB window over 70 ms limits a 10 Gb/s path to about 457 Mb/s."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-buffer-sizing",
+  "title": "Socket buffers: what to raise, what to leave alone, and why",
+  "spec": "Left: a pipe drawing with 'send buffer: unacknowledged data on the send side' and 'receive buffer: data the application has not read yet', each labelled 'Linux autotunes both within limits'. Middle table of knobs with defaults from the chapter: 'net.ipv4.tcp_rmem and tcp_wmem: min default max in bytes, for example 4096 131072 6291456', 'net.core.rmem_max and wmem_max: cap for explicit SO_RCVBUF and SO_SNDBUF', 'net.ipv4.tcp_mem: system-wide pages, low, pressure, high', 'tcp_moderate_rcvbuf: receive autotuning (1)', 'tcp_notsent_lowat: limit unsent data queued in the send buffer, reduces latency and bufferbloat, for example 131072'. Right panel with two columns. 'For 10 to 100 Gb/s long paths raise the maxima': 'tcp_rmem 4096 131072 134217728', 'tcp_wmem 4096 65536 134217728', 'rmem_max = wmem_max = 134217728'. 'Do not' (orange): 'setting SO_RCVBUF or SO_SNDBUF in an application disables autotuning for that socket, almost always a mistake', 'huge buffers on short-RTT paths add memory pressure and queueing delay: bufferbloat', 'a 128 MB buffer on each of thousands of connections exhausts RAM; tcp_mem guards against it'. BDP strip 'Same rack 100 Gb/s 20 microseconds: 250 KB; Same DC 100 Gb/s 100 microseconds: 1.25 MB; Metro 10 Gb/s 2 ms: 2.5 MB; Cross-continent 10 Gb/s 70 ms: 87.5 MB; Intercontinental 10 Gb/s 180 ms: 225 MB'. Bottom bar: 'Choose buffer sizes from the BDP of the path you use, and leave autotuning on'.",
+  "anchor": "### Bandwidth-delay product and buffers",
+  "alt": "Socket send and receive buffers with the tcp_rmem, tcp_wmem and rmem_max settings, what to raise on long fast paths, what to avoid, and the BDP for five path types.",
+  "cap": "Raise the buffer maxima only for long fast paths sized from the BDP, and never set SO_RCVBUF, which disables autotuning."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-cc-algorithms",
+  "title": "Congestion control algorithms compared: what each one reacts to",
+  "spec": "A table with a row per algorithm and columns 'Signal it reacts to', 'On loss or congestion', 'Strength', 'Caveat'. Row 'Tahoe': 'loss', 'ssthresh = cwnd/2, cwnd = IW, restart slow start', '', ''. Row 'Reno': 'loss', 'duplicate ACKs: halve cwnd and stay in congestion avoidance with fast recovery; only an RTO goes back to slow start', 'NewReno and SACK-based recovery handle several losses within one window', 'can need hundreds of RTTs to recover on a fat path'. Row 'CUBIC (Linux default)': 'loss', 'cuts cwnd by a factor beta = 0.7', 'window growth is a cubic function of the time since the last loss, concave as it nears the previous maximum W_max, flat near it, then convex; climbs back quickly, pauses, then probes gently; independent of RTT, so fills high-BDP paths far faster than Reno', 'keep CUBIC unless you have measured a reason'. Row 'BBR (Google)': 'a model: estimated bottleneck bandwidth and minimum RTT', 'paces at the estimated rate and keeps in-flight near the BDP, so avoids filling buffers; does not treat random loss as congestion', 'good on lossy paths such as Wi-Fi, satellite, long WAN; often on edge and egress servers', 'BBRv1 can be unfair to loss-based flows and cause retransmits on shallow buffers; older kernels need the fq qdisc; rarely inside a data-centre fabric' (orange). Row 'DCTCP with ECN': 'the fraction of ECN-marked packets', 'scales back in proportion', 'keeps queueing delay low in data centres', 'needs ECN marking in the switches; tcp_ecn=1 (2 replies to peers that request ECN)'. Left strip 'Slow start doubles cwnd each RTT up to ssthresh (IW10 is 10 segments); then congestion avoidance adds one segment per RTT; AIMD: add slowly, cut quickly, converge to a fair share'. Bottom bar: 'When you compare algorithms, run both on the same path'.",
+  "anchor": "## 7. Congestion control",
+  "alt": "A table comparing Tahoe, Reno, CUBIC, BBR and DCTCP by the signal each reacts to, its response on congestion, its strength and its caveat.",
+  "cap": "Tahoe, Reno and CUBIC react to loss, BBR to a model of bandwidth and RTT, and DCTCP to the fraction of ECN-marked packets."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-incast-rto",
+  "title": "Incast: how one lost packet stalls a whole all-reduce",
+  "spec": "Left: many senders 'rank 1', 'rank 2', 'rank 3' ... converging through one switch port to one 'receiver', with the label 'collectives send synchronized bursts from many senders to one receiver: a hundred people squeezing through one door at the same instant'. The switch port buffer drawn small and full with an arrow 'shallow switch buffer overflows' (orange). Middle chain: 'one dropped packet' to 'a 200 ms RTO (TCP_RTO_MIN)' to 'hundreds of milliseconds of GPU idle time per step' to 'every GPU in the job waits for the slowest one, so one unlucky packet stalls the whole group'. Right mitigation list: 'DCTCP with ECN', 'a lower tcp_rto_min set with ip route ... rto_min', 'larger switch buffers', 'keep the collective path off TCP altogether: RDMA with PFC, ECN and adaptive routing'. Footer 'One RTO of 200 ms or more is thousands of times a typical datacenter RTT (same DC 100 microseconds); capture the TCPTimeouts counter and retransmit rates during any training job that uses socket transports'. Bottom bar: 'Incast and tail latency come from many-to-one bursts and synchronized barrier waits'.",
+  "anchor": "## 7. Congestion control",
+  "alt": "Many ranks sending synchronized bursts into one shallow switch buffer, a dropped packet causing a 200 ms RTO that idles every GPU, and the mitigations.",
+  "cap": "One dropped packet in an incast burst triggers a 200 ms RTO, and every GPU waits for the slowest one."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-ss-read",
+  "title": "Reading ss -ti: which field points at which limit",
+  "spec": "Top: an example line from the chapter in monospace 'rtt:12.5/3 mss:1448 cwnd:10 ssthresh:7 bytes_sent bytes_retrans retrans:0/12 delivery_rate pacing_rate send rcv_space', with labelled brackets: 'rtt: smoothed value / variance', 'mss', 'cwnd: congestion window', 'ssthresh', 'retrans: current / total', 'rcv_space'. Below, four reading patterns as rows. 'Persistent non-zero Send-Q with growing retrans: loss or a stalled receiver'. 'High Recv-Q on an established socket: the local application is not reading'. 'Small cwnd with high retrans: congestion or loss' (orange). 'rwnd_limited, sndbuf_limited, cwnd_limited together with rcv_space: which limit constrains the flow'. Right panel with the other commands: 'ss -tan: all TCP sockets numeric', 'ss -tlnp: listeners with owning process', 'ss -tm: memory skmem (rb, tb, f, w, o, bl, d)', 'ss -s: summary by state'. Footer 'Flow control protects the receiver, congestion control protects the network; the sender never has more in flight than the smaller of the two windows; when a flow is slow, first ask whether the receiver or the network is the limit'. Bottom bar: 'ss asks the kernel directly instead of guessing from the outside'.",
+  "anchor": "### `ss`",
+  "alt": "An annotated ss -ti output line with rtt, mss, cwnd, ssthresh, retrans and rcv_space and a table of patterns mapping Send-Q, Recv-Q and cwnd to their causes.",
+  "cap": "Send-Q, Recv-Q, cwnd and retrans in ss -ti show whether the limit is loss, a stalled receiver, or a local application that is not reading."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-tcpdump-nstat",
+  "title": "Reading a TCP capture and kernel counters together",
+  "spec": "Left panel 'tcpdump line': the SYN line in monospace 'IP 10.0.0.2.51234 > 10.0.0.5.443: Flags [S], seq 1000, win 64240, options [mss 1460,sackOK,TS val 1 ecr 0,nop,wscale 7], length 0'. Flag letters strip 'S SYN, . ACK, P PSH, F FIN, R RST'. Patterns list: 'a retransmitted segment shows the same sequence number twice', 'duplicate ACKs', 'RST responses', 'a window that shrinks to 0', 'a [S] with no [S.] reply: the SYN was blocked or dropped' (orange), 'check MSS and wscale appear in both SYNs', 'add -ttt for time gaps'. Right panel 'nstat counters (cumulative; what matters is how fast each one climbs)': 'TCPTimeouts rising: RTOs, which are bad', 'ListenOverflows: the accept queue overflowed', 'TCPBacklogDrop and TCPRcvQDrop: overload on the receive side', 'TCPAbortOnTimeout and OnData: explain resets', 'TCPSACKReorder: reordering', 'TCPFastRetrans and TCPSlowStartRetrans', 'TCPSynRetrans'. Command strip 'sudo tcpdump -ni any tcp[tcpflags] & (tcp-syn|tcp-fin|tcp-rst) != 0 for connection events only', 'tcpdump -w /tmp/c.pcap -s 128 for headers only', 'Wireshark: Statistics, TCP Stream Graphs; Expert Information lists retransmissions, duplicate ACKs, zero windows, window-full and out-of-order'. Footnote 'bad cksum on the sending host is usually checksum offload: the capture happens before the NIC fills it in; 64 KB packets come from GRO and TSO'. Bottom bar: 'A counter that has sat at the same value for a week tells you little; one that jumps while a job runs tells you a lot'.",
+  "anchor": "### `tcpdump`",
+  "alt": "A decoded tcpdump SYN line with flag letters and the patterns to watch, beside the nstat counters that show RTOs, accept queue overflow and receive-side drops.",
+  "cap": "Read the tcpdump flags and patterns for what happened to one connection, and the nstat counters for how fast problems climb."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-idle-timeouts",
+  "title": "Silent resets on long-lived connections: keepalives versus load balancer idle timeouts",
+  "spec": "A timeline with idle time on the x axis. Marker 'last data' at 0. Marker at 350 s 'many load balancers drop idle flows, for example 350 s on some clouds' (orange). Marker at 7200 s 'tcp_keepalive_time default 7200 s: first probe sent'. Under 7200 s: 'then tcp_keepalive_intvl 75 s between probes, tcp_keepalive_probes 9 before the peer is declared dead'. Left of the 350 s marker a green zone 'set app keepalive (SO_KEEPALIVE) or interval below the load balancer timeout'. Result strip: 'if the keepalive is later than the idle timeout, the NAT, firewall or load balancer forgets the flow silently; the next packet gets a reset: Connection reset by peer'. Right panel 'Related knobs': 'tcp_syn_retries, tcp_synack_retries, tcp_retries2 (15, about 15 minutes), tcp_orphan_retries: lower for fast failover; defaults tuned for lossy WAN', 'tcp_fin_timeout 60 for orphaned FIN_WAIT_2, not the TIME_WAIT timer', 'tcp_slow_start_after_idle=0: the default 1 resets cwnd after idle; disable for long-lived bursty connections such as gRPC and database pools', 'tcp_tw_reuse=1 safely allows reuse of TIME_WAIT for outgoing connections with timestamps; tcp_tw_recycle is removed and dangerous'. Bottom bar: 'Ignoring idle timeouts on NATs, load balancers and firewalls causes silent resets unless you use keepalives'.",
+  "anchor": "## 8. Linux tuning reference and what each knob is for",
+  "alt": "A timeline of idle time with a load balancer timeout near 350 seconds before the default TCP keepalive of 7200 seconds, and related retry and idle knobs.",
+  "cap": "A default TCP keepalive of 7200 seconds is later than many load balancer idle timeouts, so set keepalives below them to avoid silent resets."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-quic-fixes",
+  "title": "What QUIC fixes compared with TCP plus TLS",
+  "spec": "A comparison table with columns 'TCP + TLS' and 'QUIC (RFC 9000, under HTTP/3)'. Rows: 'Where it runs': 'kernel' versus 'over UDP, in user space, so changing a library is far easier than changing every operating system'. 'Setup cost': 'transport handshake then TLS, 2 to 3 RTTs' versus 'transport and TLS 1.3 combined, 1 RTT for a new connection, 0-RTT data on resumption which must be safe to replay'. 'Head-of-line blocking': 'one loss stalls every stream on the connection' (orange) versus 'streams are independent lanes; a loss stalls only the stream or streams it carried'. 'Connection identity': '4-tuple, a change of IP breaks it' versus 'connection IDs let a connection survive a change of IP address, such as Wi-Fi to cellular'. 'Encryption': 'optional TLS on top' versus 'mandatory, covers most of the transport header, so middleboxes cannot meddle or optimise'. 'Congestion control': 'kernel choice' versus 'each application picks its own, such as CUBIC or BBR; monotonic packet numbers avoid retransmission ambiguity; ACK ranges'. Costs row below: 'more CPU because crypto and packetisation run in user space (UDP GSO helps), some networks block or rate-limit UDP, harder to observe: encrypted headers limit what you can see, use qlog and endpoint metrics'. Footer 'In AI infrastructure QUIC mostly appears at the edge, such as HTTP/3 to inference APIs and CDNs, rather than inside clusters'. Bottom bar: 'ICMP, with ping, traceroute and PMTUD, is covered in chapter 2.7'.",
+  "anchor": "## 11. QUIC and where TCP is going",
+  "alt": "A comparison of TCP plus TLS with QUIC across where it runs, setup round trips, head of line blocking, connection identity, encryption and congestion control, with QUIC's costs.",
+  "cap": "QUIC combines transport and TLS 1.3 for a 1 RTT setup, isolates streams from head-of-line blocking, and survives IP address changes, at the cost of CPU and observability."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "06",
+  "name": "p3-0206-tcp-ai-matrix",
+  "title": "Where TCP limits each AI workload",
+  "spec": "A matrix with a row per workload and columns 'How it uses TCP', 'What limits it', 'Usual fixes'. Row 'NCCL': 'bootstrap (rank exchange) and a fallback transport when no IB or RoCE is available', 'NCCL_SOCKET_IFNAME, sockets per connection (NCCL_SOCKET_NTHREADS, NCCL_NSOCKS_PERTHREAD), TCP_NODELAY, buffer sizes, IRQ affinity, MTU; throughput far below RDMA because every byte passes through kernel copies and costs CPU', 'GPUDirect RDMA (Part 11)'. Row 'Data loading and checkpoint I/O over NFS, S3 or HTTP': '', 'window and BDP on long paths; CPU on 100G+ links without offloads', 'parallel streams, large MTU on internal networks, tuned buffers'. Row 'Inference serving over HTTP/2 and gRPC': '', 'connection reuse, keepalive settings, load balancer idle timeouts, Nagle with delayed ACK, and head-of-line blocking: a lost packet stalls every stream on the connection', ''. Row 'Kubernetes': '', 'overlays can shrink the MTU, conntrack and kube-proxy NAT keep state and timeouts, service load balancing can reset long-lived connections when endpoints change', ''. Row 'Incast and tail latency' (orange): 'many-to-one bursts and synchronized all-reduce barrier waits', 'a single 200 ms RTO costs hundreds of milliseconds of GPU idle per step', 'see the incast figure'. Bottom bar: 'Capture TCPTimeouts and retransmit rates during any training job that uses socket transports'.",
+  "anchor": "## 10. TCP and AI workloads",
+  "alt": "A matrix of NCCL, data loading, inference serving, Kubernetes and incast against how each uses TCP, what limits it and the usual fixes.",
+  "cap": "Each AI workload meets a different TCP limit, from NCCL socket fallback and kernel copies to window limits, head-of-line blocking and incast."
+ }
+]

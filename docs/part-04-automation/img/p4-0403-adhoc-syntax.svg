@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading an ad-hoc command like a sentence</title>
+  <desc>Visual guide to Ansible ad-hoc command syntax, anatomy, worked examples, and practical commands.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading an ad-hoc command like a sentence</text>
+
+  
+  <g id="anatomy-container">
+    <rect x="40" y="105" width="1520" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="65" y="146" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">ansible &lt;pattern&gt; -m &lt;module&gt; -a "&lt;args&gt;" [options]</text>
+    
+    
+    
+    <rect x="60" y="168" width="215" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="167" y="209" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pattern: who</text>
+
+    
+    <rect x="290" y="168" width="500" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="540" y="209" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">-m module: what kind of action</text>
+
+    
+    <rect x="805" y="168" width="345" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="977" y="209" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">-a args: the details</text>
+
+    
+    <rect x="1165" y="168" width="375" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1352" y="209" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">options: how to run it</text>
+  </g>
+
+  
+  <g id="worked-line-container">
+    <rect x="40" y="270" width="1520" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="65" y="311" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">ansible gpu -b -m ansible.builtin.package -a "name=chrony state=present"</text>
+    
+    
+    
+    <rect x="60" y="333" width="265" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="192" y="374" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">gpu = the group</text>
+
+    
+    <rect x="340" y="333" width="290" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="485" y="374" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">-b = become (sudo)</text>
+
+    
+    <rect x="645" y="333" width="315" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="802" y="374" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">package = the module</text>
+
+    
+    <rect x="975" y="333" width="565" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1257" y="374" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">name=chrony state=present = arguments</text>
+  </g>
+
+  
+  <g id="example-commands-grid">
+    
+    <rect x="40" y="435" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(56, 447)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18"/>
+      <path d="M12 24h6l4-8 8 16 4-8h6"/>
+    </g>
+    <text x="120" y="479" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">ping:</tspan>
+      <tspan font-family="sans-serif"> SSH plus Python reachability, not ICMP</tspan>
+    </text>
+
+    
+    <rect x="815" y="435" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(831, 447)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 8h20l8 8v24H10z"/>
+      <path d="M18 30l4 4 10-10"/>
+    </g>
+    <text x="895" y="463" font-size="24">
+      <tspan x="895" dy="0" font-family="monospace" font-weight="bold" fill="#207448">file path=/tmp/x state=absent --check:</tspan>
+      <tspan x="895" dy="28" font-family="sans-serif" fill="#303a36">dry run</tspan>
+    </text>
+
+    
+    <rect x="40" y="519" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(56, 531)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="36" height="32" rx="4"/>
+      <path d="M14 20l6 4-6 4M24 28h10"/>
+    </g>
+    <text x="120" y="547" font-size="24">
+      <tspan x="120" dy="0" font-family="monospace" font-weight="bold" fill="#207448">command -a nvidia-smi -L:</tspan>
+      <tspan x="120" dy="28" font-family="sans-serif" fill="#303a36">run a command, no shell features</tspan>
+    </text>
+
+    
+    <rect x="815" y="519" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(831, 531)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 8v16M14 16a14 14 0 1 0 20 0"/>
+    </g>
+    <text x="895" y="547" font-size="24">
+      <tspan x="895" dy="0" font-family="monospace" font-weight="bold" fill="#207448">reboot -b --limit gpu02:</tspan>
+      <tspan x="895" dy="28" font-family="sans-serif" fill="#303a36">reboot and wait for return</tspan>
+    </text>
+
+    
+    <rect x="40" y="603" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(56, 615)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="36" height="32" rx="4"/>
+      <path d="M12 24h6M24 16v16M30 20l6 4-6 4"/>
+    </g>
+    <text x="120" y="631" font-size="24">
+      <tspan x="120" dy="0" font-family="monospace" font-weight="bold" fill="#207448">shell -a dmesg | grep -i xid | tail -5:</tspan>
+      <tspan x="120" dy="28" font-family="sans-serif" fill="#303a36">pipes need a shell</tspan>
+    </text>
+
+    
+    <rect x="815" y="603" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(831, 615)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16"/>
+      <path d="M14 14l20 20M24 12v4M24 32v4M12 24h4M32 24h4"/>
+    </g>
+    <text x="895" y="631" font-size="24">
+      <tspan x="895" dy="0" font-family="monospace" font-weight="bold" fill="#207448">gpu:!gpu02 uptime -f 50 -o:</tspan>
+      <tspan x="895" dy="28" font-family="sans-serif" fill="#303a36">forks 50, one-line output</tspan>
+    </text>
+
+    
+    <rect x="40" y="687" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(56, 699)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="8"/>
+      <path d="M24 6v4M24 38v4M6 24h4M38 24h4M11 11l3 3M34 34l3 3M11 37l3-3M34 14l3-3"/>
+    </g>
+    <text x="120" y="715" font-family="monospace" font-size="24">
+      <tspan x="120" dy="0" font-weight="bold" fill="#207448">service</tspan>
+      <tspan x="120" dy="28" fill="#303a36">name=chronyd state=started enabled=yes</tspan>
+    </text>
+
+    
+    <rect x="815" y="687" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(831, 699)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 8v24M14 22l10 10 10-10M8 38h32"/>
+    </g>
+    <text x="895" y="715" font-family="monospace" font-size="24">
+      <tspan x="895" dy="0" font-weight="bold" fill="#207448">fetch src=/var/log/slurm/slurmd.log</tspan>
+      <tspan x="895" dy="28" fill="#303a36">dest=./logs/ flat=no</tspan>
+    </text>
+
+    
+    <rect x="40" y="771" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(56, 783)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="14" y="14" width="24" height="24" rx="3"/>
+      <path d="M10 32H8a2 2 0 0 1-2-2V10a2 2 0 0 1 2-2h20a2 2 0 0 1 2 2v2"/>
+    </g>
+    <text x="120" y="799" font-family="monospace" font-size="24">
+      <tspan x="120" dy="0" font-weight="bold" fill="#207448">copy</tspan>
+      <tspan x="120" dy="28" fill="#303a36">src=./motd dest=/etc/motd mode=0644</tspan>
+    </text>
+
+    
+    <rect x="815" y="771" width="745" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(831, 783)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="12"/>
+      <path d="M29 29l11 11M16 20h8M20 16v8"/>
+    </g>
+    <text x="895" y="799" font-family="monospace" font-size="24">
+      <tspan x="895" dy="0" font-weight="bold" fill="#207448">setup filter=ansible_distribution*</tspan>
+      <tspan x="895" dy="28" fill="#303a36">and gather_subset=hardware</tspan>
+    </text>
+
+    
+    <rect x="40" y="855" width="1520" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(56, 867)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18"/>
+      <path d="M24 12v12l8 6M16 6l16-2"/>
+    </g>
+    <text x="120" y="899" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">gpu -B 3600 -P 15 command long-job.sh:</tspan>
+      <tspan font-family="sans-serif"> async, background 3600 s, poll every 15 s</tspan>
+    </text>
+  </g>
+
+  
+  <g id="story-callout">
+    <rect x="40" y="947" width="1520" height="100" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="2.5"/>
+    <g transform="translate(60, 973)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 6L4 42h40z"/>
+      <path d="M24 20v10M24 35v2"/>
+    </g>
+    <text x="135" y="985" font-family="sans-serif" font-size="24">
+      <tspan x="135" dy="0" font-weight="bold" fill="#db8129">the dmesg line: Xid is NVIDIA&apos;s name for a GPU fault report;</tspan>
+      <tspan x="135" dy="38" fill="#303a36">with command the pipe characters would reach dmesg as plain text and fail</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="1070" width="1520" height="75" rx="10" fill="#207448"/>
+    <text x="800" y="1117" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">The pattern says who, the module says what, the arguments say the details</text>
+  </g>
+</svg>

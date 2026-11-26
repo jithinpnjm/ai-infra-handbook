@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p2-0204-bit-weights",
+  "title": "Read an octet by its bit weights: 172 is 10101100",
+  "anchor": "## 1. Number systems you need",
+  "spec": "A row of eight square cells across the top, labelled from left to right with weights 128, 64, 32, 16, 8, 4, 2, 1. Under the cells, the bit values for the number 172: 1, 0, 1, 0, 1, 1, 0, 0, shaded green where the bit is 1 and pale where it is 0. Above the row, a running subtraction strip in monospace, from left to right: '172 - 128 = 44 (bit 7 = 1)', '44 < 64 (bit 6 = 0)', '44 - 32 = 12 (bit 5 = 1)', '12 < 16 (bit 4 = 0)', '12 - 8 = 4 (bit 3 = 1)', '4 - 4 = 0 (bit 2 = 1)'. Each step is a small numbered circle. Under the cells, an orange-outlined box: '128 + 32 + 8 + 4 = 172, read back the other way'. Bottom note: 'The only mask octets are 0, 128, 192, 224, 240, 248, 252, 254 and 255.' Caption: 'Take the biggest weight that fits, bit by bit.'",
+  "alt": "Eight bit weights from 128 down to 1 show that 172 converts to 10101100 by subtracting the largest weight that fits at each step.",
+  "cap": "Converting 172 uses the largest bit weight that fits at each step, which gives 10101100."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p2-0204-host-count",
+  "title": "A /24 has 256 addresses, but two are reserved, so 254 hosts can use it",
+  "anchor": "### The reserved host addresses",
+  "spec": "A horizontal strip of 256 small cells, shown as a long bar split into a block of addresses. The first cell, labelled 'network address: 10.23.2.0 (name of the subnet)', is grey. The last cell, labelled 'broadcast: 10.23.2.255 (everyone in this subnet)', is grey. The middle 254 cells, pale green, are grouped under a bracket labelled 'usable hosts: 2^8 - 2 = 254'. Above the bar, a monospace line for a point-to-point link, '/31: 2 usable addresses, no network or broadcast', and a separate line '/32: one host route, used for loopbacks'. Orange-outlined note at the bottom: 'Clouds reserve extra addresses. GCP reserves the first two and the last two of each primary range.' Caption: 'Usable hosts are 2 to the power of the host bits, minus 2.'",
+  "alt": "A /24 subnet has 256 addresses where the first is the network address and the last is the broadcast address, leaving 254 usable hosts.",
+  "cap": "A /24 subnet has 256 addresses, of which the network and broadcast addresses are reserved, leaving 254 usable hosts."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p2-0204-block-size",
+  "title": "Block size finds the network: 77 falls in the 64 block for a /27",
+  "anchor": "### Fast subnetting: the block-size method",
+  "spec": "A number line of the last octet from 0 to 255 drawn as a horizontal bar, with tick marks at the block boundaries of 32: 0, 32, 64, 96, 128, and so on. Between 64 and 96, a shaded green segment labelled '64 block', with a marker at 77 in orange outline labelled 'host octet 77'. Above the segment, a bracket labelled 'network 192.168.10.64'. At the right end of the segment, a bracket labelled 'broadcast 192.168.10.95 = 96 - 1'. Under the segment, a bracket labelled 'usable 192.168.10.65 to .94, which gives 30 hosts'. A small step box at the top left in monospace: 'block size = 256 - 224 = 32'. Caption: 'The network is the largest multiple of the block size at or below the host octet.'",
+  "alt": "For 192.168.10.77 with a /27 mask, the block size is 32, so the network is 192.168.10.64 and the broadcast is 192.168.10.95.",
+  "cap": "With a block size of 32, the host 77 sits in the 64 block, so the network is 192.168.10.64 and the broadcast is 192.168.10.95."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p2-0204-same-subnet",
+  "title": "Two hosts share a subnet when the mask strips them to the same network",
+  "anchor": "### Same subnet or not?",
+  "spec": "A two-row comparison. Top row: a box 'Address A: 10.20.37.130' and a box 'Mask: /22 (third octet 252)'. Arrow down to a box 'A AND mask = 10.20.36.0 network' in monospace. Bottom row: the same operation for 'Address B: 10.20.40.1' giving 'B AND mask = 10.20.40.0 network'. Two result boxes side by side at the bottom: left, green tick 'Same network as 10.20.36.0/22: direct on the link (ARP)', right, red cross 'Different network: send to the gateway'. A side note showing the subnet range: '10.20.36.0/22 covers third octets 36 to 39, so 10.20.36.0 to 10.20.39.255'. Orange outline on the 10.20.40.1 result. Caption: 'Every host runs this check for every packet it sends.'",
+  "alt": "A host checks whether an address AND the mask equals the subnet network, so 10.20.37.130 is inside 10.20.36.0/22 while 10.20.40.1 is not.",
+  "cap": "Two addresses share a subnet when they give the same network after the mask is applied, so 10.20.37.130 is in 10.20.36.0/22 and 10.20.40.1 is not."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p2-0204-pmtud",
+  "title": "Path MTU discovery: a too-big packet is dropped, and the ICMP reply sets a smaller size",
+  "anchor": "### Fragmentation and path MTU",
+  "spec": "A left-to-right sequence with three lanes: 'Sender (TCP, DF set)', 'Router with smaller MTU', and 'Receiver'. Step 1, numbered circle, arrow from Sender to Router labelled 'large packet, DF set'. Step 2, the Router box shows a red-outline cross: 'Too big for the next link: drops the packet'. Step 3, an arrow from Router back to Sender labelled 'ICMP Fragmentation Needed (type 3, code 4) with next-hop MTU'. Step 4, Sender box, orange outline: 'Lowers the path MTU and sends smaller segments'. Step 5, arrow from Sender to Receiver labelled 'smaller packets get through'. Under the lanes, a grey warning box: 'PMTU black hole: if this ICMP is blocked, large transfers stall while small requests still work.' A monospace strip at the bottom: 'ping -M do -s 1472 target' with the caption 'tests a 1500-byte path'.",
+  "alt": "A sender sets DF on a large packet, a router with a smaller MTU drops it and sends ICMP Fragmentation Needed, and the sender lowers its path MTU.",
+  "cap": "With DF set, a router that cannot forward a large packet drops it and returns ICMP Fragmentation Needed, so the sender lowers its path MTU."
+ }
+]

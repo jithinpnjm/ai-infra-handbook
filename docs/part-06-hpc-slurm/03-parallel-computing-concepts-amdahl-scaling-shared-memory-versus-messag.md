@@ -207,25 +207,9 @@ A helpful habit is to look at the distribution of step times across the ranks, n
 
 Before you can debug a parallel job, you need a rough map of the ways people write one. The diagram below groups the models by where the memory lives. Shared-memory models sit inside one node. Distributed-memory models span many nodes. Accelerator models run kernels on GPUs, and the substrates underneath move the data. Hybrid programs combine several of these at once.
 
-```mermaid
-flowchart TB
-  subgraph SM["Shared memory (single node)"]
-    OMP[OpenMP directives & Intel TBB tasks]
-  end
-  subgraph DM["Distributed memory (multi-node)"]
-    MPI[MPI message passing: OpenMPI, MPICH, MVAPICH2]
-    PGAS[PGAS one-sided: SHMEM, OpenSHMEM, NVSHMEM]
-  end
-  subgraph ACC["Accelerators & GPU collectives"]
-    CUDA[CUDA, OpenCL, OpenACC kernels]
-    COLL[UCX transports & NCCL GPU collectives]
-  end
-  OMP --> HYB[Hybrid MPI + X: 1 MPI rank per GPU or socket]
-  MPI --> HYB
-  PGAS --> HYB
-  CUDA --> HYB
-  COLL --> HYB
-```
+![Parallel programming models and technologies (Supercomputers for Linux Sysadmins Chapter 21)](./img/m6-03-1.svg)
+
+*Figure 6.3.1. Parallel programming models and technologies (Supercomputers for Linux Sysadmins Chapter 21), as a diagram.*
 
 In Chapter 21 of *Supercomputers for Linux SysAdmins*, Zhumatiy explains why administrators need to understand how parallel programming models work. You may never write a fluid-dynamics solver. You will still install the compilers and MPI stacks, and you will read the error logs when a user's job fails to launch. Knowing the model tells you which library to look for in the log.
 

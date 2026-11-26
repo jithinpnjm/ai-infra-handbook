@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Busy is not efficient: IPC tells you whether the CPU is stalled or executing</title>
+  <desc>Horizontal IPC scale from 0 to 2 contrasting memory-stalled execution with instruction execution, detailing metrics, advice, and measurement tools.</desc>
+
+  <!-- Canvas background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- ================= TITLE ================= -->
+  <text x="800" y="62" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Busy is not efficient: IPC tells you</tspan>
+    <tspan x="800" dy="54">whether the CPU is stalled or executing</tspan>
+  </text>
+
+  <!-- ================= UPPER CONTAINER: HORIZONTAL IPC SCALE ================= -->
+  <rect x="40" y="145" width="1520" height="475" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  <!-- Scale track bar -->
+  <rect x="90" y="175" width="1420" height="18" rx="9" fill="#c2daca"/>
+  <!-- Highlighted segments on track -->
+  <!-- Left stalled zone: 0 to 0.5 (0.5/2.0 * 1420 = 355px) -->
+  <rect x="90" y="175" width="355" height="18" rx="9" fill="#88b598"/>
+  <!-- Right executing zone: 1.0 to 2.0 (from x = 90 + 710 = 800 to 1510) -->
+  <rect x="800" y="175" width="710" height="18" rx="9" fill="#207448"/>
+
+  <!-- Scale tick markers -->
+  <!-- 0.30 marker: x = 90 + 0.30/2.0 * 1420 = 90 + 213 = 303 -->
+  <line x1="303" y1="165" x2="303" y2="203" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <!-- 0.91 marker: x = 90 + 0.91/2.0 * 1420 = 90 + 646 = 736 -->
+  <line x1="736" y1="165" x2="736" y2="203" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <!-- 1.80 marker: x = 90 + 1.80/2.0 * 1420 = 90 + 1278 = 1368 -->
+  <line x1="1368" y1="165" x2="1368" y2="203" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  <!-- ================= THREE ZONE PANELS ================= -->
+  <!-- Column 1: Left Zone (x=65, width=460) -->
+  <rect x="65" y="215" width="460" height="385" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  <!-- Col 1 Icon: Memory / DRAM chip -->
+  <g transform="translate(95, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="40" rx="4"/>
+    <line x1="18" y1="8" x2="18" y2="48"/>
+    <line x1="30" y1="8" x2="30" y2="48"/>
+    <line x1="42" y1="8" x2="42" y2="48"/>
+    <line x1="6" y1="28" x2="50" y2="28"/>
+    <line x1="14" y1="2" x2="14" y2="8"/>
+    <line x1="26" y1="2" x2="26" y2="8"/>
+    <line x1="38" y1="2" x2="38" y2="8"/>
+    <line x1="14" y1="48" x2="14" y2="54"/>
+    <line x1="26" y1="48" x2="26" y2="54"/>
+    <line x1="38" y1="48" x2="38" y2="54"/>
+  </g>
+
+  <!-- Position badge IPC 0.30 -->
+  <rect x="175" y="235" width="180" height="46" rx="8" fill="#207448"/>
+  <text x="265" y="269" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">IPC 0.30</text>
+
+  <!-- Left zone label -->
+  <text x="295" y="318" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="295" dy="0">mostly stalled,</tspan>
+    <tspan x="295" dy="30">usually on memory</tspan>
+    <tspan x="295" dy="30">(below about 0.2 to 0.5)</tspan>
+  </text>
+
+  <!-- Advice box 1 -->
+  <rect x="85" y="395" width="420" height="190" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="295" y="426" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="295" dy="0">Faster memory,</tspan>
+    <tspan x="295" dy="26">better locality,</tspan>
+    <tspan x="295" dy="26">fewer memory accesses;</tspan>
+    <tspan x="295" dy="26">check NUMA, cache misses,</tspan>
+    <tspan x="295" dy="26">TLB; consider huge pages,</tspan>
+    <tspan x="295" dy="26">binding, data layout</tspan>
+  </text>
+
+  <!-- Column 2: Middle Position (x=570, width=460) -->
+  <rect x="570" y="215" width="460" height="385" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  <!-- Col 2 Icon: CPU chip -->
+  <g transform="translate(600, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <rect x="18" y="18" width="20" height="20" rx="2" stroke-width="2.5"/>
+    <line x1="18" y1="4" x2="18" y2="10"/>
+    <line x1="28" y1="4" x2="28" y2="10"/>
+    <line x1="38" y1="4" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="52"/>
+    <line x1="28" y1="46" x2="28" y2="52"/>
+    <line x1="38" y1="46" x2="38" y2="52"/>
+    <line x1="4" y1="18" x2="10" y2="18"/>
+    <line x1="4" y1="28" x2="10" y2="28"/>
+    <line x1="4" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="52" y2="18"/>
+    <line x1="46" y1="28" x2="52" y2="28"/>
+    <line x1="46" y1="38" x2="52" y2="38"/>
+  </g>
+
+  <!-- Position badge IPC 0.91 -->
+  <rect x="680" y="235" width="180" height="46" rx="8" fill="#207448"/>
+  <text x="770" y="269" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">IPC 0.91</text>
+
+  <!-- pmcarch sample card -->
+  <rect x="590" y="325" width="420" height="235" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="380" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">(the pmcarch sample:</tspan>
+    <tspan x="800" dy="36">87,166,313 instructions</tspan>
+    <tspan x="800" dy="36">over 96,163,187 cycles,</tspan>
+    <tspan x="800" dy="36">BMR% 3.44, LLC% 73.45)</tspan>
+  </text>
+
+  <!-- Column 3: Right Zone (x=1075, width=460) -->
+  <rect x="1075" y="215" width="460" height="385" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  <!-- Col 3 Icon: Turbo / Executing gears -->
+  <g transform="translate(1105, 230)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="16"/>
+    <path d="M28 6 V12"/>
+    <path d="M28 44 V50"/>
+    <path d="M6 28 H12"/>
+    <path d="M44 28 H50"/>
+    <path d="M12 12 L16 16"/>
+    <path d="M40 40 L44 44"/>
+    <path d="M12 44 L16 40"/>
+    <path d="M40 16 L44 12"/>
+  </g>
+
+  <!-- Position badge IPC 1.80 -->
+  <rect x="1185" y="235" width="180" height="46" rx="8" fill="#207448"/>
+  <text x="1275" y="269" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">IPC 1.80</text>
+
+  <!-- Right zone label -->
+  <text x="1305" y="330" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1305" dy="0">busy executing</tspan>
+    <tspan x="1305" dy="32">(above about 1 to 2)</tspan>
+  </text>
+
+  <!-- Advice box 3 -->
+  <rect x="1095" y="420" width="420" height="165" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="1305" y="465" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1305" dy="0">Run fewer instructions:</tspan>
+    <tspan x="1305" dy="32">a better algorithm,</tspan>
+    <tspan x="1305" dy="32">vectorisation,</tspan>
+    <tspan x="1305" dy="32">compiler options</tspan>
+  </text>
+
+  <!-- ================= LOWER SECTION ================= -->
+  <!-- Left area: Callout (orange) and Footer -->
+  <!-- Callout Box (Orange - single most important item) -->
+  <rect x="40" y="650" width="940" height="210" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <!-- Warning / Alert Icon in orange -->
+  <g transform="translate(68, 680)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24"/>
+    <line x1="28" y1="16" x2="28" y2="30"/>
+    <circle cx="28" cy="39" r="2.5" fill="#db8129" stroke="none"/>
+  </g>
+  <!-- Callout text -->
+  <text x="145" y="715" font-family="Helvetica Neue, Arial, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="145" dy="0">Utilisation counts every cycle that is not idle,</tspan>
+    <tspan x="145" dy="40">including cycles spent waiting on memory, so a CPU</tspan>
+    <tspan x="145" dy="40">at 100% busy is not necessarily 100% efficient</tspan>
+  </text>
+
+  <!-- Footer Card -->
+  <rect x="40" y="885" width="940" height="185" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Server / Job Icon -->
+  <g transform="translate(68, 915)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="16" rx="3"/>
+    <rect x="6" y="30" width="44" height="16" rx="3"/>
+    <circle cx="16" cy="16" r="2" fill="#207448" stroke="none"/>
+    <line x1="24" y1="16" x2="40" y2="16"/>
+    <circle cx="16" cy="38" r="2" fill="#207448" stroke="none"/>
+    <line x1="24" y1="38" x2="40" y2="38"/>
+  </g>
+  <!-- Footer text -->
+  <text x="145" y="965" font-family="Helvetica Neue, Arial, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="145" dy="0">A training job whose host threads show</tspan>
+    <tspan x="145" dy="40">high CPU use and low IPC is memory-bound on the host</tspan>
+  </text>
+
+  <!-- Right Strip: How to measure -->
+  <rect x="1010" y="650" width="550" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  <!-- Right strip header icon: gauge / meter -->
+  <g transform="translate(1038, 672)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 44 A 24 24 0 1 1 48 44"/>
+    <line x1="28" y1="32" x2="40" y2="20"/>
+    <circle cx="28" cy="32" r="3" fill="#207448" stroke="none"/>
+  </g>
+  <text x="1108" y="708" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448">How to measure</text>
+
+  <!-- Measurement tool 1: perf stat -->
+  <rect x="1035" y="742" width="500" height="142" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1055" y="776" font-family="monospace" font-size="24" fill="#303a36"><tspan x="1055" dy="0">perf stat -e cycles,</tspan><tspan x="1055" dy="28">instructions,cache-misses,</tspan><tspan x="1055" dy="28">context-switches,</tspan><tspan x="1055" dy="28">cpu-migrations ./prog</tspan></text>
+
+  <!-- Measurement tool 2: pmcarch -->
+  <rect x="1035" y="904" width="500" height="142" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1055" y="938" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1055" dy="0">pmcarch prints K_CYCLES,</tspan>
+    <tspan x="1055" dy="28">K_INSTR, IPC, BR_RETIRED,</tspan>
+    <tspan x="1055" dy="28">BR_MISPRED, BMR%, LLCREF,</tspan>
+    <tspan x="1055" dy="28">LLCMISS, LLC%</tspan>
+  </text>
+
+  <!-- ================= BOTTOM TAKEAWAY BAR ================= -->
+  <rect x="40" y="1100" width="1520" height="70" rx="14" fill="#207448"/>
+  <text x="800" y="1146" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Keep utilisation and efficiency apart</text>
+
+</svg>

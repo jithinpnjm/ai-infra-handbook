@@ -1,0 +1,112 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-cfs-throttle-threads",
+  "title": "A CPU limit of 1 and five busy threads",
+  "spec": "Timeline of one 100 ms CFS period. Bar with five thread lanes all running at once; the shared budget of 100 ms of CPU time is used up in the first 20 ms (5 threads times 20 ms); then a long grey block 'throttled for the remaining 80 ms even though the node may have idle CPU'; then the next period starts and the budget refreshes. Labels: 'limit 1 CPU = 100 ms of CPU time per 100 ms period regardless of thread count', 'cpu.stat nr_throttled counts it'. Side note: 'average looks fine, tail latency grows; requests arriving late in a period wait'. Probe consequence: 'default timeoutSeconds 1 on a throttled pod can fail a healthy liveness probe past 1000 ms and restart a healthy container; raise timeoutSeconds to 5 to 10 seconds'. Text at least 24px.",
+  "anchor": "### CPU limits and throttling in multithreaded code",
+  "alt": "Five threads use up a 100 ms budget in 20 ms and the container waits 80 ms.",
+  "cap": "A CPU limit is a per-period budget, so many busy threads can exhaust it early and stall for the rest of the period."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-cpu-manager-static",
+  "title": "Who gets exclusive cores under the static CPU Manager",
+  "spec": "Left: three-item checklist for exclusive pinned cores. 1 'QoS class Guaranteed (CPU and memory requests equal limits)'. 2 'integer CPU request such as cpu 8 or 16, not 7500m'. 3 'reserved CPUs set through reservedSystemCPUs (for example 0-3) or kubeReserved and systemReserved'. Middle: cores diagram of an SMT server, each physical core with two hyperthread siblings; cores 0-3 grey 'OS, kubelet, runtime, IRQs'; some cores coloured 'exclusive cpuset for the Guaranteed pod'; remaining cores 'shared pool for Burstable, BestEffort and non-integer requests'. Right: 'full-pcpus-only true: request must be a multiple of 2 vCPUs (2, 4, 8, 16) so both hyperthread siblings go to one container; request of 3 is rejected at node admission with SMTAlignmentError'. Footer: 'Changing the policy: drain node, stop kubelet, rm /var/lib/kubelet/cpu_manager_state, start kubelet; otherwise the kubelet refuses to start to protect live cpusets'. Text at least 24px.",
+  "anchor": "### CPU Manager",
+  "alt": "Guaranteed pods with whole-core requests get exclusive cpusets while other pods share the remaining pool.",
+  "cap": "The static policy pins whole physical cores to Guaranteed pods and leaves everyone else on a shared pool."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-topology-policies",
+  "title": "Topology Manager: pick the policy by pod shape",
+  "spec": "Top: three hint sources (CPU Manager, Memory Manager, Device Manager with GPU and NIC NUMA locations) feeding a box 'Topology Manager (broker): intersects NUMA hints and enforces a policy'. Middle: four-row table. 'none: no alignment (default)'. 'best-effort: prefer aligned, admit anyway'. 'restricted: admit only if the minimal number of NUMA nodes is achieved, else TopologyAffinityError (a 2-GPU pod needs 1 NUMA node, an 8-GPU pod on a dual-socket server needs 2)'. 'single-numa-node: admit only if everything fits on one NUMA node'. Scope: 'container aligns each container alone, pod aligns all containers together'. Bottom: two pool cards. '1 to 4 GPU inference pool: single-numa-node, scope pod; CPUs, memory, GPU and NIC share one NUMA node and PCIe root'. '8-GPU training pool: restricted or best-effort; the pod spans both sockets by design, single-numa-node would reject it every time'. Footer: 'rejection happens after scheduling because the default scheduler is not topology-aware; use NFD, NodeResourceTopology plugin or DRA'. Text at least 24px.",
+  "anchor": "### Topology Manager",
+  "alt": "A broker combines NUMA hints from CPU, memory and devices and applies one of four policies.",
+  "cap": "Match the Topology Manager policy to the pod shape because a pod that spans sockets cannot meet single-numa-node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-device-plugin-calls",
+  "title": "Device plugin conversation with the kubelet",
+  "spec": "Sequence diagram with lifelines 'NVIDIA device plugin' and 'kubelet device manager', plus a side box 'Pod Resources API'. Steps: 1 'plugin registers over gRPC at /var/lib/kubelet/device-plugins/kubelet.sock'. 2 'ListAndWatch: streams device IDs (GPU-uuid-0..7), health (Healthy or Unhealthy on XID faults) and NUMA topology hints'. 3 'GetPreferredAllocation(available, count): hint a good subset, for example 2 GPUs on the same NVLink bridge or PCIe switch'. 4 'Allocate during syncPod: returns NVIDIA_VISIBLE_DEVICES, /dev/nvidia* paths, CDI annotations'. 5 'kubelet checkpoints to /var/lib/kubelet/device-plugins/kubelet_internal_checkpoint so a restart keeps allocations'. Side box: '/var/lib/kubelet/pod-resources/kubelet.sock offers List, GetAllocatableResources, Get; dcgm-exporter uses it to label GPU metrics with pod, namespace and container'. Footer: 'DRA replaces integer counting with ResourceClaim and driver-published ResourceSlice'. Text at least 24px.",
+  "anchor": "### Device Manager and Pod Resources API",
+  "alt": "A sequence of register, ListAndWatch, GetPreferredAllocation and Allocate between plugin and kubelet.",
+  "cap": "The device plugin registers, reports devices and health, hints at good subsets and hands back the allocation details."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-eviction-thresholds",
+  "title": "Hard, soft and minimum-reclaim eviction thresholds",
+  "spec": "Vertical memory.available gauge going down. Marker 'evictionSoft 4Gi with evictionSoftGracePeriod 2m: signal must stay below 4Gi for 2 minutes, then graceful eviction honouring terminationGracePeriodSeconds up to evictionMaxPodGracePeriod (time for an emergency checkpoint)'. Lower marker 'evictionHard 2Gi: immediate eviction, grace 0, SIGKILL-like'. Right bracket 'evictionMinimumReclaim 1Gi: keep evicting until at least 2Gi + 1Gi = 3Gi is free, so the node does not oscillate at the boundary'. Left note: 'kubelet also tries to reclaim first: garbage-collect dead containers and unused images; sets MemoryPressure, DiskPressure, PIDPressure; taints like node.kubernetes.io/memory-pressure:NoSchedule block new pods; evictionPressureTransitionPeriod 5 minutes before clearing the condition'. Bottom: 'set the hard value several GiB so the kubelet acts before the kernel OOM killer picks victims; housekeeping samples about every 10 s so pinned memory and page cache can outrun it'. Text at least 24px.",
+  "anchor": "## 6. Node-pressure eviction",
+  "alt": "A falling memory gauge with soft, hard and minimum reclaim thresholds marked.",
+  "cap": "Soft thresholds give time to checkpoint, hard thresholds act at once, and minimum reclaim stops oscillation."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-memory-available",
+  "title": "How the kubelet counts memory available",
+  "spec": "Two bars for the same node. Left bar 'free in /proc/meminfo': MemFree tiny because Linux fills RAM with Buffers and Cached page cache. Right bar 'kubelet memory.available = NodeCapacity minus working_set' where 'working_set = total_usage minus total_inactive_file' from cgroup memory.stat. Segments counted in the working set: 'anonymous and heap, pinned memory, /dev/shm tmpfs, active file cache'. Segment left out: 'inactive_file page cache, easily reclaimable'. Takeaway: 'a node can look full in free yet have plenty of memory available'. Second small panel 'Disk signals': 'nodefs = root filesystem with /var/lib/kubelet, emptyDir, logs in /var/log/pods; imagefs = /var/lib/containerd image layers and writable layers; a dedicated NVMe for containerd keeps a 30 GB pull off the OS root disk'. Text at least 24px.",
+  "anchor": "## 6. Node-pressure eviction",
+  "alt": "Free memory in meminfo looks small while the kubelet working set calculation leaves out inactive file cache.",
+  "cap": "The kubelet subtracts only the working set, so reclaimable page cache does not count as pressure."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-image-gc-example",
+  "title": "Image GC on a GPU node: the 85 percent trap",
+  "spec": "Worked example for a 1 TB image disk with ML images of 20 to 50 GB. Bar with markers: 'imageGCLowThresholdPercent 70 percent', 'imageGCHighThresholdPercent 85 percent'. Steps: 1 'usage grows past 85 percent, hundreds of GB already used before GC starts'. 2 'GC removes least recently used unused images, skipping any younger than imageMinimumGCAge 30m, until usage falls to 70 percent'. 3 'GC may delete the image you need next, causing a long re-pull'. Fixes: 'bigger disks, imageMaximumGCAge (newer), pre-pull policies, dedicated NVMe for imagefs'. Side panel 'Logs': 'containerLogMaxSize 50Mi and containerLogMaxFiles 5 rotate CRI logs; container logs, writable layer and emptyDir all count toward ephemeral-storage; exceeding limits.ephemeral-storage evicts the pod'. Text at least 24px.",
+  "anchor": "## 7. Garbage collection and logs",
+  "alt": "Image garbage collection starts at 85 percent usage and trims to 70 percent possibly deleting the next needed image.",
+  "cap": "High GC thresholds on a big disk let large ML images pile up and then evict the one you need next."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-graceful-shutdown",
+  "title": "Graceful node shutdown with a 120 second budget",
+  "spec": "Timeline from 0 to 120 s. Start: 'operator or autoscaler runs systemctl reboot, poweroff or a spot termination signal'. 'systemd delays shutdown up to 120 s because the kubelet holds a delay inhibitor lock (systemd-inhibit --list)'. Stage 1 (0 to 90 s, which is shutdownGracePeriod 120s minus 30s): 'node marked not-ready with a Shutdown condition; regular pods get preStop and SIGTERM so training jobs flush a final checkpoint'. Stage 2 (last 30 s, shutdownGracePeriodCriticalPods): 'system-node-critical and system-cluster-critical pods (CNI, CSI, storage flushers) terminated'. End: 'kubelet releases the inhibitor lock, kernel powers off'. Side note: 'non-graceful shutdown: after confirming the node is down apply taint node.kubernetes.io/out-of-service so StatefulSet pods and volumes can move'; 'a kubelet restart does not restart containers; checkpoints persist: cpu_manager_state, device checkpoint, memory manager state'. Text at least 24px.",
+  "anchor": "## 8. Node status, leases and failure behaviour",
+  "alt": "A 120 second shutdown budget is split into 90 seconds for regular pods and 30 seconds for critical pods.",
+  "cap": "The kubelet stops regular pods first and critical pods last inside the shutdown grace period."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-static-vs-daemonset",
+  "title": "Static pod versus DaemonSet pod",
+  "spec": "Two-column comparison. Left 'Static pod': 'kubelet reads a file in /etc/kubernetes/manifests (staticPodPath)', 'works with no API server or scheduler, which solves the chicken-and-egg bootstrap', 'kubelet creates a read-only mirror pod named pod-nodename so kubectl can see it', 'editing the file reconfigures the pod, deleting the file removes it', 'kubectl delete of the mirror pod makes the kubelet recreate it', 'cannot use ConfigMaps or Secrets from the API', 'used for etcd, kube-apiserver, kube-controller-manager, kube-scheduler, kube-vip'. Right 'DaemonSet pod': 'DaemonSet controller in kube-controller-manager, placed through the API server', 'can mount ConfigMaps, Secrets and PVCs', 'rolling updates across the fleet', 'node agents such as nvidia-device-plugin, dcgm-exporter, calico-node, cilium, fluent-bit'. Top strip: three pod sources into the pod manager: 'API server watch on spec.nodeName, static manifests dir, HTTP manifest URL (rare)'. Text at least 24px.",
+  "anchor": "## 9. Static pods, kubelet API and security",
+  "alt": "A comparison of file-based static pods and API-managed DaemonSet pods.",
+  "cap": "Static pods let the kubelet start the control plane from files, and DaemonSets manage node agents through the API."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-kubelet-api-trust",
+  "title": "The kubelet API and what nodes/proxy really grants",
+  "spec": "Diagram. Center box 'kubelet HTTPS :10250' with endpoint list '/pods, /runningpods, /stats/summary, /metrics, /metrics/cadvisor, /metrics/resource, /metrics/probes, /logs/, /exec, /attach, /portForward, /configz, /healthz'. Left callers: 'Prometheus ServiceAccount with only nodes/metrics and nodes/stats get: safe'; 'ServiceAccount with nodes/proxy get or create: reaches /exec, /run, /attach, /portForward on every pod on every node, bypassing namespace pods/exec RBAC: red'. Right: 'Node authorizer: system:node:name in group system:nodes can read only Secrets, ConfigMaps and PVs of pods bound to its node'; 'NodeRestriction admission: may modify only its own Node object and bound pods status, cannot set node-role.* or node-restriction.kubernetes.io/* labels'. Hardening list: 'anonymous auth false, authorization mode Webhook, read-only port 10255 off (readOnlyPort 0), protectKernelDefaults, seccompDefault, rotateCertificates, approve serving CSRs'. Text at least 24px.",
+  "anchor": "## 9. Static pods, kubelet API and security",
+  "alt": "The kubelet API with safe metrics roles versus the dangerous nodes proxy role.",
+  "cap": "Grant monitoring tools only nodes metrics and stats, because nodes proxy is effectively exec on every pod."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p3-0509-training-vs-inference-node",
+  "title": "Tuning an 8-GPU training node versus a 1-GPU inference node",
+  "spec": "Table with two columns. Row maxPods: training 'low, 30 to 40 (system daemons plus one training pod)'; inference 'standard, 60 to 110 (default 110, also limited by the pod CIDR, a /24 gives about 254 IPs)'. Row topologyManagerPolicy: training 'restricted or best-effort, the pod spans two sockets'; inference 'single-numa-node, scope pod, strict PCIe and NUMA locality'. Row cpuManagerPolicy: both 'static with full-pcpus-only true'. Row podPidsLimit: training 'high, 8192 to 32768, 8 ranks times 8 to 16 DataLoader workers plus thread pools gives 500 to 2000 tasks per pod'; inference 'moderate, 2048 to 4096'. Row shutdownGracePeriod: training 'long, 120s to 300s for emergency checkpointing'; inference 'moderate, 60s to 120s for connection draining'. Footer: 'roll every change through a drain and a canary node first'. Text at least 24px.",
+  "anchor": "## 12. Tuning checklist for GPU nodes",
+  "alt": "A table contrasting kubelet settings for 8 GPU training nodes and 1 GPU inference nodes.",
+  "cap": "Both node types use static CPU pinning, and the topology policy, PID limit and shutdown grace differ."
+ }
+]

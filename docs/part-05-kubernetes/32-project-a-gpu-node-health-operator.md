@@ -47,20 +47,9 @@ Decide how long your windows should be before you enable any action, because the
 
 Before you read the code, look at how the pieces talk to each other. The diagram shows that detection sits outside this operator. It also shows that the reconcile loop does all the work. Follow the arrows in order. The Node carries the signal in, the reconciler reads it together with the policy, and then the reconciler writes back to the Node, the Pods, the policy and the event stream.
 
-```mermaid
-flowchart LR
-  subgraph detect["Detection (not this operator)"]
-    D[DCGM exporter or NPD or vendor agent]
-  end
-  D -- sets node condition GPUHealthy --> N[(Node status.conditions)]
-  P[(GPUHealthPolicy)] --> R
-  N --> R[Reconcile<br/>Judge then Plan then Act]
-  R -- patch unschedulable plus owner annotation --> N
-  R -- optional eviction subresource --> Pods[(Pods on node)]
-  R -- status and conditions --> P
-  R -- events --> E[kubectl describe]
-  R -- RequeueAfter for time windows --> R
-```
+![Architecture](./img/m5-32-1.svg)
+
+*Figure 5.32.1. Architecture, as a diagram.*
 
 The diagram has a loop at the bottom: the reconciler asks to be woken up again for the time windows. That is how the operator waits for a condition to last without polling forever. The reconciler does not sleep. It returns, and the queue calls it again when the window has passed.
 

@@ -1,0 +1,308 @@
+
+svg = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Three habits that waste time, and the method that replaces them</title>
+  <desc>Infographic contrasting three time-wasting anti-methods (Streetlight, Random change, and Blame-someone-else) with the structured replacement method: Problem statement, Scientific method with observational, experimental, and negative test types, and Diagnosis cycle.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 1 3 L 16 9 L 1 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold, centered) -->
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Three habits that waste time,</tspan>
+    <tspan x="800" dy="54">and the method that replaces them</tspan>
+  </text>
+
+  <!-- ================= LEFT COLUMN: THREE ANTI-METHOD CARDS ================= -->
+
+  <!-- Anti-Method Card 1: Streetlight -->
+  <g id="card-streetlight">
+    <rect x="40" y="160" width="600" height="270" rx="14" fill="#ffffff" stroke="#788a80" stroke-width="2.5" />
+    
+    <!-- Icon: Streetlight / Lamp (56x56 outline, stroke 4) -->
+    <g transform="translate(64, 180)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Lamp post and curved arm -->
+      <path d="M 14 52 L 14 16 C 14 8 26 8 32 8 L 42 8" />
+      <!-- Lamp shade -->
+      <path d="M 34 16 L 50 16 L 46 24 L 38 24 Z" />
+      <!-- Light rays -->
+      <line x1="36" y1="30" x2="30" y2="44" stroke-dasharray="3,3" />
+      <line x1="42" y1="30" x2="42" y2="46" stroke-dasharray="3,3" />
+      <line x1="48" y1="30" x2="54" y2="44" stroke-dasharray="3,3" />
+    </g>
+
+    <!-- Card 1 Title & Description -->
+    <text x="136" y="218" font-family="sans-serif" fill="#303a36">
+      <tspan font-size="30" font-weight="bold" fill="#303a36">Streetlight:</tspan>
+    </text>
+    <text x="64" y="270" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">use the tools you know or that</tspan>
+      <tspan x="64" dy="32">are easy, where the light is good</tspan>
+      <tspan x="64" dy="32">(running top because you know it)</tspan>
+    </text>
+
+    <!-- Card 1 Flaw container -->
+    <rect x="56" y="372" width="568" height="44" rx="8" fill="#fbebe8" stroke="#d93829" stroke-width="1.5" />
+    <text x="72" y="402" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c03020">
+      <tspan>finds an issue, not the issue</tspan>
+    </text>
+  </g>
+
+  <!-- Anti-Method Card 2: Random change -->
+  <g id="card-random-change">
+    <rect x="40" y="470" width="600" height="270" rx="14" fill="#ffffff" stroke="#788a80" stroke-width="2.5" />
+    
+    <!-- Icon: Tunable sliders / random adjustments (56x56 outline, stroke 4) -->
+    <g transform="translate(64, 490)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Slider track 1 -->
+      <line x1="10" y1="14" x2="46" y2="14" />
+      <circle cx="20" cy="14" r="5" fill="#e8f1ea" />
+      <!-- Slider track 2 -->
+      <line x1="10" y1="28" x2="46" y2="28" />
+      <circle cx="38" cy="28" r="5" fill="#e8f1ea" />
+      <!-- Slider track 3 -->
+      <line x1="10" y1="42" x2="46" y2="42" />
+      <circle cx="26" cy="42" r="5" fill="#e8f1ea" />
+    </g>
+
+    <!-- Card 2 Title & Description -->
+    <text x="136" y="528" font-family="sans-serif" fill="#303a36">
+      <tspan font-size="30" font-weight="bold" fill="#303a36">Random change:</tspan>
+    </text>
+    <text x="64" y="580" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">change tunables until it improves</tspan>
+      <tspan x="64" dy="32">and keep what looks better</tspan>
+    </text>
+
+    <!-- Card 2 Flaw container -->
+    <rect x="56" y="650" width="568" height="74" rx="8" fill="#fbebe8" stroke="#d93829" stroke-width="1.5" />
+    <text x="72" y="682" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c03020">
+      <tspan x="72" dy="0">unexplained, fragile, may encode</tspan>
+      <tspan x="72" dy="30">workarounds, risk at peak</tspan>
+    </text>
+  </g>
+
+  <!-- Anti-Method Card 3: Blame-someone-else -->
+  <g id="card-blame-someone-else">
+    <rect x="40" y="780" width="600" height="280" rx="14" fill="#ffffff" stroke="#788a80" stroke-width="2.5" />
+    
+    <!-- Icon: Deflected ticket / pointing hand (56x56 outline, stroke 4) -->
+    <g transform="translate(64, 800)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Ticket rectangle -->
+      <rect x="8" y="10" width="26" height="36" rx="4" />
+      <line x1="14" y1="20" x2="26" y2="20" />
+      <line x1="14" y1="28" x2="22" y2="28" />
+      <!-- Deflection arrow bouncing away -->
+      <path d="M 30 28 L 46 28 M 40 22 L 46 28 L 40 34" />
+    </g>
+
+    <!-- Card 3 Title & Description -->
+    <text x="136" y="838" font-family="sans-serif" fill="#303a36">
+      <tspan font-size="30" font-weight="bold" fill="#303a36">Blame-someone-else:</tspan>
+    </text>
+    <text x="64" y="888" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">hypothesise a component you do not</tspan>
+      <tspan x="64" dy="32">own and hand it over without data</tspan>
+    </text>
+
+    <!-- Card 3 Flaw container -->
+    <rect x="56" y="960" width="568" height="84" rx="8" fill="#fbebe8" stroke="#d93829" stroke-width="1.5" />
+    <text x="72" y="990" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c03020">
+      <tspan x="72" dy="0">wastes other teams; a ticket bounces</tspan>
+      <tspan x="72" dy="30">for a week; demand screenshots of tools run</tspan>
+    </text>
+  </g>
+
+  <!-- ================= RIGHT COLUMN: REPLACEMENT METHOD FLOW ================= -->
+
+  <!-- Node 1: Problem statement (always first) [Orange Box] -->
+  <g id="node-problem-statement">
+    <rect x="680" y="160" width="880" height="130" rx="14" fill="#fef8f3" stroke="#db8129" stroke-width="3.5" />
+    
+    <!-- Step Number Circle 1 -->
+    <circle cx="724" cy="225" r="24" fill="#db8129" />
+    <text x="724" y="234" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    <!-- Icon: Target / Crosshair (56x56 outline, stroke 4, orange) -->
+    <g transform="translate(768, 197)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <circle cx="28" cy="28" r="10" />
+      <line x1="28" y1="2" x2="28" y2="12" />
+      <line x1="28" y1="44" x2="28" y2="54" />
+      <line x1="2" y1="28" x2="12" y2="28" />
+      <line x1="44" y1="28" x2="54" y2="28" />
+    </g>
+
+    <!-- Title Text -->
+    <text x="850" y="235" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">
+      <tspan>Problem statement (always first)</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 1: Problem statement -> Scientific method -->
+  <path d="M 890 290 L 890 328" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Node 2: Scientific method: question, hypothesis, prediction, test, analysis -->
+  <g id="node-scientific-method">
+    <rect x="680" y="330" width="420" height="560" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Step Number Circle 2 -->
+    <circle cx="724" cy="380" r="24" fill="#207448" />
+    <text x="724" y="389" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    <!-- Icon: Laboratory Flask (56x56 outline, stroke 4) -->
+    <g transform="translate(764, 352)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 8 L 34 8 M 28 8 L 28 22 L 12 46 C 10 50 14 54 20 54 L 36 54 C 42 54 46 50 44 46 L 28 22" />
+      <line x1="18" y1="40" x2="38" y2="40" />
+    </g>
+
+    <!-- Node 2 Title -->
+    <text x="890" y="445" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan>Scientific method:</tspan>
+    </text>
+
+    <!-- 5 Steps stacked vertically with high readability -->
+    <!-- Step 1: question -->
+    <rect x="710" y="475" width="360" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="890" y="513" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan>question,</tspan>
+    </text>
+
+    <!-- Step 2: hypothesis -->
+    <rect x="710" y="545" width="360" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="890" y="583" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan>hypothesis,</tspan>
+    </text>
+
+    <!-- Step 3: prediction -->
+    <rect x="710" y="615" width="360" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="890" y="653" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan>prediction,</tspan>
+    </text>
+
+    <!-- Step 4: test (highlighted, connects to test types beside it) -->
+    <rect x="710" y="685" width="360" height="58" rx="8" fill="#207448" stroke="#207448" stroke-width="1.5" />
+    <text x="890" y="723" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      <tspan>test,</tspan>
+    </text>
+
+    <!-- Step 5: analysis -->
+    <rect x="710" y="755" width="360" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="890" y="793" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan>analysis</tspan>
+    </text>
+  </g>
+
+  <!-- Dashed grouping bracket / connector from Scientific method's 'test' step to the three test types beside it (NO arrowhead, grouping only) -->
+  <path d="M 1070 714 L 1140 714" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="6,4" />
+
+  <!-- ================= BESIDE SCIENTIFIC METHOD: THREE TEST TYPES ================= -->
+
+  <!-- Test Type 1: Observational -->
+  <g id="test-observational">
+    <rect x="1140" y="330" width="420" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <!-- Icon: Eye (watching) (44x44 outline, stroke 3) -->
+    <g transform="translate(1160, 346)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 22 C 12 10 32 10 40 22 C 32 34 12 34 4 22 Z" />
+      <circle cx="22" cy="22" r="7" />
+    </g>
+
+    <!-- Title -->
+    <text x="1220" y="377" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan>Observational:</tspan>
+    </text>
+    <!-- Description -->
+    <text x="1160" y="426" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" dy="0">watch the system</tspan>
+      <tspan x="1160" dy="32">while it runs</tspan>
+    </text>
+  </g>
+
+  <!-- Test Type 2: Experimental -->
+  <g id="test-experimental">
+    <rect x="1140" y="515" width="420" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <!-- Icon: Toggle switch / control knob (44x44 outline, stroke 3) -->
+    <g transform="translate(1160, 532)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="14" width="32" height="16" rx="8" />
+      <circle cx="30" cy="22" r="6" fill="#207448" />
+    </g>
+
+    <!-- Title -->
+    <text x="1220" y="563" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan>Experimental:</tspan>
+    </text>
+    <!-- Description -->
+    <text x="1160" y="612" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" dy="0">change one thing; if it does</tspan>
+      <tspan x="1160" dy="32">nothing, revert it before the</tspan>
+      <tspan x="1160" dy="32">next hypothesis</tspan>
+    </text>
+  </g>
+
+  <!-- Test Type 3: Negative -->
+  <g id="test-negative">
+    <rect x="1140" y="730" width="420" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <!-- Icon: Warning / Lightning deliberate fault (44x44 outline, stroke 3) -->
+    <g transform="translate(1160, 748)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 10 24 L 22 24 L 18 40 L 34 18 L 22 18 Z" />
+    </g>
+
+    <!-- Title -->
+    <text x="1220" y="779" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan>Negative:</tspan>
+    </text>
+    <!-- Description -->
+    <text x="1160" y="828" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" dy="0">deliberately worsen something</tspan>
+      <tspan x="1160" dy="32">to confirm a cause</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 2: Scientific method -> Diagnosis cycle -->
+  <path d="M 890 890 L 890 928" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Node 3: Diagnosis cycle: hypothesis, instrumentation, data, hypothesis, quickly so bad theories die early -->
+  <g id="node-diagnosis-cycle">
+    <rect x="680" y="930" width="880" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Step Number Circle 3 -->
+    <circle cx="724" cy="995" r="24" fill="#207448" />
+    <text x="724" y="1004" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    <!-- Icon: Circular Cycle / Loop (56x56 outline, stroke 4) -->
+    <g transform="translate(768, 967)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 44 20 A 18 18 0 0 0 14 24" />
+      <polyline points="10 14 14 24 24 24" />
+      <path d="M 12 36 A 18 18 0 0 0 42 32" />
+      <polyline points="46 42 42 32 32 32" />
+    </g>
+
+    <!-- Title and Content -->
+    <text x="850" y="978" font-family="sans-serif" fill="#303a36">
+      <tspan font-size="30" font-weight="bold" fill="#207448">Diagnosis cycle:</tspan>
+    </text>
+    <text x="850" y="1016" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="850" dy="0" font-weight="bold">hypothesis, instrumentation, data, hypothesis,</tspan>
+      <tspan x="850" dy="30">quickly so bad theories die early</tspan>
+    </text>
+  </g>
+
+  <!-- ================= BOTTOM TAKEAWAY BAR ================= -->
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="1100" width="1520" height="60" rx="10" fill="#207448" />
+    <text x="800" y="1139" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      <tspan>A method fixes the order of the questions, so your favourite tool comes after the evidence</tspan>
+    </text>
+  </g>
+</svg>"""
+with open("test_candidate.svg", "w") as out:
+    out.write(svg)
+print("SVG written successfully.")

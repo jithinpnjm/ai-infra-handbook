@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Where Slurm keeps its state and what losing it costs</title>
+  <desc>Visual infographic explaining Slurm state persistence across five storage locations, the controller restart sequence, and the loss cost scale from configuration to accounting history.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Where Slurm keeps its state and what losing it costs</text>
+
+  
+  <g id="card-configuration">
+    <rect x="40" y="105" width="480" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(60, 120)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M28 12 L28 16 M28 40 L28 44 M12 28 L16 28 M40 28 L44 28 M17 17 L20 20 M36 36 L39 39 M17 39 L20 36 M36 20 L39 17" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="130" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Configuration:</text>
+    <text x="60" y="210" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0"><tspan font-family="monospace">slurm.conf</tspan> and friends in</tspan>
+      <tspan x="60" dy="32"><tspan font-family="monospace">/etc/slurm</tspan> or served configless;</tspan>
+      <tspan x="60" dy="34" font-weight="bold">lost: cluster cannot start;</tspan>
+      <tspan x="60" dy="32">keep in version control</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-controller">
+    <rect x="560" y="105" width="480" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(580, 120)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <rect x="14" y="14" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <line x1="28" y1="6" x2="28" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="42" x2="28" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="6" y1="28" x2="14" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="42" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="650" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="650" dy="0">Controller</tspan>
+      <tspan x="650" dy="32">run-time state:</tspan>
+    </text>
+    <text x="580" y="210" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="580" dy="0">queued and running jobs,</tspan>
+      <tspan x="580" dy="32">node states, reservations in</tspan>
+      <tspan x="580" dy="32"><tspan font-family="monospace">StateSaveLocation</tspan> (for example</tspan>
+      <tspan x="580" dy="32"><tspan font-family="monospace">/var/spool/slurmctld</tspan>);</tspan>
+      <tspan x="580" dy="34" font-weight="bold">lost: queued jobs lost, running</tspan>
+      <tspan x="580" dy="32" font-weight="bold">jobs may be orphaned or lost</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-node">
+    <rect x="1080" y="105" width="480" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1100, 120)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <rect x="8" y="10" width="40" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <rect x="8" y="32" width="40" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <circle cx="16" cy="17" r="2.5" fill="#207448"/>
+      <circle cx="16" cy="39" r="2.5" fill="#207448"/>
+    </g>
+    <text x="1170" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1170" dy="0">Per-node</tspan>
+      <tspan x="1170" dy="32">job state:</tspan>
+    </text>
+    <text x="1100" y="210" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" dy="0"><tspan font-family="monospace">SlurmdSpoolDir</tspan></tspan>
+      <tspan x="1100" dy="32">(for example</tspan>
+      <tspan x="1100" dy="32"><tspan font-family="monospace">/var/spool/slurmd</tspan>);</tspan>
+      <tspan x="1100" dy="34" font-weight="bold">lost: node forgets running</tspan>
+      <tspan x="1100" dy="32" font-weight="bold">steps on restart</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-accounting">
+    <rect x="40" y="405" width="740" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(60, 420)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <ellipse cx="28" cy="18" rx="16" ry="6" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <path d="M12 18 v14 c0 3.3 7.2 6 16 6 s16 -2.7 16 -6 v-14" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <path d="M12 32 v10 c0 3.3 7.2 6 16 6 s16 -2.7 16 -6 v-10" fill="none" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="130" y="458" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Accounting:</text>
+    <text x="60" y="505" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">job history, associations, limits, QoS, usage in</tspan>
+      <tspan x="60" dy="32">MariaDB behind <tspan font-family="monospace">slurmdbd</tspan>;</tspan>
+      <tspan x="60" dy="34" font-weight="bold">lost: history and every account-based policy</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-logs">
+    <rect x="820" y="405" width="740" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(840, 420)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <rect x="12" y="10" width="32" height="36" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <line x1="18" y1="18" x2="38" y2="18" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="18" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="18" y1="34" x2="30" y2="34" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="910" y="458" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Logs:</text>
+    <text x="840" y="505" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="840" dy="0"><tspan font-family="monospace">SlurmctldLogFile</tspan>, <tspan font-family="monospace">SlurmdLogFile</tspan>,</tspan>
+      <tspan x="840" dy="32"><tspan font-family="monospace">SlurmdbdLogFile</tspan> or <tspan font-family="monospace">journald</tspan>;</tspan>
+      <tspan x="840" dy="34" font-weight="bold">lost: only diagnosability</tspan>
+    </text>
+  </g>
+
+  
+  <g id="restart-story">
+    <rect x="40" y="630" width="1520" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="65" y="668" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Restart story</text>
+
+    
+    <rect x="65" y="688" width="470" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="105" cy="734" r="24" fill="#207448"/>
+    <text x="105" y="742" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <text x="145" y="724" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">on startup <tspan font-family="monospace">slurmctld</tspan> reads</tspan>
+      <tspan x="145" dy="30"><tspan font-family="monospace">StateSaveLocation</tspan> back,</tspan>
+    </text>
+
+    
+    <rect x="565" y="688" width="470" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="605" cy="734" r="24" fill="#207448"/>
+    <text x="605" y="742" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <text x="645" y="724" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="645" dy="0">rebuilds the queue and</tspan>
+      <tspan x="645" dy="30">cluster state,</tspan>
+    </text>
+
+    
+    <rect x="1065" y="688" width="470" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="1105" cy="734" r="24" fill="#207448"/>
+    <text x="1105" y="742" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <text x="1145" y="724" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1145" dy="0">then asks the nodes</tspan>
+      <tspan x="1145" dy="30">what is running;</tspan>
+    </text>
+
+    
+    <rect x="65" y="796" width="1470" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="834" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      the directory must be writable by <tspan font-family="monospace">SlurmUser</tspan>, on a reliable filesystem and shared in an HA pair
+    </text>
+  </g>
+
+  
+  <g id="cost-scale">
+    <rect x="40" y="900" width="1520" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="65" y="938" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Cost scale from cheap to permanent</text>
+
+    
+    <line x1="65" y1="962" x2="1535" y2="962" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
+
+    
+    <rect x="65" y="985" width="470" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="300" y="1052" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="300" dy="0" font-weight="bold" fill="#207448">configuration restore</tspan>
+      <tspan x="300" dy="34">from version control</tspan>
+    </text>
+
+    
+    <rect x="565" y="985" width="470" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="1052" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0" font-weight="bold" fill="#207448">state directory</tspan>
+      <tspan x="800" dy="34">somewhere in between</tspan>
+    </text>
+
+    
+    <rect x="1065" y="985" width="470" height="150" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    <text x="1300" y="1052" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1300" dy="0" font-weight="bold" fill="#db8129">accounting database is a</tspan>
+      <tspan x="1300" dy="34" font-weight="bold" fill="#db8129">permanent gap in history</tspan>
+    </text>
+  </g>
+</svg>

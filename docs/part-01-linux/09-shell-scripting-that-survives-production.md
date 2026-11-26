@@ -71,6 +71,10 @@ Read the script line by line, because each line is doing a job. Four details are
 
 ### Choosing the interpreter
 
+![On Ubuntu, a #!/bin/sh script runs dash and fails on bash features, while on RHEL the same line runs bash and works.](./img/p2-0109-shebang-split.svg)
+
+*Figure 1.9.1. The same #!/bin/sh shebang runs dash on Ubuntu and bash on RHEL, so bash features work on one family and fail on the other.*
+
 - `#!/bin/sh` asks for the POSIX shell. On Debian and Ubuntu, `/bin/sh` is **dash**, a small, fast shell without bash extensions such as `[[ ]]`, arrays, `${var//x/y}`, `<<<` and process substitution. On the RHEL family, `/bin/sh` is bash in POSIX mode. A script that uses bash features under `#!/bin/sh` therefore works on one family and fails on the other. This is a classic cross-distribution bug. **Rule: if you use any bash feature, say `#!/usr/bin/env bash` or `#!/bin/bash`. If you write `#!/bin/sh`, keep to POSIX and test with `dash`.**
 - `#!/usr/bin/env bash` finds `bash` on `$PATH`. That works when bash sits in an unusual place, but it means a different `bash` can be picked up, such as one inside a conda environment. In locked-down production scripts, a fixed `#!/bin/bash` is often the better choice.
 - The shebang is not limited to shells. `#!/usr/bin/env python3` and `#!/usr/bin/awk -f` are valid too. An executable text file that starts with `#!` runs as `interpreter [one-optional-argument] script-path args...`. Do not count on more than one argument after the interpreter, because systems differ in how they split it.
@@ -82,7 +86,7 @@ Before you pick a shebang, check which shell your target machines actually provi
 
 ![Running, sourcing and exec differ in whether the script's variables survive in your shell.](./img/l09-run-source.svg)
 
-*Figure 1.9.1. Only sourcing leaves the script's variables in your current shell.*
+*Figure 1.9.2. Only sourcing leaves the script's variables in your current shell.*
 
 There are four common ways to launch a script, and they differ in one question that matters more than the rest: do the variables the script sets survive afterwards? The table answers that question for each way.
 
@@ -109,11 +113,15 @@ You type a command that looks right, and it misbehaves. The cause is usually exp
 
 ![Quoting and expansion: the heart of shell](./img/ch09-d1-luna.svg)
 
-*Figure 1.9.2. Quoting and expansion: the heart of shell.*
+*Figure 1.9.3. Quoting and expansion: the heart of shell.*
 
 Read the diagram from top to bottom. Each box is one step the shell takes before the program receives its arguments. The classic trap shows the danger. Say the current directory has files `r.input` and `r.output`. The unquoted pattern `r.*t` is a glob, so it matches those two files, and `grep` runs on the wrong arguments.
 
 ### The three kinds of quoting (*How Linux Works* Section 11.2)
+
+![Echo of dollar-100 prints 00 unquoted or in double quotes, and prints the literal dollar-100 only with single quotes or a backslash.](./img/p2-0109-dollar-100.svg)
+
+*Figure 1.9.4. Unquoted and double-quoted dollar-100 print 00, while single quotes or a backslash print the literal text dollar-100.*
 
 Quotation marks, and the backslashes that go with them, are where many people get stuck. There are only three kinds, and knowing when and why to use each one is the key to avoiding that.
 
@@ -135,6 +143,10 @@ Quotes decide where one argument ends and the next begins. **Everything inside o
 
 ### Word splitting: why `$var` should almost always be `"$var"`
 
+![An unquoted file name with a space becomes two arguments, and an empty directory variable expands rm to the root, while quoted forms stay safe.](./img/p2-0109-word-split.svg)
+
+*Figure 1.9.5. Unquoted variables split on spaces and can expand to the root directory when empty, so quote them and guard with a required-value check.*
+
 Here is what happens to an unquoted result. The shell splits it into words wherever it finds whitespace, meaning the characters in `IFS`. Then it glob-expands each word. Look at what that does in practice.
 
 ```bash
@@ -152,7 +164,7 @@ Make it a habit to double-quote every expansion, such as `"$var"`, `"$(cmd)"` an
 
 ![Three ways of looping over arguments and what each one produces.](./img/l09-args.svg)
 
-*Figure 1.9.3. Quoted dollar-at keeps each argument as one word, while the other forms split or join them.*
+*Figure 1.9.6. Quoted dollar-at keeps each argument as one word, while the other forms split or join them.*
 
 The difference between `$@` and `$*` catches people who pass arguments along to other programs. The loop below shows all three forms, called as `script 'abc 123' qwe`.
 
@@ -222,6 +234,10 @@ Long command lines get hard to read. You can split one across several lines by e
 
 ### Exit codes
 
+![A number line of exit codes marks success at 0, general errors, command not found at 127, and 128 plus N for signals such as 137 SIGKILL and 143 SIGTERM.](./img/p2-0109-exit-map.svg)
+
+*Figure 1.9.7. Exit codes run from 0 for success through error codes to 128 plus N, where 137 means SIGKILL and 143 means SIGTERM.*
+
 Here is the second piece, and it is the one that separates a script from a wish. Every command ends with an **exit code**. Zero means success. Any other value means failure, and the number can say what went wrong. This is the signal the silent backup script never read.
 
 The shell stores the last code in `$?`. Check it right away, because the next command overwrites it. Even `echo $?` resets it to 0. Your script exits with `exit N`. Without an argument, `exit` returns the status of the last command.
@@ -245,6 +261,10 @@ Some programs use a non-zero code for normal conditions. `grep` returns 1 when i
 Every script you write will have branches: if the GPU count matches, if the mount point exists, if the package is already installed. Shell gives you a small set of tools for those decisions, and they do not behave like the conditionals in other languages.
 
 ### `if` runs a command and tests its exit code
+
+![An if statement runs grep, branches to then when the exit code is zero, tries elif, and falls back to else.](./img/p2-0109-if-exit.svg)
+
+*Figure 1.9.8. An if statement runs a command and takes the branch based on its exit code, where zero means true.*
 
 A conditional is where a script makes a decision, and shell makes that decision in a way that surprises almost everyone the first time. **`if` does not test an expression. It runs a command and looks at the exit code.** Zero means "true", and anything non-zero means "false".
 
@@ -301,6 +321,10 @@ Tests come in three groups: string tests, numeric tests and file tests. You will
 **Combining tests**: `!` negates a test. `[ A ] && [ B ]` and `[ A ] || [ B ]` combine two commands. `[ A -a B ]` and `[ A -o B ]` combine tests inside one `[`. That form is obsolescent and ambiguous, so prefer two `[` commands. **Do not write `[ "$x" = a || "$x" = b ]`**. The `||` ends the `[` command. Write `[ "$x" = a ] || [ "$x" = b ]` or `[[ $x == a || $x == b ]]` instead.
 
 ### Logical constructs: `&&` and `||` as one-line conditionals
+
+![Two flow diagrams comparing an if else statement with a and b or c, showing that c also runs when b fails.](./img/p3-0109-and-or-trap.svg)
+
+*Figure 1.9.9. In a and b or c, command c runs both when a fails and when b fails, so it is not a true if else.*
 
 `cmd1 && cmd2` runs `cmd2` only if `cmd1` succeeded. `cmd1 || cmd2` runs `cmd2` only if `cmd1` failed. These one-liners work well as guards and error exits. Examples are `[ -d "$d" ] || mkdir -p "$d"`, `command -v nvidia-smi >/dev/null || exit 0`, and `cd "$dir" || exit 1`. Be careful with `a && b || c`. It is *not* an if/else, because `c` also runs when `b` fails. To group several commands with braces, put a semicolon before the closing brace: `[ -z "$x" ] && { echo "empty" >&2; exit 1; }`.
 
@@ -361,6 +385,10 @@ until ping -c1 -W1 "$host" >/dev/null 2>&1; do sleep 5; done     # wait for a no
 
 ### Reading a file line by line (the right way)
 
+![Piping a file into a while loop runs the loop in a subshell, so the count is lost, while redirecting the file into the loop keeps the count.](./img/p2-0109-pipe-subshell.svg)
+
+*Figure 1.9.10. Piping into a while loop runs it in a subshell and loses the variable, while redirecting the file into the loop keeps the variable.*
+
 ```bash
 while IFS= read -r line; do
   printf 'line: %s\n' "$line"
@@ -420,7 +448,7 @@ When you trap `INT` or `TERM`, you **must** include an explicit `exit` inside th
 
 ![Strict mode and trap cleanup](./img/ch09-fig1-strict.jpg)
 
-*Figure 1.9.4. Strict mode makes a script fail loudly, and an EXIT trap cleans up after it.*
+*Figure 1.9.11. Strict mode makes a script fail loudly, and an EXIT trap cleans up after it.*
 
 ### Here documents and here strings
 
@@ -448,6 +476,10 @@ The marker can be any word, though it is conventionally uppercase. It must appea
 The pieces in this section are what turn a pile of commands into a small program. You get string handling that stays inside bash, functions with their own scope, and two ways to group commands that differ in a way that matters.
 
 ### Parameter expansion: string work without extra processes
+
+![A path string split into segments with four parameter expansions showing which part is removed and what remains, such as basename and dirname equivalents.](./img/p3-0109-param-path.svg)
+
+*Figure 1.9.12. Hash removes a prefix and percent removes a suffix, so bash can do basename and dirname work without starting a process.*
 
 Much of what sends people running for `sed`, `awk` or `basename` can be done inside bash itself. Bash does it in the same process, which is faster and avoids a whole family of quoting traps. The table lists the forms you will use most.
 
@@ -539,7 +571,7 @@ The option string lists single-letter options. A colon after a letter means that
 
 ![A subshell discards its changes, while a brace group runs in the current shell.](./img/l09-subshell.svg)
 
-*Figure 1.9.5. Changes made inside a subshell vanish when it ends, but a brace group changes the current shell.*
+*Figure 1.9.13. Changes made inside a subshell vanish when it ends, but a brace group changes the current shell.*
 
 - `(commands )` runs in a **subshell**, a child copy of the shell. Changes to variables, the working directory and options vanish when it ends. Use it to run `uglyprogram` inside `uglydir`, or with a temporary `PATH`, without touching your parent shell: `(cd uglydir; uglyprogram)` or `(PATH=/usr/confusing:$PATH; uglyprogram)`. For a single command, prefixing `PATH=/usr/confusing:$PATH uglyprogram` avoids the subshell.
 - `{ commands; }` runs in the **current shell**. Note the spaces and the semicolon. Use it to group commands under one redirection, as in `{ echo a; echo b; } > file`.
@@ -565,6 +597,10 @@ Before you wrap a program, decide whether it should replace the shell with `exec
 Picture the page at 3 a.m. A nightly job stopped half way through, left a half-written file in place, and still reported success. Nobody noticed until a user asked why a week of results was missing. This section is about the handful of habits that make a script complain at the first sign of trouble, while it still knows which line went wrong.
 
 ### Strict mode, and its traps
+
+![A bare failing command stops a script with set -e, but failures inside if or while conditions, left sides of and-or lists, negated commands, and functions called from those contexts do not.](./img/p2-0109-set-e-contexts.svg)
+
+*Figure 1.9.14. Under set -e a bare failing command stops the script, but failures in conditions, and-or lists, negations and functions called from them do not.*
 
 Most production scripts open with the same few lines. They turn on the switches that make bash fail on purpose.
 
@@ -607,6 +643,10 @@ Two more traps are useful. `trap 'echo "error on line $LINENO" >&2' ERR` reports
 
 ### Locking: only one copy at a time
 
+![Cron run A takes the flock on file descriptor 9 and works, while run B fails the non-blocking flock and exits.](./img/p2-0109-flock-lanes.svg)
+
+*Figure 1.9.15. The first cron run holds the flock while it works, so a second run that overlaps fails the non-blocking lock and exits.*
+
 Scripts run by `cron` or by timers can overlap. `flock` gives you a reliable advisory lock, and the kernel releases it when the process dies.
 
 ```bash
@@ -627,7 +667,7 @@ Here are some habits that make a script idempotent. Use `mkdir -p`, `ln -sfn`, a
 
 ![A retry loop that sleeps with a doubling delay until the attempts run out.](./img/l09-retry.svg)
 
-*Figure 1.9.6. Retries with a growing delay and a timeout keep scripts from hanging or failing on transient errors.*
+*Figure 1.9.16. Retries with a growing delay and a timeout keep scripts from hanging or failing on transient errors.*
 
 External commands fail transiently. A package mirror, a metadata service or a flaky NFS server can each fail for a moment. A retry helper handles those cases.
 
@@ -707,6 +747,14 @@ Several faster options exist. Use bash builtins and parameter expansion. Read on
 To measure the difference, you can `time` the script, and use `strace -c -f` or `bash -x` to count process creations. If it still crawls, the right answer is Python, not more tricks.
 
 ## 12. AI-infrastructure patterns
+
+![An annotated Slurm batch script with callouts for the shebang, SBATCH resource directives, strict mode, modules, head node discovery and srun launches.](./img/p3-0109-sbatch-anatomy.svg)
+
+*Figure 1.9.17. The SBATCH lines are comments to the shell but resource requests to Slurm, and the rest is ordinary bash that runs on the allocated nodes.*
+
+![A node health check runs five bounded checks in order, each failing with a message, and exits 0 only if all pass.](./img/p2-0109-health-flow.svg)
+
+*Figure 1.9.18. A node health check runs five bounded checks in order, and each failed check exits non-zero with a reason.*
 
 Now let us put the pieces together on the systems you will actually run. Each pattern below is a short script that you adapt rather than copy. Read each one, then make it fit your site.
 

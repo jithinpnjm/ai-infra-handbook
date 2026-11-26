@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>The stack</title>
+  <desc>Architecture diagram of Kubernetes container runtime stack from kubelet to container processes.</desc>
+
+  <defs>
+    <marker id="arrow" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-start" markerWidth="14" markerHeight="14" refX="2" refY="7" orient="auto">
+      <path d="M 12 2 L 2 7 L 12 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="50" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The stack</text>
+
+  
+
+  
+  <line x1="1000" y1="220" x2="1000" y2="236" stroke="#207448" stroke-width="3" />
+  <line x1="1000" y1="280" x2="1000" y2="295" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="730" y="236" width="540" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1000" y="266" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CRI: RuntimeService + ImageService</text>
+
+  
+  <line x1="440" y1="370" x2="455" y2="370" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" marker-start="url(#arrow-start)" />
+  <line x1="725" y1="370" x2="740" y2="370" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" marker-end="url(#arrow)" />
+
+  
+  <rect x="455" y="318" width="270" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="590" y="348" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">called by runtime</text>
+  <text x="590" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">for sandbox</text>
+  <text x="590" y="408" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">networking</text>
+
+  
+  <path d="M 740 430 H 590 V 590 H 440" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="1000" y1="445" x2="1000" y2="510" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="1000" y1="640" x2="1000" y2="705" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="740" y1="770" x2="440" y2="770" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="1000" y1="835" x2="1000" y2="905" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1260 370 H 1405 V 646" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" />
+  <path d="M 1405 694 V 970 H 1260" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" marker-end="url(#arrow)" />
+
+  
+  <rect x="1275" y="646" width="260" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1405" y="678" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">NRI / CDI hooks</text>
+
+  
+
+  
+  <g id="node-cni">
+    <rect x="50" y="295" width="390" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="170" cy="335" r="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="270" cy="335" r="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="220" cy="360" r="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 178 335 H 262 M 220 335 V 352" stroke="#207448" stroke-width="3.5" />
+    
+    <text x="245" y="400" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CNI plugins</text>
+    <text x="245" y="430" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(network)</text>
+  </g>
+
+  
+  <g id="node-img">
+    <rect x="50" y="510" width="390" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <ellipse cx="245" cy="535" rx="28" ry="8" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 217 535 V 555 C 217 560 273 560 273 555 V 535" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="245" y="588" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Image service:</text>
+    <text x="245" y="622" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">pull, content store,</text>
+    <text x="245" y="654" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">snapshotter (overlayfs)</text>
+  </g>
+
+  
+  <g id="node-kernel">
+    <rect x="50" y="705" width="390" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 245 725 L 267 735 V 753 C 267 765 245 773 245 773 C 245 773 223 765 223 753 V 735 Z" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="245" y="798" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kernel:</text>
+    <text x="245" y="830" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">namespaces, cgroups,</text>
+    <text x="245" y="858" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">seccomp, LSM</text>
+  </g>
+
+  
+
+  
+  <g id="node-kl">
+    <rect x="740" y="80" width="520" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1000" cy="112" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="1000" cy="112" r="5" fill="#207448" />
+    <path d="M 1000 91 V 133 M 979 112 H 1021" stroke="#207448" stroke-width="3" />
+    
+    <text x="1000" y="152" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">kubelet</text>
+    <text x="1000" y="184" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(talks CRI over a</text>
+    <text x="1000" y="210" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">gRPC unix socket)</text>
+  </g>
+
+  
+  <g id="node-cd">
+    <rect x="740" y="295" width="520" height="150" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <rect x="982" y="318" width="36" height="30" rx="4" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <path d="M 982 328 H 1018 M 994 338 H 1006" stroke="#db8129" stroke-width="3" />
+    
+    <text x="1000" y="380" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">containerd (CRI plugin)</text>
+    <text x="1000" y="420" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">or CRI-O</text>
+  </g>
+
+  
+  <g id="node-sh">
+    <rect x="740" y="510" width="520" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 980 535 H 1020 M 990 528 V 542 M 1010 528 V 542" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    
+    <text x="1000" y="582" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">containerd-shim-runc-v2</text>
+    <text x="1000" y="620" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(one per pod/sandbox)</text>
+  </g>
+
+  
+  <g id="node-rc">
+    <rect x="740" y="705" width="520" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1000" cy="732" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1000 714 V 718 M 1000 746 V 750 M 982 732 H 986 M 1014 732 H 1018" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1000" y="776" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OCI runtime:</text>
+    <text x="1000" y="814" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">runc / crun / kata / runsc</text>
+  </g>
+
+  
+  <g id="node-p">
+    <rect x="740" y="905" width="520" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="978" y="924" width="28" height="22" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+    <rect x="994" y="934" width="28" height="22" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="1000" y="995" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Container processes</text>
+  </g>
+</svg>

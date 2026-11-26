@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Picking the one project</title>
+  <desc>Flowchart outlining the process of picking the one project: from listing candidate projects and scoring tests, to filling the dossier, checker validation, and rehearsing.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Picking the one project</text>
+
+  
+  
+  <path d="M 370 260 L 450 260" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 760 260 L 840 260" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1150 260 L 1230 260" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <text x="1190" y="244" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <path d="M 995 360 L 995 450 Q 995 460 985 460 L 615 460 Q 605 460 605 470 L 605 560" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <text x="800" y="444" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <path d="M 760 660 L 840 660" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 995 760 L 995 830 Q 995 840 985 840 L 615 840 Q 605 840 605 830 L 605 760" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <text x="800" y="876" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <path d="M 1150 660 L 1230 660" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <text x="1190" y="644" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <g transform="translate(60, 160)">
+    <rect width="310" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="133" y="24" width="44" height="52" rx="6" stroke="#207448" stroke-width="3.5" fill="#ffffff" />
+    <rect x="145" y="19" width="20" height="9" rx="3" stroke="#207448" stroke-width="3" fill="#e8f1ea" />
+    <circle cx="144" cy="42" r="3" fill="#207448" />
+    <line x1="153" y1="42" x2="168" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="144" cy="54" r="3" fill="#207448" />
+    <line x1="153" y1="54" x2="168" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="144" cy="66" r="3" fill="#207448" />
+    <line x1="153" y1="66" x2="168" y2="66" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="155" y="118" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      List 3 candidate
+      <tspan x="155" dy="38">projects</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(450, 160)">
+    <rect width="310" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="131" y="23" width="48" height="54" rx="6" stroke="#207448" stroke-width="3.5" fill="#ffffff" />
+    <line x1="131" y1="36" x2="179" y2="36" stroke="#207448" stroke-width="2" />
+    <path d="M 140 45 L 144 49 L 151 42" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 159 45 L 163 49 L 170 42" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 140 55 L 144 59 L 151 52" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 159 55 L 163 59 L 170 52" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 140 65 L 144 69 L 151 62" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 159 65 L 163 69 L 170 62" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="155" y="136" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Score 6 tests</text>
+  </g>
+
+  
+  <g transform="translate(840, 160)">
+    <rect width="310" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <polygon points="155,22 183,50 155,78 127,50" stroke="#207448" stroke-width="3.5" fill="#ffffff" stroke-linejoin="round" />
+    <path d="M 143 50 L 151 58 L 168 41" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="155" y="136" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">5 or more yes?</text>
+  </g>
+
+  
+  <g transform="translate(1230, 160)">
+    <rect width="310" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 130 37 L 180 37 L 176 75 L 134 75 Z" stroke="#207448" stroke-width="3.5" fill="#ffffff" stroke-linejoin="round" />
+    <rect x="126" y="27" width="58" height="11" rx="2" stroke="#207448" stroke-width="3.5" fill="#e8f1ea" />
+    <rect x="147" y="50" width="16" height="7" rx="3.5" stroke="#207448" stroke-width="2.5" fill="#ffffff" />
+    
+    <text x="155" y="118" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      Drop it, or keep
+      <tspan x="155" dy="38">as 2nd story</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(450, 560)">
+    <rect width="310" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 130 37 L 148 37 L 154 44 L 180 44 L 180 74 L 130 74 Z" stroke="#207448" stroke-width="3.5" fill="#ffffff" stroke-linejoin="round" />
+    <path d="M 140 37 L 140 28 L 172 28 L 172 44" stroke="#207448" stroke-width="2.5" fill="#ffffff" stroke-linejoin="round" />
+    <line x1="142" y1="54" x2="168" y2="54" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="142" y1="62" x2="162" y2="62" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="155" y="136" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fill the dossier</text>
+  </g>
+
+  
+  <g transform="translate(840, 560)">
+    <rect width="310" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 131 28 L 179 28 C 179 56 155 74 155 74 C 155 74 131 56 131 28 Z" stroke="#207448" stroke-width="3.5" fill="#ffffff" stroke-linejoin="round" />
+    <path d="M 143 49 L 151 57 L 167 39" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="155" y="136" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Checker clean?</text>
+  </g>
+
+  
+  <g transform="translate(1230, 560)">
+    <rect width="310" height="200" rx="16" fill="#faece0" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="155" cy="53" r="23" stroke="#db8129" stroke-width="3.5" fill="#ffffff" />
+    <rect x="151" y="23" width="8" height="6" rx="1.5" stroke="#db8129" stroke-width="2.5" fill="#db8129" />
+    <line x1="147" y1="23" x2="163" y2="23" stroke="#db8129" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="155" y1="53" x2="155" y2="38" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="155" y1="53" x2="168" y2="61" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <circle cx="155" cy="53" r="3" fill="#db8129" />
+    
+    <text x="155" y="118" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      Rehearse 2 min,
+      <tspan x="155" dy="38">10 min, 90 min</tspan>
+    </text>
+  </g>
+</svg>

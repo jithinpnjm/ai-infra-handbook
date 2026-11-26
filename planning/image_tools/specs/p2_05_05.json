@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p2-0505-envelope-keys",
+  "title": "Envelope encryption: a KEK wraps each Secret's DEK",
+  "spec": "Left: a box outside a dashed cluster boundary labelled 'KMS (outside the cluster)' with a lock icon and the inner box 'Key encryption key (KEK)'. Right, inside the dashed boundary labelled 'Kubernetes cluster': a box 'kube-apiserver' and below it a stacked pair of items for one Secret. Item A 'Data encryption key (DEK), one per Secret' with a key icon. Item B 'Secret object, encrypted with the DEK' with a locked document icon. An arrow from the KEK box to item A labelled 'KEK encrypts the DEK'. An arrow from item A to item B labelled 'DEK encrypts the Secret'. A small arrow from item A back to the cluster store labelled 'Encrypted DEK is stored with the data'. Numbered steps 1 to 3 as small circles beside the arrows. Orange outline on the KEK box as the key that never enters the cluster. Bottom note: 'The envelope is protected by the outer seal, and the seal is held somewhere else.'",
+  "anchor": "### Encrypting Secrets in etcd",
+  "alt": "Envelope encryption for Secrets, where a key encryption key held in an outside KMS wraps a per-Secret data encryption key stored with the data.",
+  "cap": "Envelope encryption wraps each Secret's data key with a key encryption key held in an external KMS, so the wrapped key can be stored with the data."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p2-0505-etcd-restore",
+  "title": "Restoring etcd from a snapshot, member by member",
+  "spec": "A vertical sequence of numbered steps top to bottom, drawn as boxes with arrows. Step 1 box 'Stop kube-apiserver and etcd on all control-plane nodes'. Step 2 box 'Restore the snapshot into a data directory on each member, with a new cluster token' with a monospace chip 'etcdutl snapshot restore'. Step 3 box 'Point the etcd static pod manifest at /var/lib/etcd-restore' with a file icon. Step 4 box 'Start etcd and the API server'. A loop arrow from step 3 back to step 2 labelled 'Repeat per member'. A side panel on the right titled 'Before you restore' with a box 'Save snapshots regularly and ship them off the cluster' and the note 'A snapshot kept only on the cluster disk is lost with the cluster'. Orange outline on step 2's new cluster token chip. Bottom note: 'A restore rewinds the cluster state to the snapshot time.'",
+  "anchor": "### Backup, restore, and member operations",
+  "alt": "Steps to restore etcd from a snapshot: stop the control plane, restore each member with a new cluster token, point the static pod at the restored directory, and restart.",
+  "cap": "Restoring etcd from a snapshot means stopping the control plane, restoring each member with a new cluster token, and restarting from the restored data directory."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p2-0505-storage-version",
+  "title": "One storage edition, converted on every read and write",
+  "spec": "A central box labelled 'etcd: one storage version' with a cylinder icon. Three client boxes around it on the left: 'Client reads v1beta1 edition', 'Client writes v1 edition', 'Client reads another edition'. Each client has a two-way arrow to the central box that passes through a small conversion gate labelled 'API server converts on read and write'. Above the gate a note 'Built-in types convert internally; CRDs use conversion: None or a conversion webhook'. Below the central box a timeline band with three steps left to right: 'Alpha', 'Beta', 'Stable v1', each with a small arrow, labelled 'Editions of the same form'. Bottom panel titled 'Before every upgrade': a command chip in monospace 'kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis' and a second chip 'pluto or kubent'. Orange outline on the conversion gate. Caption: 'Scan for removed API usage before each upgrade.'",
+  "anchor": "### Versioning and conversion",
+  "alt": "A resource stored in one storage version in etcd, converted by the API server whenever a client reads or writes a different edition.",
+  "cap": "A resource is stored in one storage version, and the API server converts objects when a client reads or writes another edition."
+ }
+]

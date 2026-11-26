@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Ten data-model and generator mistakes with their fixes</title>
+  <desc>A two-column technical table comparing ten Python data-model and generator mistakes with their recommended fixes.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Ten data-model and generator mistakes with their fixes</text>
+
+  
+  <g>
+    <rect x="60" y="80" width="680" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 104 90 L 126 128 A 4 4 0 0 1 122 134 L 82 134 A 4 4 0 0 1 78 128 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="102" y1="104" x2="102" y2="117" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="102" cy="125" r="2.5" fill="#207448"/>
+    <text x="146" y="123" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Mistake</text>
+  </g>
+
+  
+  <g>
+    <rect x="760" y="80" width="780" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 804 90 Q 826 90 826 90 Q 826 116 804 134 Q 782 116 782 90 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 793 111 L 800 119 L 815 101" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="846" y="123" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Fix</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="152" width="680" height="52" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">range(len(x))</tspan> index loops</text>
+    <rect x="760" y="152" width="780" height="52" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">enumerate, zip and other iteration helpers</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="212" width="680" height="126" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">Consuming an iterator twice, or</tspan>
+      <tspan x="80" dy="26">returning a generator where callers</tspan>
+      <tspan x="80" dy="26">expect a list, or the reverse,</tspan>
+      <tspan x="80" dy="26">without documenting it</tspan>
+    </text>
+    <rect x="760" y="212" width="780" height="126" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">convert to a list or tuple for two passes,</tspan>
+      <tspan x="780" dy="26">or return an iterable class whose <tspan font-family="ui-monospace, monospace">__iter__</tspan> builds</tspan>
+      <tspan x="780" dy="26">a fresh generator, like Countdown; <tspan font-family="ui-monospace, monospace">itertools.tee</tspan></tspan>
+      <tspan x="780" dy="26">buffers unhanded items in memory</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="346" width="680" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="374" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">Modifying a collection while iterating,</tspan>
+      <tspan x="80" dy="26">or changing arguments without meaning to</tspan>
+    </text>
+    <rect x="760" y="346" width="780" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="388" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">iterate over a copy, build a new collection</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="422" width="680" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="450" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">Defining <tspan font-family="ui-monospace, monospace">__eq__</tspan> but not <tspan font-family="ui-monospace, monospace">__hash__</tspan>,</tspan>
+      <tspan x="80" dy="26">or hashing mutable objects</tspan>
+    </text>
+    <rect x="760" y="422" width="780" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="464" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">keep them consistent</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="498" width="680" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="526" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">Treating str as bytes or the reverse,</tspan>
+      <tspan x="80" dy="26">relying on the default locale encoding</tspan>
+    </text>
+    <rect x="760" y="498" width="780" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="526" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">decode and encode at the boundary</tspan>
+      <tspan x="780" dy="26">with <tspan font-family="ui-monospace, monospace">encoding="utf-8"</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="574" width="680" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="602" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">Comprehensions for side effects, or</tspan>
+      <tspan x="80" dy="26">nested so deeply that nobody can read them</tspan>
+    </text>
+    <rect x="760" y="574" width="780" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="616" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a loop</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="650" width="680" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="678" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">A list as a queue with <tspan font-family="ui-monospace, monospace">pop(0)</tspan>,</tspan>
+      <tspan x="80" dy="26">or in on large lists</tspan>
+    </text>
+    <rect x="760" y="650" width="780" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="692" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">deque, set</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="726" width="680" height="74" rx="6" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+    <text x="80" y="756" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">Unbounded caches with <tspan font-family="ui-monospace, monospace">lru_cache(maxsize=None)</tspan></tspan>
+      <tspan x="80" dy="26">in long-running services</tspan>
+    </text>
+    <rect x="760" y="726" width="780" height="74" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="756" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">set maxsize, use a TTL cache, watch memory</tspan>
+      <tspan x="780" dy="26">and staleness; arguments must be hashable</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="808" width="680" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="836" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">A file handle left open inside</tspan>
+      <tspan x="80" dy="26">a generator stopped halfway</tspan>
+    </text>
+    <rect x="760" y="808" width="780" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="836" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">consume fully or call <tspan font-family="ui-monospace, monospace">close()</tspan> so finally</tspan>
+      <tspan x="780" dy="26">and with blocks run</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="884" width="680" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="80" y="912" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0"><tspan font-family="ui-monospace, monospace">except Exception: pass</tspan> inside</tspan>
+      <tspan x="80" dy="26">a generator pipeline</tspan>
+    </text>
+    <rect x="760" y="884" width="780" height="68" rx="6" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="780" y="926" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">let failures show; it hides data loss</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="968" width="1480" height="86" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="1005" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#207448">
+      <tspan font-weight="bold">iter(callable, sentinel) pattern:</tspan> <tspan font-family="ui-monospace, monospace">for block in iter(lambda: f.read(65536), b""):</tspan>
+      <tspan x="800" dy="30">reads a file in 64 KiB chunks</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="1072" width="1480" height="68" rx="8" fill="#207448"/>
+    <text x="800" y="1115" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Most of these are silent until the worst moment</text>
+  </g>
+</svg>

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Bridge CNI versus routed CNI on one node</title>
+  <desc>Bridge CNI versus routed CNI on one node</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Bridge CNI versus routed CNI on one node</text>
+  <g id="panel-1">
+    <rect x="40" y="90" width="740" height="585" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(65, 115)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="6" width="52" height="34" rx="4" />
+      <line x1="12" y1="23" x2="44" y2="23" />
+      <circle cx="16" cy="23" r="3" fill="#207448" />
+      <circle cx="28" cy="23" r="3" fill="#207448" />
+      <circle cx="40" cy="23" r="3" fill="#207448" />
+      <line x1="16" y1="26" x2="16" y2="34" />
+      <line x1="28" y1="26" x2="28" y2="34" />
+      <line x1="40" y1="26" x2="40" y2="34" />
+    </g>
+    <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="135" y="134">Bridge-based CNI</tspan>
+      <tspan x="135" y="168">(bridge, Flannel host-gw)</tspan>
+    </text>
+    <rect x="80" y="190" width="660" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="410" y="226" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pod A eth0 (a veth)</text>
+    <line x1="410" y1="250" x2="410" y2="270" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="80" y="272" width="660" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="410" y="308" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">host-side vethXXX on bridge cni0</text>
+    <line x1="410" y1="332" x2="410" y2="352" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="80" y="354" width="660" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="410" y="390" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pod B's veth</text>
+    <line x1="410" y1="414" x2="410" y2="434" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="80" y="436" width="660" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="410" y="472" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pod B</text>
+    <rect x="80" y="516" width="660" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="410" y="554">the node's pod CIDR such as</tspan>
+      <tspan x="410" y="584">10.244.1.0/24 is local and the</tspan>
+      <tspan x="410" y="614">bridge IP is the gateway</tspan>
+    </text>
+  </g>
+  <g id="panel-2">
+    <rect x="820" y="90" width="740" height="585" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(845, 115)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="28" y1="12" x2="28" y2="44" />
+      <line x1="12" y1="28" x2="44" y2="28" />
+      <polyline points="23,17 28,12 33,17" />
+      <polyline points="23,39 28,44 33,39" />
+      <polyline points="17,23 12,28 17,33" />
+      <polyline points="39,23 44,28 39,33" />
+    </g>
+    <text x="915" y="145" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Routed CNI (Calico)</text>
+    <rect x="860" y="185" width="660" height="60" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2" />
+    <text x="1190" y="221" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no bridge</text>
+    <rect x="860" y="259" width="660" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1190" y="296">each pod gets a /32 route on the host,</tspan>
+      <tspan x="1190" y="326">such as 10.244.1.5 dev caliXXXX scope link</tspan>
+    </text>
+    <rect x="860" y="363" width="660" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1190" y="400">proxy ARP answers the pod's ARP request</tspan>
+      <tspan x="1190" y="430">for its default gateway at 169.254.1.1</tspan>
+    </text>
+    <rect x="860" y="467" width="660" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1190" y="503" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pod, veth, host routing, veth, pod</text>
+    <rect x="860" y="541" width="660" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1190" y="578">pod default route via 169.254.1.1</tspan>
+      <tspan x="1190" y="608">dev eth0 onlink;</tspan>
+      <tspan x="1190" y="638">proxy_arp on the host-side veths</tspan>
+    </text>
+  </g>
+  <g id="bottom-strip">
+    <rect x="40" y="700" width="1520" height="250" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" y="738">Cross-node: overlay (VXLAN, IPIP, Geneve) wraps the packet in an outer packet</tspan>
+      <tspan x="800" y="768">addressed to the other node: a route such as 10.244.2.0/24 via flannel.1, tunl0 or</tspan>
+      <tspan x="800" y="798">vxlan.calico, encapsulated in UDP or IP-in-IP; costs: MTU, CPU, pod IPs the fabric</tspan>
+      <tspan x="800" y="828">cannot see. Routed: node 1 holds 10.244.2.0/24 via &lt;node2 IP&gt; (static config, BIRD</tspan>
+      <tspan x="800" y="858">or the CNI daemon); needs L2 adjacency for host-gw, or a fabric learning pod</tspan>
+      <tspan x="800" y="888">prefixes over BGP; best performance, pod IPs visible in the fabric for firewalling</tspan>
+      <tspan x="800" y="918">and monitoring. Cloud-native: pod IPs come from the VPC subnet</tspan>
+    </text>
+  </g>
+  <g id="debug-commands">
+    <rect x="40" y="970" width="420" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="250" y="1020" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">ip route | grep 10.244</text>
+    <rect x="480" y="970" width="480" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="720" y="1020" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">bridge fdb show dev flannel.1</text>
+    <rect x="980" y="970" width="580" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1270" y="1006">tcpdump -ni eth0 udp port 8472</tspan>
+      <tspan x="1270" y="1036">(Flannel, Cilium VXLAN) or 4789</tspan>
+    </text>
+  </g>
+  <g id="bottom-bar">
+    <rect x="40" y="1080" width="1520" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="1121" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Same pod to pod result, two different data paths</text>
+  </g>
+</svg>

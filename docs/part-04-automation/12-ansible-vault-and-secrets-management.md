@@ -248,12 +248,9 @@ Use the table below to compare the three main options side by side.
 
 Ansible Vault has the lowest operational weight, but it offers no dynamic secrets. HashiCorp Vault and cloud managers cost more to run, because someone has to operate the service, back it up and keep it available. In return they bring fine-grained policies, audit and dynamic credentials. Read the table by row rather than by column. Pick the row that matches your biggest worry, such as "who read this?" or "how do I rotate this in an hour?", and the best tool tends to show itself. Many production teams combine these. Ansible Vault or SOPS holds only the **bootstrap** secrets, which is the identity needed to reach the secret manager. Everything else is fetched at run time. That split keeps the number of encrypted secrets in Git small, and it means a rotation of most secrets never requires a Git commit.
 
-```mermaid
-flowchart LR
-    Git["Git Repo: vars.yml + encrypted vault.yml<br/>($ANSIBLE_VAULT;1.2;AES256;prod) or SOPS"] --> Controller["Ansible Control Node / CI Runner<br/>(--vault-id prod@vault-client.py or OIDC)"]
-    Vault["External Secret Manager<br/>(HashiCorp Vault / Cloud Secret Manager)<br/>Dynamic Leases, SSH CA, BMC Passwords"] -->|"lookup hashi_vault<br/>on control node"| Controller
-    Controller -->|"no_log: true, diff: false<br/>EnvironmentFile mode 0600"| Target["Target GPU / DB Host"]
-```
+![Comparison](./img/m4-12-1.svg)
+
+*Figure 4.12.1. Comparison, as a diagram.*
 
 If you need short-lived secrets, only a central manager from this table can issue them.
 

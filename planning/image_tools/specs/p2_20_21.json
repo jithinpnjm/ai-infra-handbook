@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p2-2021-nested-timeouts",
+  "title": "Timeouts nest: client above gateway above engine",
+  "spec": "Three nested boxes drawn as concentric frames, outermost to innermost: 'Client timeout: 60 seconds, then the user gives up and retries', 'Gateway: retries inside the overall request timeout', 'Engine: still generating for nobody'. Each inner frame is drawn shorter than the one above it, with the rule label 'Each layer timeout is shorter than the one above, with room for its retries'. Arrows on the right side labelled 'Orphan work' from the innermost frame back to a box 'Fuel of a retry storm'. A streaming panel under the frames with three limits as small chips: 'First-token timeout (per try, before output starts)', 'Inter-token idle timeout (detects a stalled stream)', 'Maximum stream duration (protects the fleet)'. Orange outline on the orphan-work arrow. Bottom note: 'Pass a deadline down instead of inventing one at each hop.'",
+  "anchor": "### 2. Timeouts must nest: client above gateway above engine",
+  "alt": "Nested timeouts from client to gateway to engine, where a mismatch leaves orphan work running after the user has given up and retried.",
+  "cap": "Each layer's timeout must be shorter than the one above it, because a mismatch leaves orphan work that fuels a retry storm."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p2-2021-429-503",
+  "title": "429 means your quota; 503 means the server is overloaded",
+  "spec": "A comparison table with three rows as cards and columns 'Code', 'Means', 'Retry on another replica', 'Client action', 'Who sets it'. Row 1 '429': 'This tenant is over its limit', 'No, same limit everywhere', 'Wait for Retry-After', 'Gateway limiter'. Row 2 '503': 'This server is overloaded or draining', 'Yes, once, within budget', 'Back off, honour Retry-After', 'Engine admission, router'. Row 3 '504 or timeout': 'No answer in time', 'Yes, if before first token', 'Cancel the first copy', 'Gateway'. A top banner card in orange outline: 'Sending 429 for everything hides whether it is the client quota or the platform'. Two dashboard panels at the bottom, labelled 'Keep 429 and 503 on separate dashboards'. A small note with the monospace chip 'Retry-After' in seconds.",
+  "anchor": "### 8. Load shedding, priority, 429 versus 503 and Retry-After",
+  "alt": "A table comparing HTTP 429, 503 and timeouts by meaning, whether to retry on another replica, the client action, and who sets each code.",
+  "cap": "HTTP 429 means the tenant is over its own limit and 503 means the server is overloaded, so the two need different retry and client actions."
+ }
+]

@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "p2-0409-architecture",
+  "title": "Split the service into tiers, so each part can change on its own",
+  "anchor": "## 1. Target architecture",
+  "spec": "A left-to-right architecture diagram with boxes and arrows. Left box, grey, icon of a person: 'Clients'. Arrow to a box 'nginx on web01: TLS, rate limits, upstream' with an arrow label 'HTTPS 443'. From nginx, two arrows labelled 'HTTP 127.0.0.1:8000 over the private network' to two boxes 'app01: uvicorn and FastAPI' and 'app02'. Both app boxes have arrows to a cylinder icon 'PostgreSQL on db01'. A dashed arrow from app01 labelled '/metrics' to a box 'Prometheus'. Group containers around the boxes: a container labelled 'web group' around nginx, a container labelled 'app group' around the two app boxes, and a container labelled 'db group' around PostgreSQL. A small green tag on the app group: 'add a host: one line in the inventory'. Bottom caption: 'Each group changes on its own, so a database upgrade does not take the website down.'",
+  "alt": "Clients reach nginx over HTTPS, nginx forwards to two app hosts on the private network, both app hosts read PostgreSQL, and Prometheus scrapes metrics from one app host.",
+  "cap": "Clients reach nginx over HTTPS, which forwards to two app hosts that share a PostgreSQL database, and Prometheus scrapes the app metrics."
+ }
+]

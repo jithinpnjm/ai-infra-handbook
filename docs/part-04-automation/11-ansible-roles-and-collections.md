@@ -82,14 +82,9 @@ The `template` module works in a similar way. It searches `./roles/<role_name>/t
 
 The same chapter, in Examples 9-7 and 9-8, shows how the two roles divide their variables. Look at the split as a worked case. In `roles/database/defaults/main.yml`, settings a user can override live in `defaults/`, such as `postgres_packages: [acl, libpq-dev, postgresql, python3-psycopg2]` and `locale: en_US.UTF-8`. A user of the database role may want a different locale, so the value is a default they can change. Paths built from those inputs live in `roles/mezzanine/vars/main.yml`, such as `mezzanine_venv_path: "{{ mezzanine_venv_home }}/{{ mezzanine_proj_name }}"` and `mezzanine_settings_path: "{{ mezzanine_proj_path }}/{{ mezzanine_proj_app }}"`. Nobody should type in the full path by hand, because it is built from the name and home directory. Setting it in `vars/` keeps the assembly in one place. The task phases are split across `setup.yml`, `django.yml` and `nginx.yml`, which `roles/mezzanine/tasks/main.yml` includes, so each phase can be read on its own.
 
-```mermaid
-flowchart TD
-    Play["Playbook (playbooks/gpu_nodes.yml)<br/>Thin wiring: hosts, pre_tasks, roles, post_tasks"] --> Spec["meta/argument_specs.yml<br/>Validates role inputs at runtime"]
-    Spec --> Defs["defaults/main.yml (Lowest Precedence)<br/>Public role API overridden by group_vars"]
-    Defs --> Vars["vars/<os_family>.yml (High Precedence)<br/>Internal OS package/path mappings via first_found"]
-    Vars --> Tasks["tasks/main.yml -> prerequisites / install / configure / validate<br/>+ handlers/main.yml (namespaced 'role | action')"]
-    Coll["Collection (ansible_collections/acme/gpu/)<br/>galaxy.yml + meta/runtime.yml + roles/ + plugins/"] -. "Packaged & versioned via<br/>ansible-galaxy collection build" .-> Play
-```
+![Anatomy of a role](./img/m4-11-1.svg)
+
+*Figure 4.11.1. Anatomy of a role, as a diagram.*
 
 ### defaults versus vars
 

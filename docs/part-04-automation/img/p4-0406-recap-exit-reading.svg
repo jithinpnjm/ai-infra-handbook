@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>The recap and the exit code are the same story at two sizes</title>
+  <desc>Visual comparison between an Ansible play recap end-of-shift report and process exit codes for CI and automation.</desc>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">The recap and the exit code are</tspan>
+    <tspan x="40" dy="55">the same story at two sizes</tspan>
+  </text>
+
+  
+  <g transform="translate(40, 175)">
+    <rect width="1520" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(30, 34)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="28" y1="6" x2="28" y2="50"/>
+      <line x1="8" y1="16" x2="48" y2="16"/>
+      <path d="M8 16 L2 36 L14 36 Z"/>
+      <path d="M48 16 L42 36 L54 36 Z"/>
+      <line x1="18" y1="50" x2="38" y2="50"/>
+    </g>
+    <text x="110" y="52" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="110" dy="0">the recap is an end-of-shift report a supervisor reads; the exit code is</tspan>
+      <tspan x="110" dy="38">the same story in one number, which is what a CI job or scheduler sees</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 330)">
+    
+    <rect width="840" height="650" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(30, 25)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="4" width="40" height="48" rx="4"/>
+      <line x1="16" y1="16" x2="40" y2="16"/>
+      <line x1="16" y1="26" x2="40" y2="26"/>
+      <line x1="16" y1="36" x2="30" y2="36"/>
+    </g>
+
+    
+    <rect x="30" y="95" width="780" height="100" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="50" y="137" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="50" dy="0">gpu001 : ok=12 changed=3 unreachable=0</tspan>
+      <tspan x="50" dy="34">failed=0 skipped=2 rescued=0 ignored=0</tspan>
+    </text>
+
+    
+    <rect x="30" y="215" width="780" height="100" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
+    <text x="50" y="257" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="50" dy="0">gpu002 : ok=12 changed=3 unreachable=0</tspan>
+      <tspan x="50" dy="34">failed=1 skipped=2 rescued=0 ignored=0 &lt;- failure</tspan>
+    </text>
+
+    
+    <rect x="30" y="335" width="780" height="285" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="55" y="385" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="55" dy="0">both hosts ran the same play; gpu002 reports</tspan>
+      <tspan x="55" dy="38">one failed task and that line is marked; a single</tspan>
+      <tspan x="55" dy="38">failed counter is enough to make the whole run</tspan>
+      <tspan x="55" dy="38">worth investigating, so read every line,</tspan>
+      <tspan x="55" dy="38">not only the first one</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(920, 330)">
+    
+    <rect width="640" height="650" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(30, 25)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="4"/>
+      <line x1="4" y1="18" x2="52" y2="18"/>
+      <polyline points="12,28 18,34 12,40"/>
+      <line x1="24" y1="40" x2="34" y2="40"/>
+    </g>
+
+    
+    <g transform="translate(30, 95)">
+      <rect width="580" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+      <text x="20" y="27" font-family="monospace" font-size="24" fill="#303a36">0 success</text>
+    </g>
+
+    
+    <g transform="translate(30, 142)">
+      <rect width="580" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+      <text x="20" y="27" font-family="monospace" font-size="24" fill="#303a36">1 generic error</text>
+    </g>
+
+    
+    <g transform="translate(30, 189)">
+      <rect width="580" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="20" y="27" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">2 one or more hosts failed</text>
+    </g>
+
+    
+    <g transform="translate(30, 236)">
+      <rect width="580" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+      <text x="20" y="27" font-family="monospace" font-size="24" fill="#303a36">3 one or more hosts unreachable</text>
+    </g>
+
+    
+    <g transform="translate(30, 283)">
+      <rect width="580" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+      <text x="20" y="27" font-family="monospace" font-size="24" fill="#303a36">4 parse error</text>
+    </g>
+
+    
+    <g transform="translate(30, 330)">
+      <rect width="580" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+      <text x="20" y="27" font-family="monospace" font-size="24" fill="#303a36">5 bad or incomplete options</text>
+    </g>
+
+    
+    <g transform="translate(30, 377)">
+      <rect width="580" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+      <text x="20" y="27" font-family="monospace" font-size="24" fill="#303a36">99 interrupted</text>
+    </g>
+
+    
+    <g transform="translate(30, 424)">
+      <rect width="580" height="38" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+      <text x="20" y="27" font-family="monospace" font-size="24" fill="#303a36">250 unexpected error</text>
+    </g>
+
+    
+    <g transform="translate(30, 485)">
+      <rect width="580" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(24, 40)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 4 L44 12 V26 C44 38 24 48 24 48 C24 48 4 38 4 26 V12 Z"/>
+        <polyline points="14,24 20,30 32,18"/>
+      </g>
+      <text x="85" y="58" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        <tspan x="85" dy="0">in CI treat any non-zero</tspan>
+        <tspan x="85" dy="36">exit as a failure</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 1010)">
+    <rect width="1520" height="70" rx="12" fill="#207448"/>
+    <text x="760" y="44" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Read the scorecard, then the number</text>
+  </g>
+</svg>

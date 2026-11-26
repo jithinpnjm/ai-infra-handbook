@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p2-0230-slow-funnel",
+  "title": "Slowness is a funnel: measure it, find the limit, find the segment, then split loss from delay",
+  "anchor": "### Performance: \"slow\", \"stalls\", \"low throughput\"",
+  "spec": "A vertical funnel drawn as five stacked trapezoids narrowing downward, with numbered circles 1 to 5. Step 1, top, wide: 'Quantify: throughput, latency percentiles, retransmit rate, against baseline and line rate or BDP'. Step 2: 'Find the limit: ss -ti limiter flags, CPU and softirq, NIC drops, PFC, ECN, MTU'. Step 3: 'Find the segment: iperf3 or ib_write_bw between pairs, halving the path'. Step 4: 'Loss or latency: nstat and tcpretrans for loss, ss -ti and ping for RTT'. Step 5, bottom, narrow, orange outline: 'One flow or all flows: ECMP hash collisions, elephant flows, single-core limits'. A side box on the right: 'Step 6: compare with a healthy node'. Caption at the bottom: 'Each step removes part of the search space before the next one starts.'",
+  "alt": "A five-step funnel for slow networks quantifies the problem, finds the limit, finds the segment, separates loss from latency, and checks one flow versus all flows.",
+  "cap": "Slowness is traced through a funnel that quantifies the problem, finds the limit and segment, separates loss from delay, and checks whether one flow or all flows are affected."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p2-0230-dns-race",
+  "title": "An exact five-second delay is a timer: A and AAAA queries race on one socket",
+  "anchor": "### Case 13: DNS 5-second delays in Kubernetes",
+  "spec": "A timeline with three lanes: 'Pod resolver', 'conntrack and NAT', 'CoreDNS'. Time runs left to right. Step 1, in the pod lane: 'A and AAAA queries sent in parallel from one source port'. Step 2, in the conntrack lane, orange outline: 'Both queries race for one NAT entry, and one reply is lost'. Step 3, in the CoreDNS lane: 'Replies come back, one is dropped in the race'. Step 4, a long bracket across the pod lane: 'Resolver waits out its 5-second default timeout'. Step 5, in the pod lane: 'Lookup finally succeeds after 5 s'. Side note in the pod lane: 'ndots:5 multiplies the number of queries for short names.' Mitigation box at the bottom, green: 'single-request-reopen, NodeLocal DNSCache, lower ndots, or a newer kernel'. Caption: 'An exact N-second delay points to a timer, so match it to a default.'",
+  "alt": "Parallel A and AAAA queries from one socket race in conntrack, one reply is lost, and the resolver waits out its 5-second timeout.",
+  "cap": "Parallel A and AAAA queries from one socket race in conntrack and one reply is lost, so the resolver waits out its five-second timeout."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p2-0230-slow-rail",
+  "title": "One slow rail slows every rank, because synchronous training waits for the slowest member",
+  "anchor": "### Case 14: Silent corruption and a \"slow rail\" in a GPU cluster",
+  "spec": "A bar chart of step time per rank in a row of columns labelled 'healthy rail' (several, drawn as pale green bars of similar height) and one column, labelled 'slow rail', drawn in orange outline with a taller bar. A horizontal dashed line across the top labelled 'AllReduce barrier: every rank waits for the slowest'. Below the bars, a chain of causes from left to right: 'Dirty or failing optic' leading to 'low DOM Rx power' leading to 'high pre-FEC bit error rate, rx_corrected_bits rising' leading to 'CRC errors and RDMA go-back-N retransmissions'. A grey note: 'The link never goes down, so link-down alerts stay green.' A green box at the bottom: 'Alert on FEC and CRC trends, low DOM power and per-rail retransmits. Drain the node, then clean or replace the optic.' Caption: 'Watch trends in error counters, not only link state.'",
+  "alt": "One rail with a failing optic has a taller step time, and the synchronous barrier makes every rank wait for it, while the link stays up.",
+  "cap": "A single failing optic on one rail stretches every rank's step time, because synchronous training waits at the barrier for the slowest rail."
+ }
+]

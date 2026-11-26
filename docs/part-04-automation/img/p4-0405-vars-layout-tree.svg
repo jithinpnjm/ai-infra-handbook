@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The inventory directory for two environments, with who owns what</title>
+  <desc>Visual explanation of Ansible inventory directory structure for prod and staging, group_vars, host_vars precedence, and single-environment targeting.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The inventory directory for two environments, with who owns what</text>
+
+  
+  <g id="orange-callout">
+    <rect x="40" y="105" width="1520" height="96" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <rect x="64" y="125" width="56" height="56" rx="8" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 76 143 L 88 153 L 76 163" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="94" y1="163" x2="108" y2="163" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+
+    
+    <text x="140" y="145" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan>select one environment with </tspan><tspan font-family="monospace" font-weight="bold">-i inventories/prod</tspan><tspan>: each environment has its own tree and a run can only read the</tspan>
+      <tspan x="140" dy="32">one it points at; never separate Git branches for environments (chapter 4.1)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="inventories-tree">
+    <rect x="40" y="222" width="950" height="866" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <path d="M 64 246 L 82 246 L 90 256 L 118 256 A 4 4 0 0 1 122 260 L 122 280 A 4 4 0 0 1 118 284 L 64 284 A 4 4 0 0 1 60 280 L 60 250 A 4 4 0 0 1 64 246 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="134" y="272" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">inventories/</text>
+
+    
+    <path d="M 75 292 L 75 842" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 4"/>
+
+    
+    <g id="prod-panel">
+      <rect x="65" y="296" width="900" height="526" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      
+      <rect x="85" y="314" width="44" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="93" cy="319" r="1.5" fill="#207448"/>
+      <rect x="85" y="328" width="44" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="93" cy="333" r="1.5" fill="#207448"/>
+      <rect x="85" y="342" width="44" height="10" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="93" cy="347" r="1.5" fill="#207448"/>
+      <text x="142" y="338" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">prod/</text>
+
+      
+      <rect x="95" y="364" width="845" height="42" rx="6" fill="#f5f8f5" stroke="#c0d4c5" stroke-width="1.5"/>
+      
+      <path d="M 112 374 L 126 374 L 132 380 L 132 396 L 112 396 Z" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="145" y="394" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">hosts.yml</text>
+
+      
+      <rect x="95" y="416" width="845" height="268" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      <path d="M 112 432 L 124 432 L 130 439 L 148 439 L 148 454 L 112 454 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="158" y="450" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">group_vars/</text>
+
+      
+      
+      <rect x="120" y="466" width="800" height="66" rx="6" fill="#ffffff" stroke="#d5e3d8" stroke-width="1"/>
+      <path d="M 134 485 L 144 485 L 150 491 L 150 511 L 134 511 Z" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="162" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="monospace" font-weight="bold">all/ main.yml</tspan><tspan> (non-secret defaults for all hosts in prod)</tspan>
+        <tspan x="162" dy="28">and </tspan><tspan font-family="monospace" font-weight="bold">vault.yml</tspan><tspan> (encrypted secrets, 4.12)</tspan>
+      </text>
+
+      
+      <rect x="120" y="540" width="800" height="42" rx="6" fill="#ffffff" stroke="#d5e3d8" stroke-width="1"/>
+      <path d="M 134 550 L 144 550 L 150 556 L 150 572 L 134 572 Z" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="162" y="569" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="monospace" font-weight="bold">gpu/ main.yml</tspan><tspan> (driver, CUDA, NCCL defaults)</tspan>
+      </text>
+
+      
+      <rect x="120" y="590" width="800" height="42" rx="6" fill="#ffffff" stroke="#d5e3d8" stroke-width="1"/>
+      <path d="M 134 600 L 144 600 L 150 606 L 150 622 L 134 622 Z" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="162" y="619" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="monospace" font-weight="bold">gpu_h100.yml</tspan><tspan> (single-file form also works)</tspan>
+      </text>
+
+      
+      <rect x="120" y="638" width="800" height="38" rx="6" fill="#ffffff" stroke="#d5e3d8" stroke-width="1"/>
+      <path d="M 134 646 L 144 646 L 150 652 L 150 666 L 134 666 Z" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="162" y="665" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">slurm_controller.yml</text>
+
+      
+      <rect x="95" y="694" width="845" height="114" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      <path d="M 112 708 L 124 708 L 130 715 L 148 715 L 148 730 L 112 730 Z" fill="none" stroke="#207448" stroke-width="2.5"/>
+      <text x="158" y="726" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">host_vars/</text>
+
+      
+      <rect x="120" y="744" width="800" height="50" rx="6" fill="#ffffff" stroke="#d5e3d8" stroke-width="1"/>
+      <path d="M 134 758 L 144 758 L 150 764 L 150 780 L 134 780 Z" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="162" y="777" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="monospace" font-weight="bold">gpu033.yml</tspan><tspan> (one-off exceptions)</tspan>
+      </text>
+    </g>
+
+    
+    
+    <g id="staging-panel">
+      <rect x="65" y="836" width="415" height="236" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      
+      <path d="M 90 854 L 106 854 M 98 854 L 98 868 L 84 888 A 4 4 0 0 0 88 894 L 108 894 A 4 4 0 0 0 112 888 L 98 868" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="126" y="878" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">staging/</text>
+
+      
+      <rect x="85" y="910" width="375" height="58" rx="6" fill="#f5f8f5" stroke="#c0d4c5" stroke-width="1.5"/>
+      <path d="M 104 926 L 116 926 L 122 932 L 122 950 L 104 950 Z" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="136" y="947" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">hosts.yml</text>
+
+      
+      <rect x="85" y="986" width="375" height="58" rx="6" fill="#f5f8f5" stroke="#c0d4c5" stroke-width="1.5"/>
+      <path d="M 104 1002 L 116 1002 L 122 1008 L 138 1008 L 138 1024 L 104 1024 Z" fill="none" stroke="#207448" stroke-width="2"/>
+      <text x="146" y="1023" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">group_vars/ ...</text>
+    </g>
+
+    
+    <g id="shared-vars-panel">
+      <rect x="495" y="836" width="470" height="236" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      
+      <circle cx="525" cy="862" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="555" cy="852" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="555" cy="874" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="531" y1="859" x2="549" y2="854" stroke="#207448" stroke-width="2.5"/>
+      <line x1="531" y1="865" x2="549" y2="871" stroke="#207448" stroke-width="2.5"/>
+
+      
+      <text x="525" y="920" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="monospace" font-weight="bold" font-size="28" fill="#207448">shared_vars/</tspan>
+        <tspan x="525" dy="36">optional; load with</tspan>
+        <tspan x="525" dy="34" font-family="monospace" font-weight="bold">vars_files or include_vars</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="right-column">
+    
+    
+    <g id="callout-1">
+      <rect x="1015" y="222" width="545" height="262" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      
+      <rect x="1045" y="244" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="1069" cy="268" r="12" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="1078" y1="277" x2="1089" y2="288" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+      
+      <text x="1045" y="336" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1045" dy="0">Ansible looks for group_vars and</tspan>
+        <tspan x="1045" dy="34">host_vars next to the inventory file</tspan>
+        <tspan x="1045" dy="34">or directory, and next to the playbook</tspan>
+      </text>
+    </g>
+
+    
+    <g id="callout-2">
+      <rect x="1015" y="508" width="545" height="298" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      
+      <rect x="1045" y="528" width="22" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="1075" y="528" width="22" height="28" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 1056 564 L 1071 576 L 1086 564" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+      
+      <text x="1045" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1045" dy="0">each entry can be name.yml or a</tspan>
+        <tspan x="1045" dy="34">directory name/ that holds several files,</tspan>
+        <tspan x="1045" dy="34">merged in alphabetical order, so</tspan>
+        <tspan x="1045" dy="34">main.yml and vault.yml sit side by side</tspan>
+      </text>
+    </g>
+
+    
+    <g id="analogy-card">
+      <rect x="1015" y="830" width="545" height="258" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      
+      <rect x="1045" y="852" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="1045" y1="880" x2="1085" y2="880" stroke="#207448" stroke-width="3"/>
+      <line x1="1073" y1="852" x2="1073" y2="908" stroke="#207448" stroke-width="3"/>
+      <rect x="1053" y="888" width="12" height="12" fill="none" stroke="#207448" stroke-width="2.5"/>
+
+      
+      <text x="1045" y="950" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="1045" dy="0">hosts file is the floor plan,</tspan>
+        <tspan x="1045" dy="38">group_vars and host_vars are</tspan>
+        <tspan x="1045" dy="38">room labels and fittings</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1114" width="1520" height="58" rx="8" fill="#207448"/>
+    <text x="800" y="1152" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">One inventory directory per environment</text>
+  </g>
+</svg>

@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>The method: split the path in half</title>
+  <desc>Diagnostic decision tree splitting network troubleshooting paths based on client error text</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The method: split the path in half</text>
+
+  
+  <rect x="565" y="105" width="470" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <rect x="595" y="125" width="46" height="42" rx="5" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="595" y1="138" x2="641" y2="138" stroke="#207448" stroke-width="2"/>
+  <circle cx="604" cy="132" r="2" fill="#207448"/>
+  <circle cx="611" cy="132" r="2" fill="#207448"/>
+  <path d="M 605 152 L 613 157 L 605 162" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="617" y1="162" x2="628" y2="162" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="660" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client error text</text>
+
+  
+  <line x1="800" y1="190" x2="800" y2="245" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="565" y="245" width="470" height="85" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+  <path d="M 618 266 L 638 286 L 618 306 L 598 286 Z" fill="none" stroke="#db8129" stroke-width="3"/>
+  <path d="M 618 276 L 618 296" fill="none" stroke="#db8129" stroke-width="2.5"/>
+  <path d="M 608 286 L 628 286" fill="none" stroke="#db8129" stroke-width="2.5"/>
+  <text x="660" y="299" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Which error?</text>
+
+  
+  <path d="M 800 330 L 800 365 L 590 365" fill="none" stroke="#207448" stroke-width="3"/>
+  <rect x="460" y="345" width="130" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="525" y="373" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">refused</text>
+  <path d="M 460 365 L 280 365 L 280 460" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="800" y1="330" x2="800" y2="395" stroke="#207448" stroke-width="3"/>
+  <rect x="735" y="395" width="130" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="423" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">timeout</text>
+  <line x1="800" y1="435" x2="800" y2="460" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 800 365 L 1015 365" fill="none" stroke="#207448" stroke-width="3"/>
+  <rect x="1015" y="345" width="200" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1115" y="373" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">reset or stall</text>
+  <path d="M 1215 365 L 1320 365 L 1320 460" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="45" y="460" width="470" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="280" cy="495" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="274" cy="495" r="3" fill="#207448"/>
+  <circle cx="286" cy="495" r="3" fill="#207448"/>
+  <path d="M 280 477 L 280 470" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 260 488 C 252 493 252 505 260 510" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 300 488 C 308 493 308 505 300 510" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="280" y="555" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Is anything listening?</text>
+  <rect x="200" y="588" width="160" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="280" y="619" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">ss -ltn</text>
+
+  
+  <rect x="565" y="460" width="470" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="782" y="482" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="782" y1="495" x2="818" y2="495" stroke="#207448" stroke-width="2"/>
+  <path d="M 770 489 L 776 495 L 770 501" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 830 489 L 824 495 L 830 501" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="800" y="546" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Name resolves?</text>
+  <text x="800" y="580" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Packet leaves?</text>
+  <rect x="715" y="605" width="170" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="636" text-anchor="middle" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">tcpdump</text>
+
+  
+  <rect x="1085" y="460" width="470" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1320" cy="495" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+  <polyline points="1320,483 1320,495 1330,495" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 1308 479 L 1304 475" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <path d="M 1332 479 L 1336 475" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="1320" y="565" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Idle timeout,</text>
+  <text x="1320" y="610" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">conntrack, MTU</text>
+
+  
+  <line x1="280" y1="670" x2="280" y2="760" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="800" y1="670" x2="800" y2="760" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="1320" y1="670" x2="1320" y2="760" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="45" y="760" width="470" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="280" cy="795" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="273" y1="788" x2="287" y2="802" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="287" y1="788" x2="273" y2="802" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="280" cy="795" r="23" fill="none" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <text x="280" y="865" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">Wrong port, crashed process,</text>
+  <text x="280" y="910" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">bind address</text>
+
+  
+  <rect x="565" y="760" width="470" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <path d="M 800 777 L 818 785 C 818 803 800 815 800 815 C 800 815 782 803 782 785 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <line x1="792" y1="795" x2="808" y2="795" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="800" y1="787" x2="800" y2="805" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="800" y="865" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">DNS, route, firewall,</text>
+  <text x="800" y="910" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">full queue, MTU</text>
+
+  
+  <rect x="1085" y="760" width="470" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="1302" y="781" width="36" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 1308 795 L 1314 795 L 1317 788 L 1323 802 L 1326 795 L 1332 795" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1320" y="865" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Middlebox state,</text>
+  <text x="1320" y="910" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">keepalive, PMTU</text>
+</svg>

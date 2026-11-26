@@ -28,6 +28,10 @@ The question names several symptoms at once. A good candidate does not chase all
 
 ### 1. Debug in a fixed order, from the object outward
 
+![A fixed debugging order for a pod, from the STATUS column and events through logs and exec to the node, kubelet, runtime, network and DNS.](./img/p2-2023-outward-order.svg)
+
+*Figure 20.23.1. A fixed debugging order moves from the cheap pod-level checks to the node, kubelet, runtime, network and DNS in turn.*
+
 Picture the page: an inference pod is misbehaving, and you have a dozen places to look. If you pick at random, you lose time, and the interviewer sees it. The order below goes from the cheapest question to the most expensive one. Each step answers one question: is the problem in this layer, or in the one below it?
 
 Start with `kubectl get pod`. The STATUS column often names the failure, such as `Pending`, `CrashLoopBackOff` or `ImagePullBackOff`. It is a one-word summary, and it is the cheapest clue you will get.
@@ -42,22 +46,17 @@ If the pod looks fine, move down a layer. Look at the node with `kubectl describ
 
 Then the container runtime, with `crictl` as in [5.25](../part-05-kubernetes/25-troubleshooting-kubernetes-from-the-node-crictl-nsenter-tcpdump-and-ip.md). Then the network plugin, and last DNS. Each layer has its own owner, so a clean answer at one layer tells you where to go next.
 
-```mermaid
-flowchart TD
-  A["get pod: STATUS"] --> B["describe pod: Events"]
-  B --> C["get events: namespace"]
-  C --> D["logs and logs --previous"]
-  D --> E["exec into container"]
-  E --> F["describe node: Conditions, Taints"]
-  F --> G["kubelet journal"]
-  G --> H["container runtime"]
-  H --> I["CNI and pod network"]
-  I --> J["DNS"]
-```
+![Debug in a fixed order, from the object outward](./img/m20-23-1.svg)
+
+*Figure 20.23.2. Debug in a fixed order, from the object outward, as a diagram.*
 
 The seams matter more than the order. Think of each seam as a handoff between two teams, and ask which team holds the object right now. A Pending pod belongs to the scheduler and never reaches the kubelet. A restart belongs to the kubelet. A Service with no backends belongs to the EndpointSlice controller. **Name which component owns the symptom before you run the next command.**
 
 ### 2. Know who owns each decision
+
+![Seven Kubernetes symptoms, each matched to the component that owns the decision and the first object to read.](./img/p2-2023-owner-table.svg)
+
+*Figure 20.23.3. Each Kubernetes symptom has one owning component, such as the scheduler for Pending pods or the EndpointSlice controller for a Service with no endpoints.*
 
 A pod is stuck, and three parts of the cluster each seem to think it is someone else's problem. That is the normal shape of a Kubernetes failure. Most of them are a disagreement between three loops. The scheduler places a pod using requests and node capacity. The kubelet starts it, probes it, restarts it and evicts it. Controllers watch objects and make more of them. Each loop reads different fields, so each fails in its own way.
 
@@ -74,6 +73,10 @@ A pod is stuck, and three parts of the cluster each seem to think it is someone 
 Picture a Service that has no endpoints, next to a pod whose logs look healthy. The link between them is a single chain. Production Kubernetes, chapter 6, says the Endpoints controller marks an address ready by reading the pod's Ready condition. The pod's Ready condition in turn depends on readiness probes, which are the checks that decide whether a pod should receive traffic. That single chain explains half of the "service has no endpoints" calls, so check the probe before you blame the selector.
 
 ### 3. GPUs add three facts you must be able to say
+
+![Three GPU facts: a device plugin advertises GPUs to the node, GPUs are requested in limits, and GPU node groups carry a taint that pods must tolerate.](./img/p2-2023-gpu-three-facts.svg)
+
+*Figure 20.23.4. Three GPU facts matter in Kubernetes: a device plugin advertises GPUs, GPUs go in limits, and GPU node groups are tainted.*
 
 A new GPU node joins the cluster, and the scheduler sees no GPUs on it. The reason is that a GPU is not built in to Kubernetes. A vendor device plugin advertises it. The Kubernetes scheduling-GPUs page says an administrator installs drivers and the vendor plugin, and then the cluster exposes a resource such as `nvidia.com/gpu`. If the plugin is not running on a node, that node advertises zero and every GPU pod stays Pending. Advertising is the word for the node telling the scheduler what it has.
 
@@ -95,19 +98,35 @@ This habit is the one most candidates skip. Before every drill, say the layer yo
 
 ### "A GPU pod is Pending. Walk me through it."
 
+![Decision tree for a Pending GPU pod: read the FailedScheduling event, then check insufficient GPUs, untolerated taints or selector mismatch](./img/x23-gpu-pending-branches.svg)
+
+*Figure 20.23.5. Pending GPU pod: the scheduler event names one of three causes, and a hit ResourceQuota never creates a Pod at all.*
+
 Start the answer with the sentence the interviewer can hear first. Say: "Pending means the scheduler has not placed it, so I read the scheduler's reason in the pod events." Then run `kubectl describe pod` and read the FailedScheduling line, which is the scheduler's own reason. State the three outcomes. Insufficient `nvidia.com/gpu` means no node has a free GPU in its Allocatable. Untolerated taint means the pod needs a toleration. A selector mismatch means labels.
 
 Follow up with the next branch. If Allocatable is zero on a node that has GPUs, the device plugin is the suspect. If a ResourceQuota is hit, the pod never exists, because the API server returns 403 and the ReplicaSet records the failure.
 
 ### "A pod restarts every few minutes. OOM or probe?"
 
+![Decision flow for a restarting pod: Last State OOMKilled with exit code 137 points to the memory limit, while Unhealthy and Killing events point to a liveness kill](./img/x23-oom-or-liveness.svg)
+
+*Figure 20.23.6. Restart loop: OOMKilled with exit code 137 is a memory-limit kill, and Unhealthy and Killing events with no OOMKilled is a liveness kill.*
+
 Imagine the interviewer asks while the pod restarts in front of you. Say: "I read `Last State` from `describe`." The two causes look alike from the outside, because both restart the container. What differs is who pulled the trigger. OOMKilled with the memory limit is a kernel kill. A liveness failure shows `Unhealthy` and `Killing` events with no OOMKilled. Then name the fix for each. A limit, a leak or a batch size for memory. A startup probe or a longer failure window for slow loading.
 
 ### "A node is NotReady. What happens to its pods?"
 
+![Timeline of a NotReady node from missed heartbeat through the five minute wait and rate-limited evictions to rescheduled pods](./img/x23-node-notready-cascade.svg)
+
+*Figure 20.23.7. NotReady node: missed heartbeats make the node Unknown, the controller waits five minutes, and evictions are rate limited so a partition does not cause a storm.*
+
 A node goes NotReady in the middle of the afternoon, and several pods on it stop answering. Say: "No heartbeat on the Lease turns Ready to Unknown, the node gets unreachable taints, and by default the node controller waits five minutes before it evicts." Add the rate limits and the zone rule. Say that you first find out whether it is the machine, the kubelet or the network, and you protect capacity before you fix the cause.
 
 ### "How do you upgrade GPU nodes without an outage?"
+
+![A per-node loop of drain, upgrade, check Allocatable and uncordon with a gate before uncordoning.](./img/p3-2023-gpu-upgrade-steps.svg)
+
+*Figure 20.23.8. Capacity is protected by upgrading one node at a time and gating on restored GPU Allocatable.*
 
 Picture a GPU upgrade that must not drop serving capacity. Say: "One node at a time, with a PDB that allows one disruption, and a check that the device plugin is back and Allocatable is restored before the next node." The kubeadm page says a minor kubelet upgrade requires draining first, and drain needs `--ignore-daemonsets`. Name the two traps. A PDB set to zero allowed disruptions blocks drain forever. A missing plugin after the upgrade leaves the node advertising zero GPUs.
 
@@ -155,6 +174,10 @@ Notice what this line does. It moves the check to the merge request, before a po
 
 ### Drill 2: ImagePullBackOff on a huge model image
 
+![Two columns compare an old node pool that pulls the image with a new pool blocked by missing egress and a pull secret.](./img/p3-2023-pull-by-pool.svg)
+
+*Figure 20.23.9. A failure that lines up with one pool points at what differs about that pool.*
+
 **Interviewer opens.** "A new replica of the 40 GB engine image sits in ImagePullBackOff on three of ten new nodes. Go."
 
 Notice the word "new". The new nodes are the clue, because the older nodes pulled the same image without trouble.
@@ -179,6 +202,10 @@ The table places the failure at the pull step, and the one difference is the poo
 The line turns a vague worry into a number you can track. Pull time per pool is something you can graph, and a pool that has not pulled the image is a pool you should not scale into.
 
 ### Drill 3: CrashLoopBackOff, OOM or probe kill
+
+![A timeline shows a liveness probe firing at 5 seconds during a 90 second model load and a startup probe window of 300 seconds that fixes it.](./img/p3-2023-startup-probe-timeline.svg)
+
+*Figure 20.23.10. A liveness probe cannot tell a slow process from a stuck one, so a startup probe covers the load time.*
 
 **Interviewer opens.** "The `llm-server` pods restart every four minutes. Restart count is 40. Go."
 
@@ -207,6 +234,10 @@ A prevention line works best when it names the probe type. A reviewer can check 
 
 ### Drill 4: A node goes NotReady
 
+![Four limiters on node eviction and an ordered fix list for a node that stopped posting status.](./img/p3-2023-eviction-limits.svg)
+
+*Figure 20.23.11. Eviction waits five minutes and is rate limited, so confirm capacity before touching the node object.*
+
 **Interviewer opens.** "`kube-worker-1` went NotReady twelve minutes ago. Eight inference pods ran there. Go."
 
 Treat the word "ago" as a clock. The eviction timer has already been running for part of that time, so ask first how long the node has been silent.
@@ -233,6 +264,10 @@ The table separates the node's own report from the state of the machine. Those t
 Notice the link between the alert and the eviction delay. An alert that fires before the delay gives you time to act, and that time is the difference between a reschedule and an outage.
 
 ### Drill 5: Eviction storm
+
+![Two lanes contrast kubelet eviction under memory pressure with a kernel OOM kill and list the eviction order.](./img/p3-2023-eviction-vs-oom.svg)
+
+*Figure 20.23.12. Evicted pods do not restart by themselves while OOM-killed containers do, so recovery differs.*
 
 **Interviewer opens.** "Batch pods keep getting `Evicted` across the GPU pool. Latency on the inference pods is climbing too. Go."
 
@@ -263,6 +298,10 @@ The three parts of this line are three separate controls: request sizing, pool s
 
 ### Drill 6: A PDB blocks a drain
 
+![Arithmetic showing three replicas minus minAvailable three gives zero allowed disruptions and the maxUnavailable fix.](./img/p3-2023-pdb-arithmetic.svg)
+
+*Figure 20.23.13. A budget equal to the replica count allows no voluntary eviction, so change the budget instead of deleting pods.*
+
 **Interviewer opens.** "We are rolling GPU node upgrades. `kubectl drain` on `gpu-node-2` has hung for thirty minutes. Go."
 
 A hung drain is not a crash. It is a polite refusal, and the question is which rule is refusing.
@@ -290,6 +329,10 @@ A PDB line with a number in it is easy to audit. Anyone can list the PDBs and ch
 
 ### Drill 7: CoreDNS slow for half the lookups
 
+![A gateway query splits with probability 0.5 across two CoreDNS replicas, one healthy and one slow on a loaded node.](./img/p3-2023-dns-half-slow.svg)
+
+*Figure 20.23.14. Intermittent failures often mean one bad backend, so query each replica by its IP.*
+
 **Interviewer opens.** "Gateway requests sometimes stall for five seconds, and only on the first call. Pods are healthy. Go."
 
 Half of the lookups being slow is a clue in itself. A problem that hits one replica and not the other points at a single backend, not at the whole service.
@@ -314,6 +357,10 @@ The table shows that the failure is intermittent and tied to one replica. Interm
 The second half of the line is the check that catches a failure before users do. A lookup that fails in a test is far cheaper than a lookup that fails in production.
 
 ### Drill 8: A Service has no endpoints
+
+![A Service selector with a one-letter typo is compared with pod labels, and a fork shows the readiness variant.](./img/p3-2023-no-endpoints.svg)
+
+*Figure 20.23.15. Healthy pods do not help when the selector selects nothing or the pods are not Ready.*
 
 **Interviewer opens.** "The gateway gets connection refused from the `llm-server` Service. All three pods are Running. Go."
 
@@ -342,6 +389,10 @@ Shared templates are the real fix here. When the label lives in one place, the S
 
 ### Drill 9: The HPA does not scale
 
+![A utilisation fraction with an empty denominator shows why the HPA target reads unknown when CPU requests are missing.](./img/p3-2023-hpa-unknown.svg)
+
+*Figure 20.23.16. No CPU request means nothing to divide by, and CPU is the wrong signal for a GPU server anyway.*
+
 **Interviewer opens.** "Load doubled. The HPA still shows three replicas. Go."
 
 | Ask about | The interviewer says |
@@ -366,6 +417,10 @@ The table shows an HPA that cannot read its metric. The question is whether the 
 An alert on unknown targets catches the HPA problem while it is still small. A scaler that cannot read its metric has stopped working without telling anyone.
 
 ### Drill 10: Device plugin missing after an upgrade
+
+![A chain from the recreated tainted nodes to the missing device plugin pods to zero allocatable GPUs, with an upgrade gate.](./img/p3-2023-plugin-after-upgrade.svg)
+
+*Figure 20.23.17. Check Allocatable shows the GPU count before uncordoning an upgraded node.*
 
 **Interviewer opens.** "We upgraded two GPU nodes last night. This morning new GPU pods are Pending on them. Old pods still run. Go."
 
@@ -394,6 +449,10 @@ This line names two checks. The toleration is a manifest rule. The Allocatable c
 
 ### Drill 11: etcd is slow after a topology change
 
+![One distant etcd member at 60 ms slows the control plane while serving pods continue to answer.](./img/p3-2023-etcd-split.svg)
+
+*Figure 20.23.18. A far-away etcd member slows deploys and kubectl while pods without API dependencies keep serving.*
+
 **Interviewer opens.** "kubectl commands take ten seconds. Deploys are slow. Running pods are fine. Go."
 
 The key phrase is "running pods are fine". The control plane is slow, and the data plane is not, so the problem sits in the API layer.
@@ -420,6 +479,10 @@ The table shows a control plane problem that the serving pods do not feel. Use t
 The odd count keeps a clear majority available for leader election. The latency alert is the early warning that the symptoms of this drill are coming back.
 
 ### Drill 12: An admission webhook outage blocks deploys
+
+![Loop showing a fail-closed admission webhook blocking the creation of its own replacement pods, and the three steps that break the loop](./img/x23-webhook-deadlock-loop.svg)
+
+*Figure 20.23.19. Webhook deadlock: a fail-closed webhook with wide scope rejects the pods it needs to restart, so the fix is to exclude system namespaces and set failurePolicy to Ignore.*
 
 **Interviewer opens.** "Every deploy fails. Even the CoreDNS pods cannot restart. Go."
 

@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>A bad config push: stop the spread first, then revert and verify</title>
+  <desc>Visual guide for responding to a bad config push: pause sync to stop the spread, revert to known good commit, verify 503 rates, and add validation and canaries.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="60" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A bad config push: stop the spread first, then revert and verify</text>
+
+  
+  <g id="top-box">
+    <rect x="60" y="110" width="900" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 147)">
+      <polygon points="28,4 54,50 2,50" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="42" r="2.5" fill="#207448" />
+    </g>
+    <text x="165" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Config sync finished at 11:42,</tspan>
+      <tspan x="165" dy="42">routing table has an empty <tspan font-family="monospace">upstreams</tspan> list</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="510" y1="240" x2="510" y2="276" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step-1">
+    <rect x="60" y="280" width="900" height="140" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="110" cy="350" r="24" fill="#207448" />
+    <text x="110" y="350" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g transform="translate(150, 322)">
+      <circle cx="28" cy="28" r="25" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="22" y1="18" x2="22" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="34" y1="18" x2="34" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="235" y="338" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pause the sync before the next region</text>
+    <text x="235" y="382" font-family="sans-serif" font-size="24" fill="#303a36">The next region is scheduled in six minutes</text>
+  </g>
+
+  
+  <line x1="510" y1="420" x2="510" y2="456" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step-2">
+    <rect x="60" y="460" width="900" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="110" cy="535" r="24" fill="#207448" />
+    <text x="110" y="535" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g transform="translate(150, 507)">
+      <circle cx="16" cy="18" r="7" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="40" cy="38" r="7" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 16 25 L 16 42 Q 16 48 24 48 L 33 48" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 40 14 L 30 22 L 40 30" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text x="235" y="506" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="235" dy="0">Revert to the last known good <tspan font-family="monospace">commit</tspan></tspan>
+      <tspan x="235" dy="38">through the pipeline</tspan>
+    </text>
+    <text x="235" y="584" font-family="sans-serif" font-size="24" fill="#303a36">Deployed three days ago</text>
+  </g>
+
+  
+  <line x1="510" y1="610" x2="510" y2="646" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step-3">
+    <rect x="60" y="650" width="900" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="110" cy="735" r="24" fill="#207448" />
+    <text x="110" y="735" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <g transform="translate(150, 707)">
+      <rect x="4" y="6" width="48" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="10,34 20,24 28,32 44,16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text x="235" y="696" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Verify the 503 rate in each region</text>
+    <text x="235" y="742" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="235" dy="0">eu-north at 100 percent, eu-west at 30 percent</tspan>
+      <tspan x="235" dy="34">and rising, US regions not affected yet</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="510" y1="820" x2="510" y2="856" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step-4">
+    <rect x="60" y="860" width="900" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="110" cy="930" r="24" fill="#207448" />
+    <text x="110" y="930" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <g transform="translate(150, 902)">
+      <path d="M 28 4 L 48 12 C 48 34 28 50 28 50 C 28 50 8 34 8 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <polyline points="18,26 25,33 38,19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text x="235" y="918" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Add validation and a canary</text>
+    <text x="235" y="962" font-family="sans-serif" font-size="24" fill="#303a36">After the fire is out</text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="1000" y="110" width="540" height="310" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1035" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Why the generator failed</text>
+    <line x1="1035" y1="188" x2="1505" y2="188" stroke="#207448" stroke-width="2" stroke-opacity="0.3" />
+    <text x="1035" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1035" dy="0">An empty service-discovery</tspan>
+      <tspan x="1035" dy="38">export was read as no workers,</tspan>
+      <tspan x="1035" dy="38">and validation passed because</tspan>
+      <tspan x="1035" dy="38">an empty list is valid</tspan>
+    </text>
+  </g>
+
+  
+  <g id="note-box">
+    <rect x="1000" y="460" width="540" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1030, 507)">
+      <circle cx="28" cy="22" r="14" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="28" y1="36" x2="28" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="22" r="4" fill="#207448" />
+    </g>
+    <text x="1105" y="525" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1105" dy="0">Do not edit live config,</tspan>
+      <tspan x="1105" dy="38">GitOps overwrites it</tspan>
+    </text>
+  </g>
+</svg>

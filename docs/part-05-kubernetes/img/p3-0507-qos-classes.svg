@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>How the three QoS classes are derived and what they change</title>
+  <desc>Visual explanation of how Kubernetes derives Guaranteed, Burstable, and BestEffort QoS classes from container resource requests and limits, and what they change including OOM scores, cgroups, and eviction behavior.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" y="88">How the three QoS classes are derived</tspan>
+    <tspan x="800" y="142">and what they change</tspan>
+  </text>
+  <g id="header-note">
+    <rect x="50" y="175" width="1500" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(75, 197)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="42" rx="6"/>
+      <line x1="4" y1="18" x2="52" y2="18" stroke-width="3"/>
+      <polyline points="14,28 22,35 14,42" stroke-width="3"/>
+      <line x1="26" y1="42" x2="38" y2="42" stroke-width="3"/>
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" y="217">QoS is derived by the API server, never set by a field; check with </tspan>
+      <tspan x="145" y="251" font-family="monospace">kubectl get pod -o jsonpath={.status.qosClass}</tspan>
+    </text>
+  </g>
+  <g id="col-guaranteed">
+    <rect x="50" y="315" width="470" height="715" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(110, 341)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 6 L50 14 V28 C50 42 28 52 28 52 C28 52 6 42 6 28 V14 Z"/>
+      <polyline points="18,28 25,35 38,20"/>
+    </g>
+    <text x="185" y="380" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Guaranteed</text>
+    <rect x="75" y="445" width="420" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" y="485">every container sets CPU</tspan>
+      <tspan x="95" y="517">and memory requests</tspan>
+      <tspan x="95" y="549">equal to limits</tspan>
+    </text>
+    <rect x="75" y="595" width="420" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="285" y="653" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">oom_score_adj -997</text>
+    <rect x="75" y="710" width="420" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="95" y="750">cgroup</tspan>
+      <tspan x="95" y="784">kubepods.slice/guaranteed</tspan>
+    </text>
+    <rect x="75" y="825" width="420" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" y="865">evicted last; required</tspan>
+      <tspan x="95" y="895">for CPU Manager static</tspan>
+      <tspan x="95" y="925">policy exclusive cores</tspan>
+      <tspan x="95" y="955">and Topology Manager</tspan>
+      <tspan x="95" y="985">alignment</tspan>
+    </text>
+  </g>
+  <g id="col-burstable">
+    <rect x="565" y="315" width="470" height="715" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(635, 341)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="16" x2="48" y2="16"/>
+      <circle cx="22" cy="16" r="6" fill="#e8f1ea"/>
+      <line x1="8" y1="32" x2="48" y2="32"/>
+      <circle cx="36" cy="32" r="6" fill="#e8f1ea"/>
+      <line x1="8" y1="48" x2="48" y2="48"/>
+      <circle cx="18" cy="48" r="6" fill="#e8f1ea"/>
+    </g>
+    <text x="710" y="380" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Burstable</text>
+    <rect x="590" y="445" width="420" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="610" y="485">some requests or</tspan>
+      <tspan x="610" y="517">limits set, but not</tspan>
+      <tspan x="610" y="549">Guaranteed rules</tspan>
+    </text>
+    <rect x="590" y="595" width="420" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="610" y="637" font-family="monospace">oom_score_adj</tspan>
+      <tspan x="610" y="671">scaled between 2 and 999</tspan>
+    </text>
+    <rect x="590" y="710" width="420" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="610" y="750">cgroup</tspan>
+      <tspan x="610" y="784">kubepods.slice/burstable</tspan>
+    </text>
+  </g>
+  <g id="col-besteffort">
+    <rect x="1080" y="315" width="470" height="715" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1135, 341)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" stroke-dasharray="6 6"/>
+      <line x1="28" y1="16" x2="28" y2="28"/>
+      <circle cx="28" cy="38" r="2.5" fill="#207448"/>
+    </g>
+    <text x="1210" y="380" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">BestEffort</text>
+    <rect x="1105" y="445" width="420" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1125" y="501">no requests or</tspan>
+      <tspan x="1125" y="535">limits at all</tspan>
+    </text>
+    <rect x="1105" y="595" width="420" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1315" y="653" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">oom_score_adj 1000</text>
+    <rect x="1105" y="710" width="420" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1125" y="750">cgroup</tspan>
+      <tspan x="1125" y="784">kubepods.slice/besteffort</tspan>
+    </text>
+    <rect x="1105" y="825" width="420" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1125" y="905">first to be killed or</tspan>
+      <tspan x="1125" y="939">evicted under pressure</tspan>
+    </text>
+  </g>
+  <g id="footer-bar">
+    <rect x="50" y="1060" width="1500" height="100" rx="14" fill="#207448"/>
+    <g transform="translate(75, 1082)" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="5"/>
+      <rect x="18" y="18" width="20" height="20" rx="3" fill="#207448"/>
+      <line x1="18" y1="4" x2="18" y2="10"/>
+      <line x1="28" y1="4" x2="28" y2="10"/>
+      <line x1="38" y1="4" x2="38" y2="10"/>
+      <line x1="18" y1="46" x2="18" y2="52"/>
+      <line x1="28" y1="46" x2="28" y2="52"/>
+      <line x1="38" y1="46" x2="38" y2="52"/>
+      <line x1="4" y1="18" x2="10" y2="18"/>
+      <line x1="4" y1="28" x2="10" y2="28"/>
+      <line x1="4" y1="38" x2="10" y2="38"/>
+      <line x1="46" y1="18" x2="52" y2="18"/>
+      <line x1="46" y1="28" x2="52" y2="28"/>
+      <line x1="46" y1="38" x2="52" y2="38"/>
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#ffffff">
+      <tspan x="145" y="1102">GPU extended resources must be whole integers and requests equal limits (no overcommit);</tspan>
+      <tspan x="145" y="1136">setting only limits defaults requests to the same value</tspan>
+    </text>
+  </g>
+</svg>

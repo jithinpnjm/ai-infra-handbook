@@ -1,205 +1,229 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
   <title>The packet path and where to tune it</title>
-  <desc>Visual infographic showing the Linux network packet receive (RX) and transmit (TX) paths and tuning points from wire to application.</desc>
+  <desc>Visual infographic diagram illustrating the complete Linux network packet processing flow from hardware wire reception, DMA, hard IRQ, softirq, XDP, sk_buff build, traffic control, local sockets, application epoll wakeup, and back through the transmit path.</desc>
 
   <defs>
-    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#207448"/>
+    <marker id="arrow-green" viewBox="0 0 18 14" refX="16" refY="7" markerWidth="14" markerHeight="11" orient="auto">
+      <path d="M 0 1 L 16 7 L 0 13 Z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#db8129"/>
+    <marker id="arrow-orange" viewBox="0 0 18 14" refX="16" refY="7" markerWidth="14" markerHeight="11" orient="auto">
+      <path d="M 0 1 L 16 7 L 0 13 Z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The packet path and where to tune it</text>
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The packet path and where to tune it</text>
 
   
   
-  <path d="M 410 275 L 410 315" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M 410 485 L 410 525" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M 410 695 L 410 735" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M 410 905 L 410 945" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
+  <rect x="50" y="110" width="690" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
   
-  <path d="M 770 1030 L 788 1030 Q 800 1030 800 1018 L 800 202 Q 800 190 812 190 L 830 190" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
+  <circle cx="95" cy="155" r="22" fill="#207448" />
+  <text x="95" y="163" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
   
-  <path d="M 1190 275 L 1190 315" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M 1190 485 L 1190 525" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-  <path d="M 1190 695 L 1190 735" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
-
-  
-  <path d="M 1190 905 L 1190 945" fill="none" stroke="#db8129" stroke-width="4" stroke-dasharray="8,6" marker-end="url(#arrow-orange)"/>
-  <text x="1220" y="933" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">TX path</text>
-
-  
-
-  
-  <g transform="translate(50, 105)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="24" y="96" width="44" height="34" rx="4"/>
-      <path d="M 34 116 L 34 126 M 42 116 L 42 126 M 50 116 L 50 126 M 58 116 L 58 126"/>
-      <path d="M 46 82 L 46 96"/>
-    </g>
-    
-    <text x="98" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Wire → NIC PHY/MAC</text>
-    <text x="98" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(FCS check, RSS hash, flow steering)</text>
+  <g transform="translate(73, 190)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 2 24 L 14 24" />
+    <rect x="14" y="8" width="26" height="32" rx="4" />
+    <path d="M 22 16 L 22 32 M 30 16 L 30 32" />
   </g>
+  
+  <text x="155" y="172" fill="#303a36" font-family="sans-serif">
+    <tspan x="155" font-size="26" font-weight="bold">Wire → NIC PHY/MAC</tspan>
+    <tspan x="155" dy="36" font-size="24">(FCS check, RSS hash, flow steering)</tspan>
+  </text>
 
   
-  <g transform="translate(50, 315)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="46" cy="114" r="22"/>
-      <circle cx="46" cy="114" r="10"/>
-      <path d="M 46 92 L 46 104 M 46 124 L 46 136 M 24 114 L 36 114 M 56 114 L 68 114"/>
-    </g>
-    
-    <text x="98" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">DMA into RX ring</text>
-    <text x="98" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(host RAM)</text>
+  <line x1="740" y1="185" x2="860" y2="185" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="860" y="110" width="690" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="905" cy="155" r="22" fill="#207448" />
+  <text x="905" y="163" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(883, 190)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="36" height="28" rx="3" />
+    <path d="M 12 10 L 12 4 M 22 10 L 22 4 M 32 10 L 32 4" />
+    <path d="M 12 38 L 12 44 M 22 38 L 22 44 M 32 38 L 32 44" />
+    <circle cx="22" cy="24" r="5" />
   </g>
+  
+  <text x="965" y="172" fill="#303a36" font-family="sans-serif">
+    <tspan x="965" font-size="26" font-weight="bold">DMA into RX ring</tspan>
+    <tspan x="965" dy="36" font-size="24">(host RAM)</tspan>
+  </text>
 
   
-  <g transform="translate(50, 525)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 48 92 L 32 114 L 46 114 L 44 136 L 60 110 L 46 110 Z"/>
-    </g>
-    
-    <text x="98" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hard IRQ (per queue, MSI-X)</text>
-    <text x="98" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">→ NAPI scheduled</text>
+  <line x1="1205" y1="260" x2="1205" y2="305" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="50" y="305" width="690" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="95" cy="350" r="22" fill="#207448" />
+  <text x="95" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(73, 385)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 6 A 16 16 0 1 1 8 26" />
+    <polyline points="24 2 24 10 16 10" />
+    <circle cx="22" cy="22" r="4" fill="#207448" />
   </g>
+  
+  <text x="155" y="367" fill="#303a36" font-family="sans-serif">
+    <tspan x="155" font-size="26" font-weight="bold">NET_RX softirq: driver poll()</tspan>
+    <tspan x="155" dy="36" font-size="24">up to netdev_budget packets</tspan>
+  </text>
 
   
-  <g transform="translate(50, 735)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 46 94 A 20 20 0 0 1 66 114 M 66 106 L 66 114 L 58 114"/>
-      <path d="M 46 134 A 20 20 0 0 1 26 114 M 26 122 L 26 114 L 34 114"/>
-    </g>
-    
-    <text x="98" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">NET_RX softirq:</text>
-    <text x="98" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">driver poll() up to</text>
-    <text x="98" y="136" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">netdev_budget packets</text>
+  <line x1="860" y1="380" x2="740" y2="380" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="860" y="305" width="690" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="905" cy="350" r="22" fill="#207448" />
+  <text x="905" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(883, 385)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="32" height="32" rx="4" />
+    <path d="M 24 12 L 16 26 L 26 26 L 18 38" />
   </g>
+  
+  <text x="965" y="367" fill="#303a36" font-family="sans-serif">
+    <tspan x="965" font-size="26" font-weight="bold">Hard IRQ (per queue, MSI-X)</tspan>
+    <tspan x="965" dy="36" font-size="24">→ NAPI scheduled</tspan>
+  </text>
 
   
-  <g transform="translate(50, 945)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 46 94 L 64 102 C 64 122 46 136 46 136 C 46 136 28 122 28 102 Z"/>
-      <path d="M 38 114 L 44 120 L 54 108"/>
-    </g>
-    
-    <text x="98" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">XDP program</text>
-    <text x="98" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(optional, before skb)</text>
+  <line x1="395" y1="455" x2="395" y2="500" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="50" y="500" width="690" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="95" cy="545" r="22" fill="#207448" />
+  <text x="95" y="553" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g transform="translate(73, 580)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 4 L 38 10 L 38 24 C 38 34 22 42 22 42 C 22 42 6 34 6 24 L 6 10 Z" />
+    <path d="M 14 22 L 20 28 L 30 16" />
   </g>
+  
+  <text x="155" y="562" fill="#303a36" font-family="sans-serif">
+    <tspan x="155" font-size="26" font-weight="bold">XDP program</tspan>
+    <tspan x="155" dy="36" font-size="24">(optional, before skb)</tspan>
+  </text>
 
   
+  <line x1="740" y1="575" x2="860" y2="575" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
 
   
-  <g transform="translate(830, 105)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="24" y="96" width="44" height="16" rx="3"/>
-      <rect x="24" y="118" width="44" height="16" rx="3"/>
-      <path d="M 36 96 L 36 112 M 56 96 L 56 112 M 36 118 L 36 134 M 56 118 L 56 134"/>
-    </g>
-    
-    <text x="98" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Build sk_buff, GRO merge, RPS</text>
-    <text x="98" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(optional steering to other CPUs)</text>
+  <rect x="860" y="500" width="690" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="905" cy="545" r="22" fill="#207448" />
+  <text x="905" y="553" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+  
+  <g transform="translate(883, 580)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="36" height="14" rx="2" />
+    <rect x="4" y="26" width="36" height="14" rx="2" />
+    <path d="M 22 20 L 22 26" />
   </g>
+  
+  <text x="965" y="562" fill="#303a36" font-family="sans-serif">
+    <tspan x="965" font-size="26" font-weight="bold">Build sk_buff, GRO merge,</tspan>
+    <tspan x="965" dy="36" font-size="24">RPS (optional steering to other CPUs)</tspan>
+  </text>
 
   
-  <g transform="translate(830, 315)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">7</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="46" cy="114" r="8"/>
-      <path d="M 46 106 L 46 94 M 42 98 L 46 92 L 50 98"/>
-      <path d="M 46 122 L 46 134 M 42 130 L 46 136 L 50 130"/>
-      <path d="M 38 114 L 26 114 M 30 110 L 24 114 L 30 118"/>
-      <path d="M 54 114 L 66 114 M 62 110 L 68 114 L 62 118"/>
-    </g>
-    
-    <text x="98" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">tc ingress</text>
-    <text x="98" y="96" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">→ netfilter prerouting</text>
-    <text x="98" y="136" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">→ routing</text>
-  </g>
+  <line x1="1205" y1="650" x2="1205" y2="695" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
 
   
-  <g transform="translate(830, 525)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">8</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="28" y="100" width="36" height="34" rx="4"/>
-      <circle cx="39" cy="117" r="3" fill="#207448"/>
-      <circle cx="53" cy="117" r="3" fill="#207448"/>
-      <path d="M 46 90 L 46 100"/>
-    </g>
-    
-    <text x="98" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Local: netfilter input</text>
-    <text x="98" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">→ TCP/UDP → socket receive buffer</text>
+  
+  <rect x="50" y="695" width="690" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="95" cy="740" r="22" fill="#207448" />
+  <text x="95" y="748" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+  
+  <g transform="translate(73, 775)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="36" height="26" rx="4" />
+    <path d="M 12 10 L 12 36 M 20 10 L 20 36 M 28 10 L 28 36" />
+    <path d="M 4 23 L 40 23" />
   </g>
+  
+  <text x="155" y="757" fill="#303a36" font-family="sans-serif">
+    <tspan x="155" font-size="26" font-weight="bold">Local: netfilter input</tspan>
+    <tspan x="155" dy="36" font-size="24">→ TCP/UDP → socket receive buffer</tspan>
+  </text>
 
   
-  <g transform="translate(830, 735)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">9</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="24" y="96" width="44" height="36" rx="4"/>
-      <line x1="24" y1="108" x2="68" y2="108"/>
-      <circle cx="32" cy="102" r="2" fill="#207448"/>
-      <circle cx="38" cy="102" r="2" fill="#207448"/>
-    </g>
-    
-    <text x="98" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Application wakeup (epoll)</text>
-    <text x="98" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">→ copy_to_user</text>
-  </g>
+  <line x1="860" y1="770" x2="740" y2="770" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
 
   
-  <g transform="translate(830, 945)">
-    <rect width="720" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-    <circle cx="46" cy="46" r="24" fill="#207448"/>
-    <text x="46" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">10</text>
-    
-    <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="24" y="102" width="30" height="24" rx="3"/>
-      <path d="M 54 114 L 68 114 M 62 108 L 68 114 L 62 120"/>
-    </g>
-    
-    <text x="98" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">send() → socket send buffer</text>
-    <text x="98" y="78" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">→ TCP segmentation (TSO/GSO)</text>
-    <text x="98" y="114" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">→ qdisc (fq/pacing) → driver TX ring</text>
-    <text x="98" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">→ DMA → wire (XPS selects queue)</text>
+  <rect x="860" y="695" width="690" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="905" cy="740" r="22" fill="#207448" />
+  <text x="905" y="748" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+  
+  <g transform="translate(883, 775)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="23" r="16" />
+    <path d="M 22 13 L 22 33 M 12 23 L 32 23" />
+    <polyline points="18 17 22 13 26 17" />
+    <polyline points="28 19 32 23 28 27" />
   </g>
+  
+  <text x="965" y="757" fill="#303a36" font-family="sans-serif">
+    <tspan x="965" font-size="26" font-weight="bold">tc ingress → netfilter prerouting</tspan>
+    <tspan x="965" dy="36" font-size="24">→ routing</tspan>
+  </text>
+
+  
+  <line x1="395" y1="845" x2="395" y2="890" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="50" y="890" width="690" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="95" cy="940" r="22" fill="#207448" />
+  <text x="95" y="948" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">9</text>
+  
+  <g transform="translate(73, 980)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="36" height="34" rx="4" />
+    <line x1="4" y1="16" x2="40" y2="16" />
+    <circle cx="10" cy="11" r="1.5" fill="#207448" />
+    <circle cx="16" cy="11" r="1.5" fill="#207448" />
+    <path d="M 22 32 L 22 22 M 17 26 L 22 21 L 27 26" />
+  </g>
+  
+  <text x="155" y="995" fill="#303a36" font-family="sans-serif">
+    <tspan x="155" font-size="26" font-weight="bold">Application wakeup (epoll)</tspan>
+    <tspan x="155" dy="38" font-size="24">→ copy_to_user</tspan>
+  </text>
+
+  
+  <line x1="740" y1="1010" x2="860" y2="1010" stroke="#db8129" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
+  
+  <rect x="748" y="968" width="104" height="30" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="800" y="990" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">TX path</text>
+
+  
+  <rect x="860" y="890" width="690" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <circle cx="905" cy="940" r="22" fill="#207448" />
+  <text x="905" y="948" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">10</text>
+  
+  <g transform="translate(883, 980)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="36" height="30" rx="3" />
+    <line x1="14" y1="8" x2="14" y2="38" />
+    <line x1="24" y1="8" x2="24" y2="38" />
+    <path d="M 28 23 L 42 23 M 36 17 L 42 23 L 36 29" stroke="#db8129" />
+  </g>
+  
+  <text x="965" y="945" fill="#303a36" font-family="sans-serif">
+    <tspan x="965" font-size="26" font-weight="bold">send() → socket send buffer</tspan>
+    <tspan x="965" dy="34" font-size="24">→ TCP segmentation (TSO/GSO)</tspan>
+    <tspan x="965" dy="34" font-size="24">→ qdisc (fq/pacing) → driver TX ring</tspan>
+    <tspan x="965" dy="34" font-size="24">→ DMA → wire (XPS selects queue)</tspan>
+  </text>
 </svg>

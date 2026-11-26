@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "x21-retry-commit-point-flow",
+  "title": "The first token is the point of no return for a retry",
+  "spec": "A top-down decision flowchart. Start at the top with a rounded box 'Error arrives' with a small warning icon. Arrow down to a diamond 'First token already sent?'. The yes branch goes right to a box with an orange outline titled 'Never replay' with the sans line 'End the stream with an error. A replay gives different text.' The no branch goes down to a diamond 'Side effects and no idempotency key?'; yes goes right to a box 'Do not retry'. The no branch goes down to a diamond 'Client error 400, 401, 403, 404, 413 or 422?'; yes goes right to a box 'Do not retry, the same request gets the same answer'. The no branch goes down to a diamond 'Status 429?'; yes goes right to a box 'Wait for Retry-After. Do not hop replicas.' The no branch goes down to a final green box 'Retry on another replica within the budget' with the small monospace note 'connect failure, 503, first-token timeout'. Each diamond has a small label with the word Yes or No on each branch. Use a shield icon beside the first diamond, a lock icon beside the side-effects diamond and a clock icon beside the 429 box. Put a green number circle (r=24, white number) only if needed; no numbers are needed here. Title: 'Retry freely before the first token, never after it'. Takeaway bar at the bottom in green: 'Decide for every endpoint which row it belongs to before you touch any retry setting.'",
+  "anchor": "### 1. Decide what is safe to retry before you decide how",
+  "alt": "A decision flow starts with an error. If the first token has already been sent, the stream ends with an error and is never replayed. Otherwise the flow checks for side effects without an idempotency key, client errors, and 429. Only a request that passes all of these is retried on another replica within the budget.",
+  "cap": "The first output token is the commit point. Before it, a retry is safe for the customer. After it, the stream must end with an explicit error."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "x21-retry-amplification-loop",
+  "title": "How a partial outage feeds itself through retries",
+  "spec": "A cycle of five rounded boxes arranged in a ring, with curved or orthogonal arrows going clockwise from one to the next and back to the first. Box 1 at top-left titled 'Half the replicas fail' with a small chip icon. Box 2 at top-right titled 'Clients retry every error' with a window icon. Box 3 at bottom-right titled 'Survivors get the original traffic plus the retries' with a gear icon. Box 4 at bottom-left titled 'Slow replicas time out' with a clock icon. Arrow from box 4 back to box 2 labelled 'More retries'. Arrows: 1 to 2, 2 to 3, 3 to 4, 4 to 2 (the loop). Make the arrow from 4 to 2 the single orange arrow. Outside the ring at the bottom, a green panel labelled 'The loop keeps going after the original fault is gone'. To the right of the ring, a light green panel titled 'Expected attempts with k = 4' with three monospace lines: 'p = 0.1 gives 1.11', 'p = 0.5 gives 1.875', 'p = 0.8 gives 2.95'. Below it a second light green panel titled 'Layers multiply' with the monospace line '4 attempts per layer, 3 layers gives 64'. No arrows connect the side panels to the ring. Title: 'How a partial outage feeds itself through retries'. Takeaway bar at the bottom in green: 'Retries multiply load exactly when the system is weakest.'",
+  "anchor": "### 3. Why per-request retries amplify an outage",
+  "alt": "A ring of four steps shows that replicas failing leads clients to retry, which puts original traffic plus retries on the survivors, which slows them so they time out and trigger more retries. The loop continues after the fault is gone. Side panels show expected attempts and layer multiplication.",
+  "cap": "Retries feed back into the load on the healthy replicas, so one partial failure can grow into a full outage that outlasts the original fault."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "x21-retry-budget-token-bucket",
+  "title": "A retry budget is a bucket that real traffic refills",
+  "spec": "A left-to-right flow with a large bucket icon in the centre labelled 'Retry token bucket' and the monospace note 'held in one place, usually the gateway'. Left input arrow into the bucket, labelled 'Real traffic refills the bucket as it arrives', with a small icon of a stream of requests. Right output arrow out of the bucket labelled 'Each retry spends one token'. Under the bucket, a downward arrow labelled 'Bucket empty' leading to a box 'The failure goes back to the user' with a shield icon. The 'Each retry spends one token' output arrow leads to a box 'Retry sent to another replica'. Beside the whole figure, a light green panel titled 'Load limit' with monospace 'load is at most 1 + b' and the lines 'b = 0.1 gives 1.10 and 1.11'. Use an orange outline for the 'Bucket empty' path, since it is the most important outcome. A small gear icon beside the bucket. Title: 'A retry budget is a bucket that real traffic refills'. Takeaway bar at the bottom in green: 'The retries can never outgrow the work the fleet is actually doing.'",
+  "anchor": "### 4. Retry budgets cap the damage",
+  "alt": "A retry budget works like a bucket. Real traffic refills it, each retry spends one token, and when the bucket is empty the failure goes back to the user. With a budget ratio of 0.1, load stays at about 1.1 times the original traffic.",
+  "cap": "A retry budget held in one place caps retries as a share of real traffic, so a storm cannot drain it faster than successful work refills it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "x21-rolling-update-sigterm-race",
+  "title": "A rolling update races the endpoint removal against SIGTERM",
+  "spec": "A swimlane diagram with four vertical lanes, each lane headed by its name at the top in bold: 'Kubelet', 'Control plane', 'Engine pod' and 'Router and clients'. Time runs top to bottom, with a thin vertical time arrow at the left labelled 'Time'. Messages as horizontal arrows from sender lane to receiver lane in time order, each labelled. Message 1, from Kubelet to Engine pod, labelled 'Run preStop hook, sleep'. Message 2, from Control plane to Router and clients, labelled 'Remove pod from endpoints', drawn at the same height as message 1 to show they run at the same time, with a small label 'In parallel'. Message 3, from Kubelet to Engine pod, labelled 'Send SIGTERM'. Inside the Engine pod lane, a small box below message 3 labelled 'vLLM aborts running requests at shutdown-timeout 0'. Message 4, from Router and clients to Engine pod, labelled 'Requests still arrive for a short while'. Message 5, from Kubelet to Engine pod, labelled 'Send SIGKILL when grace period ends' with the monospace label 'grace period 30 s by default'. Number circles (r=24, white number) at messages 1, 3 and 5 for time order. Message 4 is the single orange arrow. Title: 'A rolling update races the endpoint removal against SIGTERM'. Takeaway bar at the bottom in green: 'Size the grace period from the longest allowed stream, and test a rolling update while streams are running.'",
+  "anchor": "### 11. Connection draining and graceful termination",
+  "alt": "A swimlane diagram with four lanes shows the kubelet running the preStop hook and sending SIGTERM and later SIGKILL to the engine pod, while the control plane removes the pod from endpoints at the same time. Clients can still send requests for a short while, and the engine aborts running requests at a zero shutdown timeout.",
+  "cap": "Endpoint removal and SIGTERM run in parallel, so streams can be cut before every client stops sending to the pod. The grace period must cover the longest stream."
+ }
+]

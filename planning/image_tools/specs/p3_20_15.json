@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p3-2015-pull-vs-push-silence",
+  "title": "Pull makes silence visible, push does not",
+  "spec": "Two lanes for a GPU replica that dies at night. Top lane 'Pull (metrics)': Prometheus scrapes the replica, replica dies, next scrape fails, automatic series up goes to 0, an alert can fire. Bottom lane 'Push (events)': replica sends nothing after it dies, dashboard shows silence, which looks the same as no traffic. Below, three small boxes with the rule for each path: 'metrics: pull, so silence is visible'; 'traces and logs: push, they are events with no scrape model (OpenTelemetry push protocol, node agent such as Fluent Bit)'; 'short-lived batch jobs: Pushgateway, a holding point where a finished job leaves its last numbers'. Footer box 'remote write is also push, with a queue read from the write-ahead log and sent by shards: the one push path that can quietly fall behind, so monitor it'. Text at least 24px.",
+  "anchor": "### 5. Pull for metrics, push for traces and logs, and know the exceptions",
+  "alt": "Two lanes compare pull, where a dead replica sets up to 0, with push, where silence looks like no traffic.",
+  "cap": "Only pull tells a dead replica from a quiet one."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p3-2015-log-volume-arithmetic",
+  "title": "Log volume arithmetic and what to keep",
+  "spec": "Worked calculation left to right. 'One line per request at 500 bytes'; 'x 2,000 requests per second = 1 MB per second'; 'x 86,400 seconds = 86.4 GB per day before replication; replication multiplies storage again'; label these 'assumed inputs, arithmetic is the author's'. Right side a keep or drop table: 'errors and warnings: keep every one'; 'successful request lines: sample by a hash of the trace id so the same requests stay sampled across services'; 'debug lines: drop by default'; 'switch: raise the sample rate for one service for an hour during an incident'. Bottom rule: 'alert from a metric, not from log text, because a reworded message silently breaks the alert; logs are for investigation, metrics for detection'. Label policy strip: 'Loki-style: labels only namespace, cluster, app; request id and trace id go in the line or structured metadata, never labels'. Text at least 24px.",
+  "anchor": "### 9. Logs: volume is the enemy, and metrics are the alert source",
+  "alt": "A worked log volume calculation reaching 86.4 GB per day, with a keep or drop policy for each kind of line.",
+  "cap": "Keep errors in full, sample the successes and never put identifiers in labels."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p3-2015-tail-sampler-sizing",
+  "title": "Sizing the tail sampler and what happens at 8,000 traces per second",
+  "spec": "Two columns of the same formula 'traces held = new traces per second x decision_wait'. Left 'Design point': 5,000 new traces per second x 30 s = 150,000 traces held; num_traces set to 200,000 gives headroom; with 20 spans of 1 KB each (assumptions, not measurements) = 3 GB of buffered span data before overhead. Right 'After a traffic increase': 8,000 per second x 30 s = 240,000 needed, which exceeds num_traces 200,000, so traces are dropped and the viewer shows fragments. Below, a fix list: 'raise num_traces and memory together'; 'or reduce decision_wait'; 'add sampler replicas'; 'apply a head sample in tier one to cut the rate'; 'alert on refusals'. Check list for the symptom: 'otelcol_receiver_refused_spans non-zero means the memory limiter is shedding load'; 'if the load balancing tier was scaled up, spans of one trace may be split across samplers while the routing pool changes'. Text at least 24px.",
+  "anchor": "### Scenario 2: The tail sampler drops half of the slow traces",
+  "alt": "A worked sizing example where 150,000 held traces fit in 200,000 but 240,000 at a higher rate do not.",
+  "cap": "Raise the trace limit and memory together when the trace rate grows."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p3-2015-remote-write-gap",
+  "title": "Three-hour remote write outage: what is lost and where it still lives",
+  "spec": "Horizontal timeline of 3 hours with marks at 0, 1, 2 and 3 hours. Segment 0 to 2 h labeled 'store down: failed sends retry, nothing lost'. Marker at 2 h: 'write-ahead log is compacted, unsent data is lost after this line'. Segment 2 to 3 h labeled 'unsent data lost from the long-term store, the hole dashboards show'. At 3 h 'store returns'. Below two bars: 'Local Prometheus: keeps everything, local retention 15 days by default, queries still work' and 'Long-term store: missing the last hour of the gap'. Recovery steps: 'query it locally; to refill the store backfill from local blocks with a store-specific tool; read your store's procedure'. Prevention: 'RemoteWriteFallingBehind alert fires well before the two-hour line'. Side note: 'remote write raises Prometheus memory by about 25 percent on average; if one shard's queue fills, reading of the WAL stops for all shards'. Text at least 24px.",
+  "anchor": "### Scenario 3: Remote write is down for three hours",
+  "alt": "A three hour timeline showing retries safe until two hours, then data lost from the store but still present locally.",
+  "cap": "The hour past the two-hour line is missing from the store but kept in local Prometheus."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p3-2015-invoice-dispute-ladder",
+  "title": "Dashboard says 10,000,000 tokens, invoice says 10,200,000",
+  "spec": "Troubleshooting ladder, top to bottom. Header 'Dashboard (sampled counters) 10,000,000 versus invoice (ledger) 10,200,000: the invoice is the record if the ledger is correct'. Step 1 'cheap explanations first: a killed gateway pod lost increments since its last scrape; the dashboard rule uses increase, which extrapolates; some scrapes failed, up shows gaps'. Step 2 'compare the ledger with the gateway's own counters'. Branch A 'duplicates in the ledger: the idempotency key (request id) is missing'. Branch B 'fewer ledger rows than requests: the queue dropped records, a severity-one bug'. Step 3 'tell the customer the dashboard is an approximation and the invoice is the record'. Step 4 'keep the reconciliation report on file; a normal variance comes from your own reconciliation history, not an invented number'. Text at least 24px.",
+  "anchor": "### Scenario 4: Dashboard and invoice disagree by 2 percent",
+  "alt": "A troubleshooting ladder from cheap metric explanations to ledger duplicates or missing rows.",
+  "cap": "Check scrape loss and extrapolation first, then the ledger for duplicates or dropped records."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p3-2015-prometheus-oom-ladder",
+  "title": "Prometheus is out of memory: what to do in order",
+  "spec": "Numbered ladder. 1 'Ask the TSDB status endpoint which metric names and which labels have the most series'. 2 'Look at scrape_series_added for a recent jump, the signature of a new unbounded label'. 3 'Find the matching deploy'. 4 'Mitigate: drop the label with relabeling at the scrape'. 5 'Fix the code that adds the label'. 6 'Prevent: the linter at review, plus scrape limits and the churn alert'. Side box with a crossed-out answer 'add more memory first: more memory only delays the same failure'. Footer 'scrape limits fail the whole scrape, so alert on scrape health'. Text at least 24px.",
+  "anchor": "### Question 3: \"Prometheus is out of memory. What now?\"",
+  "alt": "A six-step ladder from the TSDB status check to the linter, with adding memory marked as the wrong first move.",
+  "cap": "Find the label that exploded the series count before touching memory."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p3-2015-cost-knobs",
+  "title": "Which knob moves which bill",
+  "spec": "Table of four rows with columns Signal, Cost driver, Cheapest levers. Metrics: 'active series times retention'; 'fewer labels, fewer buckets, recording rules, drop raw series upstream'. Logs: 'bytes ingested and retained'; 'sample successes, shorter retention, drop debug'. Traces: 'spans retained'; 'tail sampling policy, shorter retention'. Query: 'fan-out and high-cardinality selects'; 'rollups, query limits, downsampling'. Worked example under the table: '49,200 series at a 30 second interval for 15 days = 43,200 samples per series, at 1 to 2 bytes per sample is about 2.1 to 4.3 GB'; 'with a tenant label on every gateway metric about 3 million series needs about 130 to 261 GB'. Note 'logs and traces depend on traffic, which moves, so set a budget in bytes and spans per day and alert on the trend'. Text at least 24px.",
+  "anchor": "### 15. Cost: know which knob moves which bill",
+  "alt": "A table of cost drivers and levers per signal, with disk estimates of 2.1 to 4.3 GB versus 130 to 261 GB.",
+  "cap": "Find the cost driver behind a bill line before choosing a knob."
+ }
+]

@@ -26,6 +26,10 @@ A realistic question in the interviewer's voice: "Your function checks each of 1
 
 ### 1. Say Big-O in a way that survives a follow-up
 
+![A list membership test scans every blocked address per log line, while a set lookup finds the address in one step on average.](./img/p2-2010-blocklist-bigo.svg)
+
+*Figure 20.10.1. A list membership test costs O(n times m) across the loop, while converting the blocklist to a set brings it down to O(n) on average.*
+
 You are halfway through a log processor, and you write `if ip in blocked` inside a loop. You say "that is O(n)", and the interviewer asks, "n of what?" That one question is the whole test, so it is worth preparing for.
 
 Big-O is a short way of saying how the work grows as the input grows. It leaves out the speed of your particular machine and keeps only the shape of the curve. The letter n stands for the size of the input, and O(n) means the work grows in step with that size. An answer that names no size is the answer that invites the follow-up.
@@ -70,6 +74,10 @@ For the opening question the membership gap matters most. At 100,000 items a lis
 
 ### 3. Space against time
 
+![A list of one hundred thousand integers takes 0.8 megabytes while the matching set takes 4.19 megabytes for a much faster lookup.](./img/p2-2010-set-memory.svg)
+
+*Figure 20.10.2. A set of 100,000 integers takes about 4.19 MB against 0.8 MB for the list, a memory cost that buys much faster lookups.*
+
 Picture a service that starts running out of memory some time after someone adds a cache to speed it up. The cache worked, but nobody counted what it cost. This section is about counting that cost, because interviewers listen for it.
 
 The set is not free. A set of 100,000 integers reported 4.19 MB and a list of them 0.8 MB, both ignoring the integer objects themselves. The set bought a lookup thousands of times faster for about five times the container memory. Both figures leave out the integer objects, because the list and the set only hold references to them, so the real totals are larger.
@@ -81,6 +89,10 @@ Three questions help you decide whether the trade is worth it. How often is the 
 The KV cache in chapter 20.12 is the same trade in serving: GPU memory spent so attention is not recomputed. KV stands for key and value, the two sets of numbers an attention layer keeps for each token it has already processed. Chapter 20.18 shows the engine recomputing when that memory runs out. State the memory cost in your answer. "I would use a set" is half an answer, and "a set, which costs a few megabytes for 5,000 addresses" is a whole one.
 
 ### 4. The latency numbers, with sources and dates
+
+![A ladder of operation times from an L1 cache reference to a round trip across continents, with each time expressed as a ratio to a main memory read.](./img/p2-2010-latency-ladder.svg)
+
+*Figure 20.10.3. A ladder of 2009 latency figures, from an L1 cache reference to a round trip across continents, with ratios to a memory read.*
 
 An interviewer says, "How long does a network call take compared with reading memory?" You need a ruler in your head before you can answer. By ruler I mean a short list of how long common operations take, from the fastest to the slowest. Here are three printed sources. Each has an age, and hardware has changed since all of them, so use the table for ratios and orders of magnitude.
 
@@ -112,6 +124,10 @@ For inference numbers, such as KV bytes per token or GPU memory bandwidth, use t
 **Remember the rungs: nanoseconds for cache and memory, microseconds for flash, milliseconds for a disk or datacenter hop, tens of milliseconds for a continent.** Say the year when you quote a figure, so the listener knows how old it is.
 
 ### 5. Arithmetic that makes the numbers useful
+
+![A curve of M/D/1 mean response time as a multiple of service time, 1.5 at 50 percent busy, 3 at 80 percent, 5.5 at 90 percent and 10.5 at 95 percent.](./img/p3-2010-md1-curve.svg)
+
+*Figure 20.10.4. Beyond about 60 percent utilisation the average response time doubles, and it keeps climbing as the server nears full.*
 
 Suppose you are on a design call, and someone proposes a service that makes a long chain of calls for every user request. The table of times does not tell you whether that is a problem. You have to divide one time by another before you can say anything useful.
 
@@ -221,6 +237,10 @@ if __name__ == "__main__":
 
 ### 6. Why the p99 of a fan-out is worse than the p99 of one call
 
+![A bar chart showing that the chance of at least one slow call rises from one percent at fan-out one to 63.4 percent at fan-out one hundred.](./img/p2-2010-fanout-tail.svg)
+
+*Figure 20.10.5. The chance that at least one of N calls lands in the slow one percent rises from 1.0 percent at N equals 1 to 63.4 percent at N equals 100.*
+
 A search request fans out to 100 backends and waits for all of them. Fan-out means one request starts many parallel calls. Each backend is fast 99 percent of the time and slow the other 1 percent. Your dashboard shows each backend with a healthy p99, yet users complain. The request is slow whenever any one of the calls is slow.
 
 p99 is the 99th percentile, the response time that 99 percent of calls beat. The slowest 1 percent sit in what engineers call the tail, and the tail is where the trouble hides. A healthy p99 on one backend says nothing about the tail that the whole request must wait through.
@@ -240,16 +260,9 @@ So with 100 backends, nearly two requests in three include a call from the slow 
 
 The simulation uses a continuous distribution. Each call is lognormal with a median of 10 ms, so the single-call p99 is about 40 ms. The request waits for the maximum of the calls. The code is seeded, which means the random numbers repeat exactly from run to run. A lognormal shape has a long right tail, so a few calls are much slower than the typical one.
 
-```mermaid
-flowchart LR
-  R["One request"] --> C1["Call 1"]
-  R --> C2["Call 2"]
-  R --> CN["Call N"]
-  C1 --> W["Wait for the slowest"]
-  C2 --> W
-  CN --> W
-  W --> L["Latency = max of N calls"]
-```
+![Why the p99 of a fan-out is worse than the p99 of one call](./img/m20-10-1.svg)
+
+*Figure 20.10.6. Why the p99 of a fan-out is worse than the p99 of one call, as a diagram.*
 
 The diagram shows the wait. Each call starts at once, and the request leaves only when the last of them returns. The code below runs that model.
 
@@ -314,6 +327,10 @@ The paper describes the defences. A hedged request sends the same request to a s
 
 ### 7. Caches and locality
 
+![Summing an array in index order takes 0.157 seconds while summing it in shuffled order takes 0.622 seconds, about four times slower.](./img/p2-2010-locality-bars.svg)
+
+*Figure 20.10.7. Summing five million values in index order took 0.157 seconds against 0.622 seconds in shuffled order, because scattered reads waste cache lines.*
+
 A loop reads the same array twice, once in order and once in a random order. The work is identical and the second loop is slower. Picture reading a book page by page, then reading the same book by opening it at random pages. You do the same amount of reading, but the second way keeps jumping, and the jumping costs you. The reason is the memory hierarchy, the set of stores that a CPU reads through, from small and fast to large and slow. Systems Performance, chapter 6, says a CPU cache line, the unit stored and transferred together, is typically 64 bytes on x86. Reading one value pulls in its neighbours. A sequential walk uses the neighbours and a random walk wastes them.
 
 The script `c10_locality.py` measures this. It sums 5 million 8-byte values from an `array`, first in index order and then in a shuffled order. On this machine the ordered pass took 0.157 seconds and the shuffled pass took 0.622 seconds, a ratio of about 4. The cause was not isolated in this run, so the claim that the run supports is only that scattered access costs time. The cache is the likely explanation, but this run did not separate it from the other effects.
@@ -323,6 +340,14 @@ Systems Performance, chapter 2, gives the cache formula: runtime is hit rate tim
 **When the same data is read in two orders, expect the sequential one to win, and keep hot data small enough to stay in cache.** Hot data means the data you touch most often.
 
 ### 8. Measuring your own code with timeit and cProfile
+
+![A cProfile report for dedupe_slow with columns ncalls, tottime and cumtime, showing all 0.133 seconds inside the function itself because the in operator is not a function call.](./img/p3-2010-cprofile-anatomy.svg)
+
+*Figure 20.10.8. cProfile tells you which function is hot, not which line, and it slows the program, so use timeit for snippets and metrics in production.*
+
+![A four-stage measurement loop of measure the whole, find the hot spot with cProfile, change one thing and measure again, with timeit for small snippets.](./img/p2-2010-measure-loop.svg)
+
+*Figure 20.10.9. A measurement loop of measuring the whole, finding the hot spot, changing one thing and measuring again, using timeit minimums for snippets.*
 
 You think a function is slow, and an interviewer who hears "I would just optimise it" will push back. A better reply is a method. Measure the whole, find where the time goes, change one thing, and measure again. Systems Performance, chapter 5, says to profile the CPU and start with the most common code path. A measurement tells you where to look, while a guess only tells you where you hope the problem is.
 
@@ -448,6 +473,10 @@ Four things separate a textbook figure from your measurement: newer hardware, wh
 **Use the textbook for the order of magnitude and your own measurement for the decision. A tenfold gap between the two means one of them is wrong.**
 
 ### 10. Will this loop of ten million items finish in a second?
+
+![A budget of one hundred nanoseconds per item for ten million items, with measured loop costs that fit and a network call per item that does not.](./img/p2-2010-loop-budget.svg)
+
+*Figure 20.10.10. A one-second budget for ten million items allows 100 ns per item, so simple loops fit while one network call per item does not.*
 
 The interviewer says, "Ten million items, one second, yes or no?" Do not answer from feeling. Compute a budget instead. One second divided by 10 million items leaves 100 ns per item. Then estimate the work per item and compare the two numbers.
 

@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>The USE method applied to a NIC and its PCIe slot</title>
+  <desc>Visual infographic explaining the USE method (utilization, saturation, errors) for network interfaces and PCIe bandwidth bottleneck on 400G NICs.</desc>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  <!-- Main Title (48px bold) -->
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The USE method applied to a NIC and its PCIe slot</text>
+
+  <!-- ========================================== -->
+  <!-- LEFT: 3-row USE Table Container           -->
+  <!-- ========================================== -->
+  <rect x="40" y="115" width="720" height="835" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  <!-- Row 1: Utilization -->
+  <rect x="60" y="135" width="680" height="250" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(85, 155)">
+    <path d="M 8 44 A 20 20 0 1 1 48 44" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="36" x2="40" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="36" r="4" fill="#207448"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" y="193" font-size="30" font-weight="bold" fill="#207448">Utilization: </tspan>
+    <tspan x="85" y="245">the busy fraction = throughput divided</tspan>
+    <tspan x="85" y="280">by the negotiated speed, counting all</tspan>
+    <tspan x="85" y="315">headers; with cloud caps use the limit</tspan>
+    <tspan x="85" y="350">the cloud imposes</tspan>
+  </text>
+
+  <!-- Row 2: Saturation -->
+  <rect x="60" y="410" width="680" height="250" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(85, 430)">
+    <rect x="8" y="10" width="40" height="10" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="8" y="24" width="40" height="10" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="8" y="38" width="40" height="10" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="10" x2="20" y2="48" stroke="#207448" stroke-width="3" stroke-dasharray="2 2"/>
+    <line x1="36" y1="10" x2="36" y2="48" stroke="#207448" stroke-width="3" stroke-dasharray="2 2"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" y="468" font-size="30" font-weight="bold" fill="#207448">Saturation: </tspan>
+    <tspan x="85" y="520">queueing: qdisc backlog and drops,</tspan>
+    <tspan x="85" y="555">application threads blocked on send,</tspan>
+    <tspan x="85" y="590">TCP retransmits as a symptom,</tspan>
+    <tspan x="85" y="625">NIC ring overruns</tspan>
+  </text>
+
+  <!-- Row 3: Errors (Orange - check errors first) -->
+  <rect x="60" y="685" width="680" height="245" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <g transform="translate(85, 705)">
+    <path d="M 28 8 L 50 46 L 6 46 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="21" x2="28" y2="33" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="39" r="2.5" fill="#db8129"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" y="743" font-size="30" font-weight="bold" fill="#db8129">Errors: </tspan>
+    <tspan x="85" y="795">on RX bad checksums and frames too short</tspan>
+    <tspan x="85" y="830">or too long; on TX late collisions and</tspan>
+    <tspan x="85" y="865">carrier errors; check errors first</tspan>
+  </text>
+
+  <!-- ========================================== -->
+  <!-- RIGHT: Worked PCIe Example (Two Bars)      -->
+  <!-- ========================================== -->
+  <rect x="800" y="115" width="760" height="395" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  <!-- PCIe Gen4 x16 Sub-card -->
+  <rect x="820" y="135" width="720" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(840, 148)">
+    <rect x="8" y="10" width="40" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 14 36 L 14 46 M 22 36 L 22 46 M 30 36 L 30 46 M 38 36 L 38 46" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="8" y1="20" x2="48" y2="20" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="910" y="180" font-size="30" font-weight="bold" fill="#207448">PCIe Gen4 x16: </tspan>
+    <tspan x="840" y="218">about 252 Gb/s usable; one 400G NIC in that</tspan>
+    <tspan x="840" y="250">slot reaches only 252 / 400 = 0.63, about 63</tspan>
+    <tspan x="840" y="282">percent of line rate</tspan>
+  </text>
+  <!-- Worked Bar: Gen4 63% throughput cap -->
+  <rect x="840" y="293" width="680" height="8" rx="4" fill="#c4d8ca"/>
+  <rect x="840" y="293" width="428" height="8" rx="4" fill="#207448"/>
+
+  <!-- PCIe Gen5 x16 Sub-card -->
+  <rect x="820" y="325" width="720" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(840, 342)">
+    <rect x="8" y="10" width="40" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 12 36 L 12 46 M 18 36 L 18 46 M 24 36 L 24 46 M 32 36 L 32 46 M 38 36 L 38 46 M 44 36 L 44 46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="28" cy="23" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="910" y="375" font-size="30" font-weight="bold" fill="#207448">PCIe Gen5 x16: </tspan>
+    <tspan x="840" y="425">about 504 Gb/s, enough for a 400G port</tspan>
+  </text>
+  <!-- Worked Bar: Gen5 100% throughput full line rate -->
+  <rect x="840" y="455" width="680" height="8" rx="4" fill="#207448"/>
+
+  <!-- ========================================== -->
+  <!-- RIGHT: Apply Method to Controller and Bus -->
+  <!-- ========================================== -->
+  <rect x="800" y="530" width="760" height="270" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="820" y="545" width="720" height="240" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(840, 560)">
+    <rect x="12" y="12" width="32" height="32" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="5" x2="20" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="28" y1="5" x2="28" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="36" y1="5" x2="36" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="20" y1="44" x2="20" y2="51" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="28" y1="44" x2="28" y2="51" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="36" y1="44" x2="36" y2="51" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="28" cy="28" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="910" y="590" font-weight="bold">apply the same method to the NIC</tspan>
+    <tspan x="910" y="622" font-weight="bold">controller and the bus: </tspan>
+    <tspan x="840" y="660">sum the port throughputs and compare the</tspan>
+    <tspan x="840" y="694">total with the PCIe bandwidth; and to the</tspan>
+    <tspan x="840" y="728">kernel stack: softirq CPU, memory for socket</tspan>
+    <tspan x="840" y="762">buffers, the conntrack table</tspan>
+  </text>
+
+  <!-- ========================================== -->
+  <!-- RIGHT: Lab Check                           -->
+  <!-- ========================================== -->
+  <rect x="800" y="820" width="760" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="820" y="832" width="720" height="106" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(840, 847)">
+    <rect x="10" y="14" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 20 14 V 10 C 20 8 22 6 24 6 H 32 C 34 6 36 8 36 10 V 14" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="24" x2="38" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="18" y1="32" x2="38" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="18" y1="40" x2="30" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="910" y="873" font-size="30" font-weight="bold" fill="#207448">USE report for a 400G NIC: </tspan>
+    <tspan x="910" y="910">Gen4 x16 252 Gb/s versus Gen5 x16 504 Gb/s</tspan>
+  </text>
+
+  <!-- ========================================== -->
+  <!-- BOTTOM BAR: Takeaway                       -->
+  <!-- ========================================== -->
+  <rect x="40" y="975" width="1520" height="85" rx="14" fill="#207448"/>
+  <text x="800" y="1028" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">A slot can cap a NIC before the link does</text>
+</svg>

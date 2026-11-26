@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which Linux namespaces a pod's containers share</title>
+  <desc>Visual infographic explaining which Linux namespaces are shared across containers in a Kubernetes pod and which stay separate by default.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which Linux namespaces a pod's containers share</text>
+
+  
+  <rect x="40" y="115" width="1520" height="940" rx="20" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(68, 132)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="46" height="46" rx="10"/>
+    <circle cx="15" cy="23" r="5" fill="#207448"/>
+    <circle cx="31" cy="23" r="5" fill="#207448"/>
+    <path d="M15 23 h16"/>
+  </g>
+  <text x="130" y="166" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">Pod</text>
+
+  
+  <g id="cgroup-slice">
+    <rect x="68" y="220" width="1464" height="60" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(85, 227)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+      <rect x="0" y="0" width="46" height="46" rx="8"/>
+      <line x1="12" y1="15" x2="34" y2="15"/>
+      <line x1="12" y1="23" x2="34" y2="23"/>
+      <line x1="12" y1="31" x2="34" y2="31"/>
+      <circle cx="18" cy="15" r="3" fill="#207448"/>
+      <circle cx="28" cy="23" r="3" fill="#207448"/>
+      <circle cx="22" cy="31" r="3" fill="#207448"/>
+    </g>
+    <text x="800" y="261" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Pod cgroup slice</text>
+  </g>
+
+  
+  
+  <g id="pause-header">
+    <rect x="230" y="320" width="635" height="60" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(245, 327)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="46" height="46" rx="8"/>
+      <line x1="18" y1="14" x2="18" y2="32" stroke-width="4"/>
+      <line x1="28" y1="14" x2="28" y2="32" stroke-width="4"/>
+    </g>
+    <text x="562" y="361" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">pause sandbox container</text>
+  </g>
+
+  
+  <g id="trainer-header">
+    <rect x="905" y="320" width="627" height="60" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(920, 327)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="46" height="46" rx="8"/>
+      <line x1="0" y1="14" x2="46" y2="14"/>
+      <circle cx="10" cy="7" r="2" fill="#207448"/>
+      <circle cx="18" cy="7" r="2" fill="#207448"/>
+      <circle cx="26" cy="7" r="2" fill="#207448"/>
+      <polyline points="14,24 20,30 32,20"/>
+    </g>
+    <text x="1233" y="361" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">trainer application container</text>
+  </g>
+
+  
+  <g id="row-net">
+    
+    <rect x="68" y="420" width="122" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="95" cy="450" r="14" fill="#207448"/>
+    <polyline points="89,450 93,454 101,446" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="145" y="460" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">net</text>
+
+    
+    <rect x="230" y="420" width="1302" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="881" y="460" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">shared, same IP, ports and routing</text>
+  </g>
+
+  
+  <g id="row-ipc">
+    
+    <rect x="68" y="520" width="122" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="95" cy="550" r="14" fill="#207448"/>
+    <polyline points="89,550 93,554 101,546" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="145" y="560" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">ipc</text>
+
+    
+    <rect x="230" y="520" width="1302" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="881" y="560" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">shared, /dev/shm</text>
+  </g>
+
+  
+  <g id="row-uts">
+    
+    <rect x="68" y="620" width="122" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="95" cy="650" r="14" fill="#207448"/>
+    <polyline points="89,650 93,654 101,646" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="145" y="660" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">uts</text>
+
+    
+    <rect x="230" y="620" width="1302" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="881" y="660" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">shared, hostname</text>
+  </g>
+
+  
+  <g id="row-mnt">
+    
+    <rect x="68" y="720" width="122" height="80" rx="10" fill="#e2e8e5" stroke="#7a8c82" stroke-width="2"/>
+    <circle cx="95" cy="760" r="14" fill="#7a8c82"/>
+    <line x1="88" y1="760" x2="102" y2="760" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+    <text x="145" y="769" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">mnt</text>
+
+    
+    <g id="mnt-pause">
+      <rect x="230" y="720" width="635" height="80" rx="10" fill="#e2e8e5" stroke="#7a8c82" stroke-width="2"/>
+      <g transform="translate(525, 737)" stroke="#7a8c82" stroke-width="2.5" fill="none">
+        <ellipse cx="22" cy="10" rx="18" ry="6"/>
+        <path d="M4 10 v12 c0 3.3 8 6 18 6 s18 -2.7 18 -6 v-12"/>
+        <path d="M4 22 v12 c0 3.3 8 6 18 6 s18 -2.7 18 -6 v-12"/>
+      </g>
+    </g>
+
+    
+    <g id="mnt-trainer">
+      <rect x="905" y="720" width="627" height="80" rx="10" fill="#e2e8e5" stroke="#7a8c82" stroke-width="2"/>
+      <text x="1218" y="753" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+        <tspan x="1218" dy="0" font-weight="bold">own mount namespace,</tspan>
+        <tspan x="1218" dy="30">overlayfs root and volume binds</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="row-pid">
+    
+    <rect x="68" y="840" width="122" height="100" rx="10" fill="#e2e8e5" stroke="#7a8c82" stroke-width="2"/>
+    <circle cx="95" cy="890" r="14" fill="#7a8c82"/>
+    <line x1="88" y1="890" x2="102" y2="890" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+    <text x="145" y="899" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">pid</text>
+
+    
+    <g id="pid-pause">
+      <rect x="230" y="840" width="635" height="100" rx="10" fill="#e2e8e5" stroke="#7a8c82" stroke-width="2"/>
+      
+      <rect x="250" y="853" width="595" height="74" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+      <text x="547" y="884" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="547" dy="0">shared only when</tspan>
+        <tspan x="547" dy="30" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">shareProcessNamespace is true</tspan>
+      </text>
+    </g>
+
+    
+    <g id="pid-trainer">
+      <rect x="905" y="840" width="627" height="100" rx="10" fill="#e2e8e5" stroke="#7a8c82" stroke-width="2"/>
+      <text x="1218" y="884" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1218" dy="0" font-weight="bold">own PID namespace</tspan>
+        <tspan x="1218" dy="30" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">unless shareProcessNamespace is true</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  
+  <g id="side-label">
+    <rect x="68" y="980" width="797" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="466" y="1011" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="466" dy="0">check with <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">ls -l /proc/PID/ns</tspan></tspan>
+      <tspan x="466" dy="28">and compare inode numbers</tspan>
+    </text>
+  </g>
+
+  
+  <g id="trainer-cgroup-files">
+    <rect x="905" y="980" width="627" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1218" y="1011" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="1218" dy="0" font-weight="bold">cgroup files: memory.max, cpu.max,</tspan>
+      <tspan x="1218" dy="28">cpu.weight, pids.max</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="40" y="1095" width="1520" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1137" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">net, ipc and uts are shared across the pod, while mnt and pid stay separate by default.</text>
+</svg>

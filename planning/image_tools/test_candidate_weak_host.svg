@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Two NICs on one subnet: why the wrong card answers ARP and the four settings that fix it</title>
+  <desc>Visual explanation of Linux weak-host ARP behavior with two NICs on one subnet, why eth0 answers for eth1 causing the switch to learn the IP on the wrong port, and the sysctl recipe and policy routing that fix it.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Two NICs on one subnet: why the wrong card</tspan>
+    <tspan x="800" dy="54">answers ARP and the four settings that fix it</tspan>
+  </text>
+
+  <!-- ==================== LEFT PANEL: Default (weak host) ==================== -->
+  <g id="left-panel">
+    <rect x="40" y="140" width="740" height="670" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Icon: Network Host / Server Outline (56px) -->
+    <g transform="translate(65, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="20" rx="4" />
+      <circle cx="16" cy="18" r="2.5" fill="#207448" />
+      <circle cx="26" cy="18" r="2.5" fill="#207448" />
+      <line x1="28" y1="28" x2="28" y2="44" />
+      <line x1="12" y1="44" x2="44" y2="44" />
+    </g>
+    <text x="135" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Default (weak host)</text>
+
+    <!-- Peer Device Box -->
+    <rect x="65" y="245" width="160" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Peer Icon (Workstation / Client) -->
+    <g transform="translate(117, 280)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="34" rx="4" />
+      <line x1="4" y1="32" x2="52" y2="32" />
+      <line x1="28" y1="40" x2="28" y2="50" />
+      <line x1="16" y1="50" x2="40" y2="50" />
+    </g>
+
+    <!-- Switch Container (with two ports) -->
+    <rect x="275" y="245" width="480" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Switch Icon -->
+    <g transform="translate(290, 252)" stroke="#207448" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="28" height="14" rx="2" />
+      <circle cx="8" cy="9" r="1.5" fill="#207448" />
+      <circle cx="16" cy="9" r="1.5" fill="#207448" />
+      <circle cx="24" cy="9" r="1.5" fill="#207448" />
+    </g>
+
+    <!-- Switch Port 1 Box: learns the IP on the wrong port -->
+    <rect x="290" y="255" width="345" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="462.5" y="298" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="462.5" dy="0">learns the IP on</tspan>
+      <tspan x="462.5" dy="32">the wrong port</tspan>
+    </text>
+
+    <!-- Switch Port 2 Box -->
+    <rect x="655" y="255" width="85" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <!-- Port 2 visual icon -->
+    <g transform="translate(675, 292)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="36" height="24" rx="3" />
+      <line x1="12" y1="30" x2="12" y2="20" />
+      <line x1="22" y1="30" x2="22" y2="16" />
+      <line x1="32" y1="30" x2="32" y2="20" />
+    </g>
+
+    <!-- Server Container (with two NICs) -->
+    <rect x="65" y="430" width="690" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Server Icon -->
+    <g transform="translate(75, 438)" stroke="#207448" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="28" height="14" rx="2" />
+      <circle cx="8" cy="9" r="1.5" fill="#207448" />
+      <circle cx="16" cy="9" r="1.5" fill="#207448" />
+    </g>
+
+    <!-- NIC 0 Box: eth0 10.20.0.1 -->
+    <rect x="90" y="455" width="300" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="240" y="517" text-anchor="middle" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">eth0 10.20.0.1</text>
+
+    <!-- NIC 1 Box: eth1 10.20.0.2 -->
+    <rect x="430" y="455" width="300" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="580" y="517" text-anchor="middle" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">eth1 10.20.0.2</text>
+
+    <!-- Physical Cable Links (switch connected to server NICs) -->
+    <line x1="370" y1="365" x2="240" y2="455" stroke="#9bbba8" stroke-width="4" stroke-dasharray="6 4" />
+    <line x1="697" y1="365" x2="580" y2="455" stroke="#9bbba8" stroke-width="4" stroke-dasharray="6 4" />
+
+    <!-- Arrow 1: Peer sends ARP request arriving on eth0 (Green) -->
+    <path d="M 225 310 L 255 310 Q 275 310 275 335 L 275 410 Q 275 430 250 430 L 160 430 Q 145 430 145 440 L 145 455" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Arrow 2: eth0 answers with its MAC (Green) -->
+    <line x1="240" y1="455" x2="350" y2="365" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Arrow 3: traffic returns on a different NIC from the one intended (Orange) -->
+    <line x1="380" y1="365" x2="280" y2="455" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    <!-- Caption Box: Linux answers an ARP request for any local IP on any interface -->
+    <rect x="65" y="625" width="690" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="410" y="668" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="410" dy="0">Linux answers an ARP request</tspan>
+      <tspan x="410" dy="32">for any local IP on any interface</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== RIGHT PANEL: Recipe for multi-homed servers ==================== -->
+  <g id="right-panel">
+    <rect x="820" y="140" width="740" height="670" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Icon: Shield / Configuration Checklist Outline (56px) -->
+    <g transform="translate(845, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 14 V 28 C 50 42 28 50 28 50 C 28 50 6 42 6 28 V 14 Z" />
+      <polyline points="18,27 25,34 38,20" />
+    </g>
+    <text x="915" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Recipe for multi-homed servers</text>
+
+    <!-- Setting 1: arp_ignore=1 -->
+    <rect x="845" y="230" width="690" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="870" y="273" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="870" dy="0"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">arp_ignore=1: </tspan>reply only if the target IP</tspan>
+      <tspan x="870" dy="32">is configured on the receiving interface</tspan>
+    </text>
+
+    <!-- Setting 2: arp_announce=2 -->
+    <rect x="845" y="345" width="690" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="870" y="387" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="870" dy="0"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">arp_announce=2: </tspan>always use the best</tspan>
+      <tspan x="870" dy="32">source address of the outgoing interface</tspan>
+      <tspan x="870" dy="32">in ARP requests</tspan>
+    </text>
+
+    <!-- Setting 3: rp_filter=2 -->
+    <rect x="845" y="495" width="690" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="870" y="538" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="870" dy="0"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">rp_filter=2: </tspan>loose reverse path filtering</tspan>
+      <tspan x="870" dy="32">(strict mode 1 drops asymmetric traffic)</tspan>
+    </text>
+
+    <!-- Setting 4: policy routing -->
+    <rect x="845" y="610" width="690" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="870" y="652" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="870" dy="0"><tspan font-weight="bold" fill="#207448">policy routing with one routing table per NIC</tspan></tspan>
+      <tspan x="870" dy="32">so replies leave on the interface that</tspan>
+      <tspan x="870" dy="32">received the request</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== FOOTER STRIP ==================== -->
+  <g id="footer-strip">
+    <rect x="40" y="825" width="1520" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="863" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0"><tspan font-weight="bold" fill="#207448">Also: arp_filter=1 </tspan>answers only if the route to the sender would use this interface;</tspan>
+      <tspan x="800" dy="28"><tspan font-weight="bold" fill="#207448">arp_notify </tspan>sends a gratuitous ARP when an interface comes up or the address changes;</tspan>
+      <tspan x="800" dy="28">all keys are per interface</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== RESULT ROW ==================== -->
+  <g id="result-row">
+    <rect x="40" y="958" width="1520" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="998" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0"><tspan font-weight="bold" fill="#207448">Symptoms without the recipe: </tspan>asymmetric paths, RDMA and NCCL oddities,</tspan>
+      <tspan x="800" dy="32">flapping MAC tables, confused bonding; often seen only after another NIC is plugged in</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1066" width="1520" height="94" rx="12" fill="#207448" />
+    <text x="800" y="1106" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">Each setting makes the server answer only for the address</tspan>
+      <tspan x="800" dy="32">that belongs to the card the question arrived on</tspan>
+    </text>
+  </g>
+</svg>

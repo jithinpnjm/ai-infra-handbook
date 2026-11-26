@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four ways a subclass talks to its superclass, plus mixins and delegation</title>
+  <desc>Visual explanation of subclass-superclass interaction patterns, mixin usage, composition, delegation, and type verification rules in Python.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="70" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four ways a subclass talks to its superclass,</text>
+  <text x="40" y="122" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#303a36">plus mixins and delegation</text>
+
+  
+  <text x="40" y="168" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">A table of four patterns from specialize.py with Super</text>
+
+  
+  <rect x="40" y="185" width="748" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 210)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="8" r="7" />
+    <circle cx="12" cy="42" r="7" />
+    <circle cx="44" cy="42" r="7" />
+    <path d="M 28 15 L 28 26 M 28 26 L 12 35 M 28 26 L 44 35" />
+  </g>
+  <text x="135" y="228" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold" fill="#207448">Inheritor(Super): </tspan>
+    <tspan font-size="24" font-family="monospace">pass,</tspan>
+    <tspan x="135" dy="32" font-size="24">inherits methods unchanged</tspan>
+  </text>
+
+  
+  <rect x="812" y="185" width="748" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(832, 210)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="44" height="44" rx="6" />
+    <path d="M 16 16 L 40 40 M 16 40 L 40 16" />
+  </g>
+  <text x="907" y="228" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold" fill="#207448">Replacer(Super): </tspan>
+    <tspan font-size="24">overrides</tspan>
+    <tspan x="907" dy="32" font-size="24">method(self) completely</tspan>
+  </text>
+
+  
+  <rect x="40" y="305" width="748" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(60, 355)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="16" width="24" height="34" rx="4" />
+    <path d="M 30 33 L 46 33 M 38 25 L 38 41 M 46 16 L 46 22" />
+    <rect x="22" y="6" width="28" height="14" rx="3" />
+  </g>
+  <text x="135" y="340" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold" fill="#207448">Extender(Super): </tspan>
+    <tspan font-size="24">overrides method(self) and</tspan>
+    <tspan x="135" dy="30" font-size="24">calls back Super.method(self); example</tspan>
+    <tspan x="135" dy="30" font-size="24" font-family="monospace">Manager.giveRaise(self, percent, bonus=.10)</tspan>
+    <tspan x="135" dy="30" font-size="24">calls Person.giveRaise(self, percent + bonus)</tspan>
+  </text>
+
+  
+  <rect x="812" y="305" width="748" height="160" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(832, 355)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 10 L 48 10 L 48 26 C 40 26 40 38 48 38 L 48 46 L 8 46 Z" />
+    <circle cx="24" cy="28" r="6" />
+  </g>
+  <text x="907" y="340" font-family="system-ui, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold" fill="#db8129">Provider(Super): </tspan>
+    <tspan font-size="24">implements the abstract</tspan>
+    <tspan x="907" dy="30" font-size="24">action(self) hook that Super.delegate(self)</tspan>
+    <tspan x="907" dy="30" font-size="24">expects, the Template Method pattern</tspan>
+  </text>
+
+  
+  <rect x="40" y="480" width="748" height="530" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="65" y="522" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Mixins</text>
+  
+  <g transform="translate(710, 495)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="40" height="40" rx="6" />
+    <path d="M 28 8 C 28 16 36 16 36 8 M 48 28 C 40 28 40 36 48 36" />
+  </g>
+  <text x="65" y="556" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="65" dy="0">a small class named ...Mixin adding one</tspan>
+    <tspan x="65" dy="26">independent capability through multiple</tspan>
+    <tspan x="65" dy="26">inheritance: AttrDisplay, ListInstance</tspan>
+    <tspan x="65" dy="26">(inspects self.__dict__), ListInherited</tspan>
+    <tspan x="65" dy="26">(dir(self)), ListTree (climbs __class__</tspan>
+    <tspan x="65" dy="26">and __bases__); UpperCaseMixin</tspan>
+    <tspan x="65" dy="26">uppercases string keys with</tspan>
+    <tspan x="65" dy="26" font-family="monospace">super().__setitem__(_upper(key), item)</tspan>
+    <tspan x="65" dy="26">and must be listed first: class UpperDict(</tspan>
+    <tspan x="65" dy="26">UpperCaseMixin, collections.UserDict): pass,</tspan>
+    <tspan x="65" dy="26">so it intercepts calls before UserDict on the MRO</tspan>
+  </text>
+
+  
+  <rect x="55" y="855" width="718" height="140" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(72, 885)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 24 6 L 44 42 L 4 42 Z" />
+    <line x1="24" y1="18" x2="24" y2="28" />
+    <circle cx="24" cy="35" r="2" fill="#207448" stroke="none" />
+  </g>
+  <text x="135" y="888" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">subclassing a built-in C type such as dict</tspan>
+    <tspan x="135" dy="27">or list directly is risky because C methods</tspan>
+    <tspan x="135" dy="27">ignore Python overrides; use collections.UserDict,</tspan>
+    <tspan x="135" dy="27">UserList or UserString</tspan>
+  </text>
+
+  
+  <rect x="812" y="480" width="748" height="530" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="837" y="522" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Composition and delegation</text>
+  
+  <g transform="translate(1485, 495)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="44" height="44" rx="8" />
+    <circle cx="28" cy="28" r="10" />
+    <path d="M 28 18 L 38 18 L 38 28" />
+  </g>
+  <text x="837" y="560" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="837" dy="0">inheritance models is-a (PizzaRobot is a</tspan>
+    <tspan x="837" dy="28">Chef, a Chef is an Employee); composition</tspan>
+    <tspan x="837" dy="28">models has-a (PizzaShop contains Server,</tspan>
+    <tspan x="837" dy="28">PizzaRobot and Oven; Department gathers</tspan>
+    <tspan x="837" dy="28">Person and Manager objects); delegation:</tspan>
+    <tspan x="837" dy="28">a wrapper holds an embedded object and</tspan>
+    <tspan x="837" dy="28">forwards requests with</tspan>
+    <tspan x="837" dy="28" font-family="monospace">def __getattr__(self, attr):</tspan>
+    <tspan x="860" dy="28" font-family="monospace">return getattr(self.person, attr);</tspan>
+    <tspan x="837" dy="28">special operators such as __str__ or __add__ are</tspan>
+    <tspan x="837" dy="28">looked up on the class directly, so they bypass</tspan>
+    <tspan x="837" dy="28">instance-level __getattr__</tspan>
+  </text>
+
+  
+  <rect x="40" y="1025" width="1520" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(56, 1045)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 24 6 L 42 14 L 42 26 C 42 38 24 46 24 46 C 24 46 6 38 6 26 L 6 14 Z" />
+    <path d="M 16 26 L 22 32 L 32 18" />
+  </g>
+  <text x="120" y="1054" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="120" dy="0">isinstance(x, Base) and issubclass respect inheritance; type(x) is T checks the exact type, rarely wanted;</tspan>
+    <tspan x="120" dy="27">Liskov: a subclass accepts at least what the base accepts, returns no less than the base promises,</tspan>
+    <tspan x="120" dy="27">and adds no surprising exceptions</tspan>
+  </text>
+
+  
+  <rect x="40" y="1135" width="1520" height="50" rx="8" fill="#207448" />
+  <text x="800" y="1169" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Customize a component without touching its source</text>
+</svg>

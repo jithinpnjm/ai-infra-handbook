@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Investigation commands from cheapest to most targeted</title>
+  <desc>Investigation commands from cheapest to most targeted</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Investigation commands from cheapest to most targeted</text>
+
+  
+  <line x1="520" y1="196" x2="520" y2="236" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="520" y1="332" x2="520" y2="372" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="520" y1="468" x2="520" y2="508" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="520" y1="604" x2="520" y2="644" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="520" y1="740" x2="520" y2="780" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="520" y1="876" x2="520" y2="916" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="520" y1="1012" x2="520" y2="1052" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="980" y1="692" x2="1040" y2="692" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="60" y="100" width="920" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="110" cy="148" r="24" fill="#207448" />
+  <text x="110" y="148" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 166 126 L 194 126 L 206 138 L 206 170 L 166 170 Z" />
+    <path d="M 194 126 L 194 138 L 206 138" />
+    <path d="M 174 150 L 182 158 L 198 142" />
+  </g>
+  <text x="236" y="138" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">--syntax-check</text>
+  <text x="236" y="174" font-family="sans-serif" font-size="24" fill="#303a36">(parse only, touches no host)</text>
+
+  
+  <rect x="60" y="236" width="920" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="110" cy="284" r="24" fill="#207448" />
+  <text x="110" y="284" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="160" y="260" width="48" height="48" rx="6" />
+    <circle cx="170" cy="274" r="2" fill="#207448" />
+    <line x1="178" y1="274" x2="198" y2="274" />
+    <circle cx="170" cy="284" r="2" fill="#207448" />
+    <line x1="178" y1="284" x2="198" y2="284" />
+    <circle cx="170" cy="294" r="2" fill="#207448" />
+    <line x1="178" y1="294" x2="198" y2="294" />
+  </g>
+  <text x="236" y="294" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">--list-tasks --list-tags --list-hosts</text>
+
+  
+  <rect x="60" y="372" width="920" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="110" cy="420" r="24" fill="#207448" />
+  <text x="110" y="420" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="180" cy="414" r="14" />
+    <line x1="190" y1="424" x2="204" y2="438" />
+    <line x1="174" y1="414" x2="186" y2="414" stroke-width="3" />
+  </g>
+  <text x="236" y="410" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">--check --diff --limit gpu001</text>
+  <text x="236" y="446" font-family="sans-serif" font-size="24" fill="#303a36">(what would change)</text>
+
+  
+  <rect x="60" y="508" width="920" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="110" cy="556" r="24" fill="#207448" />
+  <text x="110" y="556" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="160" y="532" width="48" height="48" rx="6" />
+    <path d="M 168 556 L 186 556 M 180 548 L 188 556 L 180 564" />
+    <line x1="196" y1="544" x2="196" y2="568" />
+  </g>
+  <text x="236" y="546" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">--step</text>
+  <text x="236" y="582" font-family="sans-serif" font-size="24" fill="#303a36">(confirm every task y/n/c)</text>
+
+  
+  <rect x="60" y="644" width="920" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="110" cy="692" r="24" fill="#207448" />
+  <text x="110" y="692" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="160" y="668" width="48" height="48" rx="6" />
+    <path d="M 170 682 L 184 692 L 170 702 Z" fill="#207448" stroke-width="2" />
+    <line x1="192" y1="680" x2="192" y2="704" />
+  </g>
+  <text x="236" y="702" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">--start-at-task Install driver</text>
+
+  
+  <rect x="1040" y="627" width="500" height="130" rx="12" fill="#fdf6ee" stroke="#db8129" stroke-width="3" />
+  <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 1082 672 L 1102 708 L 1062 708 Z" />
+    <line x1="1082" y1="684" x2="1082" y2="695" stroke-width="3" />
+    <circle cx="1082" cy="702" r="1.5" fill="#db8129" stroke="none" />
+  </g>
+  <text x="1116" y="670" font-family="sans-serif" font-size="24" fill="#303a36">it skips earlier <tspan font-family="monospace">set_fact</tspan></text>
+  <text x="1116" y="702" font-family="sans-serif" font-size="24" fill="#303a36">so the driver task fails</text>
+  <text x="1116" y="734" font-family="sans-serif" font-size="24" fill="#303a36">on an undefined variable</text>
+
+  
+  <rect x="60" y="780" width="920" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="110" cy="828" r="24" fill="#207448" />
+  <text x="110" y="828" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 168 834 L 186 816 L 200 816 L 200 830 L 182 848 Z" />
+    <circle cx="193" cy="823" r="2" fill="#207448" stroke="none" />
+  </g>
+  <text x="236" y="838" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">-t config -l gpu001</text>
+
+  
+  <rect x="60" y="916" width="920" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="110" cy="964" r="24" fill="#207448" />
+  <text x="110" y="964" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="184" cy="950" r="6" />
+    <circle cx="170" cy="972" r="5" />
+    <circle cx="198" cy="972" r="5" />
+    <line x1="180" y1="955" x2="174" y2="967" stroke-width="3" />
+    <line x1="188" y1="955" x2="194" y2="967" stroke-width="3" />
+  </g>
+  <text x="236" y="974" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">ad hoc setup with filter=ansible_default_ipv4</text>
+
+  
+  <rect x="60" y="1052" width="920" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <circle cx="110" cy="1100" r="24" fill="#207448" />
+  <text x="110" y="1100" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">8</text>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="160" y="1076" width="48" height="48" rx="6" />
+    <path d="M 168 1092 L 176 1100 L 168 1108" stroke-width="3" />
+    <line x1="182" y1="1108" x2="194" y2="1108" stroke-width="3" />
+  </g>
+  <text x="236" y="1110" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">ad hoc command which python3 with -vvv</text>
+</svg>

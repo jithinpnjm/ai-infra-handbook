@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Merge, rebase and history shape</title>
+  <desc>Visual gitGraph infographic showing branches main and feature with commits A, B, C, F1, F2, and merge commit M.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Merge, rebase and history shape</text>
+
+  <!-- ==================== FEATURE BRANCH CONTAINER ==================== -->
+  <g id="branch-feature-group">
+    <rect x="50" y="140" width="1500" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Branch feature badge -->
+    <rect x="70" y="156" width="200" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="170" y="196" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">feature</text>
+
+    <!-- Node F1 (Col 2: center 775) -->
+    <g id="node-F1">
+      <rect x="705" y="230" width="140" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      <!-- Commit icon (56x56) -->
+      <g transform="translate(747, 248)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="16"/>
+        <circle cx="28" cy="28" r="5" fill="#207448"/>
+        <line x1="28" y1="4" x2="28" y2="12"/>
+        <line x1="28" y1="44" x2="28" y2="52"/>
+      </g>
+      <text x="775" y="380" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">F1</text>
+    </g>
+
+    <!-- Node F2 (Col 3: center 1000) -->
+    <g id="node-F2">
+      <rect x="930" y="230" width="140" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      <!-- Commit icon (56x56) -->
+      <g transform="translate(972, 248)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="16"/>
+        <circle cx="28" cy="28" r="5" fill="#207448"/>
+        <line x1="28" y1="4" x2="28" y2="12"/>
+        <line x1="28" y1="44" x2="28" y2="52"/>
+      </g>
+      <text x="1000" y="380" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">F2</text>
+    </g>
+
+    <!-- Arrow 3: F1 -> F2 -->
+    <line x1="845" y1="325" x2="930" y2="325" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  </g>
+
+  <!-- ==================== MAIN BRANCH CONTAINER ==================== -->
+  <g id="branch-main-group">
+    <rect x="50" y="510" width="1500" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Branch main badge -->
+    <rect x="70" y="526" width="160" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="150" y="566" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">main</text>
+
+    <!-- Node A (Col 0: center 325) -->
+    <g id="node-A">
+      <rect x="255" y="600" width="140" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      <!-- Commit icon (56x56) -->
+      <g transform="translate(297, 618)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="16"/>
+        <circle cx="28" cy="28" r="5" fill="#207448"/>
+        <line x1="28" y1="4" x2="28" y2="12"/>
+        <line x1="28" y1="44" x2="28" y2="52"/>
+      </g>
+      <text x="325" y="750" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">A</text>
+    </g>
+
+    <!-- Arrow 1: A -> B -->
+    <line x1="395" y1="695" x2="480" y2="695" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <!-- Node B (Col 1: center 550) -->
+    <g id="node-B">
+      <rect x="480" y="600" width="140" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      <!-- Commit icon (56x56) -->
+      <g transform="translate(522, 618)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="16"/>
+        <circle cx="28" cy="28" r="5" fill="#207448"/>
+        <line x1="28" y1="4" x2="28" y2="12"/>
+        <line x1="28" y1="44" x2="28" y2="52"/>
+      </g>
+      <text x="550" y="750" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">B</text>
+    </g>
+
+    <!-- Arrow 4: B -> C -->
+    <line x1="620" y1="695" x2="1155" y2="695" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <!-- Node C (Col 4: center 1225) -->
+    <g id="node-C">
+      <rect x="1155" y="600" width="140" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      <!-- Commit icon (56x56) -->
+      <g transform="translate(1197, 618)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="16"/>
+        <circle cx="28" cy="28" r="5" fill="#207448"/>
+        <line x1="28" y1="4" x2="28" y2="12"/>
+        <line x1="28" y1="44" x2="28" y2="52"/>
+      </g>
+      <text x="1225" y="750" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">C</text>
+    </g>
+
+    <!-- Arrow 5: C -> M -->
+    <line x1="1295" y1="695" x2="1380" y2="695" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <!-- Node M (Col 5: center 1450) - Orange Highlight for the Merge Commit -->
+    <g id="node-M">
+      <rect x="1380" y="600" width="140" height="190" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+      <!-- Merge commit icon (56x56) -->
+      <g transform="translate(1422, 618)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="30" r="15"/>
+        <circle cx="28" cy="30" r="4.5" fill="#207448"/>
+        <path d="M 14 6 L 24 18"/>
+        <path d="M 42 6 L 32 18"/>
+        <line x1="28" y1="45" x2="28" y2="52"/>
+      </g>
+      <text x="1450" y="750" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">M</text>
+    </g>
+  </g>
+
+  <!-- ==================== CROSS-BRANCH ARROWS ==================== -->
+  <!-- Arrow 2: B -> F1 (Branching from B up to F1) -->
+  <path d="M 550 600 C 550 480, 650 325, 705 325" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- Arrow 6: F2 -> M (Merging F2 down to M) -->
+  <path d="M 1070 325 H 1340 C 1390 325, 1450 480, 1450 600" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+</svg>

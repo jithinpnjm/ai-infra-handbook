@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>awk group-by: an associative array counts as the lines pass</title>
+  <desc>Technical infographic illustrating how awk uses an associative array to count occurrences per key as lines pass, compared with uniq -c pipelines.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+  <text x="800" y="66" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">awk group-by:</tspan>
+    <tspan x="800" dy="54">an associative array counts as the lines pass</tspan>
+  </text>
+  <g id="left-input-table">
+    <rect x="40" y="140" width="340" height="540" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(60, 148)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="6" />
+      <line x1="4" y1="20" x2="52" y2="20" />
+      <line x1="28" y1="20" x2="28" y2="52" />
+      <line x1="4" y1="36" x2="52" y2="36" stroke-width="2" />
+    </g>
+    <rect x="60" y="210" width="300" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="135" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">column 1</text>
+    <text x="285" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">column 2</text>
+    <line x1="210" y1="210" x2="210" y2="270" stroke="#207448" stroke-width="2" />
+    <rect x="60" y="280" width="300" height="64" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <line x1="210" y1="280" x2="210" y2="344" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+    <text x="135" y="325" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">alice</text>
+    <rect x="60" y="356" width="300" height="64" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <line x1="210" y1="356" x2="210" y2="420" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+    <text x="135" y="401" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">bob</text>
+    <rect x="60" y="432" width="300" height="64" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <line x1="210" y1="432" x2="210" y2="496" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+    <text x="135" y="477" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">alice</text>
+    <rect x="60" y="508" width="300" height="64" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <line x1="210" y1="508" x2="210" y2="572" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+    <text x="135" y="553" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">alice</text>
+    <rect x="60" y="584" width="300" height="64" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <line x1="210" y1="584" x2="210" y2="648" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+    <text x="135" y="629" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">bob</text>
+  </g>
+  <path d="M 380 410 L 430 410" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+  <g id="middle-awk-box">
+    <rect x="430" y="140" width="580" height="540" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(455, 148)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6" />
+      <polyline points="14,22 24,30 14,38" />
+      <line x1="28" y1="38" x2="42" y2="38" stroke-width="3" />
+    </g>
+    <text x="525" y="192" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">awk { c[$1]++ }</text>
+    <rect x="455" y="210" width="530" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="720" y="253" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">lookup table c</text>
+    <rect x="455" y="278" width="530" height="118" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <circle cx="490" cy="337" r="24" fill="#207448" />
+    <text x="490" y="345" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="535" y="325" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">after line 1</text>
+    <rect x="535" y="338" width="430" height="46" rx="6" fill="#e8f1ea" />
+    <text x="550" y="372" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">alice = 1</text>
+    <rect x="455" y="408" width="530" height="118" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <circle cx="490" cy="467" r="24" fill="#207448" />
+    <text x="490" y="475" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="535" y="455" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">after line 3</text>
+    <rect x="535" y="468" width="430" height="46" rx="6" fill="#e8f1ea" />
+    <text x="550" y="502" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">alice = 2, bob = 1</text>
+    <rect x="455" y="538" width="530" height="118" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <circle cx="490" cy="597" r="24" fill="#207448" />
+    <text x="490" y="605" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="535" y="585" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">after line 5</text>
+    <rect x="535" y="598" width="430" height="46" rx="6" fill="#e8f1ea" />
+    <text x="550" y="632" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">alice = 3, bob = 2</text>
+  </g>
+  <path d="M 1010 265 L 1050 265" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+  <g id="right-end-box">
+    <rect x="1050" y="140" width="510" height="260" rx="14" fill="#fff5ea" stroke="#db8129" stroke-width="3.5" />
+    <g transform="translate(1075, 148)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6" />
+      <circle cx="28" cy="28" r="10" />
+      <line x1="28" y1="12" x2="28" y2="18" />
+      <line x1="28" y1="38" x2="28" y2="44" />
+      <line x1="12" y1="28" x2="18" y2="28" />
+      <line x1="38" y1="28" x2="44" y2="28" />
+    </g>
+    <text x="1330" y="176" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1330" dy="0">END { for (k in c)</tspan>
+      <tspan x="1330" dy="32">print c[k], k }</tspan>
+    </text>
+    <text x="1305" y="260" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">runs once after the last line</text>
+    <rect x="1075" y="280" width="460" height="105" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="1100" y="340" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">output</text>
+    <text x="1330" y="322" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">3 alice</text>
+    <text x="1330" y="362" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">2 bob</text>
+  </g>
+  <path d="M 1305 400 L 1305 425" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+  <g id="right-sort-box">
+    <rect x="1050" y="425" width="510" height="255" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(1075, 438)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="12" x2="42" y2="12" stroke-width="5" />
+      <line x1="10" y1="24" x2="34" y2="24" stroke-width="5" />
+      <line x1="10" y1="36" x2="26" y2="36" stroke-width="5" />
+      <line x1="10" y1="48" x2="18" y2="48" stroke-width="5" />
+    </g>
+    <text x="1150" y="476" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">| sort -rn</text>
+    <text x="1305" y="522" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ranked output</text>
+    <rect x="1075" y="542" width="460" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1305" y="588" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">3 alice</text>
+    <text x="1305" y="632" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">2 bob</text>
+  </g>
+  <g id="second-panel-comparison">
+    <rect x="40" y="715" width="1520" height="250" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <g transform="translate(65, 730)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="28" y1="12" x2="28" y2="44" />
+      <line x1="16" y1="20" x2="40" y2="20" />
+      <line x1="16" y1="36" x2="40" y2="36" />
+    </g>
+    <rect x="135" y="730" width="680" height="220" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="475" y="772" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">uniq -c without sort</text>
+    <rect x="155" y="800" width="150" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="230" y="868" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">1 alice</text>
+    <rect x="317" y="800" width="150" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="392" y="868" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">1 bob</text>
+    <rect x="479" y="800" width="150" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="554" y="868" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">2 alice</text>
+    <rect x="641" y="800" width="150" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="716" y="868" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">1 bob</text>
+    <rect x="845" y="730" width="690" height="220" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="1190" y="772" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">sort | uniq -c</text>
+    <rect x="895" y="800" width="280" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1035" y="868" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">3 alice</text>
+    <rect x="1195" y="800" width="280" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1335" y="868" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">2 bob</text>
+  </g>
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="990" width="1520" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="800" y="1040" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">An associative array is a lookup table keyed by text, so no sort | uniq -c is needed</text>
+  </g>
+</svg>

@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>What counts against the container memory limit</title>
+  <desc>Infographic illustrating container memory limit accounting and OOMKilled threshold</desc>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">What counts against the container memory limit</text>
+
+  
+  <rect x="60" y="130" width="680" height="850" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="98" y="151" width="40" height="40" rx="4"/>
+    <line x1="106" y1="143" x2="106" y2="151"/>
+    <line x1="118" y1="143" x2="118" y2="151"/>
+    <line x1="130" y1="143" x2="130" y2="151"/>
+    <line x1="106" y1="191" x2="106" y2="199"/>
+    <line x1="118" y1="191" x2="118" y2="199"/>
+    <line x1="130" y1="191" x2="130" y2="199"/>
+    <line x1="90" y1="159" x2="98" y2="159"/>
+    <line x1="90" y1="171" x2="98" y2="171"/>
+    <line x1="90" y1="183" x2="98" y2="183"/>
+    <line x1="138" y1="159" x2="146" y2="159"/>
+    <line x1="138" y1="171" x2="146" y2="171"/>
+    <line x1="138" y1="183" x2="146" y2="183"/>
+    <circle cx="107" cy="160" r="2.5" fill="#207448"/>
+  </g>
+
+  
+  <rect x="180" y="145" width="450" height="52" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="3"/>
+  <text x="405" y="181" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#dc2626">OOMKilled, exit code 137</text>
+
+  
+  <text x="400" y="232" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Total 85 GiB</text>
+
+  
+  
+  <rect x="140" y="245" width="520" height="45" rx="8" fill="#fdecdb" stroke="#db8129" stroke-width="3"/>
+  <rect x="140" y="270" width="520" height="20" fill="#fdecdb"/>
+
+  
+  <rect x="140" y="290" width="520" height="250" fill="#d8ebdd" stroke="#207448" stroke-width="3"/>
+
+  
+  <text x="400" y="350" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="400" dy="0" font-weight="bold">DataLoader and NCCL buffers</tspan>
+    <tspan x="400" dy="36" font-family="ui-monospace, monospace">written to /dev/shm</tspan>
+    <tspan x="400" dy="36">(tmpfs charged to the cgroup)</tspan>
+    <tspan x="400" dy="42" font-size="26" font-weight="bold">35 GiB</tspan>
+  </text>
+
+  
+  <rect x="140" y="540" width="520" height="380" rx="8" fill="#cde4d3" stroke="#207448" stroke-width="3"/>
+  <rect x="140" y="540" width="520" height="30" fill="#cde4d3"/>
+
+  
+  <text x="400" y="700" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="400" dy="0" font-weight="bold">process heap and pinned RAM</tspan>
+    <tspan x="400" dy="48" font-size="32" font-weight="bold">50 GiB</tspan>
+  </text>
+
+  
+  <line x1="90" y1="290" x2="670" y2="290" stroke="#dc2626" stroke-width="4" stroke-dasharray="12 6"/>
+
+  
+  <rect x="140" y="268" width="340" height="44" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="2.5"/>
+  <text x="310" y="299" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#dc2626">limits.memory 80Gi</text>
+
+
+  
+  <rect x="780" y="130" width="760" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="843" cy="172" rx="22" ry="7"/>
+    <path d="M 821 172 v 32 a 22 7 0 0 0 44 0 v -32"/>
+    <path d="M 821 188 a 22 7 0 0 0 44 0"/>
+  </g>
+
+  
+  <text x="895" y="178" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="895" dy="0" font-weight="bold" fill="#207448">The limit also includes:</tspan>
+    <tspan x="895" dy="50" font-size="25">page cache attributable to the cgroup,</tspan>
+    <tspan x="895" dy="46" font-size="25">pinned memory, shared memory</tspan>
+  </text>
+
+
+  
+  <rect x="780" y="400" width="760" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 843 432 l 22 10 c 0 20 -10 36 -22 42 c -12 -6 -22 -22 -22 -42 z"/>
+    <line x1="843" y1="447" x2="843" y2="461"/>
+    <circle cx="843" cy="471" r="2.5" fill="#207448"/>
+  </g>
+
+  
+  <text x="895" y="455" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="895" dy="0" font-weight="bold"><tspan font-family="ui-monospace, monospace">default /dev/shm of 64 MiB</tspan></tspan>
+    <tspan x="895" dy="48" font-weight="bold">breaks PyTorch DataLoader;</tspan>
+    <tspan x="895" dy="48" font-size="24">fix with a memory-backed emptyDir</tspan>
+  </text>
+
+
+  
+  <rect x="780" y="670" width="760" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="843" cy="733" r="10"/>
+    <circle cx="843" cy="733" r="18" stroke-dasharray="6 6"/>
+  </g>
+
+  
+  <text x="895" y="730" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="895" dy="0">size emptyDir medium Memory</tspan>
+    <tspan x="895" dy="52">with <tspan font-family="ui-monospace, monospace">sizeLimit</tspan> and include it in</tspan>
+    <tspan x="895" dy="52"><tspan font-family="ui-monospace, monospace">limits.memory;</tspan> read <tspan font-family="ui-monospace, monospace">memory.current</tspan></tspan>
+    <tspan x="895" dy="52">in the cgroup to watch it</tspan>
+  </text>
+</svg>

@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1160" viewBox="0 0 1600 1160" role="img" font-family="Helvetica Neue, Arial, sans-serif">
+  <title>Pod-by-pod scale-up versus all-or-nothing capacity for a gang</title>
+  <desc>Two stacked lanes. The top lane shows reactive scale-up pod by pod: six green worker pods waiting among sixteen slots while the rest are still being provisioned, with an orange note, a clock, and the warning that the gang cannot start with only part of its nodes. The bottom lane shows a ProvisioningRequest with Kueue AdmissionCheck: one request reserves all sixteen nodes at once, then the workload is admitted and sixteen worker pods run.</desc>
+
+  <rect x="0" y="0" width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="74" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">Pod-by-pod scale-up versus all-or-nothing</text>
+  <text x="800" y="130" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">capacity for a gang</text>
+
+  
+  <rect x="40" y="160" width="1520" height="400" rx="16" fill="#e8f1ea" stroke="#bcd6c4" stroke-width="2"/>
+
+  
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <circle cx="100" cy="200" r="17"/>
+    <circle cx="100" cy="200" r="7"/>
+    <line x1="117" y1="200" x2="125" y2="200"/>
+    <line x1="112" y1="212" x2="118" y2="218"/>
+    <line x1="100" y1="217" x2="100" y2="225"/>
+    <line x1="88" y1="212" x2="82" y2="218"/>
+    <line x1="83" y1="200" x2="75" y2="200"/>
+    <line x1="88" y1="188" x2="82" y2="182"/>
+    <line x1="100" y1="183" x2="100" y2="175"/>
+    <line x1="112" y1="188" x2="118" y2="182"/>
+  </g>
+  <text x="150" y="214" font-size="32" font-weight="700" fill="#303a36">Reactive scale-up pod by pod</text>
+
+  
+  <rect x="168" y="250" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="248" y="250" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="328" y="250" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="408" y="250" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="488" y="250" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="568" y="250" width="64" height="64" rx="8" fill="#207448"/>
+
+  
+  <rect x="648" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="728" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="808" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="888" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="968" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="1048" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="1128" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="1208" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="1288" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="1368" y="250" width="64" height="64" rx="8" fill="#ffffff" stroke="#7fa48d" stroke-width="2.5" stroke-dasharray="7 6"/>
+
+  <text x="168" y="370" font-size="28" font-weight="700" fill="#207448">worker pod waiting</text>
+  <text x="740" y="370" font-size="24" fill="#303a36">the gang cannot start with only part of its nodes</text>
+
+  
+  <rect x="168" y="400" width="720" height="104" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="196" y="438" font-size="24" fill="#db8129">the waiting pods hold the new nodes idle</text>
+  <text x="196" y="472" font-size="24" fill="#db8129">while the rest are still being provisioned</text>
+
+  
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <circle cx="988" cy="437" r="22"/>
+    <path d="M988 423 L988 437 L1000 437"/>
+  </g>
+  <text x="1032" y="447" font-size="24" fill="#303a36">scale-up trickles in</text>
+
+  
+  <rect x="40" y="600" width="1520" height="410" rx="16" fill="#e8f1ea" stroke="#bcd6c4" stroke-width="2"/>
+  <text x="80" y="656" font-size="32" font-weight="700" fill="#303a36">ProvisioningRequest with Kueue AdmissionCheck</text>
+
+  
+  <circle cx="90" cy="737" r="24" fill="#207448"/>
+  <text x="90" y="746" text-anchor="middle" font-size="26" font-weight="700" fill="#ffffff">1</text>
+
+  <line x1="120" y1="737" x2="382" y2="737" stroke="#207448" stroke-width="3"/>
+  <polygon points="400,737 380,727 380,747" fill="#207448"/>
+
+  <text x="210" y="780" text-anchor="middle" font-size="24" fill="#303a36">request capacity for</text>
+  <text x="210" y="810" text-anchor="middle" font-size="24" fill="#303a36">all 16 pods at once</text>
+
+  
+  <rect x="400" y="692" width="1030" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="430" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="492" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="554" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="616" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="678" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="740" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="802" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="864" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="926" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="988" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="1050" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="1112" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="1174" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="1236" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="1298" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+  <rect x="1360" y="707" width="44" height="60" rx="6" fill="#cfe3d5" stroke="#207448" stroke-width="2"/>
+
+  
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <path d="M1460 720 L1460 712 A15 15 0 0 1 1490 712 L1490 720"/>
+    <rect x="1450" y="720" width="50" height="34" rx="6"/>
+    <circle cx="1475" cy="737" r="3.5" fill="#207448" stroke="none"/>
+  </g>
+
+  
+  <line x1="900" y1="784" x2="900" y2="852" stroke="#207448" stroke-width="3"/>
+  <polygon points="900,870 890,850 910,850" fill="#207448"/>
+  <circle cx="952" cy="826" r="24" fill="#207448"/>
+  <text x="952" y="835" text-anchor="middle" font-size="26" font-weight="700" fill="#ffffff">2</text>
+  <text x="992" y="834" font-size="24" fill="#303a36">workload admitted</text>
+
+  
+  <rect x="168" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="248" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="328" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="408" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="488" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="568" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="648" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="728" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="808" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="888" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="968" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="1048" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="1128" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="1208" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="1288" y="870" width="64" height="64" rx="8" fill="#207448"/>
+  <rect x="1368" y="870" width="64" height="64" rx="8" fill="#207448"/>
+
+  <text x="168" y="980" font-size="24" fill="#303a36">all or none, the nodes are held for the job</text>
+
+  
+  <rect x="40" y="1050" width="1520" height="64" rx="12" fill="#207448"/>
+  <text x="800" y="1092" text-anchor="middle" font-size="28" font-weight="700" fill="#ffffff">book the whole crew before anyone gets into the boat</text>
+</svg>

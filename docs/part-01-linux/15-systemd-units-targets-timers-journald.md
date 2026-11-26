@@ -118,6 +118,10 @@ User services are the per-user instances that belong to ordinary users. They rea
 
 ### Anatomy of a service unit
 
+![A service unit file has a Unit section for relationships, a Service section for behaviour, and an Install section for enablement.](./img/p2-0115-unit-anatomy.svg)
+
+*Figure 1.15.2. A service unit file has three sections: Unit for relationships, Service for how it runs, and Install for enabling it at boot.*
+
 Say you need to run a small GPU metrics exporter as a service. It must start after the network and after the persistence daemon, and it must come back on its own if it crashes. The unit file below does all of that.
 
 ```ini
@@ -157,7 +161,7 @@ A service does not get a copy of your shell environment, and that single fact ex
 
 ![A table of Type= values and when systemd considers a service started.](./img/l15-service-types.svg)
 
-*Figure 1.15.2. Type= tells systemd what the main process does at start-up and when the service counts as ready.*
+*Figure 1.15.3. Type= tells systemd what the main process does at start-up and when the service counts as ready.*
 
 When one unit depends on another, you need to know when the first one is really ready, not merely launched. `Type=` answers that question. It tells systemd what the main process does at start-up, and when to consider the unit started. Units ordered `After=` a service wait for exactly that moment.
 
@@ -174,6 +178,10 @@ When one unit depends on another, you need to know when the first one is really 
 Because systemd tracks processes with **cgroups**, it knows every process of the service however many times they fork. That is why one line, `Type=`, is all you need to describe the start-up: you only have to say whether the main process forks.
 
 ### Common [Service] options
+
+![A restart cycle of run, crash, policy decision and delay that ends in failed start-limit-hit after too many starts in the interval, with the reset-failed fix.](./img/p3-0115-restart-loop.svg)
+
+*Figure 1.15.4. A restart loop that exceeds the burst limit puts the unit in failed start-limit-hit until you fix the cause and run reset-failed.*
 
 Most units set only a handful of these options, and the table below holds the ones you will meet most often. One default deserves a warning of its own: `Restart=` defaults to `no`, so a daemon that must stay up needs `on-failure` or `always`.
 
@@ -198,6 +206,14 @@ Most units set only a handful of these options, and the table below holds the on
 So before you write a service, pick its `Type=` and its `Restart=` policy. Those two choices decide most of its behaviour at boot.
 
 ## 3. Operating systemd: `systemctl`
+
+![An annotated systemctl status output for sshd with callouts for Loaded, Active, Main PID, resource accounting, the cgroup tree and the log lines.](./img/p3-0115-status-anatomy.svg)
+
+*Figure 1.15.5. The Active line gives the state and, after a failure, the Result, while the cgroup tree lists every process the service owns.*
+
+![A table showing which systemctl commands start a unit now and at boot, plus the difference between reload, restart and daemon-reload.](./img/p3-0115-enable-start-mask.svg)
+
+*Figure 1.15.6. Enable only arranges the boot-time start, start only runs it now, and daemon-reload re-reads unit files without restarting anything.*
 
 Picture a node that came up wrong: one unit is failed, one service will not stay up, and you do not yet know which file is involved. Most of your day-to-day work with systemd happens through one command, `systemctl`. The commands below cover the tasks you will repeat most often, from listing failed units to changing a unit's enablement, so keep them somewhere you can find them.
 
@@ -259,6 +275,10 @@ Notice that the `status` output shows only the newest log messages for a unit. T
 
 ## 4. Dependencies and ordering
 
+![A table comparing Wants, Requires, Requisite, BindsTo, PartOf, Conflicts and After by whether they start the other unit and what happens when it fails.](./img/p3-0115-dependency-matrix.svg)
+
+*Figure 1.15.7. Wants is the soft default, Requires and BindsTo cascade a failure, and only After or Before sets the start order.*
+
 You add `Wants=B` to a unit, reboot, and A still starts before B every time. Two ideas control how systemd starts units, and they are easy to confuse, so let us pin both down early. **Requirement dependencies** say what else must also start. **Ordering dependencies** say in which order units start, once both of them are going to start.
 
 This is the sentence worth memorising. By themselves, `Requires=` and `Wants=` do not order anything. Both units start in parallel. To start A after B and also pull B in, you need two settings. One is `Wants=B`, or `Requires=B`. The other is `After=B`.
@@ -282,7 +302,7 @@ Ordering is a separate setting from requirements, and it uses two modifiers. `Be
 
 ![Wants and After are separate](./img/ch15-fig1-ordering.jpg)
 
-*Figure 1.15.3. Wants= pulls a unit in; After= only sets the start order. Use both together.*
+*Figure 1.15.8. Wants= pulls a unit in; After= only sets the start order. Use both together.*
 
 The soft and hard forms matter for a practical reason, and one picture makes it obvious. Imagine a login prompt that hard-requires a database server. If that server fails, you cannot log in to fix the database. `Wants` keeps a failure local, much as a traditional boot tolerated failing scripts. A missing data disk may stop an application, but it should not stop `sshd`. Use `Requires` or `BindsTo` only when a unit is genuinely useless or dangerous without the other.
 
@@ -319,6 +339,10 @@ If readiness is the problem, add a **health gate**. That is a `Type=oneshot` uni
 Before you add an ordering rule, ask whether the second service really fails without the first one being ready.
 
 ## 5. Overriding units: drop-ins
+
+![A vendor unit with ExecStart, a wrong drop-in that adds a second ExecStart, and a right drop-in that clears the list first.](./img/p3-0115-dropin-merge.svg)
+
+*Figure 1.15.9. A drop-in assignment to a list key adds to it, so write an empty ExecStart line first to replace the vendor command.*
 
 Sooner or later you will need to change one line in a unit that a package owns. Vendor units change whenever packages update, which is why you should never edit them. A drop-in is the way out: it lets you change one setting and leave the rest of the unit alone.
 
@@ -368,7 +392,7 @@ Dependencies form a **graph**, not a tree, and the diagram below shows why that 
 
 ![Targets](./img/ch15-d1-luna.svg)
 
-*Figure 1.15.4. Targets.*
+*Figure 1.15.10. Targets.*
 
 You can render the whole graph as an image with `systemd-analyze dot 'multi-user.target' | dot -Tsvg > g.svg`. Filter the patterns to keep the picture readable.
 
@@ -377,6 +401,10 @@ Boot-time **jobs** can be watched while the system comes up, with `systemctl lis
 If a boot is slow, check the critical chain before you change any service.
 
 ## 7. Templates and instances
+
+![A template unit gpu-job at sign dot service fanning out to numbered instances, with the difference between the escaped percent i and unescaped percent I specifiers.](./img/p3-0115-template-instance.svg)
+
+*Figure 1.15.11. The text after the at sign becomes percent i inside the template, escaped for file names, while percent capital I is the unescaped form.*
 
 Suppose you run one GPU job per GPU index, and you want the same unit file to serve all of them. Copying the file eight times would be a maintenance trap, and a template unit avoids it. A unit file whose name ends in `@` before the suffix is a **template**, such as `getty@.service` or `worker@.service`. You create an **instance** by adding a string after the `@`, as in `getty@tty1.service` or `worker@3.service`.
 
@@ -403,9 +431,13 @@ When you need one unit per device, write one template rather than many copies.
 
 ## 8. Socket, path and automount activation
 
+![Two lanes comparing socket activation where systemd accepts each connection and starts one instance per connection with where the service accepts connections itself.](./img/p3-0115-accept-modes.svg)
+
+*Figure 1.15.12. With Accept true systemd starts one service instance per connection, and with Accept false one service receives the listening socket and accepts connections itself.*
+
 ![systemd holds the listening socket and starts the service when a client connects.](./img/l15-socket-activation.svg)
 
-*Figure 1.15.5. A rarely used service uses no resources until a client needs it.*
+*Figure 1.15.13. A rarely used service uses no resources until a client needs it.*
 
 Some services sit idle most of the time, but they must answer at once when a client connects. If you have a daemon that only needs to respond when clients call, socket activation fits. systemd holds the resource the service needs and starts the service when someone uses it. It can also start the service immediately, in parallel with everything else. Either way, it then hands the resource over. Three pieces make this work:
 
@@ -445,9 +477,13 @@ Before you start a daemon at boot, ask whether socket activation would let it wa
 
 ## 9. Timers: the cron replacement
 
+![Two panels comparing calendar triggers written with OnCalendar and monotonic triggers counted from boot or last activation, with Persistent, RandomizedDelaySec and AccuracySec.](./img/p3-0115-timer-triggers.svg)
+
+*Figure 1.15.14. OnCalendar fires at a wall-clock time while monotonic keys count from an event, and Persistent catches up a missed run.*
+
 ![A timer unit activates a oneshot service on a calendar schedule.](./img/l15-timer-pair.svg)
 
-*Figure 1.15.6. A timer fires a matching service, and Persistent=true catches up a run missed while the machine was off.*
+*Figure 1.15.15. A timer fires a matching service, and Persistent=true catches up a run missed while the machine was off.*
 
 Suppose a weekly trim of a data disk is due on Sunday morning, but the machine was off at that time. A cron job would simply be missed. A timer handles that case, and it gives you more than cron does. Its logs go to the journal with the unit's context. The job runs in a controlled cgroup, with limits and sandboxing. You can order it after other units, such as `After=network-online.target`. With `Persistent=true`, it catches up on missed runs. A randomised delay avoids a thundering herd, and `systemctl list-timers` shows the next and last run.
 
@@ -493,7 +529,7 @@ systemd places every service, scope and session into a **cgroup**. Slices decide
 
 ![Resource control, slices and host protection](./img/ch15-d2-luna.svg)
 
-*Figure 1.15.7. Resource control, slices and host protection.*
+*Figure 1.15.16. Resource control, slices and host protection.*
 
 | Property | Meaning |
 |---|---|
@@ -581,9 +617,13 @@ Start with the protections the service can survive, and add the rest only after 
 
 ## 12. Journald and `journalctl`
 
+![A decision flow showing journald with Storage auto writing to disk only if var log journal exists and otherwise keeping logs in memory where a reboot loses them.](./img/p3-0115-journal-storage.svg)
+
+*Figure 1.15.17. With Storage auto the journal survives a reboot only if the var log journal directory exists, so set Storage to persistent.*
+
 ![The most common journalctl filters by boot, unit, kernel, priority and time.](./img/l15-journalctl.svg)
 
-*Figure 1.15.8. Each journalctl option filters the journal in a different way.*
+*Figure 1.15.18. Each journalctl option filters the journal in a different way.*
 
 When a GPU node drops out during the night, the first clue is usually in its logs. `systemd-journald` keeps those logs, and you can search them by unit, by priority and by time. It collects the standard output and error of every service, `syslog()` messages, kernel messages and audit records. It stores them in a **structured, indexed binary journal**, which is a plain way of saying that every line keeps its labels and can be found again quickly. Each entry carries fields such as `_SYSTEMD_UNIT`, `_PID`, `_UID`, `_HOSTNAME`, `PRIORITY`, `SYSLOG_IDENTIFIER`, `_BOOT_ID` and `_TRANSPORT`. For containers, it also carries `CONTAINER_ID`. Because systemd captures service output, the old problem of start-up scripts writing to a console that has since disappeared goes away.
 
@@ -647,6 +687,10 @@ If a host runs a network manager other than `systemd-networkd`, check which one 
 
 ## 14. Debugging and analysing
 
+![Failure messages and status codes such as 203 EXEC, 217 USER and 226 NAMESPACE mapped to their likely causes.](./img/p3-0115-status-code-ladder.svg)
+
+*Figure 1.15.19. A status code such as 203 EXEC or 217 USER points at the layer that broke before you read a single log line.*
+
 A unit that fails gives you a short message and a status code, and not much else. The table below lists the tools that turn that message into a cause, starting with the first look.
 
 | Tool | Use |
@@ -672,6 +716,10 @@ When you see one of these strings, start with the status code, then read the jou
 
 ## 15. Shutdown, rescue and legacy
 
+![A six step shutdown sequence from shutdown target through SIGTERM, a 90 second wait, SIGKILL and reboot, with the commands to use and to find the slow unit.](./img/p3-0115-shutdown-sequence.svg)
+
+*Figure 1.15.20. Units stop in reverse start order, then a SIGTERM and a typical 90 second wait precede SIGKILL, so a slow stop shows up as a long reboot.*
+
 A server that hangs for 90 seconds at every reboot is annoying, and it usually points to one slow unit. Knowing the shutdown order is how you find that unit.
 
 **Shutdown** goes through `shutdown.target`, and it is the boot sequence played backwards. systemd stops units in the reverse order of their start. It then sends `SIGTERM` to the remaining processes and waits `DefaultTimeoutStopSec`, which is typically 90 s. After that it sends `SIGKILL`, unmounts filesystems, remounts root read-only, and calls `reboot(2)`. Use `shutdown -h now` or `systemctl poweroff` for a proper shutdown. `shutdown -r +10` schedules a reboot, and it creates `/etc/nologin` shortly before. `shutdown -c` cancels a scheduled shutdown. `systemctl reboot --force` skips the unit stop, and so does `-ff`, which is an unclean last resort.
@@ -687,6 +735,10 @@ Chapter 1.14 (*How Linux Works* Section 6.7) adds one more point. A custom kerne
 If you reboot a host and it waits, you have found the slow part. Replace legacy init scripts with native units when you touch them.
 
 ### Runlevels: the older way to name a system state
+
+![A SysV rc5.d directory listing with one link name split into start or stop letter, two digit order and script name.](./img/p3-0115-rc-link-names.svg)
+
+*Figure 1.15.21. In a SysV rc directory the first letter says start or stop, the two digits set the order, and the rest names the init script.*
 
 Older System V systems describe the machine's state with a runlevel, which is simply a number from 0 to 6. Each runlevel runs a base set of processes, such as `crond` and `udevd`. A system spends most of its time in one runlevel. When you shut down, init moves to a different runlevel so it can stop services in order.
 

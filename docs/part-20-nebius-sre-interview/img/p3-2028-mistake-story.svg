@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>The five-part mistake story and the traps to avoid</title>
+  <desc>Visual infographic explaining the five-part mistake story, core rule line, three anti-methods traps, trade-off sentence strip, and production interview footer.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 2 L 8 5 L 0 8 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The five-part mistake story and the traps to avoid</text>
+
+  
+  <line x1="322" y1="222" x2="357" y2="222" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="629" y1="222" x2="664" y2="222" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="936" y1="222" x2="971" y2="222" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="1243" y1="222" x2="1278" y2="222" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  
+  <g>
+    <rect x="50" y="115" width="272" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="161" y="136" width="50" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 171 150 L 179 155 L 171 160 M 184 163 L 197 163" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="186" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" aria-label="1 what you did">
+      <tspan x="186" dy="0">1 what you</tspan>
+      <tspan x="186" dy="38">did</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="357" y="115" width="272" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 493 135 L 519 175 L 467 175 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="493" y1="149" x2="493" y2="160" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="493" cy="168" r="2.5" fill="#207448"/>
+    <text x="493" y="210" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" aria-label="2 what it caused, with a number">
+      <tspan x="493" dy="0">2 what it</tspan>
+      <tspan x="493" dy="38">caused, with</tspan>
+      <tspan x="493" dy="38">a number</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="664" y="115" width="272" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="794" cy="151" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="806" y1="163" x2="819" y2="176" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="800" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" aria-label="3 how you found out">
+      <tspan x="800" dy="0">3 how you</tspan>
+      <tspan x="800" dy="38">found out</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="971" y="115" width="272" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1121 144 C 1115 138 1106 138 1100 143 C 1096 146 1095 151 1096 155 L 1086 166 C 1084 168 1084 171 1086 173 L 1090 177 C 1092 179 1095 179 1097 177 L 1108 167 C 1112 168 1117 167 1120 163 C 1125 157 1125 149 1121 144 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1107" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" aria-label="4 what you changed">
+      <tspan x="1107" dy="0">4 what you</tspan>
+      <tspan x="1107" dy="38">changed</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1278" y="115" width="272" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1414 135 L 1434 144 C 1434 163 1414 174 1414 176 C 1414 174 1394 163 1394 144 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1406 154 L 1412 160 L 1423 149" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1414" y="210" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" aria-label="5 what you now do differently">
+      <tspan x="1414" dy="0">5 what you</tspan>
+      <tspan x="1414" dy="38">now do</tspan>
+      <tspan x="1414" dy="38">differently</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="355" width="1500" height="75" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <text x="800" y="402" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">keep blame out of it; use we for what the team did and I for what you did</text>
+  </g>
+
+  
+  <rect x="50" y="455" width="1500" height="295" rx="16" fill="none" stroke="#207448" stroke-width="1.5" stroke-dasharray="8 6"/>
+
+  
+  <g>
+    <rect x="65" y="470" width="470" height="265" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="300" cy="500" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 292 500 L 308 500 M 302 494 L 308 500 L 302 506" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="300" y="542" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle" aria-label="blame-someone-else: pick a component you do not own, say the problem is there and hand it off (it was the network team's problem)">
+      <tspan x="300" dy="0" font-weight="bold">blame-someone-else: pick a</tspan>
+      <tspan x="300" dy="32">component you do not own,</tspan>
+      <tspan x="300" dy="32">say the problem is there</tspan>
+      <tspan x="300" dy="32">and hand it off (it was the</tspan>
+      <tspan x="300" dy="32">network team's problem)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="565" y="470" width="470" height="265" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 792 486 L 808 486 M 800 486 L 800 496 L 812 514 C 814 517 812 520 808 520 L 792 520 C 788 520 786 517 788 514 L 800 496 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="800" y="534" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle" aria-label="false certainty: say I do not know why it worked, my best explanation is this, and here is how I would test it (question, hypothesis, prediction, test)">
+      <tspan x="800" dy="0" font-weight="bold">false certainty: say I do not</tspan>
+      <tspan x="800" dy="30">know why it worked, my best</tspan>
+      <tspan x="800" dy="30">explanation is this, and here</tspan>
+      <tspan x="800" dy="30">is how I would test it</tspan>
+      <tspan x="800" dy="30">(question, hypothesis,</tspan>
+      <tspan x="800" dy="30">prediction, test)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1065" y="470" width="470" height="265" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1308 520 L 1308 493 C 1308 486 1302 485 1297 485 M 1297 485 L 1297 491 M 1289 491 L 1305 491 L 1311 501 L 1283 501 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1300" y="568" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle" aria-label="streetlight: pick whichever tool is familiar and hope something obvious shows up">
+      <tspan x="1300" dy="0" font-weight="bold">streetlight: pick whichever</tspan>
+      <tspan x="1300" dy="34">tool is familiar and hope</tspan>
+      <tspan x="1300" dy="34">something obvious shows up</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="775" width="1500" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="818" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" aria-label="Given this constraint, I chose A over B, accepting this cost, and I would revisit if this condition changed">
+      <tspan x="800" dy="0">Given this constraint, I chose A over B, accepting this cost,</tspan>
+      <tspan x="800" dy="36">and I would revisit if this condition changed</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="905" width="1500" height="115" rx="12" fill="#207448"/>
+    <text x="800" y="952" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" aria-label="an interviewer who has run production systems has made expensive mistakes of their own and listens for whether you have too; keep a list of the costs you accepted, one per decision">
+      <tspan x="800" dy="0">an interviewer who has run production systems has made expensive mistakes of their own</tspan>
+      <tspan x="800" dy="36">and listens for whether you have too; keep a list of the costs you accepted, one per decision</tspan>
+    </text>
+  </g>
+</svg>

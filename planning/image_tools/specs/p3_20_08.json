@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "p3-2008-topk-scale-ladder",
+  "title": "Top error endpoints: three layers as the log gets bigger",
+  "spec": "Left: a small pipeline for one line 'parse: 10.0.0.7 - GET /v1/chat 503 12ms' into named groups address, status, latency, then 'keep 5xx only' then 'count by endpoint'. Right: a ladder of three stacked boxes, each labelled with when it applies, joined by arrows labelled with the trigger. Box 1 'Counter, then take the top k': 'fine at any log size when the endpoint set is bounded; memory depends on distinct endpoints, not lines'. Arrow 'too many keys to sort' to Box 2 'Heap of size k over the counts': 'keeps only k items; counting is linear in n and the heap step is about n log k in the worst case'. Arrow 'distinct endpoints no longer fit in memory' to Box 3 'Shard by a hash of the endpoint': three worker boxes 'worker 1', 'worker 2', 'worker 3' each holding its share of keys, arrows into a final box 'merge the per-worker top k lists'. Tie rule callout: 'ties go to the alphabetically smaller endpoint, key = negative count then name via heapq.nsmallest; most_common gives first-seen order'. Orange outline on the Box 3 label 'my reasoning, not a Nebius answer'. Takeaway bar: 'When the parameters change, say what assumption in your solution just broke.'",
+  "anchor": "### Scenario 2: top error endpoints from a log",
+  "alt": "Three layers for the top k error endpoints problem: a Counter with most_common, a bounded heap of size k, and sharding by a hash of the endpoint with merged per-worker top k lists.",
+  "cap": "Memory follows the number of distinct keys and not the number of lines, so the answer changes only when the distinct keys no longer fit."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "p3-2008-mutable-default",
+  "title": "A default list is created once and shared by every call",
+  "spec": "Two side-by-side panels. Left red-bordered 'def append_bad(x, bucket=[])': a box 'function object' holding one small list box labelled 'default list, created once when the function is defined'. Call 1 'append_bad(1)' arrow into that same list, result '[1, 2]' note 'the same list object is returned both times'; call 2 'append_bad(2)' arrow into the same list box. Right green-bordered 'def append_good(x, bucket=None)': each call shown with its own new list box created inside the function: call 1 'append_good(1)' result '[1]', call 2 'append_good(2)' result '[2]'. Under both, a mini row with the sibling trap: 'grid = [[0] * 2] * 2 holds the same row twice, setting one cell gives [[1, 0], [1, 0]]'. Takeaway bar: 'The default is evaluated once at definition time, so a mutable default is shared between calls.'",
+  "anchor": "### 11. Pitfalls that cost points",
+  "alt": "A function with a default list argument keeps one list object across calls so the second call returns one and two together, while a None default creates a new list each call.",
+  "cap": "Use None as the default argument and create the list inside the function."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "p3-2008-slice-copy-cost",
+  "title": "Slicing copies, so a slice in a loop turns linear into quadratic",
+  "spec": "Two stacked rows. Row 1 red-bordered 'Recursion with s[1:] on every step': a series of five bars of decreasing length labelled 'copy n items', 'copy n-1 items', 'copy n-2 items', '...', 'copy 1 item', summed brace labelled 'total work grows with the square of n: quadratic'. Note 'a slice of a one million item list takes about 2.7 ms on a Mac'. Row 2 green-bordered 'Pass indexes: f(s, i)': five identical thin bars labelled 'no copy' with brace 'linear'. Right panel comparing two queues: 'list.pop(0) moves every other item: about 14 microseconds on a 100,000 item list' versus 'deque popleft and append: about 0.05 microseconds' with caption 'single measurements on one machine, trust the ratio'. Also a small side box 'String building: repeated += can copy each time; 200,000 appends took 0.37 s once a second name referred to the string, a list and str.join took 0.0035 s'. Photocopy icon labelled 'a slice is a photocopy of the page'.",
+  "anchor": "### 6. Writing code that runs first time in a plain editor",
+  "alt": "A loop that takes s[1:] on every step copies a shrinking list each time so the total cost is quadratic, while passing an index copies nothing, and deque popleft replaces list pop(0).",
+  "cap": "Pass indexes instead of slicing, and use a deque instead of pop(0), because each slice or pop(0) touches every remaining item."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p2-0506-informer-pipeline",
+  "title": "Reflector, DeltaFIFO, indexer and work queue",
+  "spec": "A left-to-right pipeline of six boxes, joined by arrows, with a box for the API server on the far left. Box 1 'API server' with a cloud icon. Box 2 'Reflector: LIST, then WATCH from resourceVersion' with a note 'Relists on 410 Gone'. Box 3 'DeltaFIFO: added, updated, deleted deltas'. Box 4 'Informer updates the indexer and calls OnAdd, OnUpdate, OnDelete', with a sub-box 'Indexer: local cache, lister reads' below. Box 5 'Event handler enqueues namespace/name key' drawn as a key chip. Box 6 'Work queue: deduplicates keys, one worker per key' with a row of N worker circles labelled 'Reconcile'. A return arrow from the workers back to the box 'API server' labelled 'Writes directly, conditional on resourceVersion'. Orange outline on box 6 with the note 'Event handlers enqueue keys, not objects'. Side note on box 4: 'One shared informer per resource type per process'. Bottom note: 'Read from listers, write to the API server.'",
+  "anchor": "## 2. The machinery: informers and work queues",
+  "alt": "The client-go pipeline from a reflector's list and watch through a DeltaFIFO and indexer to deduplicating work queues that feed reconcile workers.",
+  "cap": "The client-go machinery runs a reflector, a DeltaFIFO, an indexer and a deduplicating work queue, and controllers read from the cache and write to the API server."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p2-0506-node-timeline",
+  "title": "A silent node: from grace period to eviction",
+  "spec": "A horizontal timeline with three markers, left to right. Marker 1 at the left labelled 'Heartbeats stop: kubelet lease not renewed'. Marker 2 at 40 seconds labelled 'node-monitor-grace-period: Ready becomes Unknown, taint node.kubernetes.io/unreachable:NoExecute added'. Marker 3 at 340 seconds total labelled 'tolerationSeconds 300 ends: taint-based eviction deletes the pods'. Between markers 2 and 3 a shaded band labelled 'Pods tolerate the taint for 300 seconds'. Under marker 3 a box 'Controllers recreate pods elsewhere'. A side note with the monospace text 'DefaultTolerationSeconds adds the toleration'. A separate branch below the timeline in grey: 'Pod on a dead node stays Terminating until the kubelet returns, the node is deleted, or someone force deletes it'. Orange outline on marker 2. Bottom note: 'StatefulSets do not replace stuck Terminating pods, to avoid split brain.'",
+  "anchor": "### Node lifecycle and eviction",
+  "alt": "A node that stops heartbeating is marked Unknown after 40 seconds, and its pods are evicted once the 300 second toleration ends.",
+  "cap": "A node that stops heartbeating is marked Unknown after 40 seconds, and its pods are evicted when the 300 second toleration runs out."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p2-0506-desired-observed",
+  "title": "The controller loop: compare desired with observed",
+  "spec": "A circular loop of four stages drawn clockwise. Stage 1 box 'Observe the current state' with an eye icon. Stage 2 box 'Compare with the desired state in spec' with a scale icon. Stage 3 box 'Act on the difference, idempotently' with a gear icon. Stage 4 box 'Write status and wait for the next event or resync' with a clock icon, with an arrow back to stage 1. Left side, a card of the five properties: 'Declarative input', 'Level-triggered', 'Idempotent and convergent', 'Single responsibility, loose coupling', 'Self-healing and drift correction'. Right side, a small example card: 'Desired: 3 replicas. Observed: 2 Pods. Action: create one Pod.' Orange outline on stage 2 as the comparison that drives every action. Bottom note: 'Level-triggered: a missed event is fixed on the next pass.'",
+  "anchor": "## 1. The controller pattern",
+  "alt": "The controller pattern is a loop that observes current state, compares it with the desired state, acts on the difference and repeats.",
+  "cap": "The controller pattern loops over observe, compare, act and write status, so a missed event is corrected on the next pass."
+ }
+]

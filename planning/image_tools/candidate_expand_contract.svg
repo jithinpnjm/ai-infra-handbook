@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Expand and contract migration during a rolling update</title>
+  <desc>Timeline illustrating expand and contract database migration during a rolling deployment with old and new code reading one database concurrently.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-db" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  <!-- Title -->
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Expand and contract migration during a rolling update</text>
+
+  <!-- ==================== THREE PHASES (TOP TIMELINE ROW) ==================== -->
+
+  <!-- Phase 1 Card (Expand) -->
+  <rect x="50" y="110" width="470" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(74, 126)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="16" />
+    <line x1="20" y1="12" x2="20" y2="28" />
+    <line x1="12" y1="20" x2="28" y2="20" />
+    <path d="M 38 8 L 46 8 L 46 16" />
+    <line x1="32" y1="22" x2="45" y2="9" />
+  </g>
+  <text x="140" y="156" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="140" dy="0">Phase 1 expand:</tspan>
+    <tspan x="140" dy="40" font-size="24" font-weight="normal">add the new piece in a</tspan>
+    <tspan x="140" dy="34" font-size="24" font-weight="normal">way old code ignores</tspan>
+  </text>
+
+  <!-- Arrow Phase 1 -> Phase 2 -->
+  <line x1="520" y1="205" x2="563" y2="205" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Phase 2 Card (Move Code Over / Rolling) -->
+  <rect x="565" y="110" width="470" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(589, 126)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 12 24 A 14 14 0 0 1 36 16" />
+    <polyline points="28,10 38,15 34,24" />
+    <path d="M 36 24 A 14 14 0 0 1 12 32" />
+    <polyline points="20,38 10,33 14,24" />
+  </g>
+  <text x="655" y="156" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="655" dy="0">Phase 2 move the code</tspan>
+    <tspan x="655" dy="38" font-size="26">over with serial rolling,</tspan>
+    <tspan x="655" dy="36" font-size="24" font-weight="normal">old and new run side by side</tspan>
+  </text>
+
+  <!-- Arrow Phase 2 -> Phase 3 -->
+  <line x1="1035" y1="205" x2="1078" y2="205" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Phase 3 Card (Contract) -->
+  <rect x="1080" y="110" width="470" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1104, 126)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="16" />
+    <line x1="12" y1="20" x2="28" y2="20" />
+    <path d="M 46 8 L 38 8 L 38 16" />
+    <line x1="45" y1="9" x2="33" y2="21" />
+  </g>
+  <text x="1170" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1170" dy="0">Phase 3 contract:</tspan>
+    <tspan x="1170" dy="42" font-size="24" font-weight="normal">later remove the old piece</tspan>
+  </text>
+
+  <!-- ==================== TWO LANES CONTAINER ==================== -->
+  <rect x="50" y="325" width="1500" height="340" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  <!-- Lane 1: Old Code -->
+  <rect x="70" y="345" width="250" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(90, 385)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="38" height="28" rx="4" />
+    <line x1="2" y1="12" x2="40" y2="12" />
+    <circle cx="8" cy="8" r="1.5" fill="#207448" />
+    <circle cx="14" cy="8" r="1.5" fill="#207448" />
+  </g>
+  <text x="150" y="425" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">old code</text>
+
+  <!-- Lane 1 Hosts Across Phases -->
+  <!-- Phase 1: 100% Old Code Fleet (4/4 hosts active) -->
+  <g transform="translate(330, 375)">
+    <rect x="0" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="42" cy="28" r="12" fill="#207448" />
+    <rect x="26" y="46" width="32" height="16" rx="3" fill="#207448" />
+    <rect x="100" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="142" cy="28" r="12" fill="#207448" />
+    <rect x="126" y="46" width="32" height="16" rx="3" fill="#207448" />
+    <rect x="200" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="242" cy="28" r="12" fill="#207448" />
+    <rect x="226" y="46" width="32" height="16" rx="3" fill="#207448" />
+  </g>
+
+  <!-- Phase 2: 50% Old Code Fleet (serial draining / replacing) -->
+  <g transform="translate(680, 375)">
+    <rect x="0" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="42" cy="28" r="12" fill="#207448" />
+    <rect x="26" y="46" width="32" height="16" rx="3" fill="#207448" />
+    <rect x="100" y="0" width="85" height="75" rx="8" fill="#f5f8f5" stroke="#a0aba3" stroke-width="2" stroke-dasharray="6,4" />
+    <line x1="122" y1="22" x2="162" y2="52" stroke="#a0aba3" stroke-width="2.5" />
+    <line x1="162" y1="22" x2="122" y2="52" stroke="#a0aba3" stroke-width="2.5" />
+  </g>
+
+  <!-- Phase 3: 0% Old Code Fleet (fully retired) -->
+  <g transform="translate(1120, 375)">
+    <rect x="0" y="0" width="185" height="75" rx="8" fill="#f5f8f5" stroke="#a0aba3" stroke-width="2" stroke-dasharray="6,4" />
+    <line x1="30" y1="37" x2="155" y2="37" stroke="#a0aba3" stroke-width="2.5" stroke-dasharray="8,6" />
+  </g>
+
+  <!-- Lane 2: New Code -->
+  <rect x="70" y="505" width="250" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(90, 545)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="38" height="28" rx="4" />
+    <line x1="2" y1="12" x2="40" y2="12" />
+    <polyline points="14,20 18,24 28,16" />
+  </g>
+  <text x="150" y="585" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">new code</text>
+
+  <!-- Lane 2 Hosts Across Phases -->
+  <!-- Phase 1: 0% New Code (not deployed yet) -->
+  <g transform="translate(330, 535)">
+    <rect x="0" y="0" width="185" height="75" rx="8" fill="#f5f8f5" stroke="#a0aba3" stroke-width="2" stroke-dasharray="6,4" />
+    <line x1="30" y1="37" x2="155" y2="37" stroke="#a0aba3" stroke-width="2.5" stroke-dasharray="8,6" />
+  </g>
+
+  <!-- Phase 2: 50% New Code Fleet (running side by side with old code!) -->
+  <g transform="translate(860, 535)">
+    <rect x="0" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="42" cy="28" r="12" fill="#207448" />
+    <rect x="26" y="46" width="32" height="16" rx="3" fill="#207448" />
+    <rect x="100" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="142" cy="28" r="12" fill="#207448" />
+    <rect x="126" y="46" width="32" height="16" rx="3" fill="#207448" />
+  </g>
+
+  <!-- Phase 3: 100% New Code Fleet (all hosts upgraded) -->
+  <g transform="translate(1120, 535)">
+    <rect x="0" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="42" cy="28" r="12" fill="#207448" />
+    <rect x="26" y="46" width="32" height="16" rx="3" fill="#207448" />
+    <rect x="100" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="142" cy="28" r="12" fill="#207448" />
+    <rect x="126" y="46" width="32" height="16" rx="3" fill="#207448" />
+    <rect x="200" y="0" width="85" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="242" cy="28" r="12" fill="#207448" />
+    <rect x="226" y="46" width="32" height="16" rx="3" fill="#207448" />
+  </g>
+
+  <!-- ==================== DATABASE LAYER (SHARED) ==================== -->
+  <rect x="50" y="690" width="1500" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <!-- Database Cylinder Icon -->
+  <g transform="translate(85, 722)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="26" cy="14" rx="22" ry="7" />
+    <path d="M 4 14 V 42 C 4 46 14 50 26 50 C 38 50 48 46 48 42 V 14" />
+    <path d="M 4 28 C 4 32 14 36 26 36 C 38 36 48 32 48 28" />
+  </g>
+
+  <!-- Database Label -->
+  <text x="160" y="763" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">both reading one database</text>
+
+  <!-- Schema state indicators inside database across phases -->
+  <g transform="translate(620, 718)">
+    <rect x="0" y="0" width="260" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="24" cy="32" r="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <line x1="24" y1="26" x2="24" y2="38" stroke="#207448" stroke-width="2" />
+    <line x1="18" y1="32" x2="30" y2="32" stroke="#207448" stroke-width="2" />
+    <rect x="46" y="24" width="75" height="16" rx="3" fill="#207448" />
+    <rect x="130" y="24" width="110" height="16" rx="3" fill="#207448" opacity="0.4" />
+  </g>
+
+  <g transform="translate(930, 718)">
+    <rect x="0" y="0" width="260" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="20" y="24" width="105" height="16" rx="3" fill="#207448" />
+    <rect x="140" y="24" width="105" height="16" rx="3" fill="#207448" />
+  </g>
+
+  <g transform="translate(1240, 718)">
+    <rect x="0" y="0" width="260" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="24" cy="32" r="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <line x1="18" y1="32" x2="30" y2="32" stroke="#207448" stroke-width="2" />
+    <rect x="46" y="24" width="110" height="16" rx="3" fill="#207448" />
+    <line x1="168" y1="32" x2="240" y2="32" stroke="#a0aba3" stroke-width="2.5" stroke-dasharray="6,4" />
+  </g>
+
+  <!-- Arrows from lanes to database -->
+  <line x1="280" y1="665" x2="280" y2="688" stroke="#207448" stroke-width="3" marker-end="url(#arrow-db)" />
+  <line x1="800" y1="665" x2="800" y2="688" stroke="#207448" stroke-width="3" marker-end="url(#arrow-db)" />
+  <line x1="1320" y1="665" x2="1320" y2="688" stroke="#207448" stroke-width="3" marker-end="url(#arrow-db)" />
+
+  <!-- ==================== BOTTOM ROW: WARNING BOX & NOTE ==================== -->
+
+  <!-- Warning Box (Highlighted with single Orange #db8129) -->
+  <rect x="50" y="835" width="970" height="230" rx="14" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+  
+  <!-- Warning Icon in Orange -->
+  <g transform="translate(85, 870)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 52 48 L 4 48 Z" />
+    <line x1="28" y1="22" x2="28" y2="34" />
+    <circle cx="28" cy="41" r="1.5" fill="#db8129" />
+  </g>
+
+  <!-- Warning Box Label -->
+  <text x="165" y="932" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="165" dy="0">a migration that removes a column old code still uses</tspan>
+    <tspan x="165" dy="44">breaks old code mid-rollout</tspan>
+  </text>
+
+  <!-- Note Box -->
+  <rect x="1050" y="835" width="500" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <!-- Note Terminal Icon -->
+  <g transform="translate(1080, 865)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="46" height="36" rx="5" />
+    <polyline points="14,18 22,24 14,30" />
+    <line x1="26" y1="30" x2="38" y2="30" />
+  </g>
+
+  <!-- Note Label -->
+  <text x="1080" y="935" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1080" dy="0" font-family="monospace" font-weight="bold">alembic upgrade head</tspan>
+    <tspan x="1080" dy="38">runs once with <tspan font-family="monospace" font-weight="bold">run_once</tspan></tspan>
+    <tspan x="1080" dy="38">on the first host</tspan>
+  </text>
+
+</svg>

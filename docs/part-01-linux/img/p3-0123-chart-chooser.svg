@@ -1,0 +1,386 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Choose the chart that fits the question</title>
+  <desc>Visual guide for selecting the appropriate chart type for system observability and metrics questions, paired with monitoring habits and validation principles.</desc>
+
+  <defs>
+    
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <g id="header">
+    <rect x="40" y="32" width="1520" height="60" rx="8" fill="#e8f1ea"/>
+    
+    <g transform="translate(60, 44)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="4" width="32" height="28" rx="4"/>
+      <path d="M6 24 L14 16 L20 20 L26 10"/>
+      <circle cx="26" cy="10" r="2.5" fill="#207448"/>
+    </g>
+    <text x="110" y="74" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Choose the chart that fits the question</text>
+  </g>
+
+  
+  <g id="table-headers">
+    <rect x="40" y="104" width="430" height="42" rx="6" fill="#207448"/>
+    <text x="255" y="133" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Question</text>
+
+    <rect x="480" y="104" width="650" height="42" rx="6" fill="#207448"/>
+    <text x="805" y="133" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Chart</text>
+  </g>
+
+  
+  <g id="side-panel-header">
+    <rect x="1140" y="104" width="420" height="42" rx="6" fill="#207448"/>
+    <text x="1350" y="133" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Monitoring habits</text>
+  </g>
+
+  
+
+  
+  <g id="row-1">
+    
+    <rect x="40" y="154" width="430" height="134" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="56" y="196" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="56" dy="0">Is there a trend? Add</tspan>
+      <tspan x="56" dy="32">percentiles and the median,</tspan>
+      <tspan x="56" dy="32">not only the mean</tspan>
+    </text>
+
+    
+    <rect x="480" y="154" width="650" height="134" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="thumb-line-chart" transform="translate(496, 166)">
+      <rect width="120" height="110" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      <line x1="14" y1="96" x2="108" y2="96" stroke="#303a36" stroke-width="2"/>
+      <line x1="14" y1="96" x2="14" y2="14" stroke="#303a36" stroke-width="2"/>
+      
+      <polygon points="18,72 38,62 58,52 78,58 98,34 98,54 78,74 58,70 38,78 18,84" fill="#e8f1ea"/>
+      
+      <path d="M 18,84 L 38,78 L 58,70 L 78,74 L 98,54" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="3,3"/>
+      <path d="M 18,72 L 38,62 L 58,52 L 78,58 L 98,34" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="3,3"/>
+      
+      <path d="M 18,78 L 38,70 L 58,60 L 78,65 L 98,42" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    
+    <text x="632" y="226" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Line chart</text>
+  </g>
+
+  
+  <g id="row-2">
+    
+    <rect x="40" y="296" width="430" height="134" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="56" y="370" font-family="sans-serif" font-size="24" fill="#303a36">Where is every event?</text>
+
+    
+    <rect x="480" y="296" width="650" height="134" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="thumb-scatter-plot" transform="translate(496, 308)">
+      <rect width="120" height="110" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      <line x1="14" y1="96" x2="108" y2="96" stroke="#303a36" stroke-width="2"/>
+      <line x1="14" y1="96" x2="14" y2="14" stroke="#303a36" stroke-width="2"/>
+      
+      <circle cx="28" cy="82" r="3.5" fill="#207448"/>
+      <circle cx="34" cy="74" r="3.5" fill="#207448"/>
+      <circle cx="44" cy="78" r="3.5" fill="#207448"/>
+      <circle cx="50" cy="65" r="3.5" fill="#207448"/>
+      <circle cx="54" cy="68" r="4" fill="#207448" opacity="0.8"/>
+      <circle cx="58" cy="62" r="3.5" fill="#207448"/>
+      <circle cx="68" cy="52" r="4" fill="#207448"/>
+      <circle cx="72" cy="48" r="4.5" fill="#207448" opacity="0.9"/>
+      <circle cx="76" cy="54" r="4" fill="#207448"/>
+      <circle cx="82" cy="38" r="3.5" fill="#207448"/>
+      <circle cx="88" cy="42" r="4" fill="#207448"/>
+      <circle cx="96" cy="28" r="3.5" fill="#207448"/>
+      <circle cx="92" cy="76" r="3" fill="#207448"/>
+      <circle cx="38" cy="32" r="3" fill="#207448"/>
+    </g>
+
+    
+    <text x="632" y="352" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="632" dy="0" font-weight="bold" fill="#207448">Scatter plot (shows every event,</tspan>
+      <tspan x="632" dy="32">overplots at scale)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-3">
+    
+    <rect x="40" y="438" width="430" height="138" rx="8" fill="#fef6ed" stroke="#db8129" stroke-width="2.5"/>
+    <text x="56" y="480" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="56" dy="0">Is the distribution bimodal,</tspan>
+      <tspan x="56" dy="32">are there outliers across</tspan>
+      <tspan x="56" dy="32">thousands of systems?</tspan>
+    </text>
+
+    
+    <rect x="480" y="438" width="650" height="138" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+
+    
+    <g id="thumb-heat-map" transform="translate(496, 452)">
+      <rect width="120" height="110" rx="6" fill="#fef6ed" stroke="#db8129" stroke-width="1.5"/>
+      
+      
+      <rect x="16" y="16" width="16" height="16" rx="2" fill="#fef6ed"/>
+      <rect x="34" y="16" width="16" height="16" rx="2" fill="#fbd3a2"/>
+      <rect x="52" y="16" width="16" height="16" rx="2" fill="#db8129"/>
+      <rect x="70" y="16" width="16" height="16" rx="2" fill="#fbd3a2"/>
+      <rect x="88" y="16" width="16" height="16" rx="2" fill="#fef6ed"/>
+      
+      <rect x="16" y="34" width="16" height="16" rx="2" fill="#fbd3a2"/>
+      <rect x="34" y="34" width="16" height="16" rx="2" fill="#fef6ed"/>
+      <rect x="52" y="34" width="16" height="16" rx="2" fill="#fef6ed"/>
+      <rect x="70" y="34" width="16" height="16" rx="2" fill="#fef6ed"/>
+      <rect x="88" y="34" width="16" height="16" rx="2" fill="#db8129"/>
+      
+      <rect x="16" y="52" width="16" height="16" rx="2" fill="#fef6ed"/>
+      <rect x="34" y="52" width="16" height="16" rx="2" fill="#db8129"/>
+      <rect x="52" y="52" width="16" height="16" rx="2" fill="#fef6ed"/>
+      <rect x="70" y="52" width="16" height="16" rx="2" fill="#db8129"/>
+      <rect x="88" y="52" width="16" height="16" rx="2" fill="#fbd3a2"/>
+      
+      <rect x="16" y="70" width="16" height="16" rx="2" fill="#db8129"/>
+      <rect x="34" y="70" width="16" height="16" rx="2" fill="#db8129"/>
+      <rect x="52" y="70" width="16" height="16" rx="2" fill="#fbd3a2"/>
+      <rect x="70" y="70" width="16" height="16" rx="2" fill="#db8129"/>
+      <rect x="88" y="70" width="16" height="16" rx="2" fill="#9e5614"/>
+    </g>
+
+    
+    <text x="632" y="496" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="632" dy="0" font-weight="bold" fill="#db8129">Heat map (latency or</tspan>
+      <tspan x="632" dy="32">utilisation bucketed by time)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-4">
+    
+    <rect x="40" y="584" width="430" height="152" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="56" y="648" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="56" dy="0">What are the dependencies</tspan>
+      <tspan x="56" dy="32">and idle gaps?</tspan>
+    </text>
+
+    
+    <rect x="480" y="584" width="650" height="152" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="thumb-timeline-chart" transform="translate(496, 600)">
+      <rect width="120" height="120" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      <rect x="12" y="16" width="36" height="16" rx="3" fill="#207448"/>
+      <rect x="54" y="16" width="22" height="16" rx="3" fill="#a2c4ac"/>
+      
+      <rect x="24" y="42" width="28" height="16" rx="3" fill="#a2c4ac"/>
+      <rect x="76" y="42" width="32" height="16" rx="3" fill="#207448"/>
+      
+      <path d="M 48,32 L 48,50 L 76,50" fill="none" stroke="#303a36" stroke-width="1.5" stroke-dasharray="2,2"/>
+      
+      <rect x="12" y="68" width="58" height="16" rx="3" fill="#207448"/>
+      <rect x="80" y="68" width="28" height="16" rx="3" fill="#a2c4ac"/>
+      
+      <line x1="12" y1="96" x2="108" y2="96" stroke="#303a36" stroke-width="1.5"/>
+      <line x1="12" y1="94" x2="12" y2="100" stroke="#303a36" stroke-width="1.5"/>
+      <line x1="60" y1="94" x2="60" y2="100" stroke="#303a36" stroke-width="1.5"/>
+      <line x1="108" y1="94" x2="108" y2="100" stroke="#303a36" stroke-width="1.5"/>
+    </g>
+
+    
+    <text x="632" y="618" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="632" dy="0" font-weight="bold" fill="#207448">Timeline chart (traces of kernels,</tspan>
+      <tspan x="632" dy="30">copies and collectives per GPU or</tspan>
+      <tspan x="632" dy="30">stream, browser waterfalls, Nsight</tspan>
+      <tspan x="632" dy="30">Systems and PyTorch profiler traces)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-5">
+    
+    <rect x="40" y="744" width="430" height="126" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="56" y="796" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="56" dy="0">Where does CPU or off-CPU</tspan>
+      <tspan x="56" dy="32">time go by code path?</tspan>
+    </text>
+
+    
+    <rect x="480" y="744" width="650" height="126" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="thumb-flame-graph" transform="translate(496, 752)">
+      <rect width="120" height="110" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      
+      <rect x="12" y="84" width="96" height="16" rx="2" fill="#207448"/>
+      
+      <rect x="12" y="66" width="58" height="16" rx="2" fill="#348e5c"/>
+      <rect x="72" y="66" width="36" height="16" rx="2" fill="#4fa474"/>
+      
+      <rect x="12" y="48" width="32" height="16" rx="2" fill="#4fa474"/>
+      <rect x="46" y="48" width="24" height="16" rx="2" fill="#71b990"/>
+      <rect x="72" y="48" width="20" height="16" rx="2" fill="#348e5c"/>
+      
+      <rect x="16" y="30" width="20" height="16" rx="2" fill="#90ceab"/>
+      <rect x="46" y="30" width="14" height="16" rx="2" fill="#207448"/>
+      
+      <rect x="16" y="14" width="12" height="14" rx="2" fill="#4fa474"/>
+    </g>
+
+    
+    <text x="632" y="816" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Flame graph (chapter 1.24)</text>
+  </g>
+
+  
+  <g id="row-6">
+    
+    <rect x="40" y="878" width="430" height="124" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="56" y="950" font-family="sans-serif" font-size="24" fill="#303a36">Smooth multi-dimensional data</text>
+
+    
+    <rect x="480" y="878" width="650" height="124" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="thumb-surface-plot" transform="translate(496, 885)">
+      <rect width="120" height="110" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      
+      <path d="M 20,70 Q 55,20 100,50" fill="none" stroke="#207448" stroke-width="2"/>
+      <path d="M 22,78 Q 57,32 102,60" fill="none" stroke="#207448" stroke-width="1.8"/>
+      <path d="M 24,86 Q 60,46 104,70" fill="none" stroke="#207448" stroke-width="1.8"/>
+      
+      <path d="M 20,70 L 24,86" fill="none" stroke="#348e5c" stroke-width="1.5"/>
+      <path d="M 38,48 L 44,72" fill="none" stroke="#348e5c" stroke-width="1.5"/>
+      <path d="M 55,30 L 63,55" fill="none" stroke="#348e5c" stroke-width="1.5"/>
+      <path d="M 75,34 L 84,60" fill="none" stroke="#348e5c" stroke-width="1.5"/>
+      <path d="M 100,50 L 104,70" fill="none" stroke="#348e5c" stroke-width="1.5"/>
+      
+      <polygon points="20,70 55,20 100,50 104,70 60,46 24,86" fill="#207448" opacity="0.12"/>
+    </g>
+
+    
+    <text x="632" y="930" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="632" dy="0" font-weight="bold" fill="#207448">Surface plot, only when the</tspan>
+      <tspan x="632" dy="32">data is smooth</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-panel">
+    
+    <rect x="1140" y="154" width="420" height="848" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="habit-1">
+      <rect x="1156" y="170" width="388" height="148" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(1172, 186)" stroke="#207448" stroke-width="3" fill="none">
+        <circle cx="18" cy="18" r="16"/>
+        <polyline points="18,8 18,18 25,23"/>
+      </g>
+      <text x="1224" y="212" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1224" dy="0">collect critical metrics</tspan>
+        <tspan x="1224" dy="32">at one-second resolution</tspan>
+        <tspan x="1224" dy="32">if you can afford it</tspan>
+      </text>
+    </g>
+
+    
+    <g id="habit-2">
+      <rect x="1156" y="334" width="388" height="148" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(1172, 350)" stroke="#207448" stroke-width="3" fill="none">
+        <ellipse cx="18" cy="10" rx="14" ry="6"/>
+        <path d="M4 10 v16 c0 3.3 6.3 6 14 6 s14-2.7 14-6 v-16"/>
+        <path d="M4 18 c0 3.3 6.3 6 14 6 s14-2.7 14-6"/>
+      </g>
+      <text x="1224" y="380" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1224" dy="0">keep short-term high-</tspan>
+        <tspan x="1224" dy="32">resolution data for</tspan>
+        <tspan x="1224" dy="32">incidents</tspan>
+      </text>
+    </g>
+
+    
+    <g id="habit-3">
+      <rect x="1156" y="498" width="388" height="152" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(1172, 514)" stroke="#207448" stroke-width="3" fill="none">
+        <circle cx="18" cy="18" r="8"/>
+        <path d="M18 4 v4 M18 28 v4 M4 18 h4 M28 18 h4 M8 8 l3 3 M25 25 l3 3 M8 28 l3-3 M25 11 l3-3"/>
+      </g>
+      <text x="1224" y="542" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1224" dy="0" font-weight="bold">exporters: node_exporter,</tspan>
+        <tspan x="1224" dy="32" font-weight="bold">DCGM exporter, cAdvisor</tspan>
+      </text>
+    </g>
+
+    
+    <g id="habit-4">
+      <rect x="1156" y="666" width="388" height="152" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(1172, 682)" stroke="#207448" stroke-width="3" fill="none">
+        <rect x="8" y="8" width="20" height="20" rx="3"/>
+        <line x1="14" y1="2" x2="14" y2="8"/>
+        <line x1="22" y1="2" x2="22" y2="8"/>
+        <line x1="14" y1="28" x2="14" y2="34"/>
+        <line x1="22" y1="28" x2="22" y2="34"/>
+        <line x1="2" y1="14" x2="8" y2="14"/>
+        <line x1="2" y1="22" x2="8" y2="22"/>
+        <line x1="28" y1="14" x2="34" y2="14"/>
+        <line x1="28" y1="22" x2="34" y2="22"/>
+      </g>
+      <text x="1224" y="710" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1224" dy="0">prefer kernel interfaces</tspan>
+        <tspan x="1224" dy="32">over parsing command</tspan>
+        <tspan x="1224" dy="32">output</tspan>
+      </text>
+    </g>
+
+    
+    <g id="habit-5">
+      <rect x="1156" y="834" width="388" height="152" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(1172, 850)" stroke="#207448" stroke-width="3" fill="none">
+        <path d="M4 28 A16 16 0 0 1 32 28"/>
+        <line x1="18" y1="28" x2="25" y2="17"/>
+        <circle cx="18" cy="28" r="3" fill="#207448"/>
+      </g>
+      <text x="1224" y="878" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1224" dy="0">build dashboards around</tspan>
+        <tspan x="1224" dy="32">USE and RED, not every</tspan>
+        <tspan x="1224" dy="32">metric available</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="warning-strip">
+    <rect x="40" y="1018" width="1520" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(56, 1038)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M18 4 L32 10 L32 20 C32 30 18 36 18 36 C18 36 4 30 4 20 L4 10 Z"/>
+      <line x1="18" y1="12" x2="18" y2="22"/>
+      <circle cx="18" cy="27" r="1.5" fill="#207448"/>
+    </g>
+    <text x="108" y="1054" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="108" dy="0">Tools have overhead and bugs; metrics may be missing inside containers (host values), and some report</tspan>
+      <tspan x="108" dy="32">an interval average while others a cumulative counter: cross-check with a second source</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1120" width="1520" height="52" rx="8" fill="#207448"/>
+    <text x="800" y="1155" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">A chart is an argument, and some arguments are easier to make than others</text>
+  </g>
+</svg>

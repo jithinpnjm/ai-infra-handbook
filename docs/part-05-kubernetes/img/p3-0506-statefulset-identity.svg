@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>StatefulSet identity: name, DNS, disk and order</title>
+  <desc>Infographic illustrating Kubernetes StatefulSet identity including unique pod ordinals web-0 through web-2, headless Service DNS, persistent storage reattachment across rescheduling, OrderedReady versus Parallel pod management, and Canary rolling updates via partition K.</desc>
+
+  <defs>
+    
+    <marker id="orange-arrow" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto">
+      <path d="M 0,2 L 16,9 L 0,16 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">StatefulSet identity: name, DNS, disk and order</text>
+
+  
+  
+  
+  <rect x="40" y="110" width="350" height="465" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <text x="105" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="105" dy="0">pod deleted, rescheduled</tspan>
+    <tspan x="105" dy="36">onto another node:</tspan>
+    <tspan x="105" dy="36">same name,</tspan>
+    <tspan x="105" dy="36">same PVC reattached</tspan>
+  </text>
+
+  
+  <path d="M 420,175 H 75 V 505 H 402" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" marker-end="url(#orange-arrow)"/>
+
+  
+  
+  
+  
+  <rect x="420" y="110" width="350" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(445, 147)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="0" y="0" width="56" height="56" rx="8"/>
+    <path d="M 0,20 H 56 M 18,20 V 56 M 38,20 V 56"/>
+  </g>
+  <text x="530" y="187" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#303a36">web-0</text>
+
+  
+  <rect x="800" y="110" width="350" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(825, 147)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="0" y="0" width="56" height="56" rx="8"/>
+    <path d="M 0,20 H 56 M 18,20 V 56 M 38,20 V 56"/>
+  </g>
+  <text x="910" y="187" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#303a36">web-1</text>
+
+  
+  <rect x="1180" y="110" width="350" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1205, 147)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="0" y="0" width="56" height="56" rx="8"/>
+    <path d="M 0,20 H 56 M 18,20 V 56 M 38,20 V 56"/>
+  </g>
+  <text x="1290" y="187" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#303a36">web-2</text>
+
+  
+  
+  
+  <rect x="420" y="265" width="1110" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(445, 312)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="28" cy="28" r="16"/>
+    <path d="M 28,2 V 12 M 28,44 V 54 M 2,28 H 12 M 44,28 H 54 M 10,10 L 17,17 M 39,39 L 46,46 M 10,46 L 17,39 M 39,17 L 46,10"/>
+  </g>
+  <text x="525" y="318" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">&lt;pod-name&gt;.&lt;service-name&gt;.&lt;ns&gt;.svc.cluster.local</text>
+  <text x="525" y="356" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">via a headless Service (clusterIP None, no virtual IP,</text>
+  <text x="525" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">DNS returns each pod address)</text>
+
+  
+  
+  
+  
+  <rect x="420" y="445" width="350" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(445, 482)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="28" cy="14" rx="24" ry="10"/>
+    <path d="M 4,14 V 42 C 4,50 52,50 52,42 V 14"/>
+    <path d="M 4,28 C 4,36 52,36 52,28"/>
+  </g>
+  <text x="520" y="522" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">PVC data-web-0</text>
+
+  
+  <rect x="800" y="445" width="350" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(825, 482)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="28" cy="14" rx="24" ry="10"/>
+    <path d="M 4,14 V 42 C 4,50 52,50 52,42 V 14"/>
+    <path d="M 4,28 C 4,36 52,36 52,28"/>
+  </g>
+  <text x="915" y="522" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">data-web-1</text>
+
+  
+  <rect x="1180" y="445" width="350" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1205, 482)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="28" cy="14" rx="24" ry="10"/>
+    <path d="M 4,14 V 42 C 4,50 52,50 52,42 V 14"/>
+    <path d="M 4,28 C 4,36 52,36 52,28"/>
+  </g>
+  <text x="1295" y="522" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">data-web-2</text>
+
+  
+  <rect x="735" y="595" width="480" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="975" y="626" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">from volumeClaimTemplates</text>
+
+  
+  
+  
+  
+  <rect x="40" y="660" width="970" height="385" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(70, 685)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="28" cy="28" r="24"/>
+    <path d="M 28,14 V 28 L 38,34"/>
+  </g>
+  <text x="145" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Order Policy</text>
+
+  
+  <rect x="70" y="760" width="910" height="150" rx="10" fill="#e8f1ea"/>
+  <text x="100" y="818" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    OrderedReady scale up 0 then 1 then 2, waits for Ready;
+  </text>
+  <text x="100" y="868" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    scale down and update in reverse 2 then 1 then 0
+  </text>
+
+  
+  <rect x="70" y="930" width="910" height="85" rx="10" fill="#e8f1ea"/>
+  <text x="100" y="982" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    Parallel starts without waiting
+  </text>
+
+  
+  <rect x="1040" y="660" width="520" height="385" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1070, 685)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 28,6 L 6,16 V 32 C 6,45 28,54 28,54 C 28,54 50,45 50,32 V 16 Z"/>
+    <path d="M 28,18 V 38 M 20,28 H 36"/>
+  </g>
+  <text x="1145" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Canary Update</text>
+
+  
+  <rect x="1070" y="760" width="460" height="255" rx="10" fill="#e8f1ea"/>
+  <text x="1100" y="828" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">partition K:</text>
+  <text x="1100" y="888" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">only ordinals at or above K</text>
+  <text x="1100" y="938" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">get the new version</text>
+
+  
+  
+  
+  <rect x="40" y="1080" width="1520" height="80" rx="14" fill="#207448"/>
+  <g transform="translate(70, 1097)" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="23" cy="23" r="19"/>
+    <path d="M 14,23 L 20,29 L 32,17"/>
+  </g>
+  <text x="800" y="1131" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    never two pods with the same ordinal; PVCs are not deleted automatically
+  </text>
+</svg>

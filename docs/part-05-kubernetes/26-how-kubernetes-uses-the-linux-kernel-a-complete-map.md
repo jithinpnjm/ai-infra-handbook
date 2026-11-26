@@ -45,34 +45,9 @@ The next section gives you the master map from Kubernetes features to kernel mec
 
 Start from the Kubernetes side when you debug a symptom. A symptom is what the user sees, such as a pod that dies or a service that times out, and the kernel is where the answer lives. The diagram groups Kubernetes concepts on one side and the kernel features they rely on in the other. Read it the way you would read a wiring diagram for a house. Each switch on one side connects to a specific circuit on the other.
 
-```mermaid
-flowchart TB
-  subgraph K8s["Kubernetes concept"]
-    P["Pod / container"]
-    R["Resources (requests/limits, QoS)"]
-    N["Pod network, Service, NetworkPolicy"]
-    V["Volumes, images, logs"]
-    D["Devices (GPU, RDMA)"]
-    S["Security context, PSS, runtime class"]
-    SC["Scheduling hints (CPU/NUMA managers)"]
-  end
-  subgraph Kernel["Linux kernel feature"]
-    NS["Namespaces: pid, mnt, net, uts, ipc, user, cgroup, time"]
-    CG["cgroups v2: cpu, memory, io, pids, hugetlb, cpuset, devices (BPF), rdma"]
-    CAP["Capabilities, no_new_privs, seccomp-bpf, LSM (AppArmor/SELinux), user namespaces"]
-    FS["overlayfs, bind mounts, mount propagation, tmpfs, FUSE, page cache, block layer"]
-    NET["veth, bridge, VXLAN/Geneve, routing, netfilter/nftables, conntrack, tc, eBPF/XDP"]
-    DEV["Device nodes, devtmpfs/udev, PCI, VFIO, SR-IOV, RDMA verbs, IOMMU"]
-    SCHED["CFS/EEVDF scheduler, cpusets, NUMA, hugepages, OOM killer, PSI"]
-  end
-  P --> NS & CG & CAP & FS
-  R --> CG & SCHED
-  N --> NET & NS
-  V --> FS
-  D --> DEV & CG
-  S --> CAP & NS
-  SC --> SCHED & DEV
-```
+![The master map](./img/m5-26-1.svg)
+
+*Figure 5.26.1. The master map, as a diagram.*
 
 | Kubernetes feature | Kernel mechanism | Inspect with |
 |---|---|---|

@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What crosses a process boundary: pickle, shared memory and failure</title>
+  <desc>Visual infographic explaining process boundaries, pickling limitations, large object handling, shared memory tools, worker pools, and failure modes in Python multiprocessing.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">What crosses a process boundary: pickle, shared memory and failure</text>
+
+  
+
+  
+  <rect x="50" y="105" width="220" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(132, 145)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="6" y="6" width="44" height="44" rx="6" />
+    <circle cx="28" cy="28" r="10" />
+    <path d="M 16 6 V 0 M 28 6 V 0 M 40 6 V 0" />
+    <path d="M 16 50 V 56 M 28 50 V 56 M 40 50 V 56" />
+    <path d="M 6 16 H 0 M 6 28 H 0 M 6 40 H 0" />
+    <path d="M 50 16 H 56 M 50 28 H 56 M 50 40 H 56" />
+  </g>
+  <text x="160" y="245" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Parent</text>
+
+  
+  <rect x="1330" y="105" width="220" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1412, 145)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="28" r="12" />
+    <path d="M 28 4 V 12 M 28 44 V 52 M 4 28 H 12 M 44 28 H 52 M 11 11 L 17 17 M 39 39 L 45 45 M 11 45 L 17 39 M 39 17 L 45 11" stroke-linecap="round" />
+  </g>
+  <text x="1440" y="245" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Worker</text>
+
+  
+  <rect x="290" y="105" width="1020" height="370" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  
+  <g transform="translate(315, 122)" stroke="#207448" stroke-width="3.5" fill="none">
+    <path d="M 6 12 C 6 6 12 6 20 6 H 36 C 44 6 50 12 50 20 C 50 28 44 34 36 34 H 20 C 12 34 6 40 6 46" />
+    <circle cx="28" cy="20" r="4" fill="#207448" />
+  </g>
+  <text x="385" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">pickle channel</text>
+
+  
+  
+  <line x1="270" y1="188" x2="1324" y2="188" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="800" y="178" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">arguments pickled</text>
+
+  
+  <line x1="1330" y1="234" x2="276" y2="234" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="800" y="224" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">results pickled</text>
+
+  
+  <rect x="310" y="260" width="560" height="200" rx="8" fill="#fffbf5" stroke="#db8129" stroke-width="2.5" />
+  
+  <g transform="translate(328, 274)" stroke="#db8129" stroke-width="3" fill="none">
+    <rect x="4" y="14" width="24" height="18" rx="3" />
+    <path d="M 8 14 V 8 C 8 4 12 2 16 2 C 20 2 24 4 24 8 V 14" />
+  </g>
+  <text x="368" y="296" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">Cannot be pickled</text>
+  
+  <text x="328" y="334" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="328" dy="0">lambdas, nested functions,</tspan>
+    <tspan x="328" dy="30">open files, sockets, locks</tspan>
+  </text>
+
+  
+  <rect x="328" y="378" width="320" height="34" rx="5" fill="#fdf2e9" stroke="#db8129" stroke-width="1.5" />
+  <text x="338" y="402" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">Can&apos;t pickle local object</text>
+
+  
+  <text x="328" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">top-level functions and plain data</text>
+
+  
+  <rect x="890" y="260" width="400" height="200" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(908, 274)" stroke="#207448" stroke-width="3" fill="none">
+    <ellipse cx="16" cy="8" rx="12" ry="5" />
+    <path d="M 4 8 V 22 C 4 25 9 27 16 27 C 23 27 28 25 28 22 V 8" />
+    <path d="M 4 15 C 4 18 9 20 16 20 C 23 20 28 18 28 15" />
+  </g>
+  <text x="948" y="296" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Large objects</text>
+  
+  <text x="908" y="342" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="908" dy="0">are copied, which is slow:</tspan>
+    <tspan x="908" dy="34">pass file paths or indices</tspan>
+    <tspan x="908" dy="34">instead</tspan>
+  </text>
+
+  
+
+  
+  <rect x="50" y="495" width="720" height="575" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(75, 514)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="4" y="4" width="36" height="26" rx="4" />
+    <path d="M 12 30 V 38 M 32 30 V 38 M 4 38 H 40" />
+    <circle cx="22" cy="17" r="4" fill="#207448" />
+  </g>
+  <text x="130" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Sharing tools</text>
+
+  
+  <rect x="70" y="562" width="680" height="55" rx="6" fill="#e8f1ea" />
+  <text x="86" y="597" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">multiprocessing.Queue, Pipe, Manager</text>
+
+  
+  <rect x="70" y="627" width="680" height="55" rx="6" fill="#e8f1ea" />
+  <text x="86" y="662" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Value and Array (ctypes, with locks)</text>
+
+  
+  <rect x="70" y="692" width="680" height="120" rx="6" fill="#e8f1ea" />
+  <text x="86" y="726" font-family="ui-monospace, monospace" font-size="24" fill="#207448">multiprocessing.shared_memory.SharedMemory:</text>
+  <text x="86" y="760" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">zero-copy buffers, basis for NumPy arrays</text>
+  <text x="86" y="792" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">shared across processes</text>
+
+  
+  <rect x="70" y="822" width="680" height="55" rx="6" fill="#e8f1ea" />
+  <text x="86" y="857" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">numpy.memmap memory-mapped files</text>
+
+  
+  <rect x="70" y="887" width="680" height="165" rx="6" fill="#e8f1ea" />
+  <text x="86" y="922" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="86" dy="0">under fork, read-only data is shared</tspan>
+    <tspan x="86" dy="36">copy-on-write; reference-count writes can</tspan>
+    <tspan x="86" dy="36">trigger page copies; gc.freeze() helps</tspan>
+  </text>
+
+  
+  <rect x="790" y="495" width="760" height="275" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(815, 514)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="4" y="4" width="16" height="16" rx="3" />
+    <rect x="24" y="4" width="16" height="16" rx="3" />
+    <rect x="4" y="24" width="16" height="16" rx="3" />
+    <rect x="24" y="24" width="16" height="16" rx="3" />
+  </g>
+  <text x="870" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Pool features</text>
+
+  <text x="815" y="586" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="815" dy="0" font-family="ui-monospace, monospace">Pool: map, imap_unordered, apply_async, starmap;</tspan>
+    <tspan x="815" dy="38">maxtasksperchild recycles leaky workers;</tspan>
+    <tspan x="815" dy="38">initializer sets per-worker state such as opening</tspan>
+    <tspan x="815" dy="36">a model or a database connection;</tspan>
+    <tspan x="815" dy="38" font-family="ui-monospace, monospace">chunksize=16 batches IPC for many small tasks</tspan>
+  </text>
+
+  
+  <rect x="790" y="790" width="760" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(815, 809)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 22 4 L 40 38 H 4 Z" stroke-linejoin="round" />
+    <line x1="22" y1="16" x2="22" y2="26" stroke-linecap="round" />
+    <circle cx="22" cy="32" r="1.5" fill="#207448" />
+  </g>
+  <text x="870" y="837" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Failure</text>
+
+  <text x="815" y="882" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="815" dy="0">an exception in a worker re-raises in the parent</tspan>
+    <tspan x="815" dy="38">with its traceback text; if the kernel&apos;s</tspan>
+    <tspan x="815" dy="38">out-of-memory killer stops a worker you get</tspan>
+    <tspan x="815" dy="38" font-family="ui-monospace, monospace" font-weight="bold">BrokenProcessPool, which you must</tspan>
+    <tspan x="815" dy="38">handle and recover from</tspan>
+  </text>
+
+  
+  <rect x="50" y="1095" width="1500" height="70" rx="10" fill="#207448" />
+  <text x="800" y="1139" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Send paths and indices, not big objects</text>
+</svg>

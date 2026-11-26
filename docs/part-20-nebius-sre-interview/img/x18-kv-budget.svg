@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>The KV budget left after weights sets how many tokens and requests fit</title>
+  <desc>Visual breakdown of a 24 GB GPU budget showing weights taking 14 GB and leaving 10 GB for KV cache, calculating token and request capacity, and showing request admission and preemption when full.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The KV budget left after weights</tspan>
+    <tspan x="800" dy="54">sets how many tokens and requests fit</tspan>
+  </text>
+
+  
+  <g id="budget-stack">
+    
+    <rect x="60" y="160" width="400" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(85, 192)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="6" fill="#ffffff"/>
+      <rect x="18" y="18" width="20" height="20" rx="3" fill="#e8f1ea"/>
+      <line x1="18" y1="2" x2="18" y2="8"/>
+      <line x1="28" y1="2" x2="28" y2="8"/>
+      <line x1="38" y1="2" x2="38" y2="8"/>
+      <line x1="18" y1="48" x2="18" y2="54"/>
+      <line x1="28" y1="48" x2="28" y2="54"/>
+      <line x1="38" y1="48" x2="38" y2="54"/>
+      <line x1="2" y1="18" x2="8" y2="18"/>
+      <line x1="2" y1="28" x2="8" y2="28"/>
+      <line x1="2" y1="38" x2="8" y2="38"/>
+      <line x1="48" y1="18" x2="54" y2="18"/>
+      <line x1="48" y1="28" x2="54" y2="28"/>
+      <line x1="48" y1="38" x2="54" y2="38"/>
+    </g>
+
+    <text x="295" y="214" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="295" dy="0">24 GB GPU,</tspan>
+      <tspan x="295" dy="36" font-size="24" font-weight="normal" fill="#303a36">the total</tspan>
+    </text>
+
+    
+    <rect x="60" y="300" width="400" height="540" rx="14" fill="none" stroke="#207448" stroke-width="3"/>
+
+    
+    <path d="M 60 314 A 14 14 0 0 1 74 300 L 446 300 A 14 14 0 0 1 460 314 L 460 615 L 60 615 Z" fill="#e6ebe8" stroke="#7a8c82" stroke-width="2"/>
+
+    
+    <circle cx="100" cy="344" r="24" fill="#207448"/>
+    <text x="100" y="353" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(385, 324)" stroke="#7a8c82" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="36" height="44" rx="4" fill="#ffffff"/>
+      <line x1="12" y1="18" x2="32" y2="18"/>
+      <line x1="12" y1="28" x2="32" y2="28"/>
+      <line x1="12" y1="38" x2="24" y2="38"/>
+    </g>
+
+    <text x="260" y="440" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="260" dy="0">Weights,</tspan>
+      <tspan x="260" dy="38">Llama-2-7B FP16,</tspan>
+      <tspan x="260" dy="38">14 GB</tspan>
+    </text>
+
+    
+    <path d="M 60 615 L 460 615 L 460 826 A 14 14 0 0 1 446 840 L 74 840 A 14 14 0 0 1 60 826 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(90, 700)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8" fill="#ffffff"/>
+      <path d="M 6 14 v 28 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8 v -28"/>
+      <path d="M 6 28 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8"/>
+    </g>
+
+    <text x="285" y="710" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="285" dy="0">Free for KV cache,</tspan>
+      <tspan x="285" dy="38">10 GB</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 460 725 L 485 725 Q 495 725 495 715 L 495 465 Q 495 455 505 455 L 518 455" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="step-2-box">
+    <rect x="520" y="350" width="440" height="210" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <circle cx="560" cy="390" r="24" fill="#207448"/>
+    <text x="560" y="399" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(885, 365)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="46" height="46" rx="6" fill="#e8f1ea"/>
+      <line x1="14" y1="18" x2="26" y2="18"/>
+      <line x1="14" y1="36" x2="26" y2="36"/>
+      <line x1="20" y1="27" x2="20" y2="27"/>
+      <line x1="32" y1="22" x2="40" y2="32"/>
+      <line x1="40" y1="22" x2="32" y2="32"/>
+    </g>
+
+    <text x="740" y="445" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="740" dy="0">0.5 MB per token,</tspan>
+      <tspan x="740" dy="34">so 10 x 1024 / 0.5 =</tspan>
+      <tspan x="740" dy="34" font-weight="bold" fill="#207448">20,480 tokens of cache.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="740" y1="560" x2="740" y2="628" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="step-3-box">
+    <rect x="520" y="630" width="440" height="210" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <circle cx="560" cy="670" r="24" fill="#207448"/>
+    <text x="560" y="679" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(885, 645)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="46" height="42" rx="6" fill="#e8f1ea"/>
+      <line x1="4" y1="18" x2="50" y2="18"/>
+      <circle cx="12" cy="12" r="2.5" fill="#207448"/>
+      <circle cx="20" cy="12" r="2.5" fill="#207448"/>
+      <line x1="14" y1="28" x2="36" y2="28"/>
+      <line x1="14" y1="36" x2="28" y2="36"/>
+    </g>
+
+    <text x="740" y="725" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="740" dy="0">about 5 requests</tspan>
+      <tspan x="740" dy="34">that each reach</tspan>
+      <tspan x="740" dy="34" fill="#207448">4,096 tokens.</tspan>
+    </text>
+  </g>
+
+  
+  
+  <line x1="960" y1="735" x2="1018" y2="735" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <g id="right-panel">
+    
+    <rect x="1020" y="160" width="520" height="680" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="1280" y="210" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1280" dy="0">3,000 prompt tokens</tspan>
+      <tspan x="1280" dy="32">and 1,000 output tokens</tspan>
+    </text>
+
+    
+    
+    
+    <rect x="1060" y="265" width="95" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="1175" y="265" width="95" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="1290" y="265" width="95" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="1405" y="265" width="95" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <rect x="1060" y="335" width="95" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="1175" y="335" width="95" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="1290" y="335" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+    <rect x="1405" y="335" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+
+    
+    <rect x="1060" y="405" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+    <rect x="1175" y="405" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+    <rect x="1290" y="405" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+    <rect x="1405" y="405" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+
+    
+    <rect x="1060" y="475" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+    <rect x="1175" y="475" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+    <rect x="1290" y="475" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+    <rect x="1405" y="475" width="95" height="55" rx="8" fill="#e6ebe8" stroke="#8a9a90" stroke-width="2"/>
+
+    
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 1098 292 l 6 6 l 14 -12"/>
+      <path d="M 1213 292 l 6 6 l 14 -12"/>
+      <path d="M 1328 292 l 6 6 l 14 -12"/>
+      <path d="M 1443 292 l 6 6 l 14 -12"/>
+      <path d="M 1098 362 l 6 6 l 14 -12"/>
+      <path d="M 1213 362 l 6 6 l 14 -12"/>
+    </g>
+
+    
+    <g stroke="#8a9a90" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <line x1="1330" y1="362" x2="1345" y2="362"/>
+      <line x1="1445" y1="362" x2="1460" y2="362"/>
+      <line x1="1100" y1="432" x2="1115" y2="432"/>
+      <line x1="1215" y1="432" x2="1230" y2="432"/>
+      <line x1="1330" y1="432" x2="1345" y2="432"/>
+      <line x1="1445" y1="432" x2="1460" y2="432"/>
+      <line x1="1100" y1="502" x2="1115" y2="502"/>
+      <line x1="1215" y1="502" x2="1230" y2="502"/>
+      <line x1="1330" y1="502" x2="1345" y2="502"/>
+      <line x1="1445" y1="502" x2="1460" y2="502"/>
+    </g>
+
+    
+    <rect x="1060" y="560" width="440" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="1062" y="562" width="436" height="36" rx="6" fill="#207448" opacity="0.85"/>
+
+    
+    <g id="preemption-marker">
+      <rect x="1060" y="660" width="440" height="130" rx="14" fill="#db8129" stroke="#db8129"/>
+
+      
+      <polygon points="1280,630 1265,660 1295,660" fill="#db8129"/>
+
+      <text x="1280" y="718" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+        <tspan x="1280" dy="0">KV full,</tspan>
+        <tspan x="1280" dy="36">newest request preempted</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="formula-line">
+    <rect x="50" y="870" width="1500" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="917" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">KV bytes per token = 2 x 32 layers x 32 heads x 128 x 2 bytes = 524,288 bytes.</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="975" width="1500" height="85" rx="12" fill="#207448"/>
+    <text x="800" y="1027" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The answer comes from the memory left after the weights, not from the model size alone.</text>
+  </g>
+</svg>

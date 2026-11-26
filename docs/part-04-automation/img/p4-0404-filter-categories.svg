@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The filter lookup table, grouped by category</title>
+  <desc>A lookup table and reference guide for Jinja2 and Ansible filters grouped by category with pipeline examples and evaluation rules.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="78" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">The filter lookup table, grouped by category</text>
+
+  
+  <rect x="50" y="110" width="1500" height="48" rx="6" fill="#207448"/>
+  <text x="80" y="143" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Category</text>
+  <text x="540" y="143" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Filters</text>
+
+  
+  <rect x="50" y="166" width="1500" height="72" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <rect x="66" y="181" width="38" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="75" y1="193" x2="95" y2="193" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="75" y1="200" x2="95" y2="200" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="75" y1="207" x2="87" y2="207" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="116" y="211" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Strings</text>
+  
+  <text x="540" y="195" font-family="monospace" font-size="24" fill="#303a36">upper, lower, title, trim, replace, regex_replace (Ansible)</text>
+  <text x="540" y="224" font-family="monospace" font-size="24" fill="#303a36">split, join, truncate, indent(4), center, wordwrap, urlencode</text>
+
+  
+  <rect x="50" y="246" width="1500" height="72" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <path d="M85 260 L99 266 V281 C99 291 85 297 85 297 C85 297 71 291 71 281 V266 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <text x="116" y="291" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Defaults and safety</text>
+  
+  <text x="540" y="275" font-family="monospace" font-size="24" fill="#303a36">default(x), default(x, true) also for empty or falsy</text>
+  <text x="540" y="304" font-family="monospace" font-size="24" fill="#303a36">mandatory (Ansible), string, int, float, bool, abs, round</text>
+
+  
+  <rect x="50" y="326" width="1500" height="100" rx="6" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+  
+  <path d="M66 352 L85 344 L104 352 L85 360 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M66 363 L85 371 L104 363" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M66 374 L85 382 L104 374" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+  <text x="116" y="385" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Collections</text>
+  
+  <text x="540" y="355" font-family="monospace" font-size="24" fill="#303a36">length, first, last, sort, unique, reverse, list, select, reject</text>
+  <text x="540" y="384" font-family="monospace" font-size="24" fill="#303a36">map(attribute=name), selectattr(gpus, gt, 4), rejectattr</text>
+  <text x="540" y="413" font-family="monospace" font-size="24" fill="#303a36">groupby(rack), sum, min, max, batch(3), slice(3)</text>
+
+  
+  <rect x="50" y="434" width="1500" height="72" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <path d="M77 447 C72 447 70 451 70 456 C70 460 67 462 65 462 C67 462 70 464 70 468 C70 473 72 477 77 477" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <path d="M93 447 C98 447 100 451 100 456 C100 460 103 462 105 462 C103 462 100 464 100 468 C100 473 98 477 93 477" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="116" y="479" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Dict</text>
+  
+  <text x="540" y="463" font-family="monospace" font-size="24" fill="#303a36">dictsort, items, dict2items and items2dict (Ansible)</text>
+  <text x="540" y="492" font-family="monospace" font-size="24" fill="#303a36">combine (Ansible merge), json_query (JMESPath, Ansible)</text>
+
+  
+  <rect x="50" y="514" width="1500" height="72" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <rect x="67" y="529" width="36" height="36" rx="5" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M76 542 L81 547 L76 552" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M94 542 L89 547 L94 552" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="116" y="559" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Serialisation</text>
+  
+  <text x="540" y="543" font-family="monospace" font-size="24" fill="#303a36">tojson, to_json, to_nice_json, to_yaml, to_nice_yaml, from_json</text>
+  <text x="540" y="572" font-family="monospace" font-size="24" fill="#303a36">from_yaml, b64encode and b64decode, hash(sha256), password_hash</text>
+
+  
+  <rect x="50" y="594" width="1500" height="54" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <path d="M68 607 H78 L82 612 H102 V629 H68 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <text x="116" y="631" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Paths</text>
+  
+  <text x="540" y="630" font-family="monospace" font-size="24" fill="#303a36">basename, dirname, expanduser, realpath, splitext</text>
+
+  
+  <rect x="50" y="656" width="1500" height="84" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <circle cx="74" cy="686" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="96" cy="686" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="85" cy="704" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="77" y1="689" x2="82" y2="701" stroke="#207448" stroke-width="2.5"/>
+  <line x1="93" y1="689" x2="88" y2="701" stroke="#207448" stroke-width="2.5"/>
+  <line x1="78" y1="686" x2="92" y2="686" stroke="#207448" stroke-width="2.5"/>
+  
+  <text x="116" y="687" font-family="sans-serif" fill="#303a36">
+    <tspan x="116" dy="0" font-size="30" font-weight="bold">Network</tspan>
+    <tspan x="116" dy="28" font-size="24">(ansible.utils or ansible.netcommon)</tspan>
+  </text>
+  
+  <text x="540" y="705" font-family="monospace" font-size="24" fill="#303a36">ipaddr, ipv4, ipmath, cidr_merge, hwaddr, next_nth_usable</text>
+
+  
+  <rect x="50" y="756" width="1500" height="236" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M70 773 H94 L85 785 V797 L79 794 V785 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <text x="110" y="790" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Pipeline examples</text>
+
+  
+  <rect x="70" y="806" width="1460" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="88" y="833" font-family="monospace" font-size="24" fill="#303a36">nodes | map(attribute=name) | list gives [gpu01, gpu02]</text>
+
+  
+  <rect x="70" y="852" width="1460" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="88" y="879" font-family="monospace" font-size="24" fill="#303a36">nodes | selectattr(gpus, ge, 8) | map(attribute=name) | join(,) gives gpu01,gpu02</text>
+
+  
+  <rect x="70" y="898" width="670" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="88" y="925" font-family="monospace" font-size="24" fill="#303a36">nodes | sum(attribute=gpus)</text>
+
+  <rect x="760" y="898" width="770" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="778" y="925" font-family="monospace" font-size="24" fill="#303a36">cluster.timeout | default(30) | int</text>
+
+  
+  <rect x="70" y="944" width="1460" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="88" y="971" font-family="monospace" font-size="24" fill="#303a36">config | to_nice_yaml(indent=2)</text>
+
+  
+  <rect x="50" y="1008" width="1500" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="82" cy="1045" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="82" y1="1038" x2="82" y2="1047" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="82" cy="1052" r="1.5" fill="#207448"/>
+  <text x="110" y="1052" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rule</text>
+  <text x="195" y="1052" font-family="sans-serif" font-size="24" fill="#303a36">if the first filter keeps nothing, later filters receive an empty list and the output is an empty string</text>
+
+  
+  <rect x="50" y="1100" width="1500" height="60" rx="8" fill="#207448"/>
+  <text x="800" y="1139" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The value enters on the left, each filter changes it once</text>
+</svg>

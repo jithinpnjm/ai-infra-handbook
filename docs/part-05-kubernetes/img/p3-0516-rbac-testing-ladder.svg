@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Checking RBAC before an incident</title>
+  <desc>Ladder of questions and commands for inspecting Kubernetes RBAC before an incident</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Checking RBAC before an incident</text>
+
+  
+
+  
+  <g>
+    <rect x="50" y="105" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="74" y="125" width="48" height="42" rx="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <circle cx="98" cy="140" r="7" stroke="#207448" stroke-width="3" fill="none"/>
+    <path d="M86 157 c0 -6 6 -8 12 -8 s12 2 12 8" stroke="#207448" stroke-width="3" fill="none"/>
+    <text x="144" y="154" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Can this identity do X:</text>
+    <text x="74" y="220" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">kubectl auth can-i create pods</tspan>
+      <tspan x="74" dy="34">-n team-a --as=jane@example.com</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="320" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M74 340 l22 -12 l22 12 v16 c0 15 -14 24 -22 28 c-8 -4 -22 -13 -22 -28 z" stroke="#db8129" stroke-width="3.5" fill="none"/>
+    <line x1="96" y1="344" x2="96" y2="358" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="96" cy="366" r="2.5" fill="#db8129"/>
+    <text x="144" y="369" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is the CI account too powerful:</text>
+    <text x="74" y="420" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">kubectl auth can-i * *</tspan>
+      <tspan x="74" dy="32">--as=system:serviceaccount:ci:ci-runner,</tspan>
+      <tspan x="74" dy="32">should be no</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="535" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="74" y="555" width="46" height="44" rx="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <path d="M82 568 l5 5 l10 -10" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <line x1="102" y1="568" x2="112" y2="568" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M82 586 l5 5 l10 -10" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <line x1="102" y1="586" x2="112" y2="586" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="144" y="584" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What can it do at all:</text>
+    <text x="74" y="650" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">kubectl auth can-i --list -n team-a</tspan>
+      <tspan x="74" dy="34">--as=system:serviceaccount:team-a:trainer</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="750" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="74" y="770" width="46" height="44" rx="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <path d="M82 785 l6 6 l-6 6" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+    <line x1="94" y1="797" x2="110" y2="797" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="144" y="799" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Subresources:</text>
+    <text x="74" y="865" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">kubectl auth can-i get pods</tspan>
+      <tspan x="74" dy="34">--subresource=logs</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="965" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="97" cy="987" r="14" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <path d="M77 1017 c0 -12 9 -15 20 -15 s20 3 20 15" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <text x="144" y="1014" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Who am I:</text>
+    <text x="74" y="1090" font-family="monospace" font-size="24" fill="#303a36">kubectl auth whoami</text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="820" y="105" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="867" cy="135" r="22" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <ellipse cx="867" cy="135" rx="10" ry="22" stroke="#207448" stroke-width="3" fill="none"/>
+    <line x1="845" y1="135" x2="889" y2="135" stroke="#207448" stroke-width="3"/>
+    <text x="914" y="154" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Who is bound to everyone:</text>
+    <text x="844" y="220" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">list ClusterRoleBindings whose</tspan>
+      <tspan x="844" dy="34">subject is system:authenticated</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="320" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="855" cy="350" r="12" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <path d="M867 350 h24 v8 h-6 v6 h-6 v-14" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+    <text x="914" y="369" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Who holds the keys:</text>
+    <text x="844" y="420" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">kubectl get clusterrolebindings,rolebindings</tspan>
+      <tspan x="844" dy="32">-A -o wide with grep cluster-admin</tspan>
+      <tspan x="844" dy="32">or system:masters</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="535" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="847" y="562" width="40" height="32" rx="5" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <path d="M855 562 v-10 a12 12 0 0 1 24 0 v10" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <circle cx="867" cy="576" r="3" fill="#207448"/>
+    <line x1="867" y1="579" x2="867" y2="586" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="914" y="584" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Who can read secrets:</text>
+    <text x="844" y="650" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">kubectl who-can get secrets -n team-a</tspan>
+      <tspan x="844" dy="34">(krew plugin)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="750" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="852" cy="768" r="6" stroke="#207448" stroke-width="3" fill="none"/>
+    <circle cx="882" cy="768" r="6" stroke="#207448" stroke-width="3" fill="none"/>
+    <circle cx="867" cy="798" r="6" stroke="#207448" stroke-width="3" fill="none"/>
+    <line x1="857" y1="772" x2="877" y2="772" stroke="#207448" stroke-width="2.5"/>
+    <line x1="855" y1="774" x2="864" y2="792" stroke="#207448" stroke-width="2.5"/>
+    <line x1="879" y1="774" x2="870" y2="792" stroke="#207448" stroke-width="2.5"/>
+    <text x="914" y="799" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">See the whole graph:</text>
+    <text x="844" y="865" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">rbac-tool viz, rbac-tool lookup,</tspan>
+      <tspan x="844" dy="34">rakkess</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="965" width="730" height="195" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M845 985 l22 -12 l22 12 v16 c0 15 -14 24 -22 28 c-8 -4 -22 -13 -22 -28 z" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <path d="M856 997 l8 8 l16 -16" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="914" y="1014" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Change safely:</text>
+    <text x="844" y="1064" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">kubectl auth reconcile</tspan>
+      <tspan x="844" dy="32">-f some-rbac-config.yaml with --dry-run</tspan>
+      <tspan x="844" dy="32">in the pipeline, RBAC stored in Git</tspan>
+    </text>
+  </g>
+</svg>

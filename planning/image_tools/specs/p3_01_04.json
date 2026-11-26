@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "04",
+  "name": "p3-0104-mask-rank-errors",
+  "title": "Worked example: masking numbers to rank distinct errors",
+  "spec": "Five stages left to right as boxes, with the data table shown under each. Stage 1 'grep -i error train.log' with three lines under it: '10:20:01 ERROR NCCL timeout on rank 3', '10:31:09 ERROR NCCL timeout on rank 5', '10:40:00 ERROR CUDA out of memory on gpu=2' (the WARN loss spike line is shown crossed out as filtered away). Stage 2 'sed -E s/[0-9]+/N/g' with the same three lines after masking: 'N:N:N ERROR NCCL timeout on rank N' twice and 'N:N:N ERROR CUDA out of memory on gpu=N' once. Stage 3 'sort' groups the two identical NCCL lines next to each other. Stage 4 'uniq -c' output: '2 N:N:N ERROR NCCL timeout on rank N' and '1 N:N:N ERROR CUDA out of memory on gpu=N'. Stage 5 'sort -rn | head' ranks them with the count 2 line first, highlighted orange. Numbered circles 1 to 5 on the stages. Bottom note: 'Masking the numbers makes different ranks the same message, so uniq can count them'.",
+  "anchor": "## 10. Recipes for AI and HPC work",
+  "alt": "A five stage pipeline of grep, sed, sort, uniq and sort that masks numbers in error lines so two NCCL timeout messages are counted together.",
+  "cap": "After the numbers are masked to N, the two NCCL timeout lines become identical, sort puts them side by side, and uniq -c counts them as 2."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "04",
+  "name": "p3-0104-jq-filter",
+  "title": "How a jq filter walks through JSON",
+  "spec": "Top box with the input JSON in monospace: '{\"gpu\":[{\"id\":0,\"mem\":1200},{\"id\":1,\"mem\":81000}]}'. Below, the filter '.gpu[] | select(.mem>80000) | .id' split into three labelled stages left to right, each a box with a number circle. Stage 1 '.gpu[]' (iterate the array) shows two small item cards '{id 0, mem 1200}' and '{id 1, mem 81000}'. Stage 2 'select(.mem>80000)' keeps the second card and drops the first (first card greyed with a cross). Stage 3 '.id' outputs '1' in a green output box. Under the stages a legend of jq pieces from the chapter: '.field reads a field', '.[] iterates an array', 'select(condition) keeps matching items', 'map(...) transforms each one', '-r prints raw strings without quotes', '@tsv or @csv produce tables'. Bottom bar: 'Regex does not understand nesting or escaping, so use jq or yq'.",
+  "anchor": "### JSON and friends: use a parser, not regex",
+  "alt": "A jq filter applied to a JSON list of two GPUs: iterate the array, keep the one with more than 80000 memory, and print its id.",
+  "cap": "Each jq stage passes items to the next: iterate the array, keep matching items, then read one field."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "04",
+  "name": "p3-0104-awk-groupby",
+  "title": "awk group-by: an associative array counts as the lines pass",
+  "spec": "Left: a small input table with five lines of column 1 and column 2 (use the chapter's names): 'alice', 'bob', 'alice', 'alice', 'bob'. Middle: a box 'awk { c[$1]++ }' with a lookup table 'c' drawn as key/value rows that update step by step across three snapshots: after line 1 'alice = 1'; after line 3 'alice = 2, bob = 1'; after line 5 'alice = 3, bob = 2'. Numbered circles 1 to 3 for the snapshots. Right: a box 'END { for (k in c) print c[k], k }' that runs once after the last line, with output '3 alice' and '2 bob', then a box '| sort -rn' giving the ranked output. Note below: 'An associative array is a lookup table keyed by text, so no sort | uniq -c is needed'. Orange highlight on the END box only. Second small panel comparing 'uniq -c without sort' on the same five lines giving '1 alice', '1 bob', '2 alice', '1 bob' next to 'sort | uniq -c' giving '3 alice', '2 bob'.",
+  "anchor": "## 6. `awk`: the Swiss army knife for columns",
+  "alt": "A lookup table keyed by name updating line by line as awk reads five lines, then printing counts at the end, compared with uniq -c on unsorted input.",
+  "cap": "awk keeps a count per key while it reads, prints once at END, and so needs no sort before it, unlike uniq -c."
+ }
+]

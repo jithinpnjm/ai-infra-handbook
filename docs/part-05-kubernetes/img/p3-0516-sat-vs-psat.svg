@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1190" viewBox="0 0 1600 1190">
+  <title>Plain ServiceAccount token versus projected token</title>
+  <desc>Infographic comparing plain Kubernetes ServiceAccount tokens with projected ServiceAccount tokens</desc>
+
+  
+  <rect width="1600" height="1190" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Plain ServiceAccount token versus projected token</text>
+
+  
+  <rect x="40" y="110" width="740" height="865" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="40" y="110" width="740" height="85" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="85" cy="148" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M96 157 L114 175 M106 167 L112 161 M110 171 L116 165" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="140" y="163" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">SAT: ServiceAccount token</text>
+
+  
+  <rect x="60" y="215" width="700" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <path d="M85 240 L113 240 L127 254 L127 288 L85 288 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M113 240 L113 254 L127 254" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="95" y1="262" x2="117" y2="262" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="95" y1="274" x2="113" y2="274" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="145" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">Secret of type</tspan>
+    <tspan x="145" dy="34" font-family="monospace" fill="#207448">kubernetes.io/service-account-token</tspan>
+    <tspan x="145" dy="34">holding ca.crt, namespace and token,</tspan>
+    <tspan x="145" dy="34">annotated with the account name and uid</tspan>
+  </text>
+
+  
+  <rect x="60" y="450" width="700" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <path d="M85 472 L99 472 L105 482 L131 482 L131 516 L85 516 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="85" y1="486" x2="131" y2="486" stroke="#207448" stroke-width="3"/>
+  <text x="150" y="500" font-family="sans-serif" font-size="24" fill="#303a36">automounted at</text>
+  <text x="85" y="565" font-family="monospace" font-size="24" fill="#207448">/var/run/secrets/kubernetes.io/serviceaccount/</text>
+
+  
+  <rect x="60" y="645" width="700" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <path d="M105 670 L127 680 C127 705 105 720 105 720 C105 720 83 705 83 680 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="105" y1="684" x2="105" y2="698" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="105" cy="707" r="2" fill="#207448"/>
+  <text x="145" y="692" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">weak points: no time to live, wide scope,</tspan>
+    <tspan x="145" dy="36">long persistence; stops working only when</tspan>
+    <tspan x="145" dy="36">its ServiceAccount or Secret is deleted</tspan>
+  </text>
+
+  
+  <rect x="820" y="110" width="740" height="865" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="820" y="110" width="740" height="85" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M865 130 L887 140 C887 165 865 178 865 178 C865 178 843 165 843 140 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M856 152 L863 159 L875 145" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="910" y="163" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">PSAT: projected token (since v1.12)</text>
+
+  
+  <rect x="840" y="215" width="700" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <ellipse cx="873" cy="245" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M855 245 v14 c0 3.8 8.1 7 18 7 s18 -3.2 18 -7 v-14" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M855 259 v14 c0 3.8 8.1 7 18 7 s18 -3.2 18 -7 v-14" fill="none" stroke="#207448" stroke-width="4"/>
+  <text x="915" y="252" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="915" dy="0">pod volume projected with serviceAccountToken</tspan>
+    <tspan x="915" dy="32">audience api, expirationSeconds 600,</tspan>
+    <tspan x="915" dy="32">path app-token, mounted at /var/run/secrets/tokens</tspan>
+  </text>
+
+  
+  <rect x="840" y="405" width="700" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <circle cx="873" cy="440" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M873 424 v5 M873 451 v5 M857 440 h5 M884 440 h5 M862 429 l4 4 M880 447 l4 4 M862 451 l4 -4 M880 433 l4 -4" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="915" y="448" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">API server flags:</text>
+  <text x="865" y="488" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="865" dy="0">--service-account-signing-key-file=</tspan>
+    <tspan x="885" dy="28">/etc/kubernetes/pki/sa.key,</tspan>
+    <tspan x="865" dy="30">--service-account-key-file=</tspan>
+    <tspan x="885" dy="28">/etc/kubernetes/pki/sa.pub,</tspan>
+    <tspan x="865" dy="30">--service-account-issuer=api,</tspan>
+    <tspan x="865" dy="30">--service-account-api-audiences=api</tspan>
+  </text>
+
+  
+  <rect x="840" y="680" width="700" height="120" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="873" cy="740" r="20" fill="none" stroke="#db8129" stroke-width="4"/>
+  <polyline points="873,728 873,740 885,746" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="915" y="732" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="915" dy="0">has a TTL and an audience;</tspan>
+    <tspan x="915" dy="34">a mismatched audience is rejected</tspan>
+  </text>
+
+  
+  <rect x="840" y="820" width="700" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <rect x="855" y="855" width="38" height="30" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="868" cy="867" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M861 880 c0 -3 3.5 -5 7 -5 s7 2 7 5" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="879" y1="866" x2="887" y2="866" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="879" y1="874" x2="887" y2="874" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="915" y="860" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="915" dy="0">TokenReview adds extra:</tspan>
+    <tspan x="915" dy="32" font-family="monospace" fill="#207448">authentication.kubernetes.io/pod-name</tspan>
+    <tspan x="915" dy="32">and pod-uid</tspan>
+  </text>
+
+  
+  <rect x="40" y="995" width="1520" height="165" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="95" cy="1075" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M85 1075 L92 1082 L106 1067" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="145" y="1042" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">Both are verified the same way: receiver POSTs a TokenReview to</tspan>
+    <tspan x="145" dy="36" font-family="monospace" fill="#207448">/apis/authentication.k8s.io/v1/tokenreviews</tspan>
+    <tspan font-family="sans-serif" fill="#303a36"> and reads </tspan>
+    <tspan font-family="monospace" fill="#207448">status.user.username</tspan>
+    <tspan x="145" dy="36">such as </tspan>
+    <tspan font-family="monospace" fill="#207448">system:serviceaccount:default:default</tspan>
+    <tspan font-family="sans-serif" fill="#303a36">; only validity and granularity of the identity differ</tspan>
+  </text>
+</svg>

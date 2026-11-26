@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140">
+  <title>Mode comparison</title>
+  <desc>Comparison of Kubernetes service proxy modes: iptables/nftables, IPVS, and Cilium eBPF socket-LB</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Mode comparison</text>
+
+  
+  <g id="subgraph-ipt">
+    <rect x="50" y="100" width="1500" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="75" y="138" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">iptables / nftables mode</text>
+
+    
+    <rect x="50" y="165" width="435" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(241, 180)">
+      <rect x="0" y="0" width="53" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="12" y1="19" x2="41" y2="19" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 18 38 L 18 46 M 35 38 L 35 46" stroke="#207448" stroke-width="3.5"/>
+    </g>
+    <text x="267" y="295" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">Pod eth0 -&gt; ClusterIP:80</text>
+
+    
+    <line x1="485" y1="278" x2="530" y2="278" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+    
+    <rect x="530" y="165" width="505" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(757, 180)">
+      <path d="M 0 0 L 51 0 L 33 24 L 33 46 L 18 40 L 18 24 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    </g>
+    <text x="782" y="275" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">netfilter PREROUTING</text>
+    <text x="782" y="315" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">KUBE-SERVICES -&gt; KUBE-SVC-XXXX</text>
+
+    
+    <line x1="1035" y1="278" x2="1080" y2="278" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+    
+    <rect x="1080" y="165" width="470" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1315, 203)">
+      <circle cx="0" cy="0" r="20" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="0" cy="0" r="5" fill="#207448"/>
+      <line x1="0" y1="-26" x2="0" y2="-20" stroke="#207448" stroke-width="3.5"/>
+      <line x1="0" y1="20" x2="0" y2="26" stroke="#207448" stroke-width="3.5"/>
+      <line x1="-26" y1="0" x2="-20" y2="0" stroke="#207448" stroke-width="3.5"/>
+      <line x1="20" y1="0" x2="26" y2="0" stroke="#207448" stroke-width="3.5"/>
+    </g>
+    <text x="1315" y="268" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">KUBE-SEP-AAAA (p = 1/(N-i))</text>
+    <text x="1315" y="304" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="1315" dy="0">DNAT -&gt; PodIP:8000</tspan>
+      <tspan x="1315" dy="30">+ conntrack</tspan>
+    </text>
+  </g>
+
+  
+  <g id="subgraph-ipvs">
+    <rect x="50" y="440" width="1500" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="75" y="478" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">IPVS mode</text>
+
+    
+    <rect x="50" y="505" width="435" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(241, 520)">
+      <rect x="0" y="0" width="53" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="26" cy="19" r="10" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="4 2"/>
+      <line x1="26" y1="9" x2="26" y2="29" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="267" y="625" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">Pod eth0 -&gt; ClusterIP:80</text>
+    <text x="267" y="665" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(bound on dummy kube-ipvs0)</text>
+
+    
+    <line x1="485" y1="618" x2="530" y2="618" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+    
+    <rect x="530" y="505" width="505" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(782, 532)">
+      <circle cx="0" cy="0" r="14" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M -20 23 L -7 12 M 0 26 L 0 14 M 20 23 L 7 12" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="-20" cy="25" r="3.5" fill="#207448"/>
+      <circle cx="0" cy="28" r="3.5" fill="#207448"/>
+      <circle cx="20" cy="25" r="3.5" fill="#207448"/>
+    </g>
+    <text x="782" y="625" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">IPVS Virtual Server O(1) hash</text>
+    <text x="782" y="665" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">rr / lc / dh / sh / sed / nq</text>
+
+    
+    <line x1="1035" y1="618" x2="1080" y2="618" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+    
+    <rect x="1080" y="505" width="470" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1289, 520)">
+      <rect x="0" y="0" width="53" height="17" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="0" y="23" width="53" height="17" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="8" cy="8.5" r="2.5" fill="#207448"/>
+      <circle cx="8" cy="31.5" r="2.5" fill="#207448"/>
+      <line x1="18" y1="8.5" x2="45" y2="8.5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="18" y1="31.5" x2="45" y2="31.5" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="1315" y="625" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Real Server</text>
+    <text x="1315" y="665" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">DNAT -&gt; PodIP:8000</text>
+  </g>
+
+  
+  <g id="subgraph-ebpf">
+    <rect x="50" y="780" width="1500" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="75" y="818" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Cilium eBPF socket-LB mode</text>
+
+    
+    <rect x="90" y="845" width="480" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(304, 860)">
+      <rect x="0" y="0" width="53" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 10 14 L 18 19 L 10 24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="22" y1="24" x2="32" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="330" y="975" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">connect(ClusterIP:80) syscall</text>
+
+    
+    <line x1="570" y1="958" x2="680" y2="958" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+    
+    <rect x="680" y="845" width="830" height="225" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+    
+    <g transform="translate(1095, 856)">
+      <path d="M 0 0 L 24 10 C 24 30 0 40 0 44 C 0 40 -24 30 -24 10 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 2 10 L -6 22 L 2 22 L -2 34 L 8 20 L 0 20 Z" fill="#db8129"/>
+    </g>
+    <text x="1095" y="945" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">cgroup/connect4 eBPF hook</text>
+    <text x="1095" y="985" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Rewrites dst sockaddr in-place</text>
+    <text x="1095" y="1025" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">to PodIP:8000 (zero packet NAT)</text>
+  </g>
+</svg>

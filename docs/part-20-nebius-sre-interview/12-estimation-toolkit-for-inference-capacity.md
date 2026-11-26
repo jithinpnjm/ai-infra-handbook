@@ -26,28 +26,27 @@ Candidate reports are anecdotes, and none quotes an estimation question word for
 
 ### 1. The estimation chain
 
+![The estimation chain runs from weights memory through KV cache, requests per GPU, tokens per second and requests per second to the GPU count.](./img/p2-2012-estimation-chain.svg)
+
+*Figure 20.12.1. The estimation chain works forward from weights memory through KV cache and requests per GPU to the number of GPUs needed for the target load.*
+
 Picture yourself on a call when someone says, "we expect 40 requests per second, how many GPUs?" The temptation is to reach for one formula and produce a number at once. The honest answer is not one formula. It is a chain of six small steps, and each step feeds the next, so a mistake early in the chain shows up in every number after it.
 
 First you find how much memory the weights take. Second you find how much memory one request's KV cache takes. Third you find how many requests fit on one GPU. Fourth you find how fast the GPU can generate tokens for that many requests. Fifth you turn that into requests per second per GPU. Sixth you divide the demand by that and add headroom and a spare. Each step has one question, and the chain is easy to follow once you have said the steps in order a few times.
 
 The steps also depend on each other in a fixed direction. The weights decide how much room is left, the room decides how many requests fit, and the number of requests that fit limits how many tokens the GPU can produce in a second. Only at the end do you compare the result with the load you were given. If you start from the load and work backwards, it is tempting to adjust an input until the answer looks right, and that is the habit the chain is meant to prevent. Work forwards from the hardware and the model, and let the load be the last thing you compare against.
 
-```mermaid
-flowchart LR
-    A["Weights memory"] --> C["Free memory for KV"]
-    B["GPU memory x 0.9"] --> C
-    C --> D["Requests that fit"]
-    D --> E["Batch size"]
-    E --> F["Decode tokens/s"]
-    G["Prefill tokens/s"] --> H["Requests/s per GPU"]
-    F --> H
-    H --> I["GPUs for QPS + headroom + N+1"]
-    I --> J["Cost per million tokens"]
-```
+![The estimation chain](./img/m20-12-1.svg)
+
+*Figure 20.12.2. The estimation chain, as a diagram.*
 
 Every number in the chain is an input you can state. Every box is a ceiling, not a measurement, so the result is the most the hardware could do under your assumptions and not what it will do in production. **Say the inputs out loud, multiply them out, then say that a benchmark must replace the ceiling before you commit money.** Next time someone gives you a load figure, start by asking for prompt length and answer length, because every box in the chain depends on them.
 
 ### 2. Weights memory by precision
+
+![Weights memory for Qwen3-8B and Qwen2.5-72B at FP32, BF16, FP8 or INT8 and 4-bit precision, computed as parameters times bytes per parameter.](./img/p2-2012-weights-precision.svg)
+
+*Figure 20.12.3. Weights memory equals parameters times bytes per parameter, so Qwen3-8B takes 16.4 GB in BF16 and Qwen2.5-72B takes 145.4 GB.*
 
 Picture a pod that goes into a crash loop with an out-of-memory error before it serves a single request. The weights alone did not fit on the card. This is the cheapest check you can make, and it takes a few seconds, so do it first. If the weights fail, nothing after them matters.
 
@@ -71,6 +70,10 @@ Before you pick a GPU, multiply parameters by bytes and compare the result with 
 The weights are the one part of the memory budget that does not change with traffic. The same weights sit in memory whether one request or a hundred are running, so this is the first fixed cost you subtract. If the weights alone leave too little room, no amount of batching will rescue the design, and the honest move is a different precision, a different GPU or more GPUs per replica. Make that decision before you move on to the cache, because everything after it is measured in the room that the weights leave behind.
 
 ### 3. KV-cache memory per token and per request
+
+![KV cache bytes per token for Qwen3-8B in BF16, built from two keys and values, 36 layers, 8 KV heads, head dimension 128 and 2 bytes, giving 147,456 bytes.](./img/p2-2012-kv-per-token.svg)
+
+*Figure 20.12.4. The KV cache for Qwen3-8B in BF16 is 147,456 bytes per token, from two, 36 layers, 8 KV heads, a head dimension of 128 and 2 bytes.*
 
 Picture a user who pastes a long document into a chat, and your endpoint starts rejecting requests. You check the weights and they fit with room to spare. The room was not spare. It was reserved for the KV cache, and the cache grows with every token of every live request, so one long document can use more memory than the model itself.
 
@@ -105,15 +108,9 @@ Every time a customer names a model, find the layers, key-value heads and head d
 
 Picture one 80 GB GPU in a rack. Some of its memory holds the weights. Some is working space for activations and compiled graphs. The rest is the KV cache. Concurrency, the number of requests you can hold at once, is the rest divided by the cost of one request. That one sentence is the whole section, and the rest of it explains the inputs.
 
-```mermaid
-flowchart TD
-    M["GPU memory 80 GB"] --> U["x 0.90 usable = 72 GB"]
-    U --> W["minus weights 16.4 GB"]
-    W --> O["minus overhead 5 GB"]
-    O --> K["KV budget 50.6 GB"]
-    K --> R["divide by 0.36864 GB per request"]
-    R --> N["137 requests"]
-```
+![Concurrent requests per GPU](./img/m20-12-2.svg)
+
+*Figure 20.12.5. Concurrent requests per GPU, as a diagram.*
 
 Two inputs need care. The first is the usable fraction. vLLM exposes `gpu_memory_utilization`, a fraction of memory the engine may use. On the main branch the source, read on 2026-11-09, says the default is 0.92 when unspecified, or 1.0 with its extensible cache. The source for releases v0.10.0 and v0.11.0 sets the default to 0.9, so the value depends on your version. This chapter plans with 0.90, which is a cautious round number and my choice, not the engine's. Always check which value your running version uses.
 
@@ -137,6 +134,10 @@ For a model that needs several GPUs, add the memory and the overhead per GPU. Fo
 The fit number is a ceiling on in-flight requests, not a target. **Running at the ceiling means the next burst preempts or rejects requests.** Use the fit number to set the engine's maximum sequences, and plan the working batch well below it.
 
 ### 5. Prefill is compute-bound, decode is bandwidth-bound
+
+![Decode at batch one sits near 1 FLOP per byte, far left of the H100 ridge point near 295, so memory bandwidth limits it, while long prefill lies right of the ridge.](./img/x12-ridge.svg)
+
+*Figure 20.12.6. Arithmetic intensity against the H100 ridge point decides whether a phase is limited by compute or by memory bandwidth.*
 
 Picture an engineer who asks why a GPU showing 90 percent utilisation produces so few tokens per second. The dashboard looks busy, and the output looks slow, and both are true. The answer is that utilisation counts time with a kernel running, not useful arithmetic. During decode the GPU spends most of that time waiting for memory, so the arithmetic units sit idle while the dashboard still reads high.
 
@@ -169,6 +170,10 @@ When someone asks why decode is slow, say that each step must stream the whole m
 
 ### 6. How batching changes the numbers
 
+![Total decode throughput on one H100 rises from 200 to 6,744 tokens per second as batch grows from 1 to 128, while per-request speed falls from 200 to 53.](./img/x12-batch-curve.svg)
+
+*Figure 20.12.7. Batching shares the weight read across requests, so total throughput rises while each request gets fewer tokens per second.*
+
 Picture a service that is quiet at night, when one request at a time arrives. Each decode step streams 16.4 GB of weights to produce a single token. Now picture the same service at the morning peak, with 64 requests in flight. The same stream of weights now produces 64 tokens. The weights are shared, and only the KV cache is private. That is the whole reason batching pays.
 
 Here is the decode ceiling for Qwen3-8B on one H100, with each request at 2,500 tokens of context. The step time is weights plus batch x 2,500 x 147,456 bytes of cache, divided by 3,350 GB/s. Read the table one row at a time, and check that the step time in each row follows from the formula before you trust the rest of the row.
@@ -199,6 +204,10 @@ A useful way to say this in the room is that the batch is a dial with two ends. 
 
 ### 7. Tokens per second and requests per second per GPU
 
+![A request's prefill time of 0.0829 seconds and decode time of 0.0933 seconds add on one GPU, giving 5.68 requests per second.](./img/x12-gpu-seconds.svg)
+
+*Figure 20.12.8. Prefill and decode share one GPU, so their seconds add, and the reciprocal gives the per-GPU request rate.*
+
 Picture a single GPU with two jobs in its day. It must read the prompt, which is prefill, and then write the answer one token at a time, which is decode. A request needs both. If prefill and decode share one GPU, their seconds add, and the request's total GPU time is the sum of the two shares.
 
 The table below works this for Qwen3-8B on one H100, using a batch of 64. Each row is one step, and the result column feeds the next row, so you can follow the request from the prompt to the requests-per-second figure.
@@ -224,6 +233,10 @@ Quote the per-GPU requests per second together with the batch size and the laten
 
 ### 8. GPUs for a target QPS, with headroom and N+1
 
+![Forty requests per second at 5.68 per GPU needs seven GPUs with no headroom, eight at 90 percent target, and nine with one spare.](./img/x12-replica-headroom.svg)
+
+*Figure 20.12.9. Sizing to the bare peak leaves no room for a burst or a failure, so the plan adds headroom and one spare replica.*
+
 Picture the planning meeting when the product manager says the peak is 40 requests per second. Demand is 40 requests per second at peak, and your ceiling is 5.68 per GPU. Dividing gives 7.04, so seven GPUs run at 100 percent of the ceiling, with no room for a burst, a slow batch or a failure. That first answer is not safe.
 
 Headroom fixes the first problem. AI Systems Performance Engineering, Chapter 16, gives the rule of targeting about 90 percent of peak throughput. It also recommends extra replicas that sit mostly idle as a buffer, and warns that autoscaling takes time to provision new resources. Apply the 90 percent and the arithmetic changes: 5.68 x 0.9 equals 5.11, and 40 / 5.11 equals 7.83, which rounds up to 8. Scaling is slow, so the buffer has to exist before the peak arrives, not after.
@@ -246,6 +259,10 @@ Nebius has not published its autoscaling signals, thresholds or spare policy. A 
 Before you quote a GPU count, state the utilisation target and the spare policy, because both change the answer by more than model details do.
 
 ### 9. Cost per million tokens
+
+![Cost per million output tokens at 100, 60 and 30 percent utilisation, showing that halving utilisation roughly doubles the cost on a four-dollar-fifty H100.](./img/p2-2012-cost-levers.svg)
+
+*Figure 20.12.10. Cost per million output tokens rises from $0.44 at full utilisation to $1.47 at 30 percent, so utilisation is the biggest lever.*
 
 Picture the finance partner who asks what you charge per million tokens and whether the service makes money. The cost question is a division: what you pay for the GPUs per second, divided by the tokens they produce per second, scaled to a million. Once you can say that division aloud, the finance conversation becomes a discussion of its inputs.
 
@@ -275,6 +292,10 @@ When the finance partner pushes back, the useful reply is a short list of levers
 
 ### 10. Utilisation and goodput
 
+![Two bars show how a 95 percent busy GPU splits into on-time work and wasted work, with goodput formulas.](./img/p3-2012-goodput-vs-utilisation.svg)
+
+*Figure 20.12.11. Count only requests that meet the latency objective when you measure or price capacity.*
+
 Picture a dashboard that shows every GPU at 95 percent, while customers complain that answers arrive too late. High utilisation can hide wasted work. The GPUs are busy, but some of that busy time goes to requests that finished too late to help anyone, to retries, and to preempted requests whose cache was thrown away.
 
 Think of goodput as the work that counts for the customer. A request that finishes on time is useful work. A request that finishes late is work the GPU did that nobody can use, even though the dashboard recorded it as busy. The difference matters most in an interview, because a candidate who quotes utilisation alone is describing the dashboard and not the service.
@@ -291,6 +312,10 @@ cost per good token = cost per token / fraction within the objective
 Report goodput, not throughput, when you compare two configurations, and say which latency objectives you applied. A throughput figure without its objective is the same kind of bare number as a GPU count without its inputs.
 
 ### 11. The sanity checks
+
+![A five-item checklist of estimate sanity checks with the H100 batch-one decode ceiling of about 204 tokens per second.](./img/p3-2012-sanity-checks.svg)
+
+*Figure 20.12.12. Arithmetic checks can pass with wrong inputs, so the last check compares against a measurement.*
 
 Picture the moment after you have a number and before you say it out loud. The number feels finished at this point, and that feeling is the reason to check it. A careful engineer treats a fresh estimate the way a pilot treats a new reading on a gauge, as a claim to test before acting on it. A few quick checks catch arithmetic mistakes and impossible results, and each one takes only seconds. Run them in order, because each check is cheap and the early ones catch the most common slips.
 
@@ -369,6 +394,10 @@ The answer is nine H100s, about $29,565 per month, which is 9 GPUs times $4.50 t
 
 ### Scenario 2: the long-context customer
 
+![A memory bar for four H100s showing weights, overhead and the remaining cache that fits only eleven full-length requests.](./img/p3-2012-long-context-fit.svg)
+
+*Figure 20.12.13. At long context the KV cache per request is large, so concurrency collapses even though the weights fit.*
+
 Picture a customer who wants Qwen2.5-72B with 32,768 tokens of context on four H100s. The question is whether it fits, and for how many users. This is the case where the cache, not the weights, becomes the limit, so it tests whether you can see that shift.
 
 1. Weights: 72.7 x 2 equals 145.4 GB.
@@ -380,6 +409,10 @@ The weights fit comfortably, and only eleven users can hold full-length conversa
 
 ### Scenario 3: the alert that disagrees with the estimate
 
+![A KV cache at 95 percent with 60 requests implies about 5,430 tokens per request, more than twice the planned 2,500.](./img/x12-alert-backtrack.svg)
+
+*Figure 20.12.14. Working backwards from live cache usage and request count shows that real prompts are longer than the estimate assumed.*
+
 Picture an alert that fires while you are on call: KV-cache usage is 95 percent and p99 time to first token is rising. The dashboard shows 60 requests running on the H100 from Scenario 1, where you estimated 137 would fit. The estimate and the dashboard disagree, and the disagreement is the clue. Work backwards from the live numbers to find the input that changed.
 
 1. KV budget is 50.6 GB. At 95 percent, about 48.07 GB is in use.
@@ -389,6 +422,10 @@ Picture an alert that fires while you are on call: KV-cache usage is 95 percent 
 The planned figure was 2,500 tokens. Live requests carry more than twice that, so the real mean context is longer than the one in your estimate. Either the customer's prompts grew, a retrieval step adds text, or a few very long requests dominate the mean. The estimate told you which question to ask in ten seconds. A useful habit is to write the estimate down before the incident, so that during the incident you compare live numbers against a written expectation and not against memory. The actions are to check the prompt-length histogram, then lower the batch ceiling, shed or queue long requests, and add replicas. This chapter did not run vLLM, so no metric was observed live. In the vLLM source the gauge is named `vllm:kv_cache_usage_perc` on the main branch and `vllm:gpu_cache_usage_perc` in v0.8.0, so check the name for your version.
 
 ### Scenario 4: is the cheaper GPU cheaper per token?
+
+![H100 and L40S compared on tokens per second, cost per million tokens and latency for the same model.](./img/p3-2012-cheaper-gpu-per-token.svg)
+
+*Figure 20.12.15. Hourly price alone misleads because the cost per token also depends on tokens produced per second.*
 
 Picture a colleague who says the L40S is a bargain because it costs far less per hour than the H100. The L40S from Nebius starts at $1.55 per GPU-hour, against $4.50 for the H100, both list prices from nebius.com/prices fetched on 2026-11-09. A colleague says it is three times cheaper. Test it with the same Qwen3-8B workload at a batch of 32 on both, because a per-hour price says nothing about tokens.
 

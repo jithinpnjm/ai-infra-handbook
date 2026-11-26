@@ -44,6 +44,22 @@ Finally, you will write a minimal inventory and run ad-hoc commands against grou
 
 ## 1. What Ansible is
 
+![A comparison of continuous reconcilers like Puppet, Ansible as a tool that acts only when run and Terraform with its state file, with the push versus pull and procedural versus dependency graph notes.](./img/p4-0403-not-reconciler.svg)
+
+*Figure 4.3.1. Ansible is not a reconciliation loop and keeps no state file: it inspects each host on every run and acts when you trigger it.*
+
+![A three-command shell version of creating a secure directory beside a single declarative file task, with what each does on a second run and the package module hiding apt, dnf and yum.](./img/p4-0403-module-vs-shell.svg)
+
+*Figure 4.3.2. The file task checks first and changes only what differs, while the shell version repeats every step and always reports success.*
+
+![A playbook containing plays that target inventory groups, each play holding tasks that call modules, with the five result words ok, changed, failed, skipped and unreachable.](./img/p4-0403-vocabulary-nesting.svg)
+
+*Figure 4.3.3. A playbook holds plays, a play targets hosts from the inventory and runs tasks, and each task reports ok, changed, failed, skipped or unreachable.*
+
+![Ansible pushes tasks from the control node over SSH with no agent, while pull tools have each machine ask a server for work.](./img/a03-push-pull.svg)
+
+*Figure 4.3.4. Ansible pushes tasks from a control node over SSH without an agent, while pull tools have each machine ask a server for work.*
+
 Imagine a driver advisory arrives on a Monday morning. Two hundred GPU nodes need the new package, and each one must end up with the same kernel module setting. Logging in by hand to every node is possible, but the first machine you fix will not match the last one you fix, and nobody will remember which was which. Ansible exists to turn that long list of manual steps into one description that every machine is checked against.
 
 Suppose you must make sure every server you own runs the time service, has the right config file and keeps its permissions correct. You could log in and type commands on each one. Or you could describe the state you want and let a tool make the machines match it. Ansible is that tool. It runs **tasks** (calls to **modules**) on **hosts** drawn from an **inventory**, and the tasks are grouped into **plays** inside **playbooks**. A host is one machine, an inventory is the list of machines with their groups, a play is one block that targets a set of hosts, and a playbook is a file that holds one or more plays. You describe the desired state in YAML, for example: package `chrony` is installed, service `chronyd` is enabled and running, and file `/etc/chrony.conf` has this content. The module checks the current state and changes only what differs. It then reports `ok` (already correct), `changed`, `failed`, `skipped` or `unreachable`.
@@ -74,6 +90,14 @@ Vagrant uses different words for the same ideas. It calls hypervisors such as Vi
 
 ### Where it fits
 
+![A table of Terraform, cloud-init, Packer, Puppet and Chef, shell scripts, Kubernetes and Slurm with each tool's role and its relationship to Ansible, plus the order on a common day.](./img/p4-0403-tool-ownership.svg)
+
+*Figure 4.3.5. Terraform creates machines, cloud-init seeds the first boot and Ansible decides what runs on them.*
+
+![Terraform creates the GPU VMs, cloud-init handles the first boot, and Ansible configures the driver, kernel and monitoring agent.](./img/a03-split-tools.svg)
+
+*Figure 4.3.6. Terraform creates the machines, cloud-init handles the first boot, and Ansible decides what runs on them.*
+
 Ansible sits alongside several other tools, and each one owns a different job. The table below shows who does what. Read it to decide which tool a given change belongs to.
 
 | Tool | Role | Relationship |
@@ -90,21 +114,23 @@ The split is simple. Terraform creates the machines, and Ansible decides what ru
 
 ## 2. How Ansible executes a task
 
+![Four speed levers of forks, linear versus free strategy, fact gathering and SSH connection reuse with pipelining, plus the gpu02 failure example and the register and failed_when result overrides.](./img/p4-0403-speed-levers.svg)
+
+*Figure 4.3.7. Raise forks, choose the strategy by what must happen together, trim facts, and reuse SSH connections with pipelining.*
+
+![Seven steps of running one task against web1 from reading the playbook and templating on the control node to the SSH copy, module run, JSON result and cleanup, with Python and network device notes.](./img/p4-0403-web1-walkthrough.svg)
+
+*Figure 4.3.8. The control node templates and plans, the target runs a small module with its own Python, and no files remain afterwards.*
+
+![Under the linear strategy, a host that fails one task is dropped from later tasks while the other hosts wait at the next barrier.](./img/a03-linear-wait.svg)
+
+*Figure 4.3.9. Under the linear strategy, a host that fails is dropped from later tasks while the other hosts wait at each barrier.*
+
 Suppose you run one task against `web1`. The short command you type hides a sequence of steps, and those steps explain most of the behaviour you will see later. The diagram shows them in order.
 
-```mermaid
-sequenceDiagram
-  participant C as Control node (ansible-playbook)
-  participant T as Target host
-  C->>C: Parse playbook, load inventory, resolve variables, template task args
-  C->>T: SSH connect (multiplexed ControlPersist)
-  C->>T: Copy temp module payload (AnsiballZ zip of module + helpers) to ~/.ansible/tmp
-  C->>T: Execute with remote Python (possibly via sudo/become)
-  T->>T: Module inspects state, changes if needed, prints JSON
-  T-->>C: JSON result (changed/failed, facts, return values)
-  C->>T: Remove temp files
-  C->>C: Register result, evaluate handlers/conditionals, next task
-```
+![How Ansible executes a task](./img/m4-03-1.svg)
+
+*Figure 4.3.10. How Ansible executes a task, as a diagram.*
 
 Read the diagram from top to bottom. The control node does most of the planning and bookkeeping. The target only runs the small module and prints its JSON result.
 
@@ -132,6 +158,14 @@ Installing Ansible looks trivial, until the toolchain on your laptop differs fro
 
 ### Components and versions
 
+![The parts of the name ansible.builtin.copy as namespace, collection and module with the warning against short names, and the three content tiers of core, certified and community.](./img/p4-0403-fqcn-anatomy.svg)
+
+*Figure 4.3.11. An FQCN is namespace, collection and module, short names are ambiguous, and content comes in core, certified and community tiers.*
+
+![Ansible is layered from the ansible-core engine through collections to execution environments, with the community package as a bundle, and each layer is pinned.](./img/p2-0403-tiers.svg)
+
+*Figure 4.3.12. Ansible has a core engine, collections of modules, and execution environments, and each layer is pinned to keep runs the same everywhere.*
+
 **ansible-core** is the engine. It holds the CLI tools, the `ansible.builtin` modules and the plugin framework. Its versions look like `2.x`, such as 2.16, 2.17 or 2.18. Each version has a Python requirement for the control node, and a separate, often narrower, Python range for targets.
 
 The **ansible** community package is ansible-core plus a curated bundle of collections. Its versions look like `9.x` or `10.x`. It is convenient but large. Production setups often install `ansible-core` and pin only the collections they use in `requirements.yml`.
@@ -147,6 +181,10 @@ To manage thousands of modules and more than 20,000 community roles, the project
 Some plugins and modules have loose Python dependencies, which is the next thing to watch. Managing Windows hosts or Docker containers, for example, requires `pip3 install pywinrm docker` inside your virtualenv. If you test bleeding-edge Ansible from `git clone https://github.com/ansible/ansible.git --recursive`, activate it with `source ./hacking/env-setup`.
 
 ### Setting up a local test environment with Vagrant
+
+![A mapping from vagrant ssh-config fields HostName, User, Port and IdentityFile to ansible_host, ansible_user, ansible_port and ansible_private_key_file in vagrant.ini, with the Vagrant provisioners.](./img/p4-0403-vagrant-ssh-config.svg)
+
+*Figure 4.3.13. vagrant ssh-config maps field by field onto the inventory, because Ansible uses the OpenSSH client rather than vagrant ssh.*
 
 Vagrant with VirtualBox boots disposable Linux VMs on a laptop, so you can practise before touching cloud or bare-metal servers. A base image of this kind is called a box, and Vagrant copies it into a fresh VM each time you start one. Two common boxes are `ubuntu/focal64` and `centos/stream8`. Because the VM is disposable, a mistake in a lab costs you a minute of rebuilding rather than a broken production host.
 
@@ -168,6 +206,10 @@ A `Vagrantfile` is executable **Ruby** code, so you can shape the VM with it. Ru
 Vagrant has two built-in Ansible provisioners. A provisioner is the step that configures a VM after it boots. **`config.vm.provision "ansible"`** runs Ansible from your host machine. **`config.vm.provision "ansible_local"`** installs and runs Ansible inside the guest VM itself. That helps when the host is Windows without WSL2. You re-run provisioning on demand with `vagrant provision`, `vagrant reload --provision` or `vagrant up --no-provision`. The last one boots the VM without running the playbook, which is useful when you only want to log in and look. Tear the VMs down cleanly with `vagrant destroy -f`, the *"Kill Your Darlings"* step. The phrase means that a lab is cheap to throw away, so you should throw it away often and rebuild it from the same files.
 
 ### Install on the control node
+
+![An annotated install sequence of venv, pip with a version range, pipx, brew, ansible --version and collection installs, beside a requirements.yml with pinned collection ranges.](./img/p4-0403-install-lines.svg)
+
+*Figure 4.3.14. Install into a venv with a pinned range, check ansible --version first when something is odd, and commit the requirements files.*
 
 Give the control node its own environment. Never install Ansible into system Python. System Python is the interpreter the operating system itself depends on, and an upgrade you make for Ansible can break a system tool. A virtual environment keeps your Ansible packages in a separate folder, so the two never fight.
 
@@ -200,6 +242,10 @@ The control node must be Linux or macOS, or WSL on Windows. Targets need SSH and
 
 ### Prepare targets
 
+![A four item checklist for new targets covering key authentication, validated passwordless sudo, Python with time sync and name resolution, and host key handling.](./img/p4-0403-target-checklist.svg)
+
+*Figure 4.3.15. Each target needs a key user, validated sudo, Python with time and DNS in order, and a deliberate host key setup.*
+
 Each target needs a few things before the first run. Think of this as the checklist for a new machine before it joins the fleet. Skip one item and the first run fails with an error that points somewhere else.
 
 1. Create a user that the control node can SSH to with key authentication. Generate a key with `ssh-keygen -t ed25519` and copy it over with `ssh-copy-id user@host`. Prefer a dedicated automation user over personal accounts. A key is a pair of files, one private and one public. The public half goes on the target, and the private half never leaves the control node. Key authentication means no password crosses the network.
@@ -210,6 +256,14 @@ Each target needs a few things before the first run. Think of this as the checkl
 Commit the requirements files before your first run, so the whole team starts from the same toolchain. Then the first run on a new laptop is the same as the first run on the CI server, and a failure means something real.
 
 ## 4. Configuration: ansible.cfg
+
+![The sections of the example ansible.cfg annotated for defaults, privilege escalation and SSH connection settings including forks 20, fact caching for 3600 seconds, pipelining and ControlPersist 60 seconds.](./img/p4-0403-cfg-decisions.svg)
+
+*Figure 4.3.16. Each ansible.cfg line answers a question about inventory, login, parallelism, facts, escalation or connection reuse.*
+
+![Two ladders showing the ansible.cfg search order of ANSIBLE_CONFIG, current directory, home file and etc file, and the setting precedence of flags, environment variables, config file and defaults.](./img/p4-0403-cfg-search-order.svg)
+
+*Figure 4.3.17. The first config file found wins without merging, and flags beat environment variables, which beat the file, which beats defaults.*
 
 Picture a run that hits the wrong inventory, because a file in another directory was read first. You avoid that by knowing exactly which settings file Ansible reads. The most common surprise is an engineer who runs Ansible from a folder they did not expect, and the tool quietly picks up a different config file from there. Knowing the search order turns that surprise into a quick check.
 
@@ -249,6 +303,18 @@ Read the example as a set of decisions. It names the inventory and the remote us
 
 ### Privilege escalation (become)
 
+![A decision tree for NOPASSWD ALL requiring a dedicated automation account, blocked interactive logins and audited use, with the Vault password fallback, group membership as a privileged action and RBAC.](./img/p4-0403-nopasswd-conditions.svg)
+
+*Figure 4.3.18. NOPASSWD ALL is reasonable only for a dedicated, key-only, audited account, and otherwise keep the prompt and supply the password through Vault.*
+
+![A table of four become failures: requiretty, password prompts, unprivileged become_user temp file permissions and sudo rules that cannot match the random module path, each with its fix.](./img/p4-0403-become-failures.svg)
+
+*Figure 4.3.19. become fails on requiretty, missing passwords, unreadable temp files and static sudo rules, and the fix for the last is a group-wide sudoers drop-in.*
+
+![Ansible uploads a module to a randomly named temporary path and runs it through sudo, so a sudoers rule for one fixed binary cannot match and the run fails.](./img/p2-0403-sudo-random-path.svg)
+
+*Figure 4.3.20. Because Ansible runs modules from a random temporary path, a sudoers rule that allows one fixed binary cannot match and the run fails.*
+
 `become: true` runs a task as root through sudo, which is the default. Set `become_user: postgres` to switch to another user instead. `become_method` chooses the tool, such as `sudo`, `su`, `doas`, `pbrun`, and others.
 
 Escalation fails in a few predictable ways. A missing tty shows up as `requiretty`. A tty is a terminal session, and `requiretty` is a sudoers setting that refuses commands run without one. Password prompts appear when you leave out `--ask-become-pass`. An unprivileged `become_user` can run into temp file permission problems. Ansible has to hand files to that user, and if the user cannot read the temporary directory, the module never starts. You can set `allow_world_readable_tmpfiles`, but only if you understand the risk, or you can install `acl`. The `acl` package grants precise access to a file without making it public. Sudo rules may also refuse the module path.
@@ -264,6 +330,18 @@ Then move change control into Git peer review, staging environments and Ansible 
 Keep root to the minimum. Scope `become` to the tasks that need it, and leave the rest of the play unescalated. A read-only check such as reading a log does not need root, and running it as root only widens the damage if the command misbehaves.
 
 ## 5. Inventory basics (preview)
+
+![A flow of writing a host pattern, listing the hosts it matches and stopping if the list is longer than expected, beside a table of the pattern forms all, wildcard, union, intersection, exclusion, regex and limit.](./img/p4-0403-pattern-listing.svg)
+
+*Figure 4.3.21. List the hosts a pattern matches and read the list before any change, because a wrong match is a common way to hit the wrong machines.*
+
+![An INI inventory with gpu and login groups and a cluster group of children with shared variables, shown beside the resulting tree of three machines and the ansible-inventory commands.](./img/p4-0403-inventory-anatomy.svg)
+
+*Figure 4.3.22. Groups collect hosts by role, a children group reaches every member, and ansible-inventory --graph shows the nesting.*
+
+![Host patterns can take a union of groups, an intersection, an exclusion of one host, or a regex, and each one selects a different set of machines.](./img/p2-0403-host-patterns.svg)
+
+*Figure 4.3.23. Host patterns select the union of groups, their intersection, a group minus one host, or a regex, so check the list before changing anything.*
 
 A new GPU node is racked on Monday. Its name goes into the inventory, and from then on every command that targets the `gpu` group reaches it automatically. Think of the inventory as the phone book of your fleet. If a node is missing from it, the node will quietly miss every change you make, and that is a problem you will only notice later.
 
@@ -295,6 +373,14 @@ Test patterns before you change a group. List the hosts a pattern matches, using
 
 ## 6. Ad-hoc commands
 
+![Ad-hoc flags grouped into targeting, privilege, speed and output, and safety, with limit, check and verbose highlighted as the three that protect most often.](./img/p4-0403-adhoc-flags.svg)
+
+*Figure 4.3.24. Learn --limit, --check and -v first, and promote any ad-hoc command you repeat into a playbook.*
+
+![The parts of an ad-hoc ansible command as pattern, module, arguments and options with a worked package line, and a table of eleven example commands and what each does.](./img/p4-0403-adhoc-syntax.svg)
+
+*Figure 4.3.25. An ad-hoc command reads as who, what, details and how, and shell is needed whenever the command contains a pipe.*
+
 It is 2 AM, and a training run is stalling. The question is simple: is the driver loaded on every node? An ad-hoc command answers that across the whole fleet in one line, and you do not need to write a playbook first. Once the answer is in, you can decide whether the question deserves a playbook of its own.
 
 Sometimes you need one answer now. An **ad-hoc command** runs a single module on matching hosts, without a playbook. It suits discovery, quick checks and emergencies, and it is the fastest way to learn a module. The syntax is `ansible <pattern> -m <module> -a "<args>" [options]`. Read it left to right, the way you would read a sentence. The pattern says who, the module says what kind of action, the arguments say the details, and the options say how to run it.
@@ -323,17 +409,37 @@ Some flags are worth memorising. `-i` picks the inventory, `-l/--limit` narrows 
 
 ### Command, shell, raw and idempotency
 
+![A decision ladder from purpose-built modules to raw, shell, command and script, with the creates, removes, guard task and changed_when ways to make command and shell idempotent.](./img/p4-0403-module-choice-ladder.svg)
+
+*Figure 4.3.26. Use a purpose-built module first, command when no shell is needed, shell for pipes, raw for hosts without Python, and guard the rest.*
+
+![The command module runs without a shell and fails on pipes, while shell accepts pipes, raw bootstraps minimal hosts, and script runs a local file on the target.](./img/p2-0403-cmd-shell-raw.svg)
+
+*Figure 4.3.27. The command module runs without a shell so pipes fail there, while shell accepts pipes, raw bootstraps minimal hosts, and script runs a local file.*
+
 `command` runs an executable without a shell, which makes it the safest option. It has no pipes, redirects or environment expansion. It is not idempotent unless you add `creates:` or `removes:`, or a `changed_when` expression. `shell` passes the command through `/bin/sh`, so you need it for pipes and redirects. It is vulnerable to quoting and injection mistakes when variables are untrusted. `raw` sends a plain SSH command with no module and no Python, which suits bootstrapping Python on minimal systems and devices. `script` copies a local script to the target and runs it there. Injection here means a value that you did not write, such as a hostname from a ticket, sneaks in a second command after a semicolon.
 
 Prefer purpose-built modules such as `package`, `service`, `user`, `file`, `lineinfile`, `template`, `sysctl`, `systemd`, `mount` and `cron`. They are idempotent, support check mode and return structured results. A shell one-liner in a playbook always reports `changed`, cannot be dry-run and hides intent. If you cannot avoid one, add `creates` or `removes`, a guard task, or `changed_when` and `failed_when` expressions. A guard task is a small check that runs first and decides whether the risky step should run at all.
 
 ### Idempotency and check mode
 
+![The first run of a package task reports changed, and the second run reports success with no change, while check mode can mislead when tasks depend on earlier changes.](./img/p2-0403-idempotent-runs.svg)
+
+*Figure 4.3.28. The first run of an idempotent package task reports a change and the second run reports none, and check mode can mislead when tasks depend on earlier changes.*
+
 Run the same `package` ad-hoc twice. The first run reports `CHANGED`, and the second reports `SUCCESS` with `"changed": false`. That is idempotency in action. The first run did the work, and the second found the work already done and reported exactly that. `--check` simulates changes, and modules that support it report what *would* change. `--diff` shows content differences for templated files. Read the diff the way you would read a tracked change in Git, with removed lines marked on one side and added lines on the other.
 
 Check mode is not a perfect prediction, because tasks that depend on earlier changes, and `command` tasks, may differ. A task that needs a package installed earlier in the run cannot truly run in check mode, because the package does not exist yet. It is still the core of safe fleet operations and drift detection (4.2). Use ad-hoc commands for discovery and quick checks, and move anything you repeat into a playbook.
 
 ## 7. Your first playbook
+
+![A PLAY RECAP for gpu01 and gpu02 with ok 4 and changed 2, annotating each counter and showing that a rerun with changed equal to zero means the target state is reached.](./img/p4-0403-recap-reading.svg)
+
+*Figure 4.3.29. Check unreachable and failed first, read changed as the work done, and treat changed=0 on a rerun as proof of idempotency.*
+
+![A five rung ladder of syntax check, check and diff, apply, rerun for idempotency and a limited verbose run, beside the baseline playbook with chrony package, service and debug tasks.](./img/p4-0403-playbook-ladder.svg)
+
+*Figure 4.3.30. Syntax check, dry run, apply, rerun and a limited verbose run each answer a different question about the playbook.*
 
 Ad-hoc commands answer questions. A playbook keeps the answer as a rule. Once a baseline is written down, the next engineer who joins the team can read it, run it and get the same result. The file is also the record of what the fleet is supposed to look like.
 
@@ -387,6 +493,14 @@ A rerun that shows `changed=0` means you have reached the target. In this recap,
 
 ## 8. Troubleshooting connections (first 30 minutes)
 
+![A four layer bottom-up connection test from name and port, to plain ssh, to ansible ping, to the playbook, with a bastion host diagram using ProxyJump in group vars or ssh config.](./img/p4-0403-layered-connection-test.svg)
+
+*Figure 4.3.31. Test name and port, then plain ssh, then Ansible, then the playbook, and use ProxyJump for targets behind a bastion.*
+
+![A table of eight Ansible connection symptoms from Permission denied publickey and host key failure to sudo, Python, timeouts, slow runs, interpreter warnings and silently skipped changes, with cause and check.](./img/p4-0403-troubleshoot-table.svg)
+
+*Figure 4.3.32. Match the symptom to its row, answer who, which key and does the port answer, and only then touch the playbook.*
+
 Your first run fails on one host, and the error message is the only clue you have. The table matches common symptoms with a likely cause and a check to run. Work through the row that matches your error before you change anything else.
 
 | Symptom | Likely cause | Check |
@@ -407,6 +521,10 @@ A useful habit is to test in layers, from the bottom up. First confirm that the 
 If your targets sit behind a bastion host, which is a single hardened machine that every outside connection must pass through, set `ansible_ssh_common_args: '-o ProxyJump=bastion.example.com'` in group vars. You can also use `~/.ssh/config`, because Ansible honours your SSH config. Clear the connection errors before you debug any playbook logic.
 
 ## 9. Security and good practice from day one
+
+![A control node surrounded by eight practices: ed25519 keys, hardened host with MFA, AAP or AWX, host key checking, Vault with no_log, pinned versions with linting, canary runs and Git with CI.](./img/p4-0403-control-node-security.svg)
+
+*Figure 4.3.33. Treat the control node as the fleet's most valuable target, with strong keys, MFA, Vault, no_log, canary runs and Git history.*
 
 A control node that holds a key and passwordless sudo is the most valuable target in the whole fleet, because one login there reaches every host. Treat it that way from the first day rather than after the first incident. The habits below are cheap to adopt early and expensive to retrofit later.
 
@@ -443,6 +561,10 @@ Next, move to a control node with 2–3 Linux targets. The interactive steps bel
 11. Clean up the targets when you finish.
 
 ## 11. Common mistakes
+
+![Three pre-run questions and a table of common Ansible mistakes in environment, module choice, security, slow or misleading runs and process, each with its fix.](./img/p4-0403-mistake-groups.svg)
+
+*Figure 4.3.34. Most mistakes fail one of three questions: which version, which hosts, and was it dry-run first.*
 
 Read this list as a set of questions to ask before every run. Which Ansible version is in use? Which hosts does this pattern really match? Has this change been checked in dry-run mode? Most of the mistakes below fail one of those three questions.
 

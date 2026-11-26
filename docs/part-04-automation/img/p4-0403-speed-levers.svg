@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Parallelism and speed: forks, strategy, facts and connection reuse</title>
+  <desc>Visual infographic explaining Ansible parallelism levers including forks, strategy, facts, connection reuse, failure handling, and result processing.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Parallelism and speed: forks, strategy, facts and connection reuse</text>
+
+  
+  <g id="card-forks">
+    <rect x="40" y="110" width="745" height="265" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(65, 132)">
+      <circle cx="28" cy="12" r="6" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="8" cy="46" r="5" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="46" r="5" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="48" cy="46" r="5" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M28 18 v12 M28 30 L8 41 M28 30 L48 41 M28 30 v11" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="135" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">forks:</text>
+    <text x="65" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">one worker process per host in parallel; default 5;</tspan>
+      <tspan x="65" dy="34">for fleets 20 to 200; <tspan font-family="ui-monospace, monospace" font-weight="bold">forks = 20</tspan> means</tspan>
+      <tspan x="65" dy="34">up to twenty hosts at once</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-strategy">
+    <rect x="815" y="110" width="745" height="265" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(840, 132)">
+      <line x1="8" y1="16" x2="48" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="8" y1="42" x2="48" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="32" y1="6" x2="32" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="20" cy="16" r="4" fill="#207448" />
+      <circle cx="44" cy="42" r="4" fill="#207448" />
+    </g>
+    <text x="910" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">strategy:</text>
+    <text x="840" y="214" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="840" dy="0"><tspan font-family="ui-monospace, monospace" font-weight="bold">linear</tspan> (default) waits for every host to finish</tspan>
+      <tspan x="840" dy="30">a task before the next; <tspan font-family="ui-monospace, monospace" font-weight="bold">free</tspan> lets each host</tspan>
+      <tspan x="840" dy="30">proceed on its own; <tspan font-family="ui-monospace, monospace" font-weight="bold">serial:</tspan> batches hosts, which</tspan>
+      <tspan x="840" dy="30">is how rolling updates work (4.14); a driver</tspan>
+      <tspan x="840" dy="30">upgrade across a rack usually needs <tspan font-family="ui-monospace, monospace" font-weight="bold">linear</tspan>, a</tspan>
+      <tspan x="840" dy="30">log cleanup can run <tspan font-family="ui-monospace, monospace" font-weight="bold">free</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-facts">
+    <rect x="40" y="395" width="745" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(65, 417)">
+      <rect x="8" y="8" width="40" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="16" y1="20" x2="32" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="16" y1="30" x2="40" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="16" y1="40" x2="28" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="135" y="453" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">facts:</text>
+    <text x="65" y="501" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">each play starts with <tspan font-family="ui-monospace, monospace" font-weight="bold">setup</tspan>, collecting</tspan>
+      <tspan x="65" dy="32">distribution, kernel, CPUs, memory, interfaces</tspan>
+      <tspan x="65" dy="32">and mounts into <tspan font-family="ui-monospace, monospace" font-weight="bold">ansible_facts</tspan>; every fact is a</tspan>
+      <tspan x="65" dy="32">probe on every host; reduce with <tspan font-family="ui-monospace, monospace" font-weight="bold">gather_subset</tspan>,</tspan>
+      <tspan x="65" dy="32">fact caching or <tspan font-family="ui-monospace, monospace" font-weight="bold">gather_facts false</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-connection-reuse">
+    <rect x="815" y="395" width="745" height="270" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(840, 417)">
+      <rect x="8" y="14" width="30" height="28" rx="4" fill="none" stroke="#db8129" stroke-width="4" />
+      <path d="M38 20 h10 M38 36 h10" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <circle cx="23" cy="28" r="5" fill="#db8129" />
+    </g>
+    <text x="910" y="453" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">connection reuse:</text>
+    <text x="840" y="501" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="840" dy="0"><tspan font-family="ui-monospace, monospace" font-weight="bold">ControlMaster</tspan> and <tspan font-family="ui-monospace, monospace" font-weight="bold">ControlPersist</tspan> share one SSH</tspan>
+      <tspan x="840" dy="32">connection so the handshake happens once;</tspan>
+      <tspan x="840" dy="32"><tspan font-family="ui-monospace, monospace" font-weight="bold">pipelining = True</tspan> streams the module over stdin</tspan>
+      <tspan x="840" dy="32">and cuts round trips, needs <tspan font-family="ui-monospace, monospace" font-weight="bold">requiretty off</tspan> in</tspan>
+      <tspan x="840" dy="32"><tspan font-family="ui-monospace, monospace" font-weight="bold">sudoers</tspan>; these two are the biggest easy speed-ups</tspan>
+    </text>
+  </g>
+
+  
+  <g id="strip-worked-example">
+    <rect x="40" y="685" width="1520" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(65, 745)">
+      <rect x="4" y="8" width="48" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="22" r="5" fill="#207448" />
+      <line x1="22" y1="38" x2="34" y2="48" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="34" y1="38" x2="22" y2="48" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="145" y="745" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">a task fails on <tspan font-family="ui-monospace, monospace" font-weight="bold">gpu02</tspan> but succeeds on <tspan font-family="ui-monospace, monospace" font-weight="bold">gpu01</tspan> and <tspan font-family="ui-monospace, monospace" font-weight="bold">gpu03</tspan>: <tspan font-family="ui-monospace, monospace" font-weight="bold">gpu02</tspan> is dropped from the remaining</tspan>
+      <tspan x="145" dy="40">tasks and shows as failed in the recap; the other two wait at the start of the next task until</tspan>
+      <tspan x="145" dy="40">every host has finished the current one; that is why one slow host can hold up a whole run</tspan>
+    </text>
+  </g>
+
+  
+  <g id="strip-result-handling">
+    <rect x="40" y="900" width="1520" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(65, 955)">
+      <rect x="6" y="8" width="46" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M16 28 l8 8 l16 -16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="16" y1="44" x2="38" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="145" y="958" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">a module returns <tspan font-family="ui-monospace, monospace" font-weight="bold">changed</tspan>, <tspan font-family="ui-monospace, monospace" font-weight="bold">failed</tspan>, <tspan font-family="ui-monospace, monospace" font-weight="bold">rc</tspan> and its output; <tspan font-family="ui-monospace, monospace" font-weight="bold">register</tspan> stores it;</tspan>
+      <tspan x="145" dy="38"><tspan font-family="ui-monospace, monospace" font-weight="bold">failed_when</tspan>, <tspan font-family="ui-monospace, monospace" font-weight="bold">changed_when</tspan>, <tspan font-family="ui-monospace, monospace" font-weight="bold">ignore_errors</tspan> override; <tspan font-family="ui-monospace, monospace" font-weight="bold">changed_when false</tspan></tspan>
+      <tspan x="145" dy="38">on a task that really changes something hides the change</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="1105" width="1520" height="65" rx="8" fill="#207448" />
+    
+    <g transform="translate(65, 1115)">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#ffffff" stroke-width="3" />
+      <polyline points="22,12 22,22 30,22" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+      <line x1="22" y1="2" x2="22" y2="4" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="125" y="1147" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#ffffff">
+      <tspan font-weight="bold">Measure before you tune: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-weight="bold">profile_tasks</tspan>
+      <tspan> shows which task takes the time</tspan>
+    </text>
+  </g>
+</svg>

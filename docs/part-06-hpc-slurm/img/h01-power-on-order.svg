@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060" font-family="Helvetica, Arial, sans-serif">
+  <title>Power-on order: storage first, compute in staggered groups</title>
+  <desc>Three hazard cards (electrical inrush and boot-storm service overload, multi-rack disk array spin-up torque and controller sequencing, hot-corridor thermal baking) sit above a left-to-right three-step power-on sequence: storage first, compute nodes in staggered groups, racks spaced out in time. A single orange arrow labelled with the instruction to write the startup order down and keep it on a card at the rack connects the hazards to the sequence.</desc>
+
+  <defs>
+    <marker id="orangeArrow" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#db8129"/>
+    </marker>
+    <marker id="greenArrow" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">Power-on order:</text>
+  <text x="800" y="128" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">storage first, compute in staggered groups</text>
+
+  
+  <g>
+    <rect x="50" y="160" width="466" height="360" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(76,184)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M28 6 L52 48 L4 48 Z"/>
+      <path d="M28 20 L28 34"/>
+      <circle cx="28" cy="41" r="2.5" fill="#207448" stroke="none"/>
+    </g>
+    <text x="76" y="274" font-size="30" font-weight="700" fill="#303a36">
+      <tspan x="76" dy="0">Electrical inrush and</tspan>
+      <tspan x="76" dy="36">boot-storm service</tspan>
+      <tspan x="76" dy="36">overload</tspan>
+    </text>
+    <line x1="76" y1="368" x2="490" y2="368" stroke="#207448" stroke-width="2" opacity="0.3"/>
+    <text x="76" y="400" font-size="24" fill="#303a36">
+      <tspan x="76" dy="0">power draw jumps by</tspan>
+      <tspan x="76" dy="32">dozens or thousands of</tspan>
+      <tspan x="76" dy="32">kilowatts; all nodes</tspan>
+      <tspan x="76" dy="32">request data at once.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="566" y="160" width="466" height="360" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(592,184)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M28 6 L52 48 L4 48 Z"/>
+      <path d="M28 20 L28 34"/>
+      <circle cx="28" cy="41" r="2.5" fill="#207448" stroke="none"/>
+    </g>
+    <text x="592" y="274" font-size="30" font-weight="700" fill="#303a36">
+      <tspan x="592" dy="0">Multi-rack disk array</tspan>
+      <tspan x="592" dy="36">spin-up torque and</tspan>
+      <tspan x="592" dy="36">controller sequencing</tspan>
+    </text>
+    <line x1="592" y1="368" x2="1006" y2="368" stroke="#207448" stroke-width="2" opacity="0.3"/>
+    <text x="592" y="400" font-size="24" fill="#303a36">
+      <tspan x="592" dy="0">shelves and disks start in</tspan>
+      <tspan x="592" dy="32">order; controllers expect a</tspan>
+      <tspan x="592" dy="32">fixed order.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1082" y="160" width="466" height="360" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1108,184)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M28 6 L52 48 L4 48 Z"/>
+      <path d="M28 20 L28 34"/>
+      <circle cx="28" cy="41" r="2.5" fill="#207448" stroke="none"/>
+    </g>
+    <text x="1108" y="274" font-size="30" font-weight="700" fill="#303a36">
+      <tspan x="1108" dy="0">Hot-corridor thermal</tspan>
+      <tspan x="1108" dy="36">baking</tspan>
+    </text>
+    <line x1="1108" y1="368" x2="1522" y2="368" stroke="#207448" stroke-width="2" opacity="0.3"/>
+    <text x="1108" y="400" font-size="24" fill="#303a36">
+      <tspan x="1108" dy="0">servers blow hot air into</tspan>
+      <tspan x="1108" dy="32">a shared hot aisle;</tspan>
+      <tspan x="1108" dy="32">neighbours with fans off</tspan>
+      <tspan x="1108" dy="32">get no cooling.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="520" x2="800" y2="720" stroke="#db8129" stroke-width="4" marker-end="url(#orangeArrow)"/>
+  <text x="832" y="606" font-size="24" fill="#303a36">
+    <tspan x="832" dy="0">write the startup order down and</tspan>
+    <tspan x="832" dy="32">keep it on a card at the rack</tspan>
+  </text>
+
+  
+  <g>
+    <rect x="50" y="720" width="466" height="290" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="98" cy="770" r="24" fill="#207448"/>
+    <text x="98" y="780" text-anchor="middle" font-size="26" font-weight="700" fill="#ffffff">1</text>
+    <g transform="translate(138,742)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+      <path d="M40 16 A20 20 0 1 1 16 16"/>
+      <path d="M28 8 L28 28"/>
+    </g>
+    <text x="76" y="848" font-size="30" font-weight="600" fill="#303a36">
+      <tspan x="76" dy="0">Storage first, disk</tspan>
+      <tspan x="76" dy="34">shelves and then</tspan>
+      <tspan x="76" dy="34">controllers in the</tspan>
+      <tspan x="76" dy="34">order the controllers</tspan>
+      <tspan x="76" dy="34">expect.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="518" y1="865" x2="564" y2="865" stroke="#207448" stroke-width="4" marker-end="url(#greenArrow)"/>
+
+  
+  <g>
+    <rect x="566" y="720" width="466" height="290" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="614" cy="770" r="24" fill="#207448"/>
+    <text x="614" y="780" text-anchor="middle" font-size="26" font-weight="700" fill="#ffffff">2</text>
+    <g transform="translate(654,742)">
+      <g fill="#207448" stroke="none">
+        <rect x="24" y="0" width="8" height="12" rx="2"/>
+        <rect x="24" y="0" width="8" height="12" rx="2" transform="rotate(45 28 28)"/>
+        <rect x="24" y="0" width="8" height="12" rx="2" transform="rotate(90 28 28)"/>
+        <rect x="24" y="0" width="8" height="12" rx="2" transform="rotate(135 28 28)"/>
+        <rect x="24" y="0" width="8" height="12" rx="2" transform="rotate(180 28 28)"/>
+        <rect x="24" y="0" width="8" height="12" rx="2" transform="rotate(225 28 28)"/>
+        <rect x="24" y="0" width="8" height="12" rx="2" transform="rotate(270 28 28)"/>
+        <rect x="24" y="0" width="8" height="12" rx="2" transform="rotate(315 28 28)"/>
+      </g>
+      <circle cx="28" cy="28" r="19" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="7" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="592" y="848" font-size="30" font-weight="600" fill="#303a36">
+      <tspan x="592" dy="0">Compute nodes in</tspan>
+      <tspan x="592" dy="34">staggered groups, so</tspan>
+      <tspan x="592" dy="34">electrical load and</tspan>
+      <tspan x="592" dy="34">request load stay</tspan>
+      <tspan x="592" dy="34">manageable.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1034" y1="865" x2="1080" y2="865" stroke="#207448" stroke-width="4" marker-end="url(#greenArrow)"/>
+
+  
+  <g>
+    <rect x="1082" y="720" width="466" height="290" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="1130" cy="770" r="24" fill="#207448"/>
+    <text x="1130" y="780" text-anchor="middle" font-size="26" font-weight="700" fill="#ffffff">3</text>
+    <g transform="translate(1170,742)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+      <path d="M40 16 A20 20 0 1 1 16 16"/>
+      <path d="M28 8 L28 28"/>
+    </g>
+    <text x="1108" y="848" font-size="30" font-weight="600" fill="#303a36">
+      <tspan x="1108" dy="0">Racks spaced out in</tspan>
+      <tspan x="1108" dy="34">time, so running</tspan>
+      <tspan x="1108" dy="34">servers keep the hot</tspan>
+      <tspan x="1108" dy="34">corridor under</tspan>
+      <tspan x="1108" dy="34">control.</tspan>
+    </text>
+  </g>
+</svg>

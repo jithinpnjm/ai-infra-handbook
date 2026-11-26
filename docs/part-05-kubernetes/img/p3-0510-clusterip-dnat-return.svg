@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>A ClusterIP packet: DNAT out, conntrack back</title>
+  <desc>A ClusterIP packet: DNAT out, conntrack back</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-blue" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#1c5373"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A ClusterIP packet: DNAT out, conntrack back</text>
+
+  
+  <rect x="336" y="116" width="928" height="418" rx="16" fill="#e8f1ea" fill-opacity="0.45" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
+
+  
+  <g>
+    <rect x="40" y="130" width="280" height="390" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="86" cy="176" r="22" fill="#207448"/>
+    <text x="86" y="176" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <rect x="230" y="152" width="48" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="230" y1="166" x2="278" y2="166" stroke="#207448" stroke-width="3"/>
+    <circle cx="240" cy="159" r="2" fill="#207448"/>
+    <circle cx="248" cy="159" r="2" fill="#207448"/>
+    
+    <text x="60" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">Pod A sends to</tspan>
+      <tspan x="60" dy="32">ClusterIP:80</tspan>
+      <tspan x="60" dy="32">(no process</tspan>
+      <tspan x="60" dy="32">listens there;</tspan>
+      <tspan x="60" dy="32" font-family="monospace">ss -tulpn</tspan>
+      <tspan x="60" dy="32">shows nothing)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="320" y1="200" x2="348" y2="200" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="350" y="130" width="280" height="390" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="396" cy="176" r="22" fill="#207448"/>
+    <text x="396" y="176" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <path d="M 540 194 L 540 174 L 564 154 M 540 174 L 518 154" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="564" cy="154" r="4" fill="#207448"/>
+    <circle cx="518" cy="154" r="4" fill="#207448"/>
+    <circle cx="540" cy="194" r="4" fill="#207448"/>
+    
+    <text x="370" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="370" dy="0">default route</tspan>
+      <tspan x="370" dy="32">to the node or</tspan>
+      <tspan x="370" dy="32">bridge;</tspan>
+      <tspan x="370" dy="32">netfilter</tspan>
+      <tspan x="370" dy="32">PREROUTING</tspan>
+      <tspan x="370" dy="32">matches</tspan>
+      <tspan x="370" dy="32">KUBE-SERVICES</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="630" y1="200" x2="658" y2="200" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="660" y="130" width="280" height="390" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="706" cy="176" r="22" fill="#207448"/>
+    <text x="706" y="176" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <circle cx="848" cy="174" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 848 152 L 848 158 M 848 190 L 848 196 M 826 174 L 832 174 M 864 174 L 870 174" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="680" y="270" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="680" dy="0">KUBE-SVC chain</tspan>
+      <tspan x="680" dy="34">picks a random</tspan>
+      <tspan x="680" dy="34">KUBE-SEP chain</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="940" y1="200" x2="968" y2="200" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="970" y="130" width="280" height="390" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <circle cx="1016" cy="176" r="22" fill="#db8129"/>
+    <text x="1016" y="176" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <path d="M 1144 162 L 1176 162 M 1166 154 L 1176 162 L 1166 170" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1176 186 L 1144 186 M 1154 178 L 1144 186 L 1154 194" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="990" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="990" dy="0">DNAT rewrites</tspan>
+      <tspan x="990" dy="32">destination to</tspan>
+      <tspan x="990" dy="32">PodIP:</tspan>
+      <tspan x="990" dy="32">targetPort;</tspan>
+      <tspan x="990" dy="32">conntrack</tspan>
+      <tspan x="990" dy="32">records the</tspan>
+      <tspan x="990" dy="32">translation</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1250" y1="200" x2="1278" y2="200" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="1280" y="130" width="280" height="390" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="1326" cy="176" r="22" fill="#207448"/>
+    <text x="1326" y="176" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    <rect x="1466" y="152" width="48" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="1490" cy="174" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="1300" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1300" dy="0">routed to the</tspan>
+      <tspan x="1300" dy="30">backend pod,</tspan>
+      <tspan x="1300" dy="30">through the</tspan>
+      <tspan x="1300" dy="30">local veth or</tspan>
+      <tspan x="1300" dy="30">over the CNI</tspan>
+      <tspan x="1300" dy="30">overlay or</tspan>
+      <tspan x="1300" dy="30">route to</tspan>
+      <tspan x="1300" dy="30">another node</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="290" y="546" width="1020" height="74" rx="12" fill="#eaf2f8" stroke="#1c5373" stroke-width="2"/>
+    <text x="800" y="577" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#1c5373">
+      <tspan x="800" dy="0">reply from backend hits conntrack, is un-NAT'd</tspan>
+      <tspan x="800" dy="30">so it appears to come from the ClusterIP</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1420 520 L 1420 644 L 180 644 L 180 524" fill="none" stroke="#1c5373" stroke-width="4" marker-end="url(#arrow-blue)"/>
+
+  
+  <g>
+    <rect x="40" y="690" width="740" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="68" y="762" width="48" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 78 762 L 78 748 C 78 738 106 738 106 748 L 106 762" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="144" y="756" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0">only new connections are load balanced;</tspan>
+      <tspan x="144" dy="34">established flows stay on their backend</tspan>
+      <tspan x="144" dy="34">via conntrack</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="690" width="740" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 854 786 L 854 754 C 854 734 888 734 888 754 L 888 786" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="846,774 854,786 862,774" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="924" y="756" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="924" dy="0">KUBE-SEP -s podIP -> KUBE-MARK-MASQ</tspan>
+      <tspan x="924" dy="34">handles hairpin</tspan>
+      <tspan x="924" dy="34">(pod calling its own Service)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="910" width="740" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 72 948 L 92 940 L 112 948 L 112 972 C 112 990 92 1002 92 1002 C 92 1002 72 990 72 972 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    
+    <text x="144" y="976" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0">POSTROUTING KUBE-POSTROUTING</tspan>
+      <tspan x="144" dy="34">marks 0x4000 -> MASQUERADE</tspan>
+      <tspan x="144" dy="34">for NodePort or external traffic</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="910" width="740" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="848" y="954" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="848,956 872,974 896,956" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="924" y="990" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="924" dy="0">mail office rewrites the address</tspan>
+      <tspan x="924" dy="36">on every letter</tspan>
+    </text>
+  </g>
+</svg>

@@ -126,19 +126,9 @@ Picture a Friday afternoon. One GPU shows a rising count of memory errors, and t
 
 Nodes move between states as jobs start and finish, and an operator drives many of the transitions. The diagram shows the main ones, so read it before you run any state-changing command.
 
-```mermaid
-stateDiagram-v2
-  [*] --> IDLE
-  IDLE --> ALLOCATED: job starts
-  ALLOCATED --> IDLE: job ends
-  IDLE --> DRAINED: scontrol drain / health check
-  ALLOCATED --> DRAINING: scontrol drain / health check
-  DRAINING --> DRAINED: running jobs finish
-  DRAINED --> IDLE: scontrol resume
-  IDLE --> DOWN: slurmd not responding (SlurmdTimeout) / admin
-  ALLOCATED --> DOWN: node failure (jobs requeued or failed)
-  DOWN --> IDLE: resume or ReturnToService on valid registration
-```
+![Node lifecycle](./img/m6-14-1.svg)
+
+*Figure 6.14.1. Node lifecycle, as a diagram.*
 
 These are the commands you will reach for most often.
 

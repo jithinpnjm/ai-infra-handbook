@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1185" width="1600" height="1185">
+  <title>Exclusive cores for a GPU pod: CPU Manager static plus Topology Manager</title>
+  <desc>Visual infographic explaining exclusive CPU core allocation, NUMA node alignment via Topology Manager for GPU pods, and systemd cgroup driver matching requirements.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1185" fill="#f5f8f5" />
+
+  
+  <text x="40" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">Exclusive cores for a GPU pod:</tspan>
+    <tspan x="40" dy="54">CPU Manager static plus Topology Manager</tspan>
+  </text>
+
+  
+  
+  
+
+  
+  <rect x="40" y="145" width="330" height="460" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="75" cy="180" r="24" fill="#207448" />
+  <text x="75" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(115, 156)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="4" y="8" width="40" height="34" rx="4" />
+    <path d="M 4 18 L 44 18" />
+    <circle cx="12" cy="13" r="2" fill="#207448" />
+    <circle cx="18" cy="13" r="2" fill="#207448" />
+    <path d="M 14 28 L 24 35 L 34 25" />
+  </g>
+  
+  <text x="60" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="60" dy="0">Pod classified</tspan>
+    <tspan x="60" dy="36">Guaranteed:</tspan>
+  </text>
+  <text x="60" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">requests equal limits</tspan>
+    <tspan x="60" dy="30">for every container,</tspan>
+    <tspan x="60" dy="30">for CPU and memory,</tspan>
+    <tspan x="60" dy="30">with integer CPU</tspan>
+    <tspan x="60" dy="30">requests</tspan>
+    <tspan x="60" dy="32" fill="#596c64">(Burstable: some</tspan>
+    <tspan x="60" dy="28" fill="#596c64">request or limit</tspan>
+    <tspan x="60" dy="28" fill="#596c64">but not all equal;</tspan>
+    <tspan x="60" dy="28" fill="#596c64">BestEffort: none)</tspan>
+  </text>
+
+  
+  <line x1="370" y1="375" x2="395" y2="375" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="395" y="145" width="460" height="460" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="430" cy="180" r="24" fill="#207448" />
+  <text x="430" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(470, 156)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="8" y="8" width="32" height="32" rx="4" />
+    <path d="M 16 16 L 32 16 L 32 32 L 16 32 Z" fill="#207448" fill-opacity="0.1" />
+    <path d="M 14 4 L 14 8 M 24 4 L 24 8 M 34 4 L 34 8" />
+    <path d="M 14 40 L 14 44 M 24 40 L 24 44 M 34 40 L 34 44" />
+    <path d="M 4 14 L 8 14 M 4 24 L 8 24 M 4 34 L 8 34" />
+    <path d="M 40 14 L 44 14 M 40 24 L 44 24 M 40 34 L 44 34" />
+  </g>
+  
+  <text x="415" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">kubelet</text>
+  <rect x="410" y="260" width="430" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="416" y="289" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">--cpu-manager-policy=static</text>
+  <text x="415" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="415" dy="0">gives the pod exclusive cores,</tspan>
+    <tspan x="415" dy="36">taken out of the shared pool</tspan>
+    <tspan x="415" dy="36">and set through a cpuset</tspan>
+  </text>
+
+  
+  <line x1="855" y1="375" x2="880" y2="375" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="880" y="145" width="320" height="460" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="915" cy="180" r="24" fill="#207448" />
+  <text x="915" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(955, 156)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="12" cy="14" r="6" />
+    <circle cx="36" cy="14" r="6" />
+    <circle cx="24" cy="38" r="7" />
+    <path d="M 16 18 L 21 32 M 32 18 L 27 32" />
+  </g>
+  
+  <text x="900" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="900" dy="0">Topology</tspan>
+    <tspan x="900" dy="36">Manager</tspan>
+  </text>
+  <text x="900" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="900" dy="0">(single-numa-node</tspan>
+    <tspan x="900" dy="30">or best-effort)</tspan>
+    <tspan x="900" dy="32">with the Memory</tspan>
+    <tspan x="900" dy="30">Manager and</tspan>
+    <tspan x="900" dy="30">Device Manager</tspan>
+    <tspan x="900" dy="32">aligns CPU, memory</tspan>
+    <tspan x="900" dy="30">and GPUs or NICs</tspan>
+    <tspan x="900" dy="30">to one NUMA node</tspan>
+  </text>
+
+  
+  <line x1="1200" y1="265" x2="1230" y2="265" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1230" y="145" width="330" height="245" rx="14" fill="#fdf6ee" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(1250, 160)" stroke="#db8129" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 6 36 A 18 18 0 1 1 38 36" />
+    <path d="M 22 26 L 30 16" />
+    <circle cx="22" cy="26" r="3" fill="#db8129" />
+  </g>
+  
+  <text x="1250" y="224" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="1250" dy="0">Stable</tspan>
+    <tspan x="1250" dy="34">host-thread</tspan>
+    <tspan x="1250" dy="34">performance</tspan>
+  </text>
+  <text x="1250" y="326" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1250" dy="0">for GPU training pods;</tspan>
+    <tspan x="1250" dy="28">quota is irrelevant</tspan>
+    <tspan x="1250" dy="28">for pods with exclusive cores</tspan>
+  </text>
+
+  
+  <rect x="1230" y="405" width="330" height="200" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1248, 418)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 16 4 L 5 8 L 5 18 C 5 25 10 31 16 34 C 22 31 27 25 27 18 L 27 8 Z" fill="#207448" fill-opacity="0.1" />
+  </g>
+  
+  <text x="1285" y="442" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1285" dy="0">Reserve system cores:</tspan>
+  </text>
+  <text x="1248" y="490" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="1248" dy="0" fill="#207448" font-weight="bold">--reserved-cpus,</tspan>
+    <tspan x="1248" dy="36" font-family="system-ui, -apple-system, sans-serif">or </tspan><tspan fill="#207448" font-weight="bold">kubeReserved</tspan>
+    <tspan x="1248" dy="34" font-family="system-ui, -apple-system, sans-serif">and </tspan><tspan fill="#207448" font-weight="bold">systemReserved</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="40" y="635" width="1520" height="425" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(65, 654)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="16" cy="16" r="6" />
+    <path d="M 16 2 L 16 7 M 16 25 L 16 30 M 2 16 L 7 16 M 25 16 L 30 16 M 6 6 L 10 10 M 22 22 L 26 26 M 6 26 L 10 22 M 22 10 L 26 6" />
+  </g>
+  <text x="110" y="678" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Cgroup driver must match</text>
+
+  
+  <rect x="65" y="705" width="460" height="260" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(470, 720)">
+    <circle cx="18" cy="18" r="16" fill="#207448" />
+    <path d="M 10 18 L 16 24 L 26 12" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <rect x="80" y="722" width="370" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="95" y="760" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0" font-weight="bold" fill="#207448">kubelet</tspan>
+    <tspan x="95" dy="34">cgroupDriver: systemd</tspan>
+  </text>
+  
+  <g transform="translate(245, 824)" stroke="#207448" stroke-width="3" stroke-linecap="round">
+    <line x1="0" y1="0" x2="20" y2="0" />
+    <line x1="0" y1="8" x2="20" y2="8" />
+  </g>
+  
+  <rect x="80" y="838" width="430" height="112" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="95" y="872" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0" font-weight="bold" fill="#207448">containerd</tspan>
+    <tspan x="95" dy="34">SystemdCgroup = true</tspan>
+    <tspan x="95" dy="30" font-family="system-ui, -apple-system, sans-serif" fill="#596c64">in config.toml</tspan>
+  </text>
+
+  
+  <rect x="550" y="705" width="530" height="260" rx="10" fill="#f7f9f7" stroke="#596c64" stroke-width="2.5" stroke-dasharray="8,6" />
+  
+  <g transform="translate(1025, 720)">
+    <circle cx="18" cy="18" r="16" fill="#596c64" />
+    <path d="M 12 12 L 24 24 M 24 12 L 12 24" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+  </g>
+  
+  <text x="575" y="756" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="575" dy="0" font-weight="bold">cgroupfs on one side and</tspan>
+    <tspan x="575" dy="34" font-weight="bold">systemd on the other:</tspan>
+    <tspan x="575" dy="36">nodes that run but misbehave</tspan>
+    <tspan x="575" dy="34">under pressure, or a kubelet</tspan>
+    <tspan x="575" dy="34">that fails to start</tspan>
+  </text>
+
+  
+  <rect x="1105" y="705" width="430" height="260" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1125, 724)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 4 8 L 12 16 L 4 24" />
+    <line x1="16" y1="24" x2="28" y2="24" />
+  </g>
+  <text x="1165" y="748" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Check commands</text>
+  
+  <rect x="1125" y="770" width="390" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1145" y="806" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">crictl info</text>
+  
+  <rect x="1125" y="842" width="390" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1138" y="878" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">stat -fc %T /sys/fs/cgroup</text>
+
+  
+  <rect x="65" y="985" width="1470" height="58" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(85, 998)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="16" r="14" />
+    <line x1="16" y1="14" x2="16" y2="22" />
+    <circle cx="16" cy="9" r="1.5" fill="#207448" />
+  </g>
+  <text x="125" y="1022" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    Kubernetes supports cgroup v2 as GA from 1.25; use a kernel 5.8 or newer, preferably 5.14 or newer
+  </text>
+
+  
+  
+  
+  <rect x="40" y="1080" width="1520" height="66" rx="8" fill="#207448" />
+  <text x="800" y="1122" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    On systemd hosts always use the systemd driver so there is one writer of the tree
+  </text>
+</svg>

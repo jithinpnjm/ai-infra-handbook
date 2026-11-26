@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Topology spread keeps replicas across zones</title>
+  <desc>Visual infographic explaining Kubernetes topology spread constraints across availability zones, comparing an outage where all three replicas are lost in a single zone against maxSkew 1 keeping replicas balanced across zones.</desc>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  <!-- Main Title (48px bold) -->
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Topology spread keeps replicas across zones</text>
+
+  <!-- ==================== LEFT ILLUSTRATION ==================== -->
+  <g id="left-illustration">
+    <!-- Panel Container -->
+    <rect x="60" y="130" width="710" height="720" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Left Header Icon: Warning / Alert (56x56 outline, stroke 4) -->
+    <g transform="translate(90, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 48 L 6 48 Z"/>
+      <line x1="28" y1="20" x2="28" y2="34"/>
+      <circle cx="28" cy="41" r="2.5" fill="#207448"/>
+    </g>
+
+    <!-- Left Illustration Title (32px bold) -->
+    <text x="165" y="188" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Three replicas in one zone</text>
+
+    <!-- Column 1: Zone a -->
+    <rect x="85" y="230" width="200" height="490" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="105" y="245" width="160" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="185" y="275" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Zone a</text>
+
+    <!-- Stacked vLLM Replica Box 1 in Zone a -->
+    <g id="left-replica-1" transform="translate(100, 305)">
+      <rect width="170" height="75" rx="8" fill="#f5fbf7" stroke="#207448" stroke-width="2"/>
+      <rect x="14" y="14" width="44" height="46" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="25" x2="52" y2="25" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="37" x2="52" y2="37" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="49" x2="42" y2="49" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="4" fill="#207448"/>
+      <line x1="110" y1="28" x2="152" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="110" y1="46" x2="140" y2="46" stroke="#a9c4b3" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Stacked vLLM Replica Box 2 in Zone a -->
+    <g id="left-replica-2" transform="translate(100, 395)">
+      <rect width="170" height="75" rx="8" fill="#f5fbf7" stroke="#207448" stroke-width="2"/>
+      <rect x="14" y="14" width="44" height="46" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="25" x2="52" y2="25" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="37" x2="52" y2="37" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="49" x2="42" y2="49" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="4" fill="#207448"/>
+      <line x1="110" y1="28" x2="152" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="110" y1="46" x2="140" y2="46" stroke="#a9c4b3" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Stacked vLLM Replica Box 3 in Zone a -->
+    <g id="left-replica-3" transform="translate(100, 485)">
+      <rect width="170" height="75" rx="8" fill="#f5fbf7" stroke="#207448" stroke-width="2"/>
+      <rect x="14" y="14" width="44" height="46" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="25" x2="52" y2="25" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="37" x2="52" y2="37" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="49" x2="42" y2="49" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="4" fill="#207448"/>
+      <line x1="110" y1="28" x2="152" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="110" y1="46" x2="140" y2="46" stroke="#a9c4b3" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Zone Outage Red Cross with Orange Outline on Zone a -->
+    <g id="zone-outage-cross">
+      <!-- Orange outline backing lines -->
+      <line x1="112" y1="320" x2="258" y2="545" stroke="#db8129" stroke-width="16" stroke-linecap="round"/>
+      <line x1="258" y1="320" x2="112" y2="545" stroke="#db8129" stroke-width="16" stroke-linecap="round"/>
+      <!-- Red cross interior lines -->
+      <line x1="112" y1="320" x2="258" y2="545" stroke="#d9383a" stroke-width="10" stroke-linecap="round"/>
+      <line x1="258" y1="320" x2="112" y2="545" stroke="#d9383a" stroke-width="10" stroke-linecap="round"/>
+    </g>
+
+    <!-- Zone outage label card (orange outlined) -->
+    <rect x="80" y="580" width="210" height="125" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="185" y="616" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#d9383a">
+      <tspan x="185" dy="0">Zone outage:</tspan>
+      <tspan x="185" dy="32">service</tspan>
+      <tspan x="185" dy="32">offline</tspan>
+    </text>
+
+    <!-- Column 2: Zone b (green and empty) -->
+    <rect x="315" y="230" width="200" height="490" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="335" y="245" width="160" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="415" y="275" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Zone b</text>
+    <!-- Empty slot indicators -->
+    <rect x="330" y="305" width="170" height="75" rx="8" fill="#f5fbf7" stroke="#a9c4b3" stroke-width="2" stroke-dasharray="6 4"/>
+    <rect x="330" y="395" width="170" height="75" rx="8" fill="#f5fbf7" stroke="#a9c4b3" stroke-width="2" stroke-dasharray="6 4"/>
+    <rect x="330" y="485" width="170" height="75" rx="8" fill="#f5fbf7" stroke="#a9c4b3" stroke-width="2" stroke-dasharray="6 4"/>
+
+    <!-- Column 3: Zone c (green and empty) -->
+    <rect x="545" y="230" width="200" height="490" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="565" y="245" width="160" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="645" y="275" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Zone c</text>
+    <!-- Empty slot indicators -->
+    <rect x="560" y="305" width="170" height="75" rx="8" fill="#f5fbf7" stroke="#a9c4b3" stroke-width="2" stroke-dasharray="6 4"/>
+    <rect x="560" y="395" width="170" height="75" rx="8" fill="#f5fbf7" stroke="#a9c4b3" stroke-width="2" stroke-dasharray="6 4"/>
+    <rect x="560" y="485" width="170" height="75" rx="8" fill="#f5fbf7" stroke="#a9c4b3" stroke-width="2" stroke-dasharray="6 4"/>
+  </g>
+
+  <!-- ==================== RIGHT ILLUSTRATION ==================== -->
+  <g id="right-illustration">
+    <!-- Panel Container -->
+    <rect x="830" y="130" width="710" height="720" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Right Header Icon: Balance / Distributed Grid (56x56 outline, stroke 4) -->
+    <g transform="translate(860, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="28" x2="48" y2="28"/>
+      <line x1="28" y1="12" x2="28" y2="44"/>
+      <line x1="16" y1="44" x2="40" y2="44"/>
+      <circle cx="8" cy="28" r="4"/>
+      <circle cx="48" cy="28" r="4"/>
+      <path d="M 4 36 L 12 36 M 44 36 L 52 36"/>
+    </g>
+
+    <!-- Right Illustration Title (30px bold) -->
+    <text x="935" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="935" dy="0">topologySpreadConstraints,</tspan>
+      <tspan x="935" dy="36">maxSkew 1</tspan>
+    </text>
+
+    <!-- Bracket across columns labelled 'Counts differ by at most 1' -->
+    <rect x="970" y="230" width="430" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1185" y="263" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Counts differ by at most 1</text>
+    <path d="M 955 300 L 955 284 L 1185 284 L 1185 278 M 1185 284 L 1415 284 L 1415 300" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- Three Zone Columns (Zone a, Zone b, Zone c matching structure) -->
+    <!-- Column 1 in Right Illustration -->
+    <rect x="855" y="310" width="200" height="325" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="870" y="325" width="170" height="34" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <line x1="910" y1="342" x2="1000" y2="342" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- 1 replica in Zone a -->
+    <g id="right-replica-1" transform="translate(870, 435)">
+      <rect width="170" height="75" rx="8" fill="#f5fbf7" stroke="#207448" stroke-width="2"/>
+      <rect x="14" y="14" width="44" height="46" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="25" x2="52" y2="25" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="37" x2="52" y2="37" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="49" x2="42" y2="49" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="4" fill="#207448"/>
+      <line x1="110" y1="28" x2="152" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="110" y1="46" x2="140" y2="46" stroke="#a9c4b3" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Column 2 in Right Illustration -->
+    <rect x="1085" y="310" width="200" height="325" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="1100" y="325" width="170" height="34" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <line x1="1140" y1="342" x2="1230" y2="342" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- 1 replica in Zone b -->
+    <g id="right-replica-2" transform="translate(1100, 435)">
+      <rect width="170" height="75" rx="8" fill="#f5fbf7" stroke="#207448" stroke-width="2"/>
+      <rect x="14" y="14" width="44" height="46" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="25" x2="52" y2="25" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="37" x2="52" y2="37" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="49" x2="42" y2="49" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="4" fill="#207448"/>
+      <line x1="110" y1="28" x2="152" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="110" y1="46" x2="140" y2="46" stroke="#a9c4b3" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Column 3 in Right Illustration -->
+    <rect x="1315" y="310" width="200" height="325" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="1330" y="325" width="170" height="34" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <line x1="1370" y1="342" x2="1460" y2="342" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <!-- 1 replica in Zone c -->
+    <g id="right-replica-3" transform="translate(1330, 435)">
+      <rect width="170" height="75" rx="8" fill="#f5fbf7" stroke="#207448" stroke-width="2"/>
+      <rect x="14" y="14" width="44" height="46" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="25" x2="52" y2="25" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="37" x2="52" y2="37" stroke="#207448" stroke-width="2"/>
+      <line x1="20" y1="49" x2="42" y2="49" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <circle cx="80" cy="37" r="4" fill="#207448"/>
+      <line x1="110" y1="28" x2="152" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="110" y1="46" x2="140" y2="46" stroke="#a9c4b3" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <!-- Monospace Chip 1: topology.kubernetes.io/zone -->
+    <rect x="960" y="665" width="450" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1185" y="700" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">topology.kubernetes.io/zone</text>
+
+    <!-- Monospace Chip 2: whenUnsatisfiable: DoNotSchedule -->
+    <rect x="915" y="735" width="540" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1185" y="770" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">whenUnsatisfiable: DoNotSchedule</text>
+  </g>
+
+  <!-- ==================== CAPTION / TAKEAWAY BAR ==================== -->
+  <rect x="60" y="890" width="1480" height="80" rx="14" fill="#207448"/>
+  <text x="800" y="941" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Dealing cards around a table: no seat holds more than one card more than another.</text>
+</svg>

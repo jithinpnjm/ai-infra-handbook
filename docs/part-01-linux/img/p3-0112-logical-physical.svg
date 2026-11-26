@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Logical I/O is not physical I/O: what shrinks it and what inflates it</title>
+  <desc>Visual infographic explaining the differences between logical I/O requested by applications and physical I/O reaching storage disks, showing deflation and inflation mechanisms and non-application I/O.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+
+    
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1b382b" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <g id="title-block">
+    <text x="800" y="54" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">Logical I/O is not physical I/O:</tspan>
+      <tspan x="800" dy="56">what shrinks it and what inflates it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="left-column">
+    
+    <rect x="40" y="145" width="450" height="565" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+
+    
+    <g transform="translate(64, 165)">
+      <polygon points="4,4 52,4 34,28 34,48 22,42 22,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="135" y="193" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">Deflated</tspan>
+      <tspan x="135" dy="32" font-size="24" font-weight="normal">(less than requested)</tspan>
+    </text>
+
+    
+    <rect x="60" y="245" width="410" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="80" y="283" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Cache hits</text>
+
+    
+    <rect x="60" y="325" width="410" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="80" y="357" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0" font-weight="bold">Write cancellation</tspan>
+      <tspan x="80" dy="32">(same bytes rewritten</tspan>
+      <tspan x="80" dy="30">before flush)</tspan>
+    </text>
+
+    
+    <rect x="60" y="460" width="410" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="80" y="498" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Compression</text>
+
+    
+    <rect x="60" y="540" width="410" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="80" y="580" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Coalescing neighbours</text>
+
+    
+    <rect x="60" y="625" width="410" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="80" y="665" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">In-memory filesystems</text>
+  </g>
+
+  
+  <g id="centre-column">
+    
+    <rect x="740" y="390" width="120" height="85" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+
+    
+    <g id="top-bar">
+      <rect x="525" y="145" width="550" height="245" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
+      
+      
+      <g transform="translate(555, 175)">
+        <rect x="2" y="4" width="52" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+        <line x1="2" y1="16" x2="54" y2="16" stroke="#207448" stroke-width="3" />
+        <circle cx="10" cy="10" r="2.5" fill="#207448" />
+        <circle cx="18" cy="10" r="2.5" fill="#207448" />
+        <circle cx="26" cy="10" r="2.5" fill="#207448" />
+        <line x1="12" y1="28" x2="30" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+        <line x1="12" y1="38" x2="44" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+
+      
+      <text x="630" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="630" dy="0">Logical I/O:</tspan>
+        <tspan x="630" dy="42" font-size="24" font-weight="normal">what the application asked for</tspan>
+        <tspan x="630" dy="36" font-size="24" font-weight="normal">(system calls)</tspan>
+      </text>
+    </g>
+
+    
+    <g id="bottom-bar">
+      <rect x="525" y="475" width="550" height="235" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
+
+      
+      <g transform="translate(555, 510)">
+        
+        <ellipse cx="28" cy="12" rx="24" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+        
+        <path d="M 4 12 v 14 c 0 4.4 10.7 8 24 8 s 24 -3.6 24 -8 v -14" fill="none" stroke="#207448" stroke-width="4" />
+        
+        <path d="M 4 26 v 14 c 0 4.4 10.7 8 24 8 s 24 -3.6 24 -8 v -14" fill="none" stroke="#207448" stroke-width="4" />
+      </g>
+
+      
+      <text x="630" y="540" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="630" dy="0">Physical I/O:</tspan>
+        <tspan x="630" dy="42" font-size="24" font-weight="normal">what reaches the disk</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="right-column">
+    
+    <rect x="1110" y="145" width="450" height="565" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+
+    
+    <g transform="translate(1134, 165)">
+      <polygon points="28,4 52,24 38,24 38,48 18,48 18,24 4,24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="1205" y="193" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1205" dy="0">Inflated</tspan>
+      <tspan x="1205" dy="32" font-size="24" font-weight="normal">(more than requested)</tspan>
+    </text>
+
+    
+    <rect x="1130" y="245" width="410" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1150" y="283" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Metadata updates</text>
+
+    
+    <rect x="1130" y="325" width="410" height="155" rx="10" fill="#fef8f2" stroke="#db8129" stroke-width="3" />
+    <text x="1146" y="357" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1146" dy="0" font-weight="bold" fill="#db8129">Record or block size rounding</tspan>
+      <tspan x="1146" dy="32">(a 1-byte write may read and</tspan>
+      <tspan x="1146" dy="30">rewrite a whole 128 KiB</tspan>
+      <tspan x="1146" dy="30">record)</tspan>
+    </text>
+
+    
+    <rect x="1130" y="500" width="410" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1150" y="534" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1150" dy="0" font-weight="bold">Journaling</tspan>
+      <tspan x="1150" dy="30">(data or metadata written twice)</tspan>
+    </text>
+
+    
+    <rect x="1130" y="600" width="410" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1146" y="634" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">RAID parity read-modify-write</text>
+
+    
+    <rect x="1130" y="660" width="410" height="40" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1150" y="688" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Mirroring</text>
+  </g>
+
+  
+  
+  <line x1="470" y1="275" x2="525" y2="275" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="470" y1="382" x2="525" y2="382" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="470" y1="490" x2="525" y2="490" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="470" y1="572" x2="525" y2="572" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="470" y1="657" x2="525" y2="657" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1130" y1="275" x2="1075" y2="275" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  
+  <line x1="1130" y1="402" x2="1075" y2="402" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <line x1="1130" y1="542" x2="1075" y2="542" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="1130" y1="625" x2="1075" y2="625" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="1130" y1="680" x2="1075" y2="680" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g id="third-strip">
+    <rect x="40" y="730" width="1520" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+
+    
+    <g transform="translate(64, 746)">
+      <path d="M 28 6 L 48 14 v 16 c 0 14 -20 22 -20 22 s -20 -8 -20 -22 V 14 z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="135" y="784" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Not from your application at all</text>
+
+    
+    <rect x="64" y="806" width="460" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="84" y="844" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="84" dy="0" font-weight="bold" font-size="30">Unrelated</tspan>
+      <tspan x="84" dy="38" font-size="24">(other tenants, RAID rebuilds,</tspan>
+      <tspan x="84" dy="32" font-size="24">backups, scrubs)</tspan>
+    </text>
+
+    
+    <rect x="570" y="806" width="460" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="590" y="844" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="590" dy="0" font-weight="bold" font-size="30">Indirect</tspan>
+      <tspan x="590" dy="38" font-size="24">(prefetch, write-back bursts</tspan>
+      <tspan x="590" dy="32" font-size="24">nobody waits on)</tspan>
+    </text>
+
+    
+    <rect x="1076" y="806" width="460" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1096" y="844" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1096" dy="0" font-weight="bold" font-size="30">Implicit</tspan>
+      <tspan x="1096" dy="38" font-size="24">(mmap loads and stores</tspan>
+      <tspan x="1096" dy="32" font-size="24">that fault)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="990" width="1520" height="75" rx="14" fill="#207448" filter="url(#shadow)" />
+    <text x="800" y="1038" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Do not assume the disk saw what the application sent</text>
+  </g>
+</svg>

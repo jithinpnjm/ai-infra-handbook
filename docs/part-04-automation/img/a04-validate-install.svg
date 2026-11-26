@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Render on the control node, validate, then install</title>
+  <desc>Flow diagram showing Jinja2 template rendering on the control node, validation with visudo, and installation on the target host.</desc>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Render on the control node, validate, then install</text>
+
+  
+  <g id="box-control-node">
+    <rect x="45" y="140" width="350" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    
+    <circle cx="90" cy="185" r="24" fill="#207448"/>
+    <text x="90" y="193" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(192, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="46" rx="6"/>
+      <line x1="0" y1="14" x2="56" y2="14"/>
+      <circle cx="10" cy="7" r="2" fill="#207448"/>
+      <circle cx="18" cy="7" r="2" fill="#207448"/>
+      <circle cx="26" cy="7" r="2" fill="#207448"/>
+    </g>
+
+    
+    <text x="220" y="255" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Control node</text>
+
+    
+    <rect x="65" y="285" width="310" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="220" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="220" dy="0">Renders the </tspan><tspan x="220" dy="34">.j2 template with </tspan><tspan x="220" dy="34">the variables</tspan></text>
+  </g>
+
+  
+  <g id="arrow-1-to-2">
+    <line x1="395" y1="305" x2="625" y2="305" stroke="#207448" stroke-width="3.5"/>
+    <polygon points="607,296 625,305 607,314" fill="#207448"/>
+    <text x="510" y="280" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">rendered copy</text>
+  </g>
+
+  
+  <g id="box-validate">
+    <rect x="625" y="140" width="350" height="330" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+    
+    <circle cx="670" cy="185" r="24" fill="#207448"/>
+    <text x="670" y="193" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(772, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="12"/>
+      <path d="M28 6 v6 M28 44 v6 M6 28 h6 M44 28 h6 M12 12 l5 5 M39 39 l5 5 M12 44 l5 -5 M39 17 l5 -5"/>
+    </g>
+
+    
+    <text x="800" y="255" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Validate</text>
+
+    
+    <rect x="645" y="285" width="310" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="325" text-anchor="middle" font-size="24" fill="#303a36"><tspan x="800" dy="0" font-family="ui-monospace, monospace" font-weight="bold">visudo -cf %s </tspan><tspan x="800" dy="32" font-family="system-ui, -apple-system, sans-serif">runs against </tspan><tspan x="800" dy="32" font-family="system-ui, -apple-system, sans-serif">the rendered </tspan><tspan x="800" dy="32" font-family="system-ui, -apple-system, sans-serif">temporary file</tspan></text>
+  </g>
+
+  
+  <g id="arrow-2-to-3">
+    <line x1="975" y1="305" x2="1205" y2="305" stroke="#207448" stroke-width="3.5"/>
+    <polygon points="1187,296 1205,305 1187,314" fill="#207448"/>
+    <text x="1090" y="280" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">check passes</text>
+  </g>
+
+  
+  <g id="box-install">
+    <rect x="1205" y="140" width="350" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <circle cx="1250" cy="185" r="24" fill="#207448"/>
+    <text x="1250" y="193" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(1352, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 6 L10 14 v16 c0 15 18 24 18 24 s18 -9 18 -24 V14 Z"/>
+      <path d="M28 22 v12"/>
+    </g>
+
+    
+    <text x="1380" y="255" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Install</text>
+
+    
+    <rect x="1225" y="285" width="310" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1380" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="1380" dy="0">Copies the </tspan><tspan x="1380" dy="34">finished file </tspan><tspan x="1380" dy="34">to the target</tspan></text>
+  </g>
+
+  
+  <g id="arrow-2-down">
+    <line x1="800" y1="470" x2="800" y2="575" stroke="#207448" stroke-width="3.5"/>
+    <polygon points="791,557 800,575 809,557" fill="#207448"/>
+    <text x="825" y="530" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">check fails</text>
+  </g>
+
+  
+  <g id="box-fails">
+    <rect x="460" y="575" width="680" height="175" rx="16" fill="#f0f2f1" stroke="#9ca3af" stroke-width="3"/>
+
+    
+    <circle cx="515" cy="625" r="24" fill="#207448"/>
+    <text x="515" y="633" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <g transform="translate(772, 595)" stroke="#6b7280" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <line x1="18" y1="18" x2="38" y2="38"/>
+      <line x1="38" y1="18" x2="18" y2="38"/>
+    </g>
+
+    
+    <text x="800" y="685" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">Fails: the task aborts </tspan><tspan x="800" dy="36">and the old file stays in place</tspan></text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="45" y="800" width="1510" height="90" rx="16" fill="#207448"/>
+    <text x="800" y="855" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Jinja2 runs on the control node, so the target only receives plain text.</text>
+  </g>
+</svg>

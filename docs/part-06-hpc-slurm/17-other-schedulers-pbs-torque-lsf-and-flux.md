@@ -38,18 +38,9 @@ When a job sits in a queue, the first question is which scheduler is holding it.
 
 Every batch scheduler has the same basic parts. Think of them as a busy restaurant with a waiting list. Jobs wait in a queue, or a partition in Slurm terms. A server or controller holds the state, which means it knows which jobs exist, which are waiting and which are running. Each compute node runs a per-node daemon, a background program that starts and watches the work on that node. That daemon is MOM in PBS, `sbatchd` in LSF, a broker in Flux and `slurmd` in Slurm. A policy engine decides the order. It uses priority, fair-share, backfill, limits and preemption. Fair-share gives less priority to users who have already used more than their share, and backfill slips short jobs into gaps that a bigger job cannot yet use.
 
-```mermaid
-flowchart TB
-  subgraph PBS["OpenPBS / Torque"]
-    P1["pbs_server + pbs_sched (or Maui maui.cfg)"] --> P2["pbs_mom (+ trqauthd) on compute nodes"]
-  end
-  subgraph LSF["IBM Spectrum LSF"]
-    L1["mbatchd + mbschd + master LIM"] --> L2["sbatchd + res + host LIM"]
-  end
-  subgraph Flux["LLNL Flux (Hierarchical)"]
-    F1["System flux-broker tree + Fluxion"] --> F2["Job Subinstance flux-broker (flux batch)"]
-  end
-```
+![What all batch schedulers share](./img/m6-17-1.svg)
+
+*Figure 6.17.1. What all batch schedulers share, as a diagram.*
 
 Read each diagram line as a chain of responsibility. The top box decides what should run and in what order. The lower box is the worker that actually runs it on a node. When a job is stuck, ask which box holds it. A job waiting for resources is still in the top box, while a job that started and then died has moved down to the worker.
 

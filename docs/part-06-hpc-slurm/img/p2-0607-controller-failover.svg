@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 940" width="1600" height="940">
+  <title>Active and passive controllers share one state directory</title>
+  <desc>Diagram showing ctl1 active controller and ctl2 passive backup controller sharing state through a single storage location, with a failover timeline and high-availability note.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="940" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" text-anchor="middle" fill="#303a36">Active and passive controllers share one state directory</text>
+
+  
+
+  
+  <text x="490" y="145" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="middle" fill="#207448">Checks in regularly</text>
+  <path d="M 715,215 V 160 H 265 V 210" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow)"/>
+
+  
+  <rect x="70" y="215" width="390" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="238" y="235" width="54" height="20" rx="3"/>
+    <rect x="238" y="261" width="54" height="20" rx="3"/>
+    <circle cx="282" cy="245" r="2.5" fill="#207448"/>
+    <circle cx="282" cy="271" r="2.5" fill="#207448"/>
+    <line x1="246" y1="245" x2="265" y2="245"/>
+    <line x1="246" y1="271" x2="265" y2="271"/>
+  </g>
+  <text x="265" y="335" font-family="sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#303a36">ctl1 (primary, active)</text>
+
+  
+  <rect x="520" y="215" width="390" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="688" y="235" width="54" height="20" rx="3"/>
+    <rect x="688" y="261" width="54" height="20" rx="3"/>
+    <circle cx="732" cy="245" r="2.5" fill="#207448"/>
+    <circle cx="732" cy="271" r="2.5" fill="#207448"/>
+    <line x1="696" y1="245" x2="715" y2="245"/>
+    <line x1="696" y1="271" x2="715" y2="271"/>
+  </g>
+  <text x="715" y="335" font-family="sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#303a36">ctl2 (backup, passive)</text>
+
+  
+  <line x1="210" y1="390" x2="210" y2="512" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="225" y="445" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="225" dy="0">Writes state </tspan>
+    <tspan x="225" dy="28">continuously</tspan>
+  </text>
+
+  
+  <line x1="770" y1="390" x2="770" y2="512" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow)"/>
+  <text x="755" y="445" font-family="sans-serif" font-size="24" font-weight="bold" text-anchor="end" fill="#207448">
+    <tspan x="755" dy="0">Reads the </tspan>
+    <tspan x="755" dy="28">same state</tspan>
+  </text>
+
+  
+  <g>
+    <path d="M 100 525 v 95 a 390 26 0 0 0 780 0 v -95 Z" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    <ellipse cx="490" cy="525" rx="390" ry="26" fill="#fdfbf7" stroke="#db8129" stroke-width="4"/>
+    
+    <g stroke="#207448" stroke-width="3" fill="none">
+      <ellipse cx="490" cy="565" rx="26" ry="7"/>
+      <path d="M 464 565 v 10 a 26 7 0 0 0 52 0 v -10"/>
+      <path d="M 464 575 v 10 a 26 7 0 0 0 52 0 v -10"/>
+    </g>
+    <text x="490" y="625" font-family="monospace" font-size="26" font-weight="bold" text-anchor="middle" fill="#303a36">StateSaveLocation: /shared/slurm/state</text>
+  </g>
+
+  
+  <rect x="85" y="665" width="810" height="90" rx="12" fill="#fdf2f2" stroke="#d9383a" stroke-width="2.5"/>
+  
+  <g stroke="#d9383a" stroke-width="3" fill="none">
+    <path d="M 130 692 L 150 730 L 110 730 Z" stroke-linejoin="round"/>
+    <line x1="130" y1="703" x2="130" y2="717"/>
+    <circle cx="130" cy="723" r="1.5" fill="#d9383a"/>
+  </g>
+  <text x="170" y="706" font-family="sans-serif" font-size="24" font-weight="bold" fill="#b91c1c">
+    <tspan x="170" dy="0">A single point of failure unless </tspan>
+    <tspan x="170" dy="30">the storage is highly available</tspan>
+  </text>
+
+  
+
+  
+  <rect x="940" y="150" width="600" height="635" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <line x1="1005" y1="265" x2="1005" y2="385" stroke="#207448" stroke-width="3" stroke-dasharray="6,4"/>
+  <line x1="1005" y1="465" x2="1005" y2="585" stroke="#207448" stroke-width="3" stroke-dasharray="6,4"/>
+
+  
+  <rect x="965" y="170" width="550" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1005" cy="237" r="24" fill="#207448"/>
+  <text x="1005" y="246" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle" fill="#ffffff">1</text>
+  <text x="1045" y="224" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1045" dy="0">Primary does not answer for </tspan>
+    <tspan x="1045" dy="32"><tspan font-family="monospace" fill="#207448">SlurmctldTimeout</tspan> seconds</tspan>
+  </text>
+
+  
+  <rect x="965" y="335" width="550" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1005" cy="402" r="24" fill="#207448"/>
+  <text x="1005" y="411" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle" fill="#ffffff">2</text>
+  <text x="1045" y="388" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="1045" dy="0">Backup takes control </tspan>
+    <tspan x="1045" dy="32">and reads the state</tspan>
+  </text>
+
+  
+  <rect x="965" y="500" width="550" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1005" cy="577" r="24" fill="#207448"/>
+  <text x="1005" y="586" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle" fill="#ffffff">3</text>
+  <text x="1045" y="548" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1045" dy="0">Clients pause briefly, </tspan>
+    <tspan x="1045" dy="32">then continue, and </tspan>
+    <tspan x="1045" dy="32">running jobs keep running</tspan>
+  </text>
+
+  
+  <rect x="70" y="815" width="1460" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="862" font-family="sans-serif" font-size="26" font-weight="bold" text-anchor="middle" fill="#207448">Like a second pilot who reads the same checklist.</text>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p2-0222-ip-addr-anatomy",
+  "title": "Read the first line of ip addr: flags, MTU and qdisc, then the address lines",
+  "anchor": "## 2. The `ip` command family",
+  "spec": "A command-output anatomy figure. At the top, a monospace sample line drawn as a long bar: '2: enp0s31f6: <BROADCAST,MULTICAST,UP,LOWER_UP> mtu 1500 qdisc fq_codel state UP'. Callout boxes with leader lines to parts of the line. Callout 1, green: 'UP: enabled in software (admin)'. Callout 2, orange outline: 'LOWER_UP: carrier detected, the cable and switch are live. NO-CARRIER means no link'. Callout 3: 'mtu 1500: largest packet the interface accepts'. Callout 4: 'qdisc fq_codel: egress scheduler'. Callout 5: 'state UP: the operational state'. Below the bar, a second sample box in monospace: 'link/ether 40:8d:5c:fc:24:1f' with the callout 'MAC address' and 'inet 10.23.2.4/24 scope global' with the callout 'IPv4 address and prefix length, scope global'. A third sample: 'valid_lft 86054sec' with the callout 'lifetime: DHCP and SLAAC addresses expire'. A side note: 'UP without LOWER_UP: the port is enabled, but no cable or far-side link is live.' Caption: 'Read the link line first, then the address lines.'",
+  "alt": "The first line of ip addr shows the UP and LOWER_UP flags, MTU, qdisc and state, and the address lines show the MAC, IPv4 address and lifetime.",
+  "cap": "The first line of ip addr shows whether the interface is enabled and has carrier, and the address lines show its MAC, address and lifetime."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p2-0222-recvq-sendq",
+  "title": "Recv-Q and Send-Q mean different things on a listening socket and a connected socket",
+  "anchor": "### Inspecting sockets",
+  "spec": "Two side-by-side panels with green headings. Left panel, heading 'LISTEN socket (ss -ltn)': a box 'listening socket on port 443' at the top, below it a queue drawn as a row of slots labelled 'accept queue', with some slots filled by small connection tokens. Label on the filled slots: 'Recv-Q: completed connections waiting for accept()'. Label on the whole row: 'Send-Q: queue capacity, min(backlog, somaxconn)'. Orange-outlined note under the queue: 'When Recv-Q reaches Send-Q, new connections are dropped and counted as ListenOverflows.' Right panel, heading 'ESTAB socket (ss -tn)': a box 'connected socket' with two buffers beneath it. Buffer 1: 'receive buffer: Recv-Q = bytes not yet read by the application'. Buffer 2: 'send buffer: Send-Q = bytes not yet acknowledged by the peer'. Note: 'Recv-Q that stays above zero means the application is not reading.' Caption: 'Read Recv-Q and Send-Q together with the socket state.'",
+  "alt": "On a listening socket Recv-Q counts connections waiting for accept and Send-Q is the queue capacity, while on a connected socket they count unread and unacknowledged bytes.",
+  "cap": "On a listening socket Recv-Q counts waiting connections and Send-Q is the queue limit, while on a connected socket they count unread and unacknowledged bytes."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p2-0222-topdown-ladder",
+  "title": "Work the network stack from the application down to the wire, one check per step",
+  "anchor": "## 8. Putting it together: a top-down and bottom-up checklist",
+  "spec": "A vertical ladder of eight numbered steps from the top to the bottom, drawn as stacked boxes connected by downward arrows. Top label, grey: 'Application symptom'. Step 1 box: 'Process listening? ss -tulpn'. Step 2 box, orange outline: 'Local and peer connect: nc -zv. Refused means a RST, timed out means a drop'. Step 3 box: 'DNS and proxy: getent hosts, env grep proxy'. Step 4 box: 'Route and source: ip route get, ip rule'. Step 5 box: 'Firewall and conntrack: nft list ruleset, conntrack'. Step 6 box: 'Neighbour: ip neigh shows REACHABLE or FAILED'. Step 7 box: 'Interface health: ip -s link, ethtool'. Step 8 box, green: 'Capture packets: tcpdump on the interface'. Bottom label, grey: 'Wire'. A thin upward arrow on the right side labelled 'bottom-up: counters rising, go from hardware up'. Caption: 'Choose the direction from the evidence you already have.'",
+  "alt": "An eight-step top-down checklist moves from listening sockets and connection tests through DNS, routing, firewall, neighbour, interface health and packet capture to the wire.",
+  "cap": "The top-down checklist moves from the listening socket and connection test through DNS, routing, firewall, neighbour and interface checks to a packet capture."
+ }
+]

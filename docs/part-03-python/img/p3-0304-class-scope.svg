@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A class body is not a scope for its methods: classscope3 prints 2 and 3</title>
+  <desc>Nested box scope diagram showing that Python method execution skips the enclosing class body for unqualified name lookup under LEGB, but resolves attributes through self via inheritance.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1 L 8 5 L 0 9 Z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1 L 8 5 L 0 9 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">A class body is not a scope for its methods:</text>
+  <text x="800" y="105" text-anchor="middle" font-family="monospace" font-size="38" font-weight="bold" fill="#303a36">classscope3 prints 2 and 3</text>
+
+  
+
+  
+  <rect x="40" y="140" width="940" height="910" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <path d="M 68 165 L 98 165 L 110 177 L 110 215 L 68 215 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 98 165 L 98 177 L 110 177" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="76" y1="187" x2="102" y2="187" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="76" y1="199" x2="96" y2="199" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="130" y="197" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">module: X = 1</text>
+
+  
+  <rect x="60" y="225" width="900" height="805" rx="14" fill="#f0f6f2" stroke="#207448" stroke-width="2.5"/>
+  
+  <rect x="80" y="250" width="46" height="46" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 93 263 L 88 273 L 93 283" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 113 263 L 118 273 L 113 283" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="103" cy="273" r="3" fill="#207448"/>
+  
+  <text x="145" y="285" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">def nester(): X = 2  (enclosing function scope E)</text>
+
+  
+  <rect x="370" y="320" width="570" height="690" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="390" y="340" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="390" y1="360" x2="438" y2="360" stroke="#207448" stroke-width="3"/>
+  <circle cx="402" cy="351" r="2.5" fill="#207448"/>
+  <circle cx="414" cy="351" r="2.5" fill="#207448"/>
+  <circle cx="426" cy="351" r="2.5" fill="#207448"/>
+  <path d="M 404 374 L 424 374" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="455" y="362" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">
+    <tspan x="455" dy="0">class C: X = 3</tspan>
+    <tspan x="455" dy="34">  (class attribute C.X)</tspan>
+  </text>
+
+  
+  <rect x="400" y="750" width="510" height="230" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <rect x="420" y="770" width="46" height="46" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 432 785 L 441 793 L 432 801" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="443" y1="801" x2="453" y2="801" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="480" y="795" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="480" dy="0">def method1(self):</tspan>
+    <tspan x="480" dy="38">print(X) ; print(self.X)</tspan>
+  </text>
+
+  
+  <path d="M 400 865 L 95 865 L 95 295 L 135 295" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="125" y="440" width="225" height="280" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="1.5"/>
+  <text x="138" y="475" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="138" dy="0">print(X):</tspan>
+    <tspan x="138" dy="34">unqualified name</tspan>
+    <tspan x="138" dy="34">follows LEGB,</tspan>
+    <tspan x="138" dy="34">skips the class,</tspan>
+    <tspan x="138" dy="34">finds X in nester:</tspan>
+    <tspan x="138" dy="34">prints 2</tspan>
+  </text>
+
+  
+  <line x1="730" y1="750" x2="730" y2="425" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="395" y="460" width="310" height="235" rx="8" fill="#f9fbf9" stroke="#207448" stroke-width="1.5"/>
+  <text x="412" y="498" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="412" dy="0">print(self.X):</tspan>
+    <tspan x="412" dy="36">goes through self,</tspan>
+    <tspan x="412" dy="36">the inheritance search</tspan>
+    <tspan x="412" dy="36">reaches C.X:</tspan>
+    <tspan x="412" dy="36">prints 3</tspan>
+  </text>
+
+  
+
+  
+  <rect x="1010" y="140" width="550" height="910" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="1035" y="160" width="46" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 1049 160 L 1049 155 L 1067 155 L 1067 160" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1047" y1="175" x2="1069" y2="175" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="1047" y1="187" x2="1069" y2="187" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="1047" y1="199" x2="1061" y2="199" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="1105" y="200" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Rules</text>
+
+  
+  <rect x="1030" y="235" width="510" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+  <text x="1046" y="272" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1046" dy="0">a class body runs in its own local</tspan>
+    <tspan x="1046" dy="34">namespace, which becomes the</tspan>
+    <tspan x="1046" dy="34">class's attribute dictionary</tspan>
+  </text>
+
+  
+  <rect x="1030" y="385" width="510" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+  <text x="1046" y="425" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1046" dy="0">a class is not an enclosing scope for</tspan>
+    <tspan x="1046" dy="34">the methods inside it</tspan>
+  </text>
+
+  
+  <rect x="1030" y="510" width="510" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+  <text x="1046" y="550" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1046" dy="0">methods reach class attributes through</tspan>
+    <tspan x="1046" dy="34">self.attr or ClassName.attr</tspan>
+  </text>
+
+  
+  <rect x="1030" y="635" width="510" height="195" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+  <text x="1046" y="672" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1046" dy="0">class attributes are shared, assigning through</tspan>
+    <tspan x="1046" dy="34">an instance only shadows them:</tspan>
+    <tspan x="1046" dy="34">node.cluster = x creates an instance</tspan>
+    <tspan x="1046" dy="34">attribute and Node.cluster stays the same</tspan>
+  </text>
+
+  
+  <rect x="1030" y="845" width="510" height="175" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+  <text x="1046" y="885" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1046" dy="0">a list or dict defined at class level is</tspan>
+    <tspan x="1046" dy="34">shared by every instance; create</tspan>
+    <tspan x="1046" dy="34">per-instance mutable state in __init__</tspan>
+  </text>
+
+  
+  <rect x="40" y="1075" width="1520" height="90" rx="12" fill="#207448"/>
+  <text x="800" y="1132" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A class body holds names, but it is not a place a method can see</text>
+</svg>

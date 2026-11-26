@@ -40,17 +40,9 @@ As an SRE you already do this in incidents. You state a hypothesis, test it, and
 
 An hour with one or two problems leaves little slack. If there are two problems, you have about 25 minutes each plus a buffer. If there is one problem, the interviewer will probably add a follow-up. Use the same seven steps every time, so you never wonder what to do next. A fixed sequence also gives you something to glance at when your mind goes blank, which happens to almost everyone once or twice in a round.
 
-```mermaid
-flowchart LR
-  A["1 Clarify<br/>2 min"] --> B["2 Examples<br/>3 min"]
-  B --> C["3 Brute force<br/>3 min"]
-  C --> D["4 Optimise<br/>5 min"]
-  D --> E["5 Code<br/>10 min"]
-  E --> F["6 Test by hand<br/>5 min"]
-  F --> G["7 Complexity<br/>2 min"]
-  F -.->|"bug found"| E
-  D -.->|"stuck"| C
-```
+![The 60-minute structure](./img/m20-08-1.svg)
+
+*Figure 20.8.1. The 60-minute structure, as a diagram.*
 
 Clarify means asking about input size, input type, duplicates, empty input, and what to return when there is no answer. Think of it as the questions a careful engineer asks before opening a ticket. Examples means writing two small cases and one edge case on the screen, with the expected output. Brute force means saying the obvious solution and its cost, even if you will not code it. Optimise means asking what the brute force repeats, then removing that repetition with a hash map, a sort, a heap or a window.
 
@@ -67,6 +59,10 @@ Ask three kinds of question. Ask about the input: size, type, range, sorted or n
 Then write the examples as the interviewer's contract. In the harness later in this chapter, an example is a pair of arguments and expected value, so your examples become tests with no extra typing. If you wrote "aaa goes to a3" and "abc stays abc", you have also settled the rule for results that are not shorter. **State your assumptions as examples, and let the interviewer correct them in the first three minutes instead of the last three.**
 
 ### 4. How to think aloud without rambling
+
+![A spoken sentence split into three parts for idea, cost and check, shown for a quadratic loop and a dictionary lookup.](./img/p2-2008-three-part-sentence.svg)
+
+*Figure 20.8.2. A think-aloud sentence has three parts, the idea, its cost and the check, which gives the interviewer something to react to.*
 
 Thinking aloud is a skill with a shape. Use short, structured sentences with a fixed vocabulary. "My first idea is a double loop, which is quadratic. The repeated work is looking up a complement, so a dictionary should make that constant time. I will check with the example." That takes a few seconds to say, and it gives the interviewer three things to react to: the idea, the cost and the check. Practise the shape until it comes out without effort.
 
@@ -97,6 +93,14 @@ A useful sentence to have ready is "I have a correct version of the slow approac
 **When stuck, shrink the example, never the silence.**
 
 ### 6. Writing code that runs first time in a plain editor
+
+![A loop that takes s[1:] on every step copies a shrinking list each time so the total cost is quadratic, while passing an index copies nothing, and deque popleft replaces list pop(0).](./img/p3-2008-slice-copy-cost.svg)
+
+*Figure 20.8.3. Pass indexes instead of slicing, and use a deque instead of pop(0), because each slice or pop(0) touches every remaining item.*
+
+![A hand trace of compress on aaa and aa, showing the run character, run length and the final length comparison at each step.](./img/x08-compress-trace.svg)
+
+*Figure 20.8.4. Tracing the example by hand shows each variable at each step, including the final comparison that decides between the packed form and the original.*
 
 A secondary source says some rounds use a plain editor and do not let you run the code. Assume the worst. Picture a shared document with no run button, and an interviewer watching you type. In that case the main danger is not the algorithm. It is a typo, an off-by-one error, or a variable that was never defined. The defence is writing in a style that is easy to read back, because you will be reading it back in your head.
 
@@ -138,6 +142,10 @@ The line after the loop is the classic bug. The last run is never closed inside 
 **Write the plain version, trace it once, and only then consider whether it needs to be shorter.**
 
 ### 7. Testing by hand with edge-case checklists
+
+![Five input types, each with the edge-case probes to try, such as empty, duplicates and touching ends.](./img/p2-2008-edge-checklists.svg)
+
+*Figure 20.8.5. Edge-case probes for strings, lists, two lists, intervals and numbers, to run before saying the code works.*
 
 The interviewer asked you to "review code for errors before submitting", in the official page's words. Do it in a fixed order, so the review does not depend on your mood. Trace the example you wrote at the start. Then trace the smallest input. Then trace one input that hits the special branch, such as a repeat at the end of the string. Say the values of the variables as you go, because a spoken value is easier for the interviewer to follow than a silent check.
 
@@ -242,6 +250,10 @@ The tests in `test_c08_check.py` check the harness itself, including the case wh
 **Retype the harness once a week until you can write it in five minutes.**
 
 ### 9. Python tools that save time
+
+![A table of standard library calls from Counter, deque, heapq and bisect, each with the exact result verified on Python 3.12.](./img/p2-2008-stdlib-results.svg)
+
+*Figure 20.8.6. Verified results of common Python standard library calls, including Counter, deque with maxlen, heapq and bisect edge cases.*
 
 You are strong in Python, so the point here is to know exact behaviours, because the interviewer will ask "what does that return?" Every result below was produced by running `code/part20/c08_stdlib_tour.py` under Python 3.12.7 on 2026-11-09. The Fluent Python book, chapter 3, says that dict keeps insertion order since Python 3.6, which matters later. A tool you know by name is not enough. You need to know what it returns on the edge cases.
 
@@ -369,6 +381,14 @@ The differences to remember are these. A missing map key returns the zero value,
 
 ### 11. Pitfalls that cost points
 
+![A function with a default list argument keeps one list object across calls so the second call returns one and two together, while a None default creates a new list each call.](./img/p3-2008-mutable-default.svg)
+
+*Figure 20.8.7. Use None as the default argument and create the list inside the function.*
+
+![Multiplying a list of lists repeats one shared row, while a comprehension builds a separate row for each position.](./img/x08-grid-aliasing.svg)
+
+*Figure 20.8.8. Repeating a list with the multiply operator copies references to the same row, so a comprehension is needed for independent rows.*
+
 These are the errors that wreck a correct idea. All of them are in `code/part20/c08_pitfalls.py`, with tests. The outputs below were run on Python 3.12.7. Each one is small, and each one has cost someone a round, so they are worth a slow read now.
 
 A mutable default is shared between calls. Picture a function that collects items into a list, where the list is the default argument. The first call fills it, and the second call sees the first call's items too. Fluent Python, chapter 6, shows it with a bus class and says the fix is `None` as the default. Learning Python, chapter 18, warns the same way. Calling `append_bad(1)` and then `append_bad(2)` returns the same list object both times, holding `[1, 2]`. The good version, which creates the list inside the function, returns `[1]` then `[2]`.
@@ -403,6 +423,10 @@ Changing a list while looping over it skips items. Removing the even numbers fro
 
 ### 12. Follow-ups: when the parameters change
 
+![Four changed parameters, such as data too big for memory or a thread-safety requirement, each matched with a prepared answer.](./img/p2-2008-param-change.svg)
+
+*Figure 20.8.9. Four common changes to a coding problem, each paired with the standard answer and the assumption it breaks.*
+
 Nebius lists "adapt if parameters change". Expect the interviewer to say: "Now the input has a billion lines." Or: "Now it must be thread-safe." Or: "Now the list is sorted." These are not traps. They test whether you understand why your solution works, and a solution you understand bends without breaking.
 
 Prepare standard answers. If the data does not fit in memory, process it as a stream and keep only counters, or use a bounded heap of size k. If it must be thread-safe, say which operations need a lock and where. If the input is already sorted, say what you can now skip, such as the sort or the hash map. If the time limit is tight, say what you would trade, such as memory for speed. Having these ready means the follow-up becomes a short conversation.
@@ -412,6 +436,10 @@ For the top-k errors question at the start, the answer has three layers. The sim
 **When the parameters change, say what assumption in your solution just broke.**
 
 ### 13. A four-week practice routine
+
+![A four-week practice plan with the focus and session time for each week, ending in full mock rounds.](./img/p2-2008-four-week-plan.svg)
+
+*Figure 20.8.10. The four-week practice routine, moving from language basics to full mock rounds, with a short test at the end of each week.*
 
 The plan fits a person with a job. It is my suggestion and not a Nebius requirement. Budget about five hours a week, and treat the weeks as a sequence where each one builds on the last. The problem set is in c20-11 and the patterns are in c20-09.
 
@@ -484,6 +512,10 @@ Follow-up: "What if I want the output in place, in a list of characters?" That n
 
 ### Scenario 2: top error endpoints from a log
 
+![Three layers for the top k error endpoints problem: a Counter with most_common, a bounded heap of size k, and sharding by a hash of the endpoint with merged per-worker top k lists.](./img/p3-2008-topk-scale-ladder.svg)
+
+*Figure 20.8.11. Memory follows the number of distinct keys and not the number of lines, so the answer changes only when the distinct keys no longer fit.*
+
 A log is full of lines from a busy gateway, and the on-call engineer wants the worst endpoints by name. Problem: given lines like `10.0.0.7 - GET /v1/chat 503 12ms`, return the three endpoints with the most 5xx responses.
 
 This is the kind of question an on-call engineer asks at a bad moment. The answer has to be right, and it has to be explainable in a sentence to a manager who is waiting. A clean counter and a clear tie rule make both possible.
@@ -497,6 +529,10 @@ Edge cases. An empty log. A line with no status code. All counts equal. `k` larg
 Follow-up: memory. If the endpoint set is bounded, a `Counter` is fine at any log size, because memory depends on distinct endpoints and not lines. Say that. If the distinct set is huge, shard by hash as described before. The point to make is that memory tracks the number of keys, not the number of lines, and that is the fact the interviewer is checking for.
 
 ### Scenario 3: you are stuck on merge intervals
+
+![Merge intervals: sort by start, then extend the last merged interval whenever the next start is within its end.](./img/x08-merge-intervals-sorted.svg)
+
+*Figure 20.8.12. Once intervals are sorted by start, each new interval can only overlap the most recent merged interval, so one sweep is enough.*
 
 A scheduling tool has produced overlapping bookings, and you need to merge them before the report goes out. Problem: merge overlapping intervals. You have drawn two examples and cannot see the algorithm yet.
 

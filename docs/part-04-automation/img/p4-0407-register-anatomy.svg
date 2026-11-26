@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What register keeps, the skipped trap and loop results</title>
+  <desc>Visual infographic explaining Ansible register dictionary structure, skipped task trap, loop results list, and operational rules.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">What register keeps,</text>
+  <text x="800" y="104" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">the skipped trap and loop results</text>
+
+  
+
+  
+  <rect x="40" y="130" width="480" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="56" y="145" width="448" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="72" y="176">nvidia-smi</tspan>
+    <tspan x="72" y="204">--query-gpu=driver_version</tspan>
+    <tspan x="72" y="232">--format=csv,noheader</tspan>
+  </text>
+
+  
+  <rect x="56" y="252" width="448" height="382" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  
+  <rect x="72" y="265" width="36" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="80" y1="278" x2="92" y2="278" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="80" y1="292" x2="98" y2="292" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+
+  
+  <text x="120" y="296" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">register: drv</text>
+
+  
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="72" y="330" font-family="monospace" font-weight="bold" fill="#207448">rc </tspan>
+    <tspan font-family="sans-serif">(return code,</tspan>
+    <tspan x="72" y="356">zero usually success)</tspan>
+  </text>
+
+  
+  <rect x="66" y="370" width="428" height="92" rx="6" fill="#fef3e7" stroke="#db8129" stroke-width="2" />
+  <text font-family="sans-serif" font-size="24" fill="#db8129">
+    <tspan x="76" y="398" font-family="monospace" font-weight="bold">stdout_lines </tspan>
+    <tspan font-family="sans-serif">(output split</tspan>
+    <tspan x="76" y="426">into one list item per line)</tspan>
+  </text>
+
+  
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="76" y="492">stdout</tspan>
+    <tspan x="76" y="526">stderr</tspan>
+    <tspan x="76" y="560">changed</tspan>
+    <tspan x="76" y="594">failed</tspan>
+
+    <tspan x="280" y="492">start</tspan>
+    <tspan x="280" y="526">end</tspan>
+    <tspan x="280" y="560">delta</tspan>
+    <tspan x="280" y="594">cmd</tspan>
+  </text>
+
+
+  
+  <rect x="560" y="130" width="480" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <path d="M 605 146 L 635 146 C 635 174 620 192 605 198 C 590 192 575 174 575 146 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  <line x1="605" y1="156" x2="605" y2="174" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <circle cx="605" cy="184" r="2.5" fill="#207448" />
+
+  
+  <text x="650" y="182" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Skipped trap</text>
+
+  
+  <rect x="576" y="208" width="448" height="426" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="592" y="240">a registered variable exists</tspan>
+    <tspan x="592" y="268">even when its task was skipped:</tspan>
+    <tspan x="592" y="296">it carries </tspan>
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">skipped: true</tspan>
+    <tspan> and</tspan>
+    <tspan x="592" y="324">has no </tspan>
+    <tspan font-family="monospace" font-weight="bold">stdout_lines;</tspan>
+    <tspan x="592" y="352">a driver check running only</tspan>
+    <tspan x="592" y="380">on GPU nodes is skipped on a</tspan>
+    <tspan x="592" y="408">CPU-only node, and the</tspan>
+    <tspan x="592" y="436">next task reading</tspan>
+    <tspan x="592" y="464" font-family="monospace" font-weight="bold">drv.stdout_lines[0]</tspan>
+    <tspan> fails</tspan>
+    <tspan x="592" y="492">with a missing value error;</tspan>
+    <tspan x="592" y="524" font-weight="bold" fill="#207448">test first: drv is not skipped,</tspan>
+    <tspan x="592" y="552">or </tspan>
+    <tspan font-family="monospace" font-weight="bold">drv is defined</tspan>
+    <tspan> and</tspan>
+    <tspan x="592" y="580" font-family="monospace" font-weight="bold">drv.rc == 0</tspan>
+  </text>
+
+
+  
+  <rect x="1080" y="130" width="480" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <path d="M 1115 172 A 16 16 0 1 1 1145 172" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <path d="M 1145 172 A 16 16 0 1 1 1115 172" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <polygon points="1143,163 1151,172 1140,178" fill="#207448" />
+  <polygon points="1117,181 1109,172 1120,166" fill="#207448" />
+
+  
+  <text x="1170" y="182" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">loop and register</text>
+
+  
+  <rect x="1096" y="208" width="448" height="426" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1116" y="258">a task with loop registers a</tspan>
+    <tspan x="1116" y="296">results list, one entry per</tspan>
+    <tspan x="1116" y="334">item, each a full result</tspan>
+    <tspan x="1116" y="372">dictionary:</tspan>
+  </text>
+
+  
+  <rect x="1116" y="405" width="408" height="64" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1132" y="445" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">drv.results[0].stdout</text>
+
+  <text x="1116" y="525" font-family="sans-serif" font-size="24" fill="#303a36">for the first item</text>
+
+
+  
+
+  
+  <rect x="40" y="675" width="410" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="75" cy="745" r="24" fill="#207448" />
+  <text x="75" y="753" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="115" y="730">register drv keeps the</tspan>
+    <tspan x="115" y="765">whole raw output</tspan>
+  </text>
+
+  
+  <line x1="450" y1="745" x2="495" y2="745" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="495" y="675" width="610" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="530" cy="745" r="24" fill="#207448" />
+  <text x="530" y="753" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="570" y="730">set_fact current_driver:</tspan>
+    <tspan x="570" y="765">{{ drv.stdout_lines[0] | trim }}</tspan>
+  </text>
+
+  
+  <line x1="1105" y1="745" x2="1150" y2="745" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1150" y="675" width="410" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="1185" cy="745" r="24" fill="#207448" />
+  <text x="1185" y="753" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1225" y="720" font-family="monospace">debug var: drv</tspan>
+    <tspan x="1225" y="750">shows the whole</tspan>
+    <tspan x="1225" y="780">structure</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="840" width="1520" height="250" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="60" y="860" width="700" height="210" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" y="905">put logic in failed_when and changed_when</tspan>
+    <tspan x="80" y="940">instead of post-processing by hand;</tspan>
+    <tspan x="80" y="995">a read-only command such as nvidia-smi</tspan>
+    <tspan x="80" y="1030">--query-gpu carries changed_when: false;</tspan>
+  </text>
+
+  
+  <rect x="780" y="860" width="760" height="210" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" y="895">keep the raw output in register and the cleaned</tspan>
+    <tspan x="800" y="928">value in set_fact so each variable does one job;</tspan>
+    <tspan x="800" y="972">cacheable: true on an expensive computed fact;</tspan>
+    <tspan x="800" y="1016">set_fact is a label on a jar,</tspan>
+    <tspan x="800" y="1050">not a programming loop</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="1115" width="1520" height="65" rx="10" fill="#207448" />
+  <text x="800" y="1156" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">When the cleaned value looks wrong, you still have the raw output to compare</text>
+
+</svg>

@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Dedicated endpoint lifecycle as a state machine</title>
+  <desc>State machine diagram illustrating dedicated endpoint lifecycle states disabled, enabled, and deleted, with create, enable, disable, update, and delete transitions, validator rules, reconcile loop note, and regional architecture.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Dedicated endpoint lifecycle as a state machine</text>
+
+  
+  
+  <rect x="60" y="115" width="720" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g transform="translate(85, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 C 48 34 28 48 28 48 C 28 48 8 34 8 14 Z"/>
+    <polyline points="18,27 25,34 38,19" stroke-width="3.5"/>
+  </g>
+  <text x="165" y="155" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">rejects a GPU type outside the four</tspan>
+    <tspan x="165" dy="29">public choices, a region outside EU</tspan>
+    <tspan x="165" dy="29">and US, fewer than one GPU per replica,</tspan>
+    <tspan x="165" dy="29">and a maximum below the minimum;</tspan>
+    <tspan x="165" dy="29">a bad request costs only a rejected call</tspan>
+  </text>
+
+  
+  <rect x="820" y="115" width="720" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g transform="translate(845, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 8 A 20 20 0 1 1 11 20"/>
+    <polyline points="6,12 11,20 19,17"/>
+    <circle cx="28" cy="28" r="6" fill="#207448"/>
+  </g>
+  <text x="925" y="160" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">control plane keeps reading desired</tspan>
+    <tspan x="925" dy="35">state, looking at what is running</tspan>
+    <tspan x="925" dy="35">and taking the smallest step</tspan>
+    <tspan x="925" dy="35">that closes the gap</tspan>
+  </text>
+
+  
+  
+  <circle cx="85" cy="525" r="24" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="85" cy="525" r="16" fill="#207448"/>
+
+  
+  <line x1="109" y1="525" x2="520" y2="525" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="312" y="390" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="312" dy="0">create (from nothing)</tspan>
+    <tspan x="312" dy="32">leads to disabled:</tspan>
+    <tspan x="312" dy="32">validate the spec before</tspan>
+    <tspan x="312" dy="32">any GPU is reserved</tspan>
+  </text>
+
+  
+  <rect x="520" y="430" width="240" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(612, 455)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <line x1="22" y1="18" x2="22" y2="38"/>
+    <line x1="34" y1="18" x2="34" y2="38"/>
+  </g>
+  <text x="640" y="565" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">disabled</text>
+
+  
+  <line x1="760" y1="445" x2="1260" y2="445" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="1010" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1010" dy="0">enable: disabled to enabled:</tspan>
+    <tspan x="1010" dy="35">data plane starts replicas</tspan>
+  </text>
+
+  
+  <line x1="1260" y1="575" x2="760" y2="575" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="1010" y="615" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1010" dy="0">disable: enabled to disabled:</tspan>
+    <tspan x="1010" dy="31">traffic stops, replicas scale</tspan>
+    <tspan x="1010" dy="31">to zero, spec kept</tspan>
+  </text>
+
+  
+  <rect x="1260" y="430" width="240" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(1352, 455)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <polygon points="23,17 38,28 23,39" fill="#207448" stroke-width="2"/>
+  </g>
+  <text x="1380" y="565" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">enabled</text>
+
+  
+  <path d="M 1350 610 C 1350 680 1430 680 1430 610" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="1240" y="730" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1240" dy="0">update: allowed in either state,</tspan>
+    <tspan x="1240" dy="35">state unchanged, may start a rollout</tspan>
+  </text>
+
+  
+  <line x1="640" y1="610" x2="640" y2="740" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <text x="300" y="655" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="300" dy="0">delete: only from disabled:</tspan>
+    <tspan x="300" dy="33">forces a deliberate</tspan>
+    <tspan x="300" dy="33">two-step removal</tspan>
+  </text>
+
+  
+  <rect x="520" y="740" width="240" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(612, 755)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <circle cx="28" cy="28" r="14" fill="#207448"/>
+  </g>
+  <text x="640" y="850" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">deleted</text>
+
+  
+  <rect x="60" y="920" width="1480" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g transform="translate(85, 980)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="12" rx="3"/>
+    <rect x="6" y="24" width="44" height="12" rx="3"/>
+    <rect x="6" y="40" width="44" height="12" rx="3"/>
+    <circle cx="14" cy="14" r="2" fill="#207448"/>
+    <circle cx="14" cy="30" r="2" fill="#207448"/>
+    <circle cx="14" cy="46" r="2" fill="#207448"/>
+    <line x1="24" y1="14" x2="42" y2="14" stroke-width="2.5"/>
+    <line x1="24" y1="30" x2="42" y2="30" stroke-width="2.5"/>
+    <line x1="24" y1="46" x2="42" y2="46" stroke-width="2.5"/>
+  </g>
+  <text x="165" y="975" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">control plane holds spec and lifecycle and sends desired state</tspan>
+    <tspan x="165" dy="37">to the EU and US regional data planes; replicas pull weights from the weights hub;</tspan>
+    <tspan x="165" dy="37">client traffic goes through the router to replicas</tspan>
+  </text>
+</svg>

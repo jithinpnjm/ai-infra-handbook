@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Waiting high and KV low means short of replicas</title>
+  <desc>Decision table and triage flowchart explaining why a high waiting queue combined with low KV cache usage signals a replica bottleneck rather than a GPU memory exhaustion issue.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 2 L 11 7 L 2 12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Waiting high and KV low means short of replicas</text>
+
+  
+  <rect x="60" y="105" width="1480" height="435" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="85" y="125" width="370" height="54" rx="27" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="117" cy="152" r="16" fill="#207448"/>
+  <path d="M 110 152 L 115 157 L 125 146" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="148" y="161" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">Confirm the pattern</text>
+
+  
+  <rect x="475" y="125" width="675" height="54" rx="12" fill="#f9fbf9" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(492, 134)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="15"/>
+    <path d="M 7 18 L 13 18 L 16 11 L 20 25 L 23 18 L 29 18"/>
+  </g>
+  <text x="542" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Token throughput flat or high separates this from a hang</text>
+
+  
+  <rect x="85" y="200" width="345" height="320" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <rect x="85" y="200" width="345" height="55" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="257" y="238" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Waiting queue</text>
+  
+  <g transform="translate(229, 275)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <rect x="4" y="6" width="48" height="12" rx="4"/>
+    <rect x="4" y="24" width="48" height="12" rx="4"/>
+    <rect x="4" y="42" width="48" height="12" rx="4"/>
+    <path d="M 38 12 L 44 12 M 38 30 L 44 30 M 38 48 L 44 48"/>
+  </g>
+  
+  <rect x="97" y="365" width="321" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text text-anchor="middle" font-size="24">
+    <tspan x="257" y="420" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="bold" fill="#207448">num_requests_waiting</tspan>
+    <tspan x="257" y="465" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">rises</tspan>
+  </text>
+
+  
+  <rect x="445" y="200" width="345" height="320" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <rect x="445" y="200" width="345" height="55" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="617" y="238" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Running batch</text>
+  
+  <g transform="translate(589, 275)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <rect x="4" y="4" width="48" height="48" rx="8"/>
+    <line x1="4" y1="20" x2="52" y2="20"/>
+    <line x1="4" y1="36" x2="52" y2="36"/>
+    <line x1="28" y1="4" x2="28" y2="52"/>
+  </g>
+  
+  <rect x="457" y="365" width="321" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text text-anchor="middle" font-size="24">
+    <tspan x="617" y="420" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="bold" fill="#207448">num_requests_running</tspan>
+    <tspan x="617" y="465" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">at the batch limit</tspan>
+  </text>
+
+  
+  <rect x="805" y="200" width="345" height="320" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <rect x="805" y="200" width="345" height="55" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="977" y="238" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">KV cache usage</text>
+  
+  <g transform="translate(949, 275)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="48" height="40" rx="6"/>
+    <path d="M 12 28 L 22 28 M 34 28 L 44 28"/>
+    <path d="M 28 14 L 28 34"/>
+    <circle cx="28" cy="34" r="3" fill="#207448"/>
+  </g>
+  
+  <rect x="817" y="365" width="321" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text text-anchor="middle" font-size="24">
+    <tspan x="977" y="415" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="bold" fill="#207448">kv_cache_usage_perc</tspan>
+    <tspan x="977" y="450" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">below about</tspan>
+    <tspan x="977" y="482" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">90 percent</tspan>
+  </text>
+
+  
+  <path d="M 1150 360 L 1172 360" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <rect x="1175" y="125" width="345" height="395" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(1319, 200)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="14" rx="3"/>
+    <rect x="4" y="24" width="48" height="14" rx="3"/>
+    <rect x="4" y="42" width="48" height="14" rx="3"/>
+    <circle cx="12" cy="13" r="2" fill="#207448"/>
+    <circle cx="12" cy="31" r="2" fill="#207448"/>
+    <circle cx="12" cy="49" r="2" fill="#207448"/>
+    <path d="M 38 13 L 44 13 M 38 31 L 44 31 M 38 49 L 44 49"/>
+  </g>
+  
+  <text text-anchor="middle" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="1347" y="340">Short of replicas,</tspan>
+    <tspan x="1347" y="385">not memory</tspan>
+  </text>
+
+  
+  <path d="M 1347 520 L 1347 550 L 415 550 L 415 576" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <path d="M 1347 550 L 1185 550 L 1185 576" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="60" y="580" width="710" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 605)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24"/>
+    <path d="M 28 14 L 28 30 L 38 36"/>
+    <path d="M 18 10 L 38 10"/>
+  </g>
+  
+  <text font-size="25" fill="#303a36">
+    <tspan x="155" y="628" font-weight="bold" fill="#207448">Mitigate now: </tspan>
+    <tspan x="155" y="660">add replicas if spare GPUs, or </tspan>
+    <tspan x="155" y="692">shed load at the router</tspan>
+  </text>
+
+  
+  <rect x="85" y="730" width="660" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(105, 775)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <line x1="4" y1="12" x2="44" y2="12"/>
+    <line x1="4" y1="28" x2="44" y2="28"/>
+    <line x1="4" y1="44" x2="44" y2="44"/>
+    <circle cx="16" cy="12" r="4" fill="#e8f1ea"/>
+    <circle cx="34" cy="28" r="4" fill="#e8f1ea"/>
+    <circle cx="22" cy="44" r="4" fill="#e8f1ea"/>
+  </g>
+  
+  <text font-size="24" fill="#303a36">
+    <tspan x="175" y="776" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-weight="bold" fill="#207448">max_num_queued_reqs</tspan>
+    <tspan x="175" y="814" font-family="system-ui, -apple-system, sans-serif">returns HTTP 503</tspan>
+    <tspan x="175" y="852" font-family="system-ui, -apple-system, sans-serif">at the in-flight limit</tspan>
+  </text>
+
+  
+  <rect x="830" y="580" width="710" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(855, 605)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24"/>
+    <path d="M 16 36 L 24 28 L 32 32 L 40 18"/>
+    <path d="M 32 18 L 40 18 L 40 26"/>
+  </g>
+  
+  <text font-size="25" fill="#303a36">
+    <tspan x="925" y="628" font-weight="bold" fill="#207448">Fix later: </tspan>
+    <tspan x="925" y="660">autoscale on queue depth</tspan>
+    <tspan x="925" y="692">and queue time, </tspan>
+    <tspan x="925" y="724">not GPU utilisation</tspan>
+  </text>
+
+  
+  <g transform="translate(925, 755)">
+    <rect x="0" y="0" width="575" height="130" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    
+    <path d="M 30 100 Q 140 95 240 40 T 480 25" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 30 50 L 480 50" fill="none" stroke="#303a36" stroke-width="2" stroke-dasharray="6 6" stroke-linecap="round"/>
+    
+    <g transform="translate(505, 35)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="0" y1="30" x2="0" y2="0"/>
+      <path d="M -6 8 L 0 0 L 6 8"/>
+      <line x1="18" y1="30" x2="18" y2="0"/>
+      <path d="M 12 8 L 18 0 L 24 8"/>
+    </g>
+  </g>
+
+  
+  <rect x="60" y="945" width="1480" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="992" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">If waiting is high and KV usage is low, you are short of replicas, not memory.</text>
+</svg>

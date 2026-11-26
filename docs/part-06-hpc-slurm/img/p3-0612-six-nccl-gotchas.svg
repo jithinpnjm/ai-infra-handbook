@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Six NCCL communicator and environment gotchas</title>
+  <desc>Visual infographic explaining six critical NCCL communicator lifecycle and environment configuration gotchas in distributed GPU training.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Six NCCL communicator and environment gotchas</text>
+
+  
+  <g>
+    <rect x="50" y="110" width="720" height="330" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 86 160 A 20 20 0 1 1 82 178" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="74,168 82,180 94,174" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="144" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">1 Communicators created inside</text>
+    <text x="144" y="184" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">the training loop:</text>
+    
+    <text x="78" y="224" font-family="sans-serif" font-size="24" fill="#303a36">each <tspan font-family="monospace">init_process_group</tspan> nccl does handshakes,</text>
+    <text x="78" y="258" font-family="sans-serif" font-size="24" fill="#303a36">exchanges unique IDs, builds rings and trees,</text>
+    <text x="78" y="292" font-family="sans-serif" font-size="24" fill="#303a36">allocates GPU buffers; cheap once at startup,</text>
+    <text x="78" y="326" font-family="sans-serif" font-size="24" fill="#303a36">tens of milliseconds each step against a</text>
+    <text x="78" y="360" font-family="sans-serif" font-size="24" fill="#303a36">0.5 ms collective</text>
+  </g>
+
+  
+  <g>
+    <rect x="830" y="110" width="720" height="330" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="888" cy="148" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="883" y1="155" x2="872" y2="175" stroke="#207448" stroke-width="4"/>
+    <line x1="893" y1="155" x2="904" y2="175" stroke="#207448" stroke-width="4"/>
+    <circle cx="872" cy="180" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="904" cy="180" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="928" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">2 Recreating subcommunicators</text>
+    <text x="928" y="184" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">every step:</text>
+    
+    <text x="858" y="230" font-family="sans-serif" font-size="24" fill="#303a36">call <tspan font-family="monospace">torch.distributed.new_group()</tspan> once and</text>
+    <text x="858" y="268" font-family="sans-serif" font-size="24" fill="#303a36">reuse; all ranks create and destroy in lockstep</text>
+    <text x="858" y="306" font-family="sans-serif" font-size="24" fill="#303a36">or the others wait</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="470" width="720" height="330" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 86 532 A 22 22 0 1 1 130 532" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="108" y1="532" x2="124" y2="514" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="144" y="528" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">3 Diagnostic variables left on:</text>
+    
+    <text x="78" y="578" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">NCCL_P2P_DISABLE=1</tspan> or <tspan font-family="monospace">NCCL_SHM_DISABLE=1</tspan></text>
+    <text x="78" y="614" font-family="sans-serif" font-size="24" fill="#303a36">force same-node traffic through host memory or</text>
+    <text x="78" y="650" font-family="sans-serif" font-size="24" fill="#303a36">the network, cutting bandwidth from hundreds</text>
+    <text x="78" y="686" font-family="sans-serif" font-size="24" fill="#303a36">of GB/s to tens; lower <tspan font-family="monospace">NCCL_DEBUG</tspan> from <tspan font-family="monospace">INFO</tspan></text>
+    <text x="78" y="722" font-family="sans-serif" font-size="24" fill="#303a36">to <tspan font-family="monospace">WARN</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="830" y="470" width="720" height="330" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="874" y="508" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="882" y="516" width="12" height="12" fill="#207448"/>
+    <line x1="881" y1="502" x2="881" y2="508" stroke="#207448" stroke-width="3"/>
+    <line x1="895" y1="502" x2="895" y2="508" stroke="#207448" stroke-width="3"/>
+    <line x1="881" y1="536" x2="881" y2="542" stroke="#207448" stroke-width="3"/>
+    <line x1="895" y1="536" x2="895" y2="542" stroke="#207448" stroke-width="3"/>
+    <line x1="868" y1="515" x2="874" y2="515" stroke="#207448" stroke-width="3"/>
+    <line x1="868" y1="529" x2="874" y2="529" stroke="#207448" stroke-width="3"/>
+    <line x1="902" y1="515" x2="908" y2="515" stroke="#207448" stroke-width="3"/>
+    <line x1="902" y1="529" x2="908" y2="529" stroke="#207448" stroke-width="3"/>
+    
+    <text x="928" y="508" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">4 Collapsed CPU affinity for</text>
+    <text x="928" y="544" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NCCL proxy threads:</text>
+    
+    <text x="858" y="584" font-family="sans-serif" font-size="24" fill="#303a36">a very narrow CPU mask squeezes network threads</text>
+    <text x="858" y="620" font-family="sans-serif" font-size="24" fill="#303a36">onto one core; bind each rank to its GPU local</text>
+    <text x="858" y="656" font-family="sans-serif" font-size="24" fill="#303a36">NUMA domain (GPUs 0 to 3 on NUMA node 0)</text>
+    <text x="858" y="692" font-family="sans-serif" font-size="24" fill="#303a36">and set <tspan font-family="monospace">NCCL_IGNORE_CPU_AFFINITY=1</tspan></text>
+    <text x="858" y="728" font-family="sans-serif" font-size="24" fill="#303a36">if the mask is still narrow</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="830" width="720" height="330" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 108 866 L 132 906 L 84 906 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="108" y1="879" x2="108" y2="893" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="108" cy="900" r="2" fill="#207448"/>
+    
+    <text x="144" y="892" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">5 Ignoring NCCL warnings:</text>
+    
+    <text x="78" y="942" font-family="sans-serif" font-size="24" fill="#303a36">unable to enable P2P, falling back to copy</text>
+    <text x="78" y="978" font-family="sans-serif" font-size="24" fill="#303a36">means GPUs across PCIe root complexes;</text>
+    <text x="78" y="1014" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">NET/Socket:</tspan> using Ethernet interface <tspan font-family="monospace">eth0</tspan></text>
+    <text x="78" y="1050" font-family="sans-serif" font-size="24" fill="#303a36">means <tspan font-family="monospace">eth0</tspan> was used where the fabric was</text>
+    <text x="78" y="1086" font-family="sans-serif" font-size="24" fill="#303a36">expected</text>
+  </g>
+
+  
+  <g>
+    <rect x="830" y="830" width="720" height="330" rx="12" ry="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+    
+    <path d="M 888 866 L 908 876 C 908 894 898 906 888 910 C 878 906 868 894 868 876 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 889 874 L 883 887 L 893 887 L 886 902" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="928" y="892" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">6 No fail-fast handling:</text>
+    
+    <text x="858" y="936" font-family="sans-serif" font-size="24" fill="#303a36">when one rank crashes collectives on survivors</text>
+    <text x="858" y="970" font-family="sans-serif" font-size="24" fill="#303a36">hang unless</text>
+    <text x="858" y="1004" font-family="monospace" font-size="24" fill="#303a36">TORCH_NCCL_ASYNC_ERROR_HANDLING=1;</text>
+    <text x="858" y="1038" font-family="sans-serif" font-size="24" fill="#303a36">failures are routine at scale, Meta reported</text>
+    <text x="858" y="1072" font-family="sans-serif" font-size="24" fill="#303a36">419 unexpected interruptions in 54 days on</text>
+    <text x="858" y="1106" font-family="sans-serif" font-size="24" fill="#303a36">16,384 H100 GPUs, about 8 a day</text>
+  </g>
+</svg>

@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Reading a FailedScheduling event</title>
+  <desc>Visual breakdown of a Kubernetes FailedScheduling event showing GPU resource exhaustion, untolerated taints, node affinity mismatches, preemption attempts, and diagnostic commands.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Reading a FailedScheduling event</text>
+
+  
+  <rect x="40" y="110" width="1070" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="65" y="135" width="46" height="38" rx="6" />
+    <line x1="65" y1="147" x2="111" y2="147" stroke-width="2" />
+    <path d="M 74 158 L 81 163 L 74 168" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <text x="130" y="148" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="130" dy="0">0/20 nodes are available: 8 Insufficient nvidia.com/gpu, </tspan>
+    <tspan x="130" dy="32">6 node(s) had untolerated taint {nvidia.com/gpu: present}, </tspan>
+    <tspan x="130" dy="32">6 node(s) didn&apos;t match Pod&apos;s node affinity/selector. </tspan>
+    <tspan x="130" dy="32">preemption: 0/20 nodes are available: ...</tspan>
+  </text>
+
+  
+  <rect x="1130" y="110" width="430" height="165" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="2" />
+  
+  <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 1175 140 L 1200 185 L 1150 185 Z" />
+    <line x1="1175" y1="154" x2="1175" y2="169" stroke-width="3" />
+    <circle cx="1175" cy="177" r="1.5" fill="#db8129" stroke="none" />
+  </g>
+  
+  <text x="1220" y="165" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1220" dy="0">counts are per reason </tspan>
+    <tspan x="1220" dy="34">and may overlap</tspan>
+  </text>
+
+  
+  
+  <g fill="#207448">
+    <rect x="40" y="305" width="73" height="55" rx="4" />
+    <rect x="115" y="305" width="73" height="55" rx="4" />
+    <rect x="190" y="305" width="73" height="55" rx="4" />
+    <rect x="265" y="305" width="73" height="55" rx="4" />
+    <rect x="340" y="305" width="73" height="55" rx="4" />
+    <rect x="415" y="305" width="73" height="55" rx="4" />
+    <rect x="490" y="305" width="73" height="55" rx="4" />
+    <rect x="565" y="305" width="75" height="55" rx="4" />
+  </g>
+
+  
+  <g fill="#2d925d">
+    <rect x="650" y="305" width="73" height="55" rx="4" />
+    <rect x="725" y="305" width="73" height="55" rx="4" />
+    <rect x="800" y="305" width="73" height="55" rx="4" />
+    <rect x="875" y="305" width="73" height="55" rx="4" />
+    <rect x="950" y="305" width="73" height="55" rx="4" />
+    <rect x="1025" y="305" width="75" height="55" rx="4" />
+  </g>
+
+  
+  <g fill="#3aa66f">
+    <rect x="1110" y="305" width="73" height="55" rx="4" />
+    <rect x="1185" y="305" width="73" height="55" rx="4" />
+    <rect x="1260" y="305" width="73" height="55" rx="4" />
+    <rect x="1335" y="305" width="73" height="55" rx="4" />
+    <rect x="1410" y="305" width="73" height="55" rx="4" />
+    <rect x="1485" y="305" width="75" height="55" rx="4" />
+  </g>
+
+  
+  <line x1="340" y1="360" x2="340" y2="415" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="875" y1="360" x2="875" y2="415" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="1335" y1="360" x2="1335" y2="415" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="415" width="600" height="325" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="65" y="440" width="46" height="46" rx="6" />
+    <rect x="76" y="451" width="24" height="24" rx="3" stroke-width="2" />
+    <line x1="78" y1="434" x2="78" y2="440" stroke-width="3" />
+    <line x1="98" y1="434" x2="98" y2="440" stroke-width="3" />
+    <line x1="78" y1="486" x2="78" y2="492" stroke-width="3" />
+    <line x1="98" y1="486" x2="98" y2="492" stroke-width="3" />
+    <line x1="59" y1="453" x2="65" y2="453" stroke-width="3" />
+    <line x1="59" y1="473" x2="65" y2="473" stroke-width="3" />
+    <line x1="111" y1="453" x2="117" y2="453" stroke-width="3" />
+    <line x1="111" y1="473" x2="117" y2="473" stroke-width="3" />
+  </g>
+  <text x="65" y="475" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="130" dy="0" font-size="30" font-weight="bold" fill="#207448">Insufficient GPU: </tspan>
+    <tspan x="65" dy="55" font-family="monospace">kubectl describe node n and read </tspan>
+    <tspan x="65" dy="38" font-family="monospace">Allocated resources (requests vs </tspan>
+    <tspan x="65" dy="38" font-family="monospace">allocatable); check the device </tspan>
+    <tspan x="65" dy="38" font-family="monospace">plugin; fragmentation</tspan>
+  </text>
+
+  
+  <rect x="650" y="415" width="450" height="325" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+    <path d="M 695 440 C 715 440 715 446 715 460 C 715 476 695 488 695 488 C 695 488 675 476 675 460 C 675 446 675 440 695 440 Z" />
+    <circle cx="695" cy="457" r="5" stroke-width="2.5" />
+    <line x1="695" y1="462" x2="695" y2="472" stroke-width="2.5" />
+  </g>
+  <text x="675" y="475" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="735" dy="0" font-size="30" font-weight="bold" fill="#207448">untolerated taint: </tspan>
+    <tspan x="675" dy="55">add the toleration or enable </tspan>
+    <tspan x="675" dy="42" font-family="monospace">ExtendedResourceToleration</tspan>
+  </text>
+
+  
+  <rect x="1110" y="415" width="450" height="325" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="1135" cy="452" r="8" stroke-width="3.5" />
+    <circle cx="1165" cy="452" r="8" stroke-width="3.5" />
+    <circle cx="1150" cy="478" r="8" stroke-width="3.5" />
+    <line x1="1143" y1="452" x2="1157" y2="452" />
+    <line x1="1139" y1="459" x2="1146" y2="471" />
+    <line x1="1161" y1="459" x2="1154" y2="471" />
+  </g>
+  <text x="1130" y="458" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1185" dy="0" font-size="30" font-weight="bold" fill="#207448">node affinity </tspan>
+    <tspan x="1185" dy="34" font-size="30" font-weight="bold" fill="#207448">or selector: </tspan>
+    <tspan x="1130" dy="48" font-family="monospace">kubectl get nodes -L </tspan>
+    <tspan x="1130" dy="36" font-family="monospace">nvidia.com/gpu.product,</tspan>
+    <tspan x="1130" dy="36" font-family="monospace">topology.kubernetes.io/zone; </tspan>
+    <tspan x="1130" dy="36">check GFD or NFD labels</tspan>
+  </text>
+
+  
+  <rect x="40" y="760" width="1520" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 68 788 L 108 788 L 93 812 L 93 836 L 83 836 L 83 812 Z" />
+    <line x1="76" y1="796" x2="100" y2="796" stroke-width="2" />
+  </g>
+  <text x="130" y="828" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">preemption: ... PostFilter DefaultPreemption tried and found no victims</text>
+
+  
+  <rect x="40" y="895" width="1520" height="265" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="60" y="915" width="1480" height="60" rx="8" fill="#f5f8f5" stroke="#c8d8cb" stroke-width="1.5" />
+  <path d="M 85 940 L 93 945 L 85 950" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="97" y1="950" x2="107" y2="950" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="125" y="953" font-family="monospace" font-size="24" fill="#303a36">kubectl describe pod p, events section</text>
+
+  
+  <rect x="60" y="990" width="1480" height="60" rx="8" fill="#f5f8f5" stroke="#c8d8cb" stroke-width="1.5" />
+  <path d="M 85 1015 L 93 1020 L 85 1025" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="97" y1="1025" x2="107" y2="1025" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="125" y="1028" font-family="monospace" font-size="24" fill="#303a36">kubectl get events -A --field-selector reason=FailedScheduling --sort-by=.lastTimestamp</text>
+
+  
+  <rect x="60" y="1065" width="1480" height="80" rx="8" fill="#f5f8f5" stroke="#c8d8cb" stroke-width="1.5" />
+  <path d="M 85 1095 L 93 1100 L 85 1105" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="97" y1="1105" x2="107" y2="1105" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="125" y="1098" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">kubectl logs -n kube-system -l component=kube-scheduler --tail=200 </tspan>
+    <tspan x="125" dy="32">(-v=4 for filter and score traces)</tspan>
+  </text>
+</svg>

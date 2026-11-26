@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p2-0123-five-whys",
+  "title": "Five whys: a 20 percent drop traces back three layers to a neighbour's memory",
+  "anchor": "### Five whys",
+  "spec": "A vertical chain of five boxes connected by downward arrows, each arrow labelled 'why?'. Top box, orange outline, window icon: 'Symptom: training throughput dropped 20%'. Box 2: 'Step time grew, so the all-reduce phase lengthened'. Box 3: 'One rank started that phase late, because its data loader stalls now and then'. Box 4: 'The host page cache was evicted, so the dataset was re-read from the network filesystem every epoch'. Box 5, green, bottom: 'A neighbour process on that node pins a large amount of memory, so the cache no longer fits'. A side label beside the bottom box, pointing to the action: 'Action: fix the memory budget or cgroup limits, and add a cache-hit-ratio alert.' A grey note on the left edge: 'The root cause sits three layers below the symptom.' Caption: 'Stop only when you reach something you can act on.'",
+  "alt": "A five-step chain starts from a 20 percent throughput drop and ends at a neighbour process pinning memory that evicts the page cache.",
+  "cap": "A five whys chain moves from a 20 percent throughput drop, through a late all-reduce rank and evicted page cache, to a neighbour process that pins memory."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p2-0123-queue-curve",
+  "title": "Response time climbs steeply as utilisation rises, so queues need headroom",
+  "anchor": "### Queueing theory in four lines",
+  "spec": "A line chart with the horizontal axis labelled 'Utilisation (rho)' from 0% to 100%, and the vertical axis labelled 'Response time (multiple of service time s)' from 0 to 6. A curve starts at the bottom left and rises slowly, then steeply toward the right. Labelled points on the curve: '0%: r = s' (at the bottom left, 1 s), '60%: 1.75 s' (a green dot), '80%: 3 s', '90%: 5.5 s' (an orange-outlined dot near the top right). Dashed vertical band labelled 'Target zone for latency services: about 60 to 70%'. Monospace formula box above the curve: 'r = s(2 - rho) / (2(1 - rho))' with the note 'M/D/1 queue, random arrivals, fixed service time'. Note under the chart: 'The curve diverges as utilisation nears 100%.' Caption: 'Throughput jobs can run hot. Latency services cannot.'",
+  "alt": "A queueing curve shows response time rising from one service time at zero load to 5.5 times at 90 percent utilisation, with a 60 to 70 percent target band.",
+  "cap": "Response time for a queue rises from one service time at zero load to 5.5 times at 90 percent utilisation, so latency services keep headroom."
+ }
+]

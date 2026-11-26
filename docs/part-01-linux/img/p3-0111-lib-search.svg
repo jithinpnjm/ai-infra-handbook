@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Where ld.so looks for a library, and three ways to fix a missing one</title>
+  <desc>Visual guide to the dynamic linker library search order and three methods to resolve missing library errors.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Where ld.so looks for a library, and three ways to fix a missing one</text>
+
+  
+
+  
+  <rect x="40" y="110" width="730" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="80" cy="175" r="24" fill="#207448"/>
+  <text x="80" y="183" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+  
+  <path d="M 130 152 h 24 l 12 12 v 34 h -36 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M 154 152 v 12 h 12" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M 138 176 h 20 M 138 186 h 12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="195" y="152" font-family="'SFMono-Regular', Consolas, monospace" font-size="30px" font-weight="bold" fill="#303a36">DT_RPATH</text>
+  <text x="195" y="186" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">(embedded in the binary;</text>
+  <text x="195" y="218" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">searched before LD_LIBRARY_PATH)</text>
+
+  
+  <rect x="40" y="265" width="730" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="80" cy="312" r="24" fill="#207448"/>
+  <text x="80" y="320" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+  
+  <rect x="128" y="293" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 136 305 l 6 5 l -6 5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 148 316 h 12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="195" y="322" font-family="'SFMono-Regular', Consolas, monospace" font-size="30px" font-weight="bold" fill="#303a36">LD_LIBRARY_PATH</text>
+
+  
+  <rect x="40" y="385" width="730" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="80" cy="450" r="24" fill="#207448"/>
+  <text x="80" y="458" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">3</text>
+  
+  <path d="M 130 427 h 24 l 12 12 v 34 h -36 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M 154 427 v 12 h 12" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M 136 455 h 18 m -6 -5 l 6 5 l -6 5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <text x="195" y="427" font-family="'SFMono-Regular', Consolas, monospace" font-size="30px" font-weight="bold" fill="#303a36">DT_RUNPATH</text>
+  <text x="195" y="461" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">(embedded in the binary;</text>
+  <text x="195" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">searched after LD_LIBRARY_PATH)</text>
+
+  
+  <rect x="40" y="540" width="730" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="80" cy="595" r="24" fill="#207448"/>
+  <text x="80" y="603" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">4</text>
+  
+  <ellipse cx="148" cy="582" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 130 582 v 22 c 0 4 8 6 18 6 s 18 -2 18 -6 v -22" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 130 593 c 0 4 8 6 18 6 s 18 -2 18 -6" fill="none" stroke="#207448" stroke-width="3"/>
+  
+  <text x="195" y="585" font-family="'SFMono-Regular', Consolas, monospace" font-size="30px" font-weight="bold" fill="#303a36">/etc/ld.so.cache</text>
+  <text x="195" y="623" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">(built by ldconfig)</text>
+
+  
+  <rect x="40" y="675" width="730" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="80" cy="730" r="24" fill="#207448"/>
+  <text x="80" y="738" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">5</text>
+  
+  <path d="M 128 718 h 14 l 6 6 h 20 v 26 h -40 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M 128 726 h 40" fill="none" stroke="#207448" stroke-width="3"/>
+  
+  <text x="195" y="718" font-family="'SFMono-Regular', Consolas, monospace" font-size="30px" font-weight="bold" fill="#303a36">/lib and /usr/lib</text>
+  <text x="195" y="756" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">default directories</text>
+
+  
+  <line x1="405" y1="785" x2="405" y2="838" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="40" y="845" width="730" height="165" rx="12" fill="#dfe7e1" stroke="#4a5a54" stroke-width="2"/>
+  
+  <rect x="68" y="878" width="48" height="42" rx="4" fill="none" stroke="#4a5a54" stroke-width="3.5"/>
+  <path d="M 68 890 h 48" stroke="#4a5a54" stroke-width="3"/>
+  <path d="M 86 902 l 12 12 M 98 902 l -12 12" stroke="#4a5a54" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="140" y="895" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">error while loading shared libraries:</text>
+  <text x="140" y="935" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">libfoo.so.1:</text>
+  <text x="140" y="975" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">cannot open shared object file</text>
+
+  
+
+  
+  <rect x="810" y="110" width="750" height="205" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="1505" cy="148" r="14" fill="none" stroke="#db8129" stroke-width="3.5"/>
+  <line x1="1516" y1="159" x2="1530" y2="173" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="845" y="155" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Symptom: <tspan font-family="'SFMono-Regular', Consolas, monospace">./app</tspan> fails;</text>
+  <text x="845" y="210" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">ldd ./app | grep foo shows not found;</text>
+  <text x="845" y="260" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" font-weight="bold" fill="#db8129">LD_DEBUG=libs ./app shows where it looked</text>
+
+  
+  <rect x="810" y="345" width="750" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 1515 372 l -14 20 h 12 l -6 18 l 18 -22 h -12 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+  
+  <text x="845" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Fix 1, quick test:</text>
+  <text x="845" y="455" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">LD_LIBRARY_PATH=. ./app</text>
+
+  
+  <rect x="810" y="530" width="750" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1512" cy="565" r="9" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 1512 550 v 4 M 1512 576 v 4 M 1497 565 h 4 M 1523 565 h 4 M 1502 555 l 3 3 M 1519 572 l 3 3 M 1502 575 l 3 -3 M 1519 558 l 3 -3" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  
+  <text x="845" y="580" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Fix 2, embedded:</text>
+  <text x="845" y="630" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">cc -o app2 main.c -L. -lfoo -Wl,-rpath,$ORIGIN,</text>
+  <text x="845" y="680" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">check with readelf -d app2 |</text>
+  <text x="845" y="725" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">grep -E RPATH|RUNPATH</text>
+
+  
+  <rect x="810" y="820" width="750" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 1525 845 a 9 9 0 0 0 -12 2 l -16 16 a 3 3 0 0 0 0 5 l 4 4 a 3 3 0 0 0 5 0 l 16 -16 a 9 9 0 0 0 2 -12 l -3 5 l -5 -1 l -1 -5 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  
+  <text x="845" y="880" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Fix 3, edit existing binary:</text>
+  <text x="845" y="940" font-family="'SFMono-Regular', Consolas, monospace" font-size="24px" fill="#303a36">patchelf --set-rpath $ORIGIN/../lib prog</text>
+
+  
+  <rect x="50" y="1110" width="1500" height="60" rx="12" fill="#207448"/>
+  <text x="800" y="1149" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">When a library will not load, check the search path before you reinstall anything</text>
+</svg>

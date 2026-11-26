@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Toy router simulation: policies and the bound sweep</title>
+  <desc>Comparison of routing policies and backlog bound sweep showing hit rate, latency percentiles, and load imbalance.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Toy router simulation: policies and the bound sweep</text>
+
+  <!-- Subtitle Pill -->
+  <rect x="460" y="76" width="680" height="54" rx="27" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="111" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">toy numbers chosen to show the mechanism</text>
+
+  <!-- Setup Container -->
+  <rect x="50" y="166" width="1500" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(75, 183)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="28" r="12"/>
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 11 L 45 15"/>
+  </g>
+  <text x="155" y="206" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">Setup: eight replicas, forty prefixes, one hot prefix with 40 percent of traffic,</tspan>
+    <tspan x="155" dy="34">cache of six prefixes per replica, hit costs 0.10 s and miss 0.50 s</tspan>
+  </text>
+
+  <!-- Table 1 Container -->
+  <rect x="50" y="296" width="1500" height="290" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="66" y="310" width="1468" height="54" rx="10" fill="#e8f1ea"/>
+  <g transform="translate(75, 309)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="10" y="10" width="36" height="36" rx="6"/>
+    <line x1="18" y1="4" x2="18" y2="10"/><line x1="28" y1="4" x2="28" y2="10"/><line x1="38" y1="4" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="52"/><line x1="28" y1="46" x2="28" y2="52"/><line x1="38" y1="46" x2="38" y2="52"/>
+    <line x1="4" y1="18" x2="10" y2="18"/><line x1="4" y1="28" x2="10" y2="28"/><line x1="4" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="52" y2="18"/><line x1="46" y1="28" x2="52" y2="28"/><line x1="46" y1="38" x2="52" y2="38"/>
+  </g>
+  <text x="155" y="347" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Table 1 policy: hit rate, p50 s, p99 s, max over mean load</text>
+  <rect x="66" y="372" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="82" y="403" font-family="monospace" font-size="24" fill="#303a36">round_robin 0.46, 0.50, 2.33, 1.00</text>
+  <rect x="760" y="383" width="92" height="24" rx="4" fill="#207448"/>
+  <rect x="980" y="383" width="140" height="24" rx="4" fill="#c2dac7"/>
+  <rect x="1270" y="383" width="50" height="24" rx="4" fill="#207448"/>
+  <rect x="66" y="424" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="82" y="455" font-family="monospace" font-size="24" fill="#303a36">least_loaded 0.46, 0.50, 1.22, 1.16</text>
+  <rect x="760" y="435" width="92" height="24" rx="4" fill="#207448"/>
+  <rect x="980" y="435" width="73" height="24" rx="4" fill="#c2dac7"/>
+  <rect x="1270" y="435" width="58" height="24" rx="4" fill="#207448"/>
+  <rect x="66" y="476" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="82" y="507" font-family="monospace" font-size="24" fill="#303a36">cache_only 0.98, 0.16, 4.39, 3.80</text>
+  <rect x="760" y="487" width="196" height="24" rx="4" fill="#207448"/>
+  <rect x="980" y="487" width="263" height="24" rx="4" fill="#c2dac7"/>
+  <rect x="1270" y="487" width="190" height="24" rx="4" fill="#207448"/>
+  <rect x="66" y="528" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="82" y="559" font-family="monospace" font-size="24" fill="#303a36">cache_bounded 0.95, 0.10, 0.50, 2.13</text>
+  <rect x="760" y="539" width="190" height="24" rx="4" fill="#207448"/>
+  <rect x="980" y="539" width="30" height="24" rx="4" fill="#207448"/>
+  <rect x="1270" y="539" width="106" height="24" rx="4" fill="#207448"/>
+
+  <!-- Table 2 Container -->
+  <rect x="50" y="626" width="1500" height="342" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="66" y="640" width="1468" height="54" rx="10" fill="#e8f1ea"/>
+  <g transform="translate(75, 639)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="28" r="22"/>
+    <polyline points="28,14 28,28 38,28"/>
+  </g>
+  <text x="155" y="677" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Table 2 bound in seconds of backlog</text>
+  <rect x="66" y="702" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="82" y="733" font-family="monospace" font-size="24" fill="#303a36">0.0: hit 0.57, p50 0.22, p99 0.99, max/mean 1.22</text>
+  <rect x="920" y="713" width="114" height="24" rx="4" fill="#207448"/>
+  <rect x="1100" y="713" width="59" height="24" rx="4" fill="#c2dac7"/>
+  <rect x="1330" y="713" width="61" height="24" rx="4" fill="#207448"/>
+  <rect x="66" y="754" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="82" y="785" font-family="monospace" font-size="24" fill="#303a36">0.1: 0.89, 0.10, 0.52, 1.56</text>
+  <rect x="920" y="765" width="178" height="24" rx="4" fill="#207448"/>
+  <rect x="1100" y="765" width="31" height="24" rx="4" fill="#c2dac7"/>
+  <rect x="1330" y="765" width="78" height="24" rx="4" fill="#207448"/>
+  <rect x="66" y="806" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2.5"/>
+  <text x="82" y="837" font-family="monospace" font-size="24" fill="#303a36">0.5: 0.95, 0.10, 0.50, 2.13</text>
+  <rect x="920" y="817" width="190" height="24" rx="4" fill="#207448"/>
+  <rect x="1100" y="817" width="30" height="24" rx="4" fill="#207448"/>
+  <rect x="1330" y="817" width="106" height="24" rx="4" fill="#207448"/>
+  <rect x="66" y="858" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="82" y="889" font-family="monospace" font-size="24" fill="#303a36">2.0: 0.98, 0.11, 1.68, 3.39</text>
+  <rect x="920" y="869" width="196" height="24" rx="4" fill="#207448"/>
+  <rect x="1100" y="869" width="101" height="24" rx="4" fill="#c2dac7"/>
+  <rect x="1330" y="869" width="169" height="24" rx="4" fill="#207448"/>
+  <rect x="66" y="910" width="1468" height="46" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="82" y="941" font-family="monospace" font-size="24" fill="#303a36">100 (cache-only): 0.98, 0.16, 4.39, 3.80</text>
+  <rect x="920" y="921" width="196" height="24" rx="4" fill="#207448"/>
+  <rect x="1100" y="921" width="263" height="24" rx="4" fill="#c2dac7"/>
+  <rect x="1330" y="921" width="190" height="24" rx="4" fill="#207448"/>
+
+  <!-- Takeaway Bar -->
+  <rect x="50" y="1008" width="1500" height="148" rx="14" fill="#207448"/>
+  <text x="800" y="1046" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">cache-only wins hit rate and loses the tail because one replica carries 3.8 times the average load;</tspan>
+    <tspan x="800" dy="34">least-loaded keeps load flat but wastes the cache; sweep the bound against p99, not hit rate;</tspan>
+    <tspan x="800" dy="34">zero bound behaves like least-loaded, a huge bound like cache-only</tspan>
+  </text>
+</svg>

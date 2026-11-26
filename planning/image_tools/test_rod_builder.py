@@ -1,0 +1,118 @@
+import xml.etree.ElementTree as ET
+import re
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Rail-optimised design (ROD)</title>
+  <desc>Architecture diagram of rail-optimised design showing 8-GPU servers with internal NVSwitch, rail-optimised leaf stripes, and spine tier connecting across rails.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Rail-optimised design (ROD)</text>
+
+  <!-- ==================== TIER 1: SPINE TIER ==================== -->
+  <rect x="60" y="100" width="1480" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="90" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Spine tier (connects across rails)</text>
+
+  <!-- Spine 1 Node -->
+  <rect x="120" y="165" width="640" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(150, 202)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="40" rx="6"/>
+    <line x1="12" y1="20" x2="44" y2="20"/>
+    <path d="M 36 14 L 44 20 L 36 26"/>
+    <path d="M 20 14 L 12 20 L 20 26"/>
+  </g>
+  <text x="236" y="242" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Spine 1</text>
+
+  <!-- Spine 2 Node -->
+  <rect x="840" y="165" width="640" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(870, 202)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="40" rx="6"/>
+    <line x1="12" y1="20" x2="44" y2="20"/>
+    <path d="M 36 14 L 44 20 L 36 26"/>
+    <path d="M 20 14 L 12 20 L 20 26"/>
+  </g>
+  <text x="956" y="242" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Spine 2</text>
+
+  <!-- Links between Leaves and Spines: LR0, LR1 to SP1, SP2 -->
+  <line x1="440" y1="320" x2="440" y2="410" stroke="#207448" stroke-width="4"/>
+  <line x1="1160" y1="320" x2="1160" y2="410" stroke="#207448" stroke-width="4"/>
+
+  <!-- ==================== TIER 2: RAIL LEAVES ==================== -->
+  <rect x="60" y="410" width="1480" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="90" y="452" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rail-optimised leaf stripe (1 leaf per GPU index)</text>
+
+  <!-- Leaf Rail 0 Node (ORANGE HIGHLIGHT: Single most important item) -->
+  <rect x="120" y="475" width="640" height="140" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3.5"/>
+  <g transform="translate(150, 517)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="40" rx="6"/>
+    <line x1="12" y1="20" x2="44" y2="20"/>
+    <path d="M 36 14 L 44 20 L 36 26"/>
+    <path d="M 20 14 L 12 20 L 20 26"/>
+  </g>
+  <text x="236" y="535" font-family="sans-serif" font-size="30">
+    <tspan x="236" font-size="30" font-weight="bold" fill="#303a36">Leaf Rail 0</tspan>
+    <tspan x="236" dy="40" font-size="24" fill="#303a36">(all GPU 0s: 1 hop)</tspan>
+  </text>
+
+  <!-- Leaf Rail 1 Node -->
+  <rect x="840" y="475" width="640" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(870, 517)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="40" rx="6"/>
+    <line x1="12" y1="20" x2="44" y2="20"/>
+    <path d="M 36 14 L 44 20 L 36 26"/>
+    <path d="M 20 14 L 12 20 L 20 26"/>
+  </g>
+  <text x="956" y="535" font-family="sans-serif" font-size="30">
+    <tspan x="956" font-size="30" font-weight="bold" fill="#303a36">Leaf Rail 1</tspan>
+    <tspan x="956" dy="40" font-size="24" fill="#303a36">(all GPU 1s: 1 hop)</tspan>
+  </text>
+
+  <!-- Links between Servers and Leaves: S1, S2 with NIC0 and NIC1 -->
+  <line x1="440" y1="640" x2="440" y2="730" stroke="#207448" stroke-width="4"/>
+  <rect x="390" y="663" width="100" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="440" y="694" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC0</text>
+
+  <line x1="1160" y1="640" x2="1160" y2="730" stroke="#207448" stroke-width="4"/>
+  <rect x="1110" y="663" width="100" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1160" y="694" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">NIC1</text>
+
+  <!-- ==================== TIER 3: SERVERS ==================== -->
+  <rect x="60" y="730" width="1480" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="90" y="772" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">8-GPU servers (internal NVSwitch)</text>
+
+  <!-- Server 1 Node -->
+  <rect x="120" y="795" width="640" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(150, 835)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="44" rx="6"/>
+    <line x1="8" y1="14" x2="48" y2="14"/>
+    <line x1="8" y1="28" x2="48" y2="28"/>
+    <circle cx="14" cy="7" r="2" fill="#207448"/>
+    <circle cx="22" cy="7" r="2" fill="#207448"/>
+  </g>
+  <text x="236" y="855" font-family="sans-serif" font-size="30">
+    <tspan x="236" font-size="30" font-weight="bold" fill="#303a36">Server 1</tspan>
+    <tspan x="236" dy="40" font-family="monospace" font-size="24" fill="#303a36">GPU0 | GPU1 ...</tspan>
+  </text>
+
+  <!-- Server 2 Node -->
+  <rect x="840" y="795" width="640" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(870, 835)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="44" rx="6"/>
+    <line x1="8" y1="14" x2="48" y2="14"/>
+    <line x1="8" y1="28" x2="48" y2="28"/>
+    <circle cx="14" cy="7" r="2" fill="#207448"/>
+    <circle cx="22" cy="7" r="2" fill="#207448"/>
+  </g>
+  <text x="956" y="855" font-family="sans-serif" font-size="30">
+    <tspan x="956" font-size="30" font-weight="bold" fill="#303a36">Server 2</tspan>
+    <tspan x="956" dy="40" font-family="monospace" font-size="24" fill="#303a36">GPU0 | GPU1 ...</tspan>
+  </text>
+</svg>
+"""
+
+with open("test_rod.svg", "w") as f:
+    f.write(svg_content.strip())
+
+print("test_rod.svg written successfully!")

@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1090" width="1600" height="1090">
+  <title>Running a module by hand on the target</title>
+  <desc>Visual infographic showing how to debug an Ansible module manually on a target node by preserving remote files, unpacking the AnsiballZ wrapper, and executing directly.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1090" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="60" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Running a module by hand on the target</text>
+
+  
+
+  
+  <rect x="80" y="95" width="680" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <circle cx="125" cy="142" r="24" fill="#207448"/>
+  <text x="125" y="150" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  
+  <g transform="translate(170, 122)">
+    <rect x="0" y="0" width="46" height="30" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M -6,34 L 52,34 L 46,30 L 0,30 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="245" y="150" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Control node</text>
+
+  
+  <rect x="105" y="190" width="630" height="190" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="125" y="235" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">ANSIBLE_KEEP_REMOTE_FILES=1</tspan>
+    <tspan x="125" dy="42">ansible gpu001</tspan>
+    <tspan x="125" dy="42">-m ansible.builtin.copy -vvv</tspan>
+  </text>
+
+  
+  <line x1="760" y1="250" x2="840" y2="250" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="840" y="95" width="680" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <circle cx="885" cy="142" r="24" fill="#207448"/>
+  <text x="885" y="150" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  
+  <g transform="translate(930, 120)">
+    <rect x="0" y="0" width="52" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="20" x2="52" y2="20" stroke="#207448" stroke-width="3"/>
+    <circle cx="10" cy="10" r="3" fill="#207448"/>
+    <circle cx="18" cy="10" r="3" fill="#207448"/>
+    <circle cx="10" cy="30" r="3" fill="#207448"/>
+    <circle cx="18" cy="30" r="3" fill="#207448"/>
+    <line x1="28" y1="10" x2="44" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="28" y1="30" x2="44" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="1005" y="150" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">gpu001 target</text>
+
+  
+  <rect x="865" y="190" width="300" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="885" y="225" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">AnsiballZ_copy.py</text>
+
+  
+  <text x="1185" y="224" font-family="sans-serif" font-size="24" fill="#303a36">the wrapper stays on disk</text>
+
+  
+  <rect x="865" y="260" width="630" height="120" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="885" y="305" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="885" dy="0">/home/automation/.ansible/tmp/</tspan>
+    <tspan x="885" dy="38">ansible-tmp-.../AnsiballZ_copy.py</tspan>
+  </text>
+
+  
+  <path d="M 1180,405 L 1180,458 L 290,458 L 290,505" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  
+  
+  <rect x="660" y="436" width="180" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="750" y="466" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ssh gpu001</text>
+
+  
+
+  
+  <rect x="70" y="505" width="440" height="350" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <circle cx="115" cy="552" r="24" fill="#207448"/>
+  <text x="115" y="560" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  
+  <g transform="translate(160, 532)">
+    <rect x="0" y="0" width="52" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="12" x2="52" y2="12" stroke="#207448" stroke-width="3"/>
+    <path d="M 8,22 L 16,26 L 8,30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="22" y1="30" x2="32" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  
+  <text x="235" y="560" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Step 3</text>
+
+  
+  <rect x="90" y="600" width="400" height="230" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="110" y="665" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="110" dy="0">cd /home/automation/</tspan>
+    <tspan x="110" dy="48">.ansible/tmp/</tspan>
+    <tspan x="110" dy="48">ansible-tmp-*/</tspan>
+  </text>
+
+  
+  <line x1="510" y1="680" x2="580" y2="680" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="580" y="505" width="440" height="350" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <circle cx="625" cy="552" r="24" fill="#207448"/>
+  <text x="625" y="560" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  
+  <g transform="translate(670, 530)">
+    <path d="M 6,13 L 26,3 L 46,13 L 46,35 L 26,45 L 6,35 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 6,13 L 26,23 L 46,13 M 26,23 L 26,45" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+
+  <text x="745" y="560" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Step 4</text>
+
+  
+  <rect x="600" y="600" width="400" height="135" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="620" y="642" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="620" dy="0">python3</tspan>
+    <tspan x="620" dy="36">AnsiballZ_copy.py</tspan>
+    <tspan x="620" dy="36">explode</tspan>
+  </text>
+
+  
+  <text x="600" y="775" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">unpacks the module and its</tspan>
+    <tspan x="600" dy="34">arguments into ./debug_dir</tspan>
+  </text>
+
+  
+  <line x1="1020" y1="680" x2="1090" y2="680" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1090" y="505" width="440" height="350" rx="14" fill="#fef8f2" stroke="#db8129" stroke-width="4"/>
+  
+  
+  <circle cx="1135" cy="552" r="24" fill="#207448"/>
+  <text x="1135" y="560" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  
+  <g transform="translate(1180, 532)">
+    <rect x="0" y="0" width="52" height="40" rx="4" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 18,13 L 34,20 L 18,27 Z" fill="#db8129" stroke="#db8129" stroke-width="2" stroke-linejoin="round"/>
+    <line x1="10" y1="32" x2="42" y2="32" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  <text x="1255" y="560" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Step 5</text>
+
+  
+  <rect x="1110" y="600" width="400" height="135" rx="10" fill="#ffffff" stroke="#f2d7bf" stroke-width="1.5"/>
+  <text x="1130" y="642" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1130" dy="0">python3</tspan>
+    <tspan x="1130" dy="36">AnsiballZ_copy.py</tspan>
+    <tspan x="1130" dy="36">execute</tspan>
+  </text>
+
+  
+  <text x="1110" y="760" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1110" dy="0">runs the module, where you</tspan>
+    <tspan x="1110" dy="32">can add a print or start pdb</tspan>
+  </text>
+
+  
+
+  
+  <text x="1310" y="890" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1310" dy="0">the module sees the real files,</tspan>
+    <tspan x="1310" dy="30">PATH and permissions</tspan>
+  </text>
+
+  
+  <text x="70" y="905" font-family="sans-serif" font-size="24" fill="#303a36">the kept folder holds the arguments you passed, so delete it when you finish</text>
+
+  
+  <rect x="70" y="980" width="1460" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="1024" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Because you are on the target, the module sees the real files, the real PATH and the real permissions.</text>
+</svg>

@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Fixing a PMTU black hole: four options and the ping arithmetic that finds it</title>
+  <desc>Fixing a PMTU black hole: four options and the ping arithmetic that finds it</desc>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1600" height="1120" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Fixing a PMTU black hole: four options </tspan>
+    <tspan x="800" dy="54">and the ping arithmetic that finds it</tspan>
+  </text>
+
+  <!-- LEFT PANEL: Four ways to fix a black hole -->
+  <rect x="40" y="160" width="740" height="556" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <!-- Icon: Shield outline (52px, stroke 4, green) -->
+  <path d="M 68 188 L 93 178 L 118 188 C 118 213 93 233 93 233 C 93 233 68 213 68 188 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 81 203 L 90 212 L 106 196" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Left Panel Title -->
+  <text x="135" y="212" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Four ways to fix a black hole</text>
+
+  <!-- Left Card 1: allow ICMP -->
+  <rect x="60" y="244" width="700" height="118" rx="8" fill="#ffffff" stroke="#c5decb" stroke-width="1.5"/>
+  <text x="80" y="282" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">1 allow the required ICMP messages </tspan>
+    <tspan x="80" dy="28">(IPv4 type 3 code 4 Fragmentation Needed, </tspan>
+    <tspan x="80" dy="28">IPv6 type 2 Packet Too Big)</tspan>
+  </text>
+
+  <!-- Left Card 2: clamp MSS -->
+  <rect x="60" y="376" width="700" height="144" rx="8" fill="#ffffff" stroke="#c5decb" stroke-width="1.5"/>
+  <text x="80" y="414" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0" font-weight="bold">2 clamp the TCP MSS on tunnels: </tspan>
+    <tspan x="80" dy="28" font-family="monospace">iptables -t mangle -A FORWARD </tspan>
+    <tspan x="80" dy="28" font-family="monospace">-p tcp --tcp-flags SYN,RST SYN </tspan>
+    <tspan x="80" dy="28" font-family="monospace">-j TCPMSS --clamp-mss-to-pmtu</tspan>
+  </text>
+
+  <!-- Left Card 3: consistent MTU -->
+  <rect x="60" y="532" width="700" height="60" rx="8" fill="#ffffff" stroke="#c5decb" stroke-width="1.5"/>
+  <text x="80" y="570" font-family="sans-serif" font-size="24" fill="#303a36">3 use a consistent MTU across the path</text>
+
+  <!-- Left Card 4: PLPMTUD -->
+  <rect x="60" y="604" width="700" height="92" rx="8" fill="#ffffff" stroke="#c5decb" stroke-width="1.5"/>
+  <text x="80" y="642" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">4 enable PLPMTUD with </tspan>
+    <tspan x="80" dy="28" font-family="monospace">net.ipv4.tcp_mtu_probing</tspan>
+  </text>
+
+  <!-- RIGHT PANEL: Ping sizes add up to 1500 -->
+  <rect x="820" y="160" width="740" height="556" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  <!-- Icon: Packet / Network Gauge (52px, stroke 4, green) -->
+  <rect x="845" y="184" width="50" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="845" y1="200" x2="895" y2="200" stroke="#207448" stroke-width="3"/>
+  <circle cx="862" cy="214" r="4" fill="#207448"/>
+  <circle cx="878" cy="214" r="4" fill="#207448"/>
+
+  <!-- Right Panel Title -->
+  <text x="915" y="212" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Ping sizes add up to 1500</text>
+
+  <!-- Right Card 1: IPv4 Ping Bar -->
+  <rect x="840" y="244" width="700" height="126" rx="8" fill="#ffffff" stroke="#c5decb" stroke-width="1.5"/>
+  <!-- Segmented Bar for IPv4 -->
+  <g transform="translate(860, 260)">
+    <rect x="0" y="0" width="48" height="22" rx="3" fill="#c5decb" stroke="#207448" stroke-width="1.5"/>
+    <rect x="52" y="0" width="30" height="22" rx="3" fill="#a3caa9" stroke="#207448" stroke-width="1.5"/>
+    <rect x="86" y="0" width="574" height="22" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  </g>
+  <text x="860" y="320" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="860" dy="0" font-weight="bold">payload 1472 + ICMP 8 + IPv4 20 = 1500 </tspan>
+    <tspan x="860" dy="28" font-family="monospace">(ping -M do -s 1472)</tspan>
+  </text>
+
+  <!-- Right Card 2: IPv6 Ping Bar -->
+  <rect x="840" y="384" width="700" height="126" rx="8" fill="#ffffff" stroke="#c5decb" stroke-width="1.5"/>
+  <!-- Segmented Bar for IPv6 -->
+  <g transform="translate(860, 400)">
+    <rect x="0" y="0" width="68" height="22" rx="3" fill="#c5decb" stroke="#207448" stroke-width="1.5"/>
+    <rect x="72" y="0" width="30" height="22" rx="3" fill="#a3caa9" stroke="#207448" stroke-width="1.5"/>
+    <rect x="106" y="0" width="554" height="22" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  </g>
+  <text x="860" y="460" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="860" dy="0" font-weight="bold">payload 1452 + ICMP 8 + IPv6 40 = 1500 </tspan>
+    <tspan x="860" dy="28" font-family="monospace">(ping -6 -M do -s 1452)</tspan>
+  </text>
+
+  <!-- Right Card 3: MSS at MTU 1500 -->
+  <rect x="840" y="524" width="700" height="172" rx="8" fill="#ffffff" stroke="#c5decb" stroke-width="1.5"/>
+  <text x="860" y="562" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="860" dy="0" font-weight="bold">MSS at MTU 1500: </tspan>
+    <tspan x="860" dy="32">IPv4 1500 - 20 - 20 = 1460; </tspan>
+    <tspan x="860" dy="32">IPv6 1500 - 40 - 20 = </tspan><tspan fill="#db8129" font-weight="bold">1440</tspan>
+  </text>
+
+  <!-- BELOW: Fragmentation costs -->
+  <rect x="40" y="734" width="1520" height="146" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <!-- Icon: CPU Chip (52px, stroke 4, green) -->
+  <rect x="66" y="770" width="46" height="46" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="77" y1="760" x2="77" y2="770" stroke="#207448" stroke-width="3"/>
+  <line x1="101" y1="760" x2="101" y2="770" stroke="#207448" stroke-width="3"/>
+  <line x1="77" y1="816" x2="77" y2="826" stroke="#207448" stroke-width="3"/>
+  <line x1="101" y1="816" x2="101" y2="826" stroke="#207448" stroke-width="3"/>
+  <line x1="56" y1="783" x2="66" y2="783" stroke="#207448" stroke-width="3"/>
+  <line x1="56" y1="803" x2="66" y2="803" stroke="#207448" stroke-width="3"/>
+  <line x1="112" y1="783" x2="122" y2="783" stroke="#207448" stroke-width="3"/>
+  <line x1="112" y1="803" x2="122" y2="803" stroke="#207448" stroke-width="3"/>
+  <circle cx="89" cy="793" r="7" fill="none" stroke="#207448" stroke-width="2.5"/>
+
+  <text x="140" y="772" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0" font-weight="bold">Fragmentation costs: each fragment carries an ID, </tspan>
+    <tspan x="140" dy="28">an offset in 8-byte units and the MF flag; </tspan>
+    <tspan x="140" dy="28">lose one fragment and you lose the whole packet; firewalls often drop fragments; </tspan>
+    <tspan x="140" dy="28">some hardware paths send them to the CPU</tspan>
+  </text>
+
+  <!-- BOTTOM STRIP: Commands to find narrow door -->
+  <rect x="40" y="900" width="1520" height="92" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <!-- Icon: Terminal Console (44px, stroke 3, green) -->
+  <rect x="66" y="922" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 76 936 L 84 943 L 76 950" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="88" y1="950" x2="98" y2="950" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  <text x="135" y="938" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">tracepath target, ip route get target, </tspan>
+    <tspan x="135" dy="30">ss -ti dst target | grep mss pmtu: </tspan><tspan font-family="sans-serif" font-weight="bold" fill="#207448">find the narrow door</tspan>
+  </text>
+
+  <!-- BOTTOM BAR: Key takeaway -->
+  <rect x="40" y="1010" width="1520" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="1052" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">If the largest working size is smaller than you expected, you have found a narrow door</text>
+</svg>

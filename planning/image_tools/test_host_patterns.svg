@@ -1,0 +1,290 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Host patterns select machines by union, intersection, exclusion and regex</title>
+  <desc>Visual infographic explaining Ansible host pattern syntax: union of groups, intersection of groups, exclusion of a single host, and regular expressions on host names, with host list verification advice.</desc>
+
+  <defs>
+    <!-- Clip path for panel 2 intersection -->
+    <clipPath id="panel-2-left-circle">
+      <circle cx="1115" cy="380" r="85" />
+    </clipPath>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Host patterns select machines by union,</tspan>
+    <tspan x="800" dy="54">intersection, exclusion and regex</tspan>
+  </text>
+
+  <!-- ==================== ROW 1 ==================== -->
+
+  <!-- PANEL 1: Top-Left (Union) -->
+  <g id="panel-1">
+    <rect x="40" y="175" width="740" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Union Icon (56px) -->
+    <g transform="translate(68, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="28" r="16" />
+      <circle cx="36" cy="28" r="16" />
+      <path d="M 12 16 L 44 16" />
+    </g>
+
+    <!-- Pattern -->
+    <text x="145" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#207448">gpu:login</text>
+
+    <!-- Label -->
+    <text x="145" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">either group</text>
+
+    <!-- Diagram of two overlapping circles with union shaded (all of both circles) -->
+    <g id="panel-1-circles">
+      <!-- Union shaded area (both circles filled with light green #c3dec9) -->
+      <circle cx="340" cy="380" r="80" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+      <circle cx="460" cy="380" r="80" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+      <!-- Inner overlap boundary subtle dashed arc -->
+      <path d="M 400 311 A 80 80 0 0 1 400 449" fill="none" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+      <path d="M 400 311 A 80 80 0 0 0 400 449" fill="none" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+
+      <!-- Host dots in left circle -->
+      <circle cx="295" cy="350" r="7" fill="#207448" />
+      <circle cx="330" cy="410" r="7" fill="#207448" />
+      <circle cx="285" cy="400" r="7" fill="#207448" />
+      <circle cx="340" cy="340" r="7" fill="#207448" />
+
+      <!-- Host dots in overlap -->
+      <circle cx="400" cy="355" r="7" fill="#207448" />
+      <circle cx="400" cy="405" r="7" fill="#207448" />
+
+      <!-- Host dots in right circle -->
+      <circle cx="470" cy="340" r="7" fill="#207448" />
+      <circle cx="515" cy="360" r="7" fill="#207448" />
+      <circle cx="465" cy="410" r="7" fill="#207448" />
+      <circle cx="505" cy="405" r="7" fill="#207448" />
+    </g>
+  </g>
+
+  <!-- PANEL 2: Top-Right (Intersection) -->
+  <g id="panel-2">
+    <rect x="820" y="175" width="740" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Intersection Icon (56px) -->
+    <g transform="translate(848, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="28" r="16" />
+      <circle cx="36" cy="28" r="16" />
+      <path d="M 28 16 C 33 22 33 34 28 40 C 23 34 23 22 28 16 Z" fill="#207448" />
+    </g>
+
+    <!-- Pattern -->
+    <text x="925" y="225" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#207448">gpu:&amp;rack1</text>
+
+    <!-- Label -->
+    <text x="925" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">both groups</text>
+
+    <!-- Diagram of two overlapping circles labelled 'gpu' and 'rack1' with only overlap shaded -->
+    <g id="panel-2-circles">
+      <!-- Left circle (unshaded white) -->
+      <circle cx="1115" cy="380" r="85" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Right circle (unshaded white) -->
+      <circle cx="1265" cy="380" r="85" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+      <!-- Overlap region shaded with #c3dec9 -->
+      <g clip-path="url(#panel-2-left-circle)">
+        <circle cx="1265" cy="380" r="85" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+      </g>
+
+      <!-- Circle outlines re-traced for clean boundary -->
+      <circle cx="1115" cy="380" r="85" fill="none" stroke="#207448" stroke-width="2.5" />
+      <circle cx="1265" cy="380" r="85" fill="none" stroke="#207448" stroke-width="2.5" />
+
+      <!-- Circle labels -->
+      <text x="1080" y="348" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">gpu</text>
+      <text x="1285" y="348" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">rack1</text>
+
+      <!-- Host dots outside overlap (unselected, grey outline) -->
+      <circle cx="1065" cy="385" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+      <circle cx="1100" cy="425" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+      <circle cx="1060" cy="420" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+
+      <circle cx="1280" cy="425" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+      <circle cx="1320" cy="385" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+      <circle cx="1310" cy="420" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+
+      <!-- Host dots inside shaded overlap (selected, solid green) -->
+      <circle cx="1190" cy="350" r="7" fill="#207448" />
+      <circle cx="1190" cy="410" r="7" fill="#207448" />
+    </g>
+  </g>
+
+  <!-- ==================== ROW 2 ==================== -->
+
+  <!-- PANEL 3: Bottom-Left (Exclusion, Orange Outline) -->
+  <g id="panel-3">
+    <!-- Orange outline as specified -->
+    <rect x="40" y="525" width="740" height="310" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <!-- Exclusion / Filter Icon with Orange Accent (56px) -->
+    <g transform="translate(68, 545)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="16" y1="28" x2="40" y2="28" />
+    </g>
+
+    <!-- Pattern -->
+    <text x="145" y="575" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#db8129">gpu:!gpu02</text>
+
+    <!-- Label -->
+    <text x="145" y="612" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">this group without one host</text>
+
+    <!-- Diagram of circle shaded except one dot marked gpu02 -->
+    <g id="panel-3-circle">
+      <!-- Main shaded circle -->
+      <circle cx="400" cy="720" r="80" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+
+      <!-- Included host dots (solid green) -->
+      <circle cx="350" cy="685" r="7" fill="#207448" />
+      <circle cx="395" cy="665" r="7" fill="#207448" />
+      <circle cx="445" cy="680" r="7" fill="#207448" />
+      <circle cx="345" cy="740" r="7" fill="#207448" />
+      <circle cx="380" cy="765" r="7" fill="#207448" />
+      <circle cx="430" cy="760" r="7" fill="#207448" />
+
+      <!-- The one excluded host dot: unshaded white with orange outline & exclusion cross mark -->
+      <circle cx="440" cy="720" r="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      <line x1="433" y1="713" x2="447" y2="727" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="447" y1="713" x2="433" y2="727" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+  </g>
+
+  <!-- PANEL 4: Bottom-Right (Regex) -->
+  <g id="panel-4">
+    <rect x="820" y="525" width="740" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Regex / Pattern Icon (56px) -->
+    <g transform="translate(848, 545)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="36" rx="6" />
+      <path d="M 16 28 L 22 28 M 28 22 L 28 34 M 24 25 L 32 31 M 32 25 L 24 31" stroke-width="3" />
+      <path d="M 38 22 L 42 22 L 42 34 L 38 34" stroke-width="3" />
+    </g>
+
+    <!-- Pattern -->
+    <text x="925" y="575" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#207448">~gpu0[1-4]</text>
+
+    <!-- Label -->
+    <text x="925" y="612" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">regular expression on names</text>
+
+    <!-- Diagram showing a row of host names gpu01 to gpu04 highlighted -->
+    <g id="panel-4-regex-row">
+      <!-- Highlight container enclosing the matching range 01-04 -->
+      <rect x="860" y="650" width="440" height="135" rx="12" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+      
+      <!-- Four highlighted host cards (gpu01 to gpu04) -->
+      <!-- Host 1 -->
+      <g transform="translate(875, 667)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="21" r="2.5" fill="#207448" />
+        <circle cx="30" cy="21" r="2.5" fill="#207448" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="43" r="2.5" fill="#207448" />
+        <circle cx="30" cy="43" r="2.5" fill="#207448" />
+        <!-- Selected badge -->
+        <circle cx="45" cy="74" r="14" fill="#207448" />
+        <polyline points="39,74 43,78 51,70" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      <!-- Host 2 -->
+      <g transform="translate(980, 667)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="21" r="2.5" fill="#207448" />
+        <circle cx="30" cy="21" r="2.5" fill="#207448" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="43" r="2.5" fill="#207448" />
+        <circle cx="30" cy="43" r="2.5" fill="#207448" />
+        <!-- Selected badge -->
+        <circle cx="45" cy="74" r="14" fill="#207448" />
+        <polyline points="39,74 43,78 51,70" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      <!-- Host 3 -->
+      <g transform="translate(1085, 667)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="21" r="2.5" fill="#207448" />
+        <circle cx="30" cy="21" r="2.5" fill="#207448" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="43" r="2.5" fill="#207448" />
+        <circle cx="30" cy="43" r="2.5" fill="#207448" />
+        <!-- Selected badge -->
+        <circle cx="45" cy="74" r="14" fill="#207448" />
+        <polyline points="39,74 43,78 51,70" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      <!-- Host 4 -->
+      <g transform="translate(1190, 667)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="21" r="2.5" fill="#207448" />
+        <circle cx="30" cy="21" r="2.5" fill="#207448" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="43" r="2.5" fill="#207448" />
+        <circle cx="30" cy="43" r="2.5" fill="#207448" />
+        <!-- Selected badge -->
+        <circle cx="45" cy="74" r="14" fill="#207448" />
+        <polyline points="39,74 43,78 51,70" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      <!-- Host 5 (outside regex range, unselected, greyed out) -->
+      <g transform="translate(1325, 667)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#f0f3f1" stroke="#a0aba5" stroke-width="1.5" stroke-dasharray="4,3" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e2e8e4" stroke="#a0aba5" stroke-width="1" />
+        <circle cx="22" cy="21" r="2.5" fill="#a0aba5" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e2e8e4" stroke="#a0aba5" stroke-width="1" />
+        <circle cx="22" cy="43" r="2.5" fill="#a0aba5" />
+        <!-- Unselected dash -->
+        <circle cx="45" cy="74" r="12" fill="#ffffff" stroke="#a0aba5" stroke-width="1.5" />
+        <line x1="39" y1="74" x2="51" y2="74" stroke="#a0aba5" stroke-width="2" stroke-linecap="round" />
+      </g>
+
+      <!-- Host 6 (outside regex range, unselected, greyed out) -->
+      <g transform="translate(1430, 667)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#f0f3f1" stroke="#a0aba5" stroke-width="1.5" stroke-dasharray="4,3" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e2e8e4" stroke="#a0aba5" stroke-width="1" />
+        <circle cx="22" cy="21" r="2.5" fill="#a0aba5" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e2e8e4" stroke="#a0aba5" stroke-width="1" />
+        <circle cx="22" cy="43" r="2.5" fill="#a0aba5" />
+        <!-- Unselected dash -->
+        <circle cx="45" cy="74" r="12" fill="#ffffff" stroke="#a0aba5" stroke-width="1.5" />
+        <line x1="39" y1="74" x2="51" y2="74" stroke="#a0aba5" stroke-width="2" stroke-linecap="round" />
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== BOTTOM NOTE ==================== -->
+
+  <!-- Bottom note box -->
+  <g id="box-bottom-note">
+    <rect x="40" y="875" width="1520" height="95" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Terminal / Prompt Icon (56px) -->
+    <g transform="translate(70, 895)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="38" rx="6" />
+      <polyline points="14,19 22,25 14,31" />
+      <line x1="26" y1="31" x2="38" y2="31" />
+    </g>
+
+    <text x="815" y="917" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="815" dy="0">Test a pattern with </tspan>
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" fill="#207448">--list-hosts</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36"> before a change. </tspan>
+      <tspan x="815" dy="34">A pattern that matches the wrong hosts reaches machines it should not.</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== CAPTION / TAKEAWAY BAR ==================== -->
+
+  <g id="takeaway-bar">
+    <rect id="bar-caption" x="40" y="1010" width="1520" height="70" rx="14" fill="#207448" />
+    <text x="800" y="1054" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Read the host list before you change a group.</text>
+  </g>
+</svg>

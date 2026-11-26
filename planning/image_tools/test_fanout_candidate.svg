@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Fan-out makes the tail the common case</title>
+  <desc>A bar chart showing how fan-out increases the probability that at least one backend call is slow, from 1.0 percent at N=1 to 99.996 percent at N=1000.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Fan-out makes the tail the common case</text>
+
+  <!-- ==================== FORMULA STRIP ==================== -->
+  <g id="formula-strip">
+    <rect x="40" y="105" width="1520" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Math / Function Icon (56x56, stroke 4, green) -->
+    <g transform="translate(68, 114)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <path d="M 16 38 L 22 18 L 34 32 L 40 18" />
+    </g>
+    <text x="148" y="152" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">chance at least one slow = 1 - (1 - p) to the power N, with p = 0.01</text>
+  </g>
+
+  <!-- ==================== MAIN ROW: CHART & SIDE CARD ==================== -->
+  <!-- Left: Bar Chart Container -->
+  <g id="chart-container">
+    <rect x="40" y="205" width="970" height="720" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <!-- Chart Icon (56x56, stroke 4, green) -->
+    <g transform="translate(68, 226)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+      <line x1="16" y1="40" x2="16" y2="28" />
+      <line x1="28" y1="40" x2="28" y2="18" />
+      <line x1="40" y1="40" x2="40" y2="12" />
+    </g>
+
+    <!-- Grid lines (subtle dashed, no text) -->
+    <line x1="150" y1="330" x2="940" y2="330" stroke="#d5e2d8" stroke-width="1.5" stroke-dasharray="6 6" />
+    <line x1="150" y1="442.5" x2="940" y2="442.5" stroke="#d5e2d8" stroke-width="1.5" stroke-dasharray="6 6" />
+    <line x1="150" y1="555" x2="940" y2="555" stroke="#d5e2d8" stroke-width="1.5" stroke-dasharray="6 6" />
+    <line x1="150" y1="667.5" x2="940" y2="667.5" stroke="#d5e2d8" stroke-width="1.5" stroke-dasharray="6 6" />
+
+    <!-- Vertical Axis (rotated label) -->
+    <text transform="rotate(-90 85 540)" x="85" y="540" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Chance at least one call is slow</text>
+    <line x1="150" y1="310" x2="150" y2="780" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Horizontal Axis -->
+    <line x1="150" y1="780" x2="940" y2="780" stroke="#207448" stroke-width="2.5" />
+
+    <!-- X-axis Ticks -->
+    <line x1="255" y1="780" x2="255" y2="788" stroke="#207448" stroke-width="2.5" />
+    <line x1="445" y1="780" x2="445" y2="788" stroke="#207448" stroke-width="2.5" />
+    <line x1="635" y1="780" x2="635" y2="788" stroke="#207448" stroke-width="2.5" />
+    <line x1="825" y1="780" x2="825" y2="788" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Four Bars -->
+    <!-- Bar 1: N = 1 (1.0%) -->
+    <rect x="200" y="774" width="110" height="6" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="255" y="752" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">1.0 percent</text>
+    <text x="255" y="824" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">N = 1</text>
+
+    <!-- Bar 2: N = 10 (9.6%) -->
+    <rect x="390" y="737" width="110" height="43" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="445" y="715" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">9.6 percent</text>
+    <text x="445" y="824" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">N = 10</text>
+
+    <!-- Bar 3: N = 100 (63.4%) - Highlighted with Orange outline -->
+    <rect x="580" y="495" width="110" height="285" rx="8" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    <text x="635" y="473" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">63.4 percent</text>
+    <text x="635" y="824" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">N = 100</text>
+
+    <!-- Bar 4: N = 1,000 (about 99.996%) -->
+    <rect x="770" y="330" width="110" height="450" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="825" y="308" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">about 99.996 percent</text>
+    <text x="825" y="824" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">N = 1,000</text>
+
+    <!-- Horizontal Axis Label -->
+    <text x="545" y="882" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Fan-out N</text>
+  </g>
+
+  <!-- Right: Side Card Container -->
+  <g id="side-card">
+    <rect x="1050" y="205" width="510" height="720" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <!-- Timer / Wait Icon (56x56, stroke 4, green) -->
+    <g transform="translate(1277, 235)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <polyline points="28,14 28,28 38,28" />
+      <path d="M 18 6 L 12 12" />
+      <path d="M 38 6 L 44 12" />
+    </g>
+
+    <!-- Visual illustration of fan-out to backends -->
+    <!-- Client request node -->
+    <circle cx="1305" cy="330" r="20" fill="#207448" />
+    <circle cx="1305" cy="330" r="10" fill="#ffffff" />
+    
+    <!-- Fan-out lines -->
+    <line x1="1305" y1="350" x2="1135" y2="415" stroke="#207448" stroke-width="2" />
+    <line x1="1305" y1="350" x2="1220" y2="415" stroke="#207448" stroke-width="2" />
+    <line x1="1305" y1="350" x2="1305" y2="415" stroke="#207448" stroke-width="2" />
+    <line x1="1305" y1="350" x2="1390" y2="415" stroke="#207448" stroke-width="2" />
+    <line x1="1305" y1="350" x2="1475" y2="415" stroke="#207448" stroke-width="2" />
+
+    <!-- 5 backend nodes -->
+    <circle cx="1135" cy="435" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="1220" cy="435" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="1305" cy="435" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="1390" cy="435" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <circle cx="1475" cy="435" r="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+    <!-- Wait barrier line -->
+    <line x1="1100" y1="490" x2="1510" y2="490" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+
+    <!-- Fast returns reached barrier -->
+    <line x1="1135" y1="451" x2="1135" y2="490" stroke="#207448" stroke-width="2.5" />
+    <line x1="1220" y1="451" x2="1220" y2="490" stroke="#207448" stroke-width="2.5" />
+    <line x1="1305" y1="451" x2="1305" y2="490" stroke="#207448" stroke-width="2.5" />
+    <line x1="1390" y1="451" x2="1390" y2="490" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Slow call trailing behind (still in flight) -->
+    <line x1="1475" y1="451" x2="1475" y2="472" stroke="#207448" stroke-width="2.5" stroke-dasharray="3 3" />
+    <circle cx="1475" cy="476" r="4" fill="#207448" />
+
+    <!-- Side card text panel -->
+    <rect x="1080" y="555" width="450" height="325" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1115" y="620" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="1115" dy="0">One request sends </tspan>
+      <tspan x="1115" dy="48">100 calls and waits </tspan>
+      <tspan x="1115" dy="48">for all of them. </tspan>
+      <tspan x="1115" dy="48">The slowest call </tspan>
+      <tspan x="1115" dy="48">decides the wait.</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR ==================== -->
+  <g id="bottom-takeaway">
+    <rect x="40" y="955" width="1520" height="70" rx="12" fill="#207448" />
+    <text x="800" y="999" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">A healthy p99 on one backend does not describe the tail the request waits through.</text>
+  </g>
+</svg>

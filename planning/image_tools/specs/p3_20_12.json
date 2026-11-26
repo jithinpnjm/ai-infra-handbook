@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "p3-2012-long-context-fit",
+  "title": "Long context: the cache, not the weights, sets the limit",
+  "spec": "Worked example Qwen2.5-72B BF16 with 32,768 tokens of context on four H100s. Memory bar: 4 x 80 x 0.90 = 288 GB usable; minus weights 72.7 x 2 = 145.4 GB; minus overhead 20 GB (5 GB per GPU); leaves 122.6 GB for KV cache. Cost per request: KV 327,680 bytes per token x 32,768 tokens = 10.74 GB. Fit: 122.6 / 10.74 = 11.4, so 11 full-length requests. Contrast same cluster at the usual size: 122.6 / 0.8192 GB per 2,500-token request = 149 requests. Alternatives: 'two H200s at 141 GB give 120 requests at 2,500 tokens but only 9 at 32,768 tokens; four H200s give 31 at the long size'. Message 'weights fit comfortably but only eleven users can hold full-length conversations; answer the customer with a price per concurrent long conversation'. Text at least 24px.",
+  "anchor": "### Scenario 2: the long-context customer",
+  "alt": "A memory bar for four H100s showing weights, overhead and the remaining cache that fits only eleven full-length requests.",
+  "cap": "At long context the KV cache per request is large, so concurrency collapses even though the weights fit."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "p3-2012-cheaper-gpu-per-token",
+  "title": "Is the cheaper GPU cheaper per token?",
+  "spec": "Side-by-side worked comparison for Qwen3-8B BF16 at batch 32 with list prices fetched 2026-11-09. Column H100 at $4.50 per GPU-hour: 80 GB, 3.35 TB/s; 4.66 requests per second; about 2,330 output tokens per second; $0.54 per million output tokens; latency about 6.9 s per request. Column L40S at $1.55 per GPU-hour: 48 GB at 864 GB/s and about 362 dense BF16 TFLOPS; budget 48 x 0.9 - 16.4 - 5 = 21.8 GB = 59 requests; decode step (16.4 + 11.796) / 864 = 32.6 ms so 981 tokens per second; prefill 362e12 x 0.4 / 16.4e9 = 8,829 tokens per second so 0.2265 s per prompt; GPU seconds per request 0.2265 + 0.5097 = 0.736 so 1.36 requests per second; about 679 output tokens per second; $1.55 / (679 x 3,600) x 1e6 = $0.63 per million; latency about 24 s per request. Verdict 'the H100 costs less per token even though it costs three times more per hour: tokens per second sit in the bottom of the fraction'. Text at least 24px.",
+  "anchor": "### Scenario 4: is the cheaper GPU cheaper per token?",
+  "alt": "H100 and L40S compared on tokens per second, cost per million tokens and latency for the same model.",
+  "cap": "Hourly price alone misleads because the cost per token also depends on tokens produced per second."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "p3-2012-sanity-checks",
+  "title": "Five checks before you say the number out loud",
+  "spec": "Checklist with the chapter numbers. '1 Weights against memory: if weights use more than about 60 percent of usable memory, concurrency will be low'. '2 Batch-one decode ceiling: bandwidth divided by weight bytes; H100 3.35 TB/s over 16.4 GB is about 204 tokens per second; no real system beats it for one request, so any claim above it is wrong'. '3 Little's law: requests per second times seconds per request must equal the batch you assumed; if not, that batch is not reachable at that rate'. '4 Units: gigabytes against gibibytes, bits against bytes, per-GPU against per-replica'. '5 Compare with a measured value: if a benchmark disagrees by more than about 30 percent trust the benchmark and find the wrong input, usually prompt length, cache hit rate or an engine setting'. Footer 'an estimate not checked against a measurement is a guess with a spreadsheet'. Text at least 24px.",
+  "anchor": "### 11. The sanity checks",
+  "alt": "A five-item checklist of estimate sanity checks with the H100 batch-one decode ceiling of about 204 tokens per second.",
+  "cap": "Arithmetic checks can pass with wrong inputs, so the last check compares against a measurement."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "p3-2012-goodput-vs-utilisation",
+  "title": "Busy is not the same as useful",
+  "spec": "Two bars for the same GPU hour. Bar 'Dashboard utilisation 95 percent': segments 'requests finished on time', 'requests finished too late to help anyone', 'retries', 'preempted requests whose cache was thrown away'. Bar 'Goodput': only the on-time segment. Formulas: 'goodput QPS = QPS x fraction of requests within the objective'; 'cost per good token = cost per token / fraction within the objective'. Worked case: 'if 5 percent of requests miss the objective, goodput is 95 percent of throughput and the cost of a good token rises by about 5 percent'. Example objective from the book: '0.4 second p90 time to first token and 0.04 second p90 time per output token'. Rules: 'report goodput not throughput when comparing configurations, and name the latency objectives applied; do not push for full use if the latency objective is broken'. Also utilisation as cost uses 'fraction of paid GPU time spent at the planned load, not the nvidia-smi figure'. Text at least 24px.",
+  "anchor": "### 10. Utilisation and goodput",
+  "alt": "Two bars show how a 95 percent busy GPU splits into on-time work and wasted work, with goodput formulas.",
+  "cap": "Count only requests that meet the latency objective when you measure or price capacity."
+ }
+]

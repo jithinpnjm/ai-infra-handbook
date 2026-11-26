@@ -1,0 +1,198 @@
+import xml.etree.ElementTree as ET
+import re, json, subprocess, pathlib
+
+def generate_svg():
+    W = 1600
+    H = 1200
+
+    title_text = "Splitting state by rate of change and cost of failure"
+    axis_x = "how often it changes"
+    axis_y = "what it costs when it fails"
+    place_network = "network and project: changes a few times a year, costly: own state few people can touch"
+    place_cloud = "cloud stage: cluster and node pools, changes with capacity"
+    place_platform = "platform stage per cluster: Helm releases and tenants, change daily, a mistake is cheap, small fast state"
+    test_line = "who would notice if the piece broke: only the platform team means it sits with their state; every service means the strictest guards"
+    iso_workspaces = "workspaces share one backend and credentials, nothing in code or shell shows which one you are in, so not for staging versus production"
+    iso_file = "file layout: one directory and state per environment per component (recommended)"
+    example_box = "nebius-solutions-library k8s-inference: cloud stage has one state for clusters, pools, filesystems, static IPs, identities, registry, buckets and managed database; platform stage has one state per cluster for Helm releases"
+    output_flow = "stacks talk through outputs such as cluster_id via terraform_remote_state or CI variables; a reader of remote state needs read access to the other state, which may include secrets"
+
+    svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}">
+  <title>{title_text}</title>
+  <desc>Infographic explaining how to split Terraform state by rate of change and cost of failure, comparing workspaces to directory layout, and detailing output flows.</desc>
+
+  <defs>
+    <!-- Arrowhead green 18px -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="{W}" height="{H}" fill="#f5f8f5" />
+
+  <!-- Title (48px bold, at most two lines) -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Splitting state by rate of change</tspan>
+    <tspan x="800" dy="54">and cost of failure</tspan>
+  </text>
+
+  <!-- ==================== MATRIX CONTAINER ==================== -->
+  <rect x="40" y="130" width="1520" height="440" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Matrix Axes -->
+  <!-- Y Axis (what it costs when it fails) -->
+  <line x1="110" y1="515" x2="110" y2="160" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <!-- X Axis (how often it changes) -->
+  <line x1="110" y1="515" x2="1520" y2="515" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Axis Labels (at least 24px) -->
+  <text x="135" y="175" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">{axis_y}</text>
+  <text x="1510" y="550" text-anchor="end" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">{axis_x}</text>
+
+  <!-- Placement 1: Network & Project (Top-Left: rare change, high cost) -->
+  <g id="placement-network">
+    <rect x="140" y="195" width="455" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Lock / Shield Icon (56px) placed to the left -->
+    <g transform="translate(158, 252)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 L 48 28 C 48 40, 28 50, 28 50 C 28 50, 8 40, 8 28 L 8 14 Z" />
+      <circle cx="28" cy="24" r="5" />
+      <line x1="28" y1="29" x2="28" y2="36" />
+    </g>
+    <text x="232" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="232" dy="0" font-weight="bold" fill="#207448">network and project:</tspan>
+      <tspan x="232" dy="32">changes a few times a year,</tspan>
+      <tspan x="232" dy="32">costly: own state few</tspan>
+      <tspan x="232" dy="32">people can touch</tspan>
+    </text>
+  </g>
+
+  <!-- Placement 2: Cloud Stage (Center: capacity change, medium cost) -->
+  <g id="placement-cloud">
+    <rect x="615" y="250" width="430" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Cluster / Chip Icon (56px) placed to the left -->
+    <g transform="translate(633, 298)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="6" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="28" y1="46" x2="28" y2="52" />
+      <line x1="4" y1="28" x2="10" y2="28" />
+      <line x1="46" y1="28" x2="52" y2="28" />
+      <circle cx="28" cy="28" r="7" />
+    </g>
+    <text x="705" y="295" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="705" dy="0" font-weight="bold" fill="#207448">cloud stage:</tspan>
+      <tspan x="705" dy="34">cluster and node pools,</tspan>
+      <tspan x="705" dy="34">changes with capacity</tspan>
+    </text>
+  </g>
+
+  <!-- Placement 3: Platform Stage (Bottom-Right: daily change, low cost) -->
+  <g id="placement-platform">
+    <rect x="1065" y="310" width="460" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Fast App / Helm Gear Icon (56px) placed to the left -->
+    <g transform="translate(1083, 375)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14" />
+      <line x1="28" y1="6" x2="28" y2="14" />
+      <line x1="28" y1="42" x2="28" y2="50" />
+      <line x1="6" y1="28" x2="14" y2="28" />
+      <line x1="42" y1="28" x2="50" y2="28" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+    <text x="1155" y="350" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1155" dy="0" font-weight="bold" fill="#207448">platform stage per cluster:</tspan>
+      <tspan x="1155" dy="32">Helm releases and tenants,</tspan>
+      <tspan x="1155" dy="32">change daily, a mistake is</tspan>
+      <tspan x="1155" dy="32">cheap, small fast state</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== TEST LINE (Decision rule) ==================== -->
+  <rect x="40" y="585" width="1520" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Question / Notice Icon (56px) -->
+  <g transform="translate(60, 604)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22" />
+    <line x1="28" y1="18" x2="28" y2="28" />
+    <circle cx="28" cy="38" r="2" fill="#207448" />
+  </g>
+  <text x="135" y="626" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0" font-weight="bold" fill="#207448">who would notice if the piece broke: only the platform team means it sits with their state;</tspan>
+    <tspan x="135" dy="32">every service means the strictest guards</tspan>
+  </text>
+
+  <!-- ==================== BOTTOM PANELS ==================== -->
+  <!-- Left Column: Isolation Panel (Workspaces vs File Layout) -->
+  <g id="isolation-panel">
+    <rect x="40" y="695" width="740" height="465" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    <!-- Card 1: Workspaces -->
+    <rect x="65" y="715" width="690" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <!-- Workspace Box Icon (56px) -->
+    <g transform="translate(85, 785)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="14" width="40" height="30" rx="4" />
+      <path d="M 18 14 L 18 10 C 18 8, 22 6, 28 6 C 34 6, 38 8, 38 10 L 38 14" />
+      <line x1="8" y1="26" x2="48" y2="26" />
+    </g>
+    <text x="160" y="756" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0" font-weight="bold" fill="#207448">workspaces share one backend and</tspan>
+      <tspan x="160" dy="32">credentials, nothing in code or shell shows</tspan>
+      <tspan x="160" dy="32">which one you are in, so not for</tspan>
+      <tspan x="160" dy="32">staging versus production</tspan>
+    </text>
+
+    <!-- Card 2: File Layout (RECOMMENDED - Highlighted with stroke #db8129) -->
+    <rect x="65" y="930" width="690" height="210" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <!-- Folder / Structure Icon (56px) -->
+    <g transform="translate(85, 1005)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 12 L 20 12 L 26 18 L 50 18 L 50 46 L 6 46 Z" />
+      <polyline points="20,32 26,38 38,26" />
+    </g>
+    <text x="160" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0" font-weight="bold" fill="#207448">file layout: one directory and state per</tspan>
+      <tspan x="160" dy="34">environment per component</tspan>
+      <tspan x="160" dy="34" font-weight="bold">(recommended)</tspan>
+    </text>
+  </g>
+
+  <!-- Right Column: Output Flow + Real Example -->
+  <g id="right-column">
+    <!-- Output Flow Box -->
+    <rect x="820" y="695" width="740" height="215" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Output / Flow Icon (56px) -->
+    <g transform="translate(845, 745)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="28" r="8" />
+      <circle cx="40" cy="28" r="8" />
+      <path d="M 24 28 L 32 28" />
+      <line x1="8" y1="28" x2="4" y2="28" />
+      <line x1="48" y1="28" x2="52" y2="28" />
+    </g>
+    <!-- Arrow representing output flow -->
+    <path d="M 855 885 L 1520 885" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <text x="920" y="744" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0" font-weight="bold" fill="#207448">stacks talk through outputs such as cluster_id</tspan>
+      <tspan x="920" dy="30">via terraform_remote_state or CI variables;</tspan>
+      <tspan x="920" dy="30">a reader of remote state needs read access to the</tspan>
+      <tspan x="920" dy="30">other state, which may include secrets</tspan>
+    </text>
+
+    <!-- Real Example Box -->
+    <rect x="820" y="925" width="740" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Database / Stack Icon (56px) -->
+    <g transform="translate(845, 1010)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="20" ry="7" />
+      <path d="M 8 14 L 8 28 C 8 32, 20 35, 28 35 C 36 35, 48 32, 48 28 L 48 14" />
+      <path d="M 8 28 L 8 42 C 8 46, 20 49, 28 49 C 36 49, 48 46, 48 42 L 48 28" />
+    </g>
+    <text x="920" y="964" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0" font-weight="bold" fill="#207448">nebius-solutions-library k8s-inference: cloud</tspan>
+      <tspan x="920" dy="30">stage has one state for clusters, pools,</tspan>
+      <tspan x="920" dy="30">filesystems, static IPs, identities, registry, buckets</tspan>
+      <tspan x="920" dy="30">and managed database; platform stage has one</tspan>
+      <tspan x="920" dy="30">state per cluster for Helm releases</tspan>
+    </text>
+  </g>
+</svg>'''
+    return svg
+
+with open("test_split_by_rate.svg", "w") as f:
+    f.write(generate_svg())
+print("Wrote test_split_by_rate.svg")

@@ -1,0 +1,302 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The 45-minute speaking plan</title>
+  <desc>Visual infographic detailing the 45-minute speaking plan for a multi-tenant LLM API system design interview, showing time blocks, outputs, opening order, and time-boxing rules.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Infographic Title (48px bold) -->
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The 45-minute speaking plan</text>
+
+  <!-- ==================== CONTAINER 1: 45-MINUTE TIMELINE ==================== -->
+  <g id="timeline-container">
+    <rect x="40" y="85" width="1520" height="610" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="40" y="85" width="1520" height="52" rx="16" fill="#207448"/>
+    <rect x="40" y="117" width="1520" height="20" fill="#207448"/>
+    <text x="800" y="121" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Horizontal timeline in eight blocks with output per block</text>
+
+    <!-- ROW 1 OF TIMELINE (BLOCKS 1 - 4) -->
+    <!-- Block 1 -->
+    <g id="block-1">
+      <rect x="60" y="155" width="355" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="95" cy="190" r="22" fill="#207448"/>
+      <text x="95" y="198" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <!-- Icon: Clipboard / Estimation -->
+      <g transform="translate(345, 166)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="36" height="42" rx="4"/>
+        <path d="M 14 8 V 4 A 2 2 0 0 1 16 2 H 28 A 2 2 0 0 1 30 4 V 8"/>
+        <line x1="12" y1="18" x2="32" y2="18"/>
+        <line x1="12" y1="28" x2="32" y2="28"/>
+        <line x1="12" y1="38" x2="24" y2="38"/>
+      </g>
+      <text x="80" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="80" dy="0" font-weight="bold">0 to 5 requirements,</tspan>
+        <tspan x="80" dy="28" font-weight="bold">assumptions,</tspan>
+        <tspan x="80" dy="28" font-weight="bold">estimate: numbers</tspan>
+        <tspan x="80" dy="28" fill="#207448">on the board</tspan>
+      </text>
+    </g>
+
+    <!-- Block 2 -->
+    <g id="block-2">
+      <rect x="435" y="155" width="355" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="470" cy="190" r="22" fill="#207448"/>
+      <text x="470" y="198" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <!-- Icon: Boxes / Split Plane -->
+      <g transform="translate(720, 166)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="40" height="18" rx="3"/>
+        <rect x="4" y="30" width="40" height="18" rx="3"/>
+        <line x1="14" y1="24" x2="34" y2="24" stroke-dasharray="3 3"/>
+      </g>
+      <text x="455" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="455" dy="0" font-weight="bold">5 to 10 API contract,</tspan>
+        <tspan x="455" dy="28" font-weight="bold">control and data</tspan>
+        <tspan x="455" dy="28" font-weight="bold">plane: boxes and</tspan>
+        <tspan x="455" dy="28" fill="#207448">the split</tspan>
+      </text>
+    </g>
+
+    <!-- Block 3 -->
+    <g id="block-3">
+      <rect x="810" y="155" width="355" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="845" cy="190" r="22" fill="#207448"/>
+      <text x="845" y="198" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      <!-- Icon: Gateway / Token Meter -->
+      <g transform="translate(1095, 166)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="6" width="36" height="42" rx="4"/>
+        <path d="M 14 28 A 10 10 0 0 1 34 28"/>
+        <line x1="24" y1="28" x2="30" y2="20"/>
+        <circle cx="24" cy="28" r="2.5" fill="#207448"/>
+      </g>
+      <text x="830" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="830" dy="0" font-weight="bold">10 to 19 gateway,</tspan>
+        <tspan x="830" dy="28" font-weight="bold">token limits,</tspan>
+        <tspan x="830" dy="28" font-weight="bold">metering: reserve and</tspan>
+        <tspan x="830" dy="28" fill="#207448">refund, usage events</tspan>
+      </text>
+    </g>
+
+    <!-- Block 4 -->
+    <g id="block-4">
+      <rect x="1185" y="155" width="355" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="1220" cy="190" r="22" fill="#207448"/>
+      <text x="1220" y="198" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+      <!-- Icon: Router / Dispatch -->
+      <g transform="translate(1470, 166)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="27" r="16"/>
+        <line x1="24" y1="5" x2="24" y2="11"/>
+        <line x1="24" y1="43" x2="24" y2="49"/>
+        <line x1="2" y1="27" x2="8" y2="27"/>
+        <line x1="40" y1="27" x2="46" y2="27"/>
+        <polyline points="18,17 24,11 30,17"/>
+        <polyline points="18,37 24,43 30,37"/>
+      </g>
+      <text x="1205" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1205" dy="0" font-weight="bold">19 to 26 router,</tspan>
+        <tspan x="1205" dy="28" font-weight="bold">cache and load aware:</tspan>
+        <tspan x="1205" dy="28" fill="#207448">bounded fallback</tspan>
+        <tspan x="1205" dy="28" fill="#207448">and the hotspot</tspan>
+      </text>
+    </g>
+
+    <!-- ROW 2 OF TIMELINE (BLOCKS 5 - 8) -->
+    <!-- Block 5 -->
+    <g id="block-5">
+      <rect x="60" y="425" width="355" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="95" cy="460" r="22" fill="#207448"/>
+      <text x="95" y="468" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+      <!-- Icon: Server Pools / Warm Replicas -->
+      <g transform="translate(345, 436)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="40" height="12" rx="2"/>
+        <circle cx="12" cy="12" r="2" fill="#207448"/>
+        <rect x="4" y="21" width="40" height="12" rx="2"/>
+        <circle cx="12" cy="27" r="2" fill="#207448"/>
+        <rect x="4" y="36" width="40" height="12" rx="2"/>
+        <circle cx="12" cy="42" r="2" fill="#207448"/>
+      </g>
+      <text x="80" y="514" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="80" dy="0" font-weight="bold">26 to 31 pools,</tspan>
+        <tspan x="80" dy="28" font-weight="bold">placement, warm</tspan>
+        <tspan x="80" dy="28" font-weight="bold">pools: trade-off</tspan>
+        <tspan x="80" dy="28" fill="#207448">sentence for each</tspan>
+      </text>
+    </g>
+
+    <!-- Block 6 -->
+    <g id="block-6">
+      <rect x="435" y="425" width="355" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="470" cy="460" r="22" fill="#207448"/>
+      <text x="470" y="468" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+      <!-- Icon: Autoscaling / Regions Globe -->
+      <g transform="translate(720, 436)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="27" r="18"/>
+        <ellipse cx="24" cy="27" rx="8" ry="18"/>
+        <line x1="6" y1="27" x2="42" y2="27"/>
+      </g>
+      <text x="455" y="514" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="455" dy="0" font-weight="bold">31 to 36 autoscaling,</tspan>
+        <tspan x="455" dy="28" font-weight="bold">regions: signals,</tspan>
+        <tspan x="455" dy="28" fill="#207448">residency rule</tspan>
+      </text>
+    </g>
+
+    <!-- Block 7 -->
+    <g id="block-7">
+      <rect x="810" y="425" width="355" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="845" cy="460" r="22" fill="#207448"/>
+      <text x="845" y="468" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+      <!-- Icon: Shield / Probes / Retries -->
+      <g transform="translate(1095, 436)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 24 6 L 40 14 V 28 C 40 38 24 46 24 46 C 24 46 8 38 8 28 V 14 Z"/>
+        <polyline points="16,25 22,31 32,20"/>
+      </g>
+      <text x="830" y="514" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="830" dy="0" font-weight="bold">36 to 42 isolation,</tspan>
+        <tspan x="830" dy="28" font-weight="bold">streaming, failures:</tspan>
+        <tspan x="830" dy="28" fill="#207448">retry budget, probes,</tspan>
+        <tspan x="830" dy="28" fill="#207448">silent shrink</tspan>
+      </text>
+    </g>
+
+    <!-- Block 8 -->
+    <g id="block-8">
+      <rect x="1185" y="425" width="355" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="1220" cy="460" r="22" fill="#207448"/>
+      <text x="1220" y="468" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+      <!-- Icon: Observability / Rollout Gauge -->
+      <g transform="translate(1470, 436)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="27" r="18"/>
+        <polyline points="24,15 24,27 34,27"/>
+        <line x1="8" y1="41" x2="40" y2="41"/>
+      </g>
+      <text x="1205" y="514" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1205" dy="0" font-weight="bold">42 to 45</tspan>
+        <tspan x="1205" dy="28" font-weight="bold">observability and</tspan>
+        <tspan x="1205" dy="28" font-weight="bold">rollout: SLIs,</tspan>
+        <tspan x="1205" dy="28" fill="#207448">canary gates,</tspan>
+        <tspan x="1205" dy="28" fill="#207448">questions</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== CONTAINER 2: OPENING ORDER ==================== -->
+  <g id="opening-order-container">
+    <rect x="40" y="720" width="1520" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="40" y="720" width="1520" height="52" rx="16" fill="#207448"/>
+    <rect x="40" y="752" width="1520" height="20" fill="#207448"/>
+    <text x="800" y="756" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Opening order for Design a multi-tenant LLM API</text>
+
+    <!-- STEP 1 -->
+    <g id="step-1">
+      <rect x="60" y="790" width="280" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="95" cy="825" r="22" fill="#207448"/>
+      <text x="95" y="833" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <!-- Icon: Clarifying Questions / Assumptions Table -->
+      <g transform="translate(275, 802)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="22" cy="16" r="10"/>
+        <line x1="22" y1="32" x2="22" y2="34"/>
+        <path d="M 18 14 A 5 5 0 0 1 26 18 C 26 22 22 24 22 28"/>
+      </g>
+      <text x="78" y="876" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="78" dy="0">three clarifying</tspan>
+        <tspan x="78" dy="28">questions and</tspan>
+        <tspan x="78" dy="28">the assumptions</tspan>
+        <tspan x="78" dy="28">table;</tspan>
+      </text>
+    </g>
+
+    <!-- STEP 2 -->
+    <g id="step-2">
+      <rect x="360" y="790" width="280" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="395" cy="825" r="22" fill="#207448"/>
+      <text x="395" y="833" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <!-- Icon: GPU Memory Estimate -->
+      <g transform="translate(575, 802)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="10" width="30" height="26" rx="3"/>
+        <line x1="14" y1="4" x2="14" y2="10"/>
+        <line x1="23" y1="4" x2="23" y2="10"/>
+        <line x1="32" y1="4" x2="32" y2="10"/>
+        <line x1="14" y1="36" x2="14" y2="42"/>
+        <line x1="23" y1="36" x2="23" y2="42"/>
+        <line x1="32" y1="36" x2="32" y2="42"/>
+      </g>
+      <text x="378" y="890" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="378" dy="0">the 40-GPU</tspan>
+        <tspan x="378" dy="32">memory estimate</tspan>
+        <tspan x="378" dy="32">in one breath;</tspan>
+      </text>
+    </g>
+
+    <!-- STEP 3 -->
+    <g id="step-3">
+      <rect x="660" y="790" width="280" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="695" cy="825" r="22" fill="#207448"/>
+      <text x="695" y="833" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      <!-- Icon: Architecture Flow -->
+      <g transform="translate(875, 802)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="6" width="34" height="12" rx="2"/>
+        <rect x="6" y="28" width="14" height="12" rx="2"/>
+        <rect x="26" y="28" width="14" height="12" rx="2"/>
+        <line x1="23" y1="18" x2="23" y2="28"/>
+      </g>
+      <text x="678" y="876" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="678" dy="0">draw gateway,</tspan>
+        <tspan x="678" dy="28">router, pools</tspan>
+        <tspan x="678" dy="28">with control</tspan>
+        <tspan x="678" dy="28">plane above;</tspan>
+      </text>
+    </g>
+
+    <!-- STEP 4: SINGLE ORANGE HIGHLIGHT ITEM -->
+    <g id="step-4">
+      <rect x="960" y="790" width="280" height="210" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3.5"/>
+      <circle cx="995" cy="825" r="22" fill="#db8129"/>
+      <text x="995" y="833" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+      <!-- Icon: Focus / Target / Deep Dive (Orange) -->
+      <g transform="translate(1175, 802)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="23" cy="23" r="16"/>
+        <circle cx="23" cy="23" r="6" fill="#db8129"/>
+        <line x1="23" y1="3" x2="23" y2="9"/>
+        <line x1="23" y1="37" x2="23" y2="43"/>
+        <line x1="3" y1="23" x2="9" y2="23"/>
+        <line x1="37" y1="23" x2="43" y2="23"/>
+      </g>
+      <text x="978" y="890" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="978" dy="0">pick two areas</tspan>
+        <tspan x="978" dy="34">to go deep on;</tspan>
+      </text>
+    </g>
+
+    <!-- STEP 5 -->
+    <g id="step-5">
+      <rect x="1260" y="790" width="280" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <circle cx="1295" cy="825" r="22" fill="#207448"/>
+      <text x="1295" y="833" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+      <!-- Icon: Rollout Flag / Gate -->
+      <g transform="translate(1475, 802)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="6" x2="12" y2="42"/>
+        <polygon points="12,8 36,18 12,28" fill="#e8f1ea"/>
+      </g>
+      <text x="1278" y="890" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1278" dy="0">finish with</tspan>
+        <tspan x="1278" dy="32">failure modes</tspan>
+        <tspan x="1278" dy="32">and rollout</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR (RULE) ==================== -->
+  <g id="takeaway-bar">
+    <rect x="40" y="1045" width="1520" height="120" rx="14" fill="#207448"/>
+    <!-- Icon: Clock / Timer (56px) -->
+    <g transform="translate(70, 1077)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <polyline points="28,14 28,28 38,28"/>
+    </g>
+    <text x="150" y="1094" font-family="sans-serif" font-size="24" fill="#ffffff">
+      <tspan x="150" dy="0" font-weight="bold">Rule: </tspan>
+      <tspan font-weight="normal">if pulled into a deep dive keep a clock, say what you will skip and offer to return;</tspan>
+      <tspan x="150" dy="34" font-weight="normal">the interviewer cannot score what they never heard</tspan>
+    </text>
+  </g>
+</svg>

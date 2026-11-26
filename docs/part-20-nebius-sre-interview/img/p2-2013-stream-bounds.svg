@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>A slow reader holds a slot: bound every stream</title>
+  <desc>Visual infographic explaining how slow readers hold GPU decode slots and KV memory, and the necessary stream bounds.</desc>
+
+  <defs>
+    <marker id="arrow-left" viewBox="0 0 18 18" refX="2" refY="9" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 16 2 L 2 9 L 16 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="80" y="78" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A slow reader holds a slot: bound every stream</text>
+
+  
+  <g id="left-panel">
+    <rect x="80" y="140" width="360" height="630" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(140, 190)">
+      
+      <rect x="0" y="0" width="40" height="64" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="14" y1="52" x2="26" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="15" y1="8" x2="25" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      
+      <path d="M 52 14 A 16 16 0 0 1 52 38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M 64 6 A 28 28 0 0 1 64 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-dasharray="4 6" />
+    </g>
+
+    
+    <text x="120" y="315" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="120" dy="0">Reads tokens</tspan>
+      <tspan x="120" dy="34">at a crawl</tspan>
+    </text>
+
+    
+    <g transform="translate(100, 430)">
+      
+      <line x1="380" y1="20" x2="40" y2="20" stroke="#207448" stroke-width="3" stroke-dasharray="8 8" marker-end="url(#arrow-left)" />
+      
+      
+      <rect x="290" y="6" width="28" height="28" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="304" cy="20" r="4" fill="#207448" />
+
+      <rect x="190" y="6" width="28" height="28" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="204" cy="20" r="4" fill="#207448" />
+
+      <rect x="90" y="6" width="28" height="28" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="104" cy="20" r="4" fill="#207448" />
+    </g>
+  </g>
+
+  
+  <g id="middle-panel">
+    
+    <rect x="480" y="140" width="500" height="470" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+
+    
+    <g transform="translate(520, 180)">
+      <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="14" y="14" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      
+      <line x1="14" y1="-8" x2="14" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="-8" x2="28" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="-8" x2="42" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="56" x2="14" y2="64" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="56" x2="28" y2="64" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="56" x2="42" y2="64" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="-8" y1="14" x2="0" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="-8" y1="28" x2="0" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="-8" y1="42" x2="0" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="56" y1="14" x2="64" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="56" y1="28" x2="64" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="56" y1="42" x2="64" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="600" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="600" dy="0">Server keeps the slot</tspan>
+      <tspan x="600" dy="32">and KV memory until</tspan>
+      <tspan x="600" dy="32">the stream ends</tspan>
+    </text>
+
+    
+    <g transform="translate(520, 310)">
+      <rect x="0" y="0" width="420" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <rect x="6" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="48" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="90" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="132" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="174" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="216" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="258" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="300" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="342" y="6" width="38" height="34" rx="4" fill="#207448" />
+      <rect x="384" y="6" width="30" height="34" rx="4" fill="#207448" />
+    </g>
+
+    
+    <g transform="translate(520, 420)">
+      
+      <rect x="0" y="16" width="32" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3" opacity="0.35" />
+      <rect x="12" y="12" width="32" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3" opacity="0.55" />
+      <rect x="24" y="8" width="32" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3" opacity="0.75" />
+      <rect x="36" y="4" width="32" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3" opacity="0.9" />
+      <rect x="48" y="0" width="32" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      
+      
+      <text x="100" y="24" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="100" dy="0">Thousands of these</tspan>
+        <tspan x="100" dy="30">quietly eat capacity</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(0, 490)">
+      <rect x="480" y="140" width="500" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(520, 180)">
+        <rect x="0" y="0" width="56" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+        <path d="M 28 40 L 28 54 M 14 54 L 42 54" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+        
+        <path d="M 8 20 L 48 20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+
+      
+      <text x="600" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="600" dy="0">Nothing looks broken</tspan>
+        <tspan x="600" dy="32">on the GPU dashboard.</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="right-column">
+    
+    <g transform="translate(1020, 140)">
+      <rect x="0" y="0" width="500" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(30, 30)">
+        <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+        <polyline points="28,12 28,28 42,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      
+      <text x="110" y="45" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+        <tspan x="110" dy="0" font-size="26" font-weight="bold">Per-stream write timeout:</tspan>
+        <tspan x="110" dy="34" font-size="24">give up on a client</tspan>
+        <tspan x="110" dy="30" font-size="24">that stops reading</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1020, 360)">
+      <rect x="0" y="0" width="500" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(30, 30)">
+        <path d="M 6 4 L 50 4 L 28 28 L 50 52 L 6 52 L 28 28 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+        <line x1="2" y1="4" x2="54" y2="4" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+        <line x1="2" y1="52" x2="54" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      </g>
+
+      
+      <text x="110" y="45" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+        <tspan x="110" dy="0" font-size="26" font-weight="bold">Maximum stream duration:</tspan>
+        <tspan x="110" dy="34" font-size="24">ceiling on how long one</tspan>
+        <tspan x="110" dy="30" font-size="24">stream holds a slot</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(1020, 580)">
+      <rect x="0" y="0" width="500" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      
+      <g transform="translate(30, 30)">
+        <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4" />
+        <line x1="12" y1="28" x2="22" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+        <line x1="34" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+        <line x1="22" y1="18" x2="34" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      </g>
+
+      
+      <text x="110" y="42" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+        <tspan x="110" dy="0" font-size="25" font-weight="bold">Stop generation on</tspan>
+        <tspan x="110" dy="30" font-size="25" font-weight="bold">client disconnect:</tspan>
+        <tspan x="110" dy="34" font-size="24">generating for nobody</tspan>
+        <tspan x="110" dy="30" font-size="24">wastes GPU</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-card" transform="translate(80, 805)">
+    <rect x="0" y="0" width="1440" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    
+    <g transform="translate(45, 40)">
+      <path d="M 0 10 L 28 0 L 56 10 L 56 32 C 56 48 28 58 28 58 C 28 58 0 48 0 32 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="18" y1="20" x2="38" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="135" y="77" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan font-size="32" font-weight="bold">Bound every queue: </tspan>
+      <tspan font-size="30">reject at once with 503</tspan>
+    </text>
+  </g>
+</svg>

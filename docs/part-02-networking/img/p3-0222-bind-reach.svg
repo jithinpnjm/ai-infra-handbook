@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The address a server binds to decides who can reach it</title>
+  <desc>Visual infographic explaining server socket bind addresses, listener variants, socket lifecycle, concurrency models, socket options, types, and file descriptor limits.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The address a server binds to decides who can reach it</text>
+
+  
+  <g id="server-box">
+    <rect x="40" y="115" width="650" height="565" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="variant-all">
+      <rect x="60" y="135" width="610" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(80, 155)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="22"/>
+        <ellipse cx="24" cy="24" rx="10" ry="22"/>
+        <line x1="2" y1="24" x2="46" y2="24"/>
+      </g>
+      <text x="145" y="190" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">bind 0.0.0.0 or ::</text>
+      <text x="80" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="80" dy="0">listens on all addresses,</tspan>
+        <tspan x="80" dy="30">reachable from every interface</tspan>
+      </text>
+    </g>
+
+    
+    <g id="variant-loopback">
+      <rect x="60" y="305" width="610" height="185" rx="8" fill="#fef7ee" stroke="#db8129" stroke-width="3.5"/>
+      
+      <g transform="translate(80, 325)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M24 4 L42 12 L42 26 C42 37 24 44 24 44 C24 44 6 37 6 26 L6 12 Z"/>
+        <circle cx="24" cy="22" r="5"/>
+        <path d="M24 27 L24 33"/>
+      </g>
+      <text x="145" y="360" font-family="monospace" font-size="30" font-weight="bold" fill="#db8129">bind 127.0.0.1</text>
+      <text x="80" y="415" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="80" dy="0">accepts only local clients</tspan>
+      </text>
+      <text x="80" y="460" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="80" dy="0">127.0.0.53 systemd-resolved</tspan>
+      </text>
+    </g>
+
+    
+    <g id="variant-specific">
+      <rect x="60" y="510" width="610" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(80, 530)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="36" height="32" rx="4"/>
+        <line x1="14" y1="20" x2="14" y2="28"/>
+        <line x1="24" y1="20" x2="24" y2="28"/>
+        <line x1="34" y1="20" x2="34" y2="28"/>
+      </g>
+      <text x="145" y="565" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">bind a specific address</text>
+      <text x="80" y="625" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="80" dy="0">listens only on that interface</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="lifecycle-and-architecture">
+    
+    <g id="lifecycle-card">
+      <rect x="715" y="115" width="845" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(740, 135)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M12 8 C2 16 2 32 12 40"/>
+        <path d="M36 8 C46 16 46 32 36 40"/>
+        <polyline points="28 16 20 24 28 32"/>
+      </g>
+      <text x="805" y="160" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="805" dy="0">socket(), bind(addr:port), listen(backlog),</tspan>
+        <tspan x="805" dy="40">then loop: accept() returns a new connected socket,</tspan>
+        <tspan x="805" dy="40">read or recv and write or send on it, close()</tspan>
+      </text>
+    </g>
+
+    
+    <g id="two-sockets-card">
+      <rect x="715" y="305" width="845" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(1485, 330)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="12" r="8"/>
+        <path d="M10 40 L10 32 C10 26 16 22 24 22 C32 22 38 26 38 32 L38 40"/>
+        <path d="M38 28 L46 28 L46 38"/>
+      </g>
+      <text x="745" y="348" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="745" dy="0">The server holds two kinds of sockets: the listening</tspan>
+        <tspan x="745" dy="32">socket stays with the master process, each</tspan>
+        <tspan x="745" dy="32">per-connection socket carries one client's reads and</tspan>
+        <tspan x="745" dy="32">writes, like a receptionist who transfers each caller</tspan>
+        <tspan x="745" dy="32">to a different extension</tspan>
+      </text>
+    </g>
+
+    
+    <g id="concurrency-card">
+      <rect x="715" y="510" width="845" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(1485, 530)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="18"/>
+        <path d="M24 14 L24 24 L32 28"/>
+        <path d="M38 14 A18 18 0 0 1 42 24"/>
+      </g>
+      <text x="745" y="555" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="745" dy="0">Traditional servers fork() a process per connection or</tspan>
+        <tspan x="745" dy="35">use pre-fork worker pools; modern servers use event</tspan>
+        <tspan x="745" dy="35">loops (epoll, io_uring) to handle thousands of</tspan>
+        <tspan x="745" dy="35">connections per thread</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="options-row">
+    
+    <g id="options-reuse">
+      <rect x="40" y="700" width="725" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(65, 735)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M40 24 A18 18 0 1 1 34 12"/>
+        <polyline points="34 4 34 14 44 14"/>
+      </g>
+      <text x="135" y="750" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">SO_REUSEADDR and SO_REUSEPORT:</text>
+      <text x="135" y="792" font-family="sans-serif" font-size="24" fill="#303a36">restarts and multi-process load sharing</text>
+    </g>
+
+    
+    <g id="options-connection">
+      <rect x="785" y="700" width="775" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(810, 735)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="14" x2="40" y2="14"/>
+        <circle cx="20" cy="14" r="5" fill="#ffffff"/>
+        <line x1="8" y1="34" x2="40" y2="34"/>
+        <circle cx="30" cy="34" r="5" fill="#ffffff"/>
+      </g>
+      <text x="875" y="750" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="875" dy="0">SO_KEEPALIVE, TCP_NODELAY, SO_RCVBUF</tspan>
+      </text>
+      <text x="875" y="792" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan font-family="monospace" font-weight="bold">and SO_SNDBUF:</tspan> connection behaviour
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="socket-types">
+    <rect x="40" y="845" width="1520" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 875)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="24 6 44 16 24 26 4 16"/>
+      <polyline points="4 24 24 34 44 24"/>
+      <polyline points="4 32 24 42 44 32"/>
+    </g>
+    <text x="135" y="890" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">SOCK_STREAM (TCP), SOCK_DGRAM (UDP), SOCK_RAW (ICMP tools), AF_PACKET (tcpdump),</tspan>
+      <tspan x="135" dy="40">AF_NETLINK (kernel configuration), AF_UNIX (local), vsock (VM host and guests)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="facts-card">
+    <rect x="40" y="980" width="1520" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 1005)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 6 L32 6 L42 16 L42 42 L10 42 Z"/>
+      <polyline points="32 6 32 16 42 16"/>
+      <line x1="18" y1="26" x2="34" y2="26"/>
+      <line x1="18" y1="34" x2="28" y2="34"/>
+    </g>
+    <text x="135" y="1024" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">sockets are file descriptors: /proc/&lt;pid&gt;/fd, limited by ulimit -n</tspan>
+      <tspan x="135" dy="38">and fs.file-max, inherited across fork</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1105" width="1520" height="70" rx="8" fill="#207448"/>
+    <text x="800" y="1150" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Check the bind address before you blame the network</text>
+  </g>
+</svg>

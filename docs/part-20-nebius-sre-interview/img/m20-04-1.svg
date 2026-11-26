@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="t d">
+<title id="t">A descriptor is a small number that points at a kernel object</title>
+<desc id="d">Flowchart from Process through the fd table and Open file description to Inode and Data blocks, with Directory entry and two limits.</desc>
+<defs>
+<marker id="ag" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0 L18 9 L0 18 Z" fill="#207448"/></marker>
+<marker id="ao" viewBox="0 0 18 18" refX="18" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto"><path d="M0 0 L18 9 L0 18 Z" fill="#db8129"/></marker>
+</defs>
+<rect width="1600" height="900" fill="#f5f8f5"/>
+<g font-family="sans-serif" fill="#303a36">
+<text font-size="48" font-weight="700"><tspan x="48" y="64">A descriptor is a small number</tspan> <tspan x="48" y="118">that points at a kernel object</tspan></text>
+</g>
+<g fill="#e8f1ea" stroke="#207448" stroke-width="3">
+<rect x="350" y="150" width="390" height="130" rx="14"/>
+<rect x="840" y="150" width="430" height="130" rx="14"/>
+<rect x="48" y="320" width="250" height="180" rx="16"/>
+<rect x="350" y="320" width="390" height="180" rx="16"/>
+<rect x="840" y="320" width="430" height="200" rx="16"/>
+<rect x="840" y="570" width="430" height="210" rx="16"/>
+<rect x="1322" y="590" width="238" height="170" rx="16"/>
+<rect x="350" y="550" width="390" height="200" rx="16"/>
+</g>
+<g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+<g transform="translate(370,180)"><path d="M3 46 A25 25 0 0 1 53 46"/><line x1="28" y1="46" x2="43" y2="29"/><circle cx="28" cy="46" r="3" fill="#207448" stroke="none"/></g>
+<g transform="translate(860,180)"><path d="M3 46 A25 25 0 0 1 53 46"/><line x1="28" y1="46" x2="43" y2="29"/><circle cx="28" cy="46" r="3" fill="#207448" stroke="none"/></g>
+<g transform="translate(145,342)"><rect x="0" y="0" width="56" height="46" rx="5"/><line x1="0" y1="16" x2="56" y2="16"/><circle cx="10" cy="8" r="2.5" fill="#207448" stroke="none"/><circle cx="19" cy="8" r="2.5" fill="#207448" stroke="none"/></g>
+<g transform="translate(370,345)"><rect x="0" y="0" width="56" height="50" rx="4"/><line x1="0" y1="17" x2="56" y2="17"/><line x1="0" y1="34" x2="56" y2="34"/><line x1="28" y1="0" x2="28" y2="50"/></g>
+<g transform="translate(860,345)"><path d="M6 2 H38 L52 16 V54 H6 Z"/><path d="M38 2 V16 H52"/><line x1="14" y1="30" x2="44" y2="30"/><line x1="14" y1="40" x2="38" y2="40"/></g>
+<g transform="translate(860,600)"><rect x="0" y="8" width="56" height="40" rx="5"/><circle cx="16" cy="28" r="7"/><line x1="30" y1="22" x2="48" y2="22"/><line x1="30" y1="32" x2="44" y2="32"/></g>
+<g transform="translate(1413,612)"><ellipse cx="28" cy="10" rx="24" ry="8"/><path d="M4 10 V44 C4 53 52 53 52 44 V10"/><path d="M4 27 C4 36 52 36 52 27"/></g>
+<g transform="translate(517,570)"><path d="M2 12 H22 L28 4 H54 V50 H2 Z"/><path d="M2 20 H54"/></g>
+</g>
+<g fill="none" stroke-linecap="round">
+<path d="M298 410 H350" stroke="#207448" stroke-width="4" marker-end="url(#ag)"/>
+<path d="M740 410 H840" stroke="#db8129" stroke-width="4" marker-end="url(#ao)"/>
+<path d="M1055 520 V570" stroke="#207448" stroke-width="4" marker-end="url(#ag)"/>
+<path d="M1270 675 H1322" stroke="#207448" stroke-width="4" marker-end="url(#ag)"/>
+<path d="M740 650 H840" stroke="#207448" stroke-width="4" marker-end="url(#ag)"/>
+<path d="M545 280 V320" stroke="#207448" stroke-width="4" stroke-dasharray="9 7" marker-end="url(#ag)"/>
+<path d="M1055 280 V320" stroke="#207448" stroke-width="4" stroke-dasharray="9 7" marker-end="url(#ag)"/>
+</g>
+<g font-family="sans-serif" fill="#303a36" font-weight="700">
+<text x="173" y="450" font-size="30" text-anchor="middle">Process</text>
+<text x="446" y="385" font-size="30"><tspan x="446" y="385">fd table:</tspan> <tspan x="446" y="427">0, 1, 2, 3 ...</tspan></text>
+<text x="936" y="380" font-size="30"><tspan x="936" y="380">Open file</tspan> <tspan x="936" y="420">description:</tspan> <tspan x="936" y="460">offset, flags</tspan></text>
+<text x="936" y="640" font-size="30"><tspan x="936" y="640">Inode:</tspan> <tspan x="936" y="680">owner, mode,</tspan> <tspan x="936" y="720">size, data map</tspan></text>
+<text x="1441" y="718" font-size="30" text-anchor="middle">Data blocks</text>
+<text x="545" y="675" font-size="30" text-anchor="middle"><tspan x="545" y="675">Directory entry:</tspan> <tspan x="545" y="715">a name</tspan></text>
+<text x="446" y="210" font-size="30"><tspan x="446" y="210">RLIMIT_NOFILE:</tspan> <tspan x="446" y="248">EMFILE</tspan></text>
+<text x="936" y="224" font-size="30">file-max: ENFILE</text>
+<text x="790" y="392" font-size="26" text-anchor="middle">fd 3</text>
+</g>
+</svg>

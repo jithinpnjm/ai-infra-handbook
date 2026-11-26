@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>cpuset says where, quota says how much, weight says how fairly</title>
+  <desc>Three columns comparing cgroup CPU controls: cpuset for allowed cores, quota for hard time ceilings, and weight for fair share under contention.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="88" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">cpuset says where, quota says how much,</tspan>
+    <tspan x="800" dy="54">weight says how fairly</tspan>
+  </text>
+  <!-- ==================== COLUMN 1: cpuset ==================== -->
+  <g id="col-cpuset">
+    <rect x="40" y="175" width="480" height="790" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(60, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="6"/>
+      <rect x="18" y="18" width="20" height="20" rx="2" stroke-width="2.5"/>
+      <line x1="16" y1="2" x2="16" y2="8"/>
+      <line x1="28" y1="2" x2="28" y2="8"/>
+      <line x1="40" y1="2" x2="40" y2="8"/>
+      <line x1="16" y1="48" x2="16" y2="54"/>
+      <line x1="28" y1="48" x2="28" y2="54"/>
+      <line x1="40" y1="48" x2="40" y2="54"/>
+      <line x1="2" y1="16" x2="8" y2="16"/>
+      <line x1="2" y1="28" x2="8" y2="28"/>
+      <line x1="2" y1="40" x2="8" y2="40"/>
+      <line x1="48" y1="16" x2="54" y2="16"/>
+      <line x1="48" y1="28" x2="54" y2="28"/>
+      <line x1="48" y1="40" x2="54" y2="40"/>
+    </g>
+    <text x="135" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="135" dy="0">cpuset: </tspan>
+      <tspan x="135" dy="36">where may it run?</tspan>
+    </text>
+    <rect x="60" y="285" width="440" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="82" y="326" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="82" dy="0">cpuset.cpus and</tspan>
+      <tspan x="82" dy="26">cpuset.mems (effective</tspan>
+      <tspan x="82" dy="26">values in</tspan>
+      <tspan x="82" dy="26">cpuset.cpus.effective and</tspan>
+      <tspan x="82" dy="26">cpuset.mems.effective)</tspan>
+    </text>
+    <rect x="60" y="470" width="440" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <!-- Visual CPU cores: 0 to 3 idle/outline, 4 to 7 highlighted/filled -->
+    <g transform="translate(76, 478)">
+      <g transform="translate(0, 0)">
+        <rect x="0" y="5" width="38" height="40" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        <rect x="11" y="16" width="16" height="18" rx="2" fill="none" stroke="#207448" stroke-width="1"/>
+        <line x1="10" y1="1" x2="10" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="19" y1="1" x2="19" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="28" y1="1" x2="28" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="10" y1="45" x2="10" y2="49" stroke="#207448" stroke-width="1.5"/>
+        <line x1="19" y1="45" x2="19" y2="49" stroke="#207448" stroke-width="1.5"/>
+        <line x1="28" y1="45" x2="28" y2="49" stroke="#207448" stroke-width="1.5"/>
+      </g>
+      <g transform="translate(50, 0)">
+        <rect x="0" y="5" width="38" height="40" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        <rect x="11" y="16" width="16" height="18" rx="2" fill="none" stroke="#207448" stroke-width="1"/>
+        <line x1="10" y1="1" x2="10" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="19" y1="1" x2="19" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="28" y1="1" x2="28" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="10" y1="45" x2="10" y2="49" stroke="#207448" stroke-width="1.5"/>
+        <line x1="19" y1="45" x2="19" y2="49" stroke="#207448" stroke-width="1.5"/>
+        <line x1="28" y1="45" x2="28" y2="49" stroke="#207448" stroke-width="1.5"/>
+      </g>
+      <g transform="translate(100, 0)">
+        <rect x="0" y="5" width="38" height="40" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        <rect x="11" y="16" width="16" height="18" rx="2" fill="none" stroke="#207448" stroke-width="1"/>
+        <line x1="10" y1="1" x2="10" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="19" y1="1" x2="19" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="28" y1="1" x2="28" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="10" y1="45" x2="10" y2="49" stroke="#207448" stroke-width="1.5"/>
+        <line x1="19" y1="45" x2="19" y2="49" stroke="#207448" stroke-width="1.5"/>
+        <line x1="28" y1="45" x2="28" y2="49" stroke="#207448" stroke-width="1.5"/>
+      </g>
+      <g transform="translate(150, 0)">
+        <rect x="0" y="5" width="38" height="40" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+        <rect x="11" y="16" width="16" height="18" rx="2" fill="none" stroke="#207448" stroke-width="1"/>
+        <line x1="10" y1="1" x2="10" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="19" y1="1" x2="19" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="28" y1="1" x2="28" y2="5" stroke="#207448" stroke-width="1.5"/>
+        <line x1="10" y1="45" x2="10" y2="49" stroke="#207448" stroke-width="1.5"/>
+        <line x1="19" y1="45" x2="19" y2="49" stroke="#207448" stroke-width="1.5"/>
+        <line x1="28" y1="45" x2="28" y2="49" stroke="#207448" stroke-width="1.5"/>
+      </g>
+      <g transform="translate(200, 0)">
+        <rect x="0" y="5" width="38" height="40" rx="4" fill="#207448" stroke="#207448" stroke-width="2"/>
+        <rect x="11" y="16" width="16" height="18" rx="2" fill="#ffffff" stroke="none"/>
+        <line x1="10" y1="1" x2="10" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="19" y1="1" x2="19" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="28" y1="1" x2="28" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="10" y1="45" x2="10" y2="49" stroke="#207448" stroke-width="2"/>
+        <line x1="19" y1="45" x2="19" y2="49" stroke="#207448" stroke-width="2"/>
+        <line x1="28" y1="45" x2="28" y2="49" stroke="#207448" stroke-width="2"/>
+      </g>
+      <g transform="translate(250, 0)">
+        <rect x="0" y="5" width="38" height="40" rx="4" fill="#207448" stroke="#207448" stroke-width="2"/>
+        <rect x="11" y="16" width="16" height="18" rx="2" fill="#ffffff" stroke="none"/>
+        <line x1="10" y1="1" x2="10" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="19" y1="1" x2="19" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="28" y1="1" x2="28" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="10" y1="45" x2="10" y2="49" stroke="#207448" stroke-width="2"/>
+        <line x1="19" y1="45" x2="19" y2="49" stroke="#207448" stroke-width="2"/>
+        <line x1="28" y1="45" x2="28" y2="49" stroke="#207448" stroke-width="2"/>
+      </g>
+      <g transform="translate(300, 0)">
+        <rect x="0" y="5" width="38" height="40" rx="4" fill="#207448" stroke="#207448" stroke-width="2"/>
+        <rect x="11" y="16" width="16" height="18" rx="2" fill="#ffffff" stroke="none"/>
+        <line x1="10" y1="1" x2="10" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="19" y1="1" x2="19" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="28" y1="1" x2="28" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="10" y1="45" x2="10" y2="49" stroke="#207448" stroke-width="2"/>
+        <line x1="19" y1="45" x2="19" y2="49" stroke="#207448" stroke-width="2"/>
+        <line x1="28" y1="45" x2="28" y2="49" stroke="#207448" stroke-width="2"/>
+      </g>
+      <g transform="translate(350, 0)">
+        <rect x="0" y="5" width="38" height="40" rx="4" fill="#207448" stroke="#207448" stroke-width="2"/>
+        <rect x="11" y="16" width="16" height="18" rx="2" fill="#ffffff" stroke="none"/>
+        <line x1="10" y1="1" x2="10" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="19" y1="1" x2="19" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="28" y1="1" x2="28" y2="5" stroke="#207448" stroke-width="2"/>
+        <line x1="10" y1="45" x2="10" y2="49" stroke="#207448" stroke-width="2"/>
+        <line x1="19" y1="45" x2="19" y2="49" stroke="#207448" stroke-width="2"/>
+        <line x1="28" y1="45" x2="28" y2="49" stroke="#207448" stroke-width="2"/>
+      </g>
+    </g>
+    <rect x="60" y="553" width="440" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="82" y="594" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="82" dy="0">a hard allow-list, no</tspan>
+      <tspan x="82" dy="28">throttling; an empty</tspan>
+      <tspan x="82" dy="28">cpuset.cpus inherits</tspan>
+      <tspan x="82" dy="28">the parent's</tspan>
+    </text>
+    <rect x="60" y="715" width="440" height="232" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="82" y="758" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="82" dy="0">a job that must run on</tspan>
+      <tspan x="82" dy="30">cores 4 to 7; Slurm</tspan>
+      <tspan x="82" dy="30">task/cgroup and the</tspan>
+      <tspan x="82" dy="30">Kubernetes CPU Manager</tspan>
+      <tspan x="82" dy="30">use cpusets for exclusive</tspan>
+      <tspan x="82" dy="30">cores</tspan>
+    </text>
+  </g>
+  <!-- ==================== COLUMN 2: quota ==================== -->
+  <g id="col-quota">
+    <rect x="560" y="175" width="480" height="790" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(580, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 46 A 22 22 0 1 1 48 46"/>
+      <line x1="28" y1="28" x2="40" y2="16" stroke-width="3.5"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+      <line x1="10" y1="46" x2="46" y2="46" stroke-width="2.5"/>
+    </g>
+    <text x="655" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="655" dy="0">quota (cpu.max): </tspan>
+      <tspan x="655" dy="36">how much time?</tspan>
+    </text>
+    <rect x="580" y="285" width="440" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="602" y="332" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="602" dy="0">cpu.max = $MAX $PERIOD</tspan>
+      <tspan x="602" dy="28">in microseconds</tspan>
+      <tspan x="602" dy="28">(200000 100000 =</tspan>
+      <tspan x="602" dy="28">2 CPUs worth)</tspan>
+    </text>
+    <rect x="580" y="470" width="440" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <!-- Visual fuel gauge and timeline emptying mid-period -->
+    <g transform="translate(600, 480)">
+      <g transform="translate(15, 12)">
+        <path d="M 10 65 A 38 38 0 1 1 74 65" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+        <line x1="14" y1="60" x2="22" y2="54" stroke="#207448" stroke-width="2.5"/>
+        <line x1="42" y1="14" x2="42" y2="23" stroke="#207448" stroke-width="2.5"/>
+        <line x1="70" y1="60" x2="62" y2="54" stroke="#207448" stroke-width="2.5"/>
+        <line x1="42" y1="50" x2="18" y2="58" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <circle cx="42" cy="50" r="5" fill="#207448"/>
+      </g>
+      <g transform="translate(125, 36)">
+        <rect x="0" y="0" width="250" height="36" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <rect x="0" y="0" width="100" height="36" rx="6" fill="#207448"/>
+        <line x1="100" y1="-8" x2="100" y2="44" stroke="#207448" stroke-width="2.5" stroke-dasharray="3,3"/>
+        <line x1="125" y1="5" x2="145" y2="31" stroke="#a9c4b3" stroke-width="2"/>
+        <line x1="155" y1="5" x2="175" y2="31" stroke="#a9c4b3" stroke-width="2"/>
+        <line x1="185" y1="5" x2="205" y2="31" stroke="#a9c4b3" stroke-width="2"/>
+        <line x1="215" y1="5" x2="235" y2="31" stroke="#a9c4b3" stroke-width="2"/>
+      </g>
+    </g>
+    <rect x="580" y="637" width="440" height="310" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="602" y="756" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="602" dy="0">a job that may run on any</tspan>
+      <tspan x="602" dy="36">cores as long as it gets</tspan>
+      <tspan x="602" dy="36">4 CPUs worth of time</tspan>
+    </text>
+  </g>
+  <!-- ==================== COLUMN 3: weight ==================== -->
+  <g id="col-weight">
+    <rect x="1080" y="175" width="480" height="790" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(1100, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="28" y1="8" x2="28" y2="48"/>
+      <line x1="10" y1="18" x2="46" y2="18"/>
+      <line x1="14" y1="48" x2="42" y2="48"/>
+      <polyline points="10,18 4,32 16,32 10,18"/>
+      <polyline points="46,18 40,32 52,32 46,18"/>
+    </g>
+    <text x="1175" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1175" dy="0">weight (cpu.weight): </tspan>
+      <tspan x="1175" dy="32">how fairly under</tspan>
+      <tspan x="1175" dy="32">contention?</tspan>
+    </text>
+    <rect x="1100" y="285" width="440" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1122" y="338" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1122" dy="0">cpu.weight 1 to 10000,</tspan>
+      <tspan x="1122" dy="30">default 100; v1</tspan>
+      <tspan x="1122" dy="30">cpu.shares default 1024</tspan>
+    </text>
+    <rect x="1100" y="470" width="440" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <!-- Visual two sibling bars 100 and 300 splitting 25% and 75% -->
+    <g transform="translate(1125, 485)">
+      <g transform="translate(5, 10)">
+        <rect x="0" y="0" width="95" height="38" rx="6" fill="#a9c4b3" stroke="#207448" stroke-width="2"/>
+        <line x1="95" y1="0" x2="380" y2="0" stroke="#e8f1ea" stroke-width="2" stroke-dasharray="4,4"/>
+        <line x1="95" y1="38" x2="380" y2="38" stroke="#e8f1ea" stroke-width="2" stroke-dasharray="4,4"/>
+        <line x1="380" y1="0" x2="380" y2="38" stroke="#e8f1ea" stroke-width="2"/>
+      </g>
+      <g transform="translate(5, 65)">
+        <rect x="0" y="0" width="285" height="38" rx="6" fill="#207448" stroke="#207448" stroke-width="2"/>
+        <line x1="285" y1="0" x2="380" y2="0" stroke="#e8f1ea" stroke-width="2" stroke-dasharray="4,4"/>
+        <line x1="285" y1="38" x2="380" y2="38" stroke="#e8f1ea" stroke-width="2" stroke-dasharray="4,4"/>
+        <line x1="380" y1="0" x2="380" y2="38" stroke="#e8f1ea" stroke-width="2"/>
+      </g>
+    </g>
+    <rect x="1100" y="637" width="440" height="310" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1122" y="688" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1122" dy="0">invisible on an idle</tspan>
+      <tspan x="1122" dy="34">machine, never wastes</tspan>
+      <tspan x="1122" dy="34">capacity, never limits</tspan>
+      <tspan x="1122" dy="34">alone; Kubernetes CPU</tspan>
+      <tspan x="1122" dy="34">request becomes shares</tspan>
+      <tspan x="1122" dy="34">or weight</tspan>
+    </text>
+  </g>
+  <!-- ==================== BOTTOM STRIP ==================== -->
+  <g id="bottom-strip">
+    <rect x="40" y="980" width="1520" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(60, 1005)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="42" rx="4"/>
+      <line x1="26" y1="6" x2="26" y2="48" stroke-dasharray="3,3"/>
+      <rect x="10" y="16" width="10" height="12" rx="2" fill="#207448"/>
+    </g>
+    <text x="130" y="1024" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="130" dy="0">v2 partitions: cpuset.cpus.partition set to root or isolated makes a group with exclusive</tspan>
+      <tspan x="130" dy="32">CPUs, a runtime alternative to isolcpus</tspan>
+    </text>
+  </g>
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1094" width="1520" height="66" rx="10" fill="#207448"/>
+    <text x="800" y="1137" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Choose placement, ceiling or proportion by what the job needs</text>
+  </g>
+</svg>

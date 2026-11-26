@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>A multi-target exporter: how /probe?target= gets filled in</title>
+  <desc>Flow diagram showing Prometheus relabelling steps transforming static target addresses into query parameters for a multi-target exporter scrape request, with architectural rationale and contrast.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="60" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A multi-target exporter: how /probe?target= gets filled in</text>
+
+  
+  
+  <g id="node-prometheus-job">
+    <rect x="50" y="110" width="940" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(75, 142)">
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 16 16 M 40 40 L 45 45 M 11 45 L 16 40 M 40 16 L 45 11" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="155" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Prometheus job 'bmc'</text>
+    <text x="155" y="200" font-family="monospace" font-size="24" fill="#303a36">metrics_path /probe and static targets 'bmc01.mgmt, bmc02.mgmt'</text>
+  </g>
+
+  
+  <line x1="520" y1="230" x2="520" y2="265" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-step-1">
+    <rect x="50" y="270" width="940" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="95" cy="315" r="24" fill="#207448" />
+    <text x="95" y="324" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+    
+    <text x="145" y="324" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">source_labels __address__ goes to target_label __param_target</text>
+    <text x="145" y="375" font-family="sans-serif" font-size="24" fill="#303a36">the target becomes the URL query parameter target</text>
+  </g>
+
+  
+  <line x1="520" y1="420" x2="520" y2="455" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-step-2">
+    <rect x="50" y="460" width="940" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="95" cy="505" r="24" fill="#207448" />
+    <text x="95" y="514" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    
+    <text x="145" y="514" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">source_labels __param_target goes to target_label instance</text>
+    <text x="145" y="565" font-family="sans-serif" font-size="24" fill="#303a36">keeps the BMC name as the instance label</text>
+  </g>
+
+  
+  <line x1="520" y1="610" x2="520" y2="645" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-step-3">
+    <rect x="50" y="650" width="940" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+
+    
+    <circle cx="95" cy="695" r="24" fill="#db8129" />
+    <text x="95" y="704" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    
+    <text x="145" y="704" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">target_label __address__ with replacement bmc-exporter:9102</text>
+    <text x="145" y="756" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">the scrape goes to the exporter</text>
+  </g>
+
+  
+  <line x1="520" y1="805" x2="520" y2="840" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="node-result-request">
+    <rect x="50" y="845" width="940" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(75, 882)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <ellipse cx="28" cy="28" rx="12" ry="24" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="4" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="3" />
+    </g>
+
+    <text x="155" y="890" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Result request</text>
+    <text x="155" y="938" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">GET bmc-exporter:9102/probe?target=bmc01.mgmt</text>
+  </g>
+
+  
+  <g id="side-panel-why">
+    
+    <rect x="1020" y="110" width="530" height="870" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(1055, 140)">
+      <path d="M 28 6 L 50 16 L 50 34 C 50 46 28 54 28 54 C 28 54 6 46 6 34 L 6 16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="42" r="3" fill="#207448" />
+    </g>
+
+    
+    <text x="1130" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">why</text>
+
+    
+    <text x="1055" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1055" dy="0">blackbox_exporter and</tspan>
+      <tspan x="1055" dy="36">snmp_exporter work this way;</tspan>
+      <tspan x="1055" dy="36">the exporter keeps no host list of</tspan>
+      <tspan x="1055" dy="36">its own because Prometheus</tspan>
+      <tspan x="1055" dy="36">relabelling (rewriting the target</tspan>
+      <tspan x="1055" dy="36">address into the query parameter</tspan>
+      <tspan x="1055" dy="36">before it scrapes) supplies the</tspan>
+      <tspan x="1055" dy="36">targets from service discovery</tspan>
+    </text>
+
+    
+    <g id="contrast-box" transform="translate(1045, 590)">
+      <rect x="0" y="0" width="480" height="360" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+      
+      <g transform="translate(25, 25)">
+        <rect x="4" y="6" width="48" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+        <line x1="14" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+        <line x1="14" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+        <line x1="14" y1="38" x2="32" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      </g>
+
+      <text x="90" y="62" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Contrast</text>
+
+      <text x="25" y="145" font-family="sans-serif" font-size="26" fill="#303a36">
+        <tspan x="25" dy="0">the FleetCollector keeps its</tspan>
+        <tspan x="25" dy="44">own list of hosts</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="50" y="1015" width="1500" height="75" rx="10" fill="#207448" />
+    <text x="800" y="1062" font-family="sans-serif" font-size="27" font-weight="bold" fill="#ffffff" text-anchor="middle">The exporter takes the target as a URL parameter</text>
+  </g>
+</svg>

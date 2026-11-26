@@ -50,23 +50,9 @@ After the lab, you can:
 
 Read the diagram from top to bottom, because that is the order you will work in. Terraform builds the infrastructure, its output becomes the Ansible inventory, and Ansible configures the nodes that validation then checks. The nightly drift job looks at both layers, so it can catch a change made on either side.
 
-```mermaid
-flowchart LR
-  subgraph Git["Git repo"]
-    TF["terraform/ (modules + live/lab)"]
-    AN["ansible/ (roles, playbooks, inventory plugin)"]
-    CI["ci/ (pipeline)"]
-  end
-  TF -->|plan/apply| INF["Infrastructure\nnetwork + storage + nodes\n(Docker or cloud)"]
-  INF -->|terraform output -json| INV["inventory.yml (generated)"]
-  INV --> AN
-  AN -->|"ssh"| N["Nodes: login01, ctl01, gpu01-gpu03"]
-  N --> V["Validation: nvidia-smi (stub), DCGM, Slurm sinfo, NCCL stub"]
-  CI --> TF
-  CI --> AN
-  DRIFT["Nightly drift job\nterraform plan -detailed-exitcode\nansible --check --diff"] --> INF
-  DRIFT --> N
-```
+![Architecture](./img/m4-27-1.svg)
+
+*Figure 4.27.1. Architecture, as a diagram.*
 
 The nodes are `login01`, the bastion and login host, `ctl01`, which runs the Slurm controller and monitoring, and `gpu01` to `gpu03`, the workers. A bastion is the single machine that outsiders reach first, so everything else can stay private behind it. Path B adds a bucket for shared data and a service account.
 

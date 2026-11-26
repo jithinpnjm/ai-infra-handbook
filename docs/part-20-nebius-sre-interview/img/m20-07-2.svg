@@ -1,0 +1,81 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Processes, signals, zombies and PID 1</title>
+  <desc>Flowchart illustrating process shutdown behavior from SIGTERM to graceful exit or SIGKILL timeout escalation.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="100" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Processes, signals, zombies and PID 1</text>
+
+  
+  <rect x="60" y="220" width="310" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 200 280 L 230 280 L 245 295 L 245 315 L 230 330 L 200 330 L 185 315 L 185 295 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <rect x="207" y="297" width="16" height="16" rx="3" fill="#207448"/>
+  <text x="215" y="405" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Stop requested</text>
+
+  
+  <line x1="370" y1="340" x2="440" y2="340" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="440" y="220" width="280" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <line x1="580" y1="325" x2="580" y2="295" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="580" cy="293" r="4" fill="#207448"/>
+  <path d="M 566 283 A 16 16 0 0 0 566 307" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 594 283 A 16 16 0 0 1 594 307" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 556 275 A 28 28 0 0 0 556 315" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 604 275 A 28 28 0 0 1 604 315" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="580" y="405" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">SIGTERM</text>
+
+  
+  <line x1="720" y1="340" x2="800" y2="340" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="800" y="220" width="320" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="960" cy="308" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="308" x2="960" y2="294" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="960" y1="308" x2="972" y2="308" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="954" y1="278" x2="966" y2="278" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="960" y1="278" x2="960" y2="284" stroke="#207448" stroke-width="4"/>
+  <text x="960" y="405" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Exits in time?</text>
+
+  
+  <line x1="1120" y1="340" x2="1260" y2="340" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="1190" y="322" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <rect x="1260" y="220" width="280" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1400" cy="305" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 1388 305 L 1396 314 L 1414 296" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1400" y="405" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">Exit 0 or 143</text>
+
+  
+  <line x1="870" y1="460" x2="870" y2="660" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="890" y="568" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no: grace period over</text>
+
+  
+  <rect x="800" y="660" width="320" height="240" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  
+  <path d="M 962 718 L 944 742 L 958 742 L 954 772 L 976 746 L 962 746 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="960" y="845" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">SIGKILL</text>
+
+  
+  <line x1="1120" y1="780" x2="1260" y2="780" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1260" y="660" width="280" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1400" cy="745" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 1390 735 L 1410 755 M 1410 735 L 1390 755" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="1400" y="845" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">Exit 137</text>
+</svg>

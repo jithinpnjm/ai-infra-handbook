@@ -1,0 +1,262 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-vocab-hit-ratio",
+  "title": "Words that sound alike: bandwidth versus throughput, latency versus response time, and why 98 to 99 percent matters",
+  "spec": "Left half: four definition pairs as paired cards. 'Bandwidth: the maximum possible throughput' versus 'Throughput: the rate actually achieved; a link with plenty of bandwidth can deliver poor throughput if work arrives in bursts'. 'Latency: time an operation waits before service starts' plus 'Service time' equals 'Response time: waiting plus service' drawn as two segments joined into one bar. 'Utilisation: fraction of an interval a resource was busy' versus 'Saturation: work that cannot be serviced yet and waits in a queue'; note 'a device can be 100% busy and still accept more work: busy and full are different, an NVMe drive with a deep queue'. 'IOPS: operations per second'. Right half 'Cache hit ratio is not linear in benefit': two small bars of 100 accesses. Bar A '98% to 99%': misses go from 2 to 1, drawn as two red-free dots shrinking to one, label 'half as many misses' (orange). Bar B '10% to 11%': misses go from 90 to 89, label 'almost no change'. Rule 'A miss costs the same either way, so what matters is how many misses are left'. Bottom strip 'Say each number with its unit and its interval: tokens per second per GPU, averaged over a stated interval'. Bottom bar: 'Agree on these terms with the people who will read your numbers'.",
+  "anchor": "## 2. Vocabulary and concepts",
+  "alt": "Definition cards contrasting bandwidth with throughput, latency with response time and utilisation with saturation, plus a comparison showing 98 to 99 percent cache hit ratio halves misses.",
+  "cap": "Going from a 98 to a 99 percent hit ratio halves the misses, while 10 to 11 percent barely changes them."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-load-vs-architecture",
+  "title": "Slow because of load, or slow because of architecture",
+  "spec": "Two columns. Left column 'Too much load' with a picture of a multithreaded app with all CPU bars full and a queue of requests waiting. Rule beneath 'request rate and duration both rise'. Right column 'Poor architecture' with a picture of 64 CPU squares where one is full and 63 are empty, labelled 'single-threaded app saturating one core while 63 cores sit idle', and a second picture 'threads contending for one lock'. Rule beneath 'steady request rate with rising duration points at architecture or resources' (orange). A header strip 'Use the request-rate trend to tell them apart'. Bottom panel 'Scalability shape' with a small curve: 'linear at first, then a knee where contention begins, then possibly a decline from coherence overheads'. Notes 'Some resources degrade fast, such as memory when paging starts, and disks; others slowly, such as CPU' and 'Services that return errors instead of queueing, such as a 503, keep response times flat but fail requests'. Footnote 'Metrics are not free: collecting them costs CPU (the observer effect), and they can be stale or defined differently between versions; verify a surprising number with a second source'. Bottom bar: 'Ask which one it is before you tune'.",
+  "anchor": "### Other concepts",
+  "alt": "Two columns comparing a load problem, where request rate and duration both rise, with an architecture problem, where the rate is steady but duration rises or one core is saturated while others are idle.",
+  "cap": "If rate and duration both rise it is load, and if the rate is steady while duration rises it points at architecture or resources."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-known-unknowns",
+  "title": "Known-knowns, known-unknowns and unknown-unknowns: why a checklist beats intuition",
+  "spec": "Three stacked boxes, from top to bottom, using the chapter's own example. Box 1 'Known-known: you know the CPU is 10% busy'. Box 2 'Known-unknown: you know you have not looked at interrupt load'. Box 3 'Unknown-unknown: you do not know that interrupts consume cores' (orange). An upward arrow along the left labelled 'as you learn more, unknown-unknowns turn into known-unknowns'. A side box on the right 'A checklist that goes resource by resource, the USE method, is built to expose them: any question you cannot answer is a known unknown, and writing it down is part of the work'. Under the stack a second panel 'Depth depends on return on investment: when to stop' with three bullets: 'Stop when you have explained the bulk of the problem; a 3x CPU rise where the cause you found accounts for 12% of the CPU is not explained', 'Stop when the potential gain is smaller than the cost of the analysis', 'At GPU-cluster scale one percent of goodput is worth real money, so deeper analysis can be justified'. Bottom bar: 'Explaining 12% of a 3x rise is not an explanation'.",
+  "anchor": "### Other concepts",
+  "alt": "A ladder of known-knowns, known-unknowns and unknown-unknowns using the example of CPU busy and interrupt load, with the rule for when to stop analysing.",
+  "cap": "A resource-by-resource checklist turns unknown-unknowns into known-unknowns, and you stop only when the bulk of the problem is explained."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-six-questions",
+  "title": "Six questions before you log in, plus the GPU extras",
+  "spec": "Left: six numbered question cards. 1 'What makes you think there is a performance problem? Which metric looks wrong, which complaint started the chase'. 2 'Has the system ever performed well? Regression, or never good'. 3 'What changed recently? Software, firmware, driver, kernel, hardware, load, data, configuration, neighbours'. 4 'Can it be expressed as latency or runtime? Step time, tokens per second, time to first token, job duration'. 5 'Does it affect other users, nodes and jobs, or only this one?'. 6 'What is the environment? Hardware, versions, topology, scheduler, container and library versions'. Right: a green panel 'For GPU work, also ask' with bullets 'Which model and batch size?', 'Which parallelism strategy, how many nodes and GPUs?', 'What throughput do you expect, and where did the expectation come from: published results, an earlier run, a theoretical estimate?', 'Is the slowdown constant or periodic?', 'Are all ranks slow, or one straggler?', 'Does it reproduce on one node?'. Bottom strip with an arrow 'Write the answers down before you touch the system: they become the problem statement you test against and the record that shows whether the fix worked'. Orange outline on question 3. Bottom bar: 'Often the answers alone reveal the cause'.",
+  "anchor": "## 3. The problem statement comes first",
+  "alt": "Six numbered problem statement questions with a panel of extra questions for GPU work such as model, parallelism, expected throughput and stragglers.",
+  "cap": "Ask the six questions and the GPU extras first, and write the answers down as the problem statement you test against."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-anti-methods",
+  "title": "Three habits that waste time, and the method that replaces them",
+  "spec": "Left: three anti-method cards stacked, each with a name, what happens and its flaw. 'Streetlight: use the tools you know or that are easy, where the light is good (running top because you know it)': 'finds an issue, not the issue'. 'Random change: change tunables until it improves and keep what looks better': 'unexplained, fragile, may encode workarounds, risk at peak'. 'Blame-someone-else: hypothesise a component you do not own and hand it over without data': 'wastes other teams; a ticket bounces for a week; demand screenshots of tools run'. Right: the replacement as a vertical flow in green. 'Problem statement (always first)' to 'Scientific method: question, hypothesis, prediction, test, analysis' to 'Diagnosis cycle: hypothesis, instrumentation, data, hypothesis, quickly so bad theories die early'. Beside the scientific method three test types: 'Observational: watch the system while it runs', 'Experimental: change one thing; if it does nothing, revert it before the next hypothesis', 'Negative: deliberately worsen something to confirm a cause'. Orange on the Problem statement box. Bottom bar: 'A method fixes the order of the questions, so your favourite tool comes after the evidence'.",
+  "anchor": "## 4. Anti-methods and good methods",
+  "alt": "Three anti-methods, streetlight, random change and blame someone else, beside the replacement flow of problem statement, scientific method and diagnosis cycle.",
+  "cap": "Streetlight, random change and blame-someone-else all skip the evidence, so start from the problem statement and run the scientific method."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-node17-prediction",
+  "title": "A failed prediction is information: the node 17 example",
+  "spec": "A loop diagram of five steps with the chapter example filled in. Step 'Question: why are training steps on node 17 slow, and only that node?'. Step 'Hypothesis: its data loader is starved by a slow local NVMe'. Step 'Prediction: iostat will show high await on that device, and GPU sm activity will drop in lockstep'. Step 'Test: look'. Step 'Result' split in two: 'Prediction fails: await is normal and the data loader queue is full, so the GPU is waiting in NCCL; the NVMe is not the cause' (orange) with an arrow back to Hypothesis labelled 'new hypothesis, such as a slow NIC link'. Below, a second card 'Experimental example: does disabling NUMA balancing raise throughput?': 'prediction: smaller run-to-run variance and fewer page faults', 'A/B comparison on identical nodes, same data, pinned clocks, confidence intervals', 'if no effect, revert it and write down that you tried'. A third strip 'Elimination is also an answer: a resource with low utilisation, no saturation and no errors removes that resource from the search; document negative findings so other teams do not re-check the same dead end'. Bottom bar: 'A failed prediction is information, not a wasted trip'.",
+  "anchor": "### The Scientific Method in practice (examples)",
+  "alt": "A hypothesis loop for slow node 17 where the NVMe await prediction fails and the hypothesis changes, with an experimental NUMA balancing A/B example.",
+  "cap": "When the prediction of high NVMe await fails, the finding eliminates the disk and sends you back with a new hypothesis."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-gpu-first-minute",
+  "title": "The 60-second checklist for a GPU node: eight read-only additions",
+  "spec": "A table with eight numbered rows continuing from the ten host commands, three columns 'Command', 'What to check', 'Reads which layer'. 11 'nvidia-smi': 'all GPUs present, driver and CUDA versions, memory, processes, power draw versus cap, temperature, throttle reasons (nvidia-smi -q -d PERFORMANCE)'. 12 'nvidia-smi dmon -s pucvmet -d 1': 'per-GPU power, utilisation (sm, mem, enc/dec), clocks, memory, PCIe and NVLink throughput, ECC counters per second'. 13 'nvidia-smi topo -m and nvidia-smi nvlink -s': 'topology matrix (NV#, PIX, PXB, PHB, SYS, NODE), NVLink active links'. 14 'dcgmi dmon -e ... or dcgmi diag -r 1': 'SM activity and occupancy, tensor-pipe activity, DRAM activity, NVLink and PCIe throughput; quick health test'. 15 'journalctl -k | grep -iE \"NVRM|Xid|nvidia\"': 'GPU errors: Xid 79 fallen off the bus, 48 63 64 94 95 ECC and retired pages, 74 NVLink errors' (orange). 16 'ibstat, ibv_devinfo, rdma link, perfquery or ethtool -S': 'link state and rate, error counters'. 17 'cat /proc/pressure/{cpu,memory,io}': 'PSI: tasks stalled on each resource'. 18 'numastat, lstopo, cat /proc/cmdline, sysctl -a diff versus baseline': 'placement and drift'. Footer 'All of them are read-only; option names vary by driver and DCGM version, so check the flags on your own system'. Bottom bar: 'Add these to the host checklist when you are on a GPU node'.",
+  "anchor": "## 5. The Linux 60-second checklist",
+  "alt": "A table of eight read-only GPU node checks from nvidia-smi through DCGM, Xid log search, InfiniBand counters, PSI and NUMA placement.",
+  "cap": "Eight read-only GPU checks extend the host checklist to cover GPUs, topology, Xid errors, fabric counters and pressure."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-gpu-util-trap",
+  "title": "GPU-Util 100 percent does not mean the GPU is working hard",
+  "spec": "Two bars side by side over the same sampling time axis. Left bar 'One tiny kernel running all the time': a thin sliver of SM capacity filled along the timeline; readout 'nvidia-smi GPU-Util: 100%' in orange. Right bar 'Many SMs busy with large kernels': a fully filled block; readout 'GPU-Util: 100%' too. Between them an equals sign crossed out. Definition card 'GPU-Util only means a kernel was running on at least one SM during the sample'. Below, a column 'Look at instead': 'SM activity and occupancy', 'tensor-core activity', 'memory bandwidth (DCGM DRAM activity)', and above all 'achieved MFU and tokens/s compared with what you expected'. A second panel 'When GPU-Util is high but SM activity is low' with the arrow to 'many small kernels: CUDA graphs or compile'. Note 'MFU = achieved model FLOPs/s divided by peak hardware FLOPs/s (dense, precision-matched); good LLM training values are well below 100% and depend on scale and model: use your own baseline'. Bottom bar: 'Compare MFU and tokens per second, not utilisation'.",
+  "anchor": "## 5. The Linux 60-second checklist",
+  "alt": "Two GPUs both showing 100 percent GPU-Util, one running a tiny kernel and one with many SMs busy, with the better metrics to read instead.",
+  "cap": "GPU-Util only says a kernel was running on at least one SM, so read SM activity, memory bandwidth, MFU and tokens per second."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-use-order-traps",
+  "title": "Reading USE results: check order and three traps",
+  "spec": "Top: three boxes in order with number circles and reasons. 1 'Errors first: cheap and objective'. 2 'Saturation second: any amount of it matters'. 3 'Utilisation third: needs interpretation'. Under them the metric forms: 'Utilisation: a percent over an interval, such as one CPU at 90%', 'Saturation: a queue length or wait time, such as run queue of 4', 'Errors: counts, such as 50 disk errors'. Middle: three trap cards. 'Trap 1: interval length' with a bar chart of one 5-minute average bar at 40% beside sixty 1-second bars that are all at 100% (orange), caption 'five-minute averages can show 40% while every second saturates: look at 1 s data'. 'Trap 2: the 60% line' with a small curve; caption 'above about 60% utilisation queueing delays become frequent for non-preemptible resources such as disks, NICs and links; CPUs preempt and degrade more gracefully'. 'Trap 3: the first finding is not necessarily the finding' caption 'systems can have several issues: fix one, re-measure, iterate'. Bottom strip 'Include software resources: mutex locks, thread pools, file descriptors, process counts, connection pools, and cgroup limits; a memory cgroup is saturated by an allocation failure or swapping caused by the limit even when the host is fine; CPU quota throttling is saturation'. Bottom bar: 'The method works through resources, not tools'.",
+  "anchor": "## 6. The USE method",
+  "alt": "The order for reading USE results as errors, saturation, utilisation, with three traps: interval length, the 60 percent line and the first finding.",
+  "cap": "Check errors, then saturation, then utilisation, and beware long intervals, the 60 percent line and stopping at the first finding."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-use-gpu-rows",
+  "title": "USE table, GPU side: PCIe, compute, memory, NVLink and power",
+  "spec": "A matrix with rows for five resources and columns 'Utilisation', 'Saturation', 'Errors'. Row 'PCIe (GPU, NIC, NVMe)': util 'nvidia-smi dmon PCIe rx/tx versus link capability; lspci -vv link speed and width'; sat '(indirect) copy stalls'; errors 'AER errors in dmesg, Xid 79, replay counters'. Row 'GPU compute (SMs, tensor cores)': util 'DCGM SM activity and occupancy, tensor activity, nsys'; sat 'work queued behind other streams or processes; MPS or time-slice contention'; errors 'Xid errors; ECC errors; thermal or power throttling reasons'. Row 'GPU memory (HBM) capacity': util 'nvidia-smi memory used and total; allocator stats'; sat 'allocation failures or OOM; unified-memory oversubscription (page migration traffic)'; errors 'ECC single and double bit, retired pages, row-remapping failures'. Row 'NVLink and NVSwitch': util 'nvidia-smi nvlink, DCGM NVLink bandwidth versus peak'; sat 'stalls visible in profiler timelines'; errors 'NVLink CRC and replay errors, Xid 74, fabric manager health'. Row 'Power and thermal': util 'nvidia-smi power draw versus limit, ipmitool sdr, turbostat'; sat 'clock throttling due to power cap or thermal reasons'; errors 'thermal or power faults in the BMC SEL'. Footnote 'GPU memory bandwidth: DCGM DRAM activity (saturation indirect)'. Orange on the NVLink errors cell 'Xid 74'. Callout 'A table with three honest blanks teaches you more than a table filled with guesses: every blank is a known unknown'. Bottom bar: 'Fill this table in for your platform'.",
+  "anchor": "### The USE table for a GPU server",
+  "alt": "A USE matrix for PCIe, GPU compute, HBM capacity, NVLink and power with the utilisation, saturation and error check for each.",
+  "cap": "Each GPU-side resource gets a utilisation, saturation and error check, and every blank cell is a known unknown to close."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-use-host-rows",
+  "title": "USE table, host and fabric side: CPU, memory, storage, network and software limits",
+  "spec": "A matrix with rows and columns 'Utilisation', 'Saturation', 'Errors'. Row 'CPU (per logical CPU)': 'mpstat -P ALL 1 (%usr+%sys)'; 'run queue vmstat r, runqlat, PSI cpu some, cgroup cpu.stat throttling'; 'machine-check (rasdaemon, mcelog), EDAC, thermal throttling in dmesg'. Row 'Host memory': 'free -m, MemAvailable'; 'swapping vmstat si/so, reclaim sar -B pgscan, PSI memory, OOM events'; 'dmesg OOM, EDAC ECC counts, failed allocations'. Row 'Local NVMe': 'iostat -x %util (weak for NVMe), throughput versus spec'; 'aqu-sz, await, PSI io, biolatency'; 'nvme smart-log media errors, dmesg I/O errors'. Row 'Network interface (Ethernet or IB)': 'sar -n DEV, ethtool -S, rdma statistic, ibstat rate versus line rate'; 'drops and overruns, retransmits (nstat, ss -ti), pause frames, ECN and CNP, queue depth'; 'CRC and symbol errors, link flaps, port_rcv_errors, perfquery'. Row 'Fabric and switches': 'port counters (UFM, NetQ, ibdiagnet)'; 'buffer occupancy, PFC pause, adaptive routing stats'; 'link down events, bit error rate'. Row 'Containers (cgroup limits)': 'cpu.stat, memory.current versus memory.max, io.stat'; 'CPU throttling, memory.events high and max, PSI per cgroup'; 'OOM kills (memory.events oom_kill), pids max'. Footnote 'Also: NUMA and memory bandwidth via perf stat, pcm-memory, numastat; swap and storage capacity via df -h and df -i'. Orange on the NVMe utilisation cell 'weak for NVMe'. Callout 'The interconnects are usually over-provisioned, which is exactly why nobody suspects them: check PCIe topology and link speed with nvidia-smi topo -m, about a minute'. Bottom bar: 'Map each USE cell to a tool, and list the cells with no tool'.",
+  "anchor": "### The USE table for a GPU server",
+  "alt": "A USE matrix for CPU, host memory, NVMe, network interfaces, fabric and container limits with the utilisation, saturation and error check for each.",
+  "cap": "The host and fabric rows give each resource a utilisation, saturation and error check, and containers add cgroup limits to the sweep."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-use-software-rows",
+  "title": "USE for software resources: file descriptors, pinned memory, threads and NCCL",
+  "spec": "A matrix with four rows and columns 'Utilisation', 'Saturation', 'Errors'. Row 'File descriptors': 'ls /proc/PID/fd | wc -l versus ulimit -n'; 'waits on allocation'; 'EMFILE or ENFILE errors'. Row 'Pinned memory and memlock': 'locked pages versus ulimit -l'; 'allocation stalls'; 'failed pinning (cudaHostAlloc errors)'. Row 'Threads and PIDs': 'cgroup pids.current versus pids.max'; 'fork waits'; 'Resource temporarily unavailable, cannot fork'. Row 'NCCL and communication': 'NCCL logs with NCCL_DEBUG=INFO, nccl-tests bus bandwidth versus expected'; 'stragglers (a rank late to a collective)' in orange; 'NCCL errors, timeouts, watchdog'. Under the matrix a box 'RED for services: request rate, errors and duration (use percentiles for duration; an average hides the users who waited). USE describes machine health, RED describes user health'. A second box 'Load or architecture? Same load with rising duration points to architecture or resources; more load with it points to a load problem'. Bottom bar: 'A sweep that skips software resources is not a sweep'.",
+  "anchor": "### RED for services",
+  "alt": "A USE matrix for file descriptors, pinned memory, threads and NCCL, beside the RED method for services.",
+  "cap": "Software limits such as descriptors, memlock, pids and NCCL stragglers belong in the USE sweep next to the hardware."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-llm-duration",
+  "title": "RED for LLM serving: duration splits into four parts, each with its own fix",
+  "spec": "A horizontal timeline of one request from arrival to the last token, split into segments in order: 'queue time', 'time to first token (TTFT)', then a repeated run of small segments 'time per output token (TPOT)', ending at 'total'. Above the timeline the RED header 'Request rate, Errors, Duration (percentiles)'. Below each segment a pointer to what it tells you. 'Queue time' to 'waiting before service starts: arrivals exceed capacity, or the batch scheduler holds batches for a fill timeout'. 'TTFT' (orange outline) to 'prompt processing and everything before the first token'. 'TPOT' to 'steady generation speed per token'. 'Total' to 'what the user feels'. Side list 'Also track: tokens/s, batch size, KV-cache utilisation, preemptions and evictions'. Rule box 'The request rate shows at once whether a slowdown comes with more load (a load problem) or with the same load (architecture or resources)'. Bottom bar: 'Each part points at a different fix, which is why the split repays the effort'.",
+  "anchor": "### RED for services",
+  "alt": "A request timeline for LLM serving split into queue time, time to first token, time per output token and total, with what each part points at.",
+  "cap": "LLM serving duration splits into queue time, time to first token, time per output token and total, and each part points at a different fix."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-latency-halving",
+  "title": "Halving the problem: p99 time to first token, one question at a time",
+  "spec": "A binary descent tree top to bottom, each question a diamond with the chosen branch highlighted and the other greyed. Top 'p99 TTFT is high'. Diamond 'On the GPU, or before it?' with 'before it' highlighted. Diamond 'Waiting in the queue, or in tokenization?' with 'the queue' highlighted. Diamond 'Is the queue long because arrivals exceed service capacity, or because batches are held?' with 'batches are held' highlighted. Result box in orange 'The batch scheduler waits for a fill timeout: adjust the policy'. A second panel on the right 'The same procedure on a training step': a bar split into segments 'data wait', 'host-to-device copies (H2D)', 'compute', 'communication', 'optimizer', 'checkpoint' with the largest segment marked 'descend into the largest; profilers time each part for you'. Bottom bar: 'Each step is a measurement, not a guess, which is what makes the halving safe'.",
+  "anchor": "### Latency analysis: halve the problem",
+  "alt": "A descent tree for high p99 time to first token that narrows from GPU or before, to queue, to held batches, beside a training step split into components.",
+  "cap": "Each measurement picks one of two branches, so a handful of questions narrows a high time to first token to the batch fill timeout."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-event-tracing-tools",
+  "title": "When averages look fine but users complain: trace individual events",
+  "spec": "Left: a latency strip chart with nine short bars of equal height and one tall bar, labelled 'the average hides the outlier'. Under it a head-of-line note: 'A latency outlier can be caused by previous events, through head-of-line blocking, rather than by its own properties: only the event sequence reveals that' with two small blocks queued behind a long one. Right: a table mapping what to trace to a tool. 'Packets': 'tcpdump -ttt'. 'Block I/O': 'biosnoop'. 'System calls': 'strace -T or perf trace'. 'GPU kernels and copies': 'Nsight Systems timeline'. 'Scheduler wake-ups and NCCL operations': 'also traceable'. Record for each event 'input attributes, start and end times so you get latency, and the result' in orange. Bottom strip 'Tracing costs overhead: use short windows in production'. Bottom bar: 'Summaries hide outliers, and outliers are what users feel'.",
+  "anchor": "### Event tracing",
+  "alt": "A latency chart with one tall outlier among short bars, head of line blocking, and a table of tools to trace packets, block I/O, syscalls and GPU kernels.",
+  "cap": "Trace individual events with timestamps when summaries hide outliers, and keep the windows short to limit overhead."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-baseline-static",
+  "title": "Baseline and static audit: what to record and what usually turns up",
+  "spec": "Two panels. Left panel 'Record a baseline on a healthy node' as a list of items collected by one script: 'the 60-second checklist outputs', 'sysctl -a', 'lscpu', 'lspci -vv link states', 'nvidia-smi -q', 'firmware versions', 'benchmark results: nccl-tests, dcgmi diag, a small reference training step'. An arrow 'store it with the image version, then diff after every incident or change; take baselines before and after every change'. Note 'If none exists, summary-since-boot counters are a coarse substitute'. Right panel 'Static audit findings' as a grid of cards: 'a 400 Gb NIC that negotiated 100 Gb or runs at PCIe x8' (orange), 'a failed RAID member', 'a GPU with a downgraded PCIe link: check lspci -vv LnkSta', 'stale kernel or firmware', 'IP forwarding enabled', 'THP or governor settings that have drifted', 'a small ulimit -l', 'a cgroup driver mismatch', 'debug logging left on: NCCL_DEBUG=INFO in production, CUDA_LAUNCH_BLOCKING=1', 'a filesystem nearly full'. Top of the right panel the four audit questions 'Does each component make sense for the workload? Is it configured for it? Was it autoconfigured wrongly? Has it degraded?'. Bottom bar: 'Configuration drift is the most common cause of identical nodes behaving differently'.",
+  "anchor": "### Baselines and static tuning",
+  "alt": "A baseline collection list beside a grid of common static audit findings such as a negotiated NIC rate, a downgraded PCIe link and debug logging left on.",
+  "cap": "Store a baseline with the image version and audit configuration at rest, because drift is the most common cause of identical nodes differing."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-scaling-worked",
+  "title": "Scaling worked example: Amdahl with 64 workers, and three questions for multi-GPU curves",
+  "spec": "Left panel 'Amdahl: C(N) = N / (1 + alpha(N - 1))' with the worked numbers. 'alpha = 0.05 (serial fraction), N = 64'. 'C(64) = 64 / (1 + 0.05 x 63) = 15.4x'. A bar drawn at 64x ideal, a shorter bar at 15.4x achieved (orange), and a dashed line at 20x labelled 'ceiling 1/alpha = 20x: no number of workers can push the speed-up past it'. Under it the USL line 'C(N) = N / (1 + alpha(N - 1) + beta N (N - 1))' with note 'beta is the coherence delay; with beta greater than 0, throughput peaks and then declines'. Middle: the fitting recipe as four short steps 'collect data for a range of N', 'fit alpha and beta by non-linear regression (R nls, gnuplot fit, scipy.optimize.curve_fit)', 'plot model against data', 'hold out later points to test the prediction'. Right panel 'Multi-GPU scaling': 'Strong scaling, fixed global batch, follows Amdahl-like curves because communication and serial sections do not shrink', 'Weak scaling, batch grows with GPUs, judged by scaling efficiency = throughput(N) / (N x throughput(1))'. Three diagnostic questions 'Where is the knee? Eight GPUs form one NVLink domain, beyond that traffic uses InfiniBand', 'Does efficiency drop at node counts that exceed one leaf or pod?', 'Does the curve change with message size or algorithm, NCCL ring or tree?'. Bottom bar: 'A deviation from the model is informative'.",
+  "anchor": "### Reading scalability curves",
+  "alt": "A worked Amdahl example giving 15.4x for 64 workers with a 20x ceiling, the USL term, the fitting steps and the three questions for multi-GPU scaling.",
+  "cap": "With a 5 percent serial fraction, 64 workers give only 15.4x and the ceiling is 20x, and multi-GPU curves are read by knee, topology and message size."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-littles-law",
+  "title": "Little's law with two worked examples: how many are in flight",
+  "spec": "Top formula bar 'L = lambda x W: the average number of items in a system equals the arrival rate times the average time each one spends in it. It holds for any stable system.' Two worked cards below. Card A 'Service concurrency': 'handles 200 req/s (lambda) with an average latency of 50 ms (W)'; the multiplication '200 x 0.050 = 10 requests in flight on average'; a row of 10 request tokens against a gate marked 'concurrency limit 8'; verdict 'requests queue' (orange). Card B 'GPU batch scheduler': 'holds 32 sequences (L), each takes 4 s (W)'; rearranged 'lambda = L / W = 32 / 4'; result 'sustainable throughput at most 8 sequences/s'. Right strip 'Kendall notation A/S/m: arrival process, service-time distribution, servers. M = Markovian (exponential), D = deterministic, G = general; M/M/c is a multi-server queue such as a pool of GPU replicas'. Bottom strip 'For AI serving, model the request queue and the batch scheduler: arrival rate and the p99 target together decide how many replicas you need; continuous batching changes the service-time distribution; always validate by measurement'. Bottom bar: 'Little's law is the best sanity check you have'.",
+  "anchor": "### Queueing theory in four lines",
+  "alt": "Little's law L equals lambda times W with two worked examples: 200 requests per second at 50 ms giving 10 in flight, and 32 sequences at 4 seconds giving 8 per second.",
+  "cap": "At 200 req/s and 50 ms there are 10 requests in flight, so a concurrency limit of 8 makes them queue."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-capacity-worked",
+  "title": "Capacity planning, three methods with the chapter's numbers",
+  "spec": "Three columns. Column 'Resource-limit method': a worked chain 'measure: 1,000 req/s at 40% average on 16 CPUs', 'per request: 16 x 40 / 1,000 = 0.64% of a CPU', 'limit: 16 x 100 / 0.64 = 2,500 req/s' with caveat 'best case: some other limit may come first, and plan for the peak, not the daily average'. Column 'Factor analysis': 'start with the maximum configuration', 'change one factor at a time, record the percentage performance drop and the cost saving', 'combine multiplicatively, choose, re-test the combined configuration', and the payoff 'eight binary factors need about ten tests, not 256' (orange). Column 'Scaling': 'vertical: a bigger machine', 'horizontal: more machines behind a load balancer; autoscaling groups; Kubernetes HPA on CPU or custom metrics such as queue length or GPU utilisation', 'databases shard on a key', 'GPUs scale as nodes, but fabrics and storage have step limits: plan them together'. Bottom band 'GPU capacity: demand (model, tokens/s or samples/s, SLO, utilisation target) versus supply (per-GPU throughput achieved at the target latency, measured on your own model and stack, not the vendor peak), derated for failures and maintenance, plus headroom for peak load and degraded nodes; plan network, storage and power at the same time'. Bottom bar: 'Write down demand, supply and headroom before you commit to a purchase'.",
+  "anchor": "## 10. Capacity planning",
+  "alt": "Three capacity planning methods with worked numbers: the resource limit method giving 2,500 requests per second, factor analysis needing about ten tests for eight factors, and scaling options.",
+  "cap": "The resource-limit method turns 40 percent CPU at 1,000 req/s into a 2,500 req/s ceiling, and factor analysis needs about ten tests for eight factors."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-stats-worked",
+  "title": "Statistics traps: the harmonic mean, the average that describes no request, and a bounded gain",
+  "spec": "Three worked cards side by side. Card 1 'Harmonic mean for rates': 'send 100 MB at 50 MB/s, then 700 MB at 10 MB/s'; time bar 'segment 1 takes 2 s, segment 2 takes 70 s'; formula '800 / (100/50 + 700/10) = 11.1 MB/s'; crossed-out 'arithmetic mean 30 MB/s' in orange; note 'arithmetic mean suits additive quantities, harmonic mean suits rates, geometric mean suits multiplicative effects such as stacked speed-ups'. Card 2 'A bimodal average': a histogram with a big fast cluster (cache hits) and a small slow cluster (misses) and an average marker sitting between them where no request lives; text 'The man drowned in a river with an average depth of six inches'; 'ask for the distribution; use percentiles p50, p90, p95, p99, p99.9; in distributed training the slowest rank, the straggler, sets the step time, so the maximum and tail across ranks matter more than the mean'. Card 3 'Quantify a gain before you act': 'a request takes 10 ms and 9 ms of it is disk; replacing the reads with a cache that costs 10 microseconds gives 10 / 1.01 = 9.9x at best'; note 'make sure the latency you cut is on the synchronous path, not in background work'. Bottom strip 'Experiments: repeat, report the median and the spread, control clocks, thermal state, cache state and neighbours; a 3% difference with 5% run-to-run variation is noise'. Bottom bar: 'Before you claim a win, check the distribution and repeat the run'.",
+  "anchor": "## 11. Statistics you must get right",
+  "alt": "Three worked cards: the harmonic mean of two transfer rates giving 11.1 MB/s, a bimodal latency average that describes no request, and a bounded gain of 9.9x from a cache.",
+  "cap": "Two transfers at 50 and 10 MB/s average 11.1 MB/s by harmonic mean, not 30, and an average can describe no actual request."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-chart-chooser",
+  "title": "Choose the chart that fits the question",
+  "spec": "A table with a left column 'Question' and right column 'Chart' with one small thumbnail sketch per row. 'Is there a trend? Add percentiles and the median, not only the mean': 'Line chart'. 'Where is every event?': 'Scatter plot (shows every event, overplots at scale)'. 'Is the distribution bimodal, are there outliers across thousands of systems?': 'Heat map (latency or utilisation bucketed by time)' (orange). 'What are the dependencies and idle gaps?': 'Timeline chart (traces of kernels, copies and collectives per GPU or stream, browser waterfalls, Nsight Systems and PyTorch profiler traces)'. 'Where does CPU or off-CPU time go by code path?': 'Flame graph (chapter 1.24)'. 'Smooth multi-dimensional data': 'Surface plot, only when the data is smooth'. Side panel 'Monitoring habits': 'collect critical metrics at one-second resolution if you can afford it', 'keep short-term high-resolution data for incidents', 'exporters: node_exporter, DCGM exporter, cAdvisor', 'prefer kernel interfaces over parsing command output', 'build dashboards around USE and RED, not every metric available'. Warning strip 'Tools have overhead and bugs; metrics may be missing inside containers (host values), and some report an interval average while others a cumulative counter: cross-check with a second source'. Bottom bar: 'A chart is an argument, and some arguments are easier to make than others'.",
+  "anchor": "## 12. Visualisation and monitoring",
+  "alt": "A table matching questions to chart types: line charts for trends, scatter plots for events, heat maps for distributions, timelines for dependencies, flame graphs for code paths and surface plots.",
+  "cap": "Pick line charts for trends, heat maps for distributions and outliers, timelines for dependencies and flame graphs for code paths."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-tool-families",
+  "title": "Four families of observability tools and what each answers",
+  "spec": "Four columns, each a family with a question, examples and a cost note. 'Counters (cumulative, read and diff)': question 'how much, how fast, on average?'; examples 'vmstat, mpstat, iostat, sar, ethtool -S, nvidia-smi'; note 'cheap; rates and averages; the base of monitoring'. 'Profiling (sampling)': question 'where does CPU time go?'; examples 'perf record -F 99 -a -g, flame graphs, py-spy'; note 'coarse by sample rate'. 'Tracing (event-based)': question 'what exactly happened, event by event?'; examples 'strace, tcpdump, perf trace, ftrace, BCC and bpftrace, Nsight Systems'; note 'detail with overhead; static (tracepoints, USDT) and dynamic (kprobes, uprobes, BPF) instrumentation'. 'Monitoring': question 'what happened over time, and should we alert?'; examples 'Prometheus and Grafana, DCGM exporter, cloud-vendor tools'; note 'history and alerting'. Below a row 'Sources of data': '/proc for per-process and system counters', '/sys for device and driver attributes', 'delay accounting', 'netlink', 'tracepoints, kprobes, uprobes, USDT', 'hardware performance counters (instructions, cycles, cache and TLB misses, memory bandwidth)', 'NVML and DCGM for GPUs; ibstat and perfquery for InfiniBand'. A bottom orange card 'Install the crisis tools on every image before the crisis: sysstat, perf, bcc-tools, bpftrace, iotop, numactl, pciutils, ethtool, rdma-core and the DCGM tools; static tools lscpu, lstopo, lspci -vv, dmidecode, ip, ethtool, nvidia-smi -q'. Bottom bar: 'Start with cheap counters and turn on heavy tools only for a short window'.",
+  "anchor": "### Observability tool taxonomy (preview of chapter 1.24)",
+  "alt": "Four columns for counters, profiling, tracing and monitoring tools with the question each answers, plus data sources and the crisis tools to install in advance.",
+  "cap": "Counters, profilers, tracers and monitoring each answer a different kind of question, and the crisis tools must be installed before the crisis."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-gpu-starvation",
+  "title": "GPUs sit idle in the timeline: seven questions, each answered by a measurement",
+  "spec": "A top panel showing a GPU timeline with a gap labelled 'idle gap (bubble): time between kernels or collectives'. Below, a vertical list of seven question rows, each with a short check and, on the right, the cause it finds. 1 'Is the data loader the bottleneck? Empty queue, busy workers, a busy iostat, a slow network filesystem'. 2 'Is the CPU the limiter? Single-thread Python launch overhead, torch ops launching tiny kernels': 'fix: CUDA graphs or compile'. 3 'Is host memory pinned, is the PCIe link at x16, is the NUMA placement right?'. 4 'Is communication exposed, meaning not overlapped with compute?'. 5 'Is a straggler rank late: thermal throttle, bad link, noisy neighbour?' (orange). 6 'Is the checkpoint blocking the step?'. 7 'Is GPU-Util high while SM activity is low? Many small kernels'. Right strip 'Outcome metrics to read first': 'throughput (tokens/s or samples/s per GPU and aggregate)', 'step time breakdown: data wait, H2D, forward, backward, exposed communication, optimizer, checkpoint', 'MFU', 'scaling efficiency = throughput(N) / (N x throughput(1))', 'goodput = GPU-hours of useful work / GPU-hours paid, excluding restarts, failures, checkpoint stalls, stragglers and idle waiting', 'cost: USD per million tokens or per training run'. Bottom bar: 'Answer each question with a measurement rather than an opinion'.",
+  "anchor": "## 13. AI-specific measures of efficiency",
+  "alt": "A GPU timeline idle gap above seven starvation questions about data loading, CPU launch overhead, pinning, exposed communication, stragglers, checkpoints and small kernels, with the outcome metrics.",
+  "cap": "Work through seven starvation questions with measurements, and read throughput, step breakdown, MFU and goodput before tuning anything."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-case-slow-disks",
+  "title": "Case 1: slow disks became slow data loading, and then a memory budget problem",
+  "spec": "A vertical story of seven dated-free steps with a small evidence tag on each, drawn as a descending chain. 1 'Ticket: NVMe scratch is slow, epochs 30% longer this week'. 2 'Problem statement first: measurable regression in epoch time or step data-wait? since when? what changed? why the disks?'. 3 'USE across all resources: CPUs and network modest; NVMe 80% utilised at one-minute resolution; at one-second resolution iostat shows bursts to 100% with queueing; no device errors'. 4 'Off-CPU view: data-loader workers are blocked in file reads, so the disk is on the critical path, but not guilty'. 5 'Workload characterisation: reads dominate, small random I/O, steady rate; the read rate and dataset have not changed, so the disks behave normally for the load'. 6 'Page cache hit ratio 91% on this node versus 98% on sibling nodes, and the cache is much smaller' (orange). 7 'Memory accounting: a new prototype process grew to hundreds of GB and squeezed the page cache; moved it, the cache recovered, epoch times returned'. Right strip 'Lessons: ask first, check all the resources before you trust the suspect, look at short intervals, characterise the load before you blame the devices; the answer was a memory budget problem found through the cache hit ratio, not through a disk tool'. Bottom bar: 'The suspect is not always the cause'.",
+  "anchor": "### Case 1: \"Slow disks\" becomes \"slow data loading\"",
+  "alt": "A seven step chain from a slow disks ticket through USE, off-CPU view and workload characterisation to a page cache hit ratio of 91 versus 98 percent and a memory hungry prototype process.",
+  "cap": "The slow disks ticket ended at a prototype process squeezing the page cache, found through the cache hit ratio rather than a disk tool."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-case-benchmark",
+  "title": "Case 2: benchmark the benchmarker, a ramp and a fixed-rate test",
+  "spec": "Two stacked panels. Top panel 'Ramp test, load generator single-threaded': a throughput curve rising and flattening at '700 samples/s' for both versions, with a server box showing 'server resources idle' (orange) and the generator box showing 'one CPU saturated'. Reading 'a plateau with an idle server means the test is hiding something'. Middle panel 'Fixed-rate test at 700/s on both versions': a two-bar CPU comparison 'old version 20% CPU' and 'new version 30% CPU'; result 'regression: 50% more CPU per sample'. Bottom panel 'Fix the generator: run it in parallel on several clients, which drives server CPU to 100%': two bars 'old version 3,500/s' and 'new version 2,300/s'; arrow 'matches the CPU-per-sample finding'; next step 'CPU-profile the new version with a flame graph to find where the extra cycles go'. Right strip 'Lessons: benchmark the benchmarker; use two complementary experiments, a ramp and a fixed-rate test; convert results to resource per request; record what you did not test, such as varied workloads'. Also note 'Active benchmarking: watch the server while the test runs rather than reading a report afterwards; the generator matched the average of the real workload but not its variance, and she noted that gap'. Bottom bar: 'A plateau with an idle server is a clue about the test, not the system'.",
+  "anchor": "### Case 2: non-regression test of a software change",
+  "alt": "A ramp test plateauing at 700 samples per second with idle server resources, a fixed rate test showing 30 versus 20 percent CPU, and a parallel generator showing 3,500 versus 2,300 samples per second.",
+  "cap": "A plateau at 700 samples per second with an idle server exposed the single-threaded load generator, and the fixed-rate test showed 50 percent more CPU per sample."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "23",
+  "name": "p3-0123-method-failures",
+  "title": "When the method itself fails: four traps and the counter-move",
+  "spec": "Four cards in a 2 by 2 grid, each with a trap, what it looks like and the counter-move. 1 'The counter does not exist': 'some resources expose only some of utilisation, saturation and errors'; 'mark the empty cell as a known unknown and say so in the report; do not read an empty cell as healthy'. 2 'The interval hides the problem': 'a one-minute average shows a device at 80% while one-second samples show bursts to 100% with queueing (Case 1)'; 'shorten the interval before you move on'. 3 'The measurement disturbs the system': 'profilers, tracers and heavy sampling use CPU and can turn a rare stall into a constant one on a GPU node'; 'start with cheap counters; turn on heavy tools only for a short, announced window'. 4 'The first explanation feels complete' (orange): 'you find a real fault, fix it, and stop, but it explains only a fraction of the slowdown'; 'check the fix against the original problem statement; if step time did not return to baseline, the investigation is not finished'. Centre badge 'A method gives you a shape, not a guarantee'. Footer strip 'Common mistakes: favourite tool first, tunables changed without a hypothesis or baseline, several changes at once, failed experiments not reverted, trusting GPU-Util or load average as a verdict, optimising off the critical path, benchmarking the load generator or a warm cache, ignoring corrected ECC, link retrains and PCIe replays'. Bottom bar: 'Check that your fix explains the bulk of the symptom before you close an investigation'.",
+  "anchor": "### When the method itself fails",
+  "alt": "Four cards for method failures: a missing counter, an interval that hides the problem, measurement overhead and a first explanation that is only partial, each with its counter-move.",
+  "cap": "Mark missing counters as unknowns, shorten the interval, start with cheap tools, and check the fix against the original symptom."
+ }
+]

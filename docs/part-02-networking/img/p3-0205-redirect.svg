@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>ICMP redirect: the router saying the better door is next to you</title>
+  <desc>An infographic explaining ICMP redirect behavior where router R1 informs host H of a better next hop router R2 on the same subnet.</desc>
+
+  <defs>
+    <marker id="arrow-green-right" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-green-left" markerWidth="14" markerHeight="14" refX="2" refY="7" orient="auto">
+      <path d="M 11 2 L 1 7 L 11 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">ICMP redirect: the router saying the better door is next to you</text>
+
+  
+  <rect x="40" y="115" width="1520" height="470" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <line x1="220" y1="230" x2="220" y2="560" stroke="#7fa88c" stroke-width="3" stroke-dasharray="8,8" />
+  <line x1="800" y1="230" x2="800" y2="560" stroke="#7fa88c" stroke-width="3" stroke-dasharray="8,8" />
+  <line x1="1350" y1="230" x2="1350" y2="560" stroke="#7fa88c" stroke-width="3" stroke-dasharray="8,8" />
+
+  
+  <rect x="65" y="135" width="310" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <rect x="85" y="152" width="44" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="107" y1="186" x2="107" y2="198" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="97" y1="198" x2="117" y2="198" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <circle cx="107" cy="169" r="4" fill="#207448" />
+  <text x="245" y="195" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">Host H</text>
+
+  
+  <rect x="560" y="135" width="480" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="610" cy="183" r="26" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 596 183 L 624 183 M 617 176 L 624 183 L 617 190 M 603 176 L 596 183 L 603 190" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 610 169 L 610 197 M 603 176 L 610 169 L 617 176 M 603 190 L 610 197 L 617 190" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="825" y="192" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Router R1 (the default gateway)</text>
+
+  
+  <rect x="1145" y="135" width="410" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="1195" cy="183" r="26" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 1181 183 L 1209 183 M 1202 176 L 1209 183 L 1202 190 M 1188 176 L 1181 183 L 1188 190" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 1195 169 L 1195 197 M 1188 176 L 1195 169 L 1202 176 M 1188 190 L 1195 197 L 1202 190" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1370" y="192" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Router R2 (better next hop)</text>
+
+  
+  <circle cx="270" cy="318" r="24" fill="#207448" />
+  <text x="270" y="326" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <line x1="294" y1="318" x2="788" y2="318" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green-right)" />
+  <text x="545" y="280" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="545" dy="0">H sends a packet for a remote destination</tspan>
+    <tspan x="545" dy="28">to its gateway</tspan>
+  </text>
+
+  
+  <circle cx="850" cy="420" r="24" fill="#207448" />
+  <text x="850" y="428" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <line x1="874" y1="420" x2="1338" y2="420" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green-right)" />
+  <text x="1105" y="360" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1105" dy="0">R1 forwards it out the same interface it</tspan>
+    <tspan x="1105" dy="28">arrived on, to a next hop on H's</tspan>
+    <tspan x="1105" dy="28">own subnet</tspan>
+  </text>
+
+  
+  <circle cx="750" cy="522" r="24" fill="#207448" />
+  <text x="750" y="530" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <line x1="726" y1="522" x2="232" y2="522" stroke="#207448" stroke-width="4" stroke-dasharray="10,6" marker-end="url(#arrow-green-left)" />
+  <text x="475" y="482" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="475" dy="0">ICMP Redirect: use gateway R2 for</tspan>
+    <tspan x="475" dy="28">that destination</tspan>
+  </text>
+
+  
+  <rect x="40" y="605" width="700" height="175" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <rect x="65" y="630" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="65" y1="646" x2="113" y2="646" stroke="#207448" stroke-width="3" />
+  <line x1="85" y1="646" x2="85" y2="670" stroke="#207448" stroke-width="3" />
+  <text x="135" y="675" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan x="135" dy="0">H may install a cached host route</tspan>
+    <tspan x="135" dy="40" font-family="monospace">marked proto redirect</tspan>
+  </text>
+
+  
+  <rect x="40" y="800" width="700" height="285" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 76 830 L 96 830 M 86 830 L 86 846 L 68 880 C 65 886 69 892 76 892 L 106 892 C 113 892 117 886 114 880 L 96 846 L 96 830" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="77" y1="872" x2="105" y2="872" stroke="#207448" stroke-width="3" />
+  <text x="135" y="848" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">lab step: place hA and a second router</tspan>
+    <tspan x="135" dy="36">on the same subnet as r, watch the</tspan>
+    <tspan x="135" dy="36">ICMP Redirect and the proto redirect</tspan>
+    <tspan x="135" dy="36">route, then disable redirects</tspan>
+  </text>
+
+  
+  <rect x="760" y="605" width="800" height="480" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 800 635 L 820 644 L 820 664 C 820 678 800 688 800 688 C 800 688 780 678 780 664 L 780 644 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  <text x="838" y="665" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Why turn it off</text>
+  <text x="790" y="708" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="790" dy="0">mostly a legacy feature that complicates</tspan>
+    <tspan x="790" dy="30">security and troubleshooting</tspan>
+  </text>
+
+  
+  <rect x="785" y="755" width="750" height="310" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  <rect x="785" y="755" width="10" height="310" rx="4" fill="#db8129" />
+  <text x="815" y="798" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">net.ipv4.conf.all.accept_redirects=0</text>
+  <text x="815" y="838" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">send_redirects=0</text>
+  <text x="815" y="878" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">secure_redirects=0</text>
+  <text x="815" y="922" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="815" dy="0" font-family="sans-serif">IP source routing is an attack vector:</tspan>
+    <tspan x="815" dy="30" font-weight="bold">accept_source_route=0</tspan>
+  </text>
+  <text x="815" y="995" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="815" dy="0">check with sysctl -a | grep -E</tspan>
+    <tspan x="815" dy="30">redirects|source_route</tspan>
+  </text>
+
+  
+  <rect x="40" y="1105" width="1520" height="65" rx="12" fill="#207448" />
+  <text x="800" y="1147" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Production hosts turn redirects off</text>
+</svg>

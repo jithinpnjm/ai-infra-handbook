@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "p2-2008-three-part-sentence",
+  "title": "One spoken sentence carries idea, cost and check",
+  "spec": "Top: a quoted sentence in a rounded panel, 'My first idea is a double loop, which is quadratic. The repeated work is looking up a complement, so a dictionary should make that constant time. I will check with the example.' Below it, the sentence is split into three coloured chips in a row with arrows left to right: chip 1 'Idea: double loop, quadratic'; chip 2 'Cost: repeated lookup, dictionary makes it constant time'; chip 3 'Check: run the example'. Each chip has a number circle 1, 2, 3. A second row below shows the top-k version in three chips: 'Idea: a heap of size three', 'Cost: the sort over all keys repeats work', 'Check: the top three only are needed'. Orange outline on the Cost chip of the first row as the decision the interviewer can react to. Two cross-out boxes at the bottom: 'Silence' and 'Narrating every keystroke', each with a red X.",
+  "anchor": "### 4. How to think aloud without rambling",
+  "alt": "A spoken sentence split into three parts for idea, cost and check, shown for a quadratic loop and a dictionary lookup.",
+  "cap": "A think-aloud sentence has three parts, the idea, its cost and the check, which gives the interviewer something to react to."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "p2-2008-edge-checklists",
+  "title": "Edge-case probes for each input type",
+  "spec": "A grid of five cards, one per input type, each card with a header and a list of monospace probe chips. Card 'String': 'empty', 'one character', 'two equal characters', 'all same', 'mixed case', 'spaces'. Card 'List': 'empty', 'one item', 'duplicates', 'all equal', 'negatives', 'already sorted', 'reverse sorted'. Card 'Two lists': 'both empty', 'one empty', 'same length', 'different lengths'. Card 'Intervals': 'empty', 'one', 'touching ends', 'one inside another', 'out of order'. Card 'Number': '0', '1', '-1', 'a very large value', 'a float such as 0.1 + 0.2'. Below the grid a band titled 'Add for any state' with chips 'first call', 'repeat call', 'call after reset'. Orange outline on the 'Number' card's float probe as the classic trap. Bottom green bar: 'Run the checklist for the input type before you say I think it works.'",
+  "anchor": "### 7. Testing by hand with edge-case checklists",
+  "alt": "Five input types, each with the edge-case probes to try, such as empty, duplicates and touching ends.",
+  "cap": "Edge-case probes for strings, lists, two lists, intervals and numbers, to run before saying the code works."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "p2-2008-stdlib-results",
+  "title": "Standard library results you must know exactly",
+  "spec": "A two-column table drawn as cards. Left column titled 'Call', right column titled 'Verified result', both with monospace text. Rows: 'Counter(\"abracadabra\").most_common(2)' | '[(\\'a\\', 5), (\\'b\\', 2)]'. 'Counter()[\"z\"] for a missing key' | '0, and the key is not added'. 'deque([1,2,3], maxlen=3), append(4), appendleft(0)' | '[0, 2, 3], items fall off the other end'. 'heapq.heapify then heappop on [5,1,4]' | 'pops 1, so it is a min-heap'. 'heapq.nlargest(2, [5,1,4,9])' | '[9, 5]'. 'bisect_left and bisect_right for 2 in [1,2,2,2,5]' | '1 and 4'. Orange outline on the bisect row as the one most often asked. Top banner: 'Know what it returns on the edge cases, not only its name.'",
+  "anchor": "### 9. Python tools that save time",
+  "alt": "A table of standard library calls from Counter, deque, heapq and bisect, each with the exact result verified on Python 3.12.",
+  "cap": "Verified results of common Python standard library calls, including Counter, deque with maxlen, heapq and bisect edge cases."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "p2-2008-param-change",
+  "title": "When the parameters change, name the broken assumption",
+  "spec": "Three rows, each a change on the left and a standard answer on the right, joined by an arrow. Row 1: change box 'Data does not fit in memory' with arrow to answer box 'Process as a stream, keep only counters, or use a bounded heap of size k'. Row 2: change box 'It must be thread-safe' with arrow to 'Say which operations need a lock and where'. Row 3: change box 'The input is already sorted' with arrow to 'Say what you can now skip, such as the sort or the hash map'. Row 4: change box 'The time limit is tight' with arrow to 'Say what you would trade, such as memory for speed'. Top-k example at the bottom in a grey strip with three steps: 'Counter and most_common(k)', 'heap of size k over the counts', 'split by hash of endpoint, merge the top-k lists'. Orange outline on the top row's change box. Bottom note: 'Say which assumption in your solution just broke.'",
+  "anchor": "### 12. Follow-ups: when the parameters change",
+  "alt": "Four changed parameters, such as data too big for memory or a thread-safety requirement, each matched with a prepared answer.",
+  "cap": "Four common changes to a coding problem, each paired with the standard answer and the assumption it breaks."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "p2-2008-four-week-plan",
+  "title": "A four-week practice routine",
+  "spec": "A horizontal timeline of four week blocks, left to right, each block a green-headed card. Week 1 card: 'Language basics', text 'Dicts, counters, sorting, strings, the harness', 'Time: 5 sessions of 1 hour'. Week 2 card: 'Core patterns', 'Hash maps, two pointers, sliding window, stacks', 'Time: 4 sessions of 75 minutes'. Week 3 card: 'Heaps, intervals, binary search, graphs', 'Time: 4 sessions of 75 minutes'. Week 4 card: 'Full mock rounds', 'Two problems in 60 minutes, once recorded', 'Time: 3 mocks of 90 minutes'. Under the timeline a bar of 'Keep a bug log: harness-found bugs are what to practise on'. A check marker after each week labelled 'End-of-week test'. Orange outline on Week 4 card. Bottom note: 'Practise the process under time pressure.'",
+  "anchor": "### 13. A four-week practice routine",
+  "alt": "A four-week practice plan with the focus and session time for each week, ending in full mock rounds.",
+  "cap": "The four-week practice routine, moving from language basics to full mock rounds, with a short test at the end of each week."
+ }
+]

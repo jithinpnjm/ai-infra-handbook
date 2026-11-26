@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 910" width="1600" height="910">
+  <title>The exit code and the recap tell a CI job what happened</title>
+  <desc>Infographic explaining ansible-playbook exit codes and play recap interpretation for CI jobs.</desc>
+
+  <defs>
+    <marker id="red-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#d93829" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="910" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The exit code and the recap tell a CI job what happened</text>
+
+  
+  <g id="left-panel">
+    <rect x="40" y="130" width="530" height="625" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="279" y="148" width="52" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="279" y1="160" x2="331" y2="160" stroke="#207448" stroke-width="2" />
+    <path d="M 288 172 L 294 177 L 288 182" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="298" y1="182" x2="308" y2="182" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+
+    
+    <text x="305" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Exit codes of ansible-playbook</text>
+
+    
+    <rect x="58" y="252" width="494" height="48" rx="8" fill="#ffffff" stroke="#c4d5cb" stroke-width="1.5" />
+    <rect x="70" y="258" width="64" height="36" rx="6" fill="#207448" />
+    <text x="102" y="284" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">0</text>
+    <text x="150" y="284" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">success</text>
+
+    
+    <rect x="58" y="310" width="494" height="48" rx="8" fill="#ffffff" stroke="#c4d5cb" stroke-width="1.5" />
+    <rect x="70" y="316" width="64" height="36" rx="6" fill="#ffffff" stroke="#8fa398" stroke-width="2" />
+    <text x="102" y="342" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">1</text>
+    <text x="150" y="342" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#303a36">generic error</text>
+
+    
+    <rect x="58" y="368" width="494" height="48" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2.5" />
+    <rect x="70" y="374" width="64" height="36" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="102" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">2</text>
+    <text x="150" y="400" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">one or more hosts failed</text>
+
+    
+    <rect x="58" y="426" width="494" height="48" rx="8" fill="#ffffff" stroke="#c4d5cb" stroke-width="1.5" />
+    <rect x="70" y="432" width="64" height="36" rx="6" fill="#ffffff" stroke="#8fa398" stroke-width="2" />
+    <text x="102" y="458" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">3</text>
+    <text x="150" y="458" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#303a36">one or more hosts unreachable</text>
+
+    
+    <rect x="58" y="484" width="494" height="48" rx="8" fill="#ffffff" stroke="#c4d5cb" stroke-width="1.5" />
+    <rect x="70" y="490" width="64" height="36" rx="6" fill="#ffffff" stroke="#8fa398" stroke-width="2" />
+    <text x="102" y="516" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">4</text>
+    <text x="150" y="516" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#303a36">parse error</text>
+
+    
+    <rect x="58" y="542" width="494" height="48" rx="8" fill="#ffffff" stroke="#c4d5cb" stroke-width="1.5" />
+    <rect x="70" y="548" width="64" height="36" rx="6" fill="#ffffff" stroke="#8fa398" stroke-width="2" />
+    <text x="102" y="574" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">5</text>
+    <text x="150" y="574" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#303a36">bad or incomplete options</text>
+
+    
+    <rect x="58" y="600" width="494" height="48" rx="8" fill="#ffffff" stroke="#c4d5cb" stroke-width="1.5" />
+    <rect x="70" y="606" width="64" height="36" rx="6" fill="#ffffff" stroke="#8fa398" stroke-width="2" />
+    <text x="102" y="632" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">99</text>
+    <text x="150" y="632" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#303a36">run interrupted</text>
+
+    
+    <rect x="58" y="658" width="494" height="48" rx="8" fill="#ffffff" stroke="#c4d5cb" stroke-width="1.5" />
+    <rect x="70" y="664" width="64" height="36" rx="6" fill="#ffffff" stroke="#8fa398" stroke-width="2" />
+    <text x="102" y="690" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">250</text>
+    <text x="150" y="690" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#303a36">unexpected error</text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="600" y="130" width="960" height="625" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="1054" y="148" width="52" height="36" rx="5" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="1080" y1="184" x2="1080" y2="194" stroke="#207448" stroke-width="3.5" />
+    <line x1="1068" y1="194" x2="1092" y2="194" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="1062" y1="162" x2="1098" y2="162" stroke="#207448" stroke-width="2" />
+    <line x1="1062" y1="170" x2="1086" y2="170" stroke="#207448" stroke-width="2" />
+
+    
+    <text x="1080" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">PLAY RECAP</text>
+
+    
+    <g id="terminal-box">
+      
+      <rect x="625" y="252" width="910" height="180" rx="10" fill="#ffffff" stroke="#c0d2c7" stroke-width="2" />
+      <path d="M 625 262 Q 625 252 635 252 L 925 252 L 1525 252 Q 1535 252 1535 262 L 1535 288 L 625 288 Z" fill="#d8e5dd" />
+      <line x1="625" y1="288" x2="1535" y2="288" stroke="#c0d2c7" stroke-width="1.5" />
+      
+      <circle cx="645" cy="270" r="5" fill="#a4baa9" />
+      <circle cx="661" cy="270" r="5" fill="#a4baa9" />
+      <circle cx="677" cy="270" r="5" fill="#a4baa9" />
+
+      
+      <text x="645" y="336" font-family="ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">gpu001 : ok=12 changed=3 unreachable=0 failed=0 skipped=2</text>
+
+      
+      <rect x="633" y="368" width="894" height="48" rx="6" fill="#fef2f2" stroke="#fca5a5" stroke-width="1.5" />
+      <text x="645" y="401" font-family="ui-monospace, 'SF Mono', Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">gpu002 : ok=12 changed=3 unreachable=0 failed=1 skipped=2</text>
+    </g>
+
+    
+    <rect x="740" y="492" width="680" height="64" rx="10" fill="#fef2f2" stroke="#d93829" stroke-width="2" />
+    <text x="1080" y="533" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#b91c1c" text-anchor="middle">one failed task, investigate this host</text>
+
+    
+    <line x1="1265" y1="492" x2="1265" y2="426" stroke="#d93829" stroke-width="3.5" marker-end="url(#red-arrow)" />
+
+    
+    <rect x="680" y="604" width="800" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1080" y="642" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">Read every host line, not only the first one.</text>
+  </g>
+
+  
+  <g id="bottom-takeaway">
+    <rect x="40" y="795" width="1520" height="80" rx="12" fill="#207448" />
+    <text x="800" y="845" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">In CI, treat any non-zero exit as failure. For drift, parse the changed counts.</text>
+  </g>
+</svg>

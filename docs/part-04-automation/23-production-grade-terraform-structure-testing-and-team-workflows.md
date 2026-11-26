@@ -173,15 +173,9 @@ A change can pass review and still break a cluster on its first apply. Review re
 
 Picture a pyramid. The bottom layers are cheap and run often, and the top layers are expensive and run rarely. You want many fast checks at the bottom and a few slow checks at the top.
 
-```mermaid
-flowchart TB
-  P["Production canary & smoke checks\n(health of deployed GPU capacity)"]
-  I["Integration tests in sandbox\n(apply, assert, destroy; nightly/release)"]
-  U["Unit tests: terraform test (plan, mocks), validation tests"]
-  PO["Policy tests: Conftest/OPA/Sentinel on plan.json"]
-  S["Static: fmt, validate, tflint, checkov/trivy, terraform-docs, secret scan"]
-  S --> PO --> U --> I --> P
-```
+![Testing strategy](./img/m4-23-1.svg)
+
+*Figure 4.23.1. Testing strategy, as a diagram.*
 
 | Level | Tools | Runs | Purpose |
 |---|---|---|---|
@@ -238,24 +232,9 @@ Suppose an engineer applies a change to shared production from a laptop. Nobody 
 
 The sequence diagram shows one change moving through every role. Follow the lines from left to right, and notice that the apply to production waits for a human approval. Each actor in the diagram has a single job, and the Git pull request is where they all meet.
 
-```mermaid
-sequenceDiagram
-  participant Dev
-  participant Git as Git (PR)
-  participant CI
-  participant Rev as Reviewers (CODEOWNERS)
-  participant Env as Environment
-  Dev->>Git: branch, change code, open PR
-  Git->>CI: fmt, validate, lint, scan, tests
-  CI->>CI: plan per affected stack (read-only identity)
-  CI->>Git: post plan summary + policy results
-  Rev->>Git: review code + plan (blast radius, replacements, cost)
-  Git->>CI: merge to main
-  CI->>Env: apply saved plan in staging
-  CI->>CI: verify (smoke), soak
-  CI->>Env: apply to prod behind approval gate
-  CI->>Git: record apply result, update change log
-```
+![Change lifecycle](./img/m4-23-2.svg)
+
+*Figure 4.23.2. Change lifecycle, as a diagram.*
 
 Read the diagram from top to bottom. Code moves through a pull request first, then through staging, and only then reaches production behind an approval gate. Soak means waiting in staging for a while, so that a problem shows up before production sees it. When you review a change, you will see most of the rules below in action.
 

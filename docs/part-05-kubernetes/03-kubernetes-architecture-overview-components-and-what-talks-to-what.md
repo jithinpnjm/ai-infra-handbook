@@ -41,35 +41,9 @@ This chapter assumes 5.1 and 5.2, plus the networking and Linux basics from Part
 
 Suppose a colleague says, "kubectl is timing out, so the cluster is down." That sentence hides several possible failures. The API server might be overloaded, etcd might be slow, or the network path might be broken. Only a map of the whole cluster lets you split that sentence into separate questions. Start with the diagram below. It shows every major part of a cluster and every link between them. Use it as your map while you read the rest of this chapter.
 
-```mermaid
-flowchart TB
-  subgraph CP["Control plane (one or more nodes)"]
-    API["kube-apiserver\n(REST + watch, authn/authz/admission, only component that talks to etcd)"]
-    ETCD[("etcd\n(Raft-replicated key-value store)")]
-    SCH["kube-scheduler\n(binds pending pods to nodes)"]
-    CM["kube-controller-manager\n(many controllers: node, deployment, replicaset, endpoints, job, namespace, SA ...)"]
-    CCM["cloud-controller-manager\n(load balancers, routes, node lifecycle with the cloud)"]
-  end
-  subgraph N1["Worker node"]
-    KL["kubelet"]
-    KP["kube-proxy (or eBPF CNI)"]
-    RT["container runtime (containerd/CRI-O)"]
-    CNI["CNI plugin (agent)"]
-    DP["device plugins / DRA driver (GPU, RDMA)"]
-    PODS["Pods"]
-  end
-  U["kubectl, CI, operators, dashboards"] -->|"HTTPS (REST)"| API
-  API <--> ETCD
-  SCH -->|"watch pods, nodes; write bindings"| API
-  CM -->|"watch/write"| API
-  CCM -->|"watch/write"| API
-  KL -->|"watch pods for its node; update status, leases"| API
-  KP -->|"watch Services/EndpointSlices"| API
-  KL -->|"CRI gRPC"| RT
-  RT -->|"CNI exec"| CNI
-  KL -->|"device plugin gRPC"| DP
-  RT --> PODS
-```
+![The big picture](./img/m5-03-1.svg)
+
+*Figure 5.3.1. The big picture, as a diagram.*
 
 Two rules explain most of the architecture. Keep them in mind as you read the component sections, because almost every failure you meet will break one of them.
 
@@ -133,6 +107,10 @@ The control plane holds the cluster's state and makes its decisions. Each part h
 
 ### kube-apiserver
 
+![A request to the API server passes authentication, authorization, mutating admission, validation and validating admission before it is saved to etcd.](./img/p2-0503-apiserver-pipeline.svg)
+
+*Figure 5.3.2. Each API server request passes authentication, authorization, admission and persistence to etcd in that order before the response returns.*
+
 Every request to the cluster goes through kube-apiserver. It is a horizontally scalable, stateless HTTPS server that listens on port 6443 by default. Stateless here means the server keeps no private data of its own, so you can run several copies behind a load balancer. It exposes the Kubernetes API as REST resources, grouped by API group and version, such as `/api/v1/pods` and `/apis/apps/v1/deployments`. Clients can also use `watch`, which streams change events over long-lived HTTP connections, or over WebSocket/HTTP2.
 
 The server also runs streaming proxies for `exec`, `attach` and `portforward` to the kubelets. It serves aggregated APIs, such as metrics-server and custom API servers, plus discovery endpoints and OpenAPI. OpenAPI is the schema format that describes every field of every object, and tools use it to check your YAML.
@@ -143,6 +121,10 @@ kube-apiserver keeps objects in an in-memory watch cache. It serves most reads a
 
 ### etcd
 
+![Three members tolerate one failure, four members still tolerate one, and five members tolerate two.](./img/k03-quorum.svg)
+
+*Figure 5.3.3. An etcd cluster needs a majority to write, so a fourth member adds a machine without adding failure tolerance.*
+
 etcd is a distributed, consistent key-value store that uses Raft. Raft is a consensus algorithm, which is a method for several machines to agree on one sequence of writes even when some of them fail. Clients connect on port 2379, and peers connect on port 2380. It holds **all cluster state**. Objects are serialized as protobuf under keys shaped like `/registry/<group>/<resource>/<namespace>/<name>`, and leases and events live there too.
 
 Quorum decides how many members can fail. A quorum is the smallest majority of members that must agree before a write counts. Take a 3-member cluster. Its quorum is 2 members, so one member can fail and the cluster still has a majority. A 5-member cluster tolerates 2 failures. Adding a fourth member raises quorum to 3, so a 4-member cluster still tolerates only 1 failure. That is why odd member counts are the standard. The extra member in a 4-member cluster costs you a machine and gives you no extra failure tolerance.
@@ -152,6 +134,10 @@ Performance depends most on three things: disk fsync latency, network latency be
 Pick an odd number of members on fast disks, and treat backups and restore drills as required, not optional.
 
 ### kube-scheduler
+
+![A scheduler filters out a node with no free GPUs, scores the remaining two nodes, and binds the pod to the node with more room.](./img/p2-0503-scheduler-cycles.svg)
+
+*Figure 5.3.4. The scheduler filters out the node with no free GPUs, scores the rest, and writes the binding to node C while the kubelet starts the container.*
 
 The scheduler watches for Pods that have no `spec.nodeName`. For each one, it runs two cycles. The **scheduling cycle** filters out nodes that cannot run the Pod, scores the survivors, and selects one. The **binding cycle** then writes a `Binding` to the API. Filtering is a yes-or-no test, such as "does this node have enough free GPUs?" Scoring is a ranking, such as "which of the remaining nodes is least full?"
 
@@ -204,6 +190,10 @@ Suppose a node flips to `NotReady` in the middle of the night. The node is the p
 - **Node-level agents** are common in AI clusters. They include the NVIDIA device plugin or DRA driver, which advertises GPUs, and GPU Feature Discovery and NFD, which add labels. The DCGM exporter provides metrics. Others are node-problem-detector, log shippers, CSI node drivers, RDMA and SR-IOV device plugins, Multus for multiple network interfaces, and kata or sandbox runtime installers.
 
 ### Inspecting Nodes (`Capacity` vs. `Allocatable` and `Conditions`) and `kube-system` (*Kubernetes: Up and Running* Chapter 3)
+
+![Node Capacity minus kube-reserved, system-reserved and the eviction threshold leaves Allocatable.](./img/k03-allocatable.svg)
+
+*Figure 5.3.5. A node's Allocatable is its Capacity minus the reservations kept back for the node agent and the system.*
 
 The *Kubernetes: Up and Running* book walks through the first commands every cluster operator runs after connecting `kubectl`. They are simple, and they answer the questions you will ask on the first day of any new cluster.
 
@@ -262,6 +252,10 @@ The example DNS Service has the cluster address `10.96.0.10`. Any container in t
 
 ## 4. Ports and trust
 
+![Hub-and-spoke map of component ports around the API server on 6443.](./img/p3-0503-ports-map.svg)
+
+*Figure 5.3.6. Every component connects to the API server on 6443, and the API server in turn reaches etcd and the kubelets.*
+
 Suppose a firewall team asks which ports to open between the control plane and the workers. Opening everything is the wrong answer, and so is opening nothing. This table lists the ports each component listens on and how it checks identity. Read it before you open anything in a firewall, because each row tells you who should be allowed to connect.
 
 | Component | Port(s) | Authn/z | Notes |
@@ -278,6 +272,22 @@ Suppose a firewall team asks which ports to open between the control plane and t
 Everything inside the control plane talks over TLS. TLS is the encryption that also proves each side's identity with a certificate. Certificates come from kubeadm or your installer, which section 5.21 covers. The API server is also a client of two other components: it connects to kubelets for logs and exec, and it connects to etcd. Start with the etcd and kubelet rows, since their notes ask for the tightest access. etcd holds every secret in the cluster, and the kubelet can run commands inside every container on its node, so a reachable port on either one is a serious exposure.
 
 ## 5. The declarative object model
+
+![Owner references cascade deletion down a chain while finalizers hold deletion until cleanup is done.](./img/p3-0503-ownership-finalizer-delete.svg)
+
+*Figure 5.3.7. ownerReferences drive cascading deletion, and finalizers hold an object in Terminating until a controller finishes cleanup.*
+
+![A stale write based on resourceVersion 5012 is rejected with 409 Conflict and retried.](./img/p3-0503-optimistic-409.svg)
+
+*Figure 5.3.8. Optimistic concurrency means the second writer is refused and retries, so neither overwrites the other unknowingly.*
+
+![A missed event is lost for an edge-triggered controller but fixed by the next resync in Kubernetes.](./img/p3-0503-level-vs-edge.svg)
+
+*Figure 5.3.9. Kubernetes controllers compare current state with desired state, so a dropped event is repaired on the next resync.*
+
+![A Deployment with three desired and two ready Pods, showing how each controller acts in turn until the new Pod is ready and added to the Service.](./img/p2-0503-deployment-relay.svg)
+
+*Figure 5.3.10. A Deployment with a desired count of three and two ready Pods is fixed by five controllers acting in turn, starting with the ReplicaSet controller.*
 
 Every API object follows the same outline. It carries `apiVersion` and `kind`, plus `metadata` with a name, namespace, uid, labels, annotations, ownerReferences, finalizers, resourceVersion and generation. The `spec` holds the desired state, which users and controllers write. The `status` holds the observed state, which controllers and the kubelet write. Several properties make this model work.
 
@@ -299,29 +309,9 @@ When an object misbehaves, compare its `spec` with its `status`. The gap between
 
 A teammate runs `kubectl apply` and asks, "Where does my pod actually come from?" The honest answer is a relay of several components, and none of them calls the others directly. The diagram follows one Deployment from your terminal to a running container. Read it as a relay. Each component picks up work from the API server and writes its result back.
 
-```mermaid
-sequenceDiagram
-  participant U as kubectl
-  participant A as kube-apiserver
-  participant E as etcd
-  participant CM as controller-manager
-  participant S as scheduler
-  participant K as kubelet (node)
-  participant R as runtime (containerd)
-  U->>A: POST/PATCH Deployment
-  A->>A: authn, authz, admission (mutate/validate)
-  A->>E: persist Deployment
-  CM->>A: (watch) Deployment created
-  CM->>A: create ReplicaSet (deployment controller)
-  CM->>A: (watch) ReplicaSet → create Pods (replicaset controller)
-  S->>A: (watch) Pod with no nodeName
-  S->>S: filter + score nodes
-  S->>A: bind: set spec.nodeName
-  K->>A: (watch) Pod bound to me
-  K->>R: CRI: RunPodSandbox, CreateContainer, StartContainer (CNI, CSI mounts)
-  K->>A: update Pod status (Running, IPs, conditions)
-  CM->>A: EndpointSlice controller adds the Pod IP when Ready
-```
+![From kubectl apply to a running container](./img/m5-03-2.svg)
+
+*Figure 5.3.11. From kubectl apply to a running container, as a diagram.*
 
 Follow the arrows in order, and notice that the arrows always point at the API server, never between two workers. The kubelet does not hear from the scheduler. It hears from the API server that a pod now has its node name. That one detail is what lets you debug a stuck pod by looking at the object's state, not by guessing which component to call.
 
@@ -333,6 +323,14 @@ Suppose the on-call phone rings at night and says that one API server is down. I
 
 ### Topologies
 
+![A leader renews a Lease every 2 seconds and a standby takes over after 15 seconds without renewal.](./img/p3-0503-leader-election.svg)
+
+*Figure 5.3.12. Scheduler and controller-manager run active-standby, and a missed Lease renewal hands leadership to a standby in about 15 seconds.*
+
+![Stacked etcd runs on the control-plane nodes, while external etcd runs on its own dedicated nodes.](./img/k03-etcd-topology.svg)
+
+*Figure 5.3.13. Stacked etcd uses fewer machines but couples failures, while external etcd isolates the database on its own nodes.*
+
 - **Stacked etcd**: etcd runs as static pods on the same control-plane nodes. kubeadm uses this layout by default, with 3 nodes. It is simpler, but losing a node loses one API server and one etcd member together.
 - **External etcd**: etcd runs on dedicated nodes. That gives you more isolation and independent scaling, but you have more machines to operate.
 - **API endpoint**: A load balancer sits in front of N API servers. It can be a cloud LB, HAProxy with keepalived, kube-vip, or DNS round-robin with health checks. This is the address that `controlPlaneEndpoint` refers to. Nodes and users connect to the LB address, so they never need to know which API server is alive.
@@ -340,6 +338,14 @@ Suppose the on-call phone rings at night and says that one API server is down. I
 - **Managed control planes** come from providers such as GKE, EKS, AKS, and CoreWeave or Nebius managed Kubernetes. The provider operates the API server and etcd. You run the nodes and add-ons.
 
 ### What fails and what happens
+
+![Two columns show what keeps working and what stops when all API servers are down.](./img/p3-0503-api-down-survives.svg)
+
+*Figure 5.3.14. With the API servers down, running pods carry on while every change to the cluster stops.*
+
+![After the kubelet stops, the node goes Unknown after 40 seconds and pods are marked for eviction after 340 seconds.](./img/k03-kubelet-timeline.svg)
+
+*Figure 5.3.15. A kubelet that stops heartbeating makes its node Unknown after 40 seconds and marks pods for eviction after 340 seconds.*
 
 Use this table to see what each failure costs and what you would notice first. Read each row as a question: if this part stopped, what would still work, and what would the first alarm look like?
 
@@ -380,6 +386,10 @@ Suppose a vendor asks you to install a GPU driver plugin. Before you do, you nee
 | **Node** | NRI, node feature discovery, kubelet plugins | Topology manager, CPU manager |
 
 ### Why some APIs are only a contract
+
+![A Service works on a fresh cluster because kube-proxy is built in, while an Ingress object does nothing without a controller such as ingress-nginx or Contour.](./img/p2-0503-ingress-contract.svg)
+
+*Figure 5.3.16. A Service works out of the box through kube-proxy, while an Ingress object does nothing until a controller such as ingress-nginx or Contour implements it.*
 
 Kube-proxy programs each host so that workloads get a virtual IP (VIP). That virtual IP routes to one or many underlying Pods, which goes well beyond scheduling. The project could have defined only a Service API and required a plug-in to implement it. You would then have to choose among many plug-ins. Instead, the Service abstraction ships as core functionality, so a Service works on a fresh cluster.
 
@@ -430,28 +440,9 @@ Start with the CNI, since nodes stay NotReady without it. The other items can wa
 
 Think of an AI cluster as three layers: a management plane, GPU node pools, and several networks. A useful way to hold the picture is a factory floor. The management plane is the office that schedules the shifts and keeps the records. The GPU pools are the production lines, which are expensive and must never sit idle. The networks are the conveyor belts, and each belt carries a different kind of material. Ordinary traffic and control messages use one belt, while the heavy gradient traffic between GPUs needs its own, faster belt so that it does not jam the others. The management plane is the part that keeps the cluster running. The GPU pools are where the expensive work happens. The networks carry the traffic between them, and each one has a different job. The diagram shows how they connect. Read it before you size any of the parts.
 
-```mermaid
-flowchart TB
-  subgraph Mgmt["Management plane"]
-    CPn["3-5 control-plane nodes (API, etcd, scheduler, controllers)"]
-    SYS["System pool: CoreDNS, ingress, monitoring, Argo CD, operators, Kueue, registries cache"]
-  end
-  subgraph GPU["GPU node pools (tainted)"]
-    G1["H100 pool: 8 GPUs + NVSwitch, 8x400G IB NICs (rails), local NVMe"]
-    G2["L4/L40S inference pool"]
-  end
-  subgraph Net["Networks"]
-    N1["Pod/cluster network (CNI): control and general traffic"]
-    N2["Secondary RDMA network (Multus + SR-IOV/macvlan): NCCL collectives over InfiniBand/RoCE"]
-    N3["Storage network → parallel FS / object store"]
-  end
-  CPn --- SYS
-  CPn -->|"kubelet, device plugin"| G1
-  CPn --> G2
-  G1 --- N1
-  G1 --- N2
-  G1 --- N3
-```
+![Architecture of a GPU/AI cluster](./img/m5-03-3.svg)
+
+*Figure 5.3.17. Architecture of a GPU/AI cluster, as a diagram.*
 
 GPU nodes are tainted with `nvidia.com/gpu`, so only GPU workloads land there. A taint is a mark on a node that repels pods unless they carry a matching toleration. Secondary networks carry NCCL and RDMA traffic outside the CNI path. NCCL is the library that moves data between GPUs during training, and it needs a fast path that the ordinary pod network does not provide.
 

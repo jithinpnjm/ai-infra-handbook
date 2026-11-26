@@ -1,0 +1,62 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p2-2015-three-places",
+  "title": "Enforce the label budget at review, scrape and run time",
+  "spec": "Three columns left to right, each a tall card with a number circle and a title, joined by arrows labelled 'Budget enforced earlier, then later'. Column 1 'Review time': a pull-request icon with the note 'A linter reads the declared metric design and fails on forbidden or unbounded labels'. Column 2 'Scrape time': a Prometheus icon with monospace chips 'sample_limit', 'label_limit', 'label_name_length_limit', 'label_value_length_limit', and the note 'Default 0 means no limit. A scrape over a limit fails whole.'. Column 3 'Run time': a dashboard icon with the chips 'TSDB status endpoint: series by metric name' and 'scrape_series_added', and the note 'A sudden rise is the signature of a new unbounded label'. A rule card at the top with the text 'A rule that lives only in a wiki does not hold'. Orange outline on column 2's warning note about the whole scrape failing. Bottom green bar: 'Lint at review, limit at scrape, alert on series churn.'",
+  "anchor": "### 4. Enforce the budget in three places",
+  "alt": "The label budget is enforced in three places: a linter at review time, per-job scrape limits, and alerts on new series at run time.",
+  "cap": "The label budget is enforced by a linter at review time, per-job scrape limits, and an alert on new series at run time."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p2-2015-prom-sharding",
+  "title": "Shard Prometheus by function, federate only aggregates",
+  "spec": "Top: an overloaded single Prometheus box with a memory gauge nearly full and a query timeout label, drawn in orange outline, with the note 'One server holds all active series in memory'. Below, a split into three shards side by side: 'Shard 1: platform', 'Shard 2: tenant workloads', 'Shard 3: GPU and node exporters'. A global Prometheus box at the bottom receiving arrows from the three shards, each arrow labelled 'Only aggregates and SLI series upward'. A red crossed-out arrow from one shard labelled 'Never federate raw per-pod series'. A small side card 'Cost: fragmented data, a question across shards needs two queries and a join'. Bottom note: 'Shard by function or region first, aggregate with recording rules.'",
+  "anchor": "### 6. One Prometheus does not scale forever, so split it on purpose",
+  "alt": "A single overloaded Prometheus is split into functional shards, which send only aggregates to a global Prometheus, with raw per-pod series kept local.",
+  "cap": "An overloaded Prometheus is split by function into shards, and only aggregates and SLI series are sent up to the global server."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p2-2015-long-term-store",
+  "title": "Long-term storage: choose by what breaks first",
+  "spec": "A horizontal decision flow of three stages from left to right. Stage 1 box 'Local Prometheus: active series in memory' with a memory icon. Stage 2 box 'Remote write to a long-term store' with an arrow icon. Stage 3 box 'Thanos or a similar layer on top' with a stacked-layers icon. Above the stages a question card 'Choose by what breaks first'. Below stage 1 a note 'Memory and query time break first'; below stage 2 a note 'Storage cost and remote write backlog'; below stage 3 a note 'Query fan-out across many stores'. The box for stage 2 has an orange outline with the note 'A remote write outage is a gap, see the scenario three'. Bottom note: 'Keep the recording rules small, so the long-term store holds the rolled-up series.'",
+  "anchor": "### 7. Long-term storage: choose by what breaks first",
+  "alt": "Long-term storage options are chosen by what breaks first, moving from local Prometheus memory to remote write to a layer such as Thanos.",
+  "cap": "Long-term storage options run from local Prometheus to remote write to a layer such as Thanos, chosen by what breaks first."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p2-2015-recording-rule-name",
+  "title": "Recording rule names: level, metric, operations",
+  "spec": "A name anatomy with three segments drawn as connected blocks in monospace, for example 'level:metric:operations', with the three blocks labelled 'level: the aggregation level and the labels that remain', 'metric: the metric name, with _total dropped for counters used with rate', 'operations: what you applied, such as rate, sum or ratio'. A second example card for a ratio, with its name shown as 'numerator_per_denominator:ratio' and a note 'For ratios, join the names with _per_ and use ratio as the operation'. A right-side panel 'Always compute the ratio last': two boxes 'Sum the numerator and the denominator separately' and 'Then divide' with a red cross over the box 'Average the per-pod ratios', labelled 'Gives every pod equal weight'. Orange outline on the red cross box. Bottom note: 'Keep the le label on histograms so histogram_quantile still works.'",
+  "anchor": "### 8. Recording rules turn many series into few",
+  "alt": "Recording rule names follow the level, metric and operations pattern, and ratios are computed by summing numerator and denominator before dividing, not by averaging.",
+  "cap": "Recording rules are named level, metric and operations, and a ratio is computed by summing the numerator and denominator before dividing."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p2-2015-exemplar-link",
+  "title": "An exemplar links a metric spike to one trace",
+  "spec": "Left: a latency histogram drawn as bars by bucket, with a tall orange spike in the top bucket labelled 'Latency spike'. A small dot on the spike with a thin line leading to a trace card on the right. Right: a trace card titled 'One real request from the spike' with a short stack of span bars. A label on the line 'Exemplar: a trace id attached to the sample, not a label'. A cost note 'About 100 bytes per exemplar with just a trace id, kept in a fixed-size circular buffer'. A switch icon labelled '--enable-feature=exemplar-storage'. A lower red warning card 'If a tail sampler drops this trace, the link leads nowhere' with a crossed trace card. Orange outline on the red warning card. Caption: 'Put the trace id in an exemplar, never in a label.'",
+  "anchor": "### 11. Exemplars link a metric spike to one trace",
+  "alt": "A latency spike in a histogram links through an exemplar to one trace, and a tail sampler that drops that trace breaks the link.",
+  "cap": "An exemplar links a histogram spike to one trace, and a tail sampler that drops that trace leaves the link pointing nowhere."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "p2-2015-dead-mans-switch",
+  "title": "Monitor the monitoring: a dead man's switch",
+  "spec": "A loop of three components in a row. Left box 'Your Prometheus and pipeline' with a broken heartbeat icon, labelled 'Falls over during an incident'. Middle box 'Always-firing alert: dead man's switch' with a steady heartbeat icon. Right box 'External service' with a bell icon labelled 'Pages you when the heartbeat stops arriving'. Arrows from the pipeline to the switch to the external service. Below, a second small Prometheus box in another failure domain with the note 'Scrapes only the first Prometheus and the collectors'. A probe box 'Synthetic probe request through the path' next to it. Orange outline on the external service bell as the component that must not share the failure. A small note 'Failure domain: a group of machines that can fail together'. Caption at the bottom: 'Nobody pages if the thing that pages is the thing that fell over.'",
+  "anchor": "### 14. Monitor the monitoring",
+  "alt": "A dead man's switch alert always fires, and an external service pages when it stops arriving, so a dead Prometheus still gets noticed.",
+  "cap": "A dead man's switch is an alert that always fires, and an external service pages when it stops arriving, so a failed Prometheus is still noticed."
+ }
+]

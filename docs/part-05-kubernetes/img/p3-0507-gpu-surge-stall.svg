@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Why maxSurge 1 stalls a full GPU pool</title>
+  <desc>Visual explanation of why maxSurge 1 stalls a full 12 GPU pool and how maxUnavailable 1 enables progress.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why maxSurge 1 stalls a full GPU pool</text>
+
+  
+  <rect x="50" y="88" width="1500" height="76" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(75, 98)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <rect x="4" y="4" width="48" height="48" rx="8" />
+    <line x1="4" y1="20" x2="52" y2="20" />
+    <line x1="4" y1="36" x2="52" y2="36" />
+    <circle cx="14" cy="12" r="3" fill="#207448" />
+    <circle cx="24" cy="12" r="3" fill="#207448" />
+    <circle cx="14" cy="28" r="3" fill="#207448" />
+    <circle cx="24" cy="28" r="3" fill="#207448" />
+    <circle cx="14" cy="44" r="3" fill="#207448" />
+    <circle cx="24" cy="44" r="3" fill="#207448" />
+  </g>
+  <text x="160" y="136" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Worked example with a node pool of 12 GPUs</text>
+
+  
+  <rect x="50" y="188" width="720" height="832" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <path d="M 50 204 A 16 16 0 0 1 66 188 L 754 188 A 16 16 0 0 1 770 204 L 770 252 L 50 252 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="410" y="230" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">maxSurge 1, maxUnavailable 0</text>
+
+  
+  <rect x="75" y="270" width="670" height="88" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <g transform="translate(95, 286)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="6" />
+    <line x1="20" y1="4" x2="20" y2="52" />
+    <line x1="36" y1="4" x2="36" y2="52" />
+  </g>
+  <text x="175" y="308" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">3 replicas of 4 GPUs each </tspan>
+    <tspan x="175" dy="32">fill all 12 GPUs</tspan>
+  </text>
+
+  
+  <line x1="410" y1="358" x2="410" y2="384" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="75" y="384" width="670" height="88" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <g transform="translate(95, 400)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <circle cx="28" cy="28" r="14" />
+    <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" />
+  </g>
+  <text x="175" y="422" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">the controller must start </tspan>
+    <tspan x="175" dy="32">a fourth pod first</tspan>
+  </text>
+
+  
+  <line x1="410" y1="472" x2="410" y2="498" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="75" y="498" width="670" height="88" rx="12" fill="#fef8f2" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(95, 514)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <polygon points="28,6 50,48 6,48" />
+    <line x1="28" y1="20" x2="28" y2="34" />
+    <line x1="28" y1="40" x2="28" y2="43" stroke-width="5" stroke-linecap="round" />
+  </g>
+  <text x="175" y="536" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">it needs 4 GPUs </tspan>
+    <tspan x="175" dy="32">that do not exist</tspan>
+  </text>
+
+  
+  <line x1="410" y1="586" x2="410" y2="612" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="75" y="612" width="670" height="126" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <g transform="translate(95, 647)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <circle cx="28" cy="28" r="22" />
+    <polyline points="28,14 28,28 38,28" />
+  </g>
+  <text x="175" y="648" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">pod stays Pending with message </tspan>
+    <tspan x="175" dy="34" font-family="monospace" font-size="24">'0/N nodes are available: </tspan>
+    <tspan x="175" dy="34" font-family="monospace" font-size="24">Insufficient nvidia.com/gpu'</tspan>
+  </text>
+
+  
+  <line x1="410" y1="738" x2="410" y2="764" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="75" y="764" width="670" height="126" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <g transform="translate(95, 799)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <path d="M 28 6 L 48 14 C 48 34 28 48 28 48 C 28 48 8 34 8 14 Z" />
+    <line x1="20" y1="26" x2="36" y2="26" />
+  </g>
+  <text x="175" y="800" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">maxUnavailable 0 forbids removing </tspan>
+    <tspan x="175" dy="34">an old pod until a replacement </tspan>
+    <tspan x="175" dy="34">is Ready</tspan>
+  </text>
+
+  
+  <line x1="410" y1="890" x2="410" y2="916" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="75" y="916" width="670" height="80" rx="12" fill="#fef2f2" stroke="#dc2626" stroke-width="3" />
+  <g transform="translate(95, 928)" stroke="#dc2626" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <polygon points="16,6 40,6 50,16 50,40 40,50 16,50 6,40 6,16" />
+    <line x1="18" y1="18" x2="38" y2="38" />
+    <line x1="38" y1="18" x2="18" y2="38" />
+  </g>
+  <text x="175" y="964" font-family="sans-serif" font-size="30" font-weight="bold" fill="#dc2626">rollout hangs</text>
+
+  
+  <rect x="830" y="188" width="720" height="832" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <path d="M 830 204 A 16 16 0 0 1 846 188 L 1534 188 A 16 16 0 0 1 1550 204 L 1550 252 L 830 252 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1190" y="230" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">maxSurge 0, maxUnavailable 1</text>
+
+  
+  <rect x="855" y="270" width="670" height="88" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 286)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <circle cx="28" cy="28" r="22" />
+    <line x1="16" y1="28" x2="40" y2="28" />
+  </g>
+  <text x="955" y="308" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="955" dy="0">one old replica </tspan>
+    <tspan x="955" dy="32">terminates first</tspan>
+  </text>
+
+  
+  <line x1="1190" y1="358" x2="1190" y2="384" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="855" y="384" width="670" height="88" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 400)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <rect x="10" y="22" width="36" height="26" rx="4" />
+    <path d="M 18 22 V 14 A 10 10 0 0 1 38 14 V 22" />
+  </g>
+  <text x="955" y="437" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">frees 4 GPUs</text>
+
+  
+  <line x1="1190" y1="472" x2="1190" y2="498" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="855" y="498" width="670" height="88" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 514)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <circle cx="28" cy="28" r="22" />
+    <line x1="16" y1="28" x2="40" y2="28" />
+    <line x1="28" y1="16" x2="28" y2="40" />
+  </g>
+  <text x="955" y="551" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">the new replica schedules</text>
+
+  
+  <line x1="1190" y1="586" x2="1190" y2="612" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="855" y="612" width="670" height="88" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 628)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <path d="M 12 28 A 16 16 0 1 1 28 44" />
+    <polyline points="28,36 28,44 36,44" />
+  </g>
+  <text x="955" y="665" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">repeat</text>
+
+  
+  <line x1="1190" y1="700" x2="1190" y2="764" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="855" y="764" width="670" height="232" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(875, 852)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <circle cx="28" cy="28" r="22" />
+    <polyline points="18,28 25,35 38,20" />
+  </g>
+  <text x="955" y="862" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="955" dy="0">rollout completes with </tspan>
+    <tspan x="955" dy="38">temporarily 2 of 3 serving</tspan>
+  </text>
+
+  
+  <rect x="50" y="1044" width="1500" height="76" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(75, 1054)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <circle cx="28" cy="28" r="22" />
+    <polyline points="28,14 28,28 38,28" />
+    <path d="M 22 2 L 34 2" />
+  </g>
+  <text x="160" y="1092" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan font-family="monospace" font-size="24">progressDeadlineSeconds 1800</tspan> because model downloads and CUDA graph capture are slow
+  </text>
+</svg>

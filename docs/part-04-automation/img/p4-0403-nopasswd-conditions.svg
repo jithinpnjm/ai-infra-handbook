@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>When NOPASSWD: ALL is reasonable, and what to do when it is not</title>
+  <desc>A decision tree and governance guide illustrating criteria for granting NOPASSWD: ALL versus retaining encrypted password prompts and role-based access control.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">When NOPASSWD: ALL is reasonable,</text>
+  <text x="40" y="115" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">and what to do when it is not</text>
+
+  
+  <rect x="240" y="145" width="1120" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(265, 162)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24" />
+    <path d="M 21 22 C 21 17, 35 17, 35 24 C 35 29, 28 30, 28 35" />
+    <circle cx="28" cy="44" r="1.5" fill="#207448" />
+  </g>
+  <text x="345" y="201" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is NOPASSWD: ALL acceptable for the automation account?</text>
+
+  
+  <line x1="800" y1="235" x2="800" y2="265" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="40" y="270" width="1520" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="60" y="288" width="460" height="198" rx="10" fill="#ffffff" stroke="#c2d6c7" stroke-width="2" />
+  <circle cx="95" cy="325" r="18" fill="#207448" />
+  <text x="95" y="332" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(130, 303)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="10" width="32" height="24" rx="4" />
+    <circle cx="16" cy="22" r="2.5" fill="#207448" />
+    <circle cx="28" cy="22" r="2.5" fill="#207448" />
+    <line x1="22" y1="4" x2="22" y2="10" />
+    <circle cx="22" cy="3" r="2" fill="#207448" />
+    <line x1="14" y1="34" x2="14" y2="40" />
+    <line x1="30" y1="34" x2="30" y2="40" />
+  </g>
+  <text x="85" y="385" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">the account is dedicated to</tspan>
+    <tspan x="85" dy="32">automation and used by</tspan>
+    <tspan x="85" dy="32">nothing else</tspan>
+  </text>
+
+  
+  <rect x="570" y="288" width="460" height="198" rx="10" fill="#ffffff" stroke="#c2d6c7" stroke-width="2" />
+  <circle cx="605" cy="325" r="18" fill="#207448" />
+  <text x="605" y="332" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(640, 303)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="16" width="28" height="22" rx="4" />
+    <path d="M 14 16 L 14 10 C 14 5, 30 5, 30 10 L 30 16" />
+    <circle cx="22" cy="27" r="2" fill="#207448" />
+  </g>
+  <text x="595" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="595" dy="0">interactive logins are blocked,</tspan>
+    <tspan x="595" dy="32">so only key-based SSH from the</tspan>
+    <tspan x="595" dy="32">control node works and the</tspan>
+    <tspan x="595" dy="32">private key is protected</tspan>
+  </text>
+
+  
+  <rect x="1080" y="288" width="460" height="198" rx="10" fill="#ffffff" stroke="#c2d6c7" stroke-width="2" />
+  <circle cx="1115" cy="325" r="18" fill="#207448" />
+  <text x="1115" y="332" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(1150, 303)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 6 L 28 6 L 36 14 L 36 42 L 8 42 Z" />
+    <polyline points="28,6 28,14 36,14" />
+    <line x1="14" y1="22" x2="30" y2="22" />
+    <line x1="14" y1="28" x2="26" y2="28" />
+    <line x1="14" y1="34" x2="22" y2="34" />
+  </g>
+  <text x="1105" y="385" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1105" dy="0">its use is audited through the</tspan>
+    <tspan x="1105" dy="32">controller's job log and the</tspan>
+    <tspan x="1105" dy="32">target's journald</tspan>
+  </text>
+
+  
+  <line x1="405" y1="505" x2="405" y2="560" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="425" y="540" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">All yes</text>
+
+  
+  <line x1="1195" y1="505" x2="1195" y2="555" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <text x="1220" y="538" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">Any no</text>
+
+  
+  <rect x="40" y="565" width="730" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(65, 615)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 50 14 L 50 32 C 50 46, 28 54, 28 54 C 28 54, 6 46, 6 32 L 6 14 Z" />
+    <polyline points="18,30 25,37 38,23" />
+  </g>
+  <text x="145" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">NOPASSWD: ALL</text>
+  <text x="145" y="658" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" fill="#303a36">in /etc/sudoers.d/ansible,</text>
+  <text x="145" y="694" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" fill="#303a36">validated with visudo -cf</text>
+
+  
+  <rect x="40" y="755" width="730" height="345" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="2" />
+  
+  <g transform="translate(65, 780)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="38" rx="4" />
+    <line x1="6" y1="18" x2="50" y2="18" />
+    <circle cx="14" cy="13" r="1.5" fill="#207448" />
+    <circle cx="20" cy="13" r="1.5" fill="#207448" />
+    <polyline points="14,28 20,34 14,40" />
+    <line x1="24" y1="40" x2="34" y2="40" />
+  </g>
+  <text x="70" y="865" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">Ansible logs every executed module and</tspan>
+    <tspan x="70" dy="38">its arguments, for example</tspan>
+    <tspan x="70" dy="44" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">ansible-command Invoked with</tspan>
+    <tspan x="70" dy="40" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">_raw_params=..., to /var/log/syslog</tspan>
+    <tspan x="70" dy="42">or journald on the target</tspan>
+  </text>
+
+  
+  <rect x="830" y="560" width="730" height="205" rx="12" fill="#fdf6ee" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(855, 578)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="10" width="40" height="40" rx="6" />
+    <circle cx="28" cy="30" r="10" />
+    <line x1="28" y1="20" x2="28" y2="14" />
+    <line x1="28" y1="40" x2="28" y2="46" />
+    <line x1="18" y1="30" x2="12" y2="30" />
+    <line x1="38" y1="30" x2="44" y2="30" />
+  </g>
+  <text x="920" y="598" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">keep the password prompt with</text>
+  <text x="920" y="632" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#db8129">%ansible ALL=(ALL) ALL</text>
+  <text x="855" y="670" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="855" dy="0">and supply the password through Ansible Vault,</tspan>
+    <tspan x="855" dy="34">the built-in encryption for secret values,</tspan>
+    <tspan x="855" dy="34">so it sits in Git in encrypted form</tspan>
+  </text>
+
+  
+  <rect x="830" y="785" width="730" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(855, 800)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="12" r="6" />
+    <path d="M 6 28 C 6 22, 10 18, 16 18 C 22 18, 26 22, 26 28" />
+    <circle cx="28" cy="10" r="4.5" />
+    <path d="M 28 16 C 32 16, 35 19, 35 24" />
+  </g>
+  <text x="900" y="824" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">what the form means</text>
+  <text x="855" y="860" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="855" dy="0">%ansible means every member of the group</tspan>
+    <tspan x="855" dy="32">ansible; adding a person to that group is the</tspan>
+    <tspan x="855" dy="32">decision to give them root on the fleet, so</tspan>
+    <tspan x="855" dy="32">treat membership as a privileged action</tspan>
+  </text>
+
+  
+  <rect x="830" y="975" width="730" height="130" rx="12" fill="#f0f5f1" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1500, 995)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="10" cy="10" r="4" />
+    <circle cx="10" cy="30" r="4" />
+    <circle cx="30" cy="14" r="4" />
+    <line x1="10" y1="14" x2="10" y2="26" />
+    <path d="M 10 24 C 18 24, 24 20, 30 18" />
+  </g>
+  <text x="855" y="1010" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="855" dy="0">then move change control into Git peer review,</tspan>
+    <tspan x="855" dy="30">staging environments and Ansible Automation</tspan>
+    <tspan x="855" dy="30">Controller RBAC (role-based access control:</tspan>
+    <tspan x="855" dy="30">who may run which job)</tspan>
+  </text>
+
+  
+  <rect x="40" y="1125" width="1520" height="55" rx="8" fill="#207448" />
+  <g transform="translate(60, 1135)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="14" />
+    <line x1="18" y1="10" x2="18" y2="18" />
+    <circle cx="18" cy="24" r="1.5" fill="#ffffff" />
+  </g>
+  <text x="110" y="1162" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Anyone who can log in as that account is root on every host it reaches</text>
+</svg>

@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1150" viewBox="0 0 1600 1150">
+  <title>How the device plugin hands one container its GPUs and the cgroup filter blocks the rest</title>
+  <desc>Visual explanation showing how the NVIDIA device plugin advertises GPUs, the kubelet Device Manager allocates them, the runtime injects device nodes, and cgroup v2 eBPF filter enforces device isolation.</desc>
+
+  <defs>
+    <marker id="green-arrow" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 z" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrow" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How the device plugin hands one container its GPUs<tspan x="800" dy="56">and the cgroup filter blocks the rest</tspan></text>
+
+  
+  <g id="step-1">
+    <circle cx="70" cy="195" r="24" fill="#207448"/>
+    <text x="70" y="204" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+
+    <rect x="140" y="150" width="1400" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(165, 168)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="30" height="30" rx="4"/>
+      <rect x="19" y="19" width="16" height="16" rx="2" fill="#207448" fill-opacity="0.15"/>
+      <line x1="20" y1="4" x2="20" y2="12"/>
+      <line x1="27" y1="4" x2="27" y2="12"/>
+      <line x1="34" y1="4" x2="34" y2="12"/>
+      <line x1="20" y1="42" x2="20" y2="50"/>
+      <line x1="27" y1="42" x2="27" y2="50"/>
+      <line x1="34" y1="42" x2="34" y2="50"/>
+      <line x1="4" y1="20" x2="12" y2="20"/>
+      <line x1="4" y1="27" x2="12" y2="27"/>
+      <line x1="4" y1="34" x2="12" y2="34"/>
+      <line x1="42" y1="20" x2="50" y2="20"/>
+      <line x1="42" y1="27" x2="50" y2="27"/>
+      <line x1="42" y1="34" x2="50" y2="34"/>
+    </g>
+
+    <text x="245" y="205" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NVIDIA device plugin advertises <tspan font-family="monospace">nvidia.com/gpu: N</tspan> per node</text>
+  </g>
+
+  
+  <g id="arrow-1-to-2">
+    <line x1="190" y1="240" x2="190" y2="336" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+    <text x="235" y="296" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">step 2: kubelet Allocate call returns GPU UUIDs or CDI names</text>
+  </g>
+
+  
+  <g id="step-2">
+    <circle cx="70" cy="385" r="24" fill="#207448"/>
+    <text x="70" y="394" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+
+    <rect x="140" y="340" width="1400" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(165, 358)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="27" cy="27" r="14"/>
+      <circle cx="27" cy="27" r="6"/>
+      <line x1="27" y1="6" x2="27" y2="13"/>
+      <line x1="27" y1="41" x2="27" y2="48"/>
+      <line x1="6" y1="27" x2="13" y2="27"/>
+      <line x1="41" y1="27" x2="48" y2="27"/>
+      <line x1="12" y1="12" x2="17" y2="17"/>
+      <line x1="37" y1="37" x2="42" y2="42"/>
+      <line x1="12" y1="42" x2="17" y2="37"/>
+      <line x1="37" y1="17" x2="42" y2="12"/>
+    </g>
+
+    <text x="245" y="396" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">kubelet Device Manager</text>
+  </g>
+
+  
+  <g id="arrow-2-to-3">
+    <line x1="190" y1="430" x2="190" y2="476" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+  </g>
+
+  
+  <g id="step-3">
+    <circle cx="70" cy="565" r="24" fill="#207448"/>
+    <text x="70" y="574" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <rect x="140" y="480" width="1400" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(165, 495)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="44" height="32" rx="4"/>
+      <line x1="2" y1="12" x2="46" y2="12"/>
+      <circle cx="9" cy="7" r="1.5" fill="#207448"/>
+      <circle cx="15" cy="7" r="1.5" fill="#207448"/>
+      <circle cx="21" cy="7" r="1.5" fill="#207448"/>
+    </g>
+
+    <text x="225" y="522" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">runtime injects devices</text>
+
+    
+    <rect x="165" y="540" width="665" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="497" y="577" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">/dev/nvidia0 and /dev/nvidia1<tspan x="497" dy="36">plus nvidiactl and nvidia-uvm</tspan></text>
+
+    
+    <rect x="850" y="540" width="665" height="95" rx="10" fill="#f5f8f5" stroke="#8c9c94" stroke-width="2" stroke-dasharray="8,6"/>
+    <text x="1182" y="577" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#5c6863">/dev/nvidia2 to /dev/nvidia7<tspan x="1182" dy="36" font-family="sans-serif" font-weight="normal" fill="#75827b">not created in this container</tspan></text>
+  </g>
+
+  
+  <g id="arrow-3-to-4">
+    <line x1="190" y1="655" x2="190" y2="701" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+  </g>
+
+  
+  <g id="step-4">
+    <circle cx="70" cy="768" r="24" fill="#207448"/>
+    <text x="70" y="777" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <rect x="140" y="705" width="1400" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(165, 740)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 8 L 26 2 L 46 8 C 46 28 26 46 26 46 C 26 46 6 28 6 8 Z"/>
+      <path d="M 26 12 L 26 36"/>
+      <path d="M 17 22 L 35 22"/>
+    </g>
+
+    <text x="245" y="776" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">cgroup v2 device filter (eBPF)</text>
+
+    
+    <rect x="760" y="720" width="755" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="5,4"/>
+    <text x="1137" y="747" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">isolation comes from what is visible<tspan x="1137" dy="28">and openable, not from separate hardware,</tspan><tspan x="1137" dy="28">unless MIG is used</tspan></text>
+  </g>
+
+  
+  
+  <g id="arrow-step4-to-trainer">
+    <line x1="497" y1="830" x2="497" y2="896" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+  </g>
+
+  
+  <g id="arrow-step4-to-other-pods">
+    <line x1="1182" y1="830" x2="1182" y2="896" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+    <circle cx="1182" cy="863" r="16" fill="#fff5ec" stroke="#db8129" stroke-width="3"/>
+    <line x1="1171" y1="852" x2="1193" y2="874" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="1193" y1="852" x2="1171" y2="874" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+
+  
+  
+  <g id="box-trainer">
+    <rect x="165" y="900" width="665" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(190, 928)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="44" height="34" rx="4"/>
+      <line x1="2" y1="14" x2="46" y2="14"/>
+      <circle cx="9" cy="9" r="1.5" fill="#207448"/>
+      <circle cx="15" cy="9" r="1.5" fill="#207448"/>
+    </g>
+
+    <text x="255" y="945" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">trainer, 2 GPUs</text>
+    <text x="255" y="982" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">opens its GPUs</text>
+  </g>
+
+  
+  <g id="box-other-pods">
+    <rect x="850" y="900" width="665" height="105" rx="12" fill="#f5f8f5" stroke="#8c9c94" stroke-width="2.5" stroke-dasharray="6,4"/>
+
+    
+    <g transform="translate(880, 928)" stroke="#5c6863" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="16" width="36" height="24" rx="4"/>
+      <path d="M 14 16 L 14 10 C 14 5 34 5 34 10 L 34 16"/>
+      <circle cx="24" cy="28" r="3" fill="#5c6863"/>
+    </g>
+
+    <text x="945" y="963" font-family="sans-serif" font-size="30" font-weight="bold" fill="#5c6863">other pods on the same node</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="80" y="1045" width="1440" height="65" rx="12" fill="#207448"/>
+    <text x="800" y="1086" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">a container cannot use a GPU it cannot see, and the device filter blocks any device it was not granted</text>
+  </g>
+</svg>

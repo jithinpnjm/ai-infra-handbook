@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>An if statement runs a command and branches on its exit code</title>
+  <desc>Flowchart showing how an if statement runs a command, branches on its exit code, and proceeds to fi.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 0 2 L 18 9 L 0 16 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 0 2 L 18 9 L 0 16 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">An if statement runs a command and branches on its exit code</text>
+
+  
+  
+  <g>
+    <rect x="1040" y="225" width="480" height="185" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <text x="1070" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="1070" dy="0">if does not test an expression.</tspan>
+      <tspan x="1070" dy="38">It runs a command and reads</tspan>
+      <tspan x="1070" dy="38">the exit code.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1040" y="450" width="480" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="1070" y="508" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="1070" dy="0">Zero means true.</tspan>
+      <tspan x="1070" dy="38">Anything non-zero</tspan>
+      <tspan x="1070" dy="38">means false.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="160" y="115" width="720" height="80" rx="40" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    
+    <g transform="translate(195, 127)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 12 20 L 24 28 L 12 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="28" y1="36" x2="44" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="275" y="165" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">if grep -q daemon: /etc/passwd</text>
+  </g>
+
+  
+  <path d="M 520 195 L 520 248" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <polygon points="520,250 710,335 520,420 330,335" fill="#fff9f2" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(492, 270)">
+      <circle cx="28" cy="28" r="11" fill="none" stroke="#db8129" stroke-width="3.5"/>
+      <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="520" y="372" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Exit code 0?</text>
+  </g>
+
+  
+  <path d="M 330 335 L 180 335 L 180 478" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="195" y="303" width="110" height="34" rx="6" fill="#f5f8f5"/>
+  <text x="250" y="327" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes, true</text>
+
+  
+  <g>
+    <rect x="40" y="480" width="300" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    
+    <g transform="translate(60, 502)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 16 28 L 24 36 L 40 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="130" y="527" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">then:</tspan>
+      <tspan x="130" dy="30">echo found</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 520 420 L 520 445 L 620 445 L 620 478" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <rect x="522" y="425" width="105" height="34" rx="6" fill="#f5f8f5"/>
+  <text x="574" y="449" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">no, false</text>
+
+  
+  <g>
+    <polygon points="620,480 840,570 620,660 400,570" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    
+    <g transform="translate(592, 498)">
+      <path d="M 12 6 L 34 6 L 44 16 L 44 50 L 12 50 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 34 6 L 34 16 L 44 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <circle cx="28" cy="33" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="620" y="582" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="620" dy="0">elif -e</tspan>
+      <tspan x="620" dy="32">/etc/passwd ?</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 400 570 L 320 570 L 320 738" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="330" y="548" width="55" height="34" rx="6" fill="#f5f8f5"/>
+  <text x="357" y="572" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <g>
+    <rect x="160" y="740" width="400" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    
+    <g transform="translate(178, 767)">
+      <circle cx="28" cy="20" r="10" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 12 48 C 12 36 20 32 28 32 C 36 32 44 36 44 48" fill="none" stroke="#207448" stroke-width="3.5"/>
+    </g>
+    <text x="245" y="788" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="245" dy="0">echo file exists</tspan>
+      <tspan x="245" dy="32">but no daemon user</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 840 570 L 880 570 L 880 738" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <rect x="850" y="548" width="45" height="34" rx="6" fill="#f5f8f5"/>
+  <text x="872" y="572" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">no</text>
+
+  
+  <g>
+    <rect x="660" y="740" width="460" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    
+    <g transform="translate(678, 767)">
+      <polygon points="28,6 50,46 6,46" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="28" y1="20" x2="28" y2="32" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="28" cy="40" r="2.5" fill="#207448"/>
+    </g>
+    <text x="748" y="788" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="748" dy="0">else: echo no passwd</tspan>
+      <tspan x="748" dy="32">file at all to stderr</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 100 580 L 100 980 L 438 980" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 360 850 L 360 905 L 880 905 L 880 850" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 620 905 L 620 938" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="440" y="940" width="280" height="80" rx="40" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    
+    <g transform="translate(475, 952)">
+      <line x1="14" y1="8" x2="14" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <polygon points="14,10 44,22 14,34" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    </g>
+    <text x="560" y="991" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="34" font-weight="bold" fill="#303a36">fi</text>
+  </g>
+</svg>

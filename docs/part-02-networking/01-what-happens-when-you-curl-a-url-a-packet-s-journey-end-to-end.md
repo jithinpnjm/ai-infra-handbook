@@ -64,6 +64,10 @@ Every packet between user and server crosses the same physical sequence: process
 
 ## 2. Step 0: the process and the URL
 
+![A timeline of curl system calls from opening resolver files through a UDP DNS socket, a TCP socket and connect, to TLS and HTTP bytes and close, each tagged with its stage.](./img/p3-0201-strace-diary.svg)
+
+*Figure 2.1.3. Each system call in the strace output belongs to one stage: file lookups, the UDP DNS socket, the TCP socket and connect, then TLS and HTTP bytes.*
+
 Start with what you actually did. You typed a command and pressed Enter, and at this moment nothing has touched the network. The first job belongs to `curl` alone, and it is simply to read what you typed. `curl` splits the URL into three parts: the scheme `https`, whose default port is 443, the host `example.com`, and the path `/`. The scheme tells it which language to speak. The host tells it who to talk to. The path tells it what to ask for once the conversation starts.
 
 `curl` does not do the networking work itself. It hands that job to **libcurl**, and libcurl in turn asks the C library to resolve names and asks the kernel for sockets. A **socket** is the kernel's handle for one conversation, a bit like a numbered phone line the kernel lends to your program. You will see that word again in a moment.
@@ -80,9 +84,13 @@ The `strace` output tells the story best, because it is the program's own diary.
 
 ## 3. Step 1: name resolution (what is the IP address?)
 
+![A decision on whether a name has fewer dots than ndots, leading to search suffix attempts before the name as typed, with the Kubernetes ndots 5 effect on query count.](./img/p3-0201-ndots-search.svg)
+
+*Figure 2.1.4. A name with fewer dots than ndots is tried with each search suffix first, so ndots 5 in Kubernetes multiplies DNS queries.*
+
 ![Seven stages of name resolution](./img/n01-dnschain.svg)
 
-*Figure 2.1.3. The C library tries the files, the local stub or cache, the search domains and finally the recursive resolver, in order.*
+*Figure 2.1.5. The C library tries the files, the local stub or cache, the search domains and finally the recursive resolver, in order.*
 
 Right now `curl` has a name and nowhere to send anything. Computers route by numbers, which are IP addresses, and people type names. It is like having a friend's name but no street address, so the parcel cannot leave the house. The C library function `getaddrinfo()` bridges the two by turning `example.com` into one or more addresses. On a typical Linux system the lookup runs in 7 stages, in this order. Picture a person looking someone up, starting with the cheapest places to look and only then walking to the library.
 
@@ -122,6 +130,10 @@ When resolution fails, the symptom is usually `Could not resolve host`, which co
 
 ## 4. Step 2: the socket, the route and the source address
 
+![A connect call checks whether the destination sits in a connected subnet, otherwise it uses the default route via the gateway, then picks the source IP and an ephemeral port.](./img/p2-0201-route-pick.svg)
+
+*Figure 2.1.6. The kernel sends directly for a connected subnet and otherwise uses the default route, then picks a source IP and ephemeral port.*
+
 Now `curl` has an address and wants a connection to it. Before any packet leaves the host, the kernel has to decide where it goes, in the same way a driver must pick a road before leaving the garage. Say the address is 93.184.216.34, the one you will see in the examples below. `curl` makes these two calls.
 
 ```c
@@ -154,6 +166,14 @@ A route that sends traffic out the wrong interface, or with the wrong source add
 
 ## 5. Step 3: from IP to Ethernet (ARP or NDP) and out of the NIC
 
+![An ARP broadcast and unicast reply that fill the neighbour table, the IPv6 NDP equivalent, and the neighbour states with FAILED highlighted.](./img/p3-0201-arp-neighbour.svg)
+
+*Figure 2.1.7. ARP asks the whole segment for the next hop's MAC and caches the answer in the neighbour table, and a FAILED entry means no one answered.*
+
+![Nested boxes showing data wrapped in a TCP segment, IP packet and Ethernet frame, with the Ethernet frame fields and byte widths and the handoff through the qdisc to the NIC.](./img/p3-0201-encapsulation-frame.svg)
+
+*Figure 2.1.8. Each layer wraps the one above, and the Ethernet frame carries the next hop's MAC as its destination.*
+
 Routing has picked the next hop, but the kernel still cannot build a frame. Think of the router's address as a name and the device's hardware address as the actual door the parcel is handed through. An IP packet needs a link-layer destination before it can go into an Ethernet frame. So the next hop's IP address, which is the gateway `10.0.0.1` or the destination itself when it is on the same link, must be mapped to a **MAC address**, the hardware address of that device's network card.
 
 In IPv4 the host uses **ARP**, the Address Resolution Protocol. It shouts a question to the whole local network: broadcasts "who has 10.0.0.1? tell 10.0.0.15" to `ff:ff:ff:ff:ff:ff`, and the owner replies unicast with its MAC. The result goes into the **neighbour table**, which is a small cache so the shout does not have to be repeated for every packet. `ip neigh` displays it with the states `REACHABLE`, `STALE`, `DELAY`, `PROBE` and `FAILED`. In IPv6 the host uses **NDP**, Neighbor Discovery. It sends a neighbour solicitation to a solicited-node multicast address, and the owner answers with a neighbour advertisement.
@@ -178,6 +198,18 @@ On a VM, the "NIC" is a virtual device, such as virtio-net or a cloud-specific N
 When a host cannot reach its gateway, check `ip neigh show` before you look anywhere else. A neighbour entry stuck in `FAILED` tells you the shout got no answer, which is a very different problem from a bad route.
 
 ## 6. Step 4: the switch, the router, NAT and the Internet
+
+![A path where a router with a smaller MTU sends Packet Too Big, which works when ICMP is allowed and blackholes large transfers when a firewall filters ICMP.](./img/p3-0201-pmtud-stall.svg)
+
+*Figure 2.1.9. When a firewall filters ICMP Packet Too Big, large transfers stall while small requests still work.*
+
+![A switch learning and flooding frames by MAC compared with a router's four steps of prefix lookup, TTL decrement, next hop MAC rewrite and MTU handling.](./img/p3-0201-router-four-steps.svg)
+
+*Figure 2.1.10. A switch learns and forwards by MAC address, while a router matches the prefix, decrements the TTL, rewrites the MAC and handles the MTU.*
+
+![A path of three links showing the MAC addresses and TTL changing at every router hop while the source and destination IP addresses stay the same.](./img/p3-0201-hop-rewrite.svg)
+
+*Figure 2.1.11. MAC addresses are rewritten at every router hop and the TTL drops by one, while the IP addresses stay the same unless NAT is involved.*
 
 Suppose your frame reaches the first switch in the rack. What happens to it? A **switch** works at layer 2 and receives the frame on a port. It **learns** that the source MAC lives on that port and records it in the MAC address table, the way a receptionist writes down which desk each visitor came from. It then forwards the frame to the port where the destination MAC was learned. If the destination is unknown or broadcast, it **floods** the frame to every port except the one it came in on. For plain L2 switching, the switch ignores IP addresses. What it does define is the **broadcast domain**, the set of machines that hear each other's shouts. ARP broadcasts reach every host in the VLAN or subnet, which chapters 2.3 and 2.11 cover.
 
@@ -205,6 +237,10 @@ If the destination looks slow, trace the path first. That tells you whether the 
 
 ## 7. Step 5: TCP connection establishment
 
+![The TCP handshake exchanges SYN, SYN-ACK and ACK, while a reset gives a fast refusal and a silently dropped SYN gives retries and a timeout.](./img/p2-0201-tcp-handshake.svg)
+
+*Figure 2.1.12. The three-way handshake takes about one round trip, and a reset gives a fast refusal while a dropped SYN gives a timeout after retries.*
+
 Before a single byte of your request moves, both ends must agree to talk. It is like a phone call, where each side says "hello, can you hear me" before the real conversation begins. TCP does that with a handshake, and many connection failures show up right here.
 
 `connect()` on a TCP socket triggers the **three-way handshake**. In step 1, the client sends a **SYN**. It carries the client's initial sequence number and its options: MSS, the maximum segment size, which is typically the MTU minus 40, for example 1460; window scale; SACK permitted; timestamps; and optionally ECN.
@@ -228,6 +264,10 @@ ss -s ; ss -ltnp                                                # summary; liste
 If `time_connect` is far above the RTT that `ping` reports, look for loss or an overloaded accept queue. The handshake should cost about one round trip, so anything much larger means a SYN was lost and retried, or the server was too busy to answer.
 
 ## 8. Step 6: TLS handshake (HTTPS)
+
+![A client server exchange of ClientHello and ServerHello with SNI, ALPN and certificate chain, the client's four verification checks and the common TLS failure causes.](./img/p3-0201-tls-handshake.svg)
+
+*Figure 2.1.13. The client sends ClientHello with SNI and ALPN, the server answers with its key share and certificate chain, and the client verifies the chain, hostname, validity and revocation.*
 
 A server that answers on port 443 is reachable, but you have no reason to trust it yet. Anyone can answer on a port. Before any request goes out, you need proof that you reached the right server and that nobody on the road can read or alter the conversation, and the TLS handshake supplies it. For `https://`, the client and server now set up an encrypted, authenticated channel on top of the TCP connection.
 
@@ -253,6 +293,10 @@ The TLS cost is `time_appconnect - time_connect`. It covers one RTT plus the cry
 When TLS fails, test the exact hostname with `openssl s_client` before you change anything on the server.
 
 ## 9. Step 7: the HTTP request and response
+
+![Three columns comparing HTTP 1.1 over TCP, HTTP 2 multiplexing over TCP with head of line blocking, and HTTP 3 over QUIC on UDP port 443.](./img/p3-0201-http-versions.svg)
+
+*Figure 2.1.14. HTTP/2 multiplexes streams over one TCP connection, so one lost packet holds up all of them, while HTTP/3 over QUIC recovers per stream.*
 
 The encrypted channel is ready, so `curl` finally sends its request through it. This is the step most people think of as "the web", and it turns out to be the last of many. What comes back depends on which HTTP version the two sides agreed on.
 
@@ -280,6 +324,10 @@ If the headers look right but the page is still slow, compare `time_starttransfe
 
 ## 10. Step 8: transfer, acknowledgements and teardown
 
+![Reordering segments with ACKs and a window, loss recovery by fast retransmit or timeout with a collapsing congestion window, and FIN teardown into TIME_WAIT.](./img/p3-0201-loss-teardown.svg)
+
+*Figure 2.1.15. Loss collapses the congestion window, and the side that closes first sits in TIME_WAIT for about 60 seconds, which thousands of short connections can pile up.*
+
 The response body arrives as TCP segments, and the receiving kernel has to put them back in order, because packets can arrive shuffled. It reassembles them in the socket receive buffer. It sends **ACKs**, often one for every second segment, with delayed ACK timers. It also advertises its **window**, the amount of data it is ready to accept right now. Then `curl` reads the data with `recv`.
 
 Loss triggers a fast retransmit after three duplicate ACKs, or through SACK. Otherwise a retransmission timeout fires. Either way, the congestion window collapses and then regrows. You can think of the window as TCP's cautious estimate of how much the road can carry, which it shrinks quickly after a scare and rebuilds slowly.
@@ -294,7 +342,7 @@ If your service opens thousands of short connections, watch the `TIME_WAIT` coun
 
 ![curl timing phases](./img/n01-curlw.svg)
 
-*Figure 2.1.4. Each curl -w value counts from zero, so each phase is the difference between two values.*
+*Figure 2.1.16. Each curl -w value counts from zero, so each phase is the difference between two values.*
 
 A single total time hides where the wait happened. Imagine telling a doctor only "I felt unwell for a while". A slow request is only useful to you once you know which phase was slow, and `curl -w` splits the request into phases.
 
@@ -321,9 +369,13 @@ Start with the largest phase, since that is where the time went.
 
 ## 12. A map from symptom to layer
 
+![A ten step bottom up test chain beside a bisect decision tree that tests the gateway, then an Internet IP, then name resolution.](./img/p3-0201-bisect-strategies.svg)
+
+*Figure 2.1.17. Test bottom up through ten layers, or bisect by checking the gateway, then an Internet IP, then name resolution.*
+
 ![Curl error symptoms mapped to layers](./img/n01-symptommap.svg)
 
-*Figure 2.1.5. A curl error message and exit code point to the layer where you should start looking.*
+*Figure 2.1.18. A curl error message and exit code point to the layer where you should start looking.*
 
 When `curl` fails, the message and the exit code point to a layer. You now know every layer in the trip, so you can use the table below as a lookup. Match your symptom to a row and start with the layer that row names.
 
@@ -347,6 +399,10 @@ Either way, start with the layer that the message points to, and test one layer 
 
 ## 13. The same journey in AI infrastructure
 
+![A matrix of AI workloads such as image pulls, object storage, cluster bootstrap with RDMA, pod requests and cloud traffic against the network stages each one uses or skips.](./img/p3-0201-ai-journey.svg)
+
+*Figure 2.1.19. Every AI workload walks a version of the curl journey, and RDMA bulk transfers bypass the kernel TCP/IP stack while the control path still uses TCP.*
+
 Every AI workload walks some version of this journey, but each one adds steps or skips them. If you can say which steps a workload uses, you know where to look when it breaks. Here is how it changes for the traffic you will meet most often.
 
 Container image pulls come first. `containerd` or Docker resolves the registry name with DNS. It then connects over TLS, often through a corporate proxy or mirror, and authenticates. Layers download over HTTP/2 or HTTP/1.1. A slow pull can come from DNS, from a TLS chain or proxy problem, from MTU black holes on cloud overlays, from rate limits or from a congested NAT gateway.
@@ -364,6 +420,10 @@ In the cloud, the router and the switch are virtual. VPC routing, firewall rules
 For each workload, list which of these steps it uses before you start troubleshooting its network. A two-minute list saves an afternoon of looking in the wrong place.
 
 ## 14. Hands-on lab: trace one request end to end
+
+![A table of four lab faults, a bad resolver, a deleted default route, a closed port versus a dropped port, and a bad certificate, with the symptom and layer each produces.](./img/p3-0201-lab-faults.svg)
+
+*Figure 2.1.20. Each injected fault produces a distinct curl symptom that points to one layer: resolver, route, transport or TLS.*
 
 A word on status first. The self-checking Python lab below runs locally and has been run, while the interactive VM commands that follow have not been run for this chapter. Start with the Python lab, which runs locally from `code/part02/curl_packet_journey_lab.py`. It checks three things. First, the `curl -w` phase subtraction for DNS, TCP connect, TLS handshake, TTFB wait and body transfer. Second, the hop-by-hop L2 MAC rewrites, against the constant L3 IP and the decrementing `TTL`. Third, the layer diagnosis for the `curl` exit codes `6`, `7`, `22`, `28`, `35` and `60`.
 

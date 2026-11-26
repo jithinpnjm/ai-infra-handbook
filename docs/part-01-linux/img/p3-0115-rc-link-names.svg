@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Reading a SysV rc link name: S or K, two digits, then the script</title>
+  <desc>Visual explanation of SysV init rc link naming conventions, execution ordering, and mapping to systemd targets.</desc>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading a SysV rc link name: S or K, two digits, then the script</text>
+
+  
+  <g id="top-listing">
+    <rect x="40" y="110" width="980" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(68, 140)">
+      <path d="M 6 12 L 22 12 L 28 20 L 50 20 A 4 4 0 0 1 54 24 L 54 46 A 4 4 0 0 1 50 50 L 6 50 A 4 4 0 0 1 2 46 L 2 16 A 4 4 0 0 1 6 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="2" y1="22" x2="54" y2="22" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    
+    
+    <g font-family="monospace, Courier New" font-size="25" fill="#303a36">
+      <text x="175" y="152">S10sysklogd</text>
+      <text x="175" y="186">S12kerneld</text>
+      <text x="175" y="220">S15netstd_init</text>
+      <text x="175" y="254">S18netbase</text>
+      <text x="175" y="288">S20acct</text>
+      <text x="175" y="322">S20logoutd</text>
+      <text x="175" y="356">S20ppp</text>
+      <text x="175" y="390">S25netstd_nfs</text>
+
+      
+      <text x="595" y="152">S30netstd_misc</text>
+      <text x="595" y="186">S45pcmcia</text>
+      <text x="595" y="220">S89atd</text>
+      <text x="595" y="254">S89cron</text>
+      <text x="595" y="288">S99gpm</text>
+      <text x="595" y="322">S99httpd</text>
+      <text x="595" y="356">S99rmnologin</text>
+      <text x="595" y="390">S99sshd</text>
+    </g>
+  </g>
+
+  
+  <g id="bracket-split">
+    <rect x="40" y="470" width="640" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(65, 492)">
+      <rect x="4" y="6" width="48" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 14 20 L 22 28 L 14 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="26" y1="36" x2="40" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <rect x="140" y="492" width="280" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="280" y="532" text-anchor="middle" font-family="monospace, Courier New" font-size="34" font-weight="bold" fill="#303a36">S10sysklogd</text>
+
+    
+    <path d="M 175 548 L 175 580 A 10 10 0 0 1 165 590 L 70 590 A 10 10 0 0 0 60 600 L 60 635 L 75 635" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 230 548 L 230 670 A 10 10 0 0 1 220 680 L 70 680 A 10 10 0 0 0 60 690 L 60 740 L 75 740" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 330 548 L 330 780 A 10 10 0 0 1 320 790 L 70 790 A 10 10 0 0 0 60 800 L 60 865 L 75 865" fill="none" stroke="#207448" stroke-width="3"/>
+
+    
+    <rect x="75" y="585" width="580" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="626" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">S = start (K = stop, seen mostly in</tspan>
+      <tspan x="95" dy="34">runlevels that shut the system down)</tspan>
+    </text>
+
+    
+    <rect x="75" y="700" width="580" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="740" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">10 = two digits from 00 to 99</tspan>
+      <tspan x="95" dy="34">that set the order</tspan>
+    </text>
+
+    
+    <rect x="75" y="805" width="580" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="845" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">sysklogd = the script in init.d that the</tspan>
+      <tspan x="95" dy="34">link points to</tspan>
+      <tspan x="95" dy="34">(../init.d/sysklogd)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="order-arrow-panel">
+    <rect x="710" y="470" width="310" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(735, 492)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <polyline points="28,14 28,28 38,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <line x1="745" y1="580" x2="745" y2="925" stroke="#207448" stroke-width="4"/>
+    <polygon points="745,945 736,923 754,923" fill="#207448"/>
+
+    
+    <text x="770" y="595" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="770" dy="0">rc runs</tspan>
+      <tspan x="770" dy="40" font-family="monospace, Courier New" font-weight="bold">S10sysklogd</tspan>
+      <tspan x="770" dy="38">start first,</tspan>
+      <tspan x="770" dy="55">then</tspan>
+      <tspan x="770" dy="40" font-family="monospace, Courier New" font-weight="bold">S12kerneld</tspan>
+      <tspan x="770" dy="38">start,</tspan>
+      <tspan x="770" dy="55">down to</tspan>
+      <tspan x="770" dy="40" font-family="monospace, Courier New" font-weight="bold" fill="#db8129">S99sshd</tspan>
+      <tspan dx="8" font-family="sans-serif" fill="#303a36">start</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="1060" y="110" width="500" height="880" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1090, 135)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+      <line x1="28" y1="0" x2="28" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="46" x2="28" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="46" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="1165" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1165" dy="0">Runlevels to</tspan>
+      <tspan x="1165" dy="36">systemd targets</tspan>
+    </text>
+
+    
+    <rect x="1090" y="235" width="440" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1115" y="295" font-family="sans-serif" font-size="24" fill="#303a36">runlevel 1 rc1.d</text>
+
+    
+    <rect x="1090" y="355" width="440" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1115" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1115" dy="0">runlevels 2 to 4</tspan>
+      <tspan x="1115" dy="34">usually text console</tspan>
+    </text>
+
+    
+    <rect x="1090" y="490" width="440" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1115" y="542" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1115" dy="0">runlevel 5 graphical login</tspan>
+      <tspan x="1115" dy="34">(graphical.target)</tspan>
+    </text>
+
+    
+    <rect x="1090" y="635" width="440" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1115" y="687" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1115" dy="0">runlevel3.target is an</tspan>
+      <tspan x="1115" dy="34">alias for multi-user.target</tspan>
+    </text>
+
+    
+    <rect x="1090" y="780" width="440" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1115" y="835" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1115" dy="0">who -r prints run-level 5</tspan>
+      <tspan x="1115" dy="34">and the time it was set</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1020" width="1520" height="80" rx="10" fill="#207448"/>
+    <text x="800" y="1070" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">systemd treats runlevels as obsolete end states and prefers targets</text>
+  </g>
+</svg>

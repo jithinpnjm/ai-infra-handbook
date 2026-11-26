@@ -1,0 +1,82 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "p3-0202-four-jobs",
+  "title": "The four jobs of a protocol, and the scope each protocol does them at",
+  "spec": "A grid. Columns are the four jobs: 'Transport', 'Multiplexing', 'Error control', 'Flow and congestion control'. Rows are protocols grouped by scope. Group 'One link': row 'Ethernet' with 'MAC addressing', 'EtherType, VLAN tags', 'FCS (CRC32)', 'None originally; PAUSE and PFC optional'. Group 'Whole path': row 'IP' with 'Network-wide addressing, routing', 'Protocol number', 'Header checksum (IPv4) only', 'None (ICMP signals)'. Group 'End to end': row 'UDP' with 'Datagrams between ports', 'Ports', 'Optional checksum', 'None'; row 'TCP' with 'Reliable byte stream', 'Ports', 'Checksum, sequence numbers, ACK, retransmit', 'Receive window, congestion window'; row 'QUIC' with 'Streams over UDP', 'Connection IDs, streams', 'Own ACKs and retransmit', 'Own congestion control, stream windows'. Group 'AI fabrics': row 'RoCE v2' with 'InfiniBand transport over UDP/IP/Ethernet', 'UDP port 4791, QP numbers', 'ICRC and retransmit', 'Needs PFC and ECN plus DCQCN or other CC' in orange. Two brackets above the columns: 'getting data to the right place and keeping conversations apart' over the first two, 'getting it there intact and at a sensible speed' over the last two. Bottom bar: 'When you meet a new protocol, list its four jobs and their scope before you read its header format'.",
+  "anchor": "## 2. The four jobs of a protocol",
+  "alt": "A grid of Ethernet, IP, UDP, TCP, QUIC and RoCE v2 against the four protocol jobs of transport, multiplexing, error control and flow control, grouped by scope.",
+  "cap": "Each protocol does some of the four jobs at its own scope: one link, the whole path, or end to end."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "p3-0202-small-frame-pps",
+  "title": "Small messages run out of packets before bits: the 64-byte frame arithmetic",
+  "spec": "Left: one minimum frame as a horizontal strip of byte counts: 'Preamble + SFD 8', 'Ethernet header 14', 'payload and headers up to a 64-byte frame', 'FCS 4' and 'Inter-frame gap 12'. Under it 'Frame 64 bytes + preamble 8 + gap 12 = 84 byte times on the wire' and 'as little as 18 bytes of application data over UDP'. Middle: the arithmetic 'bits per frame = 84 x 8', '100e9 / (84 x 8) = 148.8 million frames per second'. Right: two bars 'Link 100 Gb/s: 148.8 Mpps' and 'Link 400 Gb/s: 595.2 Mpps' (orange on the 400 Gb/s bar as the lab figure). Below: contrast strip 'Full segment, MTU 1500: 1460 + 20 + 20 + 14 + 4 + 20 = 1538 byte times, goodput 94.9 percent' and 'Jumbo, MTU 9000: 8960 / 9038 = 99.1 percent'. Bottom bar: 'A link can be nowhere near full in bits and still be out of packets per second'.",
+  "anchor": "### Overhead and goodput (worked examples)",
+  "alt": "A 64-byte minimum frame counted as 84 byte times on the wire giving 148.8 million frames per second at 100 Gb/s and 595.2 million at 400 Gb/s.",
+  "cap": "A minimum frame costs 84 byte times, so a 100 Gb/s link tops out near 148.8 million frames per second."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "p3-0202-vxlan-mtu",
+  "title": "A tunnel shrinks the MTU: VXLAN adds 50 bytes and the MSS falls to 1410",
+  "spec": "Top: nested packet drawn as boxes left to right 'Outer Ethernet 14', 'Outer IP 20', 'Outer UDP 8', 'VXLAN header 8', then a larger box 'Inner packet: IP 20 + TCP 20 + data' with a bracket over the first four labelled '50 bytes of VXLAN overhead'. Middle: arithmetic strip 'Underlay MTU 1500' then 'minus 50 for VXLAN = 1450 inner MTU' then 'minus 40 for IP and TCP = 1410 MSS' (orange). Right panel 'Other overheads': 'GRE adds 24 bytes over IPv4', 'IPsec ESP adds 50 to 70 bytes or more', 'WireGuard adds 60'. Bottom two lanes. Lane 'MSS clamped or inner MTU reduced': 'packets fit, transfer works'. Lane 'Neither done' (orange): 'large packets exceed the path MTU: fragmented (slow) or dropped with ICMP fragmentation needed; if that ICMP is filtered, a black hole: small requests work and large ones vanish'. Footer 'A single link at 1500 in a 9000 fabric cripples throughput or breaks RoCE'. Bottom bar: 'Before you deploy an overlay, measure the end-to-end MTU across it'.",
+  "anchor": "### MTU, MSS and tunnels",
+  "alt": "VXLAN's 14, 20, 8 and 8 byte outer headers add 50 bytes, cutting a 1500 byte MTU to a 1410 byte MSS, with the black hole failure when neither is adjusted.",
+  "cap": "VXLAN adds 50 bytes, so a 1500 byte underlay leaves a 1410 byte MSS, and without clamping large packets are dropped."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "p3-0202-loop-free-families",
+  "title": "Three ways a control plane avoids loops",
+  "spec": "Three columns. Column 'Distance vector' (RIP, EIGRP): small row of routers, each passing its distances to its neighbours, caption 'each router tells its neighbours its distances, hop by hop, like a rumour passed along a street'. Column 'Link state' (OSPF, IS-IS): routers all flooding the topology into a shared map, then each runs 'Dijkstra shortest path first on the same database', caption 'everyone holds the same map'. Column 'Path vector' (BGP): an announcement carrying a list 'AS list: the autonomous systems crossed', caption 'a router that sees its own name on the list knows the route has already been through it; the list prevents loops and allows policy'. Top banner 'Why loops matter: IP packets die when the TTL runs out; L2 has no TTL, so packets multiply and can melt the network in a broadcast storm' with 'L2 has no TTL' in orange. Bottom bar: 'Judge a routing protocol by stability, scalability and operability, not by overhead alone'.",
+  "anchor": "### Loop-free paths: the control plane's core problem",
+  "alt": "Three columns comparing distance vector, link state and path vector routing as three ways to avoid loops, with the reason loops are worse at layer 2.",
+  "cap": "Distance vector, link state and path vector are three different ways to keep forwarding loop free."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "p3-0202-qos-lanes",
+  "title": "Quality of service: label, queue, schedule",
+  "spec": "A left to right flow. Box 'Classify': 'DSCP or IP precedence, or 802.1p PCP: a label on each packet saying how urgent it is'. Arrow to three or four parallel queues stacked vertically: 'class 1: voice, video, real-time', 'class 2: lossless RDMA (PFC and ECN)' in orange, 'class 3: storage', 'class 4: management and other'. Arrow to box 'Scheduler: strict priority or weighted round robin', then to 'Link'. Above the scheduler a small pair of tools 'shape or police rates' and 'ECN and early drop signal congestion to the sender'. Note 'like separate checkout lanes in a shop; four to eight queues usually suffice'. Side line 'Real-time traffic cares about delay and jitter, the variation in delay'. Bottom bar: 'Before you add a queue, decide which traffic needs a lossless class and which does not'.",
+  "anchor": "### Quality of service",
+  "alt": "Packets are classified by DSCP or PCP label into separate queues, with a lossless RDMA class, then a scheduler such as strict priority or weighted round robin sends them to the link.",
+  "cap": "QoS labels each packet, gives each class its own queue, and lets a scheduler decide which queue sends next."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "p3-0202-sos-triangle",
+  "title": "The State, Optimisation, Surface triangle",
+  "spec": "A triangle with three labelled corners. Top corner 'Optimisation: how well resources are used, shortest paths, load balance, low latency, cost'. Bottom left 'State: what devices must hold, routes, ACLs, MAC tables, flows'. Bottom right 'Surface: where components interact, protocols, interfaces, configuration touch points, failure interactions'. Three arrows around the edges with rules: 'more optimisation tends to need more state or more surfaces', 'less state tends to cost optimisation or add surfaces', 'less surface tends to cost optimisation or state'. Right side worked example 'Sat-nav: the absolute fastest route means tracking live traffic everywhere (more state) and trusting more moving parts (more surface)'. Below: 'Stretch = the shortest physical path versus the path traffic actually takes; any policy such as traffic engineering or PBR increases stretch'. Cluster examples in orange 'rail-optimised topology exception, custom NCCL topology file, per-tenant policy: count the state and surface of each'. Bottom bar: 'If you have not found the trade-off, you have not looked hard enough'.",
+  "anchor": "### State, Optimisation, Surface",
+  "alt": "A triangle with State, Optimisation and Surface at its corners and the rule that pushing one corner strains another, with stretch and cluster examples.",
+  "cap": "Pushing one corner of the State, Optimisation, Surface triangle strains another, and every special case adds state and surface."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "p3-0202-fabric-layers",
+  "title": "Five AI fabrics against the layers: which one carries what",
+  "spec": "A grid with columns 'L1/L2', 'L3', 'L4 and transport', and one row per fabric. Row 'Ethernet with TCP (front end, storage, control plane)': 'Ethernet 25/100/400 GbE', 'IP (BGP/ECMP in Clos)', 'TCP and UDP in the kernel; CUBIC or BBR'. Row 'RoCE v2': 'Lossless Ethernet (PFC, ECN, DCB)', 'IP, routable', 'UDP 4791 plus IB transport (BTH) in the NIC; RDMA verbs bypass the kernel stack' (orange). Row 'InfiniBand': 'IB link layer, credit-based, virtual lanes', 'IB network layer, GIDs, LIDs inside subnets, GRH across', 'IB transport RC/UD in the NIC; Subnet Manager computes forwarding tables'. Row 'NVLink / NVSwitch': 'proprietary GPU-to-GPU links', 'no IP, memory-semantic', 'load/store and DMA between GPUs'. Row 'PCIe': 'serial links, TLPs', 'a bus', 'GPU-NIC-CPU paths; locality matters'. Right strip 'NCCL hierarchy': 'NVLink inside the node', 'NIC and fabric between nodes', 'TCP sockets as the fallback and for bootstrap'. Bottom bar: 'When a collective runs slowly, first find out which link in this hierarchy it is using'.",
+  "anchor": "### AI fabrics in the model",
+  "alt": "A grid of Ethernet with TCP, RoCE v2, InfiniBand, NVLink and PCIe against layers one to four, with the NCCL hierarchy of NVLink, NIC and TCP fallback.",
+  "cap": "AI clusters run several fabrics at once, each doing its work at different layers, and NCCL uses them as a hierarchy."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "02",
+  "name": "p3-0202-syn-decode",
+  "title": "Reading a captured SYN one layer at a time",
+  "spec": "The captured text at the top in three lines with colour bands: line 1 'ethertype IPv4 (0x0800), length 74' band L2; line 2 '10.0.0.15.51234 > 93.184.216.34.443: Flags [S], seq 1, win 64240, options [mss 1460,sackOK,TS val 1 ecr 0,nop,wscale 7], length 0' band L4; line 3 'tos 0x0, ttl 64, id 12345, offset 0, flags [DF], proto TCP (6), length 60' band L3. Below, three stacked panels. Panel 'L2': 'source MAC 52:54:00:12:34:56, destination MAC 52:54:00:ab:cd:ef; EtherType 0x0800 says the next header is IPv4; frame length 74 = 14 Ethernet + 60 IP'. Panel 'L3': 'source 10.0.0.15, destination 93.184.216.34; TTL 64; DF set; protocol 6 says the next header is TCP; IP total length 60 = 20 IP header + 40 TCP with options'. Panel 'L4': 'source port 51234 (ephemeral), destination port 443; S flag means SYN; options MSS 1460, SACK, timestamps, window scale 7; payload length 0, so the first packet of the handshake' (orange on 'S flag means SYN'). Bottom bar: 'When you open a capture, label each layer before you read the flags'.",
+  "anchor": "## 8. Reading a capture: labelling layers",
+  "alt": "A decoded SYN capture line split into layer 2 MAC and EtherType, layer 3 IP with TTL and protocol 6, and layer 4 ports, SYN flag and TCP options.",
+  "cap": "Read a capture bottom up: EtherType and MACs at L2, addresses and protocol 6 at L3, then ports, the SYN flag and options at L4."
+ }
+]

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "p3-2003-load-two-servers",
+  "title": "Same service, two servers: load per CPU shows which one is saturated",
+  "spec": "Two side-by-side panels with green headings. Left panel 'Server A (slow)': a chip icon, then rows: 'uptime: 85.09, 89.25, 91.26', 'mpstat 10: 48 CPUs, about 2 percent idle', 'Step 1 trend: 1-minute lower than 15-minute, load slightly falling', 'Step 2 load per CPU: 85.09 / 48 = about 1.77'. Under it a row of 48 small CPU squares all filled green with a taller orange stack of waiting threads on top, labelled 'more demand than CPUs'. Right panel 'Server B (fast)': chip icon, rows: 'uptime: 17.94, 16.92, 16.62', 'mpstat 10: 64 CPUs, about 78 percent idle', 'Step 1 trend: 1-minute higher than 15-minute, slightly rising', 'Step 2 load per CPU: 17.94 / 64 = about 0.28'. Under it a row of 64 small squares mostly empty, labelled 'plenty of room'. Centre bottom bar with numbered steps 3 and 4: '3 vmstat run queue matches the load, little disk or network I/O, so it is CPU load' and '4 book estimate: 85 / 48 - 1 = threads wait about 77 percent of the time, roughly four times faster without the waiting'. Orange outline only on Server A's 'about 1.77'. Takeaway bar: 'Server A is CPU saturated, so its latency is queueing time.'",
+  "anchor": "### Scenario 1: load of 85 on a 48-CPU machine",
+  "alt": "Server A has load 85.09 on 48 CPUs, about 1.77 per CPU and 2 percent idle, while server B has load 17.94 on 64 CPUs, about 0.28 per CPU and 78 percent idle.",
+  "cap": "Dividing load by CPU count shows server A has more demand than CPUs while server B has plenty of room."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "p3-2003-hour-timeline",
+  "title": "A one-hour console round: six phases and what to say in each",
+  "spec": "A horizontal timeline bar from 0 to 60 minutes divided into six consecutive blocks with number circles 1 to 6. Block 1 '0 to 5' title 'Problem statement, ask what changed', say: 'I will ask before I look.' Block 2 '5 to 10' 'The 60-second checklist', say: 'Ten checks, one line each.' Block 3 '10 to 20' 'USE sweep, name the resource', say: 'CPU saturated, disk and memory fine.' Block 4 '20 to 40' (widest block) 'Hypothesis loop and drill-down', say: 'My prediction is X. Testing.' Block 5 '40 to 50' 'Mitigation, then confirm it worked', say: 'I will stop the bleeding, then find the cause.' Block 6 '50 to 60' 'Summary and follow-ups', say: 'Cause, evidence, fix, what I would add.' Block 5 has the orange outline. Below the timeline a green panel 'Three beats for every command' with three small boxes joined by arrows: 'Why you run it' then 'The run' then 'What it rules in or out'. Footnote: 'This plan is an inference, not a Nebius format.'",
+  "anchor": "### 10. Narrating a one-hour console round",
+  "alt": "A timeline of six phases across 60 minutes, from problem statement to summary, each with the sentence to say aloud.",
+  "cap": "The one-hour plan runs problem statement, 60-second checklist, USE sweep, hypothesis loop, mitigation and summary, with a sentence to say in each phase."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "p3-2003-host-vs-container",
+  "title": "Host looks healthy, container hits its own cgroup limit",
+  "spec": "One large outer box 'Node (host)' with a chip icon. Inside it on the left a wide green bar labelled 'free: plenty of memory on the host' with a tick. Inside the node on the right a smaller box 'Pod' containing a box 'Container' with a memory bar completely full and an orange outline, labelled 'cgroup limit: memory.max' and 'pids.current'. An arrow from the full container bar to a box 'Kill that host-level free never showed'. Above the node a magnifier icon box 'Host-level free shows no problem' pointing at the green bar. Below, three numbered check boxes: '1 Am I on the host or in a container?', '2 Read the cgroup limit: memory.max, pids.current', '3 Events live in etcd and are kept one hour by default, so use logs and metrics for older incidents'. Side note box: 'With only container access, use a privileged debugging container with shared namespaces.' Takeaway bar: 'Say whether you are checking the host or the container, and check the limit as a resource.'",
+  "anchor": "### 11. A sick box inside Kubernetes",
+  "alt": "A node with plenty of free memory contains a pod whose cgroup memory.max limit is reached, so the container is killed while host free shows memory to spare.",
+  "cap": "The host can have plenty of memory while one container is at its own cgroup limit, so check the limit as a resource."
+ }
+]

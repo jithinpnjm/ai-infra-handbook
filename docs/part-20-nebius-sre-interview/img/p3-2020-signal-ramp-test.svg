@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which signal wins on a ramp: queue depth or in-flight</title>
+  <desc>simulated ramp from 1.2 to 7.2 requests per second against a 5-second queue-time SLO</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which signal wins on a ramp: queue depth or in-flight</text>
+
+  
+  <g id="setup-strip">
+    <rect x="40" y="98" width="1520" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 107)">
+      <rect x="2" y="2" width="52" height="52" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M10 42 L24 34 L36 18 L46 14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="140" y="145" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">simulated ramp from 1.2 to 7.2 requests per second against a 5-second queue-time SLO</text>
+  </g>
+
+  
+  <g id="two-bars">
+    <rect x="40" y="192" width="1520" height="216" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 272)">
+      <rect x="2" y="2" width="52" height="52" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="14" y1="44" x2="14" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="44" x2="28" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="42" y1="44" x2="42" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="140" y="238" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Policy on waiting-queue depth alone: 57 percent of requests violated the SLO</text>
+    <rect x="140" y="252" width="1380" height="24" rx="6" fill="#e8f1ea" stroke="#d0ddd2" stroke-width="1.5"/>
+    <rect x="140" y="252" width="786" height="24" rx="6" fill="#7a8d83"/>
+
+    
+    <text x="140" y="340" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Policy on in-flight requests (running plus waiting): 8 percent violated</text>
+    <rect x="140" y="354" width="1380" height="24" rx="6" fill="#e8f1ea" stroke="#d0ddd2" stroke-width="1.5"/>
+    <rect x="140" y="354" width="110" height="24" rx="6" fill="#207448"/>
+  </g>
+
+  
+  <g id="reason-line">
+    <rect x="40" y="428" width="1520" height="74" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 437)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <polyline points="28,14 28,28 38,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="140" y="475" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">queue depth only moves after slots are full, and then the cold start delays the answer</text>
+  </g>
+
+  
+  
+  <g id="metric-waiting">
+    <rect x="40" y="522" width="1520" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(62, 532)">
+      <path d="M12 8 L44 8 L32 28 L44 48 L12 48 L24 28 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="8" y1="8" x2="48" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="8" y1="48" x2="48" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="140" y="569" font-size="25" fill="#303a36"><tspan font-family="monospace" font-weight="bold">vllm:num_requests_waiting:</tspan><tspan font-family="sans-serif"> lags, zero until slots are full</tspan></text>
+  </g>
+
+  
+  <g id="metric-running">
+    <rect x="40" y="618" width="1520" height="106" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(62, 643)">
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M28 8 L28 14 M28 42 L28 48 M8 28 L14 28 M42 28 L48 28 M14 14 L18 18 M38 38 L42 42 M14 42 L18 38 M38 18 L42 14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="140" y="658" font-size="25" fill="#303a36">
+      <tspan x="140" dy="0"><tspan font-family="monospace" font-weight="bold">vllm:num_requests_running:</tspan><tspan font-family="sans-serif"> leads, rises before any queue forms</tspan></tspan>
+      <tspan x="140" dy="38" font-family="sans-serif">(KServe example: target 2 per pod, 6 concurrent requests gives 3 replicas)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="metric-running-plus-waiting">
+    <rect x="40" y="744" width="1520" height="76" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(62, 754)">
+      <circle cx="28" cy="28" r="22" fill="none" stroke="#db8129" stroke-width="4"/>
+      <circle cx="28" cy="28" r="10" fill="none" stroke="#db8129" stroke-width="4"/>
+      <circle cx="28" cy="28" r="2" fill="#db8129"/>
+    </g>
+    <text x="140" y="791" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">running plus waiting: leads, then sizes (author's choice)</text>
+  </g>
+
+  
+  <g id="metric-kv-cache">
+    <rect x="40" y="840" width="1520" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(62, 850)">
+      <rect x="12" y="12" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="20" y1="4" x2="20" y2="12" stroke="#207448" stroke-width="4"/>
+      <line x1="36" y1="4" x2="36" y2="12" stroke="#207448" stroke-width="4"/>
+      <line x1="20" y1="44" x2="20" y2="52" stroke="#207448" stroke-width="4"/>
+      <line x1="36" y1="44" x2="36" y2="52" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="20" x2="12" y2="20" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="36" x2="12" y2="36" stroke="#207448" stroke-width="4"/>
+      <line x1="44" y1="20" x2="52" y2="20" stroke="#207448" stroke-width="4"/>
+      <line x1="44" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="140" y="887" font-size="25" fill="#303a36"><tspan font-family="monospace" font-weight="bold">vllm:kv_cache_usage_perc:</tspan><tspan font-family="sans-serif"> leads for long contexts, catches few very large requests</tspan></text>
+  </g>
+
+  
+  <g id="metric-queue-time">
+    <rect x="40" y="936" width="1520" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(62, 946)">
+      <path d="M28 8 L46 14 L46 28 C46 38 38 46 28 50 C18 46 10 38 10 28 L10 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    </g>
+    <text x="140" y="983" font-size="25" fill="#303a36"><tspan font-family="monospace" font-weight="bold">vllm:request_queue_time_seconds:</tspan><tspan font-family="sans-serif"> lags, a guardrail not a controller</tspan></text>
+  </g>
+
+  
+  <g id="footer-takeaway">
+    <rect x="40" y="1034" width="1520" height="114" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 1063)">
+      <path d="M16 26 A14 14 0 1 1 40 26 C36 30 34 34 34 40 L22 40 C22 34 20 30 16 26 Z" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="22" y1="46" x2="34" y2="46" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="140" y="1078" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="140" dy="0">the signal must lead saturation and stay proportional to demand;</tspan>
+      <tspan x="140" dy="38">the trace and numbers are simulator output, not measurements</tspan>
+    </text>
+  </g>
+</svg>

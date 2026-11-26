@@ -24,25 +24,27 @@ Imagine the interviewer's question arriving while the dashboard is still open on
 
 ### 1. Every failure is a story about three places where a request can wait
 
+![A request waits in the engine's queue, runs in the batch and holds KV cache, and the metrics for each place show which one is full.](./img/p2-2018-three-waits.svg)
+
+*Figure 20.18.1. A request waits in the queue, runs in the batch and holds KV cache, and each place has a vLLM metric that shows whether it is full.*
+
 A request enters the engine and sits in the waiting queue. Think of the queue as the line outside a busy kitchen. The scheduler moves it into the running batch when there is room, which is the set of requests the GPU is cooking together right now. While it runs, its keys and values occupy the KV cache, which is GPU memory reserved for per-token attention state. The attention state is what the model needs to remember about the words it has already seen. Nearly every serving failure is one of these three places filling up, stalling or lying about itself.
 
 vLLM exports all three as Prometheus metrics on `/metrics`. Prometheus is the metrics database most teams use, and it reads these values on a schedule. The waiting queue is `vllm:num_requests_waiting`. The running batch is `vllm:num_requests_running`. The cache is `vllm:kv_cache_usage_perc`, where 1 means 100 percent. Counters such as `vllm:num_preemptions` appear with a `_total` suffix on the wire, so in PromQL you write `vllm:num_preemptions_total`. PromQL is the query language for Prometheus. That detail comes from the metrics design page and it catches people who copy a name from the source code.
 
 The latency metrics split the request's life the same way. `vllm:request_queue_time_seconds` is time spent waiting. `vllm:time_to_first_token_seconds` is TTFT, and `vllm:inter_token_latency_seconds` is the gap between streamed outputs. The gap between streamed outputs is what a user feels as smoothness. If you know which of the three places is full, you already know which family of failure you have, and you can say so in the first minute of the round.
 
-```mermaid
-flowchart LR
-  C["Client / router"] --> W["Waiting queue<br/>num_requests_waiting"]
-  W --> R["Running batch<br/>num_requests_running"]
-  R --> K["KV cache<br/>kv_cache_usage_perc"]
-  K -->|"full"| P["Preempt newest:<br/>recompute later"]
-  P --> W
-  R --> T["Tokens out<br/>generation_tokens"]
-```
+![Every failure is a story about three places where a request can wait](./img/m20-18-1.svg)
+
+*Figure 20.18.2. Every failure is a story about three places where a request can wait, as a diagram.*
 
 Before you touch anything in an incident, read these three numbers and the token rate. Look at them as a set, because one number alone can mislead you. **Name the place that is full before you name a cause.**
 
 ### 2. Queue growth and TTFT spikes
+
+![A queue growth pattern where waiting requests rise, the batch sits at its limit and KV usage stays below 90 percent, which means the fix is replicas, not memory.](./img/p2-2018-queue-triage.svg)
+
+*Figure 20.18.3. When waiting requests rise while KV usage stays below about 90 percent, the engine is short of replicas, not memory.*
 
 A user writes that the app hangs before it starts answering, and the chat window shows a spinner. Symptom. TTFT and end-to-end latency climb together, error rate stays low at first, and users say "it hangs before it starts answering". The engine is working at full speed, but new requests wait for a slot. A slot is a place in the running batch, and a full batch has no free slot for the newcomer.
 
@@ -55,6 +57,10 @@ Fix later. Autoscale on queue depth and queue time instead of GPU utilisation. A
 Decide: if waiting is high and KV usage is low, you are short of replicas, not memory. Say that sentence in the room, because it tells the interviewer you can tell the two apart from the numbers.
 
 ### 3. KV-cache exhaustion and preemption
+
+![On a 24 GB GPU with 14 GB of weights, 10 GB remains for cache, enough for about five requests of 4,096 tokens, so a burst of 16 cannot all run.](./img/x18-kv-budget.svg)
+
+*Figure 20.18.4. The KV cache is a fixed pool left after the weights, so a burst of long requests fills it and forces preemption.*
 
 Imagine a long answer that stops in the middle, waits for a moment, and then carries on. The user thinks the app froze. Symptom. Latency becomes uneven. Some requests stall mid-answer, then continue. Throughput drops even though demand is unchanged, because the engine redoes work.
 
@@ -72,6 +78,10 @@ Decide: preemptions above zero mean you are over-admitting, so reduce admission 
 
 ### 4. Long-context head-of-line blocking
 
+![One tenant's long prefill blocks short requests in the shared batch, so inter-token latency rises even with a short queue and moderate KV usage.](./img/p2-2018-long-prompt-block.svg)
+
+*Figure 20.18.5. A long prefill from one tenant blocks short requests in the shared batch, so the fix is to isolate long prompts rather than add replicas.*
+
 A tenant starts sending very long documents on a Tuesday, and suddenly the short chat prompts from other customers feel sluggish. Symptom. Short prompts suddenly see slow streaming. Inter-token latency p99 rises although the queue is short and KV usage is moderate. One tenant has started sending very long documents.
 
 The mechanism. Prefill of a long prompt is a large compute job, and it runs before the first token appears. Head-of-line blocking is the general name for a line where one slow item blocks everything behind it. In vLLM V1, chunked prefill is on by default, and the scheduler batches all pending decodes first and then fills the remaining token budget with prefill chunks. Decoding is the step that writes one new token at a time for each running request. This protects decodes, but a very large `max_num_batched_tokens` lets one prefill take most of each step. The docs say smaller values give better inter-token latency and larger values give better TTFT. So the setting is a trade between two users' experiences, and the incident is about picking the side that protects the most customers.
@@ -86,6 +96,10 @@ Decide: if tail latency rises with the prompt-length tail, isolate long prompts 
 
 ### 5. GPU OOM at startup versus at load
 
+![A GPU out-of-memory failure is split by time: at startup during weight loading, profiling and CUDA graph capture, or at runtime under traffic spikes.](./img/p2-2018-startup-or-runtime.svg)
+
+*Figure 20.18.6. A GPU out-of-memory failure at startup points to sizing settings, while one at runtime under peak traffic points to the traffic and prompt lengths.*
+
 A deploy goes out on a Friday afternoon, and the new pods never become ready. The events list shows restart after restart. Symptom, startup form. The container exits before it ever listens, and Kubernetes restarts it in a loop. Symptom, runtime form. The process dies hours later, under peak traffic, and a pod that was serving disappears.
 
 The two have different causes, so the first question is when it died. At startup vLLM loads weights, runs a profiling pass and may capture CUDA graphs. A CUDA graph is a recorded set of GPU work that can be replayed quickly. The worker code in v0.32.0 prints a message that lists free memory, weights, peak activation and CUDA graph memory, and suggests a `--kv-cache-memory` value. Startup OOM means the sum of those parts does not fit in the requested fraction of the GPU. OOM means out of memory, and the sum is the budget the engine tries to fit. A co-tenant holding GPU memory is a common reason. A co-tenant is another process sharing the same GPU. The vLLM docs also warn that a stored `--kv-cache-memory` value is valid only on the same GPU with the same initial free memory.
@@ -99,6 +113,10 @@ Mitigate now. For startup, lower `gpu_memory_utilization` or `max_model_len`, or
 Decide: ask "startup or runtime" first, because the first points to sizing and the second to traffic.
 
 ### 6. CUDA and NCCL hangs and Xid errors
+
+![A stall with zero token rate behind a green health route, and a mid-stream error that a status code SLI misses.](./img/p3-2018-hang-health-lies.svg)
+
+*Figure 20.18.7. Alert on token rate and finish reason, because health routes and status codes can both stay green.*
 
 Picture a dashboard where the queue keeps growing and no answer ever completes. The process is still running, so nothing looks crashed. Symptom. Requests queue up, nothing finishes, and `rate(vllm:generation_tokens_total[1m])` is zero while waiting plus running is above zero. The process is alive. CPU is idle, and a GPU may sit at 100 percent.
 
@@ -124,6 +142,10 @@ Mitigate now. Capture logs and a stack dump, drain the replica from the pool and
 Decide: zero tokens with work present is a hang, and a green `/health` does not change that.
 
 ### 7. Slow weight load, cold start and thundering herd on restart
+
+![A 140 GB model pulled from one 14 GB per second source takes 10 seconds for one replica and 320 seconds each when 32 replicas start together.](./img/x18-herd-load.svg)
+
+*Figure 20.18.8. A thundering herd splits one shared source across every replica that starts at once, so load time grows with the number of replicas.*
 
 Picture a deploy that finished, a dashboard that looks fine, and an on-call engineer watching new pods stay not-ready for a long time. Symptom. After a deploy, node failure or autoscale event, replicas stay not-ready for minutes. Latency on the survivors worsens while the new ones load.
 
@@ -165,6 +187,14 @@ Decide: if many replicas load together, fix the rollout order and the weight sou
 
 ### 8. Probes that hurt: liveness kills and silent pool shrink [vendor]
 
+![A healthy busy pod restarted by liveness fails to re-register, dropping eight replicas to five, with the signals that reveal it.](./img/p3-2018-silent-shrink.svg)
+
+*Figure 20.18.9. Compare ready pods with desired replicas and with the router's backend list.*
+
+![A short liveness timeout restarts healthy busy workers, the survivors take more load, more probes fail, and the pool shrinks silently.](./img/x18-liveness-loop.svg)
+
+*Figure 20.18.10. A liveness probe that restarts healthy workers creates a feedback loop, so liveness must stay local and tolerant.*
+
 A platform team notices that a restart that looked healthy has quietly left the pool a few workers short. Two failures from the Nebius chat-app case study belong together. The case study says aggressive liveness probes were restarting healthy workers. It also says restarted workers sometimes did not rejoin the pool, so capacity shrank silently. Nebius has not published probe settings, so what follows is general method plus my own reasoning.
 
 Liveness kill. The vLLM `/health` route in v0.32.0 does not queue behind generation, because it only reads a flag. So a busy engine alone does not make it slow. It can still time out when the API server process is starved, for example by CPU-heavy tokenisation or a saturated event loop. The default probe timeout is 1 second per the Kubernetes docs. If the liveness probe has a short timeout, or calls a path that waits behind generation work such as a real completion, Kubernetes sees failures and restarts a healthy pod. The restart drops every in-flight request and starts a new weight load. The book Production Kubernetes, chapter 14, says a liveness probe should fail only when a restart is needed, such as a deadlock. Many apps use an endpoint that unconditionally returns 200. It says not to check external dependencies in liveness. It describes readiness as the place for temporary conditions such as warm caches and overload. It also explains the startup probe, which covers slow initialisation and then steps aside.
@@ -178,6 +208,10 @@ Mitigate now. Relax the liveness timeout and raise `failureThreshold`, which the
 Decide: liveness answers "should this process be killed", readiness answers "should it get traffic", and mixing them causes both of these failures.
 
 ### 9. Retry amplification during a partial outage
+
+![Bars of 1.11, 1.875 and 2.95 expected attempts at failure rates 0.1, 0.5 and 0.8, beside the loop that raises load.](./img/p3-2018-retry-attempts.svg)
+
+*Figure 20.18.11. The higher the failure rate, the more retries arrive, which raises the failure rate again.*
 
 A small outage becomes a large one, and the on-call channel fills with graphs that all climb together. Symptom. A small outage becomes a large one. Half the replicas fail, and traffic arriving at the survivors doubles, then doubles again. Request rate at the gateway exceeds the user request rate.
 
@@ -201,6 +235,10 @@ Decide: if the damage is uneven across tenants, look at who sent the tokens befo
 
 ### 11. Quality failures: finish_reason drift, corruption, speculative decoding and quantisation
 
+![Quality failures show green infrastructure while answers are cut off, with causes such as finish reason drift, NaN corruption, speculative decoding, quantisation and sampling defaults.](./img/p2-2018-quality-checks.svg)
+
+*Figure 20.18.12. Quality failures leave infrastructure green, so the design checks finish_reason shares, NaN corruption counts and the last configuration change.*
+
 Symptom. Nothing errors, latency is fine, and users complain that answers are cut off, repetitive or odd. This is the hardest failure to see, because every infrastructure signal is green. A green dashboard can still hide a product that is failing its users. The Nebius case study lists alerts on finish_reason drift for this reason [vendor].
 
 The signal. The counter `vllm:request_success_total` has a `finished_reason` label. A label is a tag that splits one counter into several series. In v0.32.0 the reasons are stop, length, abort, error and repetition. The source says error is a retryable request-level error returned as HTTP 500, and repetition means a repetitive token pattern was detected. A rise in the share of length, which means the model ran to its token limit, or any repetition finishes, is a drift signal. Drift means the mix of outcomes moves away from what it was on a calm day. The classifier computes shares from rates.
@@ -219,6 +257,10 @@ Decide: when infrastructure is green and users are unhappy, check finish_reason 
 
 ### 12. Version skew between router and engine
 
+![A three-step deprecation timeline ending in a removed metric that looks like no data, with a version-pair checklist.](./img/p3-2018-metric-deprecation.svg)
+
+*Figure 20.18.13. Treat a missing series as a fault, not as a quiet system.*
+
 Picture a rollout that finished an hour ago, and then a support ticket about odd answers on one route only. Symptom. Errors or odd outputs begin right after a rollout, and only on some routes. One side was upgraded, the other was not.
 
 The mechanism. A router and an engine share assumptions: API fields, token accounting, metric names and defaults. vLLM's own docs show the risk. Its metrics deprecation policy says a metric deprecated in version X.Y is hidden in X.Y+1 and removed in X.Y+2. A deprecated metric still works for a while, but it is slated for removal. A dashboard or autoscaler that reads a removed metric goes blind, and the drop shows as "no data", which many alert rules treat as healthy. The Grafana text in the v0.32.0 metrics design page still mentions a swapped-requests metric, while the v0.32.0 source defines none, which shows how docs and code drift.
@@ -231,24 +273,15 @@ Decide: after any rollout, check versions at every hop before you debug behaviou
 
 ### 13. A decision tree, an alert-to-cause table and a classifier
 
+![A table mapping eight alerts to ranked likely causes and the single first check that separates them.](./img/p3-2018-alert-to-cause.svg)
+
+*Figure 20.18.14. Use the tree to pick a family of causes, then the table to find the one number that separates them.*
+
 During the incident you have three minutes to choose a direction, and a tree makes that possible. The tree uses only the signals above, so you can follow it without reopening every chapter. Start at the top and answer one yes or no question at each step.
 
-```mermaid
-flowchart TD
-  A["Latency or errors up"] --> B{"Tokens/s zero<br/>with work queued?"}
-  B -->|"yes"| H["Hang or Xid:<br/>drain, capture, restart"]
-  B -->|"no"| C{"KV usage near 1<br/>and preemptions?"}
-  C -->|"yes"| K["KV exhaustion:<br/>cut admission"]
-  C -->|"no"| D{"Prompt tail heavy,<br/>ITL up?"}
-  D -->|"yes"| L["Long-context HOL:<br/>isolate long prompts"]
-  D -->|"no"| E{"Ready below desired<br/>or many loading?"}
-  E -->|"yes"| S["Shrink, herd or<br/>probe kills"]
-  E -->|"no"| F{"Waiting high,<br/>batch full?"}
-  F -->|"yes"| Q["Capacity: scale<br/>or shed"]
-  F -->|"no"| G{"Infra green,<br/>finish_reason moved?"}
-  G -->|"yes"| X["Quality or skew:<br/>roll back"]
-  G -->|"no"| Y["Check retries,<br/>tenants, versions"]
-```
+![A decision tree, an alert-to-cause table and a classifier](./img/m20-18-2.svg)
+
+*Figure 20.18.15. A decision tree, an alert-to-cause table and a classifier, as a diagram.*
 
 The table maps the alert you are most likely to receive to the causes to rank first and the one check that separates them. Use it after the tree, when the tree has pointed you to a family of causes and you need the one number that tells them apart.
 
@@ -395,6 +428,10 @@ Two of the scenarios below are worth working on paper before you read the answer
 
 ### Scenario A. The 16-request burst
 
+![A two-column comparison of the toy simulator at 10 GB and 34 GB of free cache, showing preemptions and step counts.](./img/p3-2018-burst-sim.svg)
+
+*Figure 20.18.16. The same 16 requests are calm with enough cache and crowded without it.*
+
 A 24 GB GPU serves Llama-2-7B in FP16. A batch job sends 16 requests, each with a 3,000-token prompt and 1,000 output tokens. Users report slow, uneven streaming. Notice that no single request is unusual. The trouble comes from all of them arriving together.
 
 Reasoning. Weights take 14 GB, leaving 10 GB. At 0.5 MB per token that is 20,480 tokens. Each request grows to 4,000 tokens. By prompt size six are admitted, and the rest wait, and as admitted requests grow, the cache fills and the newest is preempted. Walk through it in that order, because each step explains the next. The script models that behaviour. It is a toy and not vLLM, and it assumes the newest request is the victim. I did not verify vLLM's actual victim policy.
@@ -462,6 +499,10 @@ The sample file `samples/liveness_kill.json` encodes these readings. The classif
 Answer. Relax the liveness timeout, raise the failure threshold, add a startup probe and make liveness local. Re-register or replace unregistered workers. Add the ready-versus-desired alert. Say the probe fix first, because it stops the loop, and then say the registration fix, because it restores the capacity.
 
 ### Scenario C. A rolling restart of eight replicas
+
+![Two timelines comparing eight replicas loading together for 80 seconds with small groups and staged weights.](./img/p3-2018-rolling-restart-gap.svg)
+
+*Figure 20.18.17. Restart in small groups and stage weights locally so some capacity always serves.*
 
 A new image is rolled out, and all eight replicas restart together. This is the most common way to lose an endpoint by accident. The model is 70 billion parameters in FP16, loaded from a shared source that delivers 14 GB/s.
 

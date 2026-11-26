@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Layers of isolation for noisy neighbours inside one engine</title>
+  <desc>Visual infographic showing four vertical isolation layers from gateway to shared engine KV cache, noisy neighbour effects, and platform boundaries.</desc>
+
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Layers of isolation for noisy neighbours</tspan>
+    <tspan x="800" dy="56">inside one engine</tspan>
+  </text>
+
+  
+  
+  <g id="customer-short-chat">
+    <rect x="50" y="220" width="240" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(142, 245)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 8 C 4 3.6 7.6 0 12 0 L 44 0 C 48.4 0 52 3.6 52 8 L 52 36 C 52 40.4 48.4 44 44 44 L 20 44 L 8 54 L 8 44 C 5.8 44 4 42.2 4 40 Z" />
+      <line x1="16" y1="16" x2="40" y2="16" />
+      <line x1="16" y1="28" x2="32" y2="28" />
+    </g>
+    <text x="170" y="348" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="170" dy="0">Short chat</tspan>
+      <tspan x="170" dy="34">messages</tspan>
+    </text>
+  </g>
+
+  
+  <g id="customer-huge-document">
+    <rect x="50" y="735" width="240" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(142, 755)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 10 L 32 10 L 46 24 L 46 54 L 6 54 Z" />
+      <polyline points="32,10 32,24 46,24" />
+      <path d="M 14 6 L 38 6 L 52 20 L 52 46" />
+      <line x1="16" y1="34" x2="36" y2="34" />
+      <line x1="16" y1="44" x2="30" y2="44" />
+    </g>
+    <text x="170" y="855" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="170" dy="0">Huge document</tspan>
+      <tspan x="170" dy="34">every few</tspan>
+      <tspan x="170" dy="34">seconds</tspan>
+    </text>
+  </g>
+
+  
+  <g id="connection-huge-doc-to-layer-4">
+    
+    <text x="425" y="805" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="425" dy="0">Takes KV blocks</tspan>
+      <tspan x="425" dy="32">from others</tspan>
+    </text>
+    
+    <line x1="290" y1="857" x2="542" y2="857" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <polygon points="560,857 540,847 540,867" fill="#207448" />
+  </g>
+
+  
+
+  
+  <g id="layer-1">
+    <rect x="560" y="170" width="620" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="600" cy="245" r="24" fill="#207448" />
+    <text x="600" y="245" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g transform="translate(642, 217)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="4" />
+      <path d="M 18 50 L 18 26 C 18 20 38 20 38 26 L 38 50" />
+      <line x1="4" y1="18" x2="52" y2="18" />
+    </g>
+    
+    <text x="715" y="224" font-family="sans-serif" fill="#303a36">
+      <tspan x="715" dy="0" font-size="30" font-weight="bold">Gateway: </tspan>
+      <tspan font-size="25">token and</tspan>
+      <tspan x="715" dy="36" font-size="25">concurrency limits per tenant</tspan>
+    </text>
+  </g>
+
+  
+  <g id="layer-2">
+    <rect x="560" y="355" width="620" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="600" cy="442" r="24" fill="#207448" />
+    <text x="600" y="442" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g transform="translate(642, 414)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="28" r="8" />
+      <circle cx="44" cy="12" r="6" />
+      <circle cx="44" cy="28" r="6" />
+      <circle cx="44" cy="44" r="6" />
+      <line x1="20" y1="24" x2="38" y2="14" />
+      <line x1="20" y1="28" x2="38" y2="28" />
+      <line x1="20" y1="32" x2="38" y2="42" />
+    </g>
+    
+    <text x="715" y="405" font-family="sans-serif" fill="#303a36">
+      <tspan x="715" dy="0" font-size="30" font-weight="bold">Router: </tspan>
+      <tspan font-size="25">caps how many slots</tspan>
+      <tspan x="715" dy="36" font-size="25">one tenant takes on</tspan>
+      <tspan x="715" dy="34" font-size="25">one replica</tspan>
+    </text>
+  </g>
+
+  
+  <g id="layer-3">
+    <rect x="560" y="565" width="620" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="600" cy="632" r="24" fill="#207448" />
+    <text x="600" y="632" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <g transform="translate(642, 604)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="46" x2="46" y2="46" />
+      <line x1="16" y1="32" x2="40" y2="32" />
+      <line x1="22" y1="18" x2="34" y2="18" />
+      <polyline points="28,6 24,10 32,10" />
+    </g>
+    
+    <text x="715" y="620" font-family="sans-serif" fill="#303a36">
+      <tspan x="715" dy="0" font-size="30" font-weight="bold">Priority classes: </tspan>
+      <tspan x="715" dy="36" font-size="25">paid tiers get priority</tspan>
+    </text>
+  </g>
+
+  
+  <g id="layer-4">
+    <rect x="560" y="735" width="620" height="245" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="5" />
+    
+    <circle cx="600" cy="857" r="24" fill="#207448" />
+    <text x="600" y="857" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <g transform="translate(642, 829)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="44" height="44" rx="4" />
+      <line x1="6" y1="28" x2="50" y2="28" />
+      <line x1="28" y1="6" x2="28" y2="50" />
+      <line x1="16" y1="2" x2="16" y2="6" />
+      <line x1="40" y1="2" x2="40" y2="6" />
+      <line x1="16" y1="50" x2="16" y2="54" />
+      <line x1="40" y1="50" x2="40" y2="54" />
+    </g>
+    
+    <text x="715" y="785" font-family="sans-serif" fill="#303a36">
+      <tspan x="715" dy="0" font-size="30" font-weight="bold">Shared batch and</tspan>
+      <tspan x="715" dy="38" font-size="25">KV cache inside one engine: </tspan>
+      <tspan x="715" dy="36" font-size="25">the noisy-neighbour</tspan>
+      <tspan x="715" dy="34" font-size="25">contact point</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="card-platform">
+    <rect x="1210" y="170" width="340" height="490" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1352, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 4 L 48 12 L 48 28 C 48 42 28 52 28 52 C 28 52 8 42 8 28 L 8 12 Z" />
+      <line x1="28" y1="16" x2="28" y2="38" />
+      <line x1="18" y1="26" x2="38" y2="26" />
+    </g>
+    
+    <text x="1235" y="295" font-family="sans-serif" fill="#303a36">
+      <tspan x="1235" dy="0" font-size="28" font-weight="bold" fill="#207448">Platform around</tspan>
+      <tspan x="1235" dy="34" font-size="28" font-weight="bold" fill="#207448">the engines:</tspan>
+      <tspan x="1235" dy="44" font-size="24">namespaces, RBAC,</tspan>
+      <tspan x="1235" dy="32" font-size="24">resource quotas,</tspan>
+      <tspan x="1235" dy="32" font-size="24">network policies</tspan>
+    </text>
+
+    
+    <g id="note-namespace">
+      <rect x="1225" y="505" width="310" height="130" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+      <text x="1380" y="560" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+        <tspan x="1380" dy="0">A namespace alone</tspan>
+        <tspan x="1380" dy="32">isolates nothing</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="card-shared-prefix-cache">
+    <rect x="1210" y="735" width="340" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1352, 760)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="28,14 28,28 38,28" />
+      <line x1="8" y1="48" x2="18" y2="48" />
+      <line x1="38" y1="48" x2="48" y2="48" />
+    </g>
+    
+    <text x="1235" y="850" font-family="sans-serif" fill="#303a36">
+      <tspan x="1235" dy="0" font-size="26" font-weight="bold" fill="#207448">Shared prefix</tspan>
+      <tspan x="1235" dy="32" font-size="26" font-weight="bold" fill="#207448">cache:</tspan>
+      <tspan x="1235" dy="36" font-size="24">timing can leak what</tspan>
+      <tspan x="1235" dy="32" font-size="24">another tenant sent</tspan>
+    </text>
+  </g>
+</svg>

@@ -308,14 +308,9 @@ On a fresh install, `kubectl get nodes` shows cp1 as NotReady. That is expected 
 
 Think of `kubeadm init` as a set of workers building a house in a fixed order. Each phase depends on the one before it. You cannot write the static Pod manifests before the certificates exist, and the certificates are useless until the kubelet can run them. The diagram traces the phases in order. The table after it says what each phase leaves behind.
 
-```mermaid
-flowchart TD
-    P1["1. preflight & certs<br/>Validate swap/modules/ports;<br/>generate CAs, certs & SA keys in<br/>/etc/kubernetes/pki"] --> P2["2. kubeconfig & kubelet-start<br/>Write admin.conf, kubelet.conf,<br/>controller-manager.conf, scheduler.conf;<br/>start local kubelet"]
-    P2 --> P3["3. control-plane & etcd<br/>Write static pod YAML manifests in<br/>/etc/kubernetes/manifests;<br/>kubelet boots etcd & kube-apiserver"]
-    P3 --> P4["4. upload-config/certs, mark-control-plane,<br/>bootstrap-token, addon<br/>Taint NoSchedule; CoreDNS & kube-proxy"]
-    P4 --> P5["5. Install CNI (Calico / Cilium)<br/>Configures /etc/cni/net.d;<br/>CoreDNS starts; cp1 becomes Ready"]
-    P5 --> P6["6. kubeadm join (workers & cp2/cp3)<br/>Verify CA hash, TLS bootstrap CSR,<br/>write /etc/kubernetes/kubelet.conf"]
-```
+![What kubeadm init did (phases)](./img/m5-04-1.svg)
+
+*Figure 5.4.1. What kubeadm init did (phases), as a diagram.*
 
 | Phase | Result |
 |---|---|

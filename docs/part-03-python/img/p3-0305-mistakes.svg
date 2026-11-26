@@ -1,0 +1,220 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Common mistakes in errors, files and subprocesses, grouped</title>
+  <desc>Visual comparison table of common mistakes and fixes across exceptions, files, subprocess, global state, re-runs, signals, and untrusted input.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="54" font-size="48" font-weight="bold" fill="#303a36" font-family="sans-serif">Common mistakes in errors, files and subprocesses, grouped</text>
+
+  
+  <g id="table-headers">
+    <rect x="40" y="80" width="340" height="46" rx="6" fill="#207448"/>
+    <text x="56" y="112" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif">Area</text>
+
+    <rect x="395" y="80" width="720" height="46" rx="6" fill="#207448"/>
+    <text x="411" y="112" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif">Mistake</text>
+
+    <rect x="1130" y="80" width="430" height="46" rx="6" fill="#207448"/>
+    <text x="1146" y="112" font-size="30" font-weight="bold" fill="#ffffff" font-family="sans-serif">Fix</text>
+  </g>
+
+  
+  <g id="row-exceptions">
+    
+    <rect x="40" y="136" width="340" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 75 160 L 97 198 L 53 198 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="75" y1="173" x2="75" y2="183" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="75" cy="191" r="2" fill="#207448"/>
+    <text x="120" y="197" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Exceptions</text>
+
+    
+    <rect x="395" y="136" width="720" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="415" y="166" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="415" dy="0">bare except and except Exception: pass; catching</tspan>
+      <tspan x="415" dy="30">too much around too much code loses tracebacks</tspan>
+      <tspan x="415" dy="30">and hides bugs</tspan>
+    </text>
+
+    
+    <rect x="1130" y="136" width="430" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="181" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="1150" dy="0">catch the narrowest exception,</tspan>
+      <tspan x="1150" dy="30">log once at the top</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-files">
+    
+    <rect x="40" y="250" width="340" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="75" cy="298" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 53 298 L 53 332 A 22 8 0 0 0 97 332 L 97 298" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 53 315 A 22 8 0 0 0 97 315" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="120" y="324" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Files</text>
+
+    
+    <rect x="395" y="250" width="720" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="415" y="280" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="415" dy="0">writing in place leads to partial writes; declaring</tspan>
+      <tspan x="415" dy="29">success before an fsync; exists-then-create</tspan>
+      <tspan x="415" dy="29">checks leave gaps; no explicit encoding; mixing</tspan>
+      <tspan x="415" dy="29">bytes and str</tspan>
+    </text>
+
+    
+    <rect x="1130" y="250" width="430" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="295" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="1150" dy="0">atomic replace, fsync,</tspan>
+      <tspan x="1150" dy="30">attempt then handle,</tspan>
+      <tspan x="1150" dy="30">encoding=utf-8</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-subprocess">
+    
+    <rect x="40" y="390" width="340" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="52" y="448" width="46" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="52" y1="460" x2="98" y2="460" stroke="#207448" stroke-width="3"/>
+    <path d="M 60 468 L 66 473 L 60 478" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="71" y1="478" x2="81" y2="478" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="120" y="479" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Subprocess</text>
+
+    
+    <rect x="395" y="390" width="720" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="415" y="420" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="415" dy="0">shell=True with interpolated input; missing timeouts;</tspan>
+      <tspan x="415" dy="28">ignored return codes; parsing human-formatted output;</tspan>
+      <tspan x="415" dy="28">secrets in command lines; capturing huge output</tspan>
+      <tspan x="415" dy="28">in memory; pipe deadlocks; unreaped children;</tspan>
+      <tspan x="415" dy="28">os.system, os.popen and the deprecated commands module</tspan>
+    </text>
+
+    
+    <rect x="1130" y="390" width="430" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="450" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="1150" dy="0">argument list, timeout, check,</tspan>
+      <tspan x="1150" dy="30">machine-readable output,</tspan>
+      <tspan x="1150" dy="30">communicate, wait</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-global-state">
+    
+    <rect x="40" y="560" width="340" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="75" cy="608" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="53" y1="608" x2="97" y2="608" stroke="#207448" stroke-width="3"/>
+    <ellipse cx="75" cy="608" rx="10" ry="22" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="120" y="618" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Global state</text>
+
+    
+    <rect x="395" y="560" width="720" height="96" rx="8" fill="#fff9f5" stroke="#db8129" stroke-width="3"/>
+    <text x="415" y="599" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="415" dy="0">mutating os.environ or os.chdir inside a library affects</tspan>
+      <tspan x="415" dy="30">every caller; assuming the current directory</tspan>
+    </text>
+
+    
+    <rect x="1130" y="560" width="430" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="599" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="1150" dy="0">copy the environment for the child,</tspan>
+      <tspan x="1150" dy="30">pass explicit paths</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-reruns">
+    
+    <rect x="40" y="666" width="340" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="75" cy="726" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="75,712 75,726 87,726" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="120" y="736" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Re-runs</text>
+
+    
+    <rect x="395" y="666" width="720" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="415" y="734" font-size="24" fill="#303a36" font-family="sans-serif">scripts unsafe to re-run</text>
+
+    
+    <rect x="1130" y="666" width="430" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="705" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="1150" dy="0">dry-run mode, a lock against</tspan>
+      <tspan x="1150" dy="30">overlapping runs, UTC timestamps</tspan>
+      <tspan x="1150" dy="30">rather than naive ones</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-signals">
+    
+    <rect x="40" y="796" width="340" height="92" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="75" cy="850" r="3" fill="#207448"/>
+    <line x1="75" y1="850" x2="75" y2="832" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 64 834 A 14 14 0 0 1 86 834" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 56 826 A 24 24 0 0 1 94 826" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="120" y="852" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Signals</text>
+
+    
+    <rect x="395" y="796" width="720" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="415" y="834" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="415" dy="0">heavy work in signal handlers;</tspan>
+      <tspan x="415" dy="30">ignoring SIGTERM in containers</tspan>
+    </text>
+
+    
+    <rect x="1130" y="796" width="430" height="92" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="850" font-size="24" fill="#303a36" font-family="sans-serif">set a flag, finish and exit</text>
+  </g>
+
+  
+  <g id="row-untrusted-input">
+    
+    <rect x="40" y="898" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 75 926 L 95 934 C 95 956 75 970 75 972 C 75 970 55 956 55 934 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="75" y1="940" x2="75" y2="956" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="120" y="942" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">
+      <tspan x="120" dy="0">Untrusted</tspan>
+      <tspan x="120" dy="34">input</tspan>
+    </text>
+
+    
+    <rect x="395" y="898" width="720" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="415" y="930" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="415" dy="0">extracting tar or zip archives without validating paths;</tspan>
+      <tspan x="415" dy="30">yaml.load or pickle on data from the network</tspan>
+    </text>
+
+    
+    <rect x="1130" y="898" width="430" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="944" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="1150" dy="0">validate member paths,</tspan>
+      <tspan x="1150" dy="30">filter=data, safe_load</tspan>
+    </text>
+  </g>
+
+  
+  <g id="stories-strip">
+    <rect x="40" y="1018" width="1520" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="72" cy="1060" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="72" y="1068" font-size="24" font-weight="bold" fill="#207448" font-family="sans-serif" text-anchor="middle">!</text>
+    <text x="105" y="1049" font-size="24" fill="#303a36" font-family="sans-serif">
+      <tspan x="105" dy="0">a cleanup script runs twice because its lock was checked before it was taken, and the second run deletes</tspan>
+      <tspan x="105" dy="30">the checkpoint the first one was writing</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1118" width="1520" height="58" rx="8" fill="#207448"/>
+    <text x="800" y="1156" font-size="28" font-weight="bold" fill="#ffffff" font-family="sans-serif" text-anchor="middle">A second attempt after a failure should be boring</text>
+  </g>
+</svg>

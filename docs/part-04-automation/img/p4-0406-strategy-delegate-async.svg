@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Strategy, throttle, delegation and async: four ways to shape one run</title>
+  <desc>Infographic explaining Ansible execution strategies, throttling, task delegation, and asynchronous tasks with polling.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">Strategy, throttle, delegation and async:</tspan>
+    <tspan x="40" dy="56">four ways to shape one run</tspan>
+  </text>
+
+  
+  <g>
+    <rect x="40" y="140" width="740" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="64" y="156" width="56" height="56" rx="10"/>
+      <line x1="74" y1="172" x2="110" y2="172"/>
+      <line x1="74" y1="184" x2="110" y2="184"/>
+      <line x1="74" y1="196" x2="110" y2="196"/>
+      <circle cx="82" cy="172" r="2.5" fill="#207448"/>
+      <circle cx="98" cy="184" r="2.5" fill="#207448"/>
+      <circle cx="90" cy="196" r="2.5" fill="#207448"/>
+    </g>
+    <text x="136" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">strategy</text>
+
+    
+    <text x="64" y="246" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0"><tspan font-family="monospace">linear</tspan> is a single queue where everyone finishes</tspan>
+      <tspan x="64" dy="30">one step before anyone starts the next</tspan>
+    </text>
+
+    
+    <text x="64" y="320" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0"><tspan font-family="monospace">free</tspan> is a line of checkout counters where each</tspan>
+      <tspan x="64" dy="30">shopper moves on as soon as their own basket is</tspan>
+      <tspan x="64" dy="30">done: faster for independent tasks, unsuitable</tspan>
+      <tspan x="64" dy="30">when later tasks depend on all hosts finishing</tspan>
+    </text>
+
+    
+    <text x="64" y="454" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">host_pinned</tspan> and <tspan font-family="monospace">debug</tspan> are variations
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="140" width="740" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="844" y="156" width="56" height="56" rx="10"/>
+      <path d="M 858 198 A 16 16 0 1 1 886 198"/>
+      <line x1="872" y1="194" x2="880" y2="180"/>
+      <circle cx="872" cy="194" r="2.5" fill="#207448"/>
+    </g>
+    <text x="916" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">throttle and run_once</text>
+
+    
+    <text x="844" y="250" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0"><tspan font-family="monospace">throttle: N</tspan> caps concurrency for one task, such</tspan>
+      <tspan x="844" dy="32">as a package-mirror load, regardless of forks</tspan>
+    </text>
+
+    
+    <text x="844" y="338" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0"><tspan font-family="monospace">run_once: true</tspan> runs a task on one host in the</tspan>
+      <tspan x="844" dy="32">batch; combine with <tspan font-family="monospace">delegate_to</tspan>; use</tspan>
+      <tspan x="844" dy="32"><tspan font-family="monospace">delegate_facts</tspan> carefully</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="550" width="740" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="64" y="566" width="56" height="56" rx="10"/>
+      <rect x="72" y="576" width="18" height="13" rx="2"/>
+      <rect x="94" y="597" width="18" height="13" rx="2"/>
+      <path d="M 90 582 H 103 V 593"/>
+      <polyline points="99,589 103,593 107,589"/>
+    </g>
+    <text x="136" y="605" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">delegate_to</text>
+
+    
+    <text x="64" y="654" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">runs a task on another host while keeping the</tspan>
+      <tspan x="64" dy="30">current host's variables: call a load balancer</tspan>
+      <tspan x="64" dy="30">API to drain a node, update DNS, talk to a BMC</tspan>
+      <tspan x="64" dy="30">from a bastion; <tspan font-family="monospace">delegate_to localhost</tspan> is the</tspan>
+      <tspan x="64" dy="30">common case; connection variables come from</tspan>
+      <tspan x="64" dy="30">the delegated host and <tspan font-family="monospace">become</tspan> may differ</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="550" width="740" height="370" rx="16" fill="#fdfaf6" stroke="#db8129" stroke-width="3.5"/>
+    
+    
+    <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="844" y="566" width="56" height="56" rx="10"/>
+      <circle cx="872" cy="594" r="14"/>
+      <polyline points="872,586 872,594 879,594"/>
+      <path d="M 889 584 A 18 18 0 0 1 891 599"/>
+      <polyline points="887,596 891,600 895,596"/>
+    </g>
+    <text x="916" y="605" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">async and poll</text>
+
+    
+    <text x="844" y="650" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">a firmware flash takes most of an hour; a</tspan>
+      <tspan x="844" dy="28">plain SSH session sits idle and a firewall</tspan>
+      <tspan x="844" dy="28">could drop it; <tspan font-family="monospace">async</tspan> moves the work to a</tspan>
+      <tspan x="844" dy="28">background job on the host; <tspan font-family="monospace">async: 3600</tspan></tspan>
+      <tspan x="844" dy="28">with <tspan font-family="monospace">poll: 0</tspan> fires it in the background</tspan>
+      <tspan x="844" dy="28">and <tspan font-family="monospace">async_status</tspan> checks later; <tspan font-family="monospace">poll: 15</tspan></tspan>
+      <tspan x="844" dy="28">waits while it polls; helps firmware flashes,</tspan>
+      <tspan x="844" dy="28">large package installs and SSH timeouts</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="955" width="1520" height="95" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="64" y="975" width="56" height="56" rx="10"/>
+      <line x1="75" y1="985" x2="109" y2="985"/>
+      <line x1="75" y1="1021" x2="109" y2="1021"/>
+      <path d="M 77 985 L 92 1003 L 77 1021"/>
+      <path d="M 107 985 L 92 1003 L 107 1021"/>
+      <circle cx="92" cy="1011" r="2" fill="#207448"/>
+    </g>
+
+    <text x="144" y="995" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0">three forms: <tspan font-family="monospace">timeout:</tspan> on tasks, the timeout setting in <tspan font-family="monospace">ansible.cfg</tspan> for the SSH connection,</tspan>
+      <tspan x="144" dy="32"><tspan font-family="monospace">async</tspan> for long operations; a hung command without a timeout blocks the run</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1090" width="1520" height="70" rx="16" fill="#207448"/>
+    <text x="800" y="1134" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Choose the strategy by asking what must happen together
+    </text>
+  </g>
+</svg>

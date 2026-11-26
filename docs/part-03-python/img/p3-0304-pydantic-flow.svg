@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <title>Pydantic at the boundary: what happens to a node spec arriving from YAML</title>
+  <desc>Visual explanation showing how Pydantic validates, coerces, and catches errors for node specs arriving from YAML at the system boundary.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Pydantic at the boundary:</tspan>
+    <tspan x="800" dy="56">what happens to a node spec arriving from YAML</tspan>
+  </text>
+
+  
+
+  
+  <g>
+    <rect x="40" y="150" width="270" height="505" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(147, 185)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 0 0 L 36 0 L 56 20 L 56 68 L 0 68 Z"/>
+      <path d="M 36 0 L 36 20 L 56 20"/>
+      <line x1="12" y1="36" x2="44" y2="36"/>
+      <line x1="12" y1="48" x2="36" y2="48"/>
+    </g>
+    <line x1="60" y1="285" x2="290" y2="285" stroke="#e8f1ea" stroke-width="2"/>
+    
+    <text x="65" y="340" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">dict from YAML:</tspan>
+      <tspan x="65" dy="42">{name: gpu01,</tspan>
+      <tspan x="65" dy="42"> ip: 10.0.0.5,</tspan>
+      <tspan x="65" dy="42"> gpus: &quot;8&quot;}</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="310" y1="400" x2="348" y2="400" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="350" y="150" width="530" height="505" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(378, 175)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 2 L 44 10 L 44 26 C 44 38 34 49 24 54 C 14 49 4 38 4 26 L 4 10 Z"/>
+      <path d="M 14 26 L 21 33 L 34 19"/>
+    </g>
+    
+    <text x="440" y="214" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#207448">NodeSpec.model_validate(...)</text>
+    <line x1="370" y1="250" x2="860" y2="250" stroke="#e8f1ea" stroke-width="2"/>
+    
+    <text x="375" y="285" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">extra: forbid, frozen: True</tspan>
+    </text>
+    <text x="375" y="325" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">name: str with pattern</tspan>
+      <tspan x="375" dy="32">^[a-z0-9-]+$ and max_length 63,</tspan>
+      <tspan x="375" dy="32">plus a field_validator rejecting</tspan>
+      <tspan x="375" dy="32">localhost and admin</tspan>
+    </text>
+    <text x="375" y="465" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">ip: IPv4Address</tspan>
+    </text>
+    <text x="375" y="508" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">gpus: int, default 8, ge 1, le 16</tspan>
+    </text>
+    <text x="375" y="552" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">role: Literal[compute, login,</tspan>
+      <tspan x="375" dy="32">storage] default compute</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="880" y1="255" x2="918" y2="255" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="880" y1="520" x2="918" y2="520" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+
+  
+  <g>
+    <rect x="920" y="150" width="640" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(945, 175)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="24"/>
+      <path d="M 15 27 L 22 34 L 37 18"/>
+    </g>
+    
+    <text x="1015" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1015" dy="0">gpus string 8 is coerced to int 8;</tspan>
+      <tspan x="1015" dy="38">spec.model_dump(), model_dump_json(),</tspan>
+      <tspan x="1015" dy="38">NodeSpec.model_json_schema()</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="920" y="385" width="640" height="270" rx="12" fill="#fef7f0" stroke="#db8129" stroke-width="2.5"/>
+    
+    <g transform="translate(945, 410)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 26 4 L 50 48 L 2 48 Z"/>
+      <line x1="26" y1="20" x2="26" y2="34"/>
+      <circle cx="26" cy="42" r="1.5" fill="#db8129"/>
+    </g>
+    
+    <text x="1015" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1015" dy="0">a typo such as timout instead of</tspan>
+      <tspan x="1015" dy="30">timeout is rejected at once because</tspan>
+      <tspan x="1015" dy="30">extra is forbid; ValidationError with</tspan>
+      <tspan x="1015" dy="30">e.errors(): a structured list of</tspan>
+      <tspan x="1015" dy="30">errors with locations, so you can report</tspan>
+      <tspan x="1015" dy="30">exactly which field is wrong; the error</tspan>
+      <tspan x="1015" dy="30">arrives at the person who wrote the file</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="685" width="1520" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(68, 722)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="4" y1="12" x2="48" y2="12"/>
+      <circle cx="16" cy="12" r="6" fill="#ffffff"/>
+      <line x1="4" y1="28" x2="48" y2="28"/>
+      <circle cx="36" cy="28" r="6" fill="#ffffff"/>
+      <line x1="4" y1="44" x2="48" y2="44"/>
+      <circle cx="24" cy="44" r="6" fill="#ffffff"/>
+    </g>
+    
+    <text x="145" y="726" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">class Settings(BaseSettings): env_prefix MYOPS_, env_file .env;</tspan>
+      <tspan x="145" dy="34">api_url: str, api_token: SecretStr (repr shows **********,</tspan>
+      <tspan x="145" dy="34">call .get_secret_value() deliberately), timeout: float = 10.0</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="835" width="1520" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(68, 876)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="40" height="40" rx="4"/>
+      <path d="M 16 20 L 22 26 L 16 32"/>
+      <line x1="26" y1="32" x2="36" y2="32"/>
+    </g>
+    
+    <text x="145" y="876" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">v2 uses a Rust core, v1 has a different API;</tspan>
+      <tspan x="145" dy="34">nested, generic and discriminated unions Field(discriminator=type), computed fields;</tspan>
+      <tspan x="145" dy="34">FastAPI uses them for request and response schemas (chapter 3.7)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="990" width="1520" height="75" rx="8" fill="#207448"/>
+    <text x="800" y="1037" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Validate once at the boundary, then pass trusted typed objects through the rest of the code
+    </text>
+  </g>
+</svg>

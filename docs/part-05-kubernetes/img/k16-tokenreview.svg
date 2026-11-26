@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1030" width="1600" height="1030">
+  <title>A receiving service checks a pod token with TokenReview</title>
+  <desc>Sequence diagram in swimlanes showing a receiving service verifying a pod's ServiceAccount token against the Kubernetes API server using TokenReview.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1030" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A receiving service checks a pod token with TokenReview</text>
+
+  
+  
+  <rect x="50" y="270" width="280" height="585" rx="16" fill="#fbfdfb" stroke="#d5e3d8" stroke-width="2"/>
+  
+  <rect x="360" y="270" width="660" height="585" rx="16" fill="#fbfdfb" stroke="#d5e3d8" stroke-width="2"/>
+  
+  <rect x="1050" y="270" width="500" height="585" rx="16" fill="#fbfdfb" stroke="#d5e3d8" stroke-width="2"/>
+
+  
+  <line x1="190" y1="270" x2="190" y2="835" stroke="#9eb7a6" stroke-width="3" stroke-dasharray="8 8"/>
+  <line x1="690" y1="270" x2="690" y2="835" stroke="#9eb7a6" stroke-width="3" stroke-dasharray="8 8"/>
+  <line x1="1300" y1="270" x2="1300" y2="835" stroke="#9eb7a6" stroke-width="3" stroke-dasharray="8 8"/>
+
+  
+  
+  <rect x="50" y="130" width="280" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="164" y="146" width="52" height="42" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="164" y1="160" x2="216" y2="160" stroke="#207448" stroke-width="3"/>
+  <circle cx="173" cy="153" r="2.5" fill="#207448"/>
+  <circle cx="182" cy="153" r="2.5" fill="#207448"/>
+  <circle cx="191" cy="153" r="2.5" fill="#207448"/>
+  <polyline points="174,171 180,176 174,181" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="184" y1="181" x2="202" y2="181" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="190" y="232" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pod (caller)</text>
+
+  
+  <rect x="360" y="130" width="660" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <line x1="690" y1="144" x2="690" y2="198" stroke="#207448" stroke-width="8" stroke-linecap="round"/>
+  <line x1="663" y1="171" x2="717" y2="171" stroke="#207448" stroke-width="8" stroke-linecap="round"/>
+  <line x1="671" y1="152" x2="709" y2="190" stroke="#207448" stroke-width="8" stroke-linecap="round"/>
+  <line x1="671" y1="190" x2="709" y2="152" stroke="#207448" stroke-width="8" stroke-linecap="round"/>
+  <circle cx="690" cy="171" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="6"/>
+  <circle cx="690" cy="171" r="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <text x="690" y="232" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Receiving service</text>
+
+  
+  <rect x="1050" y="130" width="500" height="125" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 1286 163 V 151 A 14 14 0 0 1 1314 151 V 163" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <rect x="1276" y="163" width="48" height="34" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="1300" cy="176" r="4" fill="#207448"/>
+  <line x1="1300" y1="180" x2="1300" y2="188" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="1300" y="232" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kubernetes API server</text>
+
+  
+  
+  <rect x="240" y="300" width="400" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="440" cy="300" r="24" fill="#207448"/>
+  <text x="440" y="309" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <text x="440" y="337" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="440" dy="0">sends its</tspan>
+    <tspan x="440" dy="28">ServiceAccount token</tspan>
+  </text>
+  
+  <line x1="190" y1="400" x2="690" y2="400" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <rect x="730" y="430" width="540" height="75" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="1000" cy="430" r="24" fill="#207448"/>
+  <text x="1000" y="439" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <text x="1000" y="466" text-anchor="middle" font-family="monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1000" dy="0">POST TokenReview</tspan>
+    <tspan x="1000" dy="28">with the token in spec.token</tspan>
+  </text>
+  
+  <line x1="690" y1="530" x2="1300" y2="530" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  
+  <rect x="710" y="560" width="580" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1000" cy="560" r="24" fill="#207448"/>
+  <text x="1000" y="569" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <text x="1000" y="597" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1000" dy="0">status authenticated true and user</tspan>
+    <tspan x="1000" dy="28">system:serviceaccount:default:default</tspan>
+  </text>
+  
+  <line x1="1300" y1="660" x2="690" y2="660" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="400" y="715" width="580" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="690" y="750" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="690" dy="0">the username prefix shows</tspan>
+    <tspan x="690" dy="30">a ServiceAccount, then namespace,</tspan>
+    <tspan x="690" dy="30">then account name</tspan>
+  </text>
+
+  
+  <rect x="50" y="885" width="1500" height="105" rx="16" fill="#207448"/>
+  <text x="800" y="930" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">the receiver does not trust the token blindly, it asks the API server</tspan>
+    <tspan x="800" dy="34">whether the token is genuine and whose account it belongs to</tspan>
+  </text>
+</svg>

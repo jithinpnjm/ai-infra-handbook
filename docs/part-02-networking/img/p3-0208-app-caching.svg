@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Who caches DNS: glibc, the JVM, Go and nginx behave differently</title>
+  <desc>Infographic comparing DNS caching behavior and consequences across glibc, JVM, Go, and nginx, with notes on Musl/Alpine and DNS failover.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Who caches DNS: glibc, the JVM,</tspan>
+    <tspan x="800" dy="56">Go and nginx behave differently</tspan>
+  </text>
+
+  
+  <rect x="50" y="175" width="990" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="135" y="216" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Program</text>
+  <text x="250" y="216" text-anchor="start" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Caches?</text>
+  <text x="760" y="216" text-anchor="start" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Consequence</text>
+
+  
+  <rect x="50" y="250" width="990" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <line x1="220" y1="250" x2="220" y2="415" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="730" y1="250" x2="730" y2="415" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <g transform="translate(135, 292)">
+    <circle cx="0" cy="0" r="15" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M -3 -22 L 3 -22 L 3 -15 L -3 -15 Z" fill="#207448" />
+    <path d="M -3 15 L 3 15 L 3 22 L -3 22 Z" fill="#207448" />
+    <path d="M -22 -3 L -22 3 L -15 3 L -15 -3 Z" fill="#207448" />
+    <path d="M 15 -3 L 22 -3 L 22 3 L 15 3 Z" fill="#207448" />
+    <path d="M -16 -16 L -11 -11 L -7 -15 L -12 -20 Z" fill="#207448" />
+    <path d="M 11 11 L 16 16 L 20 12 L 15 7 Z" fill="#207448" />
+    <path d="M 11 -11 L 16 -16 L 12 -20 L 7 -15 Z" fill="#207448" />
+    <path d="M -16 16 L -11 11 L -15 7 L -20 12 Z" fill="#207448" />
+  </g>
+  <text x="135" y="365" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">glibc</text>
+
+  
+  <text x="250" y="320" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="250" dy="0">does not cache, unless nscd or</tspan>
+    <tspan x="250" dy="38">systemd-resolved does it for it</tspan>
+  </text>
+
+  
+  <text x="760" y="320" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="760" dy="0">repeated lookups</tspan>
+    <tspan x="760" dy="38">hit the resolver</tspan>
+  </text>
+
+  
+  <rect x="50" y="430" width="990" height="165" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <line x1="220" y1="430" x2="220" y2="595" stroke="#fdeada" stroke-width="2" />
+  <line x1="730" y1="430" x2="730" y2="595" stroke="#fdeada" stroke-width="2" />
+
+  
+  <g transform="translate(135, 470)">
+    <path d="M -15 -8 L -12 14 C -12 21 -4 24 0 24 C 4 24 12 21 12 14 L 15 -8 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 14 -3 C 21 -3 21 8 13 8" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M -7 -14 C -7 -19 -2 -19 -2 -24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 0 -13 C 0 -18 5 -18 5 -23" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="135" y="545" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">JVM</text>
+
+  
+  <text x="250" y="478" font-family="sans-serif" font-size="24" fill="#db8129">
+    <tspan x="250" dy="0">caches positive lookups per</tspan>
+    <tspan x="250" dy="32" font-family="monospace">networkaddress.cache.ttl,</tspan>
+    <tspan x="250" dy="32">and forever by default under</tspan>
+    <tspan x="250" dy="32">a security manager</tspan>
+  </text>
+
+  
+  <text x="760" y="500" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="760" dy="0">a DNS failover</tspan>
+    <tspan x="760" dy="38">is ignored</tspan>
+  </text>
+
+  
+  <rect x="610" y="610" width="0" height="0" />
+  <rect x="50" y="610" width="990" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <line x1="220" y1="610" x2="220" y2="775" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="730" y1="610" x2="730" y2="775" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <g transform="translate(135, 650)">
+    <circle cx="-10" cy="-6" r="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="10" cy="-6" r="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="-8" cy="-6" r="2.5" fill="#207448" />
+    <circle cx="12" cy="-6" r="2.5" fill="#207448" />
+    <path d="M -18 10 C -10 18 10 18 18 10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M -22 -14 L -15 -8" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 22 -14 L 15 -8" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="135" y="725" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Go</text>
+
+  
+  <text x="250" y="680" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="250" dy="0">caches nothing and</tspan>
+    <tspan x="250" dy="38">resolves on each call</tspan>
+  </text>
+
+  
+  <text x="760" y="700" font-family="sans-serif" font-size="24" fill="#303a36">high query rate</text>
+
+  
+  <rect x="50" y="790" width="990" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <line x1="220" y1="790" x2="220" y2="955" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="730" y1="790" x2="730" y2="955" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <g transform="translate(135, 830)">
+    <rect x="-24" y="-18" width="48" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="-14" cy="-10" r="2.5" fill="#207448" />
+    <line x1="-5" y1="-10" x2="16" y2="-10" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <rect x="-24" y="4" width="48" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="-14" cy="12" r="2.5" fill="#207448" />
+    <line x1="-5" y1="12" x2="16" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="135" y="905" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">nginx</text>
+
+  
+  <text x="250" y="845" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="250" dy="0">resolves upstream names only</tspan>
+    <tspan x="250" dy="35">at startup, unless you use a</tspan>
+    <tspan x="250" dy="35">variable plus a resolver</tspan>
+  </text>
+
+  
+  <text x="760" y="860" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="760" dy="0">DNS failover is</tspan>
+    <tspan x="760" dy="38">ineffective</tspan>
+  </text>
+
+  
+  <rect x="1070" y="175" width="480" height="780" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g transform="translate(1310, 235)">
+    <polygon points="-28,24 0,-24 28,24" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <polygon points="10,24 24,0 38,24" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <path d="M -11 -5 L -5 3 L 4 -2 L 12 5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <text x="1105" y="305" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1105" dy="0" font-size="30" font-weight="bold" fill="#207448">Musl and Alpine:</tspan>
+    <tspan x="1105" dy="48">historically handle search</tspan>
+    <tspan x="1105" dy="40">lists and TCP fallback</tspan>
+    <tspan x="1105" dy="40">differently from glibc,</tspan>
+    <tspan x="1105" dy="40">ndots and parallel</tspan>
+    <tspan x="1105" dy="40">behaviour has differed;</tspan>
+    <tspan x="1105" dy="40">behaviour changes by</tspan>
+    <tspan x="1105" dy="40">image and version, so</tspan>
+    <tspan x="1105" dy="40">run your DNS tests inside</tspan>
+    <tspan x="1105" dy="40">the same image the pod uses</tspan>
+  </text>
+
+  
+  <rect x="50" y="985" width="1500" height="75" rx="10" fill="#207448" />
+  <text x="800" y="1032" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Know your application's behaviour before you rely on DNS failover</text>
+</svg>

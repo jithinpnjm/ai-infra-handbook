@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Sort a failure into one layer with yes-or-no questions, cheapest check first</title>
+  <desc>A decision flowchart sorting Ansible failures into diagnostic layers using yes-or-no questions, testing the cheapest check first.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Sort a failure into one layer with yes-or-no questions,</text>
+  <text x="800" y="104" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">cheapest check first</text>
+
+  
+  <g id="node-failure">
+    <rect x="150" y="136" width="260" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <path d="M 176 178 L 194 148 L 212 178 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <line x1="194" y1="158" x2="194" y2="168" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="194" cy="173" r="1.5" fill="#207448" />
+    <text x="304" y="177" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Failure</text>
+  </g>
+
+  
+  <g id="side-note">
+    <rect x="620" y="136" width="920" height="68" rx="8" fill="#e8eee9" stroke="#85918b" stroke-width="2" stroke-dasharray="6,4" />
+    
+    <rect x="642" y="148" width="40" height="44" rx="4" fill="none" stroke="#85918b" stroke-width="3" />
+    <line x1="652" y1="160" x2="672" y2="160" stroke="#85918b" stroke-width="3" stroke-linecap="round" />
+    <line x1="652" y1="170" x2="672" y2="170" stroke="#85918b" stroke-width="3" stroke-linecap="round" />
+    <line x1="652" y1="180" x2="666" y2="180" stroke="#85918b" stroke-width="3" stroke-linecap="round" />
+    <text x="702" y="162" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Ask four questions in order: when, where, what changed,</text>
+    <text x="702" y="190" font-family="monospace" font-size="24" fill="#303a36">can you reproduce on one host with --limit and -vvv.</text>
+  </g>
+
+  
+  <line x1="280" y1="196" x2="280" y2="246" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="diamond-1">
+    <polygon points="280,248 510,296 280,344 50,296" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <text x="280" y="287" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Parse error</text>
+    <text x="280" y="317" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">before any task?</text>
+  </g>
+
+  
+  <line x1="510" y1="296" x2="618" y2="296" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="564" y="284" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+  
+  <g id="box-1">
+    <rect x="620" y="246" width="920" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="644" y="268" width="44" height="56" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="656" y1="284" x2="676" y2="284" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="656" y1="296" x2="676" y2="296" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="656" y1="308" x2="670" y2="308" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="712" y="287" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">YAML, syntax or templating at load:</text>
+    <text x="712" y="325" font-family="monospace" font-size="24" fill="#303a36">run --syntax-check, yamllint, ansible-lint</text>
+  </g>
+
+  
+  <line x1="280" y1="344" x2="280" y2="390" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="304" y="372" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">No</text>
+
+  
+  <g id="diamond-2">
+    <polygon points="280,392 510,440 280,488 50,440" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <text x="280" y="449" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">UNREACHABLE?</text>
+  </g>
+
+  
+  <line x1="510" y1="440" x2="618" y2="440" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="564" y="428" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+  
+  <g id="box-2">
+    <rect x="620" y="390" width="920" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="644" y="416" width="48" height="34" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="656" y1="450" x2="656" y2="462" stroke="#207448" stroke-width="4" />
+    <line x1="680" y1="450" x2="680" y2="462" stroke="#207448" stroke-width="4" />
+    <line x1="668" y1="462" x2="668" y2="472" stroke="#207448" stroke-width="4" />
+    <text x="712" y="431" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Connection layer:</text>
+    <text x="712" y="469" font-family="sans-serif" font-size="24" fill="#303a36">SSH, DNS, user, key, host key, bastion, port, firewall</text>
+  </g>
+
+  
+  <line x1="280" y1="488" x2="280" y2="535" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="304" y="516" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">No</text>
+
+  
+  <g id="diamond-3">
+    <polygon points="280,537 510,585 280,633 50,585" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <text x="280" y="594" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">Task FAILED?</text>
+  </g>
+
+  
+  <line x1="510" y1="585" x2="618" y2="585" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="564" y="573" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">No</text>
+
+  
+  <g id="box-3">
+    <rect x="620" y="535" width="920" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="668" cy="585" r="24" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="668,571 668,585 680,585" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="712" y="576" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Succeeded but wrong result:</text>
+    <text x="712" y="614" font-family="sans-serif" font-size="24" fill="#303a36">assertions, check mode, idempotency, drift</text>
+  </g>
+
+  
+  <line x1="280" y1="633" x2="280" y2="680" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="304" y="661" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes</text>
+
+  
+  <g id="diamond-4">
+    <polygon points="280,682 510,730 280,778 50,730" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <text x="280" y="721" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Message mentions a</text>
+    <text x="280" y="751" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">variable or template?</text>
+  </g>
+
+  
+  <line x1="510" y1="730" x2="618" y2="730" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="564" y="718" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+  
+  <g id="box-4">
+    <rect x="620" y="680" width="920" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <ellipse cx="668" cy="710" rx="22" ry="7" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 646 710 v 16 c 0 4 10 7 22 7 s 22 -3 22 -7 v -16" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 646 726 v 16 c 0 4 10 7 22 7 s 22 -3 22 -7 v -16" fill="none" stroke="#207448" stroke-width="4" />
+    <text x="712" y="721" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Data layer:</text>
+    <text x="712" y="759" font-family="sans-serif" font-size="24" fill="#303a36">undefined variable, wrong type, precedence</text>
+  </g>
+
+  
+  <line x1="280" y1="778" x2="280" y2="825" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="304" y="806" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">No</text>
+
+  
+  <g id="diamond-5">
+    <polygon points="280,827 510,875 280,923 50,875" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <text x="280" y="866" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Permission, sudo</text>
+    <text x="280" y="896" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">or module error?</text>
+  </g>
+
+  
+  <line x1="510" y1="875" x2="618" y2="875" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="564" y="863" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+  
+  <g id="box-5">
+    <rect x="620" y="825" width="920" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 648 858 C 648 858 668 850 668 844 C 668 850 688 858 688 858 C 688 882 668 898 668 898 C 668 898 648 882 648 858 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="668" cy="866" r="3.5" fill="#207448" />
+    <line x1="668" y1="870" x2="668" y2="880" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="712" y="866" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Privilege and module layer:</text>
+    <text x="712" y="904" font-family="sans-serif" font-size="24" fill="#303a36">become, interpreter, module arguments, target state</text>
+  </g>
+
+  
+  <path d="M 280 923 L 280 1008 Q 280 1020 292 1020 L 618 1020" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <text x="304" y="960" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">No</text>
+
+  
+  <g id="box-6">
+    <rect x="620" y="970" width="920" height="100" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    
+    <rect x="644" y="995" width="48" height="42" rx="5" fill="none" stroke="#db8129" stroke-width="4" />
+    <line x1="644" y1="1009" x2="692" y2="1009" stroke="#db8129" stroke-width="3" />
+    <circle cx="653" cy="1002" r="2" fill="#db8129" />
+    <circle cx="660" cy="1002" r="2" fill="#db8129" />
+    <circle cx="667" cy="1002" r="2" fill="#db8129" />
+    <path d="M 653 1020 L 661 1025 L 653 1030" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="712" y="1011" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Application layer:</text>
+    <text x="712" y="1049" font-family="sans-serif" font-size="24" fill="#303a36">the command failed on the host, run it by hand</text>
+  </g>
+
+  
+  <g id="caption-bar">
+    <rect x="50" y="1112" width="1490" height="56" rx="10" fill="#207448" />
+    <text x="795" y="1148" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Open the first drawer that could hold the problem, and the next one only when the first is empty.</text>
+  </g>
+</svg>

@@ -1,0 +1,78 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>A circuit breaker has three states</title>
+  <desc>State transition diagram showing Closed, Open, and Half-open states with exact transition labels.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  <!-- Title -->
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A circuit breaker has three states</text>
+
+  <!-- Arrows and edge labels -->
+  <!-- 1. Closed to Open: too many failures -->
+  <path d="M 565.01 292.38 Q 800 185 1034.99 292.38" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="800" y="195" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">too many failures</text>
+
+  <!-- 2. Open to Half-open: after a cool-down -->
+  <path d="M 1293.14 473.14 Q 1163.8 648.3 954.55 708.59" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="1210" y="630" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">after a cool-down</text>
+
+  <!-- 3. Half-open to Closed: trial succeeds -->
+  <path d="M 686.86 636.86 Q 557.7 615.9 500.0 498.56" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="510" y="635" text-anchor="end" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">trial succeeds</text>
+
+  <!-- 4. Half-open to Open: trial fails -->
+  <path d="M 841.41 595.45 Q 975.6 573.8 1066.86 473.14" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="915" y="505" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">trial fails</text>
+
+  <!-- Nodes -->
+  <!-- Node 1: Closed -->
+  <g id="node-closed">
+    <circle cx="420" cy="360" r="160" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <!-- Icon: Shield with checkmark (56px) -->
+    <g transform="translate(420, 315)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -22 -18 L 0 -26 L 22 -18 L 22 4 C 22 18 0 28 0 28 C 0 28 -22 18 -22 4 Z" />
+      <polyline points="-10 2 -2 10 12 -4" />
+    </g>
+    <text x="420" y="384" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Closed</text>
+    <text x="420" y="424" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">calls pass</text>
+  </g>
+
+  <!-- Node 2: Open -->
+  <g id="node-open">
+    <circle cx="1180" cy="360" r="160" fill="#fff7f0" stroke="#db8129" stroke-width="4" />
+    <!-- Icon: Alert symbol (56px) -->
+    <g transform="translate(1180, 315)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="0 -24 24 18 -24 18" />
+      <line x1="0" y1="-7" x2="0" y2="4" />
+      <circle cx="0" cy="11" r="2" fill="#db8129" stroke="none" />
+    </g>
+    <text x="1180" y="384" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">Open</text>
+    <text x="1180" y="424" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">calls fail fast</text>
+  </g>
+
+  <!-- Node 3: Half-open -->
+  <g id="node-half-open">
+    <circle cx="800" cy="750" r="160" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <!-- Icon: Clock for timer (56px) -->
+    <g transform="translate(800, 705)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="0" r="23" />
+      <polyline points="0 -13 0 0 9 0" />
+      <line x1="0" y1="-23" x2="0" y2="-19" />
+      <line x1="0" y1="19" x2="0" y2="23" />
+      <line x1="-23" y1="0" x2="-19" y2="0" />
+      <line x1="19" y1="0" x2="23" y2="0" />
+    </g>
+    <text x="800" y="774" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Half-open</text>
+    <text x="800" y="814" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">one trial call</text>
+  </g>
+</svg>

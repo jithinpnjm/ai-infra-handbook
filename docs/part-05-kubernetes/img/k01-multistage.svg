@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Multi-stage build keeps the compiler out of the image</title>
+  <desc>Infographic showing how a multi-stage build uses a builder stage for compilation and copies only the resulting binary into the slim deploy stage, leaving compilers and build tools out of the final image.</desc>
+
+  <defs>
+    <marker id="green-arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 1, 12 7, 0 13" fill="#207448"/>
+    </marker>
+    <marker id="orange-arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 1, 12 7, 0 13" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Multi-stage build keeps the compiler out of the image</text>
+
+  
+  <rect x="60" y="145" width="540" height="110" rx="12" fill="#eceeeb" stroke="#8a968f" stroke-width="2" stroke-dasharray="6 4"/>
+  <line x1="60" y1="255" x2="600" y2="145" stroke="#9da7a1" stroke-width="2"/>
+
+  
+  <g transform="translate(90, 172)" stroke="#8a968f" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M42 12 A18 18 0 0 0 24 3 L16 11 L23 18 L18 23 L11 16 L3 24 A18 18 0 0 0 12 42 L36 18 Z"/>
+    <circle cx="36" cy="36" r="6"/>
+  </g>
+  <text x="165" y="209" font-family="sans-serif" font-size="26" font-weight="bold" fill="#58635e">toolchain and build tools</text>
+
+  
+  <line x1="600" y1="200" x2="945" y2="200" stroke="#db8129" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#orange-arrowhead)"/>
+  <line x1="755" y1="175" x2="795" y2="225" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+  <line x1="755" y1="225" x2="795" y2="175" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+  <line x1="955" y1="175" x2="955" y2="225" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+
+  
+  <rect x="60" y="300" width="540" height="510" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <circle cx="115" cy="355" r="24" fill="#207448"/>
+  <text x="115" y="355" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  <text x="155" y="355" dominant-baseline="central" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">build stage</text>
+  <text x="155" y="400" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">builder stage</text>
+
+  
+  <g transform="translate(520, 340)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="12"/>
+    <path d="M26 4 L26 10 M26 42 L26 48 M4 26 L10 26 M42 26 L48 26 M10 10 L15 15 M37 37 L42 42 M10 42 L15 37 M37 15 L42 10"/>
+  </g>
+
+  
+  <rect x="90" y="445" width="480" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(115, 485)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+    <rect x="10" y="10" width="34" height="34" rx="4"/>
+    <path d="M18 18 H36 V36 H18 Z M17 10 V4 M27 10 V4 M37 10 V4 M17 44 V50 M27 44 V50 M37 44 V50 M10 17 H4 M10 27 H4 M10 37 H4 M44 17 H50 M44 27 H50 M44 37 H50"/>
+  </g>
+  <text x="185" y="500" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan x="185" dy="0">golang toolchain,</tspan>
+    <tspan x="185" dy="38">compilers, build tools</tspan>
+  </text>
+
+  
+  <rect x="90" y="620" width="480" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(115, 668)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="38" rx="6"/>
+    <line x1="4" y1="16" x2="52" y2="16"/>
+    <path d="M12 25 L18 30 L12 35 M24 35 H34"/>
+  </g>
+  <text x="185" y="705" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">go build</text>
+
+  
+  <circle cx="800" cy="565" r="24" fill="#207448"/>
+  <text x="800" y="565" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  <text x="800" y="618" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">copy only the binary</text>
+
+  <text x="800" y="688" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">COPY --from=build</text>
+  <line x1="600" y1="715" x2="985" y2="715" stroke="#207448" stroke-width="4" marker-end="url(#green-arrowhead)"/>
+
+  
+  <rect x="1000" y="300" width="540" height="510" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <circle cx="1055" cy="355" r="24" fill="#207448"/>
+  <text x="1055" y="355" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  <text x="1095" y="355" dominant-baseline="central" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">deploy stage</text>
+
+  
+  <g transform="translate(1460, 335)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+    <path d="M26 6 L46 16 L46 38 L26 48 L6 38 L6 16 Z"/>
+    <path d="M26 6 L26 48 M6 16 L26 26 L46 16"/>
+  </g>
+
+  
+  <rect x="1030" y="445" width="480" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1055, 485)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+    <path d="M26 6 L44 14 V26 C44 38 26 48 26 48 C26 48 8 38 8 26 V14 Z"/>
+    <path d="M18 26 L23 31 L34 20"/>
+  </g>
+  <text x="1125" y="500" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan x="1125" dy="0">slim distroless base,</tspan>
+    <tspan x="1125" dy="38">nonroot user</tspan>
+  </text>
+
+  
+  <rect x="1030" y="620" width="480" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+  
+  <g transform="translate(1245, 668)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+    <rect x="10" y="10" width="34" height="34" rx="6"/>
+    <circle cx="27" cy="27" r="7"/>
+    <path d="M27 4 V10 M27 44 V50 M4 27 H10 M44 27 H50"/>
+  </g>
+
+  
+  <rect x="60" y="855" width="1480" height="85" rx="12" fill="#207448"/>
+  <text x="800" y="898" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">the final image holds only the program, not the build tools.</text>
+</svg>

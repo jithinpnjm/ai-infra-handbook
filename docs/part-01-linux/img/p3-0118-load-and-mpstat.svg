@@ -1,0 +1,210 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Reading load average and mpstat: is the CPU really busy</title>
+  <desc>Infographic explaining load average components, mpstat patterns, saturation metrics, and CPU utilization diagnostics.</desc>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Reading load average and mpstat:</tspan>
+    <tspan x="800" dy="58">is the CPU really busy</tspan>
+  </text>
+
+  
+  <g id="left-panel">
+    <rect x="50" y="175" width="680" height="675" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(75, 195)">
+      <path d="M 6 42 A 22 22 0 1 1 50 42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="32" x2="40" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="32" r="4" fill="#207448"/>
+    </g>
+
+    
+    <text x="145" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">Load average</tspan>
+      <tspan x="145" dy="36" font-family="monospace" font-size="25">(uptime, 1/5/15 min)</tspan>
+    </text>
+
+    
+    <g transform="translate(80, 285)">
+      <rect width="620" height="155" rx="10" ry="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(25, 20)">
+        <rect x="0" y="0" width="36" height="18" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+        <rect x="0" y="24" width="36" height="18" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+        <rect x="0" y="48" width="36" height="18" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+        <line x1="44" y1="8" x2="44" y2="60" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <path d="M 40 14 L 44 8 L 48 14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <path d="M 40 54 L 44 60 L 48 54" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <text x="90" y="65" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        <tspan x="90" dy="0">running + runnable +</tspan>
+        <tspan x="90" dy="36">uninterruptible sleep (D)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(80, 460)">
+      <rect width="620" height="185" rx="10" ry="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(25, 25)">
+        <rect x="2" y="10" width="36" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+        <rect x="12" y="4" width="16" height="10" rx="2" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+        <line x1="10" y1="24" x2="30" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="10" y1="36" x2="30" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="10" y1="46" x2="22" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <text x="90" y="55" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="90" dy="0">load 90 on 64 logical CPUs</tspan>
+        <tspan x="90" dy="36">may mean queuing, or many D tasks</tspan>
+        <tspan x="90" dy="36">stuck on I/O</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(80, 665)">
+      <rect width="620" height="160" rx="10" ry="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(25, 25)">
+        <rect x="4" y="6" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+        <circle cx="14" cy="16" r="3" fill="#207448"/>
+        <circle cx="26" cy="16" r="3" fill="#207448"/>
+        <circle cx="14" cy="28" r="3" fill="#207448"/>
+        <circle cx="26" cy="28" r="3" fill="#207448"/>
+        <line x1="8" y1="46" x2="32" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <line x1="20" y1="38" x2="20" y2="46" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="90" y="68" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="90" dy="0">compare with the number of</tspan>
+        <tspan x="90" dy="36">logical CPUs <tspan font-family="monospace">(nproc, lscpu)</tspan></tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="770" y="175" width="780" height="675" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(795, 195)">
+      <rect x="10" y="10" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="#207448"/>
+      <line x1="18" y1="3" x2="18" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="3" x2="28" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="38" y1="3" x2="38" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="18" y1="46" x2="18" y2="53" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="46" x2="28" y2="53" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="38" y1="46" x2="38" y2="53" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="3" y1="18" x2="10" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="3" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="3" y1="38" x2="10" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="46" y1="18" x2="53" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="46" y1="28" x2="53" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="46" y1="38" x2="53" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="865" y="235" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">
+      mpstat -P ALL 1: four patterns
+    </text>
+
+    
+    <g transform="translate(795, 275)">
+      <rect width="730" height="125" rx="8" ry="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 16)">
+        <rect x="0" y="0" width="38" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+        <line x1="19" y1="6" x2="19" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <circle cx="19" cy="19" r="5" fill="#207448"/>
+      </g>
+      <text x="75" y="40" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+        One CPU at 100%, others idle
+      </text>
+      <text x="25" y="78" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="25" dy="0">single-threaded bottleneck, or interrupts pinned to one core:</tspan>
+        <tspan x="25" dy="32">check <tspan font-family="monospace">%soft and %irq</tspan></tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(795, 415)">
+      <rect width="730" height="125" rx="8" ry="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 16)">
+        <rect x="0" y="0" width="38" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+        <rect x="0" y="24" width="38" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+        <circle cx="8" cy="10" r="2" fill="#207448"/>
+        <circle cx="16" cy="10" r="2" fill="#207448"/>
+      </g>
+      <text x="75" y="40" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+        Sustained <tspan font-family="monospace">%steal</tspan> on a VM
+      </text>
+      <text x="25" y="78" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="25" dy="0">the hypervisor ran other guests on your <tspan font-family="monospace">vCPU</tspan>:</tspan>
+        <tspan x="25" dy="32">noisy neighbour or over-committed host</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(795, 555)">
+      <rect width="730" height="115" rx="8" ry="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 16)">
+        <ellipse cx="19" cy="8" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3"/>
+        <path d="M 1 8 L 1 30 A 18 6 0 0 0 37 30 L 37 8" fill="none" stroke="#207448" stroke-width="3"/>
+        <path d="M 1 19 A 18 6 0 0 0 37 19" fill="none" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="75" y="40" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">
+        %iowait
+      </text>
+      <text x="25" y="86" font-family="sans-serif" font-size="24" fill="#303a36">
+        idle time with I/O outstanding, a poor metric
+      </text>
+    </g>
+
+    
+    <g transform="translate(795, 685)">
+      <rect width="730" height="145" rx="8" ry="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+      
+      <g transform="translate(20, 16)">
+        <circle cx="19" cy="19" r="18" fill="none" stroke="#db8129" stroke-width="3"/>
+        <path d="M 10 20 L 16 12 L 22 26 L 28 20" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>
+      <text x="75" y="32" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+        <tspan x="75" dy="0">PSI cpu some non-zero</tspan>
+        <tspan x="75" dy="30" font-family="monospace" font-size="22">(cat /proc/pressure/cpu)</tspan>
+      </text>
+      <text x="25" y="118" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+        runnable tasks waited: saturation
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-strip" transform="translate(50, 870)">
+    <rect width="1500" height="135" rx="12" ry="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(30, 38)">
+      <path d="M 8 46 A 26 26 0 1 1 50 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="29" y1="36" x2="45" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="29" cy="36" r="4" fill="#207448"/>
+      <line x1="42" y1="12" x2="48" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="50" y1="20" x2="56" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="115" y="55" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="115" dy="0">True measures of saturation: scheduler latency from <tspan font-family="monospace">pidstat -u %wait</tspan>,</tspan>
+      <tspan x="115" dy="38"><tspan font-family="monospace">perf sched latency</tspan>, <tspan font-family="monospace">runqlat</tspan>; container CPU limits add throttling</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar" transform="translate(50, 1030)">
+    <rect width="1500" height="80" rx="10" ry="10" fill="#207448"/>
+    <text x="750" y="49" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      Load average is the first number people quote and the easiest to misread
+    </text>
+  </g>
+</svg>

@@ -30,6 +30,10 @@ A realistic question in the interviewer's voice: "Design the Terraform for a new
 
 ### 1. A cluster module is an API, and its inputs decide what mistakes are possible
 
+![A cluster module with validated inputs and outputs next to a modules repository and a live repository that pin versions.](./img/p3-2024-module-api-repos.svg)
+
+*Figure 20.24.1. Inputs decide which mistakes are possible, and pinned versions let staging see a change first.*
+
 You are about to give your team a module that builds GPU clusters, and other people will call it from their own folders. Every input you expose is a way someone can hurt production. Every input you hide is a way someone is stuck. Terraform Up and Running, chapter 4, says it plainly: the input variables are the API of the module.
 
 So design inputs to make the safe thing easy. The module in this chapter takes a cluster name, a project, a subnet, a pinned Kubernetes version, and a map of node pools. The map key is a short stable name such as `gpu`. Validation rules reject a floating version, a pool with both a fixed size and an autoscaling range, and an upgrade strategy that can never move. Those rules run at plan time, before any API call, so a bad value fails on a laptop and not in a cloud account.
@@ -118,6 +122,10 @@ Decide: expose pools as data, keep the module small, and pin every module and pr
 
 ### 2. Remote state, locking and why the state is the crown jewel
 
+![Two timelines show a lost write without locking and a queued apply with locking, plus a note that locks do not protect code.](./img/p3-2024-lock-race.svg)
+
+*Figure 20.24.2. A lock serialises state writes, but only applying from main serialises code.*
+
 Picture two engineers who both run apply on the same cluster within one minute. Without locking, both read the same state, both write back, and one write wins. The other write is lost without an error. Terraform Up and Running, chapter 3, lists exactly three problems with shared state: manual error, no locking, and secrets in plain text. A remote backend solves all three.
 
 The state file is a JSON map from resource addresses in your code to real object IDs. Think of it as Terraform's notebook of what it built. The format is a private API of Terraform, which means the tool owns it and may change it between versions. Never edit it by hand. If you must change it, use `import` or the `terraform state` commands, which keep the notebook consistent.
@@ -136,6 +144,10 @@ Decide: use a versioned, private, locking remote backend created outside the sta
 
 ### 3. State splitting and blast radius
 
+![A matrix places network, cluster and platform stacks by rate of change and cost of failure with the workspace versus file layout choice.](./img/p3-2024-split-by-rate.svg)
+
+*Figure 20.24.3. Split state so slow dangerous things are separate from fast cheap ones.*
+
 Imagine one state that holds the network, the cluster, three GPU pools, the buckets and the Helm releases. A typo in the Helm values makes plan slow, makes review impossible, and puts the cluster itself in the blast zone. A ship's bulkheads are the picture to keep in mind: separate compartments stop one hole from sinking everything. One big state costs you slow plans, wide permissions, big mistakes and unreviewable diffs, and each of those gets worse as the state grows.
 
 Two questions decide the split. How often does this piece change? What does it cost when it fails? A piece that changes often and costs little can live in a small, fast state. A piece that changes rarely and costs a lot belongs in a state that few people can touch.
@@ -148,21 +160,9 @@ A useful test for any split is to ask who would notice if the piece broke. If on
 
 The nebius-solutions-library `k8s-inference` README is a real example. It has two Terraform stages. The `cloud` stage holds one state for clusters, pools, filesystems, static IPs, identities, registry, buckets and the managed database. The `platform` stage holds one state per cluster for Helm releases, manifests, tenants and API keys. The tfvars file has a `protect_data` setting at the top level. The README also describes one cluster per GPU region plus a CPU control cluster. That layout is the library's choice, not a Nebius standard, so quote it as an example and not as a rule.
 
-```mermaid
-flowchart TB
-  B["State bucket<br/>(made outside Terraform)"]
-  N["net / project<br/>changes rarely"]
-  C["cloud stage<br/>cluster + node pools"]
-  P1["platform: region A<br/>helm, tenants"]
-  P2["platform: region B<br/>helm, tenants"]
-  B --> N
-  B --> C
-  B --> P1
-  B --> P2
-  N -->|"outputs"| C
-  C -->|"cluster_id"| P1
-  C -->|"cluster_id"| P2
-```
+![State splitting and blast radius](./img/m20-24-1.svg)
+
+*Figure 20.24.4. State splitting and blast radius, as a diagram.*
 
 Read the diagram as a dependency chain. The state bucket sits underneath everything, because every stack reads and writes its state there. The arrows labelled with the cluster ID show where the cluster's identity travels to the platform stages.
 
@@ -175,6 +175,10 @@ The point of this section is the same as the point of the chapter. A cluster tha
 Decide: one state per environment per component, and split on how often it changes and how much it hurts when it breaks.
 
 ### 4. Safe changes: read the plan, guard the stateful things, keep history
+
+![Two guard layers, prevent_destroy in the module and a policy check on the plan, with the plan text each produces.](./img/p3-2024-guards-two-layers.svg)
+
+*Figure 20.24.5. Put guards on both the lifecycle and the plan so one careless edit cannot remove all protection.*
 
 The plan is where you catch disasters, if you read it. Picture a reviewer who scrolls past a thousand lines of plan and approves the change at the bottom. Chapter 8 warns that a plan of thousands of lines hides the one line that deletes the database. So keep plans small, and add a machine check for the lines that matter. The lab builds one.
 
@@ -223,6 +227,10 @@ Decide: guard stateful resources in the module, check the plan by machine, keep 
 
 ### 5. Node pool design for GPUs: capacity, zones, drivers and upgrades
 
+![Six cards cover quota, capacity type, size, zones, drivers and upgrades for a GPU node pool.](./img/p3-2024-pool-design-questions.svg)
+
+*Figure 20.24.6. GPU nodes are scarce and slow to replace, so write capacity and upgrade assumptions into the inputs.*
+
 You are asked to size the GPU pool in a new cluster, and the Terraform part looks easy. The hard part is that a GPU node is scarce, slow to get and expensive to lose. Resilience design starts from that fact, so the five questions below come before you write the first resource.
 
 First, quota. Nebius documents quotas per project and per region, with different limits possible per project. Only users in groups with the admin role can change them, and a quota can be lowered automatically if usage stays well below the limit for a long time. You get an email and usually two days of grace before that happens. The provider also has a `nebius_quotas_v1_quota_allowance` resource. It exists in the provider schema. Managing quotas with it was not tested. A pool that plans fine can still fail to apply because quota or capacity is short. A valid plan is not a promise of GPUs.
@@ -256,6 +264,10 @@ Decide: write the upgrade strategy and capacity assumptions into the module inpu
 
 ### 6. Drift, and why the plan is a health check
 
+![A triangle of code, state and cloud with drift detection commands and exit codes.](./img/p3-2024-drift-three-way.svg)
+
+*Figure 20.24.7. A scheduled plan with a detailed exit code turns drift into an alert you can act on.*
+
 Drift is the gap between code and reality. Picture someone scaling a pool from the console during an incident, which is a sensible move in the middle of the night and a problem for Terraform the next morning. Terraform now disagrees with the world, and the next apply would try to undo the console change. A simple health check: run plan in a few random live folders. If the answer is always no changes, your code matches reality. A small diff now and then means someone edited by hand. A huge diff means the code is useless.
 
 Drift is easy to ignore, because nothing breaks on the day it starts. The cost shows up later, when a routine apply quietly reverts a change that someone made for a reason. That is the moment the drift check earns its place.
@@ -267,6 +279,10 @@ A drift job is the scheduled version of the health check above. Each run answers
 Decide, per drift item, whether the code or the world is right. Fix the code if the emergency change was right. Re-apply if it was wrong. Never leave it.
 
 ### 7. Secrets in a world where state is plain text
+
+![A flow showing a secret passed to a resource landing in plain-text state, with ephemeral and write-only arguments as the alternative.](./img/p3-2024-secrets-in-state.svg)
+
+*Figure 20.24.8. Whatever Terraform knows it may write to state, so keep secrets out of state or lock the bucket down.*
 
 The first two rules of secrets are the same sentence twice: do not store secrets in plain text. A secret you pass to a resource ends up in the state file, and the state file is plain text unless the provider protects it. Remote backends reduce the risk by encrypting at rest and by controlling access, but they do not remove the secret from the file.
 
@@ -281,6 +297,10 @@ The honest message for an interview is the trade-off, not a claim that the older
 Decide: prefer write-only or ephemeral secrets, and protect the state bucket as if it held every password.
 
 ### 8. Testing a module before it touches a cluster
+
+![Pyramid of four test layers from format and validate at the base to a scheduled real apply in a sandbox at the top](./img/x24-test-pyramid.svg)
+
+*Figure 20.24.9. Module tests: cheap layers run on every pull request, and only the scheduled sandbox apply can see quota and capacity.*
 
 Picture a reviewer asking the question that every module eventually faces: how did you test this? Infrastructure code without tests is broken, and "How did you test this?" is the most important code review question. Tests split into static analysis, plan tests, and real apply-and-destroy tests. Use several, because each catches different bugs. Run real tests in an isolated sandbox account and clean up regularly to control cost.
 
@@ -375,6 +395,10 @@ Decide: put the cheap layers on every pull request, and the expensive one on a s
 
 ### 9. CI/CD for infrastructure
 
+![Three infrastructure pipeline stages from pull request plan through human review to applying the saved plan on main, with a risk gate that blocks destroys](./img/x24-ci-plan-gate.svg)
+
+*Figure 20.24.10. Infrastructure CI: the pull request posts a plan, a named human approves any destroy, and main applies only the saved plan.*
+
 Think about who may run apply. Picture a new engineer asking whether they can run apply from their laptop against production. A deployment server is the recommended place to run apply. The reasons are fully automated runs, a consistent environment, and better permissions management. The aim is that people hold no standing production credentials and the pipeline does. This is inference from the permissions argument, not stated by the source.
 
 A pipeline makes the rules visible. When the deploy path is written in the repository, every person can see who may approve what, and a change to that path is itself reviewed.
@@ -390,6 +414,10 @@ Lock behaviour needs a policy too. CI jobs use `-lock-timeout` so they queue beh
 Decide: humans propose, the pipeline applies, and destroys require a named human approval.
 
 ### 10. Disaster recovery of the state itself
+
+![Flow for a lost Terraform state: restore a versioned object if one exists, otherwise import each object in dependency order until plan is clean](./img/x24-state-restore-order.svg)
+
+*Figure 20.24.11. Lost state: check bucket versions before anything else, and if none exist, import each object until a plan shows no changes.*
 
 Now the nightmare. The state file for the production cluster is gone, or it is corrupt. Nothing in the cloud has changed. The cluster is still running, serving users, and Terraform just does not know it. Every plan now looks like a plan to create everything, which is the most dangerous plan you can read.
 
@@ -423,6 +451,10 @@ The panel asks you to design the code before they ask about the failure. Answer 
 
 ### Scenario A. A plan says one destroy
 
+![Flow for a renamed pool key showing the delete plus create when no moved block exists, and the zero destroy re-plan after adding a moved block](./img/x24-key-rename-destroy.svg)
+
+*Figure 20.24.12. Renamed pool key: without a moved block the plan destroys the node group, and with one the re-plan shows no destroy.*
+
 A pull request renames the pool key from `gpu` to `h100` in the live repository. The CI job posts the plan. You must decide if it merges, and the plan is the only evidence you have.
 
 Reason it through. Renaming a map key changes the resource address. Terraform sees `pool["gpu"]` as removed and `pool["h100"]` as new. That is a delete plus a create, unless a `moved` block links them. The risk script catches the delete, which is exactly the job it was written for.
@@ -450,6 +482,10 @@ The exit code is 1, so the pipeline stops. The action reason in the JSON, `delet
 Answer: do not merge. Add the moved block, and require the plan to show zero destroys before anyone approves the change.
 
 ### Scenario B. Apply deleted a production node pool
+
+![A five-step response from containing the pipeline through impact, restore, cause and prevention after a pool was deleted.](./img/p3-2024-pool-deleted-order.svg)
+
+*Figure 20.24.13. Protect users and read the plan first, because a rushed apply can cause a second outage.*
 
 It is 14:05. A pipeline run finished green. At 14:07 the inference alert fires: capacity has dropped by a third and requests are queueing. You find the node pool is gone. A green run and a missing pool are two facts that cannot both be the whole story, so start by checking what the run actually did.
 

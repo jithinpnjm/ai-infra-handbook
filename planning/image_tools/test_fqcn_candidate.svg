@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a module's full name, and the three content tiers</title>
+  <desc>Visual infographic explaining the anatomy of an Ansible fully qualified collection name (FQCN) with namespace, collection, and module parts, other collection examples, warning against ambiguous short names, collection installation, the three content tiers (Core, Certified, Community), execution environments, release support matrix, and collection toolbox analogy.</desc>
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <!-- Main Title -->
+  <text x="800" y="76" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Reading a module's full name, </tspan>
+    <tspan x="800" dy="52">and the three content tiers</tspan>
+  </text>
+  <!-- Context Strip -->
+  <g id="context-strip">
+    <rect x="40" y="185" width="1520" height="58" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(65, 196)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="18" r="5" />
+      <circle cx="36" cy="8" r="5" />
+      <circle cx="36" cy="28" r="5" />
+      <path d="M 13 18 H 20 C 24 18 26 8 31 8" />
+      <path d="M 13 18 H 20 C 24 18 26 28 31 28" />
+    </g>
+    <text x="135" y="222" font-family="sans-serif" font-size="24" fill="#303a36">the split manages thousands of modules and more than 20,000 community roles</text>
+  </g>
+  <!-- Left Container: Anatomy of the Name -->
+  <g id="left-column">
+    <rect x="40" y="285" width="740" height="525" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Module Name Header -->
+    <rect x="60" y="298" width="700" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="410" y="330" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">ansible.builtin.copy</text>
+    <!-- Three Name Parts -->
+    <rect x="60" y="350" width="700" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+    <text x="410" y="377" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">'ansible' = namespace</text>
+    <text x="410" y="407" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">'builtin' = collection name</text>
+    <text x="410" y="437" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">'copy' = module</text>
+    <!-- FQCN Definition -->
+    <rect x="60" y="456" width="700" height="82" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+    <text x="410" y="480" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="410" dy="0">together the fully qualified collection name </tspan>
+      <tspan x="410" dy="25">or FQCN (the full address of a module, </tspan>
+      <tspan x="410" dy="25">namespace first)</tspan>
+    </text>
+    <!-- Other Collection Examples -->
+    <rect x="60" y="546" width="700" height="82" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+    <rect x="75" y="553" width="335" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1" />
+    <text x="242" y="577" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">community.general</text>
+    <rect x="425" y="553" width="320" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1" />
+    <text x="585" y="577" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ansible.posix</text>
+    <rect x="75" y="590" width="335" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1" />
+    <text x="242" y="614" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">kubernetes.core</text>
+    <rect x="425" y="590" width="320" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1" />
+    <text x="585" y="614" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">nvidia.*</text>
+    <!-- Warning: Short names ambiguous (Orange Highlight) -->
+    <rect x="60" y="636" width="700" height="94" rx="8" fill="#fff9f3" stroke="#db8129" stroke-width="2.5" />
+    <rect x="60" y="636" width="8" height="94" rx="3" fill="#db8129" />
+    <text x="410" y="661" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="410" dy="0">short names are ambiguous: two collections </tspan>
+      <tspan x="410" dy="27">may each ship a module called copy, and </tspan>
+      <tspan x="410" dy="27">ansible-lint flags them; always use FQCNs</tspan>
+    </text>
+    <!-- Install Command -->
+    <rect x="60" y="738" width="700" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+    <text x="410" y="763" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="410" dy="0">ansible-galaxy collection </tspan>
+      <tspan x="410" dy="26">install -r requirements.yml</tspan>
+    </text>
+  </g>
+  <!-- Right Container: Three Content Tiers -->
+  <g id="right-column">
+    <rect x="820" y="285" width="740" height="525" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Tier 1: Core -->
+    <rect x="840" y="305" width="700" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(865, 352)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="10" />
+      <path d="M 26 4 V 12 M 26 40 V 48 M 4 26 H 12 M 40 26 H 48 M 10 10 L 16 16 M 36 36 L 42 42 M 10 42 L 16 36 M 36 16 L 42 10" />
+    </g>
+    <text x="945" y="372" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="945" dy="0" font-weight="bold" fill="#207448">Core: </tspan><tspan>ansible-core itself, </tspan>
+      <tspan x="945" dy="34">created by the Ansible team</tspan>
+    </text>
+    <!-- Tier 2: Certified -->
+    <rect x="840" y="472" width="700" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(865, 522)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 10 L 26 4 L 44 10 V 26 C 44 38 26 48 26 48 C 26 48 8 38 8 26 Z" />
+      <polyline points="18,25 24,31 34,19" />
+    </g>
+    <text x="945" y="534" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="945" dy="0" font-weight="bold" fill="#207448">Certified: </tspan><tspan>created and supported by </tspan>
+      <tspan x="945" dy="34">Red Hat and its partners through </tspan>
+      <tspan x="945" dy="34">Automation Hub</tspan>
+    </text>
+    <!-- Tier 3: Community -->
+    <rect x="840" y="644" width="700" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(865, 691)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="20" />
+      <ellipse cx="26" cy="26" rx="9" ry="20" />
+      <line x1="6" y1="26" x2="46" y2="26" />
+    </g>
+    <text x="945" y="728" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="945" dy="0" font-weight="bold" fill="#207448">Community: </tspan><tspan>shared on Ansible Galaxy</tspan>
+    </text>
+  </g>
+  <!-- Strip: Execution Environments -->
+  <g id="strip-ee">
+    <rect x="40" y="850" width="1520" height="82" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(65, 864)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="44" height="36" rx="5" />
+      <line x1="4" y1="20" x2="48" y2="20" />
+      <line x1="26" y1="20" x2="26" y2="44" />
+    </g>
+    <text x="130" y="874" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="130" dy="0">execution environments: container images with ansible-core, collections, Python dependencies </tspan>
+      <tspan x="130" dy="26">and system libraries; built with ansible-builder, run with ansible-navigator or inside AAP or </tspan>
+      <tspan x="130" dy="26">AWX; they end works on my laptop (4.15)</tspan>
+    </text>
+  </g>
+  <!-- Strip: Release and Support Matrix -->
+  <g id="strip-matrix">
+    <rect x="40" y="972" width="1520" height="68" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(65, 982)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="38" height="38" rx="6" />
+      <line x1="6" y1="18" x2="44" y2="18" />
+      <line x1="16" y1="2" x2="16" y2="8" />
+      <line x1="34" y1="2" x2="34" y2="8" />
+      <circle cx="16" cy="28" r="2.5" fill="#207448" />
+      <circle cx="26" cy="28" r="2.5" fill="#207448" />
+      <circle cx="36" cy="28" r="2.5" fill="#207448" />
+    </g>
+    <text x="130" y="1002" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="130" dy="0">check the release and support matrix before upgrading: </tspan>
+      <tspan x="130" dy="28">a core upgrade can change module behaviour and deprecate features</tspan>
+    </text>
+  </g>
+  <!-- Bottom Takeaway Bar -->
+  <g id="takeaway-bar">
+    <rect x="40" y="1080" width="1520" height="60" rx="12" fill="#207448" />
+    <text x="800" y="1119" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">A collection is a toolbox from one maker, with the maker's name on the lid</text>
+  </g>
+</svg>

@@ -1,0 +1,202 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Static gates: which tool catches which class of problem</title>
+  <desc>A reference matrix comparing static analysis tools, the defect classes they catch, and practical operational rules for each.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="62" fill="#303a36" font-size="48" font-weight="bold" font-family="sans-serif">Static gates: which tool catches which class of problem</text>
+
+  
+  <g id="table">
+    
+    <rect x="40" y="100" width="1520" height="942" rx="12" fill="#ffffff" stroke="#c0d6c4" stroke-width="2"/>
+
+    
+    <path d="M 40 112 Q 40 100 52 100 L 1548 100 Q 1560 100 1560 112 L 1560 154 L 40 154 Z" fill="#207448"/>
+
+    
+    <text x="70" y="138" fill="#ffffff" font-size="30" font-weight="bold" font-family="sans-serif">Tool</text>
+    <text x="510" y="138" fill="#ffffff" font-size="30" font-weight="bold" font-family="sans-serif">Catches</text>
+    <text x="1085" y="138" fill="#ffffff" font-size="30" font-weight="bold" font-family="sans-serif">Remember</text>
+
+    
+    <line x1="485" y1="100" x2="485" y2="1042" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="1060" y1="100" x2="1060" y2="1042" stroke="#dbe7dd" stroke-width="1.5"/>
+
+    
+    <rect x="40" y="266" width="1520" height="80" fill="#f4f8f5"/>
+    <rect x="40" y="424" width="1520" height="112" fill="#f4f8f5"/>
+    <rect x="40" y="616" width="1520" height="62" fill="#f4f8f5"/>
+    <rect x="40" y="740" width="1520" height="112" fill="#f4f8f5"/>
+    <rect x="40" y="930" width="1520" height="112" fill="#f4f8f5"/>
+
+    
+    <line x1="40" y1="266" x2="1560" y2="266" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="40" y1="346" x2="1560" y2="346" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="40" y1="424" x2="1560" y2="424" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="40" y1="536" x2="1560" y2="536" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="40" y1="616" x2="1560" y2="616" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="40" y1="678" x2="1560" y2="678" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="40" y1="740" x2="1560" y2="740" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="40" y1="852" x2="1560" y2="852" stroke="#dbe7dd" stroke-width="1.5"/>
+    <line x1="40" y1="930" x2="1560" y2="930" stroke="#dbe7dd" stroke-width="1.5"/>
+
+    
+    
+    <polygon points="80,188 68,212 80,212 76,234 92,206 80,206" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+    <text x="120" y="217" fill="#303a36" font-size="26" font-weight="bold" font-family="monospace">ruff</text>
+    <text x="510" y="190" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="510" dy="0">lint and import sorting, replaces</tspan>
+      <tspan x="510" dy="30">flake8, isort, pyupgrade; ruff</tspan>
+      <tspan x="510" dy="30">format is Black-compatible</tspan>
+    </text>
+    <text x="1085" y="205" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="1085" dy="0">very fast; rule sets in</tspan>
+      <tspan x="1085" dy="30">pyproject.toml</tspan>
+    </text>
+
+    
+    
+    <g transform="translate(64, 286)">
+      <line x1="2" y1="4" x2="30" y2="4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="2" y1="14" x2="20" y2="14" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="2" y1="24" x2="30" y2="24" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="2" y1="34" x2="16" y2="34" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="120" y="313" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">black or ruff format</text>
+    <text x="510" y="299" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="510" dy="0">uniform formatting,</tspan>
+      <tspan x="510" dy="30">ends style debates</tspan>
+    </text>
+    
+    <rect x="1085" y="285" width="290" height="42" rx="8" fill="#fef3e7" stroke="#db8129" stroke-width="2"/>
+    <text x="1230" y="314" fill="#db8129" font-size="24" font-weight="bold" text-anchor="middle" font-family="sans-serif">one tool, not both</text>
+
+    
+    
+    <g transform="translate(64, 366)">
+      <circle cx="16" cy="16" r="12" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="25" y1="25" x2="34" y2="34" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 12 11 L 10 16 L 12 21 M 20 11 L 22 16 L 20 21" stroke="#207448" stroke-width="2" fill="none"/>
+    </g>
+    <text x="120" y="392" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">mypy or pyright</text>
+    <text x="510" y="392" fill="#303a36" font-size="24" font-family="sans-serif">static types</text>
+    <text x="1085" y="378" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="1085" dy="0">lenient on legacy code,</tspan>
+      <tspan x="1085" dy="30">strict on new modules</tspan>
+    </text>
+
+    
+    
+    <g transform="translate(64, 458)">
+      <path d="M 16 2 L 30 7 L 30 19 C 30 28 16 36 16 36 C 16 36 2 28 2 19 L 2 7 Z" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+      <circle cx="16" cy="14" r="3" fill="#207448"/>
+      <line x1="16" y1="17" x2="16" y2="23" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="120" y="487" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">bandit, ruff S rules</text>
+    <text x="510" y="459" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="510" dy="0">shell=True, yaml.load,</tspan>
+      <tspan x="510" dy="30">hard-coded passwords,</tspan>
+      <tspan x="510" dy="30">assert in prod</tspan>
+    </text>
+    <text x="1085" y="474" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="1085" dy="0">review findings,</tspan>
+      <tspan x="1085" dy="30">tune false positives</tspan>
+    </text>
+
+    
+    
+    <g transform="translate(64, 556)">
+      <path d="M 16 3 L 30 10 L 30 27 L 16 34 L 2 27 L 2 10 Z" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round"/>
+      <line x1="16" y1="3" x2="16" y2="18" stroke="#207448" stroke-width="2.5"/>
+      <line x1="30" y1="10" x2="16" y2="18" stroke="#207448" stroke-width="2.5"/>
+      <line x1="2" y1="10" x2="16" y2="18" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="120" y="569" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">
+      <tspan x="120" dy="0">pip-audit, safety,</tspan>
+      <tspan x="120" dy="30">Dependabot or Renovate</tspan>
+    </text>
+    <text x="510" y="583" fill="#303a36" font-size="24" font-family="sans-serif">vulnerable dependencies</text>
+    <text x="1085" y="583" fill="#303a36" font-size="24" font-family="sans-serif">CI and on a schedule</text>
+
+    
+    
+    <g transform="translate(64, 628)">
+      <line x1="4" y1="8" x2="28" y2="8" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 7 8 L 9 28 C 9 30 11 32 13 32 L 19 32 C 21 32 23 30 23 28 L 25 8" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round"/>
+      <path d="M 12 8 L 12 4 L 20 4 L 20 8" stroke="#207448" stroke-width="2.5" fill="none"/>
+    </g>
+    <text x="120" y="654" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">vulture</text>
+    <text x="510" y="654" fill="#303a36" font-size="24" font-family="sans-serif">dead code</text>
+
+    
+    
+    <g transform="translate(64, 692)">
+      <path d="M 4 24 A 14 14 0 0 1 28 24" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="16" y1="24" x2="24" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="16" cy="24" r="2.5" fill="#207448"/>
+    </g>
+    <text x="120" y="716" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">radon, ruff C901</text>
+    <text x="510" y="716" fill="#303a36" font-size="24" font-family="sans-serif">complexity limits</text>
+
+    
+    
+    <g transform="translate(64, 776)">
+      <circle cx="16" cy="16" r="14" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <path d="M 16 2 L 16 16 L 30 16" stroke="#207448" stroke-width="3" fill="none"/>
+    </g>
+    <text x="120" y="789" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">
+      <tspan x="120" dy="0">coverage.py,</tspan>
+      <tspan x="120" dy="30">pytest-cov</tspan>
+    </text>
+    <text x="510" y="803" fill="#303a36" font-size="24" font-family="sans-serif">line and branch coverage</text>
+    <text x="1085" y="775" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="1085" dy="0">gate branch coverage for the</tspan>
+      <tspan x="1085" dy="30">core and diff coverage for PRs</tspan>
+      <tspan x="1085" dy="30">rather than one global number</tspan>
+    </text>
+
+    
+    
+    <g transform="translate(64, 871)">
+      <circle cx="8" cy="8" r="5" stroke="#207448" stroke-width="3" fill="none"/>
+      <circle cx="24" cy="28" r="5" stroke="#207448" stroke-width="3" fill="none"/>
+      <path d="M 8 13 L 8 28 L 19 28" stroke="#207448" stroke-width="3" fill="none"/>
+    </g>
+    <text x="120" y="898" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">pre-commit</text>
+    <text x="510" y="898" fill="#303a36" font-size="24" font-family="sans-serif">hooks on staged files</text>
+    <text x="1085" y="885" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="1085" dy="0">same hooks in CI</tspan>
+      <tspan x="1085" dy="30">to prevent bypass</tspan>
+    </text>
+
+    
+    
+    <g transform="translate(64, 966)">
+      <polygon points="16,4 28,10 16,16 4,10" stroke="#207448" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+      <path d="M 4 16 L 16 22 L 28 16" stroke="#207448" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+      <path d="M 4 22 L 16 28 L 28 22" stroke="#207448" stroke-width="2.5" fill="none" stroke-linejoin="round"/>
+    </g>
+    <text x="120" y="966" fill="#303a36" font-size="24" font-weight="bold" font-family="monospace">
+      <tspan x="120" dy="0">codespell, yamllint,</tspan>
+      <tspan x="120" dy="30">shellcheck, hadolint,</tspan>
+      <tspan x="120" dy="30">actionlint</tspan>
+    </text>
+    <text x="510" y="981" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="510" dy="0">prose, YAML, shell,</tspan>
+      <tspan x="510" dy="30">Dockerfile, workflows</tspan>
+    </text>
+    <text x="1085" y="981" fill="#303a36" font-size="24" font-family="sans-serif">
+      <tspan x="1085" dy="0">infrastructure repos</tspan>
+      <tspan x="1085" dy="30">are mixed-language</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1068" width="1520" height="72" rx="10" fill="#207448"/>
+    <text x="800" y="1113" fill="#ffffff" font-size="26" font-weight="bold" text-anchor="middle" font-family="sans-serif">Before you add another tool, check whether an existing one already covers the check</text>
+  </g>
+</svg>

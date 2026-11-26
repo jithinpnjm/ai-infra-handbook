@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The life of a job</title>
+  <desc>Sequence diagram illustrating the lifecycle of a Slurm batch job from submission to completion across login node, controller, database daemon, and compute nodes.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-green-left" viewBox="0 0 18 18" refX="2" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 16 3 L 2 9 L 16 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The life of a job</text>
+  <g id="header-U">
+    <rect x="50" y="75" width="260" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(85, 90)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="46" height="34" rx="4"/>
+      <path d="M 23 34 v 10 M 11 44 h 24"/>
+      <path d="M 8 13 l 7 5 -7 5 M 22 23 h 12"/>
+    </g>
+    <text x="140" y="122" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="140" dy="0">User on</tspan>
+      <tspan x="140" dy="34">login node</tspan>
+    </text>
+  </g>
+  <g id="header-C">
+    <rect x="360" y="75" width="260" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(405, 85)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="11"/>
+      <path d="M 24 3 v 6 M 24 39 v 6 M 3 24 h 6 M 39 24 h 6 M 9 9 l 5 5 M 34 34 l 5 5 M 9 39 l 5 -5 M 34 9 l 5 -5"/>
+    </g>
+    <text x="450" y="140" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">slurmctld</text>
+  </g>
+  <g id="header-DBD">
+    <rect x="670" y="75" width="260" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(715, 84)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="24" cy="10" rx="20" ry="7"/>
+      <path d="M 4 10 v 26 c 0 4 9 7 20 7 s 20 -3 20 -7 v -26"/>
+      <path d="M 4 23 c 0 4 9 7 20 7 s 20 -3 20 -7"/>
+    </g>
+    <text x="760" y="140" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">slurmdbd</text>
+  </g>
+  <g id="header-D1">
+    <rect x="980" y="75" width="260" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(1015, 85)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="34" height="34" rx="4"/>
+      <rect x="15" y="15" width="16" height="16" rx="2"/>
+      <path d="M 17 0 v 6 M 29 0 v 6 M 17 40 v 6 M 29 40 v 6 M 0 17 h 6 M 0 29 h 6 M 40 17 h 6 M 40 29 h 6"/>
+    </g>
+    <text x="1070" y="122" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1070" dy="0">slurmd on</tspan>
+      <tspan x="1070" dy="34">node A</tspan>
+    </text>
+  </g>
+  <g id="header-D2">
+    <rect x="1290" y="75" width="260" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(1325, 85)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="34" height="34" rx="4"/>
+      <rect x="15" y="15" width="16" height="16" rx="2"/>
+      <path d="M 17 0 v 6 M 29 0 v 6 M 17 40 v 6 M 29 40 v 6 M 0 17 h 6 M 0 29 h 6 M 40 17 h 6 M 40 29 h 6"/>
+    </g>
+    <text x="1380" y="122" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1380" dy="0">slurmd on</tspan>
+      <tspan x="1380" dy="34">node B</tspan>
+    </text>
+  </g>
+  <line x1="180" y1="180" x2="180" y2="1175" stroke="#b8c9c0" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="490" y1="180" x2="490" y2="1175" stroke="#b8c9c0" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="800" y1="180" x2="800" y2="1175" stroke="#b8c9c0" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="1110" y1="180" x2="1110" y2="1175" stroke="#b8c9c0" stroke-width="3" stroke-dasharray="8 6"/>
+  <line x1="1420" y1="180" x2="1420" y2="1175" stroke="#b8c9c0" stroke-width="3" stroke-dasharray="8 6"/>
+</svg>

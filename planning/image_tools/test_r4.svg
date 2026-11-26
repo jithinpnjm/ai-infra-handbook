@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <rect id="card" x="175" y="534" width="765" height="124" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text id="title" x="325" y="578" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Endpoints</text>
+  <text id="cmd" x="325" y="608" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="325" dy="0">kubectl get endpointslices</tspan>
+    <tspan x="325" dy="28">-l kubernetes.io/service-name=hostnames</tspan>
+  </text>
+</svg>

@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A Kubernetes stop: SIGTERM, the grace period, SIGKILL, and Python as PID 1</title>
+  <desc>Visual infographic detailing Kubernetes termination lifecycle, signal handling, Python PID 1 pitfalls, and cleanup hooks.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">A Kubernetes stop: SIGTERM, the grace period,</text>
+  <text x="800" y="108" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">SIGKILL, and Python as PID 1</text>
+
+  
+
+  
+  <rect x="40" y="125" width="740" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="78" cy="177" r="24" fill="#207448" />
+  <text x="78" y="185" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="135" y1="195" x2="135" y2="160" />
+    <path d="M 123 195 L 147 195" />
+    <path d="M 125 170 A 15 15 0 0 1 125 150" />
+    <path d="M 145 150 A 15 15 0 0 1 145 170" />
+    <circle cx="135" cy="155" r="3" fill="#207448" />
+  </g>
+  <text x="175" y="185" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">t0 Kubernetes sends SIGTERM</text>
+
+  
+  <line x1="410" y1="230" x2="410" y2="253" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="255" width="740" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="78" cy="305" r="24" fill="#207448" />
+  <text x="78" y="313" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="115" y="285" width="40" height="40" rx="4" />
+    <line x1="125" y1="277" x2="125" y2="285" />
+    <line x1="145" y1="277" x2="145" y2="285" />
+    <line x1="125" y1="325" x2="125" y2="333" />
+    <line x1="145" y1="325" x2="145" y2="333" />
+    <line x1="107" y1="295" x2="115" y2="295" />
+    <line x1="107" y1="315" x2="115" y2="315" />
+    <line x1="155" y1="295" x2="163" y2="295" />
+    <line x1="155" y1="315" x2="163" y2="315" />
+  </g>
+  <text x="175" y="300" font-family="sans-serif" font-size="24" fill="#303a36">handler runs in the main thread between</text>
+  <text x="175" y="335" font-family="monospace" font-size="24" fill="#303a36">bytecode instructions: log.warning(received</text>
+  <text x="175" y="370" font-family="monospace" font-size="24" fill="#303a36">SIGTERM, shutting down); stop.set()</text>
+
+  
+  <line x1="410" y1="430" x2="410" y2="453" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="455" width="740" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="78" cy="505" r="24" fill="#207448" />
+  <text x="78" y="513" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 120 505 A 18 18 0 1 1 150 515" />
+    <polyline points="152,497 150,517 132,517" />
+  </g>
+  <text x="175" y="500" font-family="monospace" font-size="24" fill="#303a36">main loop: while not stop.is_set():</text>
+  <text x="175" y="535" font-family="monospace" font-size="24" fill="#303a36">do_work(); stop.wait(5)</text>
+  <text x="175" y="570" font-family="sans-serif" font-size="24" fill="#303a36">(interruptible sleep)</text>
+
+  
+  <line x1="410" y1="620" x2="410" y2="643" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="645" width="740" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="78" cy="710" r="24" fill="#207448" />
+  <text x="78" y="718" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="135" cy="695" rx="18" ry="7" />
+    <path d="M 117 695 L 117 720 A 18 7 0 0 0 153 720 L 153 695" />
+  </g>
+  <text x="175" y="700" font-family="sans-serif" font-size="24" fill="#303a36">finish the in-flight item,</text>
+  <text x="175" y="735" font-family="monospace" font-size="24" fill="#303a36">checkpoint, cleanup()</text>
+
+  
+  <line x1="410" y1="775" x2="410" y2="798" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="800" width="740" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="78" cy="862" r="24" fill="#207448" />
+  <text x="78" y="870" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="135" cy="862" r="20" />
+    <polyline points="135,850 135,862 145,862" />
+  </g>
+  <text x="175" y="852" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">terminationGracePeriodSeconds</text>
+  <text x="175" y="887" font-family="sans-serif" font-size="24" fill="#303a36">elapses</text>
+
+  
+  <line x1="410" y1="925" x2="410" y2="948" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="40" y="950" width="740" height="110" rx="10" fill="#fdf4eb" stroke="#db8129" stroke-width="3" />
+  <circle cx="78" cy="1005" r="24" fill="#db8129" />
+  <text x="78" y="1013" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+  
+  <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 135 985 L 155 1021 L 115 1021 Z" />
+    <line x1="135" y1="998" x2="135" y2="1008" />
+    <circle cx="135" cy="1014" r="1.5" fill="#db8129" />
+  </g>
+  <text x="175" y="1014" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">SIGKILL (cannot be handled)</text>
+
+
+  
+
+  
+  <rect x="820" y="125" width="740" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="860" cy="230" r="18" />
+    <path d="M 852 230 L 868 230" />
+    <path d="M 860 222 L 860 238" />
+  </g>
+  
+  <rect x="900" y="137" width="640" height="36" rx="6" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+  <text x="915" y="163" font-family="monospace" font-size="24" fill="#303a36">SIGTERM: Kubernetes or systemd stop</text>
+  
+  <rect x="900" y="181" width="640" height="36" rx="6" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+  <text x="915" y="207" font-family="monospace" font-size="24" fill="#303a36">SIGINT: Ctrl-C</text>
+  
+  <rect x="900" y="225" width="640" height="36" rx="6" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+  <text x="915" y="251" font-family="monospace" font-size="24" fill="#303a36">SIGHUP: reload_config() by convention</text>
+  
+  <rect x="900" y="269" width="640" height="54" rx="6" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+  <text x="915" y="291" font-family="monospace" font-size="24" fill="#303a36">SIGPIPE set to SIG_DFL:</text>
+  <text x="915" y="315" font-family="monospace" font-size="24" fill="#303a36">script | head ends quietly</text>
+
+  
+  <rect x="820" y="360" width="740" height="220" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 845 425 Q 860 415 875 425 Q 875 455 860 475 Q 845 455 845 425 Z" />
+    <line x1="860" y1="438" x2="860" y2="452" />
+    <circle cx="860" cy="460" r="1.5" fill="#207448" />
+  </g>
+  <text x="895" y="398" font-family="sans-serif" font-size="24" fill="#303a36">keep handlers tiny: set a flag and do</text>
+  <text x="895" y="428" font-family="sans-serif" font-size="24" fill="#303a36">the real work in the main loop, because a</text>
+  <text x="895" y="458" font-family="sans-serif" font-size="24" fill="#303a36">handler that opens a file or waits on the</text>
+  <text x="895" y="488" font-family="sans-serif" font-size="24" fill="#303a36">network can be interrupted in the middle of</text>
+  <text x="895" y="518" font-family="sans-serif" font-size="24" fill="#303a36">its own work; SIGKILL and SIGSTOP</text>
+  <text x="895" y="548" font-family="sans-serif" font-size="24" fill="#303a36">cannot be handled</text>
+
+  
+  <rect x="820" y="605" width="740" height="225" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="842" y="675" width="36" height="36" rx="3" />
+    <line x1="842" y1="693" x2="878" y2="693" />
+    <line x1="860" y1="675" x2="860" y2="711" />
+  </g>
+  <text x="895" y="642" font-family="sans-serif" font-size="24" fill="#303a36">inside a container Python running as</text>
+  <text x="895" y="672" font-family="sans-serif" font-size="24" fill="#303a36">PID 1 does not reap zombies or forward</text>
+  <text x="895" y="702" font-family="monospace" font-size="24" fill="#303a36">signals by default: use tini, docker run --init,</text>
+  <text x="895" y="732" font-family="sans-serif" font-size="24" fill="#303a36">or exec the process from a shell wrapper;</text>
+  <text x="895" y="762" font-family="monospace" font-size="24" fill="#303a36">in the lab compare with and without --init</text>
+  <text x="895" y="792" font-family="sans-serif" font-size="24" fill="#303a36">under docker stop and its grace period</text>
+
+  
+  <rect x="820" y="855" width="740" height="205" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="860" cy="915" r="8" />
+    <path d="M 860 923 L 860 950 A 12 12 0 0 1 848 962 A 12 12 0 0 1 836 950" />
+    <polyline points="830,953 836,947 842,953" />
+  </g>
+  <text x="895" y="892" font-family="monospace" font-size="24" fill="#303a36">atexit.register(fn) runs on normal exit,</text>
+  <text x="895" y="922" font-family="monospace" font-size="24" fill="#303a36">but not on SIGKILL or os._exit;</text>
+  <text x="895" y="952" font-family="monospace" font-size="24" fill="#303a36">faulthandler.enable() dumps tracebacks</text>
+  <text x="895" y="982" font-family="monospace" font-size="24" fill="#303a36">on crashes; faulthandler.register with</text>
+  <text x="895" y="1012" font-family="monospace" font-size="24" fill="#303a36">kill -SIGUSR1 dumps them on demand</text>
+
+  
+  <rect x="40" y="1080" width="1520" height="70" rx="10" fill="#207448" />
+  <text x="800" y="1124" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Use the grace period to finish in-flight work and checkpoint</text>
+</svg>

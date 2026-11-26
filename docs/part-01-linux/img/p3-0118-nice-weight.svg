@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Nice values become weights: worked vruntime example</title>
+  <desc>Worked example showing how Linux nice values translate to CFS CPU weights and vruntime advances.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-size="48" font-weight="bold" fill="#207448" font-family="sans-serif">Nice values become weights: worked vruntime example</text>
+
+  
+  <rect x="50" y="125" width="460" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(252, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="28" y1="52" x2="28" y2="10" />
+    <line x1="8" y1="52" x2="48" y2="52" />
+    <line x1="4" y1="18" x2="52" y2="18" />
+    <path d="M 4 18 L 12 36 L -4 36 Z" />
+    <path d="M 52 18 L 60 36 L 44 36 Z" />
+  </g>
+
+  
+  
+  <line x1="90" y1="265" x2="470" y2="265" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+  
+  <line x1="110" y1="250" x2="110" y2="280" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="280" y1="245" x2="280" y2="285" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <line x1="450" y1="250" x2="450" y2="280" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+
+  
+  <text x="110" y="238" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="sans-serif">-20</text>
+  <text x="280" y="238" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="sans-serif">0</text>
+  <text x="280" y="315" text-anchor="middle" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">default</text>
+  <text x="450" y="238" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="sans-serif">+19</text>
+
+  
+  <rect x="70" y="360" width="420" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="280" y="418" text-anchor="middle" font-size="25" font-weight="bold" fill="#303a36" font-family="sans-serif">nice -20: weight about 88761</text>
+
+  
+  <rect x="70" y="480" width="420" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="280" y="538" text-anchor="middle" font-size="25" font-weight="bold" fill="#303a36" font-family="sans-serif">nice 0: weight 1024</text>
+
+  
+  <rect x="70" y="600" width="420" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="280" y="658" text-anchor="middle" font-size="25" font-weight="bold" fill="#303a36" font-family="sans-serif">nice 19: weight about 15</text>
+
+  
+  <rect x="70" y="730" width="420" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="280" y="810" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="sans-serif">
+    <tspan x="280" dy="0">each nice step changes</tspan>
+    <tspan x="280" dy="36">the weight by about 25%</tspan>
+  </text>
+
+  
+  <rect x="540" y="125" width="530" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(777, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4" />
+    <line x1="18" y1="4" x2="18" y2="10" />
+    <line x1="28" y1="4" x2="28" y2="10" />
+    <line x1="38" y1="4" x2="38" y2="10" />
+    <line x1="18" y1="46" x2="18" y2="52" />
+    <line x1="28" y1="46" x2="28" y2="52" />
+    <line x1="38" y1="46" x2="38" y2="52" />
+    <line x1="4" y1="18" x2="10" y2="18" />
+    <line x1="4" y1="28" x2="10" y2="28" />
+    <line x1="4" y1="38" x2="10" y2="38" />
+    <line x1="46" y1="18" x2="52" y2="18" />
+    <line x1="46" y1="28" x2="52" y2="28" />
+    <line x1="46" y1="38" x2="52" y2="38" />
+  </g>
+
+  
+  <rect x="560" y="230" width="490" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="580" y="268" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">
+    <tspan x="580" dy="0">nice 0 task (weight 1024):</tspan>
+    <tspan x="580" dy="30">vruntime advances 10 ms</tspan>
+  </text>
+  
+  <rect x="580" y="320" width="450" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="580" y="320" width="450" height="36" rx="6" fill="#207448" />
+
+  
+  <rect x="560" y="395" width="490" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="580" y="432" font-size="24" font-family="sans-serif">
+    <tspan x="580" dy="0" font-weight="bold" fill="#303a36">nice -5 task (weight 3121):</tspan>
+    <tspan x="580" dy="30" font-weight="bold" fill="#303a36">vruntime advances about 3.3 ms</tspan>
+    <tspan x="580" dy="30" fill="#303a36">(10 ms x 1024 / 3121)</tspan>
+  </text>
+  
+  <rect x="580" y="525" width="450" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="580" y="525" width="149" height="36" rx="6" fill="#207448" />
+
+  
+  <line x1="805" y1="580" x2="805" y2="642" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="560" y="650" width="490" height="285" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="580" y="688" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="580" dy="0">the scheduler always picks the task</tspan>
+    <tspan x="580" dy="32">with the smallest vruntime,</tspan>
+    <tspan x="580" dy="32">the leftmost in the red-black tree,</tspan>
+    <tspan x="580" dy="32">so the nice -5 task stays near the</tspan>
+    <tspan x="580" dy="32">left and runs more; under contention</tspan>
+    <tspan x="580" dy="32">it gets roughly 3x the CPU</tspan>
+    <tspan x="580" dy="32">of a nice 0 task</tspan>
+  </text>
+
+  
+  <rect x="1100" y="125" width="450" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1297, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 10 L 28 4 L 50 10 C 50 36 28 48 28 52 C 28 48 6 36 6 10 Z" />
+    <path d="M 20 28 L 26 34 L 38 20" />
+  </g>
+
+  
+  <rect x="1120" y="230" width="410" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1145" y="274" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1145" dy="0">Nice matters only when tasks</tspan>
+    <tspan x="1145" dy="34">compete for the same CPU;</tspan>
+    <tspan x="1145" dy="34">on idle CPUs it changes</tspan>
+    <tspan x="1145" dy="34">nothing</tspan>
+  </text>
+
+  
+  <rect x="1120" y="430" width="410" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1145" y="470" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1145" dy="0">Autogroup (since 2.6.38)</tspan>
+    <tspan x="1145" dy="33">groups tasks by session so</tspan>
+    <tspan x="1145" dy="33">nice between sessions behaves</tspan>
+    <tspan x="1145" dy="33">per group; on a systemd host</tspan>
+    <tspan x="1145" dy="33">cgroups give the real</tspan>
+    <tspan x="1145" dy="33">weighting through CPUWeight</tspan>
+  </text>
+
+  
+  <rect x="1120" y="690" width="410" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="1140" y="730" width="370" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1325" y="777" text-anchor="middle" font-size="25" font-weight="bold" fill="#207448" font-family="monospace">nice -n 10 cmd</text>
+  
+  <rect x="1140" y="825" width="370" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1325" y="872" text-anchor="middle" font-size="25" font-weight="bold" fill="#207448" font-family="monospace">renice -n 10 -p PID</text>
+
+  
+  <rect x="50" y="980" width="1500" height="80" rx="16" fill="#207448" />
+  <text x="800" y="1031" text-anchor="middle" font-size="34" font-weight="bold" fill="#ffffff" font-family="sans-serif">Nice is a weight, not a cap</text>
+</svg>

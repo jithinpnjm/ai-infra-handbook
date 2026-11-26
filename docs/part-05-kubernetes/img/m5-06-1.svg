@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>The controller pattern</title>
+  <desc>Architecture infographic illustrating the Kubernetes controller pattern loop between API server, Informer cache, Work queue, and Reconcile loop.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">The controller pattern</text>
+
+  
+  <g id="node-A">
+    <rect x="600" y="130" width="500" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(630, 182)">
+      <rect x="0" y="6" width="56" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="0" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="4" />
+      <circle cx="12" cy="17" r="3" fill="#207448" />
+      <circle cx="12" cy="39" r="3" fill="#207448" />
+      <line x1="24" y1="17" x2="44" y2="17" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="24" y1="39" x2="44" y2="39" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="710" y="195" font-size="32" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">API server</text>
+    <text x="710" y="240" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">(desired state: spec)</text>
+  </g>
+
+  
+  <g id="node-I">
+    <rect x="1140" y="320" width="400" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1168, 372)">
+      <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 14 L 6 42 C 6 50 50 50 50 42 L 50 14" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 6 28 C 6 36 50 36 50 28" fill="none" stroke="#207448" stroke-width="4" />
+    </g>
+    <text x="1248" y="414" font-size="32" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Informer cache</text>
+  </g>
+
+  
+  <g id="node-Q">
+    <rect x="1020" y="680" width="520" height="250" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1050, 732)">
+      <rect x="4" y="6" width="48" height="10" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="4" y="22" width="48" height="10" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="4" y="38" width="48" height="10" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    </g>
+    <text x="1125" y="747" font-size="32" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Work queue</text>
+    <text x="1050" y="835" font-size="24" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">
+      <tspan x="1050" dy="0">(keys: namespace/name,</tspan>
+      <tspan x="1050" dy="38">deduplicated, rate-limited)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-R">
+    <rect x="80" y="680" width="440" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(110, 742)">
+      <path d="M 46 22 A 20 20 0 0 0 12 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M 38 12 L 48 22 L 36 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 10 34 A 20 20 0 0 0 44 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M 18 44 L 8 34 L 20 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="185" y="782" font-size="32" font-weight="bold" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">Reconcile(key)</text>
+  </g>
+
+  
+
+  
+  <path d="M 1100 210 L 1340 210 L 1340 320" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="1220" y="190" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">watch events</text>
+
+  
+  <path d="M 1340 480 L 1340 680" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1020 730 L 520 730" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 520 840 L 1020 840" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="770" y="822" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">requeue on error / after delay</text>
+
+  
+  <path d="M 460 680 L 460 420 L 1140 420" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="800" y="402" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">read via lister (cache)</text>
+
+  
+  <path d="M 140 680 L 140 175 L 600 175" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  <text x="370" y="130" text-anchor="middle" font-size="24" font-weight="bold" fill="#db8129" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="370" dy="0">act: create/patch/delete children,</tspan>
+    <tspan x="370" dy="30">call external systems</tspan>
+  </text>
+
+  
+  <path d="M 320 680 L 320 250 L 600 250" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="460" y="215" text-anchor="middle" font-size="24" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">
+    <tspan x="460" dy="0">update</tspan>
+    <tspan x="460" dy="26">status/conditions</tspan>
+  </text>
+</svg>

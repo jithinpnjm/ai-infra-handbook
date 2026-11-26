@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which node tool answers which question</title>
+  <desc>A two-column troubleshooting picker pairing node-level diagnostic questions with container runtime, Linux kernel, storage, network, process, and GPU tooling commands.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which node tool answers which question</text>
+  
+  <g id="card-1">
+    <rect x="40" y="105" width="740" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(58, 122)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 46 16 L 46 38 L 24 50 L 2 38 L 2 16 Z"/>
+      <path d="M 2 16 L 24 28 L 46 16"/>
+      <line x1="24" y1="28" x2="24" y2="50"/>
+      <line x1="13" y1="22" x2="13" y2="34"/>
+      <line x1="35" y1="22" x2="35" y2="34"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="120" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What does the runtime </tspan>
+      <tspan x="120" y="174" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">think exists: </tspan>
+      <tspan x="60" y="208" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">crictl pods, crictl ps -a, crictl inspectp, </tspan>
+      <tspan x="60" y="235" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">crictl inspect (pid, exit code, mounts, </tspan>
+      <tspan x="60" y="262" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">resources), crictl logs, crictl stats; </tspan>
+      <tspan x="60" y="289" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">ctr -n k8s.io tasks ls</tspan>
+    </text>
+  </g>
+  
+  <g id="card-2">
+    <rect x="40" y="355" width="740" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(58, 372)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 4 L 32 4 L 44 16 L 44 48 L 6 48 Z"/>
+      <path d="M 32 4 L 32 16 L 44 16"/>
+      <line x1="14" y1="24" x2="36" y2="24"/>
+      <line x1="14" y1="32" x2="36" y2="32"/>
+      <line x1="14" y1="40" x2="26" y2="40"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="120" y="392" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What do the kubelet </tspan>
+      <tspan x="120" y="424" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">and runtime say: </tspan>
+      <tspan x="60" y="460" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">journalctl -u kubelet -u containerd </tspan>
+      <tspan x="60" y="488" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">--since -30 min</tspan>
+    </text>
+  </g>
+  
+  <g id="card-3">
+    <rect x="40" y="555" width="740" height="185" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(58, 572)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 44 11 L 44 26 C 44 38 24 48 24 48 C 24 48 4 38 4 26 L 4 11 Z"/>
+      <path d="M 24 13 L 36 18 L 36 27 C 36 34 24 40 24 40 C 24 40 12 34 12 27 L 12 18 Z"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="120" y="592" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Which namespaces </tspan>
+      <tspan x="120" y="624" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">does this process live in: </tspan>
+      <tspan x="60" y="660" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">lsns -p PID, ls -l /proc/PID/ns, </tspan>
+      <tspan x="60" y="688" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">/proc/PID/cgroup; get PID with </tspan>
+      <tspan x="60" y="716" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">crictl inspect template info.pid</tspan>
+    </text>
+  </g>
+  
+  <g id="card-4">
+    <rect x="40" y="780" width="740" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(58, 792)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="10" r="6"/>
+      <circle cx="10" cy="40" r="6"/>
+      <circle cx="38" cy="40" r="6"/>
+      <line x1="20" y1="15" x2="14" y2="35"/>
+      <line x1="28" y1="15" x2="34" y2="35"/>
+      <line x1="16" y1="40" x2="32" y2="40"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="120" y="822" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What is the pod network doing: </tspan>
+      <tspan x="60" y="862" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">nsenter -t PID -n ip addr, ip route, </tspan>
+      <tspan x="60" y="890" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">ss -tnap, tcpdump</tspan>
+    </text>
+  </g>
+  
+  <g id="card-5">
+    <rect x="40" y="970" width="740" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(58, 987)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 12 L 18 12 L 24 18 L 44 18 A 3 3 0 0 1 47 21 L 47 42 A 3 3 0 0 1 44 45 L 4 45 A 3 3 0 0 1 1 42 L 1 15 A 3 3 0 0 1 4 12 Z"/>
+      <line x1="1" y1="24" x2="47" y2="24"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="120" y="1007" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What does the pod </tspan>
+      <tspan x="120" y="1039" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">filesystem look like: </tspan>
+      <tspan x="60" y="1076" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">nsenter -t PID -m ls, cat /proc/mounts, </tspan>
+      <tspan x="60" y="1104" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">df -h</tspan>
+    </text>
+  </g>
+  
+  <g id="card-6">
+    <rect x="820" y="105" width="740" height="220" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(838, 122)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 36 A 20 20 0 1 1 42 36"/>
+      <line x1="24" y1="36" x2="34" y2="20"/>
+      <circle cx="24" cy="36" r="3" fill="#207448"/>
+      <line x1="10" y1="36" x2="16" y2="36"/>
+      <line x1="32" y1="36" x2="38" y2="36"/>
+      <line x1="24" y1="16" x2="24" y2="22"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="900" y="150" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kernel network counters: </tspan>
+      <tspan x="840" y="195" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">ip -s link, nstat, conntrack -S, ethtool -S, </tspan>
+      <tspan x="840" y="225" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">iptables-save, nft list ruleset, ipvsadm -Ln</tspan>
+    </text>
+  </g>
+  
+  <g id="card-7">
+    <rect x="820" y="375" width="740" height="220" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(838, 392)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="24" cy="12" rx="18" ry="7"/>
+      <path d="M 6 12 L 6 38 A 18 7 0 0 0 42 38 L 42 12"/>
+      <path d="M 6 25 A 18 7 0 0 0 42 25"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="900" y="420" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Storage: </tspan>
+      <tspan x="840" y="465" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">findmnt, lsblk, df -hT, df -i, iostat -x, </tspan>
+      <tspan x="840" y="495" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">fio</tspan>
+    </text>
+  </g>
+  
+  <g id="card-8">
+    <rect x="820" y="645" width="740" height="220" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(838, 662)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="28" height="28" rx="4"/>
+      <rect x="16" y="16" width="16" height="16" rx="2"/>
+      <line x1="16" y1="4" x2="16" y2="10"/>
+      <line x1="24" y1="4" x2="24" y2="10"/>
+      <line x1="32" y1="4" x2="32" y2="10"/>
+      <line x1="16" y1="38" x2="16" y2="44"/>
+      <line x1="24" y1="38" x2="24" y2="44"/>
+      <line x1="32" y1="38" x2="32" y2="44"/>
+      <line x1="4" y1="16" x2="10" y2="16"/>
+      <line x1="4" y1="24" x2="10" y2="24"/>
+      <line x1="4" y1="32" x2="10" y2="32"/>
+      <line x1="38" y1="16" x2="44" y2="16"/>
+      <line x1="38" y1="24" x2="44" y2="24"/>
+      <line x1="38" y1="32" x2="44" y2="32"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="900" y="690" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU, memory, I/O of the process: </tspan>
+      <tspan x="840" y="735" font-family="monospace" font-size="24" font-weight="normal" fill="#207448">top -H, pidstat, perf, strace, py-spy, gdb</tspan>
+    </text>
+  </g>
+  
+  <g id="card-9">
+    <rect x="820" y="915" width="740" height="235" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="2.5"/>
+    <g transform="translate(838, 932)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="36" height="32" rx="4"/>
+      <rect x="14" y="14" width="20" height="20" rx="2"/>
+      <line x1="10" y1="40" x2="14" y2="46"/>
+      <line x1="18" y1="40" x2="22" y2="46"/>
+      <line x1="26" y1="40" x2="30" y2="46"/>
+      <line x1="34" y1="40" x2="38" y2="46"/>
+      <circle cx="24" cy="24" r="4"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="900" y="960" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU and fabric: </tspan>
+      <tspan x="840" y="1005" font-family="monospace" font-size="24" font-weight="normal" fill="#db8129">nvidia-smi, dcgmi, journalctl -k grep Xid, </tspan>
+      <tspan x="840" y="1035" font-family="monospace" font-size="24" font-weight="normal" fill="#db8129">lspci -vv, ibstat, all_reduce_perf</tspan>
+    </text>
+  </g>
+</svg>

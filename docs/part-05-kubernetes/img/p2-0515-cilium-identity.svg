@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 950" width="1600" height="950">
+  <title>Cilium policy by identity, not by IP address</title>
+  <desc>Visual explanation of Cilium network policy evaluated by security identity rather than IP address.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="950" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Cilium policy by identity, not by IP address</text>
+
+  
+
+  
+  <g>
+    <rect x="60" y="160" width="360" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="214" y="178" width="52" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="214" y1="194" x2="266" y2="194" stroke="#207448" stroke-width="3"/>
+    <circle cx="225" cy="186" r="2.5" fill="#207448"/>
+    <circle cx="235" cy="186" r="2.5" fill="#207448"/>
+    
+    <text x="240" y="272" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="240" dy="0">Pod labels:</tspan>
+      <tspan x="240" dy="34">app, tier</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <line x1="180" y1="340" x2="180" y2="496" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <text x="205" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="205" dy="0">Turned into an</tspan>
+      <tspan x="205" dy="30">identity once</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="500" width="360" height="180" rx="24" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <rect x="214" y="525" width="52" height="42" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="206" y1="536" x2="214" y2="536" stroke="#207448" stroke-width="3"/>
+    <line x1="206" y1="556" x2="214" y2="556" stroke="#207448" stroke-width="3"/>
+    <line x1="266" y1="536" x2="274" y2="536" stroke="#207448" stroke-width="3"/>
+    <line x1="266" y1="556" x2="274" y2="556" stroke="#207448" stroke-width="3"/>
+    <rect x="226" y="536" width="28" height="20" rx="3" fill="none" stroke="#207448" stroke-width="2"/>
+    
+    <text x="240" y="635" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Identity number</text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="460" y="160" width="580" height="490" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 724 195 L 750 183 L 776 195 C 776 221 750 235 750 235 C 750 221 724 207 724 195 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 737 208 L 746 217 L 763 200" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="750" y="270" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">cilium_policy map (per endpoint)</text>
+
+    
+    <rect x="480" y="295" width="540" height="330" rx="12" fill="#e8f1ea"/>
+
+    
+    <rect x="495" y="310" width="510" height="44" rx="8" fill="#ffffff" opacity="0.6"/>
+    <rect x="515" y="324" width="260" height="16" rx="4" fill="#cbdad0"/>
+    <circle cx="975" cy="332" r="14" fill="#9aa8a1"/>
+    <line x1="967" y1="332" x2="983" y2="332" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <rect x="495" y="370" width="510" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="515" y="420" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="515" dy="0">identity, port 8000,</tspan>
+      <tspan x="515" dy="32">TCP, ingress: allow</tspan>
+    </text>
+    
+    <circle cx="970" cy="425" r="16" fill="#207448"/>
+    <path d="M 962 425 L 968 431 L 978 419" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+    
+    <rect x="495" y="495" width="510" height="44" rx="8" fill="#ffffff" opacity="0.6"/>
+    <rect x="515" y="509" width="300" height="16" rx="4" fill="#cbdad0"/>
+    <circle cx="975" cy="517" r="14" fill="#207448"/>
+    <path d="M 968 517 L 973 522 L 982 512" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    
+    <rect x="495" y="555" width="510" height="44" rx="8" fill="#ffffff" opacity="0.6"/>
+    <rect x="515" y="569" width="240" height="16" rx="4" fill="#cbdad0"/>
+    <circle cx="975" cy="577" r="14" fill="#9aa8a1"/>
+    <line x1="967" y1="577" x2="983" y2="577" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <g>
+    <line x1="750" y1="650" x2="750" y2="726" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <text x="765" y="682" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="765" dy="0">Can redirect to</tspan>
+      <tspan x="765" dy="28">Envoy for L7</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="730" width="380" height="85" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="750" cy="772" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 750 748 L 750 754 M 750 790 L 750 796 M 726 772 L 732 772 M 768 772 L 774 772 M 733 755 L 737 759 M 763 785 L 767 789 M 733 789 L 737 785 M 763 759 L 767 755" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="1070" y="160" width="480" height="150" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="1114" y="214" width="52" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 1126 235 L 1152 235 M 1144 227 L 1152 235 L 1144 243" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="1340" y="245" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">egress program</text>
+  </g>
+
+  
+  <line x1="1182" y1="310" x2="1182" y2="376" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <line x1="1437" y1="310" x2="1437" y2="376" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <g>
+    <rect x="1070" y="380" width="225" height="270" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-dasharray="8 6"/>
+    
+    <circle cx="1178" cy="445" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="1190" y1="457" x2="1205" y2="472" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="1182" y="540" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1182" dy="0">ipcache</tspan>
+      <tspan x="1182" dy="34">lookup</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1325" y="380" width="225" height="270" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1411 445 L 1437 433 L 1463 445 C 1463 471 1437 485 1437 485 C 1437 471 1411 457 1411 445 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 1424 458 L 1433 467 L 1450 450" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="1437" y="535" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1437" dy="0">receiver's</tspan>
+      <tspan x="1437" dy="30">ingress</tspan>
+      <tspan x="1437" dy="30">check</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="845" width="1520" height="70" rx="12" fill="#207448"/>
+    <text x="800" y="889" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">This identity may reach that port reads the same way on every node.</text>
+  </g>
+</svg>

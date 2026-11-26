@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "02",
+  "name": "p3-0102-fd-swap",
+  "title": "Piping only stderr: the 3>&1 1>&2 2>&3 swap, one step at a time",
+  "spec": "Four horizontal rows, each a small file-descriptor table with three columns 'fd 1 (stdout)', 'fd 2 (stderr)', 'fd 3' and a destination under each. Row 0 'Start': fd 1 -> terminal pipe '| grep -i warning' (label 'pipe'), fd 2 -> terminal, fd 3 -> closed. Row 1 '3>&1  saves stdout': fd 1 -> pipe, fd 2 -> terminal, fd 3 -> pipe. Row 2 '1>&2  stdout goes where stderr goes': fd 1 -> terminal, fd 2 -> terminal, fd 3 -> pipe. Row 3 '2>&3  stderr goes to saved fd 3': fd 1 -> terminal, fd 2 -> pipe (orange arrow, the one important result), fd 3 -> pipe. Each row has a numbered green circle 1 to 3 for the three operators, row 0 unnumbered. Left of the rows, the command in monospace: 'my_command 3>&1 1>&2 2>&3 | grep -i warning'. Bottom bar: 'A pipe carries only fd 1, so after the swap the errors flow down the pipe into grep'.",
+  "anchor": "### Shell tricks that save hours on clusters",
+  "alt": "Four rows of file descriptor tables showing how the three redirections swap standard output and standard error so that only errors reach the pipe.",
+  "cap": "Each redirection is applied left to right: fd 3 saves the pipe, fd 1 moves to the terminal, and fd 2 ends up on the pipe."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "02",
+  "name": "p3-0102-error-anatomy",
+  "title": "Reading an error message: program, attempt and errno text",
+  "spec": "Top: the line 'ls: cannot access '/data/missing': No such file or directory' in monospace, with three brackets underneath labelled 'program name', 'what the program tried', 'the system's description of the error code'. A flow below it, left to right: 'Program calls open()' -> 'Kernel returns an errno code' -> 'strerror turns it into text' -> 'You read the message'. Below, a lookup grid of six cards, each with message, code and first check: 'No such file or directory | ENOENT | ls -ld each component, CRLF in the shebang line'; 'Permission denied | EACCES | ls -l, id, namei -l path'; 'Operation not permitted | EPERM | need root or a capability'; 'Not a directory | ENOTDIR | file path'; 'No space left on device | ENOSPC | df -h and df -i'; 'Argument list too long | E2BIG | find ... -exec, xargs'. Orange highlight on the ENOENT card only. Bottom bar: 'Read the first error first; later messages are often noise'.",
+  "anchor": "## 10. Understanding error messages",
+  "alt": "An error message split into program name, attempted action and errno text, with a flow from the kernel errno code to the text and six common errors with their first checks.",
+  "cap": "The text after the last colon is the standard description of an errno code, so learning a few codes lets you diagnose any program."
+ }
+]

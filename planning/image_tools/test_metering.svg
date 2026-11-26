@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Usage metering and billing correctness [my addition]</title>
+  <desc>Architecture diagram of usage metering and billing correctness showing event pipeline through durable log, deduplication, hourly aggregates, invoice generation, and gateway reconciliation.</desc>
+
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Usage metering and billing correctness [my addition]</text>
+
+  <!-- Node E: Engine: usage event -->
+  <g id="node-e">
+    <rect x="60" y="170" width="240" height="270" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Gear icon for engine -->
+    <g transform="translate(180, 235)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="0" r="16"/>
+      <circle cx="0" cy="0" r="6"/>
+      <path d="M 0 -24 L 0 -16 M 0 16 L 0 24 M -24 0 L -16 0 M 16 0 L 24 0 M -17 -17 L -11 -11 M 11 11 L 17 17 M -17 17 L -11 11 M 11 -11 L 17 -17"/>
+    </g>
+    <text x="180" y="345" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="180" dy="0">Engine: </tspan>
+      <tspan x="180" dy="38">usage event</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow E -> L -->
+  <line x1="300" y1="305" x2="370" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- Node L: Durable log -->
+  <g id="node-l">
+    <rect x="370" y="170" width="240" height="270" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Storage cylinder icon -->
+    <g transform="translate(490, 235)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="0" cy="-16" rx="22" ry="8"/>
+      <path d="M -22 -16 V 4 C -22 8 -12 12 0 12 C 12 12 22 8 22 4 V -16"/>
+      <path d="M -22 4 V 20 C -22 24 -12 28 0 28 C 12 28 22 24 22 20 V 4"/>
+    </g>
+    <text x="490" y="364" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Durable log</text>
+  </g>
+
+  <!-- Arrow L -> D -->
+  <line x1="610" y1="305" x2="680" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- Node D: Dedupe by request id (Orange Highlight) -->
+  <g id="node-d">
+    <rect x="680" y="170" width="240" height="270" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+    <!-- Funnel / filter icon -->
+    <g transform="translate(800, 235)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="-24,-22 24,-22 8,6 8,24 -8,24 -8,6"/>
+      <line x1="-16" y1="-12" x2="16" y2="-12"/>
+    </g>
+    <text x="800" y="345" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">Dedupe by </tspan>
+      <tspan x="800" dy="38">request id</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow D -> A -->
+  <line x1="920" y1="305" x2="990" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- Node A: Hourly aggregates -->
+  <g id="node-a">
+    <rect x="990" y="170" width="240" height="270" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Clock / timer icon -->
+    <g transform="translate(1110, 235)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="0" r="24"/>
+      <polyline points="0,-14 0,0 12,6"/>
+      <circle cx="0" cy="0" r="3" fill="#207448"/>
+    </g>
+    <text x="1110" y="345" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1110" dy="0">Hourly </tspan>
+      <tspan x="1110" dy="38">aggregates</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow A -> I -->
+  <line x1="1230" y1="305" x2="1300" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- Node I: Invoice -->
+  <g id="node-i">
+    <rect x="1300" y="170" width="240" height="270" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Invoice document icon -->
+    <g transform="translate(1420, 235)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M -18 -24 H 8 L 20 -12 V 24 H -18 Z"/>
+      <polyline points="8,-24 8,-12 20,-12"/>
+      <line x1="-10" y1="-2" x2="12" y2="-2"/>
+      <line x1="-10" y1="8" x2="12" y2="8"/>
+      <line x1="-10" y1="16" x2="4" y2="16"/>
+    </g>
+    <text x="1420" y="364" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Invoice</text>
+  </g>
+
+  <!-- Node G: Gateway counts (Row 2, under D) -->
+  <g id="node-g">
+    <rect x="680" y="540" width="240" height="270" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Gateway arch/network icon -->
+    <g transform="translate(800, 605)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-24" y="-24" width="48" height="48" rx="8"/>
+      <path d="M -14 16 V 0 C -14 -8 14 -8 14 0 V 16"/>
+      <circle cx="0" cy="-4" r="3" fill="#207448"/>
+    </g>
+    <text x="800" y="715" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">Gateway </tspan>
+      <tspan x="800" dy="38">counts</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow G -> R -->
+  <line x1="920" y1="675" x2="990" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- Arrow A -> R (downward vertical) -->
+  <line x1="1110" y1="440" x2="1110" y2="540" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- Node R: Reconcile (Row 2, under A) -->
+  <g id="node-r">
+    <rect x="990" y="540" width="240" height="270" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Balance scale icon for reconciliation -->
+    <g transform="translate(1110, 605)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="-24" y1="-8" x2="24" y2="-8"/>
+      <line x1="0" y1="-8" x2="0" y2="20"/>
+      <line x1="-12" y1="20" x2="12" y2="20"/>
+      <path d="M -24 -8 L -30 6 H -18 Z"/>
+      <path d="M 24 -8 L 18 6 H 30 Z"/>
+    </g>
+    <text x="1110" y="734" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Reconcile</text>
+  </g>
+</svg>

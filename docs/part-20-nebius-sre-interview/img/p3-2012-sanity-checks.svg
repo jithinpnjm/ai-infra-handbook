@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five checks before you say the number out loud</title>
+  <desc>Infographic explaining five essential validation checks for AI infrastructure capacity and performance estimates before presenting numbers.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Five checks before you say the number out loud</text>
+
+  
+  <g id="check-1">
+    <rect x="50" y="125" width="1500" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="95" cy="192.5" r="24" fill="#207448" />
+    <text x="95" y="193" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <rect x="143" y="172.5" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="137" y1="180.5" x2="143" y2="180.5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="137" y1="192.5" x2="143" y2="192.5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="137" y1="204.5" x2="143" y2="204.5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="183" y1="180.5" x2="189" y2="180.5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="183" y1="192.5" x2="189" y2="192.5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="183" y1="204.5" x2="189" y2="204.5" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="153" y1="182.5" x2="173" y2="182.5" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="153" y1="192.5" x2="173" y2="192.5" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="153" y1="202.5" x2="173" y2="202.5" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="210" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Weights against memory:</text>
+    <text x="210" y="210" font-family="sans-serif" font-size="24" fill="#303a36">if weights use more than about 60 percent of usable memory, concurrency will be low</text>
+  </g>
+
+  
+  <g id="check-2">
+    <rect x="50" y="300" width="1500" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="95" cy="387.5" r="24" fill="#207448" />
+    <text x="95" y="388" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <line x1="140" y1="365" x2="186" y2="365" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 143 403 A 20 20 0 1 1 183 403" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="163" y1="403" x2="177" y2="373" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="163" cy="403" r="3.5" fill="#207448" />
+    
+    <text x="210" y="340" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Batch-one decode ceiling:</text>
+    <text x="210" y="378" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="210" dy="0">bandwidth divided by weight bytes; H100 3.35 TB/s over 16.4 GB</tspan>
+      <tspan x="210" dy="35">is about 204 tokens per second; no real system beats it for one request,</tspan>
+      <tspan x="210" dy="35">so any claim above it is wrong</tspan>
+    </text>
+  </g>
+
+  
+  <g id="check-3">
+    <rect x="50" y="515" width="1500" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="95" cy="587.5" r="24" fill="#207448" />
+    <text x="95" y="588" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <line x1="163" y1="566" x2="163" y2="608" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="151" y1="608" x2="175" y2="608" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="141" y1="571" x2="185" y2="571" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="141" y1="571" x2="137" y2="588" stroke="#207448" stroke-width="2" />
+    <line x1="141" y1="571" x2="149" y2="588" stroke="#207448" stroke-width="2" />
+    <path d="M 135 588 Q 143 596 151 588 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    <line x1="185" y1="571" x2="177" y2="588" stroke="#207448" stroke-width="2" />
+    <line x1="185" y1="571" x2="189" y2="588" stroke="#207448" stroke-width="2" />
+    <path d="M 175 588 Q 183 596 191 588 Z" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="210" y="555" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Little's law:</text>
+    <text x="210" y="595" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="210" dy="0">requests per second times seconds per request must equal the batch you assumed;</tspan>
+      <tspan x="210" dy="37">if not, that batch is not reachable at that rate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="check-4">
+    <rect x="50" y="700" width="1500" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="95" cy="767.5" r="24" fill="#207448" />
+    <text x="95" y="768" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <rect x="140" y="752.5" width="46" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="148" y1="752.5" x2="148" y2="762.5" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="155" y1="752.5" x2="155" y2="758.5" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <line x1="163" y1="752.5" x2="163" y2="764.5" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="171" y1="752.5" x2="171" y2="758.5" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <line x1="178" y1="752.5" x2="178" y2="762.5" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="210" y="740" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Units:</text>
+    <text x="210" y="785" font-family="sans-serif" font-size="24" fill="#303a36">gigabytes against gibibytes, bits against bytes, per-GPU against per-replica</text>
+  </g>
+
+  
+  <g id="check-5">
+    <rect x="50" y="875" width="1500" height="175" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="95" cy="962.5" r="24" fill="#db8129" />
+    <text x="95" y="963" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+    
+    <rect x="143" y="941" width="40" height="46" rx="4" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <rect x="153" y="935" width="20" height="10" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 151 964 L 160 973 L 175 955" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="210" y="915" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Compare with a measured value:</text>
+    <text x="210" y="960" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="210" dy="0">if a benchmark disagrees by more than about 30 percent trust the benchmark and find</tspan>
+      <tspan x="210" dy="40">the wrong input, usually prompt length, cache hit rate or an engine setting</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-footer">
+    <rect x="50" y="1090" width="1500" height="70" rx="10" fill="#207448" />
+    <text x="800" y="1134" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">an estimate not checked against a measurement is a guess with a spreadsheet</text>
+  </g>
+</svg>

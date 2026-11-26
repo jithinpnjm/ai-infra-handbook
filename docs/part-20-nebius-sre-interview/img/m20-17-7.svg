@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Multi-region failover for dedicated endpoints</title>
+  <desc>Architecture flowchart showing a customer app routing through a client-side switch to primary and warm endpoints across regions, supported by distributed weights and real token health probes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="18" markerHeight="18" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Multi-region failover for dedicated endpoints</text>
+
+  
+  
+  <path d="M 500 250 H 533 Q 545 250 545 262 V 463 Q 545 475 557 475 H 590" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 500 750 H 533 Q 545 750 545 738 V 537 Q 545 525 557 525 H 590" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1010 475 H 1043 Q 1055 475 1055 463 V 262 Q 1055 250 1067 250 H 1100" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1010 525 H 1043 Q 1055 525 1055 537 V 738 Q 1055 750 1067 750 H 1100" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1310 430 V 320" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1310 570 V 680" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g>
+    <rect x="80" y="180" width="420" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="108" y="222" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="108" y1="238" x2="164" y2="238" stroke="#207448" stroke-width="3.5" />
+    <circle cx="120" cy="230" r="2.5" fill="#207448" />
+    <circle cx="128" cy="230" r="2.5" fill="#207448" />
+    <circle cx="136" cy="230" r="2.5" fill="#207448" />
+    <line x1="120" y1="254" x2="152" y2="254" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="120" y1="264" x2="140" y2="264" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="188" y="261" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Customer app</text>
+  </g>
+
+  
+  <g>
+    <rect x="590" y="430" width="420" height="140" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <rect x="618" y="472" width="56" height="56" rx="10" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <circle cx="632" cy="500" r="4" fill="#db8129" />
+    <circle cx="660" cy="486" r="4" fill="#db8129" />
+    <circle cx="660" cy="514" r="4" fill="#db8129" />
+    <path d="M 636 500 h 8 q 6 0 9 -7 l 3 -7" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <path d="M 636 500 h 8 q 6 0 9 7 l 3 7" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="696" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="696" dy="0">Client-side</tspan>
+      <tspan x="696" dy="38">switch</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1100" y="180" width="420" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="1128" y="226" width="56" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="1138" cy="236" r="2.5" fill="#207448" />
+    <circle cx="1146" cy="236" r="2.5" fill="#207448" />
+    <line x1="1158" y1="236" x2="1174" y2="236" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <rect x="1128" y="254" width="56" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="1138" cy="264" r="2.5" fill="#207448" />
+    <circle cx="1146" cy="264" r="2.5" fill="#207448" />
+    <line x1="1158" y1="264" x2="1174" y2="264" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1208" y="242" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1208" dy="0">Endpoint,</tspan>
+      <tspan x="1208" dy="38">region A</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1100" y="430" width="420" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <ellipse cx="1156" cy="480" rx="26" ry="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 1130 480 v 18 c 0 4.4 11.6 8 26 8 s 26 -3.6 26 -8 v -18" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 1130 502 v 18 c 0 4.4 11.6 8 26 8 s 26 -3.6 26 -8 v -18" fill="none" stroke="#207448" stroke-width="3.5" />
+    
+    <text x="1208" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1208" dy="0">Weights in</tspan>
+      <tspan x="1208" dy="38">both regions</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1100" y="680" width="420" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="1128" y="726" width="56" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="1138" cy="736" r="2.5" fill="#207448" />
+    <circle cx="1146" cy="736" r="2.5" fill="#207448" />
+    <line x1="1158" y1="736" x2="1174" y2="736" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <rect x="1128" y="754" width="56" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="1138" cy="764" r="2.5" fill="#207448" />
+    <circle cx="1146" cy="764" r="2.5" fill="#207448" />
+    <line x1="1158" y1="764" x2="1174" y2="764" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1208" y="742" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1208" dy="0">Warm endpoint,</tspan>
+      <tspan x="1208" dy="38">region B</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="680" width="420" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="108" y="722" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 114 750 h 8 l 6 -14 l 8 28 l 8 -20 l 6 6 h 8" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="188" y="742" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="188" dy="0">Probe:</tspan>
+      <tspan x="188" dy="38">real tokens</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Architecture of a GPU/AI cluster</title>
+  <desc>Infographic showing the architecture of a GPU and AI cluster including management plane, GPU node pools, and networks.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Architecture of a GPU/AI cluster</text>
+
+  
+  <rect x="60" y="105" width="1480" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="90" y="145" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Management plane</text>
+
+  
+  <rect x="90" y="165" width="650" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(115, 227)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="12" />
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 15 L 45 11" />
+  </g>
+  <text x="195" y="206" fill="#303a36">
+    <tspan x="195" font-family="sans-serif" font-size="30" font-weight="bold">System pool:</tspan>
+    <tspan x="195" dy="36" font-family="sans-serif" font-size="24">CoreDNS, ingress, monitoring,</tspan>
+    <tspan x="195" dy="32" font-family="sans-serif" font-size="24">Argo CD, operators, Kueue,</tspan>
+    <tspan x="195" dy="32" font-family="sans-serif" font-size="24">registries cache</tspan>
+  </text>
+
+  
+  <path d="M 740 255 H 800" stroke="#207448" stroke-width="3" />
+
+  
+  <rect x="800" y="165" width="710" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(825, 227)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="6" />
+    <rect x="18" y="18" width="20" height="20" rx="2" />
+    <path d="M 18 4 L 18 10 M 38 4 L 38 10 M 18 46 L 18 52 M 38 46 L 38 52 M 4 18 L 10 18 M 4 38 L 10 38 M 46 18 L 52 18 M 46 38 L 52 38" />
+  </g>
+  <text x="905" y="244" fill="#303a36">
+    <tspan x="905" font-family="sans-serif" font-size="30" font-weight="bold">3-5 control-plane nodes</tspan>
+    <tspan x="905" dy="40" font-family="sans-serif" font-size="24">(API, etcd, scheduler, controllers)</tspan>
+  </text>
+
+
+  
+  |"kubelet, device plugin"| G1 -->
+  <path d="M 865 345 V 485" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+  
+  <rect x="530" y="395" width="310" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="685" y="426" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">kubelet, device plugin</text>
+
+   G2 -->
+  <path d="M 1290 345 V 485" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+
+  
+  <rect x="60" y="430" width="1480" height="285" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="90" y="470" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">GPU node pools (tainted)</text>
+
+  
+  <rect x="90" y="490" width="940" height="205" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  
+  <g transform="translate(125, 565)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="8" />
+    <rect x="12" y="12" width="12" height="12" rx="2" />
+    <rect x="32" y="12" width="12" height="12" rx="2" />
+    <rect x="12" y="32" width="12" height="12" rx="2" />
+    <rect x="32" y="32" width="12" height="12" rx="2" />
+  </g>
+  <text x="205" y="552" fill="#303a36">
+    <tspan x="205" font-family="sans-serif" font-size="30" font-weight="bold">H100 pool:</tspan>
+    <tspan x="205" dy="38" font-family="sans-serif" font-size="24">8 GPUs + NVSwitch,</tspan>
+    <tspan x="205" dy="36" font-family="sans-serif" font-size="24">8x400G IB NICs (rails), local NVMe</tspan>
+  </text>
+
+  
+  <rect x="1070" y="490" width="440" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1105, 565)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="48" height="34" rx="4" />
+    <circle cx="28" cy="25" r="9" />
+    <path d="M 12 42 L 12 48 M 20 42 L 20 48 M 28 42 L 28 48 M 36 42 L 36 48" />
+  </g>
+  <text x="1185" y="582" fill="#303a36">
+    <tspan x="1185" font-family="sans-serif" font-size="30" font-weight="bold">L4/L40S</tspan>
+    <tspan x="1185" dy="40" font-family="sans-serif" font-size="30" font-weight="bold">inference pool</tspan>
+  </text>
+
+
+  
+  
+  <path d="M 310 695 V 845" stroke="#207448" stroke-width="3" />
+
+  
+  <path d="M 820 695 V 845" stroke="#207448" stroke-width="3" />
+
+  
+  <path d="M 970 695 V 745 Q 970 755 980 755 H 1300 Q 1310 755 1310 765 V 845" stroke="#207448" stroke-width="3" fill="none" />
+
+
+  
+  <rect x="60" y="785" width="1480" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="90" y="825" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Networks</text>
+
+  
+  <rect x="90" y="845" width="440" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(282, 865)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="12" r="7" />
+    <circle cx="12" cy="42" r="7" />
+    <circle cx="44" cy="42" r="7" />
+    <path d="M 24 18 L 15 36 M 32 18 L 41 36 M 19 42 L 37 42" />
+  </g>
+  <text x="310" y="955" text-anchor="middle" fill="#303a36">
+    <tspan x="310" font-family="sans-serif" font-size="30" font-weight="bold">Pod/cluster network</tspan>
+    <tspan x="310" dy="38" font-family="sans-serif" font-size="24">(CNI): control and</tspan>
+    <tspan x="310" dy="34" font-family="sans-serif" font-size="24">general traffic</tspan>
+  </text>
+
+  
+  <rect x="570" y="845" width="500" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(792, 865)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 16 L 46 16 M 10 40 L 46 40" />
+    <path d="M 38 8 L 48 16 L 38 24 M 18 32 L 8 40 L 18 48" />
+    <circle cx="28" cy="28" r="5" />
+  </g>
+  <text x="820" y="955" text-anchor="middle" fill="#303a36">
+    <tspan x="820" font-family="sans-serif" font-size="30" font-weight="bold">Secondary RDMA network</tspan>
+    <tspan x="820" dy="36" font-family="sans-serif" font-size="24">(Multus + SR-IOV/macvlan):</tspan>
+    <tspan x="820" dy="32" font-family="sans-serif" font-size="24">NCCL collectives over</tspan>
+    <tspan x="820" dy="32" font-family="sans-serif" font-size="24">InfiniBand/RoCE</tspan>
+  </text>
+
+  
+  <rect x="1110" y="845" width="400" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1282, 865)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="14" rx="20" ry="7" />
+    <path d="M 8 14 V 28 C 8 32 17 35 28 35 C 39 35 48 32 48 28 V 14" />
+    <path d="M 8 28 V 42 C 8 46 17 49 28 49 C 39 49 48 46 48 42 V 28" />
+  </g>
+  <text x="1310" y="955" text-anchor="middle" fill="#303a36">
+    <tspan x="1310" font-family="sans-serif" font-size="30" font-weight="bold">Storage network</tspan>
+    <tspan x="1310" dy="38" font-family="sans-serif" font-size="24">→ parallel FS /</tspan>
+    <tspan x="1310" dy="34" font-family="sans-serif" font-size="24">object store</tspan>
+  </text>
+
+</svg>

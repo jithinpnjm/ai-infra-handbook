@@ -1,0 +1,112 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-selector-anatomy",
+  "title": "Reading an rsyslog rule: selector on the left, action on the right",
+  "spec": "Top: the chapter rule lines in monospace as a two-column table with a divider labelled 'selector' on the left and 'action' on the right. Lines: 'auth,authpriv.*  /var/log/auth.log', '*.*;auth,authpriv.none  -/var/log/syslog', 'mail.err  /var/log/mail.err', 'local3.*  /var/log/gpu-health.log', '*.emerg  :omusrmsg:*', '*.warning  @@logs.example.com:514'. Below, three explanation panels. Panel 1 'Selector grammar': '* matches any value', '.none excludes', '= selects exactly one severity', '! negates', 'A severity includes every more severe level: mail.err covers err, crit, alert and emerg' (orange outline on this last line). Panel 2 'Action marks': 'leading - = do not fsync each line', ':omusrmsg:* = broadcast to logged-in users', '@ = forward over UDP', '@@ = forward over TCP'. Panel 3 'Facility and severity': a vertical severity strip 0 emerg, 1 alert, 2 crit, 3 err, 4 warning, 5 notice, 6 info, 7 debug with an arrow labelled '0 is the most urgent'; side note 'facilities: kern, user, mail, daemon, auth/authpriv, syslog, lpr, news, uucp, cron, ftp, plus local0 to local7 for your own applications'. Bottom strip with the test commands 'logger -p local3.warning -t gpu-health \"XID 79 on GPU 3\"' and 'rsyslogd -N1' and 'sudo systemctl restart rsyslog'. Bottom bar: 'Test a rule with logger before you trust it'.",
+  "anchor": "### rsyslog in a nutshell",
+  "alt": "Rsyslog rule lines split into selector and action with the selector grammar, action marks and the severity scale from 0 to 7.",
+  "cap": "A selector names facility and severity and includes every more severe level, while the action says where the message goes."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-journal-field-trust",
+  "title": "Journal fields: the underscore fields are trusted, the others are the sender's claim",
+  "spec": "Centre: a journal entry drawn as a card with six field rows. Top group labelled 'Trusted fields (leading underscore): added by journald from kernel-verified credentials, the client cannot forge them' with rows '_SYSTEMD_UNIT=sshd.service', '_PID=484', '_UID=1000', '_HOSTNAME=duplex' in green. Bottom group labelled 'Sender fields (no underscore): the sender's claim, not fact' with rows 'MESSAGE=...', 'SYSLOG_IDENTIFIER=gpu-health', 'PRIORITY=3' in orange outline. Beside the card, a column of query examples that use each group: 'journalctl _PID=8792', 'journalctl _UID=1000', 'journalctl _COMM=python', 'journalctl _SYSTEMD_UNIT=x.service' on the trusted side; 'journalctl SYSLOG_IDENTIFIER=gpu-health', 'journalctl -p err (PRIORITY)' on the sender side. A small box 'List field names: journalctl -N; list values: journalctl -F FIELD'. Bottom bar: 'Filter on trusted fields when you need to be sure who wrote the line'.",
+  "anchor": "## 2. Searching and monitoring logs",
+  "alt": "A journal entry with underscore fields that journald adds and the sender cannot forge, and sender supplied fields such as MESSAGE and PRIORITY.",
+  "cap": "Fields with a leading underscore are added by journald and cannot be forged, while the other fields are only the sender's claim."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-logrotate-anatomy",
+  "title": "Anatomy of a logrotate file for Slurm logs",
+  "spec": "The chapter file drawn as a monospace card '/etc/logrotate.d/slurm' with callouts on the right. Lines: '/var/log/slurm/*.log {', 'daily', 'rotate 14', 'compress', 'delaycompress', 'missingok', 'notifempty', 'create 0640 slurm slurm', 'sharedscripts', 'postrotate', 'systemctl kill -s HUP --kill-whom=main slurmctld 2>/dev/null || true', 'endscript', '}'. Callouts: 1 on the path 'which files this block applies to'; 2 on daily 'schedule (also weekly, monthly, size 500M, maxsize)'; 3 on rotate 14 'keep 14 old copies'; 4 on compress and delaycompress 'gzip, but leave the newest rotated file uncompressed to give programs time to close it'; 5 on create 'the fresh empty file gets this mode, owner and group'; 6 on postrotate (orange, the key part) 'tell the daemon to reopen its log, so it stops writing to the renamed file'. A side strip showing the rename chain 'auth.log becomes auth.log.1, .1 becomes .2.gz, .2.gz becomes .3.gz, the oldest is deleted, a new empty auth.log is created'. Bottom strip with the commands 'sudo logrotate -d /etc/logrotate.d/slurm (dry run)', 'sudo logrotate -f /etc/logrotate.conf (force now)', 'state in /var/lib/logrotate/status'. Bottom bar: 'Check whether the daemon can reopen its log before choosing postrotate or copytruncate'.",
+  "anchor": "## 3. Rotating logs",
+  "alt": "A logrotate configuration for Slurm logs with callouts for schedule, retention, compression, create mode and the postrotate signal to the daemon.",
+  "cap": "Each logrotate line has a job, and the postrotate command is what makes the daemon reopen its log after the rename."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-ntp-two-tier",
+  "title": "Two-tier time on a cluster: head nodes face outward, compute nodes point at the head",
+  "spec": "Left to right layers. Left column 'Stratum 0: reference clocks (GPS, atomic)'. Arrow to 'Stratum 1 servers connect to those clocks', arrow to 'Site NTP servers or the internet (stratum 2 and below synchronise upward)'. Then a box 'Head or management node' with config lines 'pool 2.pool.ntp.org iburst maxsources 4', 'allow 10.0.0.0/16', 'local stratum 10 orphan'. Arrow to a column of three compute nodes 'node01', 'node02', 'node03' each with the single line 'server head iburst'. A dashed cut across the upstream arrow labelled 'upstream lost' with note 'the head node keeps serving time through local stratum 10 orphan, so the cluster stays consistent with itself' (orange). Side panel 'Cloud alternative': '169.254.169.123 on AWS', 'metadata.google.internal on GCP', 'work without Internet access and smear leap seconds consistently'. Another small box 'Diskless boot: put the NTP address in DHCP option 42'. A rule strip 'Use exactly one time service on each host: systemctl disable --now systemd-timesyncd before installing chrony'. Bottom bar: 'Compute nodes point only at the head nodes'.",
+  "anchor": "### Network time: NTP",
+  "alt": "A two tier NTP layout where head nodes sync with upstream servers and compute nodes use only the head node, which keeps serving time if upstream is lost.",
+  "cap": "Compute nodes need one directive pointing at the head nodes, and an orphan setting lets the head keep serving time when upstream is lost."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-chronyc-read",
+  "title": "Reading chronyc: is this node's clock trustworthy?",
+  "spec": "Two panels. Left panel 'chronyc tracking' with lines 'System time : 0.000012345 seconds fast of NTP time', 'Last offset', 'RMS offset', 'Frequency (drift in ppm)', 'Leap status : Normal', 'Stratum'. Annotations: 'On a LAN, microseconds to low milliseconds is good' (green); 'Leap status must be Normal'; 'Stratum 16 or Not synchronised means no usable source exists' (orange). Right panel 'chronyc sources -v' with a legend table: '^* current best source', '^+ acceptable', '^- excluded', '^? unreachable'; and a Reach column box 'Reach is octal: 377 = the last 8 polls all succeeded; Reach 0 with a firewall blocking UDP 123'. Bottom strip 'Other checks: chronyc sourcestats, chronyc activity, chronyc clients (on a server), timedatectl timesync-status (for timesyncd)'. A fleet-health note 'Fail a node when the tracking offset exceeds a threshold such as 100 ms or leap status is not normal; drain it before Slurm or Munge starts rejecting it'. Bottom bar: 'Read chronyc tracking first'.",
+  "anchor": "### Network time: NTP",
+  "alt": "A chronyc tracking panel with what good offset, leap status and stratum look like, beside a legend of source markers and the octal Reach value.",
+  "cap": "Tracking shows the offset and stratum, and the sources list marks the best source with a star and shows reachability as an octal value."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-skew-symptoms",
+  "title": "One wrong clock, many strange failures",
+  "spec": "A central box 'Node clock off by more than the tolerance' with a sub-line 'Munge credential lifetime defaults to 5 minutes; Kerberos tolerates 5 minutes of skew'. Six arrows fan out to symptom cards, each with a 'looks like' and a 'really'. 1 'Slurm daemons report Invalid credential or Credential expired' looks like a network or key problem (orange, most misleading). 2 'Kerberos authentication fails'. 3 'TLS certificates show as not yet valid or expired'. 4 'kubeadm joins, etcd and leases fail once the skew grows large'. 5 'Logs from 64 nodes cannot be lined up when clocks differ by seconds'. 6 'chronyc sources shows Reach 0: a firewall blocks UDP 123'. A bottom pair of cards for the causes: 'VM guest clock can jump after live migration, suspend and resume or a paused instance: chrony makestep plus kvm-clock or ptp_kvm; check /sys/devices/system/clocksource/clocksource0/current_clocksource' and 'Running makestep during a job steps time under running software: use makestep 1.0 3 so only early updates step'. Bottom bar: 'Before you debug a Slurm or authentication failure, check the clock on both ends: date and chronyc tracking'.",
+  "anchor": "## 6. Time",
+  "alt": "A skewed node clock fanning out to Munge, Kerberos, TLS, kubeadm and etcd failures, log correlation problems and a blocked NTP port.",
+  "cap": "A skewed clock shows up as authentication, certificate and cluster join errors that look like network or key problems."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-cron-env-gap",
+  "title": "Why a job works in your shell and fails in cron: what cron leaves out",
+  "spec": "Two side by side panels. Left panel 'Your login shell': a stack of boxes 'login startup files run', 'a full PATH', 'aliases and ~ work', 'a terminal is attached', 'your environment variables'. Right panel 'What cron gives the job' in orange outline: 'only HOME, LOGNAME, SHELL=/bin/sh and PATH=/usr/bin:/bin', 'no login startup files', 'no terminal', 'working directory is the user's home'. Between the panels a red-free gap arrow labelled 'the biggest cause of jobs that work in a terminal and fail on schedule'. Under them a fix list with numbers: 1 'Use absolute paths for commands and files'; 2 'Set PATH= and SHELL=/bin/bash at the top of the crontab'; 3 'Source what you need in the script, such as . /etc/profile.d/...'; 4 'Avoid ~ and aliases'; 5 'Escape % as \\\\% in the command field: date +\\\\%F'. Output strip: 'Output goes to the owner by mail if a mailer exists, otherwise discarded; redirect with >> /var/log/job.log 2>&1 or | logger -t myjob; MAILTO= changes it'. Reproduce strip: 'env -i HOME=$HOME SHELL=/bin/sh PATH=/usr/bin:/bin sh -c \"command\"'. Bottom bar: 'Run the command exactly as cron does before you blame the schedule'.",
+  "anchor": "### Cron's environment (the cause of most \"works in my shell\" failures)",
+  "alt": "A login shell with a full environment compared with the minimal environment cron provides, with a numbered list of fixes and the env minus i test command.",
+  "cap": "Cron sets only a handful of variables and a short PATH, so use absolute paths and test with the same minimal environment."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-cron-dom-dow",
+  "title": "Cron day-of-month and day-of-week: when both are set, either one fires",
+  "spec": "Top: the five field line with five boxes 'minute', 'hour', 'day of month', 'month', 'day of week' and ranges beneath '0-59', '0-23', '1-31', '1-12 or jan..dec', '0-7 (0 and 7 are Sunday, or sun..sat)'. Syntax chips: '* every value', '5,14 list', '1-5 range', '*/15 step', '@reboot @hourly @daily @weekly @monthly @yearly'. Middle: a worked trap panel. Left half 'Only one of the two restricted: 30 2 1 * * runs at 02:30 on the first of each month' (green). Right half 'Both restricted (neither is *): the job runs when EITHER field matches, a logical OR, so it fires more often than people expect' in orange outline. Bottom: four example rows in monospace with meaning: '*/10 * * * *  every ten minutes', '0 3 * * 1-5  at 03:00 on weekdays', '30 2 1 * *  at 02:30 on the first of each month', '@reboot /usr/local/bin/start-agent  at boot'. Footnote 'Daylight-saving changes can make cron jobs run twice or not at all in some regions: run servers in UTC'. Bottom bar: 'Restrict only one of day-of-month and day-of-week'.",
+  "anchor": "## 7. Scheduling recurring tasks: cron",
+  "alt": "The five cron fields with their ranges and syntax, and a worked trap showing that when both day fields are restricted the job runs when either matches.",
+  "cap": "If both day-of-month and day-of-week are restricted the job runs when either matches, so the schedule fires more often than expected."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-cron-ladder",
+  "title": "A cron job did not run: five checks in order",
+  "spec": "A vertical ladder of five numbered boxes ending in a 'Found it' box. Symptom box at the top 'The cron job never runs, runs but fails, or runs twice'. 1 'Is the daemon running? systemctl status cron or crond'. 2 'Did the crontab install cleanly? crontab -l; a missing trailing newline in an /etc/cron.d file breaks it; system files must be owned by root and not writable by group or world; on Debian a file name with a dot in /etc/cron.d is ignored'. 3 'Right time and zone? date; then read what cron logged: journalctl -u cron --since -1h, grep CRON /var/log/syslog, or /var/log/cron on RHEL'. 4 'Run the command exactly as cron does: env -i HOME=$HOME SHELL=/bin/sh PATH=/usr/bin:/bin sh -c \"command\"; does it need a terminal or an environment variable?' (orange, the most common cause). 5 'Is the account locked: PAM pam_nologin, an expired password, or /etc/cron.deny'. Side panel with the safe wrapper line '*/5 * * * * root flock -n /run/lock/gpu-health.lock timeout 120 /usr/local/bin/gpu-health.sh 2>&1 | logger -t gpu-health' with three labels: 'flock -n stops overlapping runs', 'timeout kills a hang', 'logger keeps the output in the journal'. Bottom bar: 'Make the job safe to run twice before you schedule it'.",
+  "anchor": "### Making cron jobs safe",
+  "alt": "A five step ladder for debugging a cron job that did not run, with the safe flock and timeout wrapper line beside it.",
+  "cap": "Check the daemon, the crontab file, the time and logs, the minimal environment and the account, in that order."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-cron-vs-timer",
+  "title": "cron versus systemd timers, row by row",
+  "spec": "A two-column comparison table with the header row 'cron' on the left and 'systemd timers' on the right and a label column. Rows: 'Configuration': 'one line; universal, simple, familiar' versus 'two unit files (timer plus service)'. 'Tracking': 'child of crond; output by mail or redirect' versus 'own cgroup; status, journalctl -u; resource limits and sandboxing; start and finish records'. 'Dependencies': 'none' versus 'full systemd ordering, After=network-online, mount checks'. 'Missed runs': 'anacron for daily, weekly, monthly' versus 'Persistent=true'. 'Spreading load': 'manual sleep' versus 'RandomizedDelaySec=, AccuracySec='. 'Overlap': 'manual flock' versus 'a running oneshot service is not started twice'. 'Times': '5-field cron syntax' versus 'OnCalendar plus monotonic (OnBootSec, OnUnitActiveSec)'. 'User self-service': 'easy crontab -e' versus 'systemctl --user (needs lingering)'. 'Portability': 'everywhere' versus 'systemd systems only'. Rows where timers win are tinted green on the right, the portability and configuration rows tinted green on the left. Bottom strip two cards: 'Use timers for fleet maintenance shipped in an image or with configuration management: trimming, health snapshots, cleaning, certificates' (orange outline) and 'Use cron for quick user jobs, third-party jobs and compatibility cases'. Footer 'Where the jobs live: crontab -l -u root, /etc/cron*, systemctl list-timers --all, ls /etc/systemd/system/*.timer'.",
+  "anchor": "## 9. cron versus systemd timers (*How Linux Works* Section 7.6.4)",
+  "alt": "A nine row table comparing cron with systemd timers on configuration, tracking, dependencies, missed runs, load spreading, overlap, times, user access and portability.",
+  "cap": "Timers add tracking, ordering, catch-up and overlap protection, while cron is simpler and runs everywhere."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p3-0116-clock-before-auth",
+  "title": "Start order on a node: time first, then Munge, slurmd and kubelet",
+  "spec": "A horizontal chain of five boxes with arrows. 1 'chrony starts; makestep 1.0 3 allows a step only in the first three updates'. 2 'Wait for synchronisation: time-sync.target or chrony-wait.service' (orange, the gate). 3 'munge'. 4 'slurmd (and kubelet)'. 5 'anything that issues or checks credentials'. Under the chain a health-check strip: 'Health check: chronyc tracking offset above a threshold such as 100 ms, or leap status not normal, fails the node'; 'Drain the node before Slurm or Munge starts rejecting it'; 'Export the offset as a metric with the node_exporter timex collector or chrony_exporter and alert across the fleet on drift'. A second strip 'Record in the node image documentation: time zone, NTP source, kernel clocksource, leap-second policy'. Footnote 'Do not mix servers that smear leap seconds with servers that step'. Bottom bar: 'Clock discipline is cheaper to maintain than to debug'.",
+  "anchor": "## 10. AI-infrastructure patterns",
+  "alt": "A start order chain from chrony through a synchronisation wait gate to Munge, slurmd and kubelet, with fleet health checks for clock offset.",
+  "cap": "Wait for clock synchronisation before starting Munge, slurmd and kubelet, and fail a node whose offset drifts past the threshold."
+ }
+]

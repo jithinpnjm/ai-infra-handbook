@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "x26-liveness-loop-workers",
+  "title": "A liveness probe that removes workers from the router for good",
+  "spec": "A closed loop of five boxes arranged in a ring, with clockwise arrows. Box 1 (top): 'Large prefill, engine answers slowly' with a clock icon, sub-text 'Liveness probe: HTTP check, 1 s timeout, failure threshold 1'. Arrow to Box 2 (right): 'Liveness failed, container restarted' with a gear icon, sub-text 'Events: liveness probe failed'. Arrow to Box 3 (bottom-right): 'Worker starts again' with a window icon, sub-text 'Workers register once, at startup'. Arrow to Box 4 (bottom-left): 'Router registration fails: upstream not ready, no retry' with a shield icon, sub-text 'The router keeps five workers, not eight'. Arrow to Box 5 (left): 'Ready on Kubernetes, missing from the router' with a disk icon, sub-text 'Ready and registered are two facts'. An arrow from Box 5 back up to Box 1, drawn in orange, labelled 'Busy worker is restarted again'. Monospace for the probe settings, 1 s and failure threshold 1. Beside the ring, a green panel titled 'Fix' with three lines: 'Re-register the three workers one at a time', 'Loosen the liveness probe, keep readiness', 'Alert on router pool size against desired replicas'. Keep the fix panel clear of all arrows.",
+  "anchor": "### Incident 2: GPU pool shrinking silently",
+  "alt": "Loop in which a tight liveness probe restarts busy workers that never rejoin the router, with the three steps of the fix beside it",
+  "cap": "Liveness loop: a tight probe restarts busy workers, and the restarted workers never rejoin the router even though Kubernetes reports them ready."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "x26-retry-multiplication-layers",
+  "title": "Three retry layers multiply one user request into 64 attempts",
+  "spec": "A left-to-right stack of four layer boxes connected by arrows, showing multiplication. Box 1: 'User request' with a person icon. Arrow to Box 2: 'SDK client' with sub-text 'First try plus up to three retries, 4 attempts'. Arrow to Box 3: 'Gateway' with sub-text 'Retries failed upstream calls, 4 attempts'. Arrow to Box 4: 'Router' with sub-text 'Retries on another worker, 4 attempts'. Arrow to Box 5: 'Worker' with a gear icon. Above the arrows, a label row with the multiplication 'x 4', 'x 4', 'x 4' written between the boxes, and below the whole chain a result box 'Up to 64 attempts per request' in orange. Below the chain a second panel titled 'Limit the multiplication' with three items: 'Retry budget, for example 60 retries per minute', 'Randomized exponential backoff, not a fixed 100 ms', 'Load shedding when zones saturate'. Monospace for 4 x 4 x 4 and 64. Keep the layer arrows horizontal and the result box below the chain with no crossing arrows.",
+  "anchor": "### Incident 4: Regional partial outage with retry amplification",
+  "alt": "Chain of user request, SDK client, gateway and router, each retrying three times, so one request reaches the worker up to 64 times",
+  "cap": "Retry amplification: each layer makes its first try plus three retries, so the layers multiply to 64 attempts unless a retry budget caps them."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "x26-cold-start-download-race",
+  "title": "A cold-start download that the startup probe always cuts short",
+  "spec": "A horizontal timeline bar across the top, drawn to scale, labelled 'Time the startup probe allows: 10 minutes' as a short segment at the left, and a much longer bar labelled 'Time to download 140 GB at 20 MB per second: about 2 hours' to the right. Mark the probe window end with a vertical orange line labelled 'Probe fails, container restarts'. Below the timeline, a loop of three boxes in a row with arrows: Box 1 'Download shard 12 of 30' with sub-text 'Then nothing for minutes', Box 2 'Container killed' with sub-text 'Startup probe failed, container will be restarted', Box 3 'Log starts again at shard 1' with a disk icon. An arrow from Box 3 back to Box 1 labelled 'Download starts over'. Monospace for shard 12 of 30, shard 1, and the speed 20 MB per second. Right side, a green panel titled 'Fix order' with three items in order: '1 Protect the four ready replicas with shedding or per-tenant limits', '2 Give the startup probe enough time', '3 Add a pre-pulled or shared weights volume'. Keep the panel separate from the loop arrows.",
+  "anchor": "### Incident 5: Model weights download stuck at cold start",
+  "alt": "Timeline comparing the ten minute startup probe window with a two hour download, and the restart loop that starts the download again at shard 1",
+  "cap": "Cold-start loop: a 140 GB download at 20 MB per second takes about two hours, far longer than the ten-minute startup probe, so each restart begins at shard 1."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "x26-config-push-stop-spread",
+  "title": "A bad config push: stop the spread first, then revert and verify",
+  "spec": "A top-to-bottom ordered sequence of four numbered steps, each a box with an outline icon and a green number circle (r=24, white number). Above the sequence, a top box 'Config sync finished at 11:42, routing table has an empty upstreams list' with a warning icon. Step 1 box, orange highlight: 'Pause the sync before the next region' with sub-text 'The next region is scheduled in six minutes'. Step 2 box: 'Revert to the last known good commit through the pipeline' with sub-text 'Deployed three days ago'. Step 3 box: 'Verify the 503 rate in each region' with sub-text 'eu-north at 100 percent, eu-west at 30 percent and rising, US regions not affected yet'. Step 4 box: 'Add validation and a canary' with sub-text 'After the fire is out'. Arrows from step to step going down. Beside Step 2, a small note box 'Do not edit live config, GitOps overwrites it'. Right side panel titled 'Why the generator failed' with the text 'An empty service-discovery export was read as no workers, and validation passed because an empty list is valid'. Monospace for upstreams and the commit reference. Keep the note and panel clear of the arrows.",
+  "anchor": "### Incident 10: Bad config push",
+  "alt": "Ordered steps for a bad config push: pause the sync, revert to the last known good commit, verify the 503 rate in each region, then add validation and a canary",
+  "cap": "Bad config push: pause the sync first so the change stops spreading, then revert through the pipeline and verify region by region."
+ }
+]

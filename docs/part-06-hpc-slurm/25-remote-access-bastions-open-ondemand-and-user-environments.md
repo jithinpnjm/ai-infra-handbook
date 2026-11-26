@@ -40,20 +40,9 @@ The chapter walks through the access architecture, from the bastion to the compu
 
 Suppose a researcher on a laptop needs a GPU node. The request crosses several hosts, and each one has a narrow job. The diagram shows that path.
 
-```mermaid
-flowchart LR
-  U[User laptop] -- SSH 22 --> B[Bastion / jump host]
-  U -- HTTPS 443 --> P[Open OnDemand portal]
-  B --> L[Login nodes]
-  P --> L
-  L --> S[Slurm controller]
-  S --> C[Compute nodes]
-  P -. reverse proxy to interactive app .-> C
-  U -- bulk data --> D[Data transfer nodes: Globus, rsync, rclone]
-  D --- ST[(Parallel file system)]
-  L --- ST
-  C --- ST
-```
+![Access architecture](./img/m6-25-1.svg)
+
+*Figure 6.25.1. Access architecture, as a diagram.*
 
 Read the diagram from the laptop outward. The two arrows from the laptop are the two front doors, SSH through the bastion and HTTPS through the portal. Every other box sits behind one of those doors, and the dotted line shows the one exception, a portal that proxies an interactive app running on a compute node.
 

@@ -110,20 +110,9 @@ Picture a pull request that changes a Terraform module used by three environment
 
 Think of a change as passing through a series of gates on its way to production. Each gate can stop a bad change before it reaches a GPU. The diagram shows the order, and the notes below it explain what each gate does.
 
-```mermaid
-flowchart LR
-  A["Pull request"] --> B["Static analysis\nfmt, validate, lint, yamllint, shellcheck"]
-  B --> C["Security & secrets scan\ngitleaks, trivy/checkov, tfsec"]
-  C --> D["Plan / dry-run / diff\nterraform plan, ansible --check, helm template"]
-  D --> E["Policy as code\nOPA/Conftest, Sentinel, cost checks"]
-  E --> F["Unit / integration tests\nmolecule, terratest, kind"]
-  F --> G["Human review + approval\nCODEOWNERS, environment gates"]
-  G --> H["Merge to main"]
-  H --> I["Deploy: apply saved plan\nstaging then canary then fleet"]
-  I --> J["Verify\nsmoke tests, health checks, SLO watch"]
-  J -->|fail| K["Rollback / stop the line"]
-  J -->|ok| L["Promote next env"]
-```
+![Pipeline anatomy](./img/m4-02-1.svg)
+
+*Figure 4.2.1. Pipeline anatomy, as a diagram.*
 
 The first gates are the cheapest. Static checks finish in seconds. They cover formatting (`terraform fmt -check`, `ruff`, `yamllint`), syntax and validation (`terraform validate`, `ansible-playbook --syntax-check`, `helm lint`, `kubeconform`), and linters (`tflint`, `ansible-lint`, `hadolint`, `shellcheck`, `actionlint`). If a file is malformed, you find out here, before anyone reads it. Picture a pull request that adds a missing bracket to a Terraform file. The formatter and validator reject it in seconds, so the reviewer never spends a minute on a file that cannot even be parsed.
 
@@ -336,15 +325,9 @@ Think of the result as a sealed meal kit rather than a kitchen. Every node that 
 
 Terraform or your provisioning system refers to the image by ID. Rollouts replace nodes rather than changing them in place. Replacing a node means you drain it, delete it, and boot a fresh one from the new image, instead of editing the old one live. Rebuild the image when the base image updates, when a security advisory lands, or when a role changes. Keep a set of previous images so you can roll back. The number you keep sets how far back a rollback can reach. If you keep only the newest image, a bad build leaves you with no known-good image to return to.
 
-```mermaid
-flowchart LR
-  G["Git: Ansible roles + Packer template"] --> B["Build base image"]
-  B --> C["Provision with Ansible\n(drivers, CUDA, agents, tuning)"]
-  C --> S["Scan + CIS hardening checks"]
-  S --> T["Boot test on GPU instance\nnvidia-smi, DCGM diag, NCCL test"]
-  T --> P["Publish immutable image\nID + manifest + SBOM"]
-  P --> R["Terraform / node pools reference image ID"]
-```
+![Golden images as pipeline artefacts](./img/m4-02-2.svg)
+
+*Figure 4.2.2. Golden images as pipeline artefacts, as a diagram.*
 
 Packer builds can be slow and expensive on GPU instances. A GPU instance bills by the hour whether or not it does useful work, so an idle build machine quietly costs money. Run the smoke tests on the smallest GPU shape that still exercises the whole stack. The smallest shape that still loads the same driver and the same interconnect is enough to prove the image works. Put the broader qualification in a separate scheduled job, which can run overnight on a larger fleet without blocking every merge.
 
@@ -356,18 +339,9 @@ Applying a change "to everything" is the quickest way to learn that it was wrong
 
 The canary is named after the birds that miners carried into coal mines, because a canary reacts before the people do. In a rollout, the canary is the first machine that takes the change. If a sysctl value breaks the fabric, the canary shows it, and the rest of the fleet never receives the bad value.
 
-```mermaid
-flowchart TB
-  A["Merge approved change"] --> B["Canary: 1-2 nodes\n(drain from scheduler first)"]
-  B --> C{"Validation passes?\nhealth, DCGM, NCCL, SLO"}
-  C -- no --> X["Stop the line: halt, restore canary, open incident"]
-  C -- yes --> D["Manual approval gate (optional)"]
-  D --> E["Batch 1: e.g. 5% of nodes"]
-  E --> F{"Healthy after soak?"}
-  F -- no --> X
-  F -- yes --> G["Batches of N with serial and max_fail_percentage"]
-  G --> H["Fleet complete; update inventory/version pin"]
-```
+![Rolling out to physical and large fleets](./img/m4-02-3.svg)
+
+*Figure 4.2.3. Rolling out to physical and large fleets, as a diagram.*
 
 Start with a canary of one or two nodes, and drain them from the scheduler first. If validation fails, stop the line and restore the canary. If it passes, an optional manual gate can open the way to the first batch, for example 5% of nodes. Once that batch has soaked and stayed healthy, roll out in batches of N.
 

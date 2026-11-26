@@ -26,6 +26,14 @@ A realistic question: "You own the SLOs for a streaming chat completions endpoin
 
 ### 1. A token API breaks the usual SLI recipe
 
+![A table of eight SLIs with the good-event definition, where each is measured and the metric used.](./img/p3-2019-sli-menu.svg)
+
+*Figure 20.19.1. For each SLI say where the number comes from and what counts as bad.*
+
+![The SLI recipe for a token API runs from user outcome to SLI ratio, SLO target and error budget, with the burn rate showing how fast the budget is spent.](./img/p2-2019-slo-chain.svg)
+
+*Figure 20.19.2. The SLI recipe runs from user outcome to an SLI ratio, an SLO target and an error budget, with the burn rate showing how fast the budget is spent.*
+
 Suppose your team's dashboard for a normal web API shows a green line for availability and a single latency number per request. That picture made sense for years, and it is the reason many people reach for the same two charts on a token API. A request arrives, the server works, and one response comes back with a status code. Availability is the share of non-error status codes, and latency is one number per request. A token API does not behave like that.
 
 A streaming completion sends its HTTP status line when the first token is ready. Everything after that is a long stream whose length the client chose. The request can fail halfway with a status of 200 already sent. The latency of a request with 20 output tokens and one with 2,000 output tokens differ by a factor of about 100 even when the system is perfectly healthy. One latency number per request mixes two different things, and the mix hides the one that matters to the user.
@@ -53,6 +61,10 @@ The metrics starting with `gateway_` are this chapter's own design. They are not
 
 ### 2. Latency is three numbers, and end-to-end depends on length
 
+![Two worked end-to-end latency calculations, 20.36 seconds and 1.16 seconds, at identical healthy speeds.](./img/p3-2019-length-latency.svg)
+
+*Figure 20.19.3. Judge first-token wait and per-token speed instead of one end-to-end limit.*
+
 Your customer reads the first words of a reply, then watches the rest appear. The wait before the first word and the speed afterwards are two separate experiences, and a single number cannot describe both. Picture two customers. One asked a yes-or-no question and got a short answer. The other asked for an essay. Both are happy with a healthy system, yet their end-to-end times differ by a wide margin. The book Hands-On LLM Serving and Optimization, in Chapter 4 under "Latency Metrics", names three measures: end-to-end latency, time to first token and time per output token.
 
 The same section gives the relation. Writing N for the number of tokens generated, the end-to-end latency equals TTFT plus inter-token latency times N minus 1. The book also says time to first token maps to the prefill phase and inter-token latency maps to the decode phase. Prefill is the step where the engine reads the whole prompt once. Decode is the step that produces one new token at a time. So when TTFT is bad you look at prefill and queueing. When inter-token latency is bad you look at decode, batch size and memory.
@@ -68,6 +80,14 @@ The book LLMs in Production adds a user view in Chapter 6. It says keeping token
 **Never put one end-to-end limit on all outputs, judge first-token wait and per-token speed instead.**
 
 ### 3. Why averages lie
+
+![Three panels on histogram quantile pitfalls: summing buckets, the last finite bucket cap, and using a share under the limit.](./img/p3-2019-quantile-traps.svg)
+
+*Figure 20.19.4. Define latency SLIs as the share of requests under a limit, with a bucket boundary at that limit.*
+
+![A latency axis from 0 to 8 seconds shows 950 requests clustered at 0.4 seconds and 50 requests at 8 seconds. A dashed line marks the 1 second limit and a solid line marks the mean at 0.78 seconds, which sits under the limit while 5 percent of users wait eight seconds.](./img/x19-averages-hide-the-tail.svg)
+
+*Figure 20.19.5. The mean hides the slow tail. Nine hundred and fifty fast requests pull the average under the limit while fifty users wait eight seconds.*
 
 An alert fires on "average TTFT above 1 s". Nothing fires, and customers are angry. Here is how that happens, step by step, so you can explain it in the room.
 
@@ -89,6 +109,10 @@ The best SLI avoids the quantile altogether. Count the share of requests under t
 
 ### 4. Per model and per tenant, and what it costs
 
+![One failing tenant among 100 gives a burn rate of 10 globally, beside the 460,000 series cost and the traffic guard.](./img/p3-2019-tenant-dilution.svg)
+
+*Figure 20.19.6. Page on model ratios, ticket on tenant ratios and guard low-traffic series.*
+
 Your fleet serves ten models. One of them has a bad release. Across all traffic the error ratio is a fraction of a percent, so a global alert stays quiet. The model with the bad release is failing for everyone who uses it, and the global number is too diluted to show it. Latency and errors must be sliced by model at least, because each model has different hardware, batch limits and prompts.
 
 Tenants are the next slice. A tenant is a customer or a team that shares your platform. A dedicated endpoint customer has a contract, and that customer's own numbers matter. Here is an example of why a global ratio hides them. Take 100 tenants with equal traffic. One tenant gets 100% errors. The global error ratio is 1%. Against a 99.9% target that is a burn rate of 10. It pages through the 6-hour rule but not through the fast 14.4 rule, and the customer is fully down. The burn rate is explained in section 6, so for now treat it as a speed-of-spending number.
@@ -102,6 +126,10 @@ A reasonable design, which is my reasoning and not a Nebius fact, keeps per-mode
 **Page on model-level ratios, ticket on tenant-level ratios, and always guard low-traffic series.**
 
 ### 5. Error budgets: do the arithmetic
+
+![An error budget is 100 percent minus the SLO, so a 99.9 percent target over 30 days allows 43.2 minutes of full outage.](./img/p2-2019-budget-minutes.svg)
+
+*Figure 20.19.7. The error budget is 100 percent minus the SLO, so 99.9 percent over 30 days allows 43.2 minutes of full outage.*
 
 Your manager reads a target of 99.9% and asks what that actually lets the team break. The Workbook says the error budget is 100% minus the SLO. For 99.9% that is 0.1%. The budget is the amount of failure the target allows, and it is the number that turns a vague promise into a spending plan. Think of it as a monthly allowance. You are free to spend it, and the question is what you spend it on.
 
@@ -125,6 +153,18 @@ The SRE book also says not to choose a target from current performance, because 
 **State the budget in minutes and in requests, and say what you do when it is spent.**
 
 ### 6. Burn rate and the multiwindow alert
+
+![A table showing 52 seconds, 43.2 minutes, 3.6 hours and 14.4 hours to detect 100, 2, 1 and 0.5 percent error ratios.](./img/p3-2019-time-to-fire.svg)
+
+*Figure 20.19.8. The smaller the error ratio, the slower and less urgent the alert that catches it.*
+
+![Burn rate formulas and a table of three multiwindow alerts with the budget used checked by hand.](./img/p3-2019-burn-formulas.svg)
+
+*Figure 20.19.9. Doing one row of the table aloud shows you understand it rather than recite it.*
+
+![A timeline from 0 to 60 minutes shows a five-minute full outage. The five-minute window falls back below the threshold quickly after recovery, while the one-hour window is still above the threshold at 60 minutes, so the alert has already cleared.](./img/x19-two-windows-clear-fast.svg)
+
+*Figure 20.19.10. The short window makes the alert clear fast. The long window alone would keep the page firing for most of an hour after the errors stopped.*
 
 Picture a pager that goes off during a spike in errors that lasts only seconds. A threshold alert such as "error ratio above 1%" has two defects. It can fire on a ten-second blip that costs almost nothing, which wakes someone for no reason. It can also stay silent during a slow leak that eats the whole month, which lets the damage build without a warning. Burn-rate alerts fix both problems, and the idea behind them is worth understanding well because it is the heart of the chapter.
 
@@ -152,14 +192,9 @@ How fast does it fire? Assume the service goes fully dark and the long window wa
 
 Why the short window? A long window alone keeps firing long after the outage ended. If errors stop, the one-hour average stays above the threshold for most of an hour. Requiring the five-minute window to be above threshold too makes the alert clear within minutes of recovery. The unit tests include a five-minute full outage. The alert fires while it happens. At the 60-minute mark the 1-hour ratio is still above 1.44% but the alert has cleared.
 
-```mermaid
-flowchart TD
-  A["Error ratio, long window"] --> C{"Both above threshold?"}
-  B["Error ratio, short window"] --> C
-  C -->|"no"| D["No alert"]
-  C -->|"yes, burn 14.4 or 6"| E["Page on-call"]
-  C -->|"yes, burn 1"| F["Open a ticket"]
-```
+![Burn rate and the multiwindow alert](./img/m20-19-1.svg)
+
+*Figure 20.19.11. Burn rate and the multiwindow alert, as a diagram.*
 
 The flowchart is the decision in one picture. Both windows must agree before anyone is paged, and the burn rate decides whether the page is urgent or a ticket is enough.
 
@@ -168,6 +203,10 @@ One more detail. These rules use no `for:` clause. The two windows already do th
 **Alert on how fast the budget burns, with a long window to prove it matters and a short window to prove it is still happening.**
 
 ### 7. Symptoms, not causes, and what pages
+
+![A high GPU utilisation alert is a cause and not a fault, so pages come from user-visible symptoms such as burn-rate alerts while causes become tickets.](./img/p2-2019-symptom-cause.svg)
+
+*Figure 20.19.12. Pages come from user-visible symptoms such as burn-rate alerts on gateway availability and TTFT, while causes such as high KV cache usage become tickets.*
 
 An alert fires at 3 a.m.: "GPU utilisation 98%". You wake up, look, and everything is fine. High utilisation on an inference GPU is the goal, not a fault. This is the standard trap, and almost every on-call engineer has fallen into it at least once. The alert described a cause that is healthy, and it cost you sleep for nothing.
 
@@ -195,6 +234,10 @@ Cause signals still deserve a dashboard, since they speed up the first minutes o
 
 ### 8. Quality signals: the finish reason mix
 
+![A stacked bar of five finish reasons with a before and after deploy comparison and the ticket rule for length share.](./img/p3-2019-finish-reason-mix.svg)
+
+*Figure 20.19.13. Watch whether the mix of outcomes moves, and file a ticket rather than a page.*
+
 Picture a dashboard where every panel is green, and the customers still say the answers are getting worse. Some failures return 200 and fast latency. The model starts producing repeated text, or cuts every answer short. Latency and error SLIs stay green, and nothing on the wall looks wrong. The book LLMs in Production, Chapter 6 section 6.2.5, calls these silent failures. The model keeps functioning but starts performing poorly. It says you need both system monitoring and ML monitoring. System monitoring tells you the service is up and fast. ML monitoring tells you the answers are still good.
 
 You can get a cheap signal from the engine. vLLM counts finished requests in `vllm:request_success_total` with a label `finished_reason`. In v0.32.0 the code lists five values: stop, length, abort, error and repetition. The code comments say stop means a stop string was emitted, length means the token limit was reached, abort means the client cancelled, error is a retryable internal error and repetition is a repeated token pattern. Each value is a different story about how a request ended, and the mix of stories is the signal.
@@ -207,6 +250,10 @@ A healthy mix is stable. If length jumps from 3% to 12% after a deploy, somethin
 
 ### 9. Goodput: speed that counts
 
+![Throughput of 40,000 tokens per second includes tokens that arrive too late, while goodput counts only requests that met both the TTFT and per-token limits.](./img/p2-2019-goodput-split.svg)
+
+*Figure 20.19.14. Throughput of 40,000 tokens per second includes tokens that arrived too late, while goodput counts only the requests that met both limits.*
+
 A team celebrates 40,000 tokens per second. Half of those tokens arrive too late for anyone to care. Throughput counts everything. Goodput counts only the work that met its target. The celebration is real for the dashboard and misleading for the customer, and the gap between the two is the reason goodput exists.
 
 The DistServe paper, whose abstract I fetched, defines the quantity it improves as the maximum rate that can be served within both TTFT and TPOT constraints on each GPU. TPOT is the same per-token speed idea as the time per output token measure in section 2. The abstract does not use a formal definition of goodput, so treat that phrase as the paper's own words and mine as an operational version. Hands-On LLM Serving and Optimization warns in Chapter 4 that tokens per second can be inflated by cutting input length or by uniform batches. A goodput SLI resists that, because a request that misses its limits stops counting.
@@ -218,6 +265,10 @@ The reason to bother is a story you will recognise. A team tunes its batch size 
 **Report goodput next to throughput, because only goodput falls when users start to suffer.**
 
 ### 10. Dedicated versus serverless endpoints
+
+![Two 429 paths counted oppositely by cause, with a comparison of dedicated and serverless counting rules.](./img/p3-2019-429-counting.svg)
+
+*Figure 20.19.15. Write down what counts against the SLO before writing the first rule.*
 
 Your product manager asks which SLO goes on the serverless page and which goes on the dedicated page. The plan says Token Factory sells serverless and dedicated endpoints. A serverless endpoint is shared by many tenants, and you pay per use. A dedicated endpoint is reserved for one customer, with chosen GPUs. The two have different failure and ownership models, and the SLO should reflect that. The table below is my reasoning, since Nebius has not published its SLO terms for either.
 
@@ -237,6 +288,10 @@ A small exercise makes the point. Take a request that the gateway refused with 4
 
 ### 11. Measure at the gateway, explain at the engine
 
+![The gateway measures the outcome the customer sees and the engine explains why, with retries and streams counted by their final outcome.](./img/p2-2019-cashier-kitchen.svg)
+
+*Figure 20.19.16. The gateway measures what the customer sees, and the engine explains why, counting retries and streams by their final outcome.*
+
 A replica dies. The engine on that replica cannot report that it is dead, because it is the thing that died. A request sits in the router queue for six seconds before any engine sees it. A retry hides the first failure, and the customer only sees a slow reply. All three are invisible to engine metrics. They are visible at the gateway, which is the component that sits between the customer and your engines.
 
 The gateway is the place nearest the customer that you control, so the SLO ratios come from it. The engine shows why. It splits the time into queue, prefill and decode, and it reports KV cache use and preemptions. vLLM v0.32.0 exposes these as `vllm:request_queue_time_seconds`, `vllm:request_prefill_time_seconds`, `vllm:request_decode_time_seconds`, `vllm:kv_cache_usage_perc`, `vllm:num_requests_waiting` and `vllm:num_preemptions_total`. The metrics carry the labels `model_name` and `engine`. There is no tenant label, which is a second reason tenant detail belongs at the gateway.
@@ -247,19 +302,9 @@ Streaming adds a trap. The gateway sends 200 at the first token. If the stream d
 
 Think of the gateway as the cashier at a shop and the engine as the kitchen behind it. The customer judges the shop by how long the cashier takes and whether the order arrives right. The kitchen manager can explain why an order was slow, such as a full grill or a missing ingredient, but the kitchen does not see the queue at the door. A shop owner who only watches the kitchen will miss the customers who left before ordering. The SLO belongs to the cashier's view, and the kitchen's numbers belong in the explanation.
 
-```mermaid
-flowchart LR
-  C["Client"] --> G["Gateway: SLI ratios"]
-  G --> R["Router"]
-  R --> E["vLLM engine: explains"]
-  G -->|"gateway_* metrics"| P["Prometheus"]
-  E -->|"vllm:* metrics"| P
-  P --> RR["Recording rules"]
-  RR --> AR["Burn-rate rules"]
-  AR --> AM["Alertmanager"]
-  AM -->|"page"| OC["On-call"]
-  AM -->|"ticket"| TQ["Ticket queue"]
-```
+![Measure at the gateway, explain at the engine](./img/m20-19-2.svg)
+
+*Figure 20.19.17. Measure at the gateway, explain at the engine, as a diagram.*
 
 The path shows which component owns each signal. The gateway produces the ratios that the SLO is written against, and the engine feeds the explanation that the on-call person reads during a burn.
 
@@ -676,6 +721,10 @@ First, classify the last two weeks of pages: actionable and user-visible, or not
 
 ### Scenario 1: A deploy takes a dedicated endpoint down
 
+![A seven step sequence shows a 12 minute failed rollout. The fast burn window goes above the threshold, the page fires about 52 seconds in, the on-call engineer rolls back, and the short window clears first. The outage uses 27.8 percent of a 30 day 99.9 percent budget.](./img/x19-scenario1-rollout-timeline.svg)
+
+*Figure 20.19.18. Walk the rollout in order to see why the page fires only when both windows agree and why the short window clears first after the rollback.*
+
 A rollout breaks a model for 12 minutes. All requests fail. The endpoint has a 99.9% target over 30 days. How much budget is gone and what fired?
 
 The budget is 43.2 minutes. Twelve minutes is 12 divided by 43.2, which is 0.278, so 27.8% of the month. If instead 25% of requests fail for 20 minutes, the equivalent outage is 0.25 times 20, which is 5 minutes, or 11.6%. The first alert to fire is the fast availability burn. The error ratio is 100% and the threshold is 1.44%, so it fires in about 52 seconds and clears a few minutes after the rollback.
@@ -685,6 +734,10 @@ Decision: with 27.8% gone in one event, you freeze risky changes only if the pol
 Walk the story forward so the interviewer can follow it. The rollout starts, the first failing requests reach the gateway, and within moments the fast burn rule has enough data in its short window to be above the threshold. The long window is still catching up, so the page only fires once both windows agree. The on-call engineer rolls back, the error ratio drops, and the short window clears first. Name each of those moments in order, because the order is what shows you understand the windows.
 
 ### Scenario 2: The TTFT page fires
+
+![A five-step ladder of gateway and engine queries to run when the TTFT page fires, with mitigation first.](./img/p3-2019-ttft-page-ladder.svg)
+
+*Figure 20.19.19. Each step narrows the question until one cause explains the slow first words.*
 
 `GatewayTTFTBurnFast` fires for one model. TTFT is the symptom. Where do you look?
 
@@ -707,6 +760,10 @@ The reasoning is that a ratio over almost no traffic is noise. If tenant b is a 
 Picture the on-call engineer receiving this ticket on a Monday. A tenant with almost no traffic appears in the list with a red percentage, and the engineer spends a good part of the morning chasing it. Multiply that by a few tenants a week and the ticket queue becomes a place people stop reading. The traffic guard prevents that outcome. It is cheap, it is easy to explain, and it keeps the tickets that remain worth opening.
 
 ### Scenario 4: Everything is green and users complain
+
+![A streaming timeline where HTTP 200 is sent first and a later error is invisible to a status code SLI.](./img/p3-2019-stream-good-event.svg)
+
+*Figure 20.19.20. Once the stream is the unit of work, did it finish normally becomes the SLI.*
 
 The gateway shows 100% success by status code. Customers say replies stop in the middle. The status code is 200 because the headers went out with the first token. Streams that break later are invisible to a status-code SLI.
 

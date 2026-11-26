@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050">
+  <title>The boolean that arrives as the string False</title>
+  <desc>Visual explanation of how a registered boolean False converted to a string via Jinja templating evaluates as true in Ansible tasks.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 1 2 L 17 9 L 1 16 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="45" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The boolean that arrives as the string False</text>
+
+  
+
+  
+  <rect x="45" y="130" width="270" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="120" cy="178" r="24" fill="#207448"/>
+  <text x="120" y="187" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(160, 150)">
+    <line x1="6" y1="4" x2="6" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 6 8 C 18 2 28 14 42 8 L 42 32 C 28 38 18 26 6 32 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="0" y1="52" x2="14" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <text x="180" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="180" dy="0">a previous task</tspan>
+    <tspan x="180" dy="34">registers a flag</tspan>
+    <tspan x="180" dy="34">as False</tspan>
+  </text>
+
+  
+  <line x1="315" y1="270" x2="355" y2="270" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="355" y="130" width="270" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="430" cy="178" r="24" fill="#207448"/>
+  <text x="430" y="187" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(470, 150)">
+    <path d="M 4 2 L 32 2 L 44 14 L 44 54 L 4 54 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 32 2 L 32 14 L 44 14" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 17 26 C 13 26 13 30 13 32 C 13 34 10 34 10 34 C 10 34 13 34 13 36 C 13 38 17 38 17 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 31 26 C 35 26 35 30 35 32 C 35 34 38 34 38 34 C 38 34 35 34 35 36 C 35 38 31 38 31 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  
+  <text x="490" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="490" dy="0">passes through a</tspan>
+    <tspan x="490" dy="34">template <tspan font-family="ui-monospace, monospace">{{ }}</tspan></tspan>
+    <tspan x="490" dy="34">on its way to a</tspan>
+    <tspan x="490" dy="34">second task</tspan>
+  </text>
+
+  
+  <line x1="625" y1="270" x2="665" y2="270" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="665" y="130" width="270" height="280" rx="12" fill="#fff6ed" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="740" cy="178" r="24" fill="#db8129"/>
+  <text x="740" y="187" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(780, 150)">
+    <rect x="2" y="4" width="46" height="34" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 12 38 L 8 48 L 22 38" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="16" y1="14" x2="16" y2="24" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="22" y1="14" x2="22" y2="24" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="30" y1="14" x2="30" y2="24" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="36" y1="14" x2="36" y2="24" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <text x="800" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">arrives as the</tspan>
+    <tspan x="800" dy="34" font-weight="bold" fill="#db8129">text "False"</tspan>
+  </text>
+
+  
+  <line x1="935" y1="270" x2="975" y2="270" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="975" y="130" width="270" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1050" cy="178" r="24" fill="#207448"/>
+  <text x="1050" y="187" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(1090, 150)">
+    <path d="M 24 2 L 46 27 L 24 52 L 2 27 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 14 27 L 21 34 L 34 19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <text x="1110" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1110" dy="0">text is never</tspan>
+    <tspan x="1110" dy="34">empty, so a</tspan>
+    <tspan x="1110" dy="34">plain truth test</tspan>
+    <tspan x="1110" dy="34">reads it as true</tspan>
+  </text>
+
+  
+  <line x1="1245" y1="270" x2="1285" y2="270" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1285" y="130" width="270" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1360" cy="178" r="24" fill="#207448"/>
+  <text x="1360" y="187" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g transform="translate(1400, 150)">
+    <rect x="2" y="2" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="2" y1="16" x2="50" y2="16" stroke="#207448" stroke-width="3"/>
+    <path d="M 18 24 L 34 33 L 18 42 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  
+  <text x="1420" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1420" dy="0">the second task</tspan>
+    <tspan x="1420" dy="34">runs when it</tspan>
+    <tspan x="1420" dy="34">should have</tspan>
+    <tspan x="1420" dy="34">been skipped</tspan>
+  </text>
+
+  
+  <rect x="45" y="450" width="1510" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(75, 502)">
+    <path d="M 38 6 C 30 -2 18 0 12 8 C 8 14 8 20 10 26 L 2 34 C 0 36 0 40 2 42 L 8 48 C 10 50 14 50 16 48 L 24 40 C 30 42 36 42 42 38 C 50 32 52 20 44 12 L 36 20 L 30 20 L 30 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  
+  <text x="155" y="512" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan>use </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">| bool</tspan><tspan>, </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">| int</tspan><tspan> and </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">when:</tspan><tspan> conditionals instead of string comparisons;</tspan>
+    <tspan x="155" dy="46">compare </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">when: var</tspan><tspan> with </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">when: var | bool</tspan>
+  </text>
+
+  
+  <rect x="45" y="640" width="1510" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(75, 672)">
+    <path d="M 6 42 C 16 36 26 38 26 38 C 26 38 36 36 46 42 L 46 10 C 36 4 26 6 26 6 C 26 6 16 4 6 10 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="26" y1="6" x2="26" y2="38" stroke="#207448" stroke-width="4"/>
+  </g>
+  
+  <text x="155" y="688" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan>Ansible templating returns strings unless the value is a single native expression;</tspan>
+    <tspan x="155" dy="38">the </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">jinja2_native</tspan><tspan> setting can change this, so test carefully</tspan>
+  </text>
+
+  
+  <rect x="45" y="785" width="1510" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(75, 817)">
+    <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 18 20 C 18 14 24 12 28 14 C 32 16 32 20 28 24 C 26 26 26 29 26 31" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="26" cy="38" r="2.5" fill="#207448"/>
+  </g>
+  
+  <text x="155" y="833" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan>the error usually means the variable is set in a group that this host does not belong to,</tspan>
+    <tspan x="155" dy="38">or in a file the play never loads</tspan>
+  </text>
+
+  
+  <rect x="45" y="930" width="1510" height="80" rx="10" fill="#207448"/>
+  
+  <g transform="translate(75, 946)">
+    <path d="M 24 4 L 30 17 L 44 19 L 34 29 L 36 43 L 24 36 L 12 43 L 14 29 L 4 19 L 18 17 Z" fill="#ffffff"/>
+  </g>
+  
+  <text x="155" y="980" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">
+    <tspan>A boolean from </tspan><tspan font-family="ui-monospace, monospace">{{ }}</tspan><tspan> can arrive as a string</tspan>
+  </text>
+</svg>

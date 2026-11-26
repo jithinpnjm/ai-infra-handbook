@@ -1,0 +1,127 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The token budget is a latency versus throughput dial</title>
+  <desc>Visual explanation of the max_num_batched_tokens dial, chunked prefill mechanism, latency versus throughput trade-offs, streaming symptoms, and configuration traps.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">The token budget is a latency versus throughput dial</text>
+
+  
+  <g id="mechanism-strip">
+    <rect x="50" y="95" width="1500" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(75, 137)">
+      <circle cx="28" cy="28" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M28,4 L28,12 M28,44 L28,52 M4,28 L12,28 M44,28 L52,28 M11,11 L17,17 M39,39 L45,45 M11,45 L17,39 M39,17 L45,11" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="160" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="160" dy="0">each step spends a token budget; chunked prefill (default in V1)</tspan>
+      <tspan x="160" dy="34">batches decode requests first, then pending prefills fill the remaining budget,</tspan>
+      <tspan x="160" dy="34">and a prefill that does not fit is cut into chunks across several steps</tspan>
+    </text>
+  </g>
+
+  
+  <g id="dial-container">
+    <rect x="50" y="265" width="1500" height="335" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <text x="800" y="306" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30px" font-weight="bold" fill="#207448">max_num_batched_tokens</text>
+
+    
+    <rect x="180" y="337" width="1240" height="14" rx="7" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <path d="M200,344 L220,335 L220,353 Z" fill="#207448"/>
+    <path d="M1400,344 L1380,335 L1380,353 Z" fill="#207448"/>
+
+    
+    <line x1="280" y1="332" x2="280" y2="356" stroke="#207448" stroke-width="3"/>
+    <line x1="540" y1="334" x2="540" y2="354" stroke="#207448" stroke-width="2"/>
+    <line x1="800" y1="328" x2="800" y2="360" stroke="#207448" stroke-width="3"/>
+    <line x1="1060" y1="334" x2="1060" y2="354" stroke="#207448" stroke-width="2"/>
+    <line x1="1320" y1="332" x2="1320" y2="356" stroke="#207448" stroke-width="3"/>
+
+    
+    <circle cx="800" cy="344" r="22" fill="#db8129" stroke="#ffffff" stroke-width="4"/>
+    <circle cx="800" cy="344" r="7" fill="#ffffff"/>
+
+    
+    <g id="left-end">
+      <rect x="75" y="380" width="705" height="200" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(100, 452)">
+        <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+        <path d="M28,14 L28,28 L40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      
+      <text x="180" y="446" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="180" dy="0">smaller values, for example 2048:</tspan>
+        <tspan x="180" dy="36">better inter-token latency;</tspan>
+        <tspan x="180" dy="36">helps people already streaming</tspan>
+      </text>
+    </g>
+
+    
+    <g id="right-end">
+      <rect x="820" y="380" width="705" height="200" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(845, 452)">
+        <rect x="6" y="28" width="10" height="24" rx="2" fill="none" stroke="#207448" stroke-width="4"/>
+        <rect x="23" y="16" width="10" height="36" rx="2" fill="none" stroke="#207448" stroke-width="4"/>
+        <rect x="40" y="4" width="10" height="48" rx="2" fill="none" stroke="#207448" stroke-width="4"/>
+      </g>
+      
+      <text x="925" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="925" dy="0">larger values: better time to first token;</tspan>
+        <tspan x="925" dy="34">for throughput above 8192,</tspan>
+        <tspan x="925" dy="34">especially small models on large GPUs;</tspan>
+        <tspan x="925" dy="34">helps people waiting for a first token</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="symptom-box">
+    <rect x="50" y="630" width="1500" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(75, 662)">
+      <path d="M4,28 L14,28 L21,8 L28,48 L35,16 L42,28 L52,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <text x="160" y="682" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="160" dy="0">streaming stutters when someone pastes a long document</tspan>
+      <tspan x="160" dy="36">because prefill competes with decode in the same step</tspan>
+    </text>
+  </g>
+
+  
+  <g id="trap-box">
+    <rect x="50" y="780" width="1500" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(75, 887)">
+      <path d="M28,4 L50,14 C50,38 38,50 28,54 C18,50 6,38 6,14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="28" y1="18" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="2.5" fill="#207448"/>
+    </g>
+    
+    <text x="160" y="825" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="160" dy="0">chunked prefill off: the budget must be larger than max_model_len or the server</tspan>
+      <tspan x="160" dy="34">may crash at start-up, because nothing splits a prompt longer than the budget;</tspan>
+      <tspan x="160" dy="34">budget equal to max_model_len gives nearly the old scheduling policy;</tspan>
+      <tspan x="160" dy="34">v0.32.0 forces chunked prefill off for encoder-decoder models;</tspan>
+      <tspan x="160" dy="34">TensorRT-LLM calls the idea chunked context with a high</tspan>
+      <tspan x="160" dy="34">max_num_tokens recommended for throughput</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer-bar">
+    <rect x="50" y="1080" width="1500" height="75" rx="10" fill="#207448"/>
+    <text x="800" y="1127" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">set the dial from your objectives and confirm with a load test</text>
+  </g>
+</svg>

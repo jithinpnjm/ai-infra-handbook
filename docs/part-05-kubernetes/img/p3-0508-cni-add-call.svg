@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The CNI ADD call: what goes in, what comes out</title>
+  <desc>Visual explanation of the CNI ADD interface call: inputs, container runtime execution, outputs, equivalent manual network commands, and failure causes.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The CNI ADD call: what goes in, what comes out</text>
+
+  
+
+  
+  <g id="inputs-group">
+    <rect x="40" y="110" width="460" height="490" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(64, 134)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="2" width="36" height="46" rx="4"/>
+      <line x1="12" y1="14" x2="32" y2="14"/>
+      <line x1="12" y1="24" x2="32" y2="24"/>
+      <line x1="12" y1="34" x2="24" y2="34"/>
+    </g>
+
+    <text x="124" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Inputs</text>
+
+    
+    <text x="64" y="222" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">stdin:</text>
+    <text x="64" y="254" font-family="sans-serif" font-size="24" fill="#303a36">JSON config from <tspan font-family="monospace">/etc/cni/net.d</tspan></text>
+    <text x="64" y="286" font-family="monospace" font-size="24" fill="#303a36">(05-cilium.conf or</text>
+    <text x="64" y="318" font-family="monospace" font-size="24" fill="#303a36">10-calico.conflist)</text>
+
+    
+    <text x="64" y="374" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">env:</text>
+    <text x="64" y="406" font-family="monospace" font-size="24" fill="#303a36">CNI_COMMAND=ADD</text>
+    <text x="64" y="438" font-family="sans-serif" font-size="24" fill="#303a36">(<tspan font-family="monospace">DEL</tspan> on teardown),</text>
+    <text x="64" y="470" font-family="monospace" font-size="24" fill="#303a36">CNI_CONTAINERID,</text>
+    <text x="64" y="502" font-family="monospace" font-size="24" fill="#303a36">CNI_NETNS=/var/run/netns/cni-uuid,</text>
+    <text x="64" y="534" font-family="monospace" font-size="24" fill="#303a36">CNI_IFNAME=eth0, CNI_PATH=/opt/cni/bin,</text>
+    <text x="64" y="566" font-family="monospace" font-size="24" fill="#303a36">CNI_ARGS <tspan font-family="sans-serif">with</tspan> K8S_POD_NAMESPACE,</text>
+    <text x="64" y="590" font-family="monospace" font-size="24" fill="#303a36" visibility="hidden">.</text>
+  </g>
+
+  
+  <path d="M 500 355 L 566 355" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <g id="center-group">
+    <rect x="580" y="110" width="440" height="490" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+
+    
+    <g transform="translate(606, 134)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="10"/>
+      <path d="M 24 4 L 24 10 M 24 38 L 24 44 M 4 24 L 10 24 M 38 24 L 44 24 M 10 10 L 14 14 M 34 34 L 38 38 M 10 38 L 14 34 M 34 14 L 38 10"/>
+    </g>
+
+    <text x="670" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Plugin Execution</text>
+
+    
+    <text x="606" y="240" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">containerd RunPodSandbox</text>
+    <text x="606" y="272" font-family="sans-serif" font-size="24" fill="#303a36">runs</text>
+    <text x="606" y="304" font-family="monospace" font-size="24" fill="#207448">/opt/cni/bin/plugin</text>
+
+    
+    <text x="606" y="356" font-family="monospace" font-size="24" fill="#303a36">K8S_POD_NAME,</text>
+    <text x="606" y="388" font-family="monospace" font-size="24" fill="#303a36">K8S_POD_INFRA_CONTAINER_ID</text>
+
+    
+    <rect x="600" y="440" width="400" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="616" y="484" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Middle:</text>
+    <text x="616" y="520" font-family="sans-serif" font-size="24" fill="#303a36">wires veth pair or eBPF,</text>
+    <text x="616" y="552" font-family="sans-serif" font-size="24" fill="#303a36">calls IPAM plugin</text>
+  </g>
+
+  
+  <path d="M 1020 355 L 1086 355" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="output-group">
+    <rect x="1100" y="110" width="460" height="490" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1124, 134)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="36" rx="4"/>
+      <line x1="4" y1="16" x2="48" y2="16"/>
+      <circle cx="12" cy="11" r="1.5" fill="#207448"/>
+      <circle cx="18" cy="11" r="1.5" fill="#207448"/>
+      <path d="M 12 26 L 18 31 L 12 36"/>
+      <line x1="22" y1="36" x2="32" y2="36"/>
+    </g>
+
+    <text x="1184" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Output</text>
+
+    <text x="1124" y="240" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">stdout JSON:</text>
+    <text x="1124" y="280" font-family="monospace" font-size="24" fill="#303a36">cniVersion,</text>
+    <text x="1124" y="320" font-family="monospace" font-size="24" fill="#303a36">interfaces,</text>
+    <text x="1124" y="360" font-family="monospace" font-size="24" fill="#303a36">ips,</text>
+    <text x="1124" y="400" font-family="monospace" font-size="24" fill="#303a36">routes,</text>
+    <text x="1124" y="440" font-family="monospace" font-size="24" fill="#303a36">dns</text>
+  </g>
+
+  
+
+  
+  <g id="manual-commands-group">
+    <rect x="40" y="630" width="810" height="530" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(64, 654)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="36" rx="4"/>
+      <path d="M 14 20 L 22 25 L 14 30"/>
+      <line x1="26" y1="30" x2="36" y2="30"/>
+    </g>
+
+    <text x="124" y="692" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Equivalent manual commands</text>
+
+    
+    <text x="64" y="750" font-family="monospace" font-size="24" fill="#303a36">ip netns add</text>
+    <text x="64" y="805" font-family="monospace" font-size="24" fill="#303a36">ip link add veth0 type veth peer name eth0</text>
+    <text x="64" y="860" font-family="monospace" font-size="24" fill="#303a36">ip link set eth0 netns</text>
+    <text x="64" y="915" font-family="monospace" font-size="24" fill="#303a36">ip netns exec ... ip addr add pod_ip/24 dev eth0</text>
+    <text x="64" y="970" font-family="monospace" font-size="24" fill="#303a36">ip link set dev eth0 up</text>
+    <text x="64" y="1025" font-family="monospace" font-size="24" fill="#303a36">ip route add default via gw_ip</text>
+
+    <line x1="64" y1="1065" x2="810" y2="1065" stroke="#e8f1ea" stroke-width="2"/>
+
+    <text x="64" y="1115" font-family="sans-serif" font-size="24" fill="#303a36">needs <tspan font-family="monospace" font-weight="bold">net.ipv4.ip_forward = 1</tspan></text>
+  </g>
+
+  
+  <g id="failure-group">
+    <rect x="880" y="630" width="680" height="530" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+
+    
+    <g transform="translate(904, 654)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 42 12 C 42 28 34 40 24 46 C 14 40 6 28 6 12 Z"/>
+      <line x1="24" y1="18" x2="24" y2="28"/>
+      <circle cx="24" cy="35" r="2" fill="#db8129"/>
+    </g>
+
+    <text x="964" y="692" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Failure</text>
+
+    <text x="904" y="750" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">FailedCreatePodSandBox:</text>
+
+    <text x="904" y="805" font-family="sans-serif" font-size="24" fill="#303a36">missing CNI binary or config,</text>
+    <text x="904" y="860" font-family="sans-serif" font-size="24" fill="#303a36">exhausted IP pool,</text>
+    <text x="904" y="915" font-family="sans-serif" font-size="24" fill="#303a36">corrupted IPAM state,</text>
+    <text x="904" y="970" font-family="sans-serif" font-size="24" fill="#303a36">MTU or route conflict,</text>
+    <text x="904" y="1025" font-family="sans-serif" font-size="24" fill="#303a36">CNI agent not started (node NotReady)</text>
+  </g>
+</svg>

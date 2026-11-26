@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>fork, spawn and forkserver: how a worker process is born</title>
+  <desc>Visual explanation of fork, spawn, and forkserver process creation methods in Python.</desc>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">fork, spawn and forkserver: how a worker process is born</text>
+
+  
+  <rect x="40" y="115" width="1520" height="145" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="2"/>
+  
+  <g transform="translate(65, 155)">
+    <path d="M 32 6 L 60 56 Q 63 62 55 62 L 9 62 Q 1 62 4 56 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="32" y1="24" x2="32" y2="40" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="32" cy="50" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="145" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">Never use fork after initialising CUDA: that is why PyTorch DataLoader workers</tspan>
+    <tspan x="145" dy="34">and distributed launchers use spawn or forkserver</tspan>
+    <tspan x="145" dy="34">also avoid forking with running threads or gRPC or OpenMP state</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="285" width="480" height="475" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 305)">
+    <circle cx="28" cy="12" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="12" cy="46" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="44" cy="46" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 20 L 28 30 M 28 30 L 12 38 M 28 30 L 44 38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="140" y="347" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">fork</text>
+  <line x1="68" y1="375" x2="492" y2="375" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+  <text x="68" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="68" dy="0">copies the parent quickly;</tspan>
+    <tspan x="68" dy="34">child shares memory pages,</tspan>
+    <tspan x="68" dy="34">copy-on-write means a page</tspan>
+    <tspan x="68" dy="34">is copied only when one</tspan>
+    <tspan x="68" dy="34">side writes it; unsafe with</tspan>
+    <tspan x="68" dy="34">threads, locks held at fork</tspan>
+    <tspan x="68" dy="34">time, CUDA contexts and</tspan>
+    <tspan x="68" dy="34">open sockets; default on</tspan>
+    <tspan x="68" dy="34">Linux up to Python 3.13</tspan>
+  </text>
+
+  
+  <rect x="560" y="285" width="480" height="475" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(588, 305)">
+    <rect x="4" y="6" width="48" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="2"/>
+    <circle cx="12" cy="12" r="2" fill="#207448"/>
+    <circle cx="18" cy="12" r="2" fill="#207448"/>
+    <path d="M 14 30 L 22 36 L 14 42" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="26" y1="42" x2="38" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="660" y="347" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">spawn</text>
+  <line x1="588" y1="375" x2="1012" y2="375" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+  <text x="588" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="588" dy="0">starts a fresh interpreter</tspan>
+    <tspan x="588" dy="34">that imports your module;</tspan>
+    <tspan x="588" dy="34">safe but slower; needs</tspan>
+    <tspan x="588" dy="34">picklable arguments and</tspan>
+    <tspan x="588" dy="34">the if __name__ == &quot;__main__&quot;</tspan>
+    <tspan x="588" dy="34">guard; default on macOS</tspan>
+    <tspan x="588" dy="34">and Windows</tspan>
+  </text>
+
+  
+  <rect x="1080" y="285" width="480" height="475" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1108, 305)">
+    <rect x="4" y="6" width="48" height="18" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="4" y="30" width="48" height="18" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="14" cy="15" r="2.5" fill="#207448"/>
+    <circle cx="22" cy="15" r="2.5" fill="#207448"/>
+    <circle cx="14" cy="39" r="2.5" fill="#207448"/>
+    <circle cx="22" cy="39" r="2.5" fill="#207448"/>
+    <line x1="38" y1="15" x2="44" y2="15" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="38" y1="39" x2="44" y2="39" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="1180" y="347" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">forkserver</text>
+  <line x1="1108" y1="375" x2="1532" y2="375" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+  <text x="1108" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1108" dy="0">a clean server process</tspan>
+    <tspan x="1108" dy="34">forks the workers;</tspan>
+    <tspan x="1108" dy="34">became the default on</tspan>
+    <tspan x="1108" dy="34">Linux and other POSIX</tspan>
+    <tspan x="1108" dy="34">systems except macOS</tspan>
+    <tspan x="1108" dy="34">in Python 3.14</tspan>
+  </text>
+
+  
+  <rect x="40" y="785" width="1520" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(65, 803)">
+    <path d="M 12 12 L 24 24 L 12 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="36" x2="44" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="837" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">multiprocessing.set_start_method(&quot;spawn&quot;) or mp_context=multiprocessing.get_context(&quot;forkserver&quot;)</text>
+
+  
+  <rect x="40" y="890" width="1520" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(65, 915)">
+    <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="28" x2="28" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="934" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">each process takes tens of milliseconds to start plus import time;</tspan>
+    <tspan x="135" dy="36">use chunking, long-lived workers and coarse tasks</tspan>
+  </text>
+
+  
+  <rect x="40" y="1015" width="1520" height="90" rx="12" fill="#207448"/>
+  <text x="800" y="1071" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#ffffff">Fork fast, spawn safe</text>
+</svg>

@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Monitor the monitoring: a dead man's switch</title>
+  <desc>Visual explanation of a dead man's switch monitoring pattern across independent failure domains.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Monitor the monitoring: a dead man's switch</text>
+
+  
+
+  
+  <rect x="60" y="140" width="440" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(280, 205)">
+    <path d="M -45 0 L -25 0 L -17 -22 L -9 12 L -4 -4" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 4 8 L 10 -16 L 18 24 L 26 0 L 45 0" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M -8 -16 L 8 20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-dasharray="3,3" />
+  </g>
+  <text x="280" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="280" dy="0">Your Prometheus</tspan>
+    <tspan x="280" dy="38">and pipeline</tspan>
+  </text>
+  <text x="280" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="280" dy="0">Falls over during</tspan>
+    <tspan x="280" dy="32">an incident</tspan>
+  </text>
+
+  
+  <line x1="500" y1="300" x2="578" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="580" y="140" width="440" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(800, 205)">
+    <path d="M -45 0 L -25 0 L -17 -20 L -9 22 L -3 -30 L 5 32 L 12 -6 L 18 6 L 24 0 L 45 0" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="800" y="295" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Always-firing alert:</tspan>
+    <tspan x="800" dy="40">dead man's switch</tspan>
+  </text>
+
+  
+  <line x1="1020" y1="300" x2="1098" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1100" y="140" width="440" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1320, 200)">
+    <circle cx="0" cy="-24" r="5" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M -18 14 C -18 -12 18 -12 18 14 L 24 20 L -24 20 Z" fill="#ffffff" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="0" cy="25" r="4.5" fill="#db8129" stroke="#db8129" stroke-width="2" />
+    <path d="M -30 -3 C -35 4 -35 12 -30 19" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <path d="M 30 -3 C 35 4 35 12 30 19" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="1320" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">External service</text>
+  <text x="1320" y="348" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1320" dy="0">Pages you when the</tspan>
+    <tspan x="1320" dy="32">heartbeat stops arriving</tspan>
+  </text>
+
+  
+
+  
+  <rect x="50" y="520" width="460" height="260" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6" />
+
+  
+  <rect x="70" y="538" width="420" height="224" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(280, 580)">
+    <rect x="-24" y="-20" width="48" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="-14" cy="-12" r="2.5" fill="#207448" />
+    <rect x="-24" y="2" width="48" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="-14" cy="10" r="2.5" fill="#207448" />
+  </g>
+  <text x="280" y="642" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="280" dy="0">Scrapes only the</tspan>
+    <tspan x="280" dy="32">first Prometheus</tspan>
+    <tspan x="280" dy="32">and the collectors</tspan>
+  </text>
+
+  
+  <rect x="580" y="538" width="440" height="224" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(800, 582)">
+    <circle cx="0" cy="0" r="20" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="0" cy="0" r="8" fill="none" stroke="#207448" stroke-width="2" />
+    <line x1="-26" y1="0" x2="-20" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="20" y1="0" x2="26" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="0" y1="-26" x2="0" y2="-20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="0" y1="20" x2="0" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="800" y="658" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Synthetic probe request</tspan>
+    <tspan x="800" dy="34">through the path</tspan>
+  </text>
+
+  
+  <rect x="1100" y="538" width="440" height="224" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+  
+  <g transform="translate(1320, 582)">
+    <rect x="-28" y="-18" width="22" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <rect x="6" y="-18" width="22" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <rect x="-11" y="6" width="22" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M -17 -4 L 0 6 L 17 -4" fill="none" stroke="#207448" stroke-width="2" />
+  </g>
+  <text x="1320" y="644" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1320" dy="0" font-weight="bold">Failure domain:</tspan>
+    <tspan x="1320" dy="32">a group of machines</tspan>
+    <tspan x="1320" dy="32">that can fail together</tspan>
+  </text>
+
+  
+  <rect x="60" y="850" width="1480" height="80" rx="14" fill="#207448" />
+  <text x="800" y="901" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Nobody pages if the thing that pages is the thing that fell over.</text>
+</svg>

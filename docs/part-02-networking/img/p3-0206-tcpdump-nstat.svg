@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title id="title"></title>
+  <desc id="desc"></desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading a TCP capture and kernel counters together</text>
+
+  
+  <rect x="40" y="105" width="740" height="605" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(65, 120)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="0" y="0" width="56" height="46" rx="6"/>
+    <line x1="0" y1="14" x2="56" y2="14"/>
+    <path d="M 12 24 L 22 29 L 12 34" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="34" x2="42" y2="34" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="135" y="152" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">tcpdump line</text>
+
+  
+  <rect x="55" y="176" width="710" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="208" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">IP 10.0.0.2.51234 &gt; 10.0.0.5.443: Flags [S],</tspan>
+    <tspan x="75" dy="30">seq 1000, win 64240, options [mss 1460,</tspan>
+    <tspan x="75" dy="30">sackOK,TS val 1 ecr 0,nop,wscale 7], length 0</tspan>
+  </text>
+
+  
+  <rect x="55" y="296" width="710" height="52" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="331" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">S SYN, . ACK, P PSH, F FIN, R RST</text>
+
+  
+  <circle cx="72" cy="378" r="5" fill="#207448"/>
+  <text x="90" y="380" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="90" dy="0">a retransmitted segment shows the</tspan>
+    <tspan x="90" dy="26">same sequence number twice</tspan>
+  </text>
+
+  <circle cx="72" cy="438" r="5" fill="#207448"/>
+  <text x="90" y="445" font-family="sans-serif" font-size="24" fill="#303a36">duplicate ACKs</text>
+
+  <circle cx="72" cy="472" r="5" fill="#207448"/>
+  <text x="90" y="479" font-family="sans-serif" font-size="24" fill="#303a36">RST responses</text>
+
+  <circle cx="72" cy="506" r="5" fill="#207448"/>
+  <text x="90" y="513" font-family="sans-serif" font-size="24" fill="#303a36">a window that shrinks to 0</text>
+
+  
+  <rect x="55" y="528" width="710" height="82" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="2"/>
+  <circle cx="72" cy="569" r="6" fill="#db8129"/>
+  <text x="90" y="562" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="90" dy="0">a [S] with no [S.] reply:</tspan>
+    <tspan x="90" dy="28">the SYN was blocked or dropped</tspan>
+  </text>
+
+  <circle cx="72" cy="638" r="5" fill="#207448"/>
+  <text x="90" y="645" font-family="sans-serif" font-size="24" fill="#303a36">check MSS and wscale appear in both SYNs</text>
+
+  <circle cx="72" cy="674" r="5" fill="#207448"/>
+  <text x="90" y="681" font-family="sans-serif" font-size="24" fill="#303a36">add -ttt for time gaps</text>
+
+  
+  <rect x="820" y="105" width="740" height="605" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(845, 120)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M 5 44 A 26 26 0 1 1 51 44"/>
+    <line x1="28" y1="44" x2="44" y2="22" stroke-linecap="round"/>
+    <circle cx="28" cy="44" r="4" fill="#207448"/>
+  </g>
+
+  
+  <text x="915" y="138" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="915" dy="0">nstat counters</tspan>
+    <tspan x="915" dy="32">(cumulative; what matters is</tspan>
+    <tspan x="915" dy="32">how fast each one climbs)</tspan>
+  </text>
+
+  
+  <rect x="835" y="222" width="710" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="255" font-family="sans-serif" font-size="24" fill="#303a36">TCPTimeouts rising: RTOs, which are bad</text>
+
+  <rect x="835" y="280" width="710" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="313" font-family="sans-serif" font-size="24" fill="#303a36">ListenOverflows: the accept queue overflowed</text>
+
+  <rect x="835" y="338" width="710" height="74" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="369" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="855" dy="0">TCPBacklogDrop and TCPRcvQDrop:</tspan>
+    <tspan x="855" dy="28">overload on the receive side</tspan>
+  </text>
+
+  <rect x="835" y="420" width="710" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="453" font-family="sans-serif" font-size="24" fill="#303a36">TCPAbortOnTimeout and OnData: explain resets</text>
+
+  <rect x="835" y="478" width="710" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="511" font-family="sans-serif" font-size="24" fill="#303a36">TCPSACKReorder: reordering</text>
+
+  <rect x="835" y="536" width="710" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="569" font-family="sans-serif" font-size="24" fill="#303a36">TCPFastRetrans and TCPSlowStartRetrans</text>
+
+  <rect x="835" y="594" width="710" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="855" y="627" font-family="sans-serif" font-size="24" fill="#303a36">TCPSynRetrans</text>
+
+  
+  <rect x="40" y="750" width="1520" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="65" y="788" font-family="monospace" font-size="24" fill="#207448">sudo tcpdump -ni any tcp[tcpflags] &amp; (tcp-syn|tcp-fin|tcp-rst) != 0 for connection events only</text>
+  <text x="65" y="828" font-family="monospace" font-size="24" fill="#207448">tcpdump -w /tmp/c.pcap -s 128 for headers only</text>
+  <text x="65" y="868" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="65" dy="0">Wireshark: Statistics, TCP Stream Graphs; Expert Information lists</tspan>
+    <tspan x="65" dy="30">retransmissions, duplicate ACKs, zero windows, window-full and out-of-order</tspan>
+  </text>
+
+  
+  <rect x="40" y="960" width="1520" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="65" y="996" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="65" dy="0">bad cksum on the sending host is usually checksum offload:</tspan>
+    <tspan x="65" dy="30">the capture happens before the NIC fills it in; 64 KB packets come from GRO and TSO</tspan>
+  </text>
+
+  
+  <rect x="40" y="1080" width="1520" height="80" rx="10" fill="#207448"/>
+  <text x="800" y="1114" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">A counter that has sat at the same value for a week tells you little;</tspan>
+    <tspan x="800" dy="30">one that jumps while a job runs tells you a lot</tspan>
+  </text>
+</svg>

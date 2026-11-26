@@ -1,0 +1,252 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-vocabulary-nesting",
+  "title": "Host, inventory, task, play, playbook: how the words nest",
+  "spec": "A nesting diagram. Outer box 'playbook: a file that holds one or more plays'. Inside it 'play: one block that targets a set of hosts' with a 'hosts: gpu' line. Inside the play a stack of 'task' boxes, each 'a call to a module'. To the left a box 'inventory: the list of machines with their groups' containing 'host: one machine' items gpu01 and gpu02. An arrow from the play's hosts line to the inventory group. Below the tasks the five result words 'ok (already correct)', 'changed', 'failed', 'skipped', 'unreachable' with orange on 'changed'. Example task strip 'package chrony is installed; service chronyd is enabled and running; file /etc/chrony.conf has this content; the module checks the current state and changes only what differs'. Bottom bar: 'Describe the state, and let the module decide whether anything needs to move'.",
+  "anchor": "## 1. What Ansible is",
+  "alt": "A playbook containing plays that target inventory groups, each play holding tasks that call modules, with the five result words ok, changed, failed, skipped and unreachable.",
+  "cap": "A playbook holds plays, a play targets hosts from the inventory and runs tasks, and each task reports ok, changed, failed, skipped or unreachable."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-module-vs-shell",
+  "title": "Three shell commands versus one file task, and what the second run does",
+  "spec": "Two columns. Left 'Shell script (imperative)': 'mkdir -p /etc/skel/.ssh && chown root:root /etc/skel/.ssh && chmod go-wrx /etc/skel/.ssh'; second run: 'creates the directory again, changes the owner again, reports success every time, whether or not anything was wrong'. Right 'file task (declarative)' (orange): 'path: /etc/skel/.ssh, mode: 0700, owner: root, group: root, state: directory'; second run: 'looks at the directory first, changes it only if it differs, and says so'. Below a package row 'package with name: nginx abstracts apt, dnf and yum: the same task runs on an Ubuntu node and a RHEL node'. Idempotent definition strip 'from the Latin for same power: applying the same instruction again has no further effect; a light switch set to on is idempotent, a toggle button is not'. Contrast strip 'CFEngine and Puppet converge over repeated passes; Ansible runs tasks deterministically top to bottom in a single pass and waits for every host to finish task 1 before task 2'. Bottom bar: 'Prefer modules over shell scripts'.",
+  "anchor": "## 1. What Ansible is",
+  "alt": "A three-command shell version of creating a secure directory beside a single declarative file task, with what each does on a second run and the package module hiding apt, dnf and yum.",
+  "cap": "The file task checks first and changes only what differs, while the shell version repeats every step and always reports success."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-not-reconciler",
+  "title": "What Ansible is not: a cleaning crew, not a thermostat, and no state file",
+  "spec": "A comparison of three tools with a loop each. 'Thermostat: a continuous reconciliation loop keeps checking and correcting on its own' labelled with Puppet, Chef, Salt (agent pulls from a server). 'Ansible: acts when you run it' labelled 'like a cleaning crew that arrives when called; triggers: you, a scheduler, ansible-pull or AAP' (orange). 'Terraform: provisioning engine with a state file' labelled 'Ansible has no state file and learns the state of a host by inspecting it on every run'. Push versus pull strip 'push: the control node decides when work happens, easier to reason about during an incident because you know exactly when the change was sent; pull: each machine decides when to ask, better at keeping thousands of machines converging without a keyboard'. Ordering strip 'playbook is procedural: tasks top to bottom like a recipe card; Terraform is closer to a parts list with arrows, order from dependencies'. Rule 'keep complex programming logic out of playbooks and push it into modules; a playbook should read like a list of desired facts'. Pull option 'ansible-pull pulls and runs playbooks from a Git repository on each node'. Bottom bar: 'Ansible acts when called'.",
+  "anchor": "## 1. What Ansible is",
+  "alt": "A comparison of continuous reconcilers like Puppet, Ansible as a tool that acts only when run and Terraform with its state file, with the push versus pull and procedural versus dependency graph notes.",
+  "cap": "Ansible is not a reconciliation loop and keeps no state file: it inspects each host on every run and acts when you trigger it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-tool-ownership",
+  "title": "Which tool owns which change",
+  "spec": "A table 'Tool', 'Role', 'Relationship to Ansible'. 'Terraform or OpenTofu' / 'create cloud and network resources, keeps state' / 'provision machines; Ansible configures what runs on them (4.17, 4.27)'. 'cloud-init' / 'first-boot bootstrap' / 'seeds SSH keys and users; Ansible does the real configuration'. 'Packer' / 'build images' / 'uses Ansible as provisioner (4.2)'. 'Puppet, Chef, Salt' / 'agent-based continuous convergence' / 'alternatives; stronger for constant enforcement, heavier to operate'. 'Shell scripts' / 'glue' / 'not idempotent, hard to reuse; Ansible modules replace most'. 'Kubernetes, Helm, Argo' / 'workloads on clusters' / 'Ansible installs clusters (Kubespray) and nodes, not the application layer'. 'Slurm' / 'job scheduling' / 'Ansible installs and configures Slurm and its nodes (Part 6)'. Highlight the Terraform row in orange. Day strip 'a common day: Terraform builds a new pool of GPU VMs with network and disks; cloud-init handles first boot with a user and an SSH key; Ansible installs the driver, sets kernel parameters and starts the monitoring agent'. Bottom bar: 'Each tool does one part of the job, and none tries to do all of it'.",
+  "anchor": "### Where it fits",
+  "alt": "A table of Terraform, cloud-init, Packer, Puppet and Chef, shell scripts, Kubernetes and Slurm with each tool's role and its relationship to Ansible, plus the order on a common day.",
+  "cap": "Terraform creates machines, cloud-init seeds the first boot and Ansible decides what runs on them."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-web1-walkthrough",
+  "title": "One task against web1: what happens, and what is left behind",
+  "spec": "A top to bottom sequence between the control node and web1. 1 'control node reads the playbook and the inventory and fills in the variables'. 2 'Jinja2 templating: task arguments are evaluated on the control node before anything is sent, so the target never needs Jinja and a broken template fails on your laptop before any machine is touched'. 3 'opens an SSH connection to web1' (or WinRM or PSRP for Windows, or local, or API calls for network devices and clouds). 4 'copies the module across to a temporary path'. 5 'module runs on web1 with that machine's Python, looks at the package database and decides whether anything needs to change'. 6 'prints a short JSON answer such as changed false'. 7 'control node reads it, removes the temporary files and moves to the next task'. End note (orange) 'nothing was installed on web1 for Ansible to work, and nothing was left behind after the run'. Side strip 'Python on targets: ansible_python_interpreter, auto-discovery of /usr/bin/python3; minimal images without Python need raw or ansible.builtin.script to bootstrap, or gather_facts false; network devices run modules on the control node through connection local, network_cli or httpapi'. Bottom bar: 'The control node plans, the target only runs the small module'.",
+  "anchor": "## 2. How Ansible executes a task",
+  "alt": "Seven steps of running one task against web1 from reading the playbook and templating on the control node to the SSH copy, module run, JSON result and cleanup, with Python and network device notes.",
+  "cap": "The control node templates and plans, the target runs a small module with its own Python, and no files remain afterwards."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-speed-levers",
+  "title": "Parallelism and speed: forks, strategy, facts and connection reuse",
+  "spec": "Four lever cards. 'forks: one worker process per host in parallel; default 5; for fleets 20 to 200; forks = 20 means up to twenty hosts at once'. 'strategy: linear (default) waits for every host to finish a task before the next; free lets each host proceed on its own; serial: batches hosts, which is how rolling updates work (4.14); a driver upgrade across a rack usually needs linear, a log cleanup can run free'. 'facts: each play starts with setup, collecting distribution, kernel, CPUs, memory, interfaces and mounts into ansible_facts; every fact is a probe on every host; reduce with gather_subset, fact caching or gather_facts false'. 'connection reuse: ControlMaster and ControlPersist share one SSH connection so the handshake happens once; pipelining = True streams the module over stdin and cuts round trips, needs requiretty off in sudoers; these two are the biggest easy speed-ups' (orange). Worked example strip 'a task fails on gpu02 but succeeds on gpu01 and gpu03: gpu02 is dropped from the remaining tasks and shows as failed in the recap; the other two wait at the start of the next task until every host has finished the current one; that is why one slow host can hold up a whole run'. Result handling strip 'a module returns changed, failed, rc and its output; register stores it; failed_when, changed_when, ignore_errors override; changed_when false on a task that really changes something hides the change'. Bottom bar: 'Measure before you tune: profile_tasks shows which task takes the time'.",
+  "anchor": "## 2. How Ansible executes a task",
+  "alt": "Four speed levers of forks, linear versus free strategy, fact gathering and SSH connection reuse with pipelining, plus the gpu02 failure example and the register and failed_when result overrides.",
+  "cap": "Raise forks, choose the strategy by what must happen together, trim facts, and reuse SSH connections with pipelining."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-vagrant-ssh-config",
+  "title": "From vagrant ssh-config to the Ansible inventory",
+  "spec": "A mapping diagram. Left 'vagrant ssh-config output': 'HostName 127.0.0.1', 'User vagrant', 'Port 2222', 'IdentityFile .vagrant/machines/default/virtualbox/private_key'. Right 'inventory/vagrant.ini': '[webservers] testserver ansible_port=2222' and '[webservers:vars] ansible_host=127.0.0.1, ansible_user=vagrant, ansible_private_key_file=.vagrant/machines/default/virtualbox/private_key'. Arrows connect Port to ansible_port, HostName to ansible_host, User to ansible_user, IdentityFile to ansible_private_key_file. Top strip 'vagrant init ubuntu/focal64 && vagrant up: imports the base box (a base image copied into a fresh VM), attaches a NAT adapter forwarding host port 2222 to guest port 22, and mounts the current directory at /vagrant'. Note (orange) 'Ansible connects with the standard OpenSSH client, not with vagrant ssh'. Bottom strip 'since Vagrant 1.7 each VM gets a unique private key instead of the shared insecure_private_key; with the old shared key anyone holding one VM's key could log into every VM'. Provisioners strip 'config.vm.provision ansible runs Ansible from the host; ansible_local installs and runs it inside the guest (helps when the host is Windows without WSL2); vagrant provision, vagrant reload --provision, vagrant up --no-provision; vagrant destroy -f'. Vagrantfile strip 'a Vagrantfile is Ruby: forwarded_port host 8080 guest 80, private_network ip 192.168.33.10, ssh.forward_agent = true'. Bottom bar: 'A lab is cheap to throw away, so throw it away often'.",
+  "anchor": "### Setting up a local test environment with Vagrant",
+  "alt": "A mapping from vagrant ssh-config fields HostName, User, Port and IdentityFile to ansible_host, ansible_user, ansible_port and ansible_private_key_file in vagrant.ini, with the Vagrant provisioners.",
+  "cap": "vagrant ssh-config maps field by field onto the inventory, because Ansible uses the OpenSSH client rather than vagrant ssh."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-install-lines",
+  "title": "The control-node install, line by line",
+  "spec": "Annotated command list. 'python3 -m venv ~/venvs/ansible && source ~/venvs/ansible/bin/activate: a private folder of Python packages so Ansible never fights system Python, which the operating system depends on'. 'pip install --upgrade pip: upgrade the installer'. 'pip install \"ansible-core>=2.16,<2.19\" ansible-lint yamllint: the engine plus two checking tools, a version range so you get fixes but not surprises' (orange). 'pipx install --include-deps ansible: keeps each command-line tool in its own sealed space, popular on a personal laptop'. 'brew install ansible: quick, but Homebrew may move to a new release without warning, so harder to hold a team to one version'. 'ansible --version: the first command to run when something behaves oddly: shows core version, config file, module search path and Python'. 'ansible-galaxy collection install ansible.posix community.general'. Right panel 'collections/requirements.yml': 'ansible.posix version >=1.5.0,<2.0.0', 'community.general version >=8.0.0,<10.0.0', 'kubernetes.core (no pin shown)'. Rule strip 'commit requirements.txt and requirements.yml with the repo so every engineer and CI job uses the same toolchain'. Platform strip 'control node: Linux, macOS or WSL on Windows; targets need SSH and a supported Python; Windows targets use WinRM or SSH with PowerShell modules; extra Python packages such as pip3 install pywinrm docker inside the virtualenv'. Bottom bar: 'Pin the exact version range you tested'.",
+  "anchor": "### Install on the control node",
+  "alt": "An annotated install sequence of venv, pip with a version range, pipx, brew, ansible --version and collection installs, beside a requirements.yml with pinned collection ranges.",
+  "cap": "Install into a venv with a pinned range, check ansible --version first when something is odd, and commit the requirements files."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-fqcn-anatomy",
+  "title": "Reading a module's full name, and the three content tiers",
+  "spec": "Left anatomy of the name 'ansible.builtin.copy': 'ansible' = namespace, 'builtin' = collection name, 'copy' = module, together the fully qualified collection name or FQCN (the full address of a module, namespace first). Other examples 'community.general', 'ansible.posix', 'kubernetes.core', 'nvidia.*'. Warning (orange) 'short names are ambiguous: two collections may each ship a module called copy, and ansible-lint flags them; always use FQCNs'. Install command 'ansible-galaxy collection install -r requirements.yml'. Right three content tiers: 'Core: ansible-core itself, created by the Ansible team'; 'Certified: created and supported by Red Hat and its partners through Automation Hub'; 'Community: shared on Ansible Galaxy'. Context strip 'the split manages thousands of modules and more than 20,000 community roles'. Strip 'execution environments: container images with ansible-core, collections, Python dependencies and system libraries; built with ansible-builder, run with ansible-navigator or inside AAP or AWX; they end works on my laptop (4.15)'. Strip 'check the release and support matrix before upgrading: a core upgrade can change module behaviour and deprecate features'. Bottom bar: 'A collection is a toolbox from one maker, with the maker's name on the lid'.",
+  "anchor": "### Components and versions",
+  "alt": "The parts of the name ansible.builtin.copy as namespace, collection and module with the warning against short names, and the three content tiers of core, certified and community.",
+  "cap": "An FQCN is namespace, collection and module, short names are ambiguous, and content comes in core, certified and community tiers."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-target-checklist",
+  "title": "Four things every target needs before the first run",
+  "spec": "A checklist of four numbered cards, each with a failure it prevents. '1 User with key authentication: ssh-keygen -t ed25519, ssh-copy-id user@host; prefer a dedicated automation user; the public half goes on the target and the private half never leaves the control node; no password crosses the network'. '2 Passwordless sudo for root tasks (or become with a vaulted password): manage in /etc/sudoers.d/ansible and validate with visudo -cf (orange: a typo in sudoers can lock everyone out of root, including you)'. '3 Python 3, time sync, name resolution: SSH keys and TLS certificates fail when clocks drift too far apart; an ansible_host set to a name must resolve from the control node'. '4 Host key handled on the first connection: ssh-keyscan into known_hosts, or host_key_checking = False only for labs; in production keep checking on because disabling it exposes you to man-in-the-middle attacks (someone sitting between the control node and the real server)'. Strip 'skip one item and the first run fails with an error that points somewhere else'. Bottom bar: 'Commit the requirements files first, so a failure means something real'.",
+  "anchor": "### Prepare targets",
+  "alt": "A four item checklist for new targets covering key authentication, validated passwordless sudo, Python with time sync and name resolution, and host key handling.",
+  "cap": "Each target needs a key user, validated sudo, Python with time and DNS in order, and a deliberate host key setup."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-cfg-search-order",
+  "title": "Which ansible.cfg wins: the search order and the precedence of settings",
+  "spec": "Two stacked ladders. Ladder 'Which file is read (first found wins, never merged)': 1 'ANSIBLE_CONFIG environment variable', 2 './ansible.cfg in the current directory (honoured only if it is not world-writable: a folder any user can change cannot be trusted)', 3 '~/.ansible.cfg', 4 '/etc/ansible/ansible.cfg'. Ladder 'Which value wins': 1 'command-line flags', 2 'environment variables', 3 'config file', 4 'defaults'. Commands strip 'ansible-config dump --only-changed shows only what you changed; ansible-config list shows every setting with its default; ansible --version shows the config file in use'. Surprise story (orange) 'an engineer runs Ansible from a folder they did not expect, and the tool quietly picks up a different config file'. Rules strip 'keep a project-level ansible.cfg in the repo root; keep secrets and personal paths out of it because it is committed; editing /etc/ansible changes behaviour between laptops and CI and is invisible to Git'. Bottom bar: 'Knowing the search order turns a surprise into a quick check'.",
+  "anchor": "## 4. Configuration: ansible.cfg",
+  "alt": "Two ladders showing the ansible.cfg search order of ANSIBLE_CONFIG, current directory, home file and etc file, and the setting precedence of flags, environment variables, config file and defaults.",
+  "cap": "The first config file found wins without merging, and flags beat environment variables, which beat the file, which beats defaults."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-cfg-decisions",
+  "title": "The ansible.cfg example read as decisions",
+  "spec": "A grouped annotation table of each setting. '[defaults]': 'inventory = inventories/lab/hosts.yml: which fleet', 'remote_user = automation: which login', 'forks = 20: parallel hosts', 'host_key_checking = True', 'interpreter_python = auto_silent: no discovery warnings', 'gathering = smart with fact_caching = jsonfile, fact_caching_connection = .ansible_facts, fact_caching_timeout = 3600: reuse cached facts for an hour', 'roles_path = roles, collections_path = collections', 'retry_files_enabled = False: no .retry file beside every failed playbook', 'stdout_callback = yaml: readable output', 'callbacks_enabled = timer, profile_tasks: timing per task', 'timeout = 30'. '[privilege_escalation]': 'become = False: enable per play or task (orange)', 'become_method = sudo', 'become_ask_pass = False'. '[ssh_connection]': 'pipelining = True', 'ssh_args = -o ControlMaster=auto -o ControlPersist=60s -o ServerAliveInterval=30', 'control_path_dir = ~/.ansible/cp'. Footer 'each line answers a question you will otherwise ask during a slow or confusing run'. Bottom bar: 'Settings the team shares belong in the repo's ansible.cfg'.",
+  "anchor": "## 4. Configuration: ansible.cfg",
+  "alt": "The sections of the example ansible.cfg annotated for defaults, privilege escalation and SSH connection settings including forks 20, fact caching for 3600 seconds, pipelining and ControlPersist 60 seconds.",
+  "cap": "Each ansible.cfg line answers a question about inventory, login, parallelism, facts, escalation or connection reuse."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-become-failures",
+  "title": "Why become fails: four predictable causes",
+  "spec": "A table 'Failure', 'What is happening', 'Fix'. 'requiretty' / 'a tty is a terminal session, and requiretty is a sudoers setting that refuses commands run without one' / 'disable requiretty for the automation user'. 'Password prompt' / 'appears when --ask-become-pass is left out' / '-K, or vaulted password, or NOPASSWD'. 'Unprivileged become_user and temp files' / 'Ansible has to hand files to that user; if the user cannot read the temporary directory the module never starts' / 'install acl (precise access without making the file public), or allow_world_readable_tmpfiles only if you understand the risk'. 'Sudo rule refuses the module path' (orange) / 'command-specific sudoers allow-lists and restricted shells (rbash) do not work: Ansible uploads each module to a randomly named temp path such as ~/.ansible/tmp/ansible-tmp-.../AnsiballZ_...py and a static command rule cannot match it; the error can point at the module rather than at the sudoers file' / 'grant a dedicated automation group %ansible ALL=(ALL) ALL, or NOPASSWD: ALL, in /etc/sudoers.d/ansible validated with visudo -cf'. Base strip 'become: true runs as root through sudo; become_user: postgres switches user; become_method: sudo, su, doas, pbrun'. Bottom bar: 'Scope become to the tasks that need it'.",
+  "anchor": "### Privilege escalation (become)",
+  "alt": "A table of four become failures: requiretty, password prompts, unprivileged become_user temp file permissions and sudo rules that cannot match the random module path, each with its fix.",
+  "cap": "become fails on requiretty, missing passwords, unreadable temp files and static sudo rules, and the fix for the last is a group-wide sudoers drop-in."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-nopasswd-conditions",
+  "title": "When NOPASSWD: ALL is reasonable, and what to do when it is not",
+  "spec": "A decision tree. Start 'Is NOPASSWD: ALL acceptable for the automation account?'. Three conditions in a row, all must be yes: 'the account is dedicated to automation and used by nothing else'; 'interactive logins are blocked, so only key-based SSH from the control node works and the private key is protected'; 'its use is audited through the controller's job log and the target's journald'. All yes: 'NOPASSWD: ALL in /etc/sudoers.d/ansible, validated with visudo -cf' (green). Any no (orange): 'keep the password prompt with %ansible ALL=(ALL) ALL and supply the password through Ansible Vault, the built-in encryption for secret values, so it sits in Git in encrypted form'. Side panel 'what the form means': '%ansible means every member of the group ansible; adding a person to that group is the decision to give them root on the fleet, so treat membership as a privileged action'. Side panel 'then move change control into Git peer review, staging environments and Ansible Automation Controller RBAC (role-based access control: who may run which job)'. Audit note 'Ansible logs every executed module and its arguments, for example ansible-command Invoked with _raw_params=..., to /var/log/syslog or journald on the target'. Bottom bar: 'Anyone who can log in as that account is root on every host it reaches'.",
+  "anchor": "### Privilege escalation (become)",
+  "alt": "A decision tree for NOPASSWD ALL requiring a dedicated automation account, blocked interactive logins and audited use, with the Vault password fallback, group membership as a privileged action and RBAC.",
+  "cap": "NOPASSWD ALL is reasonable only for a dedicated, key-only, audited account, and otherwise keep the prompt and supply the password through Vault."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-inventory-anatomy",
+  "title": "Reading hosts.ini: hosts, groups, groups of groups",
+  "spec": "Annotated INI file beside a tree. File lines: '[gpu] gpu01 ansible_host=10.0.10.11, gpu02 ansible_host=10.0.10.12'; '[login] login01 ansible_host=10.0.10.5'; '[cluster:children] gpu login'; '[cluster:vars] ansible_user=automation, ansible_python_interpreter=/usr/bin/python3'. Right tree: 'cluster' with children 'gpu' (gpu01, gpu02) and 'login' (login01); the vars box 'ansible_user and interpreter apply to all three machines' attached to cluster. Callouts: 'each host has a name and optionally an address'; 'a group collects hosts that share a role'; 'a group of groups, written with :children, lets one command reach every member: a play aimed at cluster reaches all three machines' (orange). Commands strip 'ansible-inventory --graph (run first: shows the nesting at a glance), --list, --host gpu01'. Warning strip 'a node missing from the inventory quietly misses every change you make'. Bottom bar: 'The inventory is the phone book of your fleet'.",
+  "anchor": "## 5. Inventory basics (preview)",
+  "alt": "An INI inventory with gpu and login groups and a cluster group of children with shared variables, shown beside the resulting tree of three machines and the ansible-inventory commands.",
+  "cap": "Groups collect hosts by role, a children group reaches every member, and ansible-inventory --graph shows the nesting."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-pattern-listing",
+  "title": "Check what a pattern matches before you change anything",
+  "spec": "A flow. 'Write the pattern' then 'list the hosts it matches with --list-hosts' then decision 'Is the list longer than you expected?' yes (orange) 'stop and fix the pattern' no 'run with --limit and --check'. Pattern forms table: 'all: everything', 'gpu*: matches by name', 'gpu:login: union, either group', 'gpu:&rack1: intersection, both groups', 'gpu:!gpu02: exclusion, this group without that host', '~gpu0[1-4]: regex, a compact way to describe gpu01 through gpu04', '--limit narrows a run further'. Warning 'a pattern that matches the wrong hosts is one of the most common ways a change reaches machines it was never meant for'. Cross-reference 'also: changes silently skipped when a pattern matched no hosts or --limit is too narrow'. Bottom bar: 'List the hosts, read the list, then run'.",
+  "anchor": "## 5. Inventory basics (preview)",
+  "alt": "A flow of writing a host pattern, listing the hosts it matches and stopping if the list is longer than expected, beside a table of the pattern forms all, wildcard, union, intersection, exclusion, regex and limit.",
+  "cap": "List the hosts a pattern matches and read the list before any change, because a wrong match is a common way to hit the wrong machines."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-adhoc-syntax",
+  "title": "Reading an ad-hoc command like a sentence",
+  "spec": "Anatomy of 'ansible <pattern> -m <module> -a \"<args>\" [options]' with four labelled parts: 'pattern: who', '-m module: what kind of action', '-a args: the details', 'options: how to run it'. A worked line 'ansible gpu -b -m ansible.builtin.package -a \"name=chrony state=present\"' broken into 'gpu = the group', '-b = become (sudo)', 'package = the module', 'name=chrony state=present = arguments'. Table of example commands with their meaning: 'ping: SSH plus Python reachability, not ICMP'; 'command -a nvidia-smi -L: run a command, no shell features'; 'shell -a dmesg | grep -i xid | tail -5: pipes need a shell'; 'service name=chronyd state=started enabled=yes'; 'copy src=./motd dest=/etc/motd mode=0644'; 'setup filter=ansible_distribution* and gather_subset=hardware'; 'file path=/tmp/x state=absent --check: dry run'; 'reboot -b --limit gpu02: reboot and wait for return'; 'gpu:!gpu02 uptime -f 50 -o: forks 50, one-line output'; 'fetch src=/var/log/slurm/slurmd.log dest=./logs/ flat=no'; 'gpu -B 3600 -P 15 command long-job.sh: async, background 3600 s, poll every 15 s'. Story (orange) 'the dmesg line: Xid is NVIDIA's name for a GPU fault report; with command the pipe characters would reach dmesg as plain text and fail'. Bottom bar: 'The pattern says who, the module says what, the arguments say the details'.",
+  "anchor": "## 6. Ad-hoc commands",
+  "alt": "The parts of an ad-hoc ansible command as pattern, module, arguments and options with a worked package line, and a table of eleven example commands and what each does.",
+  "cap": "An ad-hoc command reads as who, what, details and how, and shell is needed whenever the command contains a pipe."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-adhoc-flags",
+  "title": "The ad-hoc flags worth memorising, grouped by purpose",
+  "spec": "A grouped list. 'Who and where': '-i inventory', '-l or --limit narrows the hosts', '-u user'. 'Privilege and auth': '-b become', '-K ask for the become password', '-k ask for the SSH password'. 'Speed and output': '-f forks', '-o one line per host', '-v or -vvv more output', '-vvvv connection debugging'. 'Safety': '--check and --diff preview changes', '-e \"var=value\" sets a variable', '-t tree saves output per host'. Highlight the three that protect you most often in orange: '-l', '--check', '-v'. Side note 'read --diff like a tracked change in Git, removed lines on one side and added lines on the other'. Process strip 'use ad-hoc commands for discovery and quick checks, and move anything you repeat into a playbook'. Scene strip 'it is 2 AM, a training run is stalling: is the driver loaded on every node? one line, no playbook'. Bottom bar: 'If you only learn three, learn -l, --check and -v'.",
+  "anchor": "## 6. Ad-hoc commands",
+  "alt": "Ad-hoc flags grouped into targeting, privilege, speed and output, and safety, with limit, check and verbose highlighted as the three that protect most often.",
+  "cap": "Learn --limit, --check and -v first, and promote any ad-hoc command you repeat into a playbook."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-module-choice-ladder",
+  "title": "Choosing command, shell, raw, script or a real module",
+  "spec": "A decision ladder. Question 'Is there a purpose-built module (package, service, user, file, lineinfile, template, sysctl, systemd, mount, cron)?' yes (orange) 'use it: idempotent, supports check mode, returns structured results'. no then 'Does the target have Python?' no 'raw: plain SSH command with no module and no Python; bootstraps Python on minimal systems and devices'. yes then 'Need pipes or redirects?' yes 'shell: passes through /bin/sh; vulnerable to quoting and injection mistakes when variables are untrusted'. no 'command: no shell, safest; no pipes, redirects or expansion'. Another branch 'Need to run a local script on the target?' 'script: copies a local script to the target and runs it'. Guard strip 'command and shell are not idempotent: add creates: or removes:, a guard task (a small check that decides whether the risky step should run), or changed_when and failed_when; a shell one-liner always reports changed, cannot be dry-run and hides intent'. Injection example 'a hostname from a ticket sneaks in a second command after a semicolon'. Bottom bar: 'Prefer modules, and guard what you cannot avoid'.",
+  "anchor": "### Command, shell, raw and idempotency",
+  "alt": "A decision ladder from purpose-built modules to raw, shell, command and script, with the creates, removes, guard task and changed_when ways to make command and shell idempotent.",
+  "cap": "Use a purpose-built module first, command when no shell is needed, shell for pipes, raw for hosts without Python, and guard the rest."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-playbook-ladder",
+  "title": "The five-step run ladder for a new playbook",
+  "spec": "A five rung ladder with the question each answers. 1 'ansible-playbook site.yml --syntax-check: can Ansible read the file at all? parse only'. 2 'ansible-playbook site.yml --check --diff: what would change? dry run with diffs'. 3 'ansible-playbook site.yml: apply, makes the change'. 4 'ansible-playbook site.yml again: did the change stick? everything ok, changed=0 means idempotent' (orange). 5 'ansible-playbook site.yml --limit gpu01 -v: one host, more output'. Side commands 'ansible-playbook site.yml --list-tasks --list-hosts'. Playbook sketch beside the ladder: 'Baseline for GPU nodes, hosts: gpu, become: true, gather_facts: true, vars ntp_package: chrony; tasks: Ensure chrony is installed (ansible.builtin.package, name {{ ntp_package }}, state present); Ensure chrony is enabled and running (ansible.builtin.service chronyd, state started, enabled true); Show kernel version (ansible.builtin.debug of inventory_hostname, ansible_kernel, ansible_distribution and version)'. Bottom bar: 'Skipping a step means you learn the answer from the fleet instead of from the terminal'.",
+  "anchor": "## 7. Your first playbook",
+  "alt": "A five rung ladder of syntax check, check and diff, apply, rerun for idempotency and a limited verbose run, beside the baseline playbook with chrony package, service and debug tasks.",
+  "cap": "Syntax check, dry run, apply, rerun and a limited verbose run each answer a different question about the playbook."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-recap-reading",
+  "title": "Reading the PLAY RECAP: which counters matter",
+  "spec": "The recap lines 'gpu01 : ok=4 changed=2 unreachable=0 failed=0 skipped=0 rescued=0 ignored=0' and 'gpu02 : ok=4 changed=2 unreachable=0 failed=0 skipped=0 rescued=0 ignored=0'. Callouts on each counter: 'ok: tasks that ran, including those already correct', 'changed: how much work the run actually did', 'unreachable and failed: start from the right side, zero is what you want' (orange), 'skipped', 'rescued', 'ignored'. Explanation of this run 'first run changed two things on each host, probably the package install and the service start; the debug task stayed ok because it only prints'. Second run box 'rerun showing changed=0 means you have reached the target'. Bottom strip 'full playbook mechanics (variables, handlers, loops, blocks, error handling, roles) follow in 4.6 to 4.11'. Bottom bar: 'Read the recap from the right side'.",
+  "anchor": "## 7. Your first playbook",
+  "alt": "A PLAY RECAP for gpu01 and gpu02 with ok 4 and changed 2, annotating each counter and showing that a rerun with changed equal to zero means the target state is reached.",
+  "cap": "Check unreachable and failed first, read changed as the work done, and treat changed=0 on a rerun as proof of idempotency."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-troubleshoot-table",
+  "title": "Connection symptoms, likely cause and the check to run",
+  "spec": "An eight row table 'Symptom', 'Likely cause', 'Check'. 'UNREACHABLE ... Permission denied (publickey)' / 'wrong user or key, key not authorised' / 'ssh -v user@host, ansible -vvvv, ansible_user, ansible_ssh_private_key_file, ssh-add -l'. 'Host key verification failed' / 'new or changed host key' / 'ssh-keyscan, fix known_hosts; investigate changed keys: could be a MITM or a reinstall'. 'Missing sudo password or sudo: a terminal is required' / 'passwordless sudo missing or requiretty' / '-K, sudoers drop-in, disable requiretty for the automation user'. '/bin/sh: python: not found or interpreter errors' / 'no Python on target or wrong path' / 'raw bootstrap, ansible_python_interpreter, interpreter_python'. 'Failed to connect to the host via ssh: Connection timed out' / 'network, firewall or DNS; wrong ansible_host' / 'ssh, nc -vz host 22, bastion with ProxyJump via ansible_ssh_common_args'. 'Slow runs' / 'fact gathering, no pipelining or multiplexing, DNS lookups on SSH (UseDNS), low forks' / 'profile_tasks, pipelining, ControlPersist, gathering, forks'. 'Module warns about discovered interpreter' / 'interpreter discovery' / 'interpreter_python=auto_silent or explicit variable'. 'Changes silently skipped' / 'pattern matched no hosts or --limit too narrow' / '--list-hosts, ansible-inventory --graph'. Highlight the first row in orange. Bottom bar: 'Connection failures happen before any of your tasks run, so no playbook change can fix them'.",
+  "anchor": "## 8. Troubleshooting connections (first 30 minutes)",
+  "alt": "A table of eight Ansible connection symptoms from Permission denied publickey and host key failure to sudo, Python, timeouts, slow runs, interpreter warnings and silently skipped changes, with cause and check.",
+  "cap": "Match the symptom to its row, answer who, which key and does the port answer, and only then touch the playbook."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-layered-connection-test",
+  "title": "Test a connection from the bottom up, through a bastion if needed",
+  "spec": "A vertical ladder of four layers, bottom to top, each removes one suspect. Layer 1 'name resolves and the port answers (nc -vz host 22)'. Layer 2 'plain ssh login works with the same user and key'. Layer 3 'ansible ping with the same inventory'. Layer 4 'then the playbook'. Arrow upward. Right panel 'Targets behind a bastion host: a single hardened machine every outside connection must pass through': diagram control node to bastion.example.com to private targets; setting 'ansible_ssh_common_args: -o ProxyJump=bastion.example.com in group vars'; alternative '~/.ssh/config, because Ansible honours your SSH config' (orange). Questions strip 'which user is Ansible logging in as and which key does it offer? does the host name resolve and does the port answer?'. Warning 'editing a task to chase a connection error wastes time and can hide the real cause'. Bottom bar: 'Clear connection errors before you debug playbook logic'.",
+  "anchor": "## 8. Troubleshooting connections (first 30 minutes)",
+  "alt": "A four layer bottom-up connection test from name and port, to plain ssh, to ansible ping, to the playbook, with a bastion host diagram using ProxyJump in group vars or ssh config.",
+  "cap": "Test name and port, then plain ssh, then Ansible, then the playbook, and use ProxyJump for targets behind a bastion."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-control-node-security",
+  "title": "Protecting the control node: the most valuable target in the fleet",
+  "spec": "A central box 'control node: holds a key and passwordless sudo, so one login reaches every host' with eight satellite practices. 'ed25519 SSH keys and dedicated automation accounts, sudo restricted to what is needed'. 'hardened host, MFA (a second proof of identity such as a phone code), audit logging, no shared accounts'. 'team use: AAP or AWX, or CI runners with credential stores (4.15)'. 'keep host key checking enabled in production; distribute host keys with ssh_known_hosts or SSH certificates (a signed statement from a trusted authority that this host key belongs to this machine)'. 'never commit secrets: Ansible Vault or an external secret manager (4.12); no_log: true hides arguments and results of a task, and works only on the tasks you mark' (orange). 'always use FQCNs; pin ansible-core and collection versions; lint with ansible-lint and yamllint'. 'before a change: --check --diff, test on a canary host with --limit (a single machine that takes the change first), keep each change small'. 'prefer modules over shell, every task idempotent; playbooks and inventories in Git (4.1), run from CI (4.2) for repeatability and history of who changed what'. Bottom bar: 'Cheap to adopt early, expensive to retrofit later'.",
+  "anchor": "## 9. Security and good practice from day one",
+  "alt": "A control node surrounded by eight practices: ed25519 keys, hardened host with MFA, AAP or AWX, host key checking, Vault with no_log, pinned versions with linting, canary runs and Git with CI.",
+  "cap": "Treat the control node as the fleet's most valuable target, with strong keys, MFA, Vault, no_log, canary runs and Git history."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p4-0403-mistake-groups",
+  "title": "Common mistakes grouped, and the three questions behind them",
+  "spec": "Three questions at the top 'Which Ansible version is in use?', 'Which hosts does this pattern really match?', 'Has this change been checked in dry-run mode?'. Below a five row table 'Group', 'Mistake', 'Fix'. 'Environment' / 'installing into system Python or relying on the OS package; versions unpinned across a team; missing collections in CI' / 'venv, pinned requirements'. 'Module choice' / 'shell or command where a module exists gives unguarded commands that always report changed; short names instead of FQCNs' / 'modules and FQCNs'. 'Security' (orange) / 'host_key_checking = False in production; root SSH logins and shared keys; become: true globally, including file copies from the control node; secrets in plain text in inventories, playbooks or logs' / 'keep checking on, scope become, Vault'. 'Slow or misleading runs' / 'needless fact gathering on large fleets; forks left at 5; treating ping as ICMP; treating a green recap as proof the service works (modules verify state, not application behaviour)' / 'tune forks and facts, verify the service separately'. 'Process' / 'editing ansible.cfg in /etc so behaviour differs between laptops and CI; applying to production with no dry run; applying to all instead of a canary limit' / 'project ansible.cfg, check mode, --limit'. Root cause strip 'the engineer knew the right step and skipped it because the fleet looked healthy and the change looked small'. Bottom bar: 'Small changes are where the surprises hide'.",
+  "anchor": "## 11. Common mistakes",
+  "alt": "Three pre-run questions and a table of common Ansible mistakes in environment, module choice, security, slow or misleading runs and process, each with its fix.",
+  "cap": "Most mistakes fail one of three questions: which version, which hosts, and was it dry-run first."
+ }
+]

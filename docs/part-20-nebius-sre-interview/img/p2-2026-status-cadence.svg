@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>A status update has four parts, on a fixed cadence</title>
+  <desc>An infographic explaining the four-part incident status update format on a fixed cadence timeline.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" font-size="48" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#303a36" text-anchor="middle">A status update has four parts, on a fixed cadence</text>
+
+  
+  <rect x="50" y="230" width="340" height="670" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <path d="M 185 330 C 185 305 200 295 220 295 C 240 295 255 305 255 330 C 255 345 245 355 235 360 L 230 380 L 215 365 C 195 365 185 350 185 330 Z" fill="#ffffff" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="175" y1="375" x2="265" y2="295" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 268 318 C 273 324 273 336 268 342" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  
+  <text x="220" y="470" font-size="25" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#303a36" text-anchor="middle">
+    <tspan x="220" dy="0">A quiet channel </tspan>
+    <tspan x="220" dy="42">gets guesses, and </tspan>
+    <tspan x="220" dy="42">guesses are worse </tspan>
+    <tspan x="220" dy="42">than the truth</tspan>
+  </text>
+
+  
+  <circle cx="450" cy="165" r="26" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <polyline points="450,147 450,165 464,165" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <line x1="485" y1="165" x2="1530" y2="165" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <circle cx="700" cy="165" r="8" fill="#207448"/>
+  <line x1="700" y1="173" x2="700" y2="230" stroke="#207448" stroke-width="3" stroke-dasharray="6,4"/>
+  <text x="700" y="142" font-size="30" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#207448" text-anchor="middle">First five minutes</text>
+
+  
+  <circle cx="1275" cy="165" r="8" fill="#207448"/>
+  <line x1="1275" y1="173" x2="1275" y2="230" stroke="#207448" stroke-width="3" stroke-dasharray="6,4"/>
+  <text x="1275" y="142" font-size="30" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#207448" text-anchor="middle">Every ten minutes</text>
+
+  
+  <rect x="430" y="230" width="540" height="670" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="450" y="250" width="500" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="505" cy="322" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+  <polyline points="488,322 498,322 503,308 509,336 514,322 522,322" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="555" y="333" font-size="30" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">Impact now</text>
+
+  
+  <rect x="450" y="411" width="500" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="498" cy="476" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="512" y1="490" x2="526" y2="504" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="555" y="494" font-size="30" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">What you know</text>
+
+  
+  <rect x="450" y="572" width="500" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="505" cy="644" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="505" y1="624" x2="505" y2="628" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <line x1="505" y1="660" x2="505" y2="664" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <line x1="485" y1="644" x2="489" y2="644" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <line x1="521" y1="644" x2="525" y2="644" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <line x1="491" y1="630" x2="494" y2="633" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <line x1="516" y1="655" x2="519" y2="658" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <line x1="491" y1="658" x2="494" y2="655" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <line x1="516" y1="633" x2="519" y2="630" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <text x="555" y="655" font-size="30" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">What you are doing</text>
+
+  
+  <rect x="450" y="733" width="500" height="145" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <circle cx="505" cy="805" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+  <polyline points="505,790 505,805 517,805" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="555" y="792" font-size="30" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="555" dy="0">When the next </tspan>
+    <tspan x="555" dy="38">update comes</tspan>
+  </text>
+
+  
+  <rect x="1000" y="230" width="550" height="670" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="1020" y="250" width="510" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="1020" y="411" width="510" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="1020" y="572" width="510" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <rect x="1020" y="733" width="510" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <text x="1045" y="310" font-size="24" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1045" y="310">Impact: chat p99 TTFT is </tspan>
+    <tspan x="1045" y="345">4 seconds, no errors. </tspan>
+    <tspan x="1045" y="471">We know it began with </tspan>
+    <tspan x="1045" y="506">the 13:50 deploy. </tspan>
+    <tspan x="1045" y="652">We are rolling back now. </tspan>
+    <tspan x="1045" y="813">Next update in ten minutes.</tspan>
+  </text>
+
+  
+  <rect x="50" y="935" width="1500" height="75" rx="10" fill="#207448"/>
+  <text x="800" y="982" font-size="26" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" fill="#ffffff" text-anchor="middle">The commander who fixes things forgets to tell anyone, so communication is its own role.</text>
+</svg>

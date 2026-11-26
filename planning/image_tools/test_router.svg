@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What a router does to your packet, and how it differs from a switch</title>
+  <desc>Visual comparison showing how a layer 2 switch learns MAC addresses and forwards or floods frames, versus a default gateway router matching FIB prefixes, decrementing TTL, resolving next hop MACs, and managing MTU fragmentation.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold, centered) -->
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">What a router does to your packet,</tspan>
+    <tspan x="800" dy="56">and how it differs from a switch</tspan>
+  </text>
+
+  <!-- ==================== LEFT PANEL: SWITCH (LAYER 2) ==================== -->
+  <g id="panel-switch">
+    <!-- Panel Container -->
+    <rect x="40" y="150" width="670" height="825" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Switch Outline Icon (56x56, stroke 4) -->
+    <g transform="translate(65, 162)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="10" width="52" height="36" rx="6" />
+      <line x1="12" y1="28" x2="44" y2="28" />
+      <polyline points="20,22 12,28 20,34" />
+      <polyline points="36,22 44,28 36,34" />
+      <circle cx="14" cy="18" r="2" fill="#207448" />
+      <circle cx="28" cy="18" r="2" fill="#207448" />
+      <circle cx="42" cy="18" r="2" fill="#207448" />
+    </g>
+
+    <!-- Panel Header Title -->
+    <text x="135" y="200" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Switch (layer 2)</text>
+
+    <!-- Card 1: Arrival -->
+    <rect x="65" y="230" width="620" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="90" y="270" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">a frame arrives on port 3</text>
+
+    <!-- Card 2: Learn Step -->
+    <rect x="65" y="318" width="620" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="90" y="358" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="90" dy="0">learn: the source MAC lives on this</tspan>
+      <tspan x="90" dy="32">port, recorded in the MAC address</tspan>
+      <tspan x="90" dy="32">table</tspan>
+    </text>
+
+    <!-- Card 3: Forward Step -->
+    <rect x="65" y="465" width="620" height="200" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="90" y="505" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="90" dy="0">forward to the port where the</tspan>
+      <tspan x="90" dy="32">destination MAC was learned; if the</tspan>
+      <tspan x="90" dy="32">destination is unknown or broadcast,</tspan>
+      <tspan x="90" dy="32">flood to every port except the one it</tspan>
+      <tspan x="90" dy="32">came in on</tspan>
+    </text>
+
+    <!-- Card 4: Broadcast Domain Note -->
+    <rect x="65" y="682" width="620" height="230" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="90" y="722" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="90" dy="0">ignores IP addresses; defines the</tspan>
+      <tspan x="90" dy="32">broadcast domain, the set of machines</tspan>
+      <tspan x="90" dy="32">that hear each other's shouts; ARP</tspan>
+      <tspan x="90" dy="32">broadcasts reach every host in the</tspan>
+      <tspan x="90" dy="32">VLAN or subnet</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== RIGHT PANEL: ROUTER (THE DEFAULT GATEWAY) ==================== -->
+  <g id="panel-router">
+    <!-- Panel Container -->
+    <rect x="750" y="150" width="810" height="825" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Router Outline Icon (56x56, stroke 4) -->
+    <g transform="translate(775, 162)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <line x1="28" y1="12" x2="28" y2="44" />
+      <line x1="12" y1="28" x2="44" y2="28" />
+      <polyline points="22,18 28,12 34,18" />
+      <polyline points="22,38 28,44 34,38" />
+      <polyline points="18,22 12,28 18,34" />
+      <polyline points="38,22 44,28 38,34" />
+    </g>
+
+    <!-- Panel Header Title -->
+    <text x="845" y="200" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Router (the default gateway)</text>
+
+    <!-- Intro Line Card -->
+    <rect x="770" y="228" width="770" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="795" y="267" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="795" dy="0">receives frames addressed to its own MAC, strips</tspan>
+      <tspan x="795" dy="32">the Ethernet header and examines the IP header</tspan>
+    </text>
+
+    <!-- Vertical Chain Arrows -->
+    <line x1="810" y1="432" x2="810" y2="448" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <line x1="810" y1="610" x2="810" y2="626" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <line x1="810" y1="756" x2="810" y2="772" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Step 1 Card -->
+    <rect x="770" y="336" width="770" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="810" cy="384" r="24" fill="#207448" />
+    <text x="810" y="393" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="855" y="375" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">Longest prefix match of the destination in</tspan>
+      <tspan x="855" dy="32">the routing table (the FIB)</tspan>
+    </text>
+
+    <!-- Step 2 Card (Orange highlight) -->
+    <rect x="770" y="450" width="770" height="160" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="810" cy="530" r="24" fill="#db8129" />
+    <text x="810" y="539" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="855" y="488" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">Decrement the TTL (hop limit) and recompute</tspan>
+      <tspan x="855" dy="32">the IPv4 header checksum; at zero drop the</tspan>
+      <tspan x="855" dy="32">packet and send ICMP Time Exceeded, which is</tspan>
+      <tspan x="855" dy="32">how traceroute works</tspan>
+    </text>
+
+    <!-- Step 3 Card -->
+    <rect x="770" y="628" width="770" height="128" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="810" cy="692" r="24" fill="#207448" />
+    <text x="810" y="701" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="855" y="666" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">Choose the egress interface and next hop,</tspan>
+      <tspan x="855" dy="32">resolve its MAC with ARP or ND, build a new</tspan>
+      <tspan x="855" dy="32">Ethernet header and forward</tspan>
+    </text>
+
+    <!-- Step 4 Card -->
+    <rect x="770" y="774" width="770" height="192" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="810" cy="870" r="24" fill="#207448" />
+    <text x="810" y="879" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <text x="855" y="812" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="855" dy="0">If the packet is larger than the egress MTU:</tspan>
+      <tspan x="855" dy="32">fragment it for IPv4 when DF is not set,</tspan>
+      <tspan x="855" dy="32">otherwise drop it and send ICMP</tspan>
+      <tspan x="855" dy="32">Fragmentation Needed or Packet Too Big (Path</tspan>
+      <tspan x="855" dy="32">MTU Discovery)</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== FOOTER ==================== -->
+  <g id="footer">
+    <rect x="40" y="990" width="1520" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="1030" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">A typical path has 8 to 20 hops; routers build tables with OSPF or IS-IS inside networks</tspan>
+      <tspan x="800" dy="34">and BGP between them; anycast announces one IP from many places</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== TAKEAWAY BOTTOM BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1104" width="1520" height="66" rx="10" fill="#207448" />
+    <text x="800" y="1146" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">If the destination looks slow, trace the path first</text>
+  </g>
+</svg>

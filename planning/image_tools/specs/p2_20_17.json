@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p2-2017-detect-gpu-numbers",
+  "title": "Detecting a failing GPU: the numbers before the signals",
+  "spec": "Top: an interviewer prompt bubble 'How would you find a failing GPU before a customer notices?'. Below, an Ask first strip with four chips: 'Fleet: 2,000 nodes of 8 GPUs', 'Failure rate: 5 percent of GPUs per year', 'Idle or serving: both', 'Customer notices: errors or slow tokens after about 15 minutes'. Below, a left-to-right calculation ladder with four steps, each a row with an arrow: 'GPUs: 2,000 x 8 = 16,000', 'Failures per day: 16,000 x 0.05 / 365 = 2.19', 'Series at 40 fields per GPU: 16,000 x 40 = 640,000', 'Samples per second at a 15 s scrape: 640,000 / 15 = 42,667'. A final result card in orange outline: 'Requests spared per event: 2 x 60 x 13 = 1,560, detect at 2 minutes against 15'. Under the ladder a note in grey: 'Every input is an assumption, not a measurement.' Caption: 'The detection time has to beat the moment the customer notices.'",
+  "anchor": "### 4. Detecting a failing GPU before the customer does [report]",
+  "alt": "The failing GPU drill starts with stated assumptions and a calculation ladder from 16,000 GPUs to the requests spared by detecting at two minutes instead of fifteen.",
+  "cap": "The failing GPU drill computes 16,000 GPUs, 2.19 failures a day and 1,560 requests spared by detecting at two minutes instead of fifteen."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p2-2017-decision-checklist",
+  "title": "The one-page checklist: a question and a sentence per step",
+  "spec": "A vertical list of eight rows drawn as cards, numbered 1 to 8 from top to bottom, each card with three columns: the step name in bold, the question to ask yourself in grey, and the sentence to say aloud in a speech-bubble chip. Row 1 'Requirements': question 'Who, what load, what target?', say 'Here is what I will build and what I will leave out.' Row 2 'Estimate': question 'Which number decides the design?', say 'The number that matters is X because...'. Row 3 'API': question 'What does the client call?', say 'Three calls: submit, status, result.' Row 4 'Data': question 'What is stored, where, for how long?', say 'State lives here, and it is rebuilt from there.' Row 5 'Scaling': question 'What breaks at 10x?', say 'The first bottleneck is...'. Row 6 'Failure': question 'What fails, how do we know, what do we do?', say 'Detect by..., mitigate by..., fix by...'. Row 7 'Security': question 'Who may do what to whose data?', say 'Tenant isolation is enforced at...'. Row 8 'Operations': question 'How is it deployed, watched and rolled back?', say 'SLO, alert, canary, rollback trigger.' Orange outline on row 6 'Failure' as the row most often skipped under time pressure.",
+  "anchor": "## The one-page decision checklist",
+  "alt": "A one-page decision checklist of eight steps, from requirements to operations, each with a question to ask and a sentence to say aloud.",
+  "cap": "The one-page decision checklist has eight steps from requirements to operations, each with a question to ask yourself and a sentence to say aloud."
+ }
+]

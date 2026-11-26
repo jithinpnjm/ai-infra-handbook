@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img">
+  <title>Where did my RAM go: reading free and /proc/meminfo</title>
+  <desc>Visual explanation of Linux free command output, MemAvailable, and RAM breakdown from /proc/meminfo.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Where did my RAM go:</tspan>
+    <tspan x="800" dy="54">reading free and /proc/meminfo</tspan>
+  </text>
+  <!-- Terminal output box -->
+  <rect x="40" y="140" width="1520" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="65" cy="162" r="6" fill="#207448" opacity="0.3"/>
+  <circle cx="85" cy="162" r="6" fill="#207448" opacity="0.3"/>
+  <circle cx="105" cy="162" r="6" fill="#207448" opacity="0.3"/>
+  <text x="135" y="188" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" xml:space="preserve">total 1.9Ti  used 120Gi  free 40Gi  shared 1.2Gi  buff/cache 1.7Ti  available 1.7Ti</text>
+  <text x="135" y="222" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">0B 0B 0B</text>
+  <!-- Card: free -->
+  <rect x="40" y="265" width="740" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(68, 327)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24"/>
+    <line x1="28" y1="28" x2="28" y2="14"/>
+    <line x1="28" y1="28" x2="38" y2="28"/>
+  </g>
+  <text x="150" y="325" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">free</text>
+  <text x="150" y="375" font-family="sans-serif" font-size="24" fill="#303a36">idle memory, deliberately small</text>
+  <!-- Card: available -->
+  <rect x="820" y="265" width="740" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(848, 327)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="4"/>
+    <line x1="4" y1="18" x2="52" y2="18"/>
+    <circle cx="12" cy="12" r="2" fill="#207448"/>
+    <circle cx="18" cy="12" r="2" fill="#207448"/>
+  </g>
+  <rect x="922" y="283" width="160" height="42" rx="21" fill="none" stroke="#db8129" stroke-width="3"/>
+  <text x="942" y="313" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">available</text>
+  <text x="926" y="352" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="926" dy="0">MemAvailable: how much you can use to start</tspan>
+    <tspan x="926" dy="28">new applications without swapping; counts</tspan>
+    <tspan x="926" dy="28">reclaimable page cache and slab</tspan>
+  </text>
+  <!-- Stacked Bar of RAM Container -->
+  <rect x="40" y="475" width="990" height="590" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="56" y="492" width="958" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 56 502 A 10 10 0 0 1 66 492 L 76 492 L 76 578 L 66 578 A 10 10 0 0 1 56 568 Z" fill="#207448"/>
+<g transform="translate(90, 507)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <polygon points="28,8 48,18 28,28 8,18"/>
+              <polyline points="8,26 28,36 48,26"/>
+              <polyline points="8,34 28,44 48,34"/>
+            </g>
+  <text x="166" y="543" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">AnonPages: process private heap and stack</text>
+  <rect x="56" y="586" width="958" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 56 596 A 10 10 0 0 1 66 586 L 76 586 L 76 672 L 66 672 A 10 10 0 0 1 56 662 Z" fill="#207448"/>
+<g transform="translate(90, 601)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <ellipse cx="28" cy="14" rx="20" ry="8"/>
+              <path d="M8,14 v22 c0,4.4 9,8 20,8 s20,-3.6 20,-8 v-22"/>
+              <path d="M8,25 c0,4.4 9,8 20,8 s20,-3.6 20,-8"/>
+            </g>
+  <text x="166" y="624" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="166" dy="0">Cached: page cache, including mapped files</tspan>
+    <tspan x="166" dy="28">and tmpfs through Shmem</tspan>
+  </text>
+  <rect x="56" y="680" width="958" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 56 690 A 10 10 0 0 1 66 680 L 76 680 L 76 766 L 66 766 A 10 10 0 0 1 56 756 Z" fill="#207448"/>
+<g transform="translate(90, 695)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="28" cy="28" r="10"/>
+              <path d="M28,6 v6 M28,44 v6 M6,28 h6 M44,28 h6 M12,12 l5,5 M39,39 l5,5 M12,44 l5,-5 M39,17 l5,-5"/>
+            </g>
+  <text x="166" y="731" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Slab = SReclaimable (can be freed) + SUnreclaim (cannot)</text>
+  <rect x="56" y="774" width="958" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 56 784 A 10 10 0 0 1 66 774 L 76 774 L 76 860 L 66 860 A 10 10 0 0 1 56 850 Z" fill="#207448"/>
+<g transform="translate(90, 789)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="12" y="12" width="32" height="32" rx="4"/>
+              <line x1="20" y1="4" x2="20" y2="12"/><line x1="28" y1="4" x2="28" y2="12"/><line x1="36" y1="4" x2="36" y2="12"/>
+              <line x1="20" y1="44" x2="20" y2="52"/><line x1="28" y1="44" x2="28" y2="52"/><line x1="36" y1="44" x2="36" y2="52"/>
+              <line x1="4" y1="20" x2="12" y2="20"/><line x1="4" y1="28" x2="12" y2="28"/><line x1="4" y1="36" x2="12" y2="36"/>
+              <line x1="44" y1="20" x2="52" y2="20"/><line x1="44" y1="28" x2="52" y2="28"/><line x1="44" y1="36" x2="52" y2="36"/>
+            </g>
+  <text x="166" y="825" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">PageTables and KernelStack: kernel overhead</text>
+  <rect x="56" y="868" width="958" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 56 878 A 10 10 0 0 1 66 868 L 76 868 L 76 954 L 66 954 A 10 10 0 0 1 56 944 Z" fill="#207448"/>
+<g transform="translate(90, 883)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="8" y="8" width="40" height="40" rx="4"/>
+              <line x1="8" y1="28" x2="48" y2="28"/>
+              <line x1="28" y1="8" x2="28" y2="48"/>
+            </g>
+  <text x="166" y="906" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="166" dy="0">HugePages_*: explicitly reserved,</tspan>
+    <tspan x="166" dy="28">ordinary allocation cannot use it</tspan>
+  </text>
+  <rect x="56" y="962" width="958" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 56 972 A 10 10 0 0 1 66 962 L 76 962 L 76 1048 L 66 1048 A 10 10 0 0 1 56 1038 Z" fill="#207448"/>
+<g transform="translate(90, 977)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="10" y="22" width="36" height="26" rx="4"/>
+              <path d="M18,22 v-8 a10,10 0 0,1 20,0 v8"/>
+              <circle cx="28" cy="35" r="3" fill="#207448"/>
+            </g>
+  <text x="166" y="1013" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Mlocked and Unevictable: reclaim cannot touch</text>
+  <!-- Side Box -->
+  <rect x="1070" y="475" width="490" height="590" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1287, 660)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28,6 L48,16 V32 C48,44 28,52 28,52 C28,52 8,44 8,32 V16 Z"/>
+    <line x1="28" y1="20" x2="28" y2="34"/>
+    <circle cx="28" cy="40" r="2" fill="#207448"/>
+  </g>
+  <text x="1315" y="770" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1315" dy="0">In buff/cache, shared and</tspan>
+    <tspan x="1315" dy="36">tmpfs pages and mlocked</tspan>
+    <tspan x="1315" dy="36">pages are not reclaimable</tspan>
+  </text>
+  <!-- Bottom Takeaway Bar -->
+  <rect x="40" y="1095" width="1520" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1136" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Read available, not free</text>
+</svg>

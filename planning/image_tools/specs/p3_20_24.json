@@ -1,0 +1,82 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "p3-2024-module-api-repos",
+  "title": "A module is an API: inputs, outputs and two repositories",
+  "spec": "Left panel the module box named cluster module. Inputs in: name, parent_id (project), subnet_id, pinned k8s_version, and node_pools as a map whose key is a short stable name such as gpu; validation rejects a floating version (for example latest), a pool with both fixed size and autoscaling, and an upgrade strategy with max_unavailable 0 and max_surge 0. Outputs out: cluster_id and node_group_ids; label 'renaming an output is a breaking change for every stack that reads it, like changing a function signature'. Inside: nebius_mk8s_v1_cluster this with prevent_destroy, and nebius_mk8s_v1_node_group pool with for_each over node_pools so each pool has a stable address pool[gpu]. Right panel two repositories: 'modules repository holds blueprints, versioned and pinned' and 'live repository holds the houses built from them: staging pins one module version, production pins another, so a change is seen in staging first'. Warning: 'if staging and production point at the same module folder, a change lands in both on the next apply'. Rule 'expose pools as data, keep the module small, pin every module and provider version'. Text at least 24px.",
+  "anchor": "### 1. A cluster module is an API, and its inputs decide what mistakes are possible",
+  "alt": "A cluster module with validated inputs and outputs next to a modules repository and a live repository that pin versions.",
+  "cap": "Inputs decide which mistakes are possible, and pinned versions let staging see a change first."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "p3-2024-lock-race",
+  "title": "What locking protects and what it does not",
+  "spec": "Two timelines. Timeline 1 without locking: two engineers run apply on the same cluster within one minute; both read the same state; both write back; one write wins and the other is lost without an error. Timeline 2 with locking: Terraform takes a lock in the backend before any operation that could write state; the second run waits or fails; flag -lock-timeout=10m retries; CI jobs use -lock-timeout and never -lock=false; force-unlock is a human action with a ticket. Panel 'locks protect the state file, not the code': engineers Anna and Bill on different branches, Bill's plan would quietly undo Anna's change, no lock stops that; rule 'apply only from main'. Backend checklist: 'S3 backend locking is opt-in through use_lockfile (default false); DynamoDB locking is deprecated; Nebius page uses the s3 backend with a Nebius endpoint, use_lockfile true and skips the AWS-specific checks; turn on bucket versioning because the lock protects the write and only versioning protects earlier copies'. Also 'state is Terraform's notebook: a JSON map from resource addresses in code to real object IDs, a private format, never edit by hand'. Text at least 24px.",
+  "anchor": "### 2. Remote state, locking and why the state is the crown jewel",
+  "alt": "Two timelines show a lost write without locking and a queued apply with locking, plus a note that locks do not protect code.",
+  "cap": "A lock serialises state writes, but only applying from main serialises code."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "p3-2024-split-by-rate",
+  "title": "Splitting state by rate of change and cost of failure",
+  "spec": "Matrix with two axes, 'how often it changes' and 'what it costs when it fails'. Placements: 'network and project: changes a few times a year, costly: own state few people can touch'; 'cloud stage: cluster and node pools, changes with capacity'; 'platform stage per cluster: Helm releases and tenants, change daily, a mistake is cheap, small fast state'. Test line 'who would notice if the piece broke: only the platform team means it sits with their state; every service means the strictest guards'. Isolation panel: 'workspaces share one backend and credentials, nothing in code or shell shows which one you are in, so not for staging versus production' versus 'file layout: one directory and state per environment per component (recommended)'. Real example box: 'nebius-solutions-library k8s-inference: cloud stage has one state for clusters, pools, filesystems, static IPs, identities, registry, buckets and managed database; platform stage has one state per cluster for Helm releases'. Output flow: 'stacks talk through outputs such as cluster_id via terraform_remote_state or CI variables; a reader of remote state needs read access to the other state, which may include secrets'. Text at least 24px.",
+  "anchor": "### 3. State splitting and blast radius",
+  "alt": "A matrix places network, cluster and platform stacks by rate of change and cost of failure with the workspace versus file layout choice.",
+  "cap": "Split state so slow dangerous things are separate from fast cheap ones."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "p3-2024-guards-two-layers",
+  "title": "A guard stops the apply, a comment only asks",
+  "spec": "Stacked layers. Layer 1 'lifecycle prevent_destroy in the module: Terraform rejects any plan that would destroy the object'. Example plan text: 'nebius_mk8s_v1_node_group.pool[gpu] will be destroyed (because key gpu is not in for_each map)', 'Plan: 0 to add, 0 to change, 1 to destroy.', 'Error: Instance cannot be destroyed'; the plan still prints but ends with an error so an automated apply fails. Three caveats: 'does not help if you delete the resource block from the code', 'can make some changes impossible', 'blocks terraform destroy'. Layer 2 'policy check on the plan: terraform show -json fed to a risk script or Open Policy Agent; exits 1 on CRITICAL destroy of a stateful resource'. Reason 'one layer can be removed by a careless edit and the other catches the edit'. Companion rules: 'moved block records a rename so the plan shows a move not a destroy; keep every moved block forever or old callers plan a destroy', 'create_before_destroy creates the replacement first and spreads to dependencies', 'after every import read the plan before anything else', 'terraform plan -out=plan.bin then apply that exact file; treat it as sensitive; the sealed envelope'. Text at least 24px.",
+  "anchor": "### 4. Safe changes: read the plan, guard the stateful things, keep history",
+  "alt": "Two guard layers, prevent_destroy in the module and a policy check on the plan, with the plan text each produces.",
+  "cap": "Put guards on both the lifecycle and the plan so one careless edit cannot remove all protection."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "p3-2024-pool-design-questions",
+  "title": "Six questions before writing a GPU node pool",
+  "spec": "Six cards, each with the question and the answer from the chapter. '1 Quota: per project and per region, only admin-role group users can change it; a quota can be lowered automatically if usage stays well below the limit for a long time; check quota in the pipeline before apply'. '2 Capacity type: spot with price cap, on demand, reserved; reserved pools use capacity blocks first and roll with zero surge, so set max_unavailable at 1 or more'. '3 Size: fixed_node_count and autoscaling cannot be combined; a group with NVLink cannot change fixed_node_count; InfiniBand pools need 8-GPU presets and the autoscaler never adds InfiniBand nodes; serving pools fixed at N plus 1'. '4 Zones and regions: the node group schema shows no zone argument; the cluster takes a subnet; do not claim a zone model Nebius has not published; multi-region is one block per region; ask what the failure domains really are'. '5 Drivers: node group gpu_settings drivers_preset left empty for GPU nodes without preinstalled drivers including DRA groups; operators go in the platform stage'. '6 Upgrades: most template changes roll new nodes, but changes to taints and labels apply only to nodes created afterwards, so the plan shows a change that does not roll nodes; always set the strategy because defaults are changing; etcd_cluster_size defaults to 3 and the module refuses other values'. Text at least 24px.",
+  "anchor": "### 5. Node pool design for GPUs: capacity, zones, drivers and upgrades",
+  "alt": "Six cards cover quota, capacity type, size, zones, drivers and upgrades for a GPU node pool.",
+  "cap": "GPU nodes are scarce and slow to replace, so write capacity and upgrade assumptions into the inputs."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "p3-2024-drift-three-way",
+  "title": "Code, state and the real cloud: reading drift",
+  "spec": "Triangle with three corners 'Code (what you want)', 'State (Terraform's notebook of what it built)', 'Cloud (what really exists)'. Edges: 'plan compares code and state, after refreshing state from the cloud'; 'drift is the gap between code and reality: someone scaled a pool from the console during an incident, the next apply would undo it'; 'import brings an object created by hand into state so apply does not collide; plan only knows what is in state'. Commands: 'terraform plan -refresh-only updates state to match the outside world without proposing changes to resources'; 'terraform plan -detailed-exitcode returns 0 for no changes, 1 for error, 2 for changes present'. Scheduled drift job: 'exit code 2 opens a ticket without a human reading the whole plan'. Decision per drift item: 'if the emergency change was right, fix the code; if wrong, re-apply; never leave it'. Text at least 24px.",
+  "anchor": "### 6. Drift, and why the plan is a health check",
+  "alt": "A triangle of code, state and cloud with drift detection commands and exit codes.",
+  "cap": "A scheduled plan with a detailed exit code turns drift into an alert you can act on."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "p3-2024-secrets-in-state",
+  "title": "Where a secret can leak in Terraform",
+  "spec": "Flow. 'Secret passed to a resource: Terraform must know the value to manage the resource, and whatever it knows it may write down' leads to 'state file is plain text unless the provider protects it' leads to 'state bucket: private, encrypted at rest, access controlled; protect it as if it held every password'. Older pattern: 'generated credentials end up in state; convenient because Terraform can read the credential back next run, and the same convenience makes the state a target'. Newer Nebius provider pattern (needs Terraform 1.11 or later): 'write-only arguments in a sensitive object', 'ephemeral variables declared with ephemeral = true', 'ephemeral resources'; values passed this way are not written to state. Also 'a saved plan file holds the full configuration and may hold sensitive values: treat it as sensitive'. Interview message: 'say what the state holds, who can read it and what you would change; do not claim the older pattern is safe'. Rule: 'prefer write-only or ephemeral secrets'. Text at least 24px.",
+  "anchor": "### 7. Secrets in a world where state is plain text",
+  "alt": "A flow showing a secret passed to a resource landing in plain-text state, with ephemeral and write-only arguments as the alternative.",
+  "cap": "Whatever Terraform knows it may write to state, so keep secrets out of state or lock the bucket down."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "p3-2024-pool-deleted-order",
+  "title": "Apply deleted a production node pool: order of response",
+  "spec": "Timeline 14:05 pipeline run finished green; 14:07 inference alert fires, capacity dropped by a third and requests queue; node pool is gone. Five steps in order. 'Step 1 contain: pause the pipeline so no other run changes things, check the lock state, tell the incident channel what you know and do not know'. 'Step 2 impact: list services that ran on the pool, check other pools and regions for spare capacity, shed load or fail over at the router; do not touch Terraform yet, a rushed apply is how the second outage starts'. 'Step 3 restore: state no longer holds the pool so re-apply of the previous commit creates a new one; do not import the old ID, the object is gone; run and read the plan; check quota and capacity because GPU nodes are scarce; caution if it was only terraform state rm, then the real pool still exists, check with the provider CLI before applying to avoid a duplicate or name conflict'. 'Step 4 cause: renamed key without a moved block, removed resource block, wrong variable file for the environment, module version bump that changed addresses, a plan nobody read'. 'Step 5 prevention in order: prevent_destroy on pools, plan risk gate, moved blocks, named approver for destroys'. Footer 'restore speed depends on GPU capacity, which Terraform cannot create'. Text at least 24px.",
+  "anchor": "### Scenario B. Apply deleted a production node pool",
+  "alt": "A five-step response from containing the pipeline through impact, restore, cause and prevention after a pool was deleted.",
+  "cap": "Protect users and read the plan first, because a rushed apply can cause a second outage."
+ }
+]

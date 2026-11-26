@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "p2-0408-block-rescue",
+  "title": "A block tries the change, rescue recovers from a failure, and always runs in every case",
+  "anchor": "### Blocks: rescue and always",
+  "spec": "A flow with three lanes stacked, drawn as a try-except-finally shape. Top lane, heading 'block: the change': three small boxes in a row 'Install new driver', 'Reload kernel module', 'Verify GPUs'. A red-outline cross on 'Install new driver' labelled 'task fails: the block stops here'. Middle lane, orange outline, heading 'rescue: runs only after a failure': a row of three boxes 'Record ansible_failed_task', 'Roll back to the old driver', 'fail: keep node drained and fail the host loudly'. An arrow from the failed block to the rescue lane. Bottom lane, green heading 'always: runs in every case': one box 'Collect kernel journal tail for diagnostics'. An arrow from rescue to always. A side note: 'If rescue finishes without failing, the host is recovered and the recap shows rescued. Re-raise with fail to keep the failure visible.' Caption: 'block says what to try, rescue says what to do when it breaks, always says what must happen anyway.'",
+  "alt": "A block runs the driver change tasks, a failed task hands control to rescue for rollback and a clear failure, and always collects diagnostics in every case.",
+  "cap": "A block runs the driver change, rescue rolls back and fails the host clearly if a task breaks, and always collects diagnostics either way."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "p2-0408-wait-gpus",
+  "title": "After a reboot, wait for the GPUs to answer, not just for the host to respond",
+  "anchor": "### Waiting for the world",
+  "spec": "A horizontal timeline from left to right. Event 1 at the left: 'Reboot starts, SSH goes down'. Event 2: 'Operating system answers on the network, login prompt appears'. A grey band marked 'NVIDIA modules may still be loading'. A short bracket labelled 'post_reboot_delay: 30 s, pause before the first test'. Event 3: 'test_command runs: nvidia-smi -L'. A loop arrow curving back to the test with the label 'repeat until it passes'. Two exits from the loop: on the right, a green box 'GPUs answer: return the node to service'; on the bottom right, an orange-outline box 'reboot_timeout: 1800 s runs out: the task fails'. Caption: 'The host answered is not the same as the GPUs answered.'",
+  "alt": "After a reboot the host answers before the NVIDIA modules load, so the reboot task waits for a GPU test command to pass or the timeout to expire.",
+  "cap": "After a reboot, the task waits through a short delay and repeats the GPU test until it passes or the timeout expires."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "p2-0408-fleet-defence",
+  "title": "A fleet change has layers of defence, and each layer catches what the one before missed",
+  "anchor": "### Stopping the play and fleet-level policies",
+  "spec": "A vertical stack of five layers drawn as horizontal bands, from the top to the bottom, with numbered circles 1 to 5. Layer 1: 'assert: validate inputs, so a missing value stops the run before anything is touched'. Layer 2: 'serial canary: one host goes first and proves the change works'. Layer 3: 'health check after the change: a clean install can still leave a service broken'. Layer 4: 'max_fail_percentage or any_errors_fatal: stop the spread of a bad change'. Layer 5, orange outline: 'rescue rolls back, then a person is alerted'. Arrows from each layer down to the next. On the right side of the stack, a small grey note: 'meta: end_host and end_play exit cleanly, which is a planned exit and not an error'. Caption: 'Each layer catches the slip that got past the one above it.'",
+  "alt": "Fleet changes pass five layers of defence: input validation, a serial canary, a post-change health check, a failure limit, and rollback with an alert.",
+  "cap": "A fleet change is protected by five layers, from input assertions and a canary to a health check, a failure limit and a rollback with an alert."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "p2-0408-host-leaves-play",
+  "title": "By default a failed host leaves the play, and the other hosts keep going",
+  "anchor": "### Default behaviour",
+  "spec": "A diagram of a play with four host lanes stacked vertically: 'gpu01', 'gpu02', 'gpu03', 'gpu04'. Each lane shows a row of task boxes, Task 1 to Task 3, left to right. In lane 'gpu02', Task 2 is a red-outline box labelled 'failed', and the rest of that lane after it is greyed out with the note 'removed from the rest of the play'. The other three lanes show all tasks in green with ticks, and continue to the right edge with an arrow labelled 'keep going'. A side box for unreachable hosts: 'unreachable is counted separately in the recap, exit code 3'. A bottom note: 'Exit code 2 when any host failed. any_errors_fatal or max_fail_percentage can stop the play sooner.' Caption: 'One failed host leaves the play, while the rest of the fleet carries on.'",
+  "alt": "In a play with four hosts, one host with a failed task leaves the rest of the play while the other three continue to the end.",
+  "cap": "A host whose task fails leaves the rest of the play while the other hosts keep running, and the recap records the failure."
+ }
+]

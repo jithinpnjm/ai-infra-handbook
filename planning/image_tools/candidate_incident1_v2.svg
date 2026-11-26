@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Incident 1: from symptoms to the one lost routing setting</title>
+  <desc>Incident 1: from symptoms to the one lost routing setting</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Incident 1: from symptoms to the one lost routing setting</text>
+  <!-- Left Evidence Column -->
+  <g id="left-evidence-column">
+    <rect x="40" y="120" width="500" height="900" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(262, 132)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="12" width="40" height="42" rx="4" />
+      <path d="M 20 12 V 8 C 20 6 22 4 24 4 H 32 C 34 4 36 6 36 8 V 12" />
+      <line x1="18" y1="24" x2="38" y2="24" />
+      <line x1="18" y1="34" x2="38" y2="34" />
+      <line x1="18" y1="44" x2="30" y2="44" />
+    </g>
+    <!-- Card 1: TTFT / Latency -->
+    <rect x="60" y="195" width="460" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">p99 TTFT 4.1 s against</tspan>
+      <tspan x="85" dy="28">normal 0.6 s; p50 0.9 s</tspan>
+      <tspan x="85" dy="28">against 0.5 s; inter-token</tspan>
+      <tspan x="85" dy="28">latency flat at about 25 ms</tspan>
+      <tspan x="85" dy="28">(decode is fine, so the</tspan>
+      <tspan x="85" dy="28">problem is prefill or queue)</tspan>
+    </text>
+    <!-- Card 2: Waiting Queue -->
+    <rect x="60" y="420" width="460" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="460" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">waiting queue per replica</tspan>
+      <tspan x="85" dy="28">about 2 to about 30 at 13:55;</tspan>
+      <tspan x="85" dy="28">running requests at the</tspan>
+      <tspan x="85" dy="28">batch cap</tspan>
+    </text>
+    <!-- Card 3: KV Usage -->
+    <rect x="60" y="580" width="460" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="620" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">KV usage about 0.45, no</tspan>
+      <tspan x="85" dy="28">preemption, no OOM</tspan>
+      <tspan x="85" dy="28">(not memory)</tspan>
+    </text>
+    <!-- Card 4: Prompts and Replicas -->
+    <rect x="60" y="710" width="460" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="750" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">prompts unchanged, all 12</tspan>
+      <tspan x="85" dy="28">replicas look the same, no</tspan>
+      <tspan x="85" dy="28">errors, no restarts (not</tspan>
+      <tspan x="85" dy="28">traffic, not one bad pod)</tspan>
+    </text>
+    <!-- Card 5: Deploy -->
+    <rect x="60" y="865" width="460" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="905" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">deploy finished 13:50 moved</tspan>
+      <tspan x="85" dy="28">router and engine image to</tspan>
+      <tspan x="85" dy="28">all 12 replicas in ten</tspan>
+      <tspan x="85" dy="28">minutes, no canary</tspan>
+    </text>
+  </g>
+  <!-- Center Key Signal -->
+  <g id="center-key-signal">
+    <rect x="580" y="120" width="460" height="900" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(782, 170)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <polyline points="12,30 20,30 25,18 31,38 36,26 40,30 46,30" />
+    </g>
+    <text x="605" y="320" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="605" dy="0">vllm:prefix_cache_hits /</tspan>
+      <tspan x="605" dy="40">vllm:prefix_cache_queries</tspan>
+      <tspan x="605" dy="40">fell from about 0.55 to</tspan>
+      <tspan x="605" dy="40">about 0.03 at 13:52; the</tspan>
+      <tspan x="605" dy="40">chat product sends the</tspan>
+      <tspan x="605" dy="40">same 3,000-token system</tspan>
+      <tspan x="605" dy="40">prompt on every request;</tspan>
+      <tspan x="605" dy="40">GPU utilisation 70 to 95</tspan>
+      <tspan x="605" dy="40">percent, extra work is</tspan>
+      <tspan x="605" dy="40">prefill</tspan>
+    </text>
+  </g>
+  <!-- Right Column: Conclusion -->
+  <g id="right-conclusion">
+    <rect x="1080" y="120" width="480" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1292, 160)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="28" r="6" />
+      <circle cx="44" cy="14" r="6" />
+      <circle cx="44" cy="42" r="6" />
+      <path d="M 22 28 H 30 C 34 28 36 14 40 14" />
+      <path d="M 22 28 H 30 C 34 28 36 42 40 42" />
+    </g>
+    <text x="1105" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1105" dy="0">diff: new router config</tspan>
+      <tspan x="1105" dy="38">lost the prefix-hash</tspan>
+      <tspan x="1105" dy="38">routing setting, requests</tspan>
+      <tspan x="1105" dy="38">with the same prefix are</tspan>
+      <tspan x="1105" dy="38">spread by round robin</tspan>
+    </text>
+  </g>
+  <!-- Right Column: Fix -->
+  <g id="fix-card">
+    <rect x="1080" y="590" width="480" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1292, 630)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="6" />
+      <path d="M 16 22 L 24 28 L 16 34" />
+      <line x1="28" y1="34" x2="38" y2="34" />
+    </g>
+    <text x="1105" y="745" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1105" dy="0">kubectl rollout undo</tspan>
+      <tspan x="1105" dy="38">deployment, watch TTFT and</tspan>
+      <tspan x="1105" dy="38">hit rate recover, then diff</tspan>
+      <tspan x="1105" dy="38">the values file</tspan>
+    </text>
+  </g>
+  <!-- Bottom Strip: Strong Note -->
+  <g id="strong-note">
+    <rect x="40" y="1060" width="1520" height="100" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(68, 1082)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 10 14 L 10 30 C 10 44 28 52 28 52 C 28 52 46 44 46 30 L 46 14 Z" />
+      <line x1="28" y1="20" x2="28" y2="32" />
+      <circle cx="28" cy="40" r="2.5" fill="#207448" />
+    </g>
+    <text x="145" y="1102" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">new replicas start with an empty prefix cache, so scaling out is no fix;</tspan>
+      <tspan x="145" dy="32">restarting every replica empties every cache at once</tspan>
+    </text>
+  </g>
+</svg>

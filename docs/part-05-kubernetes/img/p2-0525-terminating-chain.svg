@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>A Terminating pod is held by a chain of checks</title>
+  <desc>Visual infographic showing the chain of checks holding a terminating Kubernetes pod and mitigation steps.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="9" markerHeight="9" refX="7" refY="4.5" orient="auto">
+      <polygon points="0 1, 8 4.5, 0 8" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A Terminating pod is held by a chain of checks</text>
+
+  
+
+  
+  <rect x="60" y="120" width="940" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="165" r="24" fill="#207448" />
+  <text x="105" y="174" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <rect x="150" y="140" width="52" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="150" y1="154" x2="202" y2="154" stroke="#207448" stroke-width="3" />
+  <circle cx="160" cy="147" r="2.5" fill="#207448" />
+  <circle cx="170" cy="147" r="2.5" fill="#207448" />
+  
+  <text x="226" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="226" dy="0">API side: deletionTimestamp and</tspan>
+    <tspan x="226" dy="36">finalizers in kubectl get pod -o yaml</tspan>
+  </text>
+  
+  <rect x="226" y="214" width="750" height="76" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <text x="244" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="244" dy="0">A finalizer whose controller is dead</tspan>
+    <tspan x="244" dy="28">holds the pod forever</tspan>
+  </text>
+
+  
+  <path d="M 530 310 L 530 360" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="60" y="360" width="940" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="405" r="24" fill="#207448" />
+  <text x="105" y="414" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <rect x="154" y="383" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="162" y1="375" x2="162" y2="383" stroke="#207448" stroke-width="3" />
+  <line x1="176" y1="375" x2="176" y2="383" stroke="#207448" stroke-width="3" />
+  <line x1="190" y1="375" x2="190" y2="383" stroke="#207448" stroke-width="3" />
+  <line x1="162" y1="427" x2="162" y2="435" stroke="#207448" stroke-width="3" />
+  <line x1="176" y1="427" x2="176" y2="435" stroke="#207448" stroke-width="3" />
+  <line x1="190" y1="427" x2="190" y2="435" stroke="#207448" stroke-width="3" />
+  <circle cx="176" cy="405" r="8" fill="none" stroke="#207448" stroke-width="3" />
+  
+  <text x="226" y="398" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="226" dy="0">Node side: crictl ps, and a D-state</tspan>
+    <tspan x="226" dy="36">process through /proc/PID/stack and wchan</tspan>
+  </text>
+  
+  <rect x="226" y="462" width="750" height="64" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="3.5" />
+  <text x="244" y="503" font-family="sans-serif" font-size="24" fill="#303a36">NFS and Lustre hangs usually appear here</text>
+
+  
+  <path d="M 530 550 L 530 600" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="60" y="600" width="940" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="645" r="24" fill="#207448" />
+  <text x="105" y="654" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <ellipse cx="176" cy="632" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 154 632 L 154 662 A 22 8 0 0 0 198 662 L 198 632" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 154 647 A 22 8 0 0 0 198 647" fill="none" stroke="#207448" stroke-width="3" />
+  
+  <text x="226" y="650" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Stuck unmounts: lsof +D and fuser -vm</text>
+  
+  <rect x="226" y="688" width="180" height="54" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <text x="250" y="723" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">fuser -vm</text>
+
+  
+  <path d="M 530 775 L 530 825" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="60" y="825" width="940" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="870" r="24" fill="#207448" />
+  <text x="105" y="879" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <circle cx="176" cy="870" r="13" fill="none" stroke="#207448" stroke-width="4" />
+  <path d="M 176 848 L 176 854 M 176 886 L 176 892 M 154 870 L 160 870 M 192 870 L 198 870 M 161 855 L 165 859 M 187 881 L 191 885 M 161 885 L 165 881 M 187 859 L 191 855" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  
+  <text x="226" y="878" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="226" dy="0">Unresponsive kubelet, hung runtime</tspan>
+    <tspan x="226" dy="38">shim, or failing CNI DEL</tspan>
+  </text>
+
+  
+
+  <rect x="1050" y="120" width="490" height="880" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="1080" y="170" width="430" height="320" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <circle cx="1295" cy="225" r="24" fill="#207448" />
+  <text x="1295" y="234" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(1267, 268)">
+    <ellipse cx="28" cy="14" rx="24" ry="9" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 4 14 L 4 44 A 24 9 0 0 0 52 44 L 52 14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 4 29 A 24 9 0 0 0 52 29" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <text x="1295" y="380" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1295" dy="0">Fix the</tspan>
+    <tspan x="1295" dy="38">underlying I/O</tspan>
+  </text>
+
+  
+  <path d="M 1295 490 L 1295 630" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="1080" y="630" width="430" height="320" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <circle cx="1295" cy="685" r="24" fill="#207448" />
+  <text x="1295" y="694" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(1267, 728)">
+    <path d="M 46 22 A 20 20 0 1 0 48 30" fill="none" stroke="#207448" stroke-width="4" />
+    <polygon points="46 10, 54 24, 38 24" fill="#207448" />
+  </g>
+  
+  <text x="1295" y="840" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1295" dy="0">Restart kubelet</tspan>
+    <tspan x="1295" dy="38">or the runtime</tspan>
+  </text>
+
+  
+
+  <rect x="60" y="1035" width="1480" height="70" rx="12" fill="#207448" />
+  <text x="800" y="1079" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Find the first step that is still standing, as with a line of dominoes.</text>
+</svg>

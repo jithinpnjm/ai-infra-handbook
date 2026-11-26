@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>One API, several front doors</title>
+  <desc>Architecture flowchart showing how Nebius API proto files define gRPC and REST endpoints, which are accessed via the Nebius CLI and language SDKs powering Terraform and automation.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">One API, several front doors</text>
+
+  
+   G ("gRPC") -->
+  <path d="M 360 250 L 404 250" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+
+   R ("REST") -->
+  <path d="M 360 670 L 404 670" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+
+   G ("gRPC") -->
+  <path d="M 270 570 L 270 470 Q 270 460 280 460 L 490 460 Q 500 460 500 450 L 500 350" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+
+   S ("SDKs") -->
+  <path d="M 924 280 L 936 280 Q 946 280 946 290 L 946 450 Q 946 460 956 460 L 968 460" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+
+   T ("Terraform provider") -->
+  <path d="M 1248 420 L 1260 420 Q 1270 420 1270 410 L 1270 260 Q 1270 250 1280 250 L 1292 250" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+
+   A ("Your automation") -->
+  <path d="M 1248 500 L 1260 500 Q 1270 500 1270 510 L 1270 660 Q 1270 670 1280 670 L 1292 670" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow)"/>
+
+  
+
+  
+  <g>
+    <rect x="40" y="150" width="320" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="172" y="176" width="56" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="172" y1="190" x2="228" y2="190" stroke="#207448" stroke-width="3"/>
+    <path d="M 183 201 L 191 207 L 183 213" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="197" y1="213" x2="209" y2="213" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="200" y="285" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">nebius CLI</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="570" width="320" height="200" rx="16" fill="#fbf2ea" stroke="#db8129" stroke-width="3.5"/>
+    
+    <path d="M 176 592 C 176 588 179 586 183 586 L 210 586 L 224 600 L 224 636 C 224 640 221 642 217 642 L 183 642 C 179 642 176 640 176 636 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 210 586 L 210 600 L 224 600" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 189 616 L 184 622 L 189 628 M 211 616 L 216 622 L 211 628 M 203 613 L 197 631" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="200" y="692" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">nebius/api</text>
+    <text x="200" y="730" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">.proto files</text>
+  </g>
+
+  
+  <g>
+    <rect x="404" y="150" width="520" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="636" y="174" width="56" height="20" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="648" cy="184" r="3" fill="#207448"/>
+    <line x1="658" y1="184" x2="682" y2="184" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <rect x="636" y="198" width="56" height="20" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="648" cy="208" r="3" fill="#207448"/>
+    <line x1="658" y1="208" x2="682" y2="208" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="664" y="265" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">gRPC</text>
+    <text x="664" y="306" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">{service}.api.nebius.cloud:443</text>
+  </g>
+
+  
+  <g>
+    <rect x="404" y="570" width="520" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="664" cy="614" r="23" fill="none" stroke="#207448" stroke-width="4"/>
+    <ellipse cx="664" cy="614" rx="11" ry="23" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="641" y1="614" x2="687" y2="614" stroke="#207448" stroke-width="3"/>
+    <line x1="645" y1="603" x2="683" y2="603" stroke="#207448" stroke-width="2.5"/>
+    <line x1="645" y1="625" x2="683" y2="625" stroke="#207448" stroke-width="2.5"/>
+    
+    <text x="664" y="682" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">REST</text>
+    <text x="664" y="725" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">api.nebius.cloud</text>
+  </g>
+
+  
+  <g>
+    <rect x="968" y="360" width="280" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 1108 382 L 1133 396 L 1133 424 L 1108 438 L 1083 424 L 1083 396 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="1108" y1="410" x2="1108" y2="438" stroke="#207448" stroke-width="3"/>
+    <line x1="1108" y1="410" x2="1133" y2="396" stroke="#207448" stroke-width="3"/>
+    <line x1="1108" y1="410" x2="1083" y2="396" stroke="#207448" stroke-width="3"/>
+    
+    <text x="1108" y="482" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Go / Python /</text>
+    <text x="1108" y="522" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">JS SDKs</text>
+  </g>
+
+  
+  <g>
+    <rect x="1292" y="150" width="268" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <polygon points="1410,172 1424,181 1424,199 1410,190" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <polygon points="1428,183 1442,192 1442,210 1428,201" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <polygon points="1410,194 1424,203 1424,221 1410,212" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <polygon points="1428,205 1442,214 1442,232 1428,223" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    
+    <text x="1426" y="278" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Terraform</text>
+    <text x="1426" y="318" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">provider</text>
+  </g>
+
+  
+  <g>
+    <rect x="1292" y="570" width="268" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="1426" cy="615" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 1426 592 L 1426 597 M 1426 633 L 1426 638 M 1403 615 L 1408 615 M 1444 615 L 1449 615 M 1410 599 L 1414 603 M 1438 627 L 1442 631 M 1410 631 L 1414 627 M 1438 603 L 1442 599" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="1426" cy="615" r="4" fill="#207448"/>
+    
+    <text x="1426" y="688" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Your</text>
+    <text x="1426" y="728" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">automation</text>
+  </g>
+</svg>

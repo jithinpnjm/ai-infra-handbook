@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Capture filter versus display filter: two places, two jobs</title>
+  <desc>A pipeline comparison showing capture filter running in kernel before pcap storage, versus display filter running on captured packets in the analysis engine.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Capture filter versus display filter: two places, two jobs</text>
+
+  
+  <g id="wire-and-kernel-node">
+    <rect x="50" y="95" width="600" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(75, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <line x1="18" y1="2" x2="18" y2="10" />
+      <line x1="28" y1="2" x2="28" y2="10" />
+      <line x1="38" y1="2" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="54" />
+      <line x1="28" y1="46" x2="28" y2="54" />
+      <line x1="38" y1="46" x2="38" y2="54" />
+      <line x1="2" y1="18" x2="10" y2="18" />
+      <line x1="2" y1="28" x2="10" y2="28" />
+      <line x1="2" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="54" y2="18" />
+      <line x1="46" y1="28" x2="54" y2="28" />
+      <line x1="46" y1="38" x2="54" y2="38" />
+    </g>
+    
+    <text x="160" y="158" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Wire and kernel</text>
+  </g>
+
+  
+  <path d="M 350 195 L 350 235" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="first-gate-node">
+    
+    <rect x="50" y="235" width="600" height="825" rx="16" fill="#fef9f4" stroke="#db8129" stroke-width="4" />
+
+    
+    <g transform="translate(80, 260)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="4,6 52,6 34,28 34,48 22,54 22,28" />
+      <line x1="12" y1="16" x2="44" y2="16" />
+      <line x1="18" y1="24" x2="38" y2="24" />
+    </g>
+
+    
+    <circle cx="605" cy="288" r="24" fill="#db8129" />
+    <text x="605" y="296" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <text x="80" y="360" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="80" dy="0" font-weight="bold" fill="#db8129">capture filter, pcap-filter or </tspan>
+      <tspan x="80" dy="38" font-weight="bold" fill="#db8129">BPF syntax (tcpdump, tshark -f): </tspan>
+      <tspan x="80" dy="46">runs in the kernel before any stream </tspan>
+      <tspan x="80" dy="38">is assembled; cheap; example </tspan>
+      <tspan x="80" dy="38" font-family="monospace" font-weight="bold" fill="#207448">host 10.0.0.5 and not port 22</tspan>
+    </text>
+
+    
+    <rect x="75" y="565" width="550" height="135" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="95" y="620" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">tshark -i eth0 -f "port 443" </tspan>
+      <tspan x="95" dy="42">-a duration:30 -w /tmp/t.pcapng</tspan>
+    </text>
+
+    
+    <g transform="translate(85, 740)">
+      <rect x="0" y="0" width="530" height="280" rx="10" fill="#e8f1ea" stroke="#db8129" stroke-dasharray="6 4" stroke-width="2" />
+      
+      <path d="M 40 70 L 490 70" stroke="#9ec5ab" stroke-width="8" stroke-linecap="round" />
+      <path d="M 40 140 L 490 140" stroke="#9ec5ab" stroke-width="8" stroke-linecap="round" />
+      <path d="M 40 210 L 490 210" stroke="#9ec5ab" stroke-width="8" stroke-linecap="round" />
+
+      
+      <line x1="265" y1="30" x2="265" y2="250" stroke="#db8129" stroke-width="6" stroke-linecap="round" />
+
+      
+      <circle cx="160" cy="70" r="16" fill="#db8129" />
+      <line x1="150" y1="60" x2="170" y2="80" stroke="#ffffff" stroke-width="3" />
+      <line x1="170" y1="60" x2="150" y2="80" stroke="#ffffff" stroke-width="3" />
+
+      
+      <circle cx="390" cy="140" r="16" fill="#207448" />
+      <polyline points="382,140 388,147 399,134" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+      
+      <circle cx="160" cy="210" r="16" fill="#db8129" />
+      <line x1="150" y1="200" x2="170" y2="220" stroke="#ffffff" stroke-width="3" />
+      <line x1="170" y1="200" x2="150" y2="220" stroke="#ffffff" stroke-width="3" />
+    </g>
+  </g>
+
+  
+  <path d="M 650 647 L 690 647" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g id="middle-pcap-node">
+    <rect x="690" y="555" width="180" height="185" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <g transform="translate(752, 580)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="24" ry="9" />
+      <path d="M 4 14 L 4 44 C 4 50 14 54 28 54 C 42 54 52 50 52 44 L 52 14" />
+      <path d="M 4 29 C 4 35 14 39 28 39 C 42 39 52 35 52 29" />
+    </g>
+    
+    <text x="780" y="695" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">pcap file</text>
+  </g>
+
+  
+  <path d="M 870 647 L 910 647" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g id="second-gate-node">
+    
+    <rect x="910" y="95" width="640" height="965" rx="16" fill="#f5f8f5" stroke="#207448" stroke-width="3.5" />
+
+    
+    <g transform="translate(940, 118)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="42" rx="4" />
+      <line x1="4" y1="18" x2="52" y2="18" />
+      <circle cx="12" cy="12" r="2" fill="#207448" />
+      <circle cx="20" cy="12" r="2" fill="#207448" />
+      <circle cx="28" cy="12" r="2" fill="#207448" />
+      <circle cx="34" cy="32" r="8" />
+      <line x1="40" y1="38" x2="48" y2="46" />
+    </g>
+
+    
+    <circle cx="1515" cy="146" r="24" fill="#207448" />
+    <text x="1515" y="154" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <text x="940" y="200" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="940" dy="0" font-weight="bold" fill="#207448">display filter (Wireshark, tshark -Y): </tspan>
+      <tspan x="940" dy="36">runs on packets already captured; </tspan>
+      <tspan x="940" dy="36">richer; reads fields the analysis </tspan>
+      <tspan x="940" dy="36">engine adds</tspan>
+    </text>
+
+    
+    <rect x="940" y="325" width="580" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="960" y="365" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="960" dy="0">tshark -r c.pcap </tspan>
+      <tspan x="960" dy="38" font-weight="bold" fill="#207448">-Y tcp.analysis.retransmission</tspan>
+    </text>
+
+    
+    
+    <g transform="translate(940, 440)">
+      <rect x="0" y="0" width="580" height="110" rx="8" fill="#e8f1ea" stroke="#9ec5ab" stroke-width="1.5" />
+      <text x="20" y="32" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+        <tspan x="20" dy="0">tcp.port == 443 </tspan>
+      </text>
+      <text x="20" y="66" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="20" dy="0">keeps every TCP packet using </tspan>
+        <tspan x="20" dy="30">port 443, either direction</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(940, 560)">
+      <rect x="0" y="0" width="580" height="135" rx="8" fill="#e8f1ea" stroke="#9ec5ab" stroke-width="1.5" />
+      <text x="20" y="32" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+        <tspan x="20" dy="0">tcp.flags.syn == 1 &amp;&amp; </tspan>
+        <tspan x="20" dy="28">tcp.flags.ack == 0 </tspan>
+      </text>
+      <text x="20" y="92" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="20" dy="0">keeps only the first packet of </tspan>
+        <tspan x="20" dy="30">each new connection</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(940, 705)">
+      <rect x="0" y="0" width="580" height="50" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="1.5" />
+      <text x="20" y="34" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">tcp.analysis.retransmission</text>
+    </g>
+
+    
+    <g transform="translate(940, 763)">
+      <rect x="0" y="0" width="580" height="50" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="1.5" />
+      <text x="20" y="34" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">tcp.analysis.zero_window</text>
+    </g>
+
+    
+    <g transform="translate(940, 821)">
+      <rect x="0" y="0" width="580" height="50" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="1.5" />
+      <text x="20" y="34" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">dns.flags.rcode != 0</text>
+    </g>
+
+    
+    <g transform="translate(940, 879)">
+      <rect x="0" y="0" width="580" height="50" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="1.5" />
+      <text x="20" y="34" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">tls.handshake.type == 1 (ClientHello)</text>
+    </g>
+
+    
+    <g transform="translate(940, 937)">
+      <rect x="0" y="0" width="580" height="50" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="1.5" />
+      <text x="20" y="34" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">vxlan.vni == 10100</text>
+    </g>
+
+    
+    <g transform="translate(940, 995)">
+      <rect x="0" y="0" width="580" height="50" rx="8" fill="#ffffff" stroke="#9ec5ab" stroke-width="1.5" />
+      <text x="20" y="34" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">frame.time_delta &gt; 0.2</text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="50" y="1085" width="1500" height="75" rx="12" fill="#207448" />
+    <text x="800" y="1132" text-anchor="middle" font-family="sans-serif" font-size="27" font-weight="bold" fill="#ffffff">Use a moderate capture filter on the wire, then ask the fine questions in the display filter</text>
+  </g>
+</svg>

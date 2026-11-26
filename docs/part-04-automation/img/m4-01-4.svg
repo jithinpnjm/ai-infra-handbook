@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>GitOps: Git as the deployment trigger</title>
+  <desc>Architecture diagram illustrating push vs pull deployment models with Git as the single source of truth.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">GitOps: Git as the deployment trigger</text>
+
+  
+  <rect x="25" y="380" width="680" height="280" rx="20" fill="#e8f1ea" stroke="#d2e3d5" stroke-width="2"/>
+  <rect x="750" y="150" width="820" height="300" rx="20" fill="#e8f1ea" stroke="#d2e3d5" stroke-width="2"/>
+  <rect x="750" y="590" width="820" height="300" rx="20" fill="#e8f1ea" stroke="#d2e3d5" stroke-width="2"/>
+
+  
+  
+  <line x1="225" y1="520" x2="435" y2="520" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="330" y="495" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pull request</text>
+
+  
+  <path d="M 560 420 L 560 316 Q 560 300 576 300 L 785 300" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="672" y="278" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">merge to main</text>
+
+  
+  <line x1="1085" y1="300" x2="1325" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1205" y="255">push model:</tspan>
+    <tspan x="1205" y="285">apply</tspan>
+  </text>
+
+  
+  <path d="M 560 620 L 560 724 Q 560 740 576 740 L 785 740" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10,6" marker-end="url(#arrow)"/>
+  <text x="672" y="720" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pull model</text>
+
+  
+  <line x1="1085" y1="740" x2="1325" y2="740" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1205" y="695">reconcile /</tspan>
+    <tspan x="1205" y="725">detect drift</tspan>
+  </text>
+
+  
+  <rect x="45" y="430" width="180" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <circle cx="135" cy="472" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 110 514 C 110 496 160 496 160 514" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="135" y="565" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Engineer</text>
+
+  
+  <rect x="435" y="420" width="250" height="200" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <line x1="540" y1="455" x2="540" y2="515" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="540" cy="465" r="7" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <circle cx="540" cy="505" r="7" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <path d="M 540 505 C 540 485 575 495 575 475" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="575" cy="475" r="7" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <text x="560" y="555" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Git</text>
+  <text x="560" y="590" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(desired state)</text>
+
+  
+  <rect x="785" y="190" width="300" height="220" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <circle cx="935" cy="245" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 925 245 L 932 252 L 945 238" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="935" y1="220" x2="935" y2="227" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="935" y1="263" x2="935" y2="270" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="910" y1="245" x2="917" y2="245" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="953" y1="245" x2="960" y2="245" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="935" y="310" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CI:</text>
+  <text x="935" y="350" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">validate, plan,</text>
+  <text x="935" y="385" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">test, build</text>
+
+  
+  <rect x="1325" y="200" width="235" height="200" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <rect x="1412" y="235" width="60" height="16" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="1457" cy="243" r="2.5" fill="#207448"/>
+  <rect x="1412" y="258" width="60" height="16" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="1457" cy="266" r="2.5" fill="#207448"/>
+  <rect x="1412" y="281" width="60" height="16" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="1457" cy="289" r="2.5" fill="#207448"/>
+  <text x="1442" y="355" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Environment</text>
+
+  
+  <rect x="785" y="630" width="300" height="220" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <path d="M 935 665 A 20 20 0 1 1 915 685" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  <polyline points="910,670 915,685 930,685" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 935 705 A 20 20 0 1 1 955 685" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  <polyline points="960,700 955,685 940,685" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="935" y="735" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GitOps agent</text>
+  <text x="935" y="775" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">in cluster</text>
+  <text x="935" y="810" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(Argo CD / Flux)</text>
+
+  
+  <rect x="1325" y="640" width="235" height="200" rx="16" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <rect x="1427" y="668" width="30" height="22" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <rect x="1402" y="710" width="30" height="22" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <rect x="1452" y="710" width="30" height="22" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="1437" y1="690" x2="1422" y2="710" stroke="#207448" stroke-width="3"/>
+  <line x1="1447" y1="690" x2="1462" y2="710" stroke="#207448" stroke-width="3"/>
+  <text x="1442" y="795" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cluster</text>
+</svg>

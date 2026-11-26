@@ -1,0 +1,234 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Is this partition aligned? Divide the start sector by 8</title>
+  <desc>Visual infographic explaining flash partition alignment by dividing the start sector by 8, contrasting aligned sector 2048 with unaligned sector 1953126.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="86" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Is this partition aligned?</tspan>
+    <tspan x="800" dy="52">Divide the start sector by 8</tspan>
+  </text>
+
+  
+  <g id="top-strip">
+    <rect x="40" y="188" width="1520" height="78" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(62, 199)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <line x1="18" y1="2" x2="18" y2="10" />
+      <line x1="28" y1="2" x2="28" y2="10" />
+      <line x1="38" y1="2" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="54" />
+      <line x1="28" y1="46" x2="28" y2="54" />
+      <line x1="38" y1="46" x2="38" y2="54" />
+      <line x1="2" y1="18" x2="10" y2="18" />
+      <line x1="2" y1="28" x2="10" y2="28" />
+      <line x1="2" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="54" y2="18" />
+      <line x1="46" y1="28" x2="54" y2="28" />
+      <line x1="46" y1="38" x2="54" y2="38" />
+    </g>
+
+    
+    
+    <rect x="150" y="200" width="330" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <line x1="191.25" y1="200" x2="191.25" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="232.5" y1="200" x2="232.5" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="273.75" y1="200" x2="273.75" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="315.0" y1="200" x2="315.0" y2="254" stroke="#207448" stroke-width="1.5" />
+    <line x1="356.25" y1="200" x2="356.25" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="397.5" y1="200" x2="397.5" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="438.75" y1="200" x2="438.75" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+
+    
+    <rect x="495" y="200" width="330" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <line x1="536.25" y1="200" x2="536.25" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="577.5" y1="200" x2="577.5" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="618.75" y1="200" x2="618.75" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="660.0" y1="200" x2="660.0" y2="254" stroke="#207448" stroke-width="1.5" />
+    <line x1="701.25" y1="200" x2="701.25" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="742.5" y1="200" x2="742.5" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="783.75" y1="200" x2="783.75" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+
+    
+    <rect x="840" y="200" width="330" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <line x1="881.25" y1="200" x2="881.25" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="922.5" y1="200" x2="922.5" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="963.75" y1="200" x2="963.75" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="1005.0" y1="200" x2="1005.0" y2="254" stroke="#207448" stroke-width="1.5" />
+    <line x1="1046.25" y1="200" x2="1046.25" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="1087.5" y1="200" x2="1087.5" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="1128.75" y1="200" x2="1128.75" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+
+    
+    <rect x="1185" y="200" width="330" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <line x1="1226.25" y1="200" x2="1226.25" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="1267.5" y1="200" x2="1267.5" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="1308.75" y1="200" x2="1308.75" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="1350.0" y1="200" x2="1350.0" y2="254" stroke="#207448" stroke-width="1.5" />
+    <line x1="1391.25" y1="200" x2="1391.25" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="1432.5" y1="200" x2="1432.5" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+    <line x1="1473.75" y1="200" x2="1473.75" y2="254" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+  </g>
+
+  
+  <g id="row-a">
+    <rect x="40" y="306" width="1520" height="232" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(65, 324)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8" />
+      <path d="M 6 14 v 24 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8 v -24" />
+      <path d="M 6 26 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8" />
+    </g>
+
+    
+    <text x="140" y="355" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Start sector 2048 (1 MiB)</text>
+
+    
+    <rect x="1340" y="320" width="200" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="1440" y="362" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">aligned</text>
+
+    
+    <rect x="65" y="388" width="870" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="426" font-family="monospace" font-size="25" fill="#303a36">2048 / 8 = 256, a whole number, remainder 0</text>
+
+    
+    <rect x="65" y="458" width="870" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="496" font-family="sans-serif" font-size="24" fill="#303a36">the partition boundary line sits exactly on a page edge</text>
+
+    
+    <g transform="translate(975, 388)">
+      
+      <rect x="0" y="0" width="250" height="132" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      
+      <rect x="270" y="0" width="280" height="132" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+      
+      <line x1="305" y1="0" x2="305" y2="132" stroke="#207448" stroke-width="1" stroke-dasharray="3 3" />
+      <line x1="340" y1="0" x2="340" y2="132" stroke="#207448" stroke-width="1" stroke-dasharray="3 3" />
+      <line x1="375" y1="0" x2="375" y2="132" stroke="#207448" stroke-width="1" stroke-dasharray="3 3" />
+      <line x1="410" y1="0" x2="410" y2="132" stroke="#207448" stroke-width="1" stroke-dasharray="3 3" />
+      <line x1="445" y1="0" x2="445" y2="132" stroke="#207448" stroke-width="1" stroke-dasharray="3 3" />
+      <line x1="480" y1="0" x2="480" y2="132" stroke="#207448" stroke-width="1" stroke-dasharray="3 3" />
+      <line x1="515" y1="0" x2="515" y2="132" stroke="#207448" stroke-width="1" stroke-dasharray="3 3" />
+
+      
+      <line x1="260" y1="-8" x2="260" y2="140" stroke="#207448" stroke-width="5" />
+
+      
+      <rect x="272" y="14" width="276" height="104" rx="4" fill="#207448" fill-opacity="0.12" stroke="#207448" stroke-width="2" stroke-dasharray="4 2" />
+    </g>
+  </g>
+
+  
+  <g id="row-b">
+    <rect x="40" y="578" width="1520" height="282" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(65, 592)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8" />
+      <path d="M 6 14 v 24 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8 v -24" />
+      <path d="M 6 26 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8" />
+      <line x1="28" y1="18" x2="28" y2="28" stroke-width="3" />
+      <circle cx="28" cy="34" r="1.5" fill="#207448" />
+    </g>
+
+    
+    <text x="140" y="624" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">cat /sys/block/sdf/sdf2/start prints 1953126</text>
+
+    
+    <rect x="1290" y="590" width="250" height="68" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    <text x="1415" y="632" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NOT aligned</text>
+
+    
+    <rect x="65" y="654" width="1010" height="61" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="692" font-family="monospace" font-size="25" fill="#303a36">1953126 / 8 = 244140.75, remainder 6</text>
+
+    
+    <rect x="65" y="722" width="1010" height="61" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="760" font-family="sans-serif" font-size="24" fill="#303a36">the partition boundary line falls inside a page, six sectors in</text>
+
+    
+    <rect x="65" y="790" width="1010" height="61" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="85" y="828" font-family="sans-serif" font-size="24" fill="#303a36">a single 4 KiB read straddles two physical pages</text>
+
+    
+    <g transform="translate(1115, 654)">
+      
+      <rect x="0" y="0" width="195" height="195" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <line x1="24.375" y1="0" x2="24.375" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="48.75" y1="0" x2="48.75" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="73.125" y1="0" x2="73.125" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="97.5" y1="0" x2="97.5" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="121.875" y1="0" x2="121.875" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="146.25" y1="0" x2="146.25" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="170.625" y1="0" x2="170.625" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+
+      
+      <rect x="215" y="0" width="195" height="195" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <line x1="239.375" y1="0" x2="239.375" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="263.75" y1="0" x2="263.75" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="288.125" y1="0" x2="288.125" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="312.5" y1="0" x2="312.5" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="336.875" y1="0" x2="336.875" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="361.25" y1="0" x2="361.25" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+      <line x1="385.625" y1="0" x2="385.625" y2="195" stroke="#207448" stroke-width="1" stroke-dasharray="2 2" />
+
+      
+      <line x1="146.25" y1="-8" x2="146.25" y2="203" stroke="#207448" stroke-width="4" />
+
+      
+      <rect x="146.25" y="30" width="215" height="135" rx="6" fill="#207448" fill-opacity="0.12" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 2" />
+      
+      <line x1="205" y1="20" x2="205" y2="175" stroke="#207448" stroke-width="2" />
+    </g>
+  </g>
+
+  
+  
+  <g id="box-left-note">
+    <rect x="40" y="900" width="730" height="145" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(65, 915)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="28" y1="26" x2="28" y2="38" />
+      <circle cx="28" cy="18" r="2" fill="#207448" />
+    </g>
+
+    
+    <text x="140" y="955" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">Why 8: eight 512-byte sectors</tspan>
+      <tspan x="140" dy="40">make one 4,096-byte page</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-right-tool">
+    <rect x="800" y="900" width="760" height="145" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(825, 915)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="38" rx="6" />
+      <path d="M 16 22 l 6 5 l -6 5" stroke-width="3.5" />
+      <line x1="28" y1="32" x2="40" y2="32" stroke-width="3.5" />
+    </g>
+
+    
+    <text x="900" y="942" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="900" dy="0">Check with a tool:</tspan>
+      <tspan x="900" dy="34">parted /dev/sdb align-check</tspan>
+      <tspan x="900" dy="34">optimal 1 prints 1 aligned</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1085" width="1520" height="75" rx="12" fill="#207448" />
+    <text x="800" y="1132" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Existing partitions are not realigned by the tools, so check them yourself</text>
+  </g>
+</svg>

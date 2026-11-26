@@ -1,0 +1,268 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The four jobs of a protocol, and the scope each protocol does them at</title>
+  <desc>A comprehensive grid infographic categorizing networking protocols by scope and detailing their implementation of transport, multiplexing, error control, and flow and congestion control.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The four jobs of a protocol, and</text>
+  <text x="800" y="115" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">the scope each protocol does them at</text>
+
+  
+  
+  <text x="675" y="160" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">getting data to the right place</text>
+  <text x="675" y="188" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">and keeping conversations apart</text>
+  <path d="M 410 206 L 665 206 Q 675 206 675 214 Q 675 206 685 206 L 940 206" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  
+  <text x="1255" y="160" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">getting it there intact</text>
+  <text x="1255" y="188" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">and at a sensible speed</text>
+  <path d="M 950 206 L 1245 206 Q 1255 206 1255 214 Q 1255 206 1265 206 L 1560 206" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  
+  
+  <rect x="410" y="222" width="265" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="542" y="271" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Transport</text>
+
+  
+  <rect x="685" y="222" width="255" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="812" y="271" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Multiplexing</text>
+
+  
+  <rect x="950" y="222" width="290" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1095" y="271" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Error control</text>
+
+  
+  <rect x="1250" y="222" width="310" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1405" y="254" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Flow and</text>
+  <text x="1405" y="286" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">congestion control</text>
+
+  
+
+  
+  <rect x="40" y="310" width="160" height="125" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="95" cy="345" r="9" stroke="#207448" stroke-width="4" fill="none"/>
+  <circle cx="145" cy="345" r="9" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="104" y1="345" x2="136" y2="345" stroke="#207448" stroke-width="4"/>
+  <text x="120" y="396" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">One</text>
+  <text x="120" y="424" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">link</text>
+
+  
+  <rect x="40" y="443" width="160" height="125" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="94" cy="485" r="8" stroke="#207448" stroke-width="4" fill="none"/>
+  <circle cx="120" cy="460" r="8" stroke="#207448" stroke-width="4" fill="none"/>
+  <circle cx="146" cy="485" r="8" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="101" y1="479" x2="113" y2="466" stroke="#207448" stroke-width="4"/>
+  <line x1="127" y1="466" x2="139" y2="479" stroke="#207448" stroke-width="4"/>
+  <text x="120" y="529" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Whole</text>
+  <text x="120" y="557" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">path</text>
+
+  
+  <rect x="40" y="576" width="160" height="391" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="94" y="728" width="20" height="26" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+  <rect x="126" y="728" width="20" height="26" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="114" y1="741" x2="126" y2="741" stroke="#207448" stroke-width="4" stroke-dasharray="2 3"/>
+  <line x1="100" y1="760" x2="140" y2="760" stroke="#207448" stroke-width="4"/>
+  <text x="120" y="806" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">End to</text>
+  <text x="120" y="836" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">end</text>
+
+  
+  <rect x="40" y="975" width="160" height="125" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="98" y="990" width="44" height="40" rx="5" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="92" y1="1003" x2="98" y2="1003" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="92" y1="1017" x2="98" y2="1017" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="142" y1="1003" x2="148" y2="1003" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="142" y1="1017" x2="148" y2="1017" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="120" cy="1010" r="7" stroke="#207448" stroke-width="4" fill="none"/>
+  <text x="120" y="1061" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">AI</text>
+  <text x="120" y="1089" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">fabrics</text>
+
+  
+
+  
+  <rect x="210" y="310" width="190" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  
+  <rect x="285" y="322" width="40" height="34" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M 293 356 L 293 344 L 317 344 L 317 356" stroke="#207448" stroke-width="4" fill="none"/>
+  <text x="305" y="405" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ethernet</text>
+
+  
+  <rect x="210" y="443" width="190" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  
+  <circle cx="305" cy="472" r="18" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="287" y1="472" x2="323" y2="472" stroke="#207448" stroke-width="4"/>
+  <ellipse cx="305" cy="472" rx="8" ry="18" stroke="#207448" stroke-width="4" fill="none"/>
+  <text x="305" y="538" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">IP</text>
+
+  
+  <rect x="210" y="576" width="190" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  
+  <rect x="286" y="590" width="38" height="28" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M 288 592 L 305 606 L 322 592" stroke="#207448" stroke-width="4" fill="none"/>
+  <text x="305" y="671" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">UDP</text>
+
+  
+  <rect x="210" y="709" width="190" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  
+  <rect x="287" y="723" width="36" height="30" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M 294 738 L 301 745 L 316 731" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="305" y="804" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">TCP</text>
+
+  
+  <rect x="210" y="842" width="190" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  
+  <path d="M 307 850 L 295 870 L 305 870 L 299 892 L 315 868 L 305 868 Z" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" fill="none"/>
+  <text x="305" y="937" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">QUIC</text>
+
+  
+  <rect x="210" y="975" width="190" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  
+  <rect x="287" y="989" width="36" height="36" rx="5" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="297" y1="1007" x2="313" y2="1007" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="305" y1="999" x2="305" y2="1015" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="305" y="1070" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">RoCE v2</text>
+
+  
+
+  
+  
+  <rect x="410" y="310" width="265" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="542" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">MAC addressing</text>
+
+  
+  <rect x="685" y="310" width="255" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="812" y="363" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">EtherType,</text>
+  <text x="812" y="393" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">VLAN tags</text>
+
+  
+  <rect x="950" y="310" width="290" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1095" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">FCS (CRC32)</text>
+
+  
+  <rect x="1250" y="310" width="310" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1405" y="350" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">None originally;</text>
+  <text x="1405" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">PAUSE and PFC</text>
+  <text x="1405" y="406" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">optional</text>
+
+
+  
+  
+  <rect x="410" y="443" width="265" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="542" y="483" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Network-wide</text>
+  <text x="542" y="511" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">addressing,</text>
+  <text x="542" y="539" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">routing</text>
+
+  
+  <rect x="685" y="443" width="255" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="812" y="497" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Protocol</text>
+  <text x="812" y="527" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">number</text>
+
+  
+  <rect x="950" y="443" width="290" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1095" y="497" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Header checksum</text>
+  <text x="1095" y="527" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(IPv4) only</text>
+
+  
+  <rect x="1250" y="443" width="310" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1405" y="497" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">None</text>
+  <text x="1405" y="527" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(ICMP signals)</text>
+
+
+  
+  
+  <rect x="410" y="576" width="265" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="542" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Datagrams</text>
+  <text x="542" y="660" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">between ports</text>
+
+  
+  <rect x="685" y="576" width="255" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="812" y="644" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Ports</text>
+
+  
+  <rect x="950" y="576" width="290" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1095" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Optional</text>
+  <text x="1095" y="660" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">checksum</text>
+
+  
+  <rect x="1250" y="576" width="310" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1405" y="644" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">None</text>
+
+
+  
+  
+  <rect x="410" y="709" width="265" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="542" y="763" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Reliable</text>
+  <text x="542" y="793" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">byte stream</text>
+
+  
+  <rect x="685" y="709" width="255" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="812" y="777" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Ports</text>
+
+  
+  <rect x="950" y="709" width="290" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1095" y="749" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Checksum,</text>
+  <text x="1095" y="777" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">sequence numbers,</text>
+  <text x="1095" y="805" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">ACK, retransmit</text>
+
+  
+  <rect x="1250" y="709" width="310" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1405" y="763" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Receive window,</text>
+  <text x="1405" y="793" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">congestion window</text>
+
+
+  
+  
+  <rect x="410" y="842" width="265" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="542" y="896" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Streams</text>
+  <text x="542" y="926" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">over UDP</text>
+
+  
+  <rect x="685" y="842" width="255" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="812" y="896" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Connection IDs,</text>
+  <text x="812" y="926" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">streams</text>
+
+  
+  <rect x="950" y="842" width="290" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1095" y="896" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Own ACKs and</text>
+  <text x="1095" y="926" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">retransmit</text>
+
+  
+  <rect x="1250" y="842" width="310" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1405" y="882" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Own congestion</text>
+  <text x="1405" y="910" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">control, stream</text>
+  <text x="1405" y="938" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">windows</text>
+
+
+  
+  
+  <rect x="410" y="975" width="265" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="542" y="1015" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">InfiniBand</text>
+  <text x="542" y="1043" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">transport over</text>
+  <text x="542" y="1071" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">UDP/IP/Ethernet</text>
+
+  
+  <rect x="685" y="975" width="255" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="812" y="1029" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">UDP port 4791,</text>
+  <text x="812" y="1059" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">QP numbers</text>
+
+  
+  <rect x="950" y="975" width="290" height="125" rx="8" fill="#ffffff" stroke="#c8d6cc" stroke-width="1.5"/>
+  <text x="1095" y="1029" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">ICRC and</text>
+  <text x="1095" y="1059" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">retransmit</text>
+
+  
+  <rect x="1250" y="975" width="310" height="125" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2.5"/>
+  <text x="1405" y="1015" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Needs PFC and ECN</text>
+  <text x="1405" y="1043" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">plus DCQCN or</text>
+  <text x="1405" y="1071" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">other CC</text>
+
+
+  
+  <rect x="40" y="1115" width="1520" height="68" rx="8" fill="#207448"/>
+  <text x="800" y="1157" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">When you meet a new protocol, list its four jobs and their scope before you read its header format</text>
+</svg>

@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-sli-menu",
+  "title": "The SLI menu: what counts as a good event and where it is measured",
+  "spec": "Table with columns SLI, Good event, Where to measure, Metric. Rows: 'Availability | final response is not a 5xx, or a stream ends without a server-side error | gateway | gateway_requests_total'; 'Time to first token | first streamed token within 1.0 s | gateway, explained by engine | gateway_ttft_seconds_bucket'; 'Inter-token latency | gap between streamed outputs at most 0.1 s | engine | vllm:inter_token_latency_seconds_bucket'; 'Per-request speed | seconds per output token under a limit | engine | vllm:request_time_per_output_token_seconds'; 'End-to-end latency | finished within a limit chosen for its output-length class | gateway | gateway_e2e_seconds per length class'; 'Error rate by cause | failure counted by reason: overload, upstream, timeout, client | gateway | code and cause labels'; 'Goodput | requests that met TTFT and speed limits together | gateway | derived from the ratios above'; 'Quality | finish reason mix stays normal | engine | vllm:request_success_total'. Top banner 'SLI = good events divided by total valid events'. Footnote 'gateway_ names are this chapter's own design, not Nebius names; vllm: names were checked against v0.32.0'. Text at least 24px.",
+  "anchor": "### 1. A token API breaks the usual SLI recipe",
+  "alt": "A table of eight SLIs with the good-event definition, where each is measured and the metric used.",
+  "cap": "For each SLI say where the number comes from and what counts as bad."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-length-latency",
+  "title": "End-to-end latency depends on how much the user asked for",
+  "spec": "Formula banner 'end-to-end latency = TTFT + inter-token latency x (N - 1), N = tokens generated; TTFT maps to prefill, inter-token latency maps to decode'. Two worked rows with TTFT 0.4 s and inter-token latency 0.04 s. Row A '500-token reply: 0.4 + 0.04 x 499 = 20.36 s'. Row B '20-token reply: 0.4 + 0.04 x 19 = 1.16 s'. Verdict 'a single end-to-end limit of 10 s would call row A bad although the system is healthy; the reply is long because the customer asked for a long reply'. Two fixes: 'judge TTFT and per-token speed separately' and 'bucket end-to-end latency by output length class with a different limit per class'. Trap box 'vLLM time per output token = (end-to-end - TTFT) / (output tokens - 1), recorded as zero when a request makes one token or fewer; short replies look fast on the chart because they are recorded as zero, not because they are fast'. Text at least 24px.",
+  "anchor": "### 2. Latency is three numbers, and end-to-end depends on length",
+  "alt": "Two worked end-to-end latency calculations, 20.36 seconds and 1.16 seconds, at identical healthy speeds.",
+  "cap": "Judge first-token wait and per-token speed instead of one end-to-end limit."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-quantile-traps",
+  "title": "Percentile traps: sum first, mind the last bucket, count the share",
+  "spec": "Three trap panels. Panel 1 'Do not average percentiles across replicas: averaging quantiles gives statistically nonsensical values; sum the histogram buckets across replicas, then compute the quantile' with the query 'histogram_quantile(0.99, sum by (le) (rate(gateway_ttft_seconds_bucket[5m])))'. Panel 2 'The quantile is interpolated inside a bucket, so its error is limited by the bucket width; if the true 99th percentile is above the last finite bucket you get the last finite bucket boundary back: a distribution with p99 past 2.5 s returns exactly 2.5, which looks calm but is off the chart'. Panel 3 'Best SLI avoids the quantile: the share of requests under the limit, a ratio of two bucket counters; needs a bucket boundary at the limit; vLLM v0.32.0 has a 1.0 s boundary in TTFT buckets and a 0.1 s boundary in inter-token buckets, so a 1.0 s TTFT limit and a 0.1 s ITL limit are exact'. Text at least 24px.",
+  "anchor": "### 3. Why averages lie",
+  "alt": "Three panels on histogram quantile pitfalls: summing buckets, the last finite bucket cap, and using a share under the limit.",
+  "cap": "Define latency SLIs as the share of requests under a limit, with a bucket boundary at that limit."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-tenant-dilution",
+  "title": "A global ratio hides one tenant, and per-tenant detail has a series cost",
+  "spec": "Left worked example. '100 tenants with equal traffic; one tenant has 100 percent errors; global error ratio = 1 percent; against a 99.9 percent target burn rate = 0.01 / 0.001 = 10'. 'Burn 10 pages through the 6-hour rule (threshold 6) but not through the fast 14.4 rule, while that customer is fully down'. Middle cost example: 'TTFT histogram with 22 buckets plus a count series is about 23 series per tenant and model pair; 1,000 tenants x 20 models x 23 = 460,000 series for one metric'. Right design 'page on per-model ratios, ticket on per-tenant ratios, guard low-traffic series'. Guard example 'tenant with 3 requests per minute (0.05 requests per second) and every one failing has a 100 percent ratio but the rule needs more than 0.1 requests per second over three days, so it does not fire; tenant a at 100 requests per second and 0.2 percent errors fires, tenant b stays silent; a dedicated contract tenant can get an absolute count of failures in an hour instead'. Text at least 24px.",
+  "anchor": "### 4. Per model and per tenant, and what it costs",
+  "alt": "One failing tenant among 100 gives a burn rate of 10 globally, beside the 460,000 series cost and the traffic guard.",
+  "cap": "Page on model ratios, ticket on tenant ratios and guard low-traffic series."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-burn-formulas",
+  "title": "Burn rate arithmetic and the three alerts, one row checked by hand",
+  "spec": "Formula block 'burn_rate = error_ratio / (1 - SLO)'; 'budget_consumed = burn_rate x alert_window / SLO_period'; 'hours_to_empty = SLO_period_hours / burn_rate'. Meaning line 'burn rate 1 uses exactly the whole budget by the end of the window; 2 uses it in half the time; 99.9 percent SLO with 1 percent errors is burn 10, empties a 30-day budget in 72 hours'. Table: 'Page | 1 h long, 5 min short | burn 14.4 | threshold 0.0144 | 2 percent of budget | 50 hours to empty'; 'Page | 6 h long, 30 min short | burn 6 | 0.006 | 5 percent | 120 hours'; 'Ticket | 3 days long, 6 h short | burn 1 | 0.001 | 10 percent | 720 hours'. Hand checks 'row 1: 14.4 x 1 / 720 = 0.02 = 2 percent'; 'row 2: 6 x 6 / 720 = 5 percent'; 'row 3: 1 x 72 / 720 = 10 percent'; 'threshold = burn rate x 0.001'. Note 'short window is a rule of thumb of one twelfth of the long window; no for: clause because the two windows already do the pending delay'. Text at least 24px.",
+  "anchor": "### 6. Burn rate and the multiwindow alert",
+  "alt": "Burn rate formulas and a table of three multiwindow alerts with the budget used checked by hand.",
+  "cap": "Doing one row of the table aloud shows you understand it rather than recite it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-time-to-fire",
+  "title": "How long each alert takes to fire at different error ratios",
+  "spec": "Rule strip 'time for the 1 hour window average to reach the 0.0144 threshold = 0.0144 / error ratio hours (long window was clean before)'. Table of error ratio against the first alert that catches it. '100 percent errors (service fully dark): fast page after 0.0144 hours = 0.864 min, about 52 seconds'. '2 percent errors: fast page after 0.0144 / 0.02 = 0.72 hours = 43.2 minutes'. '1 percent errors: fast page never fires because 1 percent is below 1.44 percent; the 6-hour rule catches it after 0.006 / 0.01 x 6 hours = 3.6 hours'. '0.5 percent errors: only the ticket catches it, after 14.4 hours'. Footer 'big outages page within a minute, slow leaks are caught by the slower rules; the unit-tested calculator reproduces each number'. Text at least 24px.",
+  "anchor": "### 6. Burn rate and the multiwindow alert",
+  "alt": "A table showing 52 seconds, 43.2 minutes, 3.6 hours and 14.4 hours to detect 100, 2, 1 and 0.5 percent error ratios.",
+  "cap": "The smaller the error ratio, the slower and less urgent the alert that catches it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-finish-reason-mix",
+  "title": "The finish_reason mix as a ticket-level quality signal",
+  "spec": "Left a stacked bar sketch of vllm:request_success_total by finished_reason with five values and their meanings: 'stop: a stop string was emitted (most of a healthy bar)'; 'length: token limit reached'; 'abort: client cancelled'; 'error: retryable internal error, HTTP 500'; 'repetition: repetitive token pattern detected'. Center before and after bars: 'healthy: length 3 percent' and 'after a deploy: length 12 percent'. Reading guide 'something changed: a prompt template grew, or a model update makes answers longer; repetition appearing means the model or sampling settings are broken; a single slice can also move for a boring reason such as longer essays, so ask what changed in the same hour'. Alert box 'ticket when length share is above 5 percent and more than double its value a day earlier; 5 percent and the factor of two are starting values to tune on weeks of your own traffic'. Footer 'never promote to a page without evidence it predicts user pain'. Text at least 24px.",
+  "anchor": "### 8. Quality signals: the finish reason mix",
+  "alt": "A stacked bar of five finish reasons with a before and after deploy comparison and the ticket rule for length share.",
+  "cap": "Watch whether the mix of outcomes moves, and file a ticket rather than a page."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-429-counting",
+  "title": "The same 429 can be good or bad for the SLO",
+  "spec": "Two request paths ending in HTTP 429. Path A 'gateway refused with 429 because the whole pool was full: your own capacity failed the customer: count as BAD'. Path B 'gateway refused with 429 because the customer went past their own quota: the customer chose to exceed the agreed limit: count as NOT bad'. Both carry the same status code and land on opposite sides of the SLO; the cause label on the gateway counter separates them. Bottom comparison table. 'Dedicated endpoint: availability target such as 99.9 percent plus TTFT while traffic is within provisioned capacity; exclude load above the contracted capacity from the SLI; slice alerts per endpoint'. 'Serverless endpoint: looser latency targets with fairness limits and 429 responses as the control; count overload 429 as bad, quota 429 as not bad; slice alerts per model, tickets per tenant'. Example 'a customer sending 3 times their provisioned traffic and TTFT rising is not your breach'. Footer 'table is the author's reasoning, Nebius has not published its SLO terms'. Text at least 24px.",
+  "anchor": "### 10. Dedicated versus serverless endpoints",
+  "alt": "Two 429 paths counted oppositely by cause, with a comparison of dedicated and serverless counting rules.",
+  "cap": "Write down what counts against the SLO before writing the first rule."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-ttft-page-ladder",
+  "title": "The TTFT page fires: five checks in order",
+  "spec": "Ladder for the alert GatewayTTFTBurnFast on one model. Step 1 'gateway: is the slow share rising for all tenants or one? run the per-tenant ratio; one tenant means look for a burst of long prompts'. Step 2 'engine queue: sum by (model_name) (vllm:num_requests_waiting); growing means requests wait before prefill'. Step 3 'memory: max by (model_name) (vllm:kv_cache_usage_perc); near 1 means the cache is full and new requests wait for blocks'. Step 4 'preemptions: rate(vllm:num_preemptions_total[10m]); non-zero means running requests were evicted and restarted'. Step 5 'compare vllm:time_to_first_token_seconds with vllm:request_queue_time_seconds: if queue time explains most of TTFT the fix is capacity or routing; if prefill time grew look at prompt length mix and the prefix cache'. Side box 'mitigate before the root cause: add replicas, shed a tenant that exceeded its quota, or route away from the bad replica'. Text at least 24px.",
+  "anchor": "### Scenario 2: The TTFT page fires",
+  "alt": "A five-step ladder of gateway and engine queries to run when the TTFT page fires, with mitigation first.",
+  "cap": "Each step narrows the question until one cause explains the slow first words."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p3-2019-stream-good-event",
+  "title": "Green status codes, broken streams: redefine the good event",
+  "spec": "Timeline of one streamed request. 'headers: HTTP 200 sent with the first token'; 'tokens stream'; 'server fails mid-stream: a data: error chunk and [DONE] under HTTP 200; the engine counts it as finished_reason error; a client disconnect is counted as abort'. Two measuring rows. Row 'status-code SLI: 200 means success, dashboard shows 100 percent while customers see replies stop in the middle'. Row 'stream SLI: good only if the stream ends with a normal finish; a mid-stream abort by the server counts as bad'. Fix list 'count a stream good only if it ends normally; add a gateway counter for streams that ended with a server-side abort; cross-check against vllm:request_success_total by finished_reason; do not alert on abort alone because client disconnects count as abort'. Footer 'how the gateway observes a mid-stream break depends on its design, so name the assumption you make; also count the outcome the customer sees, not each attempt, and track retries separately'. Text at least 24px.",
+  "anchor": "### Scenario 4: Everything is green and users complain",
+  "alt": "A streaming timeline where HTTP 200 is sent first and a later error is invisible to a status code SLI.",
+  "cap": "Once the stream is the unit of work, did it finish normally becomes the SLI."
+ }
+]

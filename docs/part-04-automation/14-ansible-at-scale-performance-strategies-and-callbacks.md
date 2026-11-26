@@ -217,18 +217,9 @@ Decide the strategy and the batch sizes for each step before the rollout starts,
 
 Architecture is the next lever after tuning. A tuned controller still has limits. The architecture question is where the controller sits, and whether each node pulls its own configuration or the controller pushes it out.
 
-```mermaid
-flowchart TB
-  subgraph Push["Push at scale"]
-    G["Git + CI/AAP"] --> C1["Controller / execution node A\n(rack group 1-20)"]
-    G --> C2["Execution node B\n(rack group 21-40)"]
-    C1 --> N1["Nodes"]
-    C2 --> N2["Nodes"]
-  end
-  subgraph Pull["Pull at scale"]
-    G2["Git repo"] --> P["ansible-pull on each node\n(cron/systemd timer)"]
-  end
-```
+![Architectures for large fleets](./img/m4-14-1.svg)
+
+*Figure 4.14.1. Architectures for large fleets, as a diagram.*
 
 In push mode, a central controller reaches out to each node. Partition the inventory by site, pod or rack, as the diagram suggests. Then run several controller processes or AAP jobs in parallel, each with its own forks. Each partition becomes a smaller job that finishes sooner, and a failure in one partition does not block the others.
 

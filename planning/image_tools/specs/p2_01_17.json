@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p2-0117-mem-method",
+  "title": "Five steps for a memory problem, changing one thing at a time",
+  "spec": "A left-to-right flow with numbered circles 1 to 5. Step 1 box, chip icon: 'USE check: utilisation, saturation, errors'. Step 2 box, window icon: 'Characterise: kernel or user memory, cache or anonymous, top RSS, cgroup limits'. Arrow to a diamond 'Growth or leak?' Two outcomes from the diamond, stacked: upper arrow labelled 'Growth: normal use at a higher rate, or a cache warming up' leading to a green box 'Check the configuration, cache sizes and allocator'; lower arrow, orange outline, labelled 'Leak: allocated and never freed, a bug' leading to a box 'Find the allocation path: memleak, jemalloc or tcmalloc profiling, tracemalloc, memray'. Both outcomes meet at step 4 box, gear icon: 'Check the static setup: DIMMs, NUMA mode, huge pages, overcommit, limits, allocator'. Arrow from step 4 to step 5 box, orange outline: 'Tune last, one change at a time'. Caption: 'A memory investigation goes wrong when three settings change at once.'",
+  "anchor": "### The method for memory problems",
+  "alt": "A five-step memory method runs from a USE check through characterising the system, deciding growth versus leak, checking the static setup, and tuning one change at a time.",
+  "cap": "Memory investigations run from a USE check through growth-versus-leak analysis and a static check, and end with tuning one change at a time."
+ }
+]

@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Check what a pattern matches before you change anything</title>
+  <desc>Infographic explaining how to verify pattern matching with --list-hosts before executing changes, pattern syntax examples, and execution guardrails.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Check what a pattern matches before you change anything</text>
+
+  
+
+  
+  <rect x="50" y="120" width="710" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="98" cy="168" r="24" fill="#207448" />
+  <text x="98" y="176" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="142" y="142" width="34" height="48" rx="4" />
+    <line x1="150" y1="156" x2="168" y2="156" />
+    <line x1="150" y1="168" x2="168" y2="168" />
+    <path d="M182 140 L194 152 L172 174 L164 176 L166 168 Z" />
+  </g>
+  <text x="218" y="177" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Write the pattern</text>
+
+  
+  <line x1="405" y1="216" x2="405" y2="246" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="50" y="248" width="710" height="112" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="98" cy="304" r="24" fill="#207448" />
+  <text x="98" y="312" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="142" y="278" width="52" height="48" rx="6" />
+    <path d="M152 294 L160 302 L152 310" />
+    <line x1="166" y1="310" x2="182" y2="310" />
+  </g>
+  <text x="218" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">list the hosts it matches<tspan x="218" dy="36" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="26" font-weight="bold" fill="#207448">with --list-hosts</tspan></text>
+
+  
+  <line x1="405" y1="360" x2="405" y2="390" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="50" y="392" width="710" height="114" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="98" cy="449" r="24" fill="#207448" />
+  <text x="98" y="457" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="168" y1="426" x2="168" y2="470" />
+    <line x1="148" y1="436" x2="188" y2="436" />
+    <path d="M148 436 L140 456 H156 Z" />
+    <path d="M188 436 L180 462 H196 Z" />
+    <line x1="158" y1="470" x2="178" y2="470" />
+  </g>
+  <text x="218" y="443" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Is the list longer<tspan x="218" dy="36">than you expected?</tspan></text>
+
+  
+  <line x1="217" y1="506" x2="217" y2="562" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <text x="182" y="540" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">no</text>
+
+  
+  <line x1="592" y1="506" x2="592" y2="562" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  <text x="626" y="540" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">yes</text>
+
+  
+  <rect x="50" y="564" width="335" height="176" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M217 582 L237 590 V606 C237 620 217 628 217 628 C217 628 197 620 197 606 V590 Z" />
+    <path d="M208 605 L214 611 L227 598" />
+  </g>
+  <text x="217" y="658" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">run with<tspan x="217" dy="34" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="24" font-weight="bold" fill="#207448">--limit and --check</tspan></text>
+
+  
+  <rect x="425" y="564" width="335" height="176" rx="12" fill="#fdf7f2" stroke="#db8129" stroke-width="3" />
+  
+  <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polygon points="580,582 604,582 616,594 616,616 604,628 580,628 568,616 568,594" />
+    <line x1="582" y1="605" x2="602" y2="605" stroke-width="4" />
+  </g>
+  <text x="592" y="664" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">stop and fix<tspan x="592" dy="34">the pattern</tspan></text>
+
+  
+  <rect x="50" y="776" width="710" height="152" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polygon points="104,818 132,868 76,868" />
+    <line x1="104" y1="836" x2="104" y2="850" />
+    <circle cx="104" cy="860" r="1.5" fill="#207448" />
+  </g>
+  <text x="156" y="822" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a pattern that matches the wrong hosts<tspan x="156" dy="34">is one of the most common ways a change</tspan><tspan x="156" dy="34">reaches machines it was never meant for</tspan></text>
+
+  
+  <rect x="50" y="956" width="710" height="136" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="104" cy="1024" r="24" />
+    <polyline points="112,1010 106,1022 94,1036 102,1024 112,1010" />
+  </g>
+  <text x="156" y="1004" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">also: changes silently skipped<tspan x="156" dy="34">when a pattern matched no hosts</tspan><tspan x="156" dy="34">or --limit is too narrow</tspan></text>
+
+  
+  <rect x="800" y="120" width="750" height="972" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="824" y="142" width="702" height="114" rx="10" fill="#e8f1ea" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="868" cy="199" r="22" />
+    <circle cx="868" cy="199" r="7" />
+    <line x1="868" y1="177" x2="868" y2="221" />
+    <line x1="846" y1="199" x2="890" y2="199" />
+  </g>
+  <text x="918" y="208" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="26" font-weight="bold" fill="#207448">all: <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">everything</tspan></text>
+
+  
+  <rect x="824" y="278" width="702" height="114" rx="10" fill="#e8f1ea" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="846" y="180" width="44" height="34" rx="4" transform="translate(0, 96)" />
+    <line x1="868" y1="286" x2="868" y2="302" />
+    <line x1="860" y1="290" x2="876" y2="298" />
+    <line x1="860" y1="298" x2="876" y2="290" />
+  </g>
+  <text x="918" y="344" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="26" font-weight="bold" fill="#207448">gpu*: <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">matches by name</tspan></text>
+
+  
+  <rect x="824" y="414" width="702" height="114" rx="10" fill="#e8f1ea" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="860" cy="471" r="16" />
+    <circle cx="878" cy="471" r="16" />
+  </g>
+  <text x="918" y="480" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="26" font-weight="bold" fill="#207448">gpu:login: <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">union, either group</tspan></text>
+
+  
+  <rect x="824" y="550" width="702" height="114" rx="10" fill="#e8f1ea" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="860" cy="607" r="16" />
+    <circle cx="878" cy="607" r="16" />
+    <line x1="869" y1="597" x2="869" y2="617" stroke-width="4" />
+  </g>
+  <text x="918" y="616" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="26" font-weight="bold" fill="#207448">gpu:&amp;rack1: <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">intersection, both groups</tspan></text>
+
+  
+  <rect x="824" y="686" width="702" height="114" rx="10" fill="#e8f1ea" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="868" cy="743" r="20" />
+    <line x1="854" y1="743" x2="882" y2="743" stroke-width="4" />
+  </g>
+  <text x="918" y="734" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="26" font-weight="bold" fill="#207448">gpu:!gpu02: <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">exclusion, this group</tspan><tspan x="918" dy="34" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">without that host</tspan></text>
+
+  
+  <rect x="824" y="822" width="702" height="114" rx="10" fill="#e8f1ea" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M854 870 C858 866 862 866 866 870 C870 874 874 874 878 870" />
+    <path d="M850 864 H844 V892 H850" />
+    <path d="M886 864 H892 V892 H886" />
+  </g>
+  <text x="918" y="868" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="26" font-weight="bold" fill="#207448">~gpu0[1-4]: <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">regex, a compact way</tspan><tspan x="918" dy="34" font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">to describe gpu01 through gpu04</tspan></text>
+
+  
+  <rect x="824" y="958" width="702" height="114" rx="10" fill="#e8f1ea" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polygon points="850,996 886,996 872,1014 872,1032 864,1036 864,1014" />
+  </g>
+  <text x="918" y="1025" font-family="'SF Mono', 'Segoe UI Mono', monospace" font-size="26" font-weight="bold" fill="#207448">--limit <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36">narrows a run further</tspan></text>
+
+  
+  <rect x="50" y="1122" width="1500" height="56" rx="10" fill="#207448" />
+  <text x="800" y="1159" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">List the hosts, read the list, then run</text>
+</svg>

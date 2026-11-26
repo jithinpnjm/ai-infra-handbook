@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Counters only grow: take two readings and subtract</title>
+  <desc>Infographic explaining how to diagnose active packet drops by measuring counter deltas instead of relying on lifetime totals.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Counters only grow: take two readings and subtract</text>
+
+  
+
+  
+  <rect x="50" y="95" width="345" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="82" cy="127" r="22" fill="#207448"/>
+  <text x="82" y="135" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="115" y="136" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Reading A</text>
+  <g transform="translate(332, 107)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M 5 36 A 22 22 0 1 1 43 36"/>
+    <line x1="24" y1="24" x2="36" y2="12"/>
+    <circle cx="24" cy="24" r="3" fill="#207448"/>
+  </g>
+  <text x="75" y="180" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">read the counter: a large</tspan>
+    <tspan x="75" dy="32">number such as a</tspan>
+    <tspan x="75" dy="32">million drops</tspan>
+  </text>
+
+  
+  <path d="M 395 187 L 433 187" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="445" y="95" width="355" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="477" cy="127" r="22" fill="#207448"/>
+  <text x="477" y="135" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <g transform="translate(738, 107)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="24" cy="24" r="20"/>
+    <polyline points="24,12 24,24 34,24"/>
+  </g>
+  <text x="470" y="190" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="470" dy="0">wait a short time with</tspan>
+    <tspan x="470" dy="34">the workload running</tspan>
+  </text>
+
+  
+  <path d="M 800 187 L 838 187" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="850" y="95" width="310" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="882" cy="127" r="22" fill="#207448"/>
+  <text x="882" y="135" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="915" y="136" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Reading B</text>
+  <g transform="translate(1098, 107)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M 5 36 A 22 22 0 1 1 43 36"/>
+    <line x1="24" y1="24" x2="38" y2="14"/>
+    <circle cx="24" cy="24" r="3" fill="#207448"/>
+  </g>
+  <text x="880" y="200" font-family="sans-serif" font-size="24" fill="#303a36">read again</text>
+
+  
+  <path d="M 1160 187 L 1198 187" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1210" y="95" width="340" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1242" cy="127" r="22" fill="#207448"/>
+  <text x="1242" y="135" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <g transform="translate(1488, 107)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="5" y="5" width="38" height="38" rx="6"/>
+    <line x1="13" y1="24" x2="35" y2="24"/>
+  </g>
+  <text x="1235" y="200" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">subtract B minus A</text>
+
+  
+
+  
+  <rect x="50" y="315" width="450" height="205" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(438, 332)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="6" y="10" width="36" height="32" rx="4"/>
+    <line x1="6" y1="20" x2="42" y2="20"/>
+    <line x1="16" y1="4" x2="16" y2="12"/>
+    <line x1="32" y1="4" x2="32" y2="12"/>
+  </g>
+  <text x="75" y="362" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">a counter that reads a</tspan>
+    <tspan x="75" dy="32">million drops tells you</tspan>
+    <tspan x="75" dy="32">nothing by itself, since</tspan>
+    <tspan x="75" dy="32">those drops might have</tspan>
+    <tspan x="75" dy="32">happened last year</tspan>
+  </text>
+
+  
+  <rect x="530" y="315" width="470" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="555" y="360" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">difference is zero</text>
+  <g transform="translate(938, 332)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M 8 16 L 40 16 L 36 40 L 12 40 Z"/>
+    <polyline points="18,26 23,31 32,21"/>
+  </g>
+  <text x="555" y="425" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="555" dy="0">the drops are old history,</tspan>
+    <tspan x="555" dy="34">look elsewhere</tspan>
+  </text>
+
+  
+  <rect x="1030" y="315" width="520" height="205" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="1055" y="355" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">
+    <tspan x="1055" dy="0">difference keeps rising</tspan>
+    <tspan x="1055" dy="34">during the job</tspan>
+  </text>
+  <g transform="translate(1485, 332)" stroke="#db8129" stroke-width="4" fill="none">
+    <path d="M 24 6 L 42 38 L 6 38 Z"/>
+    <line x1="24" y1="18" x2="24" y2="27"/>
+    <circle cx="24" cy="33" r="2" fill="#db8129"/>
+  </g>
+  <text x="1055" y="445" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1055" dy="0">the drops are live: start at the</tspan>
+    <tspan x="1055" dy="32">layer where the counter lives</tspan>
+  </text>
+
+  
+  
+  <path d="M 1310 280 L 1310 298 L 765 298 L 765 305" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1430 280 L 1430 305" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="50" y="545" width="1500" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="70" y="560" width="480" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="90" y="587" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="90" dy="0">nstat -d 1 and nstat -az</tspan>
+    <tspan x="90" dy="26">report deltas</tspan>
+  </text>
+
+  
+  <rect x="570" y="560" width="270" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="705" y="602" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">sar -n DEV 1</text>
+
+  
+  <rect x="860" y="560" width="250" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="985" y="602" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">nicstat 1</text>
+
+  
+  <rect x="1130" y="560" width="230" height="65" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1245" y="602" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">watch -d</text>
+
+  
+  <g transform="translate(1480, 568)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="6" y="8" width="36" height="28" rx="4"/>
+    <polyline points="14,17 20,22 14,27"/>
+    <line x1="24" y1="27" x2="34" y2="27"/>
+  </g>
+
+  
+  <rect x="50" y="665" width="1500" height="355" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="80" y="707" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">the first-pass script</text>
+  <g transform="translate(1480, 680)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M 12 6 L 30 6 L 40 16 L 40 42 L 12 42 Z"/>
+    <polyline points="30,6 30,16 40,16"/>
+    <line x1="18" y1="25" x2="34" y2="25"/>
+    <line x1="18" y1="33" x2="28" y2="33"/>
+  </g>
+
+  
+  <rect x="80" y="725" width="480" height="60" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="100" y="763" font-family="monospace" font-size="24" fill="#303a36">links: ip -br link; ip -br addr</text>
+
+  <rect x="580" y="725" width="470" height="60" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="600" y="763" font-family="monospace" font-size="24" fill="#303a36">speeds: /sys/class/net/*/speed</text>
+
+  <rect x="1070" y="725" width="450" height="60" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1090" y="763" font-family="monospace" font-size="24" fill="#303a36">errors: ip -s link</text>
+
+  
+  <rect x="80" y="800" width="700" height="80" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="100" y="834" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="100" dy="0">softnet: /proc/net/softnet_stat</tspan>
+    <tspan x="100" dy="30">dropped and squeezed</tspan>
+  </text>
+
+  <rect x="800" y="800" width="720" height="80" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="820" y="848" font-family="monospace" font-size="24" fill="#303a36">conntrack: conntrack -C and nf_conntrack_max</text>
+
+  
+  <rect x="80" y="895" width="1440" height="105" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="105" y="938" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="105" dy="0">tcp: nstat -az | egrep TcpRetransSegs|TcpExtListenOverflows|</tspan>
+    <tspan x="105" dy="36">     TcpExtTCPTimeouts|TcpExtTCPSynRetrans|IpInDiscards|UdpRcvbufErrors</tspan>
+  </text>
+
+  
+  <rect x="50" y="1045" width="1500" height="65" rx="8" fill="#207448"/>
+  <text x="800" y="1088" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Act on the difference, not the running total</text>
+</svg>

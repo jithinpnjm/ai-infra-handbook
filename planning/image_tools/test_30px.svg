@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100" role="img">
+  <title>Which chapters serve which interview stage</title>
+  <desc>Visual map showing which handbook chapters serve which interview stage, from recruiter call to final hour, with the system design drills and evidence tags.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which chapters serve which interview stage</text>
+
+  <!-- ROW 1: Recruiter call, CV -->
+  <rect x="50" y="115" width="1500" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 50 129 A 14 14 0 0 1 64 115 L 75 115 L 75 240 L 64 240 A 14 14 0 0 1 50 226 Z" fill="#207448"/>
+  <!-- Stage box -->
+  <rect x="85" y="127" width="400" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(100, 150)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="6" width="38" height="44" rx="4" stroke-width="3"/>
+    <rect x="18" y="2" width="18" height="8" rx="2" stroke-width="2.5" fill="#e8f1ea"/>
+    <line x1="16" y1="20" x2="38" y2="20" stroke-width="2.5"/>
+    <line x1="16" y1="28" x2="38" y2="28" stroke-width="2.5"/>
+    <line x1="16" y1="36" x2="28" y2="36" stroke-width="2.5"/>
+  </g>
+  <text x="175" y="187" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Recruiter call, CV</text>
+  <!-- Chapters box -->
+  <rect x="505" y="127" width="340" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="675" y="187" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">20.1, 20.2</text>
+  <!-- Tag box 1 -->
+  <rect x="1285" y="127" width="250" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1410" y="187" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">[official]</text>
+
+  <!-- ROW 2: Linux console and troubleshooting -->
+  <rect x="50" y="262" width="1500" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 50 276 A 14 14 0 0 1 64 262 L 75 262 L 75 387 L 64 387 A 14 14 0 0 1 50 373 Z" fill="#207448"/>
+  <!-- Stage box -->
+  <rect x="85" y="274" width="400" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(100, 297)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="46" height="42" rx="6" stroke-width="3"/>
+    <line x1="4" y1="18" x2="50" y2="18" stroke-width="2"/>
+    <polyline points="12,27 18,33 12,39" stroke-width="3"/>
+    <line x1="24" y1="39" x2="36" y2="39" stroke-width="3"/>
+  </g>
+  <text x="175" y="318" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">Linux console and</tspan>
+    <tspan x="175" dy="34">troubleshooting</tspan>
+  </text>
+  <!-- Chapters box -->
+  <rect x="505" y="274" width="755" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="882" y="334" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">20.3, 20.4, 20.5, 20.6, 20.7</text>
+
+  <!-- ROW 3: Coding and algorithms -->
+  <rect x="50" y="409" width="1500" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 50 423 A 14 14 0 0 1 64 409 L 75 409 L 75 534 L 64 534 A 14 14 0 0 1 50 520 Z" fill="#207448"/>
+  <!-- Stage box -->
+  <rect x="85" y="421" width="400" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(100, 444)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="18,12 6,27 18,42" stroke-width="3.5"/>
+    <polyline points="36,12 48,27 36,42" stroke-width="3.5"/>
+    <line x1="31" y1="10" x2="23" y2="44" stroke-width="3.5"/>
+  </g>
+  <text x="175" y="481" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Coding and algorithms</text>
+  <!-- Chapters box -->
+  <rect x="505" y="421" width="755" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="882" y="481" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">20.8, 20.9, 20.10, 20.11</text>
+
+  <!-- ROW 4: System design -->
+  <rect x="50" y="556" width="1500" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 50 570 A 14 14 0 0 1 64 556 L 75 556 L 75 681 L 64 681 A 14 14 0 0 1 50 667 Z" fill="#207448"/>
+  <!-- Stage box -->
+  <rect x="85" y="568" width="400" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(100, 591)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="14" cy="16" r="7" stroke-width="3"/>
+    <circle cx="40" cy="16" r="7" stroke-width="3"/>
+    <circle cx="27" cy="40" r="7" stroke-width="3"/>
+    <line x1="21" y1="16" x2="33" y2="16" stroke-width="2.5"/>
+    <line x1="18" y1="22" x2="23" y2="34" stroke-width="2.5"/>
+    <line x1="36" y1="22" x2="31" y2="34" stroke-width="2.5"/>
+  </g>
+  <text x="175" y="628" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">System design</text>
+  <!-- Chapters box -->
+  <rect x="505" y="568" width="340" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="675" y="612" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="675" dy="0">20.12, 20.13, 20.14,</tspan>
+    <tspan x="675" dy="32">20.15, 20.16</tspan>
+  </text>
+  <!-- Arrow from 20.13-20.16 box into 20.17 timed drills -->
+  <line x1="845" y1="618" x2="895" y2="618" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <!-- Follow-on box: 20.17 timed drills -->
+  <rect x="895" y="568" width="365" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(908, 591)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="29" r="16" stroke-width="3"/>
+    <line x1="24" y1="7" x2="24" y2="13" stroke-width="3"/>
+    <line x1="19" y1="7" x2="29" y2="7" stroke-width="3"/>
+    <line x1="24" y1="29" x2="24" y2="20" stroke-width="3"/>
+    <line x1="24" y1="29" x2="32" y2="33" stroke-width="3"/>
+  </g>
+  <text x="975" y="628" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">20.17 timed drills</text>
+
+  <!-- Tag box 2 (spanning Rows 2, 3, 4): [official] and [report] -->
+  <rect x="1285" y="274" width="250" height="395" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1410" y="465" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1410" dy="0">[official] and</tspan>
+    <tspan x="1410" dy="34">[report]</tspan>
+  </text>
+
+  <!-- ROW 5: Stress interview, 30-minute incident -->
+  <rect x="50" y="703" width="1500" height="125" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  <path d="M 50 717 A 14 14 0 0 1 64 703 L 75 703 L 75 828 L 64 828 A 14 14 0 0 1 50 814 Z" fill="#db8129"/>
+  <!-- Stage box -->
+  <rect x="85" y="715" width="400" height="101" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <g transform="translate(100, 738)" stroke="#db8129" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 27 6 L 49 44 L 5 44 Z" stroke-width="3.5"/>
+    <line x1="27" y1="19" x2="27" y2="31" stroke-width="3.5"/>
+    <circle cx="27" cy="38" r="1.5" fill="#db8129"/>
+  </g>
+  <text x="175" y="757" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">Stress interview,</tspan>
+    <tspan x="175" dy="34">30-minute incident</tspan>
+  </text>
+  <!-- Chapters box -->
+  <rect x="505" y="715" width="340" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="675" y="775" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">20.26, 20.27</text>
+  <!-- Tag box 3 -->
+  <rect x="1285" y="715" width="250" height="101" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <text x="1410" y="775" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">[report]</text>
+
+  <!-- ROW 6: Final hour, project deep dive -->
+  <rect x="50" y="850" width="1500" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 50 864 A 14 14 0 0 1 64 850 L 75 850 L 75 975 L 64 975 A 14 14 0 0 1 50 961 Z" fill="#207448"/>
+  <!-- Stage box -->
+  <rect x="85" y="862" width="400" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(100, 885)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="23" cy="23" r="16" stroke-width="3.5"/>
+    <line x1="35" y1="35" x2="47" y2="47" stroke-width="4.5"/>
+    <circle cx="23" cy="23" r="6" stroke-width="2"/>
+  </g>
+  <text x="175" y="904" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">Final hour,</tspan>
+    <tspan x="175" dy="34">project deep dive</tspan>
+  </text>
+  <!-- Chapters box -->
+  <rect x="505" y="862" width="340" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="675" y="922" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">20.28</text>
+  <!-- Tag box 4 -->
+  <rect x="1285" y="862" width="250" height="101" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1410" y="922" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">[official]</text>
+
+  <!-- Bottom Takeaway Bar -->
+  <rect x="50" y="1000" width="1500" height="64" rx="10" fill="#207448"/>
+  <text x="800" y="1042" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Start with Part B console and Part D design, because both appear in every report.</text>
+</svg>

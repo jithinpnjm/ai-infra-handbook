@@ -48,6 +48,10 @@ The book also lists the ad hoc checklist as a legitimate method. It gives value 
 
 ### 3. The first 60 seconds, command by command
 
+![Ten numbered commands in order, each beside the one question it answers, grouped by CPU, memory and disk, and network.](./img/x03-first-minute-ladder.svg)
+
+*Figure 20.3.1. The first-minute checklist is a fixed order of ten commands, and each command answers one question about the machine.*
+
 Imagine the first minute of an investigation as a short list you run in order, without stopping to theorise. Systems Performance, in its introduction, gives a ten-command checklist that fits in the first minute of an investigation. It uses only tools found on most distributions. Table 20.3.1 restates it with what each line is really asking.
 
 | # | Command | The question it answers |
@@ -121,6 +125,10 @@ echo "wrote $out"
 
 ### 4. Reading load, run queue and pressure correctly
 
+![Three CPU demand signals, load average, run queue and pressure, and a decision that separates CPU saturation from disk waits.](./img/x03-load-signals-decision.svg)
+
+*Figure 20.3.2. Load average, the run queue and pressure each count demand differently, so the three are read together before choosing a direction.*
+
 Suppose a senior engineer glancing at a load average of 40 and saying that the box is fine, or that the box is on fire, with equal confidence. Load average is the number everyone reads first and half of them read wrongly. A senior answer needs three facts.
 
 First, the load average counts demand, not only CPU demand. Since 1993 Linux has included tasks in the uninterruptible state, shown as state D, so threads stuck on disk count too. An uninterruptible task is one that cannot be woken up by a signal, usually because it is waiting for a disk or a network mount to reply. The book says the load is current usage plus queued work. A load of 20 on a 64-CPU machine is headroom. A load of 128 on the same machine means one thread running and one waiting per CPU, on average, if the load is all CPU.
@@ -150,6 +158,10 @@ When the three signals agree, the answer is easy. The disagreements are the inte
 **Say "load is demand, not just CPU, so I will confirm with the run queue and pressure" before you call a CPU problem.**
 
 ### 5. Reading memory and disk output
+
+![A memory bar where free is only 163 MB but available is 1187 MB, because most of the rest is reclaimable page cache.](./img/x03-free-vs-available.svg)
+
+*Figure 20.3.3. On a 1950 MB machine, free memory is small, but available memory is large because the kernel gives back page cache on demand.*
 
 Think of a tired engineer staring at `free -m` late at night, seeing a small free number, and panicking. Memory output is where tired engineers misread. The `free -m` line has a column called `free` and a column called `available`. The book's example shows 163 MB free and 1187 MB available on a 1950 MB machine. The page cache holds most of the difference, and the kernel gives it back to applications on demand. The page cache is memory the kernel uses to keep recently read file data, so a full cache is normal and healthy.
 
@@ -182,6 +194,10 @@ Also read the `avg-cpu` line above the device table. A high `%iowait` means CPUs
 **Always check saturation next to utilisation, and say "busy is not the same as saturated" whenever a device shows 100 percent.**
 
 ### 6. The USE method as a sweep
+
+![A grid of Linux resources against utilisation, saturation and errors, with the command that answers each cell.](./img/p2-2003-use-grid.svg)
+
+*Figure 20.3.4. The USE checklist for Linux, with one row per resource and the command that answers each of its utilisation, saturation and error questions.*
 
 Consider a sweep across a row of machines, one resource at a time, so that nothing is left unchecked. The checklist finds what is obvious. The USE method finds what is missing. For every resource, check utilisation, saturation and errors.
 
@@ -262,6 +278,10 @@ echo "Known-unknowns: interconnects, per-disk errors, GPU. Use perf, smartctl, d
 
 ### 7. RED and golden signals: from the box to the service
 
+![The four golden signals of latency, traffic, errors and saturation, with the first three coming from the service view and saturation from the host view.](./img/p2-2003-golden-signals.svg)
+
+*Figure 20.3.5. The golden signals combine RED for the service with USE for the machine, with saturation taken from the host view.*
+
 Imagine a customer complaint that arrives before any alert fires. The customer says the chat is slow, and the box looks ordinary. A Linux box is not the product. A service on it is. Systems Performance puts it clearly: the USE method is for machine health and the RED method is for user health. They complement each other, so you need both to explain a slow service.
 
 RED means, for every service, check request rate, errors and duration. Duration is how long each request takes. The book says to look at duration with percentiles and not only the average, because an average can hide a slow tail of requests. The request rate is the early clue. If the rate has been steady but duration has risen, the problem is in the architecture, meaning the service itself. If both have risen, the cause may be load, and workload characterisation comes next. Workload characterisation is the work of describing who sends the load, what they ask for and how that changes over time.
@@ -272,21 +292,19 @@ The handbook's chapter 17.1 shows how the golden signals combine the two. The go
 
 For Token Factory the customer-facing metrics Nebius lists are end-to-end latency percentiles, time to first token, token throughput, errors by status code and active replicas. Those are the service-side signals. Nebius has not published how its own on-call maps those to host checks. A reasonable design, and this is my reasoning, is to let the RED-style alert tell you which service is unhealthy and let the USE sweep on one of its nodes tell you why.
 
-```mermaid
-flowchart LR
-  A["Alert: p99 up"] --> B{"Request rate?"}
-  B -->|"steady"| C["Architecture: service or host"]
-  B -->|"also up"| D["Load: characterise workload"]
-  C --> E["USE sweep on one node"]
-  D --> E
-  E --> F["Hypothesis, test, narrow"]
-```
+![RED and golden signals: from the box to the service](./img/m20-03-1.svg)
+
+*Figure 20.3.6. RED and golden signals: from the box to the service, as a diagram.*
 
 Figure 20.3.1: RED tells you whether to look at load or architecture, then USE looks at the machine.
 
 **Decide whether the problem is load or architecture from the request rate before you tune anything on the box.**
 
 ### 8. Hypotheses out loud: the scientific method
+
+![A worked hypothesis about noisy neighbours, showing the prediction, the trace result and why the hypothesis is ruled out.](./img/p2-2003-prediction-chain.svg)
+
+*Figure 20.3.7. A worked hypothesis test: the noisy neighbour idea predicted file system time, the trace showed under 5 percent, so the idea was ruled out.*
 
 Suppose the checklist finishing with one line that looks odd. There is a number that does not fit, and you feel the pull to act on it. When the checklist shows something odd, you need a theory and a test. A theory with no test is only an opinion, and a test with no theory tells you very little. The book gives the steps: question, hypothesis, prediction, test, analysis. It also gives a faster loop, the diagnosis cycle, which is hypothesis, instrumentation, data, hypothesis again. Instrumentation means adding the means to observe the system, such as a tracer or a counter. The advice is to move from theory to data quickly so bad theories die early.
 
@@ -300,21 +318,19 @@ A dead hypothesis is worth saying out loud as well. Suppose you suspect a noisy 
 
 Prefer observational tests on a production machine. Reading `vmstat` costs nothing. Restarting might fix the symptom and destroy the evidence, so say what you would capture first. A process that is restarted loses its memory, its open connections and its logs in memory, and those are often the clues you needed.
 
-```mermaid
-flowchart TD
-  P["Problem statement"] --> S["60-second checklist"]
-  S --> U["USE sweep: errors, saturation, utilisation"]
-  U --> H["Hypothesis with a prediction"]
-  H --> T["Test: observe, or reversible change"]
-  T -->|"prediction fails"| H
-  T -->|"prediction holds"| D["Drill down: process, syscall, code"]
-```
+![Hypotheses out loud: the scientific method](./img/m20-03-2.svg)
+
+*Figure 20.3.8. Hypotheses out loud: the scientific method, as a diagram.*
 
 Figure 20.3.2: the triage loop. Every arrow back to the hypothesis box is normal.
 
 **State a prediction with every hypothesis, and say "that rules it out" without embarrassment when the test fails.**
 
 ### 9. Drill-down after the 60 seconds
+
+![Drill-down runs monitoring, identification and analysis in order, with each question splitting the causes in half until a tracer is needed.](./img/p2-2003-drilldown-halving.svg)
+
+*Figure 20.3.9. Drill-down moves from monitoring to identification to analysis, and each question such as on-CPU or off-CPU halves the possible causes.*
 
 Think of a database team that is convinced the disks are slow, and an engineer who has to prove or disprove it before anyone changes hardware. The 60 seconds are one stage of three. Systems Performance describes drill-down analysis as monitoring, identification and analysis. Monitoring records statistics and alerts. Identification narrows to a resource on one machine, and the 60-second tools belong here. Analysis traces or profiles to find the cause, with tools such as `strace`, `perf`, BCC tools and bpftrace. BCC and bpftrace are tracing toolkits built on the kernel's eBPF facility, which lets small programs run safely inside the kernel to observe events.
 
@@ -333,6 +349,10 @@ Chapters 20.4 to 20.6 take the three likely branches: files and syscalls, CPU, m
 **Finish the identification stage with one named resource before you reach for a tracer.** A named resource gives the tracer a target, and it gives the interviewer a checkpoint.
 
 ### 10. Narrating a one-hour console round
+
+![A timeline of six phases across 60 minutes, from problem statement to summary, each with the sentence to say aloud.](./img/p3-2003-hour-timeline.svg)
+
+*Figure 20.3.10. The one-hour plan runs problem statement, 60-second checklist, USE sweep, hypothesis loop, mitigation and summary, with a sentence to say in each phase.*
 
 Consider the interviewer watching your keystrokes and your screen, with no way to know what you are thinking. Nebius says to say your reasoning aloud. In a console round that is a skill with a shape. The interviewer sees keystrokes, not reasons, so your words have to carry the reasons.
 
@@ -360,6 +380,10 @@ If you are stuck, go back to the method. "I have no hypothesis, so I return to U
 **Narrate in three beats, why, run, meaning, and keep a running list of what is ruled out.** A running list is also a good summary at the end of the hour, because it shows what you covered.
 
 ### 11. A sick box inside Kubernetes
+
+![A node with plenty of free memory contains a pod whose cgroup memory.max limit is reached, so the container is killed while host free shows memory to spare.](./img/p3-2003-host-vs-container.svg)
+
+*Figure 20.3.11. The host can have plenty of memory while one container is at its own cgroup limit, so check the limit as a resource.*
 
 Imagine a pod that keeps restarting, and a command prompt that lands you inside a container instead of on the machine you expected. The role asks for Kubernetes experience, so the interviewer may mix the two. Public Token Factory material says a dedicated endpoint has a minimum and maximum number of replicas in a chosen region. Nebius has not published how its nodes are laid out, so what follows is how the books describe nodes and pods. A node is a machine in the cluster, and a pod is a group of one or more containers scheduled onto a node.
 
@@ -431,6 +455,10 @@ Each scenario uses output printed in a book, so the numbers are real and the int
 
 ### Scenario 1: load of 85 on a 48-CPU machine
 
+![Server A has load 85.09 on 48 CPUs, about 1.77 per CPU and 2 percent idle, while server B has load 17.94 on 64 CPUs, about 0.28 per CPU and 78 percent idle.](./img/p3-2003-load-two-servers.svg)
+
+*Figure 20.3.12. Dividing load by CPU count shows server A has more demand than CPUs while server B has plenty of room.*
+
 Imagine two servers running the same service, one of them clearly slower to the users. The book's case study prints `uptime` on both. Server A shows load averages of 85.09, 89.25 and 91.26. Server B shows 17.94, 16.92 and 16.62. A first `mpstat 10` on A reports 48 CPUs and about 2 percent idle. On B it reports 64 CPUs and about 78 percent idle.
 
 Step 1 is the trend. On A the 1-minute number is lower than the 15-minute one, so the load is slightly falling. On B it is slightly rising. Neither is a sudden event.
@@ -453,6 +481,10 @@ On Linux, `python3 triage_repro.py cpu` starts twice as many busy processes as C
 
 ### Scenario 2: the disk is 100 percent busy
 
+![A disk at 100 percent utilisation with a zero queue and a 0.44 millisecond await is busy but not saturated.](./img/x03-disk-busy-not-saturated.svg)
+
+*Figure 20.3.13. Utilisation only says the device was never idle, so saturation has to be read from the queue and the wait time.*
+
 Suppose the `iostat` line on screen with a red number in the utilisation column, and the whole team looking at you. The book's `iostat -sxz 1` example prints, for `nvme0n1`, 1642 transactions per second, 9064 kB per second, an `await` of 0.44, an `aqu-sz` of 0.00, an `areq-sz` of 5.52 and a `%util` of 100.00. The `avg-cpu` line above it shows 31.63 percent `%iowait`, 40.31 percent idle and 1.53 percent `%steal`. Steal is time a virtual CPU spends waiting because the hypervisor ran another guest.
 
 The tempting answer is "the disk is saturated". Apply the method instead.
@@ -466,6 +498,10 @@ The answer to say aloud: the disk is busy and the work is small random I/O, but 
 The test `test_iostat_busy_is_not_saturated` asserts a utilisation finding and no saturation finding for this text. On Linux, `python3 triage_repro.py disk` writes and syncs a temporary file in a loop and cleans up after itself. Watch it with `iostat` in a second window, and notice how the `%util` column rises while the `await` stays small.
 
 ### Scenario 3: swapping with a quiet run queue
+
+![One vmstat output row annotated column by column, showing the run queue, swap in and out, block I/O and CPU columns during swapping.](./img/p2-2003-vmstat-anatomy.svg)
+
+*Figure 20.3.14. One vmstat sample row annotated by column, with the non-zero swap-out column showing that memory is saturated and the machine is swapping.*
 
 Think of a machine where the CPU graph is full, the run queue looks quiet and the memory is quietly moving to disk. The book's memory exercise prints `vmstat 1` output with a nearly idle first line and then rows like `2 0 418036 68172 68 3808 0 4692 4520 4692 1060 1939 61 38 0 1 0`. Reading with the header, `swpd` is 418036, `free` is 68172, `buff` is 68, `cache` is 3808, `si` is 0, `so` is 4692, `bi` is 4520 and `bo` is 4692. Idle is 0. The run queue `r` is only 1 or 2.
 

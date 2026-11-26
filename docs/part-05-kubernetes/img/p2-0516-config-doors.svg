@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 955" width="1600" height="955">
+  <title>Pick how the app reads config: file, env or API</title>
+  <desc>Infographic comparing config methods: mounted file, environment variables, and client API, contrasting runtime config with baked-in image config.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#303a36"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="955" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Pick how the app reads config: file, env or API</text>
+
+  
+  <rect x="40" y="105" width="1520" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="152" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">Config comes from the platform at runtime, not from inside the image</text>
+
+  
+  
+  <rect x="40" y="210" width="350" height="310" rx="16" fill="#fcf1f1" stroke="#e07a78" stroke-width="2"/>
+  
+  
+  <g transform="translate(187, 235)">
+    <path d="M 28 4 L 54 48 L 2 48 Z" fill="none" stroke="#d9383a" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#d9383a" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="42" r="2.5" fill="#d9383a"/>
+  </g>
+
+  
+  <text x="215" y="325" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="215" dy="0">Config inside the</tspan>
+    <tspan x="215" dy="36">image: anyone with</tspan>
+    <tspan x="215" dy="36">pull access to the</tspan>
+    <tspan x="215" dy="36">registry holds the</tspan>
+    <tspan x="215" dy="36">database password</tspan>
+  </text>
+
+  
+  <line x1="215" y1="520" x2="215" y2="588" stroke="#303a36" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g transform="translate(65, 595)">
+    <rect x="0" y="0" width="300" height="215" rx="12" fill="#ffffff" stroke="#e07a78" stroke-width="2" stroke-dasharray="8 6"/>
+    
+    
+    <rect x="45" y="45" width="210" height="125" rx="8" fill="#f8ecec" stroke="#e07a78" stroke-width="2"/>
+    <line x1="45" y1="85" x2="255" y2="85" stroke="#e07a78" stroke-width="1.5"/>
+    <line x1="45" y1="125" x2="255" y2="125" stroke="#e07a78" stroke-width="1.5"/>
+    
+    
+    <path d="M 125 55 L 160 55 L 175 70 L 175 115 L 125 115 Z" fill="#ffffff" stroke="#8c4343" stroke-width="2"/>
+    <path d="M 160 55 L 160 70 L 175 70" fill="none" stroke="#8c4343" stroke-width="2"/>
+
+    
+    <line x1="35" y1="35" x2="265" y2="180" stroke="#d9383a" stroke-width="8" stroke-linecap="round"/>
+    <line x1="265" y1="35" x2="35" y2="180" stroke="#d9383a" stroke-width="8" stroke-linecap="round"/>
+  </g>
+
+  
+  <rect x="418" y="210" width="440" height="600" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="5"/>
+
+  
+  <g transform="translate(610, 235)">
+    <ellipse cx="28" cy="14" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0 14 L 0 42 A 28 10 0 0 0 56 42 L 56 14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0 28 A 28 10 0 0 0 56 28" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <text x="638" y="335" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">
+    <tspan x="638" dy="0">Mounted file</tspan>
+    <tspan x="638" dy="38">(preferred)</tspan>
+  </text>
+
+  
+  <rect x="434" y="415" width="408" height="375" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(614, 435)">
+    <rect x="0" y="0" width="48" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <circle cx="14" cy="18" r="4" fill="#207448"/>
+    <circle cx="34" cy="18" r="4" fill="#207448"/>
+  </g>
+
+  
+  <rect x="450" y="495" width="376" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="638" y="536" text-anchor="middle" font-family="monospace" font-size="24px" font-weight="bold" fill="#207448">/etc/my-app/config.json</text>
+
+  
+  <text x="638" y="635" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="638" dy="0">The Pod spec names the</tspan>
+    <tspan x="638" dy="36">volume and path</tspan>
+  </text>
+
+  
+  <rect x="886" y="210" width="320" height="600" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1018, 235)">
+    <line x1="8" y1="14" x2="48" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="20" cy="14" r="7" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <line x1="8" y1="28" x2="48" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="38" cy="28" r="7" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <line x1="8" y1="42" x2="48" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="26" cy="42" r="7" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <text x="1046" y="335" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">
+    <tspan x="1046" dy="0">Environment</tspan>
+    <tspan x="1046" dy="38">variables</tspan>
+  </text>
+
+  
+  <rect x="906" y="415" width="280" height="375" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <g transform="translate(1022, 475)">
+    <circle cx="24" cy="24" r="22" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <path d="M 24 10 L 24 24 L 34 24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="1046" y="615" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">Read once at start</text>
+
+  
+  <rect x="1234" y="210" width="326" height="600" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1369, 235)">
+    <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 16 28 L 22 22 L 16 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="26" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="1397" y="354" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Client API</text>
+
+  
+  <rect x="1254" y="415" width="286" height="375" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <g transform="translate(1373, 465)">
+    <rect x="0" y="0" width="48" height="24" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <line x1="10" y1="12" x2="16" y2="12" stroke="#207448" stroke-width="2.5"/>
+    <rect x="0" y="34" width="48" height="24" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <line x1="10" y1="46" x2="16" y2="46" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 24 24 L 24 34" fill="none" stroke="#207448" stroke-width="2.5"/>
+  </g>
+
+  
+  <text x="1397" y="600" text-anchor="middle" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="1397" dy="0">The app asks the</tspan>
+    <tspan x="1397" dy="36">API server itself</tspan>
+  </text>
+
+  
+  <rect x="40" y="845" width="1520" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="892" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">A ConfigMap mounted as a file is named in the Pod spec.</text>
+</svg>

@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>The path walk: a locked directory blocks a 644 file before its mode is checked</title>
+  <desc>Visual infographic explaining how a locked directory without search permission blocks access to a readable 644 file during the path walk before the file mode is checked.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#d04437"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The path walk: a locked directory blocks</tspan>
+    <tspan x="800" dy="56">a 644 file before its mode is checked</tspan>
+  </text>
+
+  
+  <g id="corridor">
+    <rect x="50" y="145" width="1500" height="385" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="door-root">
+      <rect x="160" y="195" width="280" height="310" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+      
+      <g transform="translate(185, 215)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="14" cy="14" r="11"/>
+        <line x1="25" y1="14" x2="52" y2="14"/>
+        <line x1="42" y1="14" x2="42" y2="24"/>
+        <line x1="50" y1="14" x2="50" y2="22"/>
+      </g>
+      
+      <circle cx="405" cy="238" r="22" fill="#207448"/>
+      <polyline points="394,238 402,246 417,230" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+      
+      <text x="300" y="325" text-anchor="middle" font-family="monospace" font-size="44" font-weight="bold" fill="#207448">/</text>
+
+      
+      <rect x="200" y="365" width="200" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text x="300" y="398" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">r-x</text>
+    </g>
+
+    
+    <g id="door-secret">
+      <rect x="480" y="195" width="400" height="310" rx="12" fill="#edf0ee" stroke="#db8129" stroke-width="4"/>
+      
+      <g transform="translate(505, 215)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="20" width="38" height="30" rx="5"/>
+        <path d="M 16 20 L 16 13 A 11 11 0 0 1 38 13 L 38 20"/>
+        <circle cx="27" cy="33" r="3" fill="#db8129"/>
+        <line x1="27" y1="36" x2="27" y2="42" stroke-width="3"/>
+      </g>
+      
+      <circle cx="845" cy="238" r="22" fill="#d04437"/>
+      <line x1="834" y1="227" x2="856" y2="249" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+      <line x1="856" y1="227" x2="834" y2="249" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+
+      
+      <text x="680" y="300" text-anchor="middle" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36">secret</text>
+
+      
+      <rect x="555" y="340" width="250" height="48" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+      <text x="680" y="373" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#d04437">drw-------</text>
+
+      
+      <rect x="508" y="432" width="345" height="52" rx="8" fill="#fff2e6" stroke="#db8129" stroke-width="2"/>
+      <text x="680" y="467" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">no search bit, so EACCES</text>
+    </g>
+
+    
+    <path d="M 75 458 L 498 458" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+    
+    <g id="chmod-action">
+      <rect x="920" y="162" width="160" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="1000" y="194" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">chmod 777</text>
+      
+      <path d="M 1080 185 L 1120 185 L 1120 250" fill="none" stroke="#d04437" stroke-width="3" stroke-dasharray="6 4" marker-end="url(#arrow-red)"/>
+      
+      <text x="1145" y="194" font-family="sans-serif" font-size="24" font-weight="bold" fill="#d04437">chmod on the file cannot help</text>
+      <line x1="1140" y1="186" x2="1495" y2="186" stroke="#d04437" stroke-width="3"/>
+    </g>
+
+    
+    <g id="door-appconf">
+      <rect x="920" y="260" width="600" height="245" rx="12" fill="#f5f8f5" stroke="#8a9a92" stroke-width="2" stroke-dasharray="6 4"/>
+      
+      <g transform="translate(945, 280)" stroke="#8a9a92" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 6 L 30 6 L 44 20 L 44 48 L 8 48 Z"/>
+        <polyline points="30,6 30,20 44,20"/>
+        <line x1="16" y1="28" x2="36" y2="28"/>
+        <line x1="16" y1="36" x2="30" y2="36"/>
+      </g>
+
+      
+      <text x="1030" y="325" font-family="monospace" font-size="36" font-weight="bold" fill="#5a6862">app.conf</text>
+
+      
+      <rect x="1030" y="365" width="250" height="48" rx="8" fill="#ffffff" stroke="#8a9a92" stroke-width="1.5"/>
+      <text x="1155" y="398" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#5a6862">-rw-r--r--</text>
+
+      
+      <rect x="1335" y="365" width="155" height="48" rx="8" fill="#e8f1ea" stroke="#8a9a92" stroke-width="1.5"/>
+      <text x="1412" y="398" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#5a6862">unreached</text>
+    </g>
+  </g>
+
+  
+  <g id="tile-namei">
+    <rect x="50" y="555" width="1500" height="205" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(80, 580)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="46" height="38" rx="6"/>
+      <polyline points="16,22 24,27 16,32" stroke-width="3"/>
+      <line x1="28" y1="32" x2="38" y2="32" stroke-width="3"/>
+    </g>
+
+    
+    <text x="150" y="614" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">namei -l</text>
+
+    
+    <rect x="350" y="575" width="1170" height="165" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text y="635" font-family="monospace" font-size="28" font-weight="bold">
+      <tspan x="385" fill="#d04437">drw-------</tspan>
+      <tspan x="590" fill="#303a36">secret</tspan>
+    </text>
+    <text y="695" font-weight="bold">
+      <tspan x="385" font-family="monospace" font-size="28" fill="#303a36">app.conf</tspan>
+      <tspan x="590" font-family="sans-serif" font-size="28" fill="#d04437">Permission denied</tspan>
+    </text>
+  </g>
+
+  
+  <g id="steps">
+    
+    <rect x="50" y="785" width="475" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="105" cy="852" r="24" fill="#207448"/>
+    <text x="105" y="861" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="150" y="838" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="150" dy="0">check search bit</tspan>
+      <tspan x="150" dy="32">on every directory</tspan>
+    </text>
+
+    
+    <rect x="565" y="785" width="460" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="615" cy="852" r="24" fill="#207448"/>
+    <text x="615" y="861" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="660" y="860" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">read the file mode</text>
+
+    
+    <rect x="1065" y="785" width="485" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="1115" cy="852" r="24" fill="#207448"/>
+    <text x="1115" y="861" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="1160" y="838" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1160" dy="0">fix the directory with</tspan>
+      <tspan x="1160" dy="32" font-family="monospace">chmod u+x or 755</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="945" width="1500" height="85" rx="14" fill="#207448"/>
+    <text x="800" y="998" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Check every parent directory, not only the last.
+    </text>
+  </g>
+</svg>

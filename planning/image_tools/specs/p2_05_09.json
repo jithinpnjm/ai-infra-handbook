@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p2-0509-probe-questions",
+  "title": "Three probes ask three different questions",
+  "spec": "Three columns, one per probe, each a card with a header, a question, and an outcome. Column 1 header 'startupProbe': question chip 'Has the app finished starting?'; note 'Disables the other two until it succeeds'; outcome 'Container killed and restarted after failureThreshold'. Column 2 header 'readinessProbe': question chip 'Can it serve traffic now?'; outcome 'Pod marked NotReady, removed from Service endpoints, not restarted'. Column 3 header 'livenessProbe': question chip 'Is it stuck?'; outcome 'Container killed and restarted'. Above the columns a timeline strip with an arrow labelled 'Startup succeeds' that then unlocks the readiness and liveness columns. Orange outline on the readiness outcome card, the one that sends traffic elsewhere without a restart. Bottom note: 'Picture a container that is up but still loading its model.'",
+  "anchor": "## 5. Probes",
+  "alt": "The startup, readiness and liveness probes, each asking a different question and taking a different action on failure.",
+  "cap": "The three probes ask whether the app has started, whether it can serve traffic, and whether it is stuck, with a different action for each."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p2-0509-oomkilled-read",
+  "title": "Reading an OOMKilled container, step by step",
+  "spec": "A vertical sequence of four numbered steps with a terminal-style panel on the right. Step 1 box: 'Memory limit reached: the kernel must stop the process' with the note 'Memory cannot be throttled the way CPU can'. Step 2 box: 'Kernel sends SIGKILL, the container restarts under its restart policy'. Step 3 box: 'kubectl describe pod, Last State section'. Step 4 box: 'Read Reason: OOMKilled and the exit code 137 (128 plus signal 9)'. Right panel titled 'kubectl describe pod memory' showing monospace lines: 'Containers:', 'Reason: OOMKilled', 'Exit Code: 137', 'Restart Count: n', with the note 'Container memory limit: 100Mi in this example'. Orange outline on the 'Exit Code: 137' line. Side note on CPU contrast: 'A process out of CPU time waits; out of memory it must be stopped.'",
+  "anchor": "### Reading an OOMKilled container",
+  "alt": "Steps for reading an OOMKilled container, from the memory limit being reached to the Reason and exit code shown by kubectl describe.",
+  "cap": "An OOMKilled container shows Reason OOMKilled and exit code 137 in the Last State section of kubectl describe pod."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "p2-0509-lease-heartbeat",
+  "title": "Lease heartbeats and the node monitor grace period",
+  "spec": "A horizontal timeline of a node, left to right, with heartbeat ticks drawn as small markers. Top lane labelled 'Kubelet renews Lease kube-node-lease/node every 10 s' with regular ticks. Second lane labelled 'Node.status updated on change, or every 5 min' with fewer ticks. A break in the ticks at the right labelled 'Heartbeats stop'. After the break a bracket labelled 'node-monitor-grace-period: the node controller waits, then marks Ready=Unknown'. Under the bracket a small note 'Older releases used 40 s'. Right-side condition chips: 'Ready', 'MemoryPressure', 'DiskPressure', 'PIDPressure', 'NetworkUnavailable'. Orange outline on the break in the ticks. Caption: 'Leases are cheap heartbeats, and status updates carry the wider node conditions.'",
+  "anchor": "## 8. Node status, leases and failure behaviour",
+  "alt": "A kubelet renews its node lease every ten seconds and updates node status every five minutes, and the node is marked Unknown after the grace period once heartbeats stop.",
+  "cap": "The kubelet renews its node lease every 10 seconds and reports status every 5 minutes, and the node is marked Unknown after the grace period."
+ }
+]

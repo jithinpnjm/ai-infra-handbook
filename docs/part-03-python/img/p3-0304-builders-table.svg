@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Data class builders compared: mutability, typing, validation</title>
+  <desc>Comparison table of Python data class builders showing mutability, typing, validation, and notes, with annotation behaviour details.</desc>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="70" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Data class builders compared: mutability, typing, validation</text>
+
+  
+  <rect x="40" y="100" width="1520" height="52" fill="#207448" rx="6"/>
+  <rect x="40" y="130" width="1520" height="22" fill="#207448"/>
+  <line x1="410" y1="100" x2="410" y2="152" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>
+  <line x1="600" y1="100" x2="600" y2="152" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>
+  <line x1="860" y1="100" x2="860" y2="152" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>
+  <line x1="1090" y1="100" x2="1090" y2="152" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1"/>
+
+  <text x="56" y="136" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Builder</text>
+  <text x="426" y="136" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Mutable?</text>
+  <text x="616" y="136" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Typing</text>
+  <text x="876" y="136" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Validation</text>
+  <text x="1106" y="136" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Notes</text>
+
+  
+  <rect x="40" y="152" width="1520" height="230" fill="#ffffff" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="410" y1="152" x2="410" y2="382" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="600" y1="152" x2="600" y2="382" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="860" y1="152" x2="860" y2="382" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="1090" y1="152" x2="1090" y2="382" stroke="#c0d7c7" stroke-width="1"/>
+
+  
+  <g transform="translate(56, 172)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="0" y="0" width="38" height="38" rx="6"/>
+    <line x1="19" y1="0" x2="19" y2="38"/>
+    <circle cx="9.5" cy="19" r="2.5" fill="#207448"/>
+    <circle cx="28.5" cy="19" r="2.5" fill="#207448"/>
+  </g>
+
+  <text font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="106" y="196">collections.</tspan>
+    <tspan x="106" dy="28">namedtuple(</tspan>
+    <tspan x="106" dy="28">&quot;P&quot;, &quot;x y&quot;)</tspan>
+  </text>
+  <text x="426" y="196" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">No (tuple)</text>
+  <text x="616" y="196" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">Untyped</text>
+  <text x="876" y="196" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">None</text>
+  <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1106" y="184">lightweight, tuple behaviour;</tspan>
+    <tspan x="1106" dy="30">same memory as a plain tuple,</tspan>
+    <tspan x="1106" dy="30">field names live on the class in</tspan>
+    <tspan x="1106" dy="30">City._fields; _make(iterable),</tspan>
+    <tspan x="1106" dy="30">_asdict(), defaults=(...) for the</tspan>
+    <tspan x="1106" dy="30">rightmost fields</tspan>
+  </text>
+
+  
+  <rect x="40" y="382" width="1520" height="68" fill="#e8f1ea" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="410" y1="382" x2="410" y2="450" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="600" y1="382" x2="600" y2="450" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="860" y1="382" x2="860" y2="450" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="1090" y1="382" x2="1090" y2="450" stroke="#c0d7c7" stroke-width="1"/>
+
+  
+  <g transform="translate(56, 397)" stroke="#207448" stroke-width="3.5" fill="none">
+    <path d="M 0 6 L 22 6 L 36 20 L 22 34 L 0 34 Z"/>
+    <circle cx="10" cy="20" r="3" fill="#207448"/>
+  </g>
+
+  <text x="106" y="425" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">typing.NamedTuple</text>
+  <text x="426" y="425" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">No</text>
+  <text x="616" y="425" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">Typed fields</text>
+  <text x="876" y="425" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">None</text>
+  <text x="1106" y="425" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">class syntax, defaults, methods</text>
+
+  
+  <rect x="40" y="450" width="1520" height="96" fill="#ffffff" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="410" y1="450" x2="410" y2="546" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="600" y1="450" x2="600" y2="546" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="860" y1="450" x2="860" y2="546" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="1090" y1="450" x2="1090" y2="546" stroke="#c0d7c7" stroke-width="1"/>
+
+  
+  <g transform="translate(56, 479)" stroke="#207448" stroke-width="3.5" fill="none">
+    <circle cx="19" cy="19" r="10"/>
+    <path d="M 19 3 L 19 8 M 19 30 L 19 35 M 3 19 L 8 19 M 30 19 L 35 19 M 8 8 L 12 12 M 26 26 L 30 30 M 8 30 L 12 26 M 26 12 L 30 8"/>
+  </g>
+
+  <text font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="106" y="492">@dataclasses.</tspan>
+    <tspan x="106" dy="28">dataclass</tspan>
+  </text>
+  <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="426" y="492">Yes, or</tspan>
+    <tspan x="426" dy="28">frozen=True</tspan>
+  </text>
+  <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="616" y="492">Typed annotations,</tspan>
+    <tspan x="616" dy="28">not enforced</tspan>
+  </text>
+  <text x="876" y="506" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">via __post_init__</text>
+  <text x="1106" y="506" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">standard library, most common</text>
+
+  
+  <rect x="40" y="546" width="1520" height="96" fill="#e8f1ea" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="410" y1="546" x2="410" y2="642" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="600" y1="546" x2="600" y2="642" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="860" y1="546" x2="860" y2="642" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="1090" y1="546" x2="1090" y2="642" stroke="#c0d7c7" stroke-width="1"/>
+
+  
+  <g transform="translate(56, 575)" stroke="#207448" stroke-width="3.5" fill="none">
+    <line x1="4" y1="9" x2="34" y2="9"/>
+    <circle cx="12" cy="9" r="4" fill="#e8f1ea"/>
+    <line x1="4" y1="27" x2="34" y2="27"/>
+    <circle cx="26" cy="27" r="4" fill="#e8f1ea"/>
+  </g>
+
+  <text x="106" y="602" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">attrs (@define)</text>
+  <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="426" y="588">Yes or</tspan>
+    <tspan x="426" dy="28">frozen</tspan>
+  </text>
+  <text x="616" y="602" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">Optional</text>
+  <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="876" y="588">validators and</tspan>
+    <tspan x="876" dy="28">converters</tspan>
+  </text>
+  <text x="1106" y="602" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">third party, predates dataclasses</text>
+
+  
+  <rect x="40" y="642" width="1520" height="96" fill="#fff9f2" stroke="#db8129" stroke-width="2"/>
+  <rect x="40" y="642" width="8" height="96" fill="#db8129"/>
+  <line x1="410" y1="642" x2="410" y2="738" stroke="#f0cfb0" stroke-width="1"/>
+  <line x1="600" y1="642" x2="600" y2="738" stroke="#f0cfb0" stroke-width="1"/>
+  <line x1="860" y1="642" x2="860" y2="738" stroke="#f0cfb0" stroke-width="1"/>
+  <line x1="1090" y1="642" x2="1090" y2="738" stroke="#f0cfb0" stroke-width="1"/>
+
+  
+  <g transform="translate(56, 671)" stroke="#db8129" stroke-width="3.5" fill="none">
+    <path d="M 19 3 L 34 8 L 34 20 C 34 29 19 36 19 36 C 19 36 4 29 4 20 L 4 8 Z"/>
+    <path d="M 11 19 L 16 24 L 27 13"/>
+  </g>
+
+  <text x="106" y="698" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">pydantic.BaseModel</text>
+  <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="426" y="684">Yes or</tspan>
+    <tspan x="426" dy="28">frozen</tspan>
+  </text>
+  <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="616" y="684">Enforced at runtime,</tspan>
+    <tspan x="616" dy="28">coercion</tspan>
+  </text>
+  <text x="876" y="698" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">strong, with errors</text>
+  <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1106" y="684">parsing external data,</tspan>
+    <tspan x="1106" dy="28">settings, FastAPI</tspan>
+  </text>
+
+  
+  <rect x="40" y="738" width="1520" height="68" fill="#ffffff" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="410" y1="738" x2="410" y2="806" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="600" y1="738" x2="600" y2="806" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="860" y1="738" x2="860" y2="806" stroke="#c0d7c7" stroke-width="1"/>
+  <line x1="1090" y1="738" x2="1090" y2="806" stroke="#c0d7c7" stroke-width="1"/>
+
+  
+  <g transform="translate(56, 753)" stroke="#207448" stroke-width="3.5" fill="none">
+    <path d="M 14 4 C 8 4 8 13 8 16 C 8 19 3 19 3 19 C 3 19 8 19 8 22 C 8 25 8 34 14 34"/>
+    <path d="M 24 4 C 30 4 30 13 30 16 C 30 19 35 19 35 19 C 35 19 30 19 30 22 C 30 25 30 34 24 34"/>
+  </g>
+
+  <text x="106" y="781" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">TypedDict</text>
+  <text x="426" y="781" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">A dict</text>
+  <text x="616" y="781" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">Static only</text>
+  <text x="876" y="781" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">None</text>
+  <text x="1106" y="781" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">types JSON-like dicts, no runtime class</text>
+
+  
+  <rect x="40" y="828" width="1520" height="210" fill="#e8f1ea" stroke="#207448" stroke-width="2" rx="8"/>
+
+  
+  <g transform="translate(60, 854)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="0" y="0" width="46" height="42" rx="5"/>
+    <line x1="0" y1="12" x2="46" y2="12"/>
+    <circle cx="8" cy="6" r="2" fill="#207448"/>
+    <circle cx="16" cy="6" r="2" fill="#207448"/>
+    <line x1="10" y1="24" x2="24" y2="24"/>
+    <line x1="10" y1="32" x2="34" y2="32"/>
+  </g>
+
+  <text font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="124" y="868">plain class: a: int exists only in __annotations__, DemoPlainClass.a raises AttributeError;</tspan>
+    <tspan x="124" dy="34">NamedTuple: a and b become read-only tuple fields; dataclass: a and b become mutable</tspan>
+    <tspan x="124" dy="34">instance attributes with generated __init__(self, a: int, b: float = 1.1) -&gt; None;</tspan>
+    <tspan x="124" dy="34">in all three the unannotated c = spam stays a class attribute; all three generate</tspan>
+    <tspan x="124" dy="34">__match_args__ for case City(continent=Asia, name=_, country=cc):</tspan>
+  </text>
+
+  
+  <rect x="40" y="1058" width="1520" height="62" fill="#207448" rx="8"/>
+  <text x="800" y="1098" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Pick the lightest builder that gives the checks you need</text>
+</svg>

@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180" style="background-color: #f5f8f5;">
+  <title>The four detective commands and the in-play checks</title>
+  <desc>Visual infographic explaining the four Ansible detective commands, the ladder of variable inspection layers, in-play debugging checks, and common surprises.</desc>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The four detective commands and the in-play checks</text>
+
+  
+  
+  <rect x="75" y="125" width="14" height="615" rx="7" fill="#207448" opacity="0.35"/>
+  <rect x="915" y="125" width="14" height="615" rx="7" fill="#207448" opacity="0.35"/>
+
+  
+  <rect x="45" y="135" width="900" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="202" r="24" fill="#207448"/>
+  <text x="95" y="211" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(135, 174)">
+    <rect x="4" y="3" width="36" height="50" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="12" y1="15" x2="32" y2="15" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="12" y1="27" x2="32" y2="27" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="12" y1="39" x2="24" y2="39" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text font-size="24">
+    <tspan x="205" y="165" font-family="monospace" font-weight="bold" fill="#303a36">1 ansible-inventory -i inventories/prod</tspan>
+    <tspan x="205" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  --host gpu001 --yaml:</tspan>
+    <tspan x="205" dy="30" font-family="sans-serif" fill="#207448">what does the inventory believe?</tspan>
+    <tspan x="205" dy="28" font-family="sans-serif" fill="#303a36">merged inventory-level vars</tspan>
+  </text>
+
+  
+  <rect x="45" y="285" width="900" height="138" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="354" r="24" fill="#207448"/>
+  <text x="95" y="363" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(135, 326)">
+    <rect x="10" y="10" width="36" height="36" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="18" y1="2" x2="18" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="2" x2="28" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="38" y1="2" x2="38" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="18" y1="46" x2="18" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="38" y1="46" x2="38" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="28" r="6" fill="#207448"/>
+  </g>
+  <text font-size="24">
+    <tspan x="205" y="315" font-family="monospace" font-weight="bold" fill="#303a36">2 ansible gpu001 -i inventories/prod</tspan>
+    <tspan x="205" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  -m ansible.builtin.debug</tspan>
+    <tspan x="205" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  -a var=nvidia_driver_branch:</tspan>
+    <tspan x="205" dy="30" font-family="sans-serif" fill="#207448">what would the live host see?</tspan>
+  </text>
+
+  
+  <rect x="45" y="438" width="900" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="500" r="24" fill="#207448"/>
+  <text x="95" y="509" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(135, 472)">
+    <rect x="6" y="4" width="44" height="48" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="14" y1="16" x2="18" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="18" y1="20" x2="26" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="32" y1="16" x2="42" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="14" y1="36" x2="18" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="18" y1="40" x2="26" y2="32" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="32" y1="36" x2="42" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text font-size="24">
+    <tspan x="205" y="470" font-family="monospace" font-weight="bold" fill="#303a36">3 ansible-playbook site.yml -l gpu001</tspan>
+    <tspan x="205" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  -e &quot;&quot; -vvv --tags never --list-tasks:</tspan>
+    <tspan x="205" dy="30" font-family="sans-serif" fill="#207448">what is loaded? -vvv shows vars files</tspan>
+  </text>
+
+  
+  <rect x="45" y="578" width="900" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="660" r="24" fill="#207448"/>
+  <text x="95" y="669" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(135, 632)">
+    <circle cx="24" cy="24" r="16" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="36" y1="36" x2="50" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text font-size="24">
+    <tspan x="205" y="610" font-family="monospace" font-weight="bold" fill="#303a36">4 grep -rn &quot;nvidia_driver_branch&quot;</tspan>
+    <tspan x="205" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  inventories roles playbooks:</tspan>
+    <tspan x="205" dy="30" font-family="sans-serif" fill="#207448">find every definition (search the name in quotes</tspan>
+    <tspan x="205" dy="28" font-family="sans-serif" fill="#207448">and with {{ around it, because some values</tspan>
+    <tspan x="205" dy="28" font-family="sans-serif" fill="#207448">are built from others)</tspan>
+  </text>
+
+  
+  <rect x="45" y="758" width="900" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="495" y="792">The first one to show the wrong value</tspan>
+    <tspan x="495" dy="28">tells you which layer to inspect.</tspan>
+  </text>
+
+  
+  <rect x="985" y="125" width="570" height="715" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1010, 142)">
+    <rect x="2" y="4" width="52" height="42" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="2" y1="16" x2="54" y2="16" stroke="#207448" stroke-width="4"/>
+    <circle cx="10" cy="10" r="2" fill="#207448"/>
+    <circle cx="18" cy="10" r="2" fill="#207448"/>
+  </g>
+  <text x="1080" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">From inside a play</text>
+
+  
+  <rect x="1010" y="205" width="520" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1030, 225)">
+    <circle cx="28" cy="28" r="20" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="28" y1="4" x2="28" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="40" x2="28" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="4" y1="28" x2="16" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="28" r="4" fill="#207448"/>
+  </g>
+  <text font-size="24">
+    <tspan x="1105" y="246" font-family="monospace" font-weight="bold" fill="#303a36">debug: var=vars[</tspan>
+    <tspan x="1105" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  nvidia_driver_branch]</tspan>
+    <tspan x="1105" dy="32" font-family="sans-serif" fill="#207448">prints one value</tspan>
+  </text>
+
+  
+  <rect x="1010" y="375" width="520" height="445" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1030, 395)">
+    <polygon points="6,8 50,8 32,28 32,48 24,44 24,28" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round"/>
+  </g>
+  <text font-size="24">
+    <tspan x="1105" y="415" font-family="monospace" font-weight="bold" fill="#303a36">debug msg {{ hostvars[</tspan>
+    <tspan x="1105" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  inventory_hostname] |</tspan>
+    <tspan x="1105" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  dict2items |</tspan>
+    <tspan x="1105" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  selectattr(key, match,</tspan>
+    <tspan x="1105" dy="28" font-family="monospace" font-weight="bold" fill="#303a36">  ^nvidia_) | list }}</tspan>
+    <tspan x="1030" dy="42" font-family="sans-serif" fill="#207448">lists every host variable</tspan>
+    <tspan x="1030" dy="28" font-family="sans-serif" fill="#207448">whose name starts with nvidia_:</tspan>
+    <tspan x="1030" dy="28" font-family="sans-serif" fill="#207448">useful when a neighbour</tspan>
+    <tspan x="1030" dy="28" font-family="sans-serif" fill="#207448">variable is involved</tspan>
+  </text>
+
+  
+  <rect x="45" y="865" width="1510" height="180" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(75, 890)">
+    <path d="M28,6 L50,48 L6,48 Z" stroke="#db8129" stroke-width="4" fill="none" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="42" r="2.5" fill="#db8129"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="150" y="912" font-weight="bold">a role's vars/ overriding inventory; -e overriding everything;</tspan>
+    <tspan x="150" dy="30" font-weight="bold">set_fact persisting into later plays;</tspan>
+    <tspan x="150" dy="30" font-weight="bold">a dictionary replaced instead of merged (fix: combine(recursive=True),</tspan>
+    <tspan x="150" dy="30" font-weight="bold">which keeps both sets of keys); two sibling groups defining the same name</tspan>
+  </text>
+
+  
+  <rect x="45" y="1070" width="1510" height="70" rx="8" fill="#207448"/>
+  <text x="800" y="1114" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Guessing is slow and risky, see every layer</text>
+</svg>

@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Lab: what host h3 sees before and after the bridge learns</title>
+  <desc>Visual explanation of Linux bridge learning behavior, ARP flooding, and FDB state for host h3.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <g id="title-group">
+    <text x="40" y="58" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Lab: what host h3 sees before</text>
+    <text x="40" y="112" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">and after the bridge learns</text>
+  </g>
+
+  
+  <g id="topology-group">
+    <rect x="40" y="140" width="460" height="660" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="65" y="165" width="410" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 185)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="10" width="56" height="32" rx="4" />
+      <line x1="12" y1="26" x2="24" y2="26" />
+      <line x1="32" y1="26" x2="44" y2="26" />
+      <circle cx="12" cy="26" r="2" fill="#207448" />
+      <circle cx="24" cy="26" r="2" fill="#207448" />
+      <circle cx="32" cy="26" r="2" fill="#207448" />
+      <circle cx="44" cy="26" r="2" fill="#207448" />
+    </g>
+    <text x="160" y="235" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">br0 as the switch</text>
+
+    
+    
+    <line x1="130" y1="315" x2="130" y2="440" stroke="#207448" stroke-width="3" />
+    <rect x="80" y="360" width="100" height="36" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="130" y="386" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">v-h1</text>
+
+    
+    <line x1="270" y1="315" x2="270" y2="560" stroke="#207448" stroke-width="3" />
+    <rect x="220" y="420" width="100" height="36" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="270" y="446" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">v-h2</text>
+
+    
+    <line x1="410" y1="315" x2="410" y2="680" stroke="#207448" stroke-width="3" />
+    <rect x="360" y="480" width="100" height="36" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <text x="410" y="506" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">v-h3</text>
+
+    
+    <rect x="65" y="440" width="370" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 458)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="4" width="44" height="30" rx="2" />
+      <line x1="14" y1="44" x2="38" y2="44" />
+      <line x1="26" y1="34" x2="26" y2="44" />
+    </g>
+    <text x="155" y="497" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">h1 10.20.0.1</text>
+
+    
+    <rect x="65" y="560" width="370" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 578)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="4" width="44" height="30" rx="2" />
+      <line x1="14" y1="44" x2="38" y2="44" />
+      <line x1="26" y1="34" x2="26" y2="44" />
+    </g>
+    <text x="155" y="617" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">h2 10.20.0.2</text>
+
+    
+    <rect x="65" y="680" width="370" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 698)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="4" width="44" height="30" rx="2" />
+      <line x1="14" y1="44" x2="38" y2="44" />
+      <line x1="26" y1="34" x2="26" y2="44" />
+    </g>
+    <text x="155" y="737" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">h3 10.20.0.3</text>
+  </g>
+
+  
+  
+  <g id="panel-1">
+    <rect x="540" y="140" width="1020" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="585" cy="185" r="24" fill="#207448" />
+    <text x="585" y="193" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+    <text x="630" y="194" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">First ping from h1 to h2, table empty</text>
+
+    
+    <rect x="570" y="230" width="960" height="140" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    
+    <path d="M 605 275 L 605 325" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <text x="635" y="278" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="635" dy="0">ARP request is a broadcast, the switch floods it,</tspan>
+      <tspan x="635" dy="38" fill="#db8129" font-weight="bold">so h3's tcpdump sees it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-2">
+    <rect x="540" y="420" width="1020" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="585" cy="465" r="24" fill="#207448" />
+    <text x="585" y="473" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    <text x="630" y="474" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">After the switch has learned both addresses</text>
+
+    
+    <rect x="570" y="510" width="960" height="140" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    
+    <path d="M 605 555 L 605 605" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <text x="635" y="558" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="635" dy="0">the unicast ARP reply and ICMP traffic go to one</tspan>
+      <tspan x="635" dy="38">port only, h3 sees nothing</tspan>
+    </text>
+  </g>
+
+  
+  <g id="fdb-group">
+    <rect x="540" y="700" width="1020" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(565, 722)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="50" height="48" rx="4" />
+      <line x1="0" y1="16" x2="50" y2="16" />
+      <line x1="25" y1="0" x2="25" y2="48" />
+    </g>
+
+    <text x="635" y="760" font-family="monospace" font-size="26px" font-weight="bold" fill="#303a36">bridge fdb show br br0</text>
+    <rect x="1170" y="728" width="360" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1350" y="760" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">MAC to port entries</text>
+  </g>
+
+  
+  <g id="aging-group">
+    <rect x="40" y="820" width="1520" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(65, 847)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="26" cy="26" r="24" />
+      <polyline points="26,12 26,26 36,32" />
+    </g>
+
+    <text x="140" y="865" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="140" dy="0">sudo bridge fdb flush dev v-h2, or wait out the age timer</tspan>
+      <tspan x="140" dy="36">(commonly 300 s; brctl setageing br0 10 shortens it), and flooding resumes</tspan>
+    </text>
+  </g>
+
+  
+  <g id="commands-strip">
+    <rect x="40" y="950" width="1520" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(65, 987)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="52" height="46" rx="4" />
+      <polyline points="10,14 20,23 10,32" />
+      <line x1="26" y1="32" x2="42" y2="32" />
+    </g>
+
+    
+    <rect x="140" y="966" width="650" height="44" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+    <text x="155" y="997" font-family="monospace" font-size="24px" fill="#303a36">sudo ip netns exec h3 tcpdump -nn -e -i e0</text>
+
+    
+    <rect x="810" y="966" width="630" height="44" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+    <text x="825" y="997" font-family="monospace" font-size="24px" fill="#303a36">sudo ip netns exec h1 ping -c1 10.20.0.2</text>
+
+    
+    <rect x="140" y="1022" width="300" height="44" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+    <text x="155" y="1053" font-family="monospace" font-size="24px" fill="#303a36">ip -n h1 neigh</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1100" width="1520" height="70" rx="8" fill="#207448" />
+    <text x="800" y="1144" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">The broadcast domain spans the whole VLAN, but learned conversations are private</text>
+  </g>
+</svg>

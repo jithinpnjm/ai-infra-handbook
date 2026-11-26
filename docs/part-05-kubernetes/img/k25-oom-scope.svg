@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Container limit versus node memory: two different OOM kills</title>
+  <desc>Two side-by-side panels: a container hitting its own cgroup memory limit and being killed, beside a node whose containers each stay under their limits while the node runs out of memory.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="12" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0L12 6L0 12Z" fill="#303a36"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="800" y="70" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" fill="#303a36">Container limit versus node memory:</text>
+  <text x="800" y="124" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" fill="#303a36">two different OOM kills</text>
+
+  
+  <rect x="40" y="150" width="740" height="850" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  <g transform="translate(70,166)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="8" y="14" width="40" height="34" rx="4"/>
+    <path d="M8 26h40"/>
+    <path d="M18 14V8h12v6"/>
+  </g>
+  <text x="146" y="206" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700" fill="#303a36">Container limit</text>
+
+  <g transform="translate(70,236) scale(0.785)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="14" y="14" width="28" height="28" rx="4"/>
+    <rect x="23" y="23" width="10" height="10" rx="1"/>
+    <path d="M22 14V7M34 14V7M22 49v-7M34 49v-7M14 22H7M14 34H7M49 22h-7M49 34h-7"/>
+  </g>
+  <text x="130" y="274" font-family="Arial, Helvetica, sans-serif" font-size="26" fill="#303a36">memory limit</text>
+  <text x="70" y="310" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">(the cgroup ceiling)</text>
+
+  <rect x="72" y="330" width="300" height="280" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="3" stroke-dasharray="10 7"/>
+  <rect x="94" y="333" width="70" height="274" rx="3" fill="#207448"/>
+  <text x="190" y="458" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">container</text>
+  <text x="190" y="490" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">working set</text>
+
+  <rect x="440" y="330" width="300" height="280" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(454,342) scale(0.715)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="6" y="20" width="44" height="18" rx="3"/>
+    <path d="M14 38v6M22 38v6M30 38v6M38 38v6"/>
+    <path d="M15 26h8M30 26h8"/>
+  </g>
+  <text x="454" y="414" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">node memory:</text>
+  <text x="454" y="446" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">plenty free</text>
+  <rect x="456" y="474" width="268" height="118" rx="8" fill="#ffffff" stroke="#cfdfd4" stroke-width="1.5"/>
+
+  <line x1="222" y1="611" x2="222" y2="679" stroke="#303a36" stroke-width="3" marker-end="url(#arrow)"/>
+  <text x="240" y="650" font-family="Courier New, monospace" font-size="24" fill="#303a36">oom_kill</text>
+
+  <rect x="60" y="680" width="480" height="80" rx="12" fill="#fbeeec" stroke="#b5372c" stroke-width="3"/>
+  <g transform="translate(84,698) scale(0.785)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="8" y="14" width="40" height="34" rx="4"/>
+    <path d="M22 26l12 12M34 26L22 38"/>
+  </g>
+  <text x="144" y="730" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">container killed</text>
+
+  <text x="70" y="812" font-family="Courier New, monospace" font-size="24" fill="#207448">CONSTRAINT_MEMCG,</text>
+  <text x="70" y="846" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">the container hit</text>
+  <text x="70" y="878" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">its own ceiling</text>
+
+  <rect x="70" y="918" width="7" height="52" rx="3.5" fill="#db8129"/>
+  <text x="94" y="934" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#db8129">a pod can be killed</text>
+  <text x="94" y="964" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#db8129">while the node still has free memory.</text>
+
+  
+  <rect x="820" y="150" width="740" height="690" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  <g transform="translate(852,166)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="10" y="10" width="36" height="14" rx="3"/>
+    <rect x="10" y="32" width="36" height="14" rx="3"/>
+    <path d="M17 17h6M17 39h6"/>
+  </g>
+  <text x="928" y="206" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="700" fill="#303a36">Whole node</text>
+
+  <rect x="856" y="246" width="668" height="314" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(872,262) scale(0.715)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="10" y="10" width="36" height="14" rx="3"/>
+    <rect x="10" y="32" width="36" height="14" rx="3"/>
+    <path d="M17 17h6M17 39h6"/>
+  </g>
+  <text x="924" y="294" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">node memory</text>
+
+  <rect x="901" y="326" width="116" height="200" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="921" y="350" width="76" height="172" fill="#207448"/>
+  <rect x="1055" y="326" width="116" height="200" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="1075" y="350" width="76" height="172" fill="#207448"/>
+  <rect x="1209" y="326" width="116" height="200" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="1229" y="350" width="76" height="172" fill="#207448"/>
+  <rect x="1363" y="326" width="116" height="200" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" stroke-dasharray="7 6"/>
+  <rect x="1383" y="350" width="76" height="172" fill="#207448"/>
+
+  <text x="856" y="620" font-family="Courier New, monospace" font-size="24" fill="#207448">CONSTRAINT_NONE,</text>
+  <text x="856" y="654" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">the node ran short while every container</text>
+  <text x="856" y="686" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">stayed under its limit.</text>
+
+  <rect x="856" y="716" width="470" height="80" rx="12" fill="#fbeeec" stroke="#b5372c" stroke-width="3"/>
+  <g transform="translate(880,734) scale(0.785)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="10" y="12" width="36" height="14" rx="3"/>
+    <rect x="10" y="30" width="36" height="14" rx="3"/>
+    <path d="M18 19l5 5M23 19l-5 5M18 37l5 5M23 37l-5 5"/>
+  </g>
+  <text x="940" y="766" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">node-level kill</text>
+
+  
+  <rect x="820" y="858" width="238" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(917,864) scale(0.785)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="6" y="20" width="44" height="18" rx="3"/>
+    <path d="M14 38v6M22 38v6M30 38v6M38 38v6"/>
+    <path d="M15 26h8M30 26h8"/>
+  </g>
+  <text x="939" y="950" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">reserve</text>
+  <text x="939" y="982" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">system memory</text>
+
+  <rect x="1070" y="858" width="238" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1167,864) scale(0.785)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="28" cy="28" r="11"/>
+    <circle cx="28" cy="28" r="4"/>
+    <path d="M28 9v6M28 41v6M9 28h6M41 28h6M14.6 14.6l4.2 4.2M37.2 37.2l4.2 4.2M41.4 14.6l-4.2 4.2M18.8 37.2l-4.2 4.2"/>
+  </g>
+  <text x="1189" y="950" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">reduce</text>
+  <text x="1189" y="982" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">workers</text>
+
+  <rect x="1320" y="858" width="238" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1417,864) scale(0.785)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M28 8l15 6v13c0 11-7 17-15 19-8-2-15-8-15-19V14z"/>
+    <path d="M21 27l5 5 10-10"/>
+  </g>
+  <text x="1439" y="938" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">enforce</text>
+  <text x="1439" y="970" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">Guaranteed</text>
+  <text x="1439" y="1002" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" fill="#303a36">QoS</text>
+
+  
+  <rect x="40" y="1090" width="1520" height="70" rx="14" fill="#207448"/>
+  <text x="800" y="1133" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="26" font-weight="700" fill="#ffffff">separate the container's limit from the node's use before you change anything.</text>
+</svg>

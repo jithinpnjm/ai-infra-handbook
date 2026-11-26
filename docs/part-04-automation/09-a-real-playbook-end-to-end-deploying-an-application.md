@@ -41,19 +41,17 @@ If any of these outcomes is new to you, go back to 4.3 to 4.8 before you start t
 
 ## 1. Target architecture
 
+![Clients reach nginx over HTTPS, nginx forwards to two app hosts on the private network, both app hosts read PostgreSQL, and Prometheus scrapes metrics from one app host.](./img/p2-0409-architecture.svg)
+
+*Figure 4.9.1. Clients reach nginx over HTTPS, which forwards to two app hosts that share a PostgreSQL database, and Prometheus scrapes the app metrics.*
+
 A small team wants to deploy a web application to two servers. The question is more than how to copy the code. The team also needs to switch versions safely, roll back when something goes wrong, and prove that the new version works. The target architecture is the picture that answers those questions before a single task is written. Drawing the picture first is cheap. Discovering a missing piece after the first production release is not.
 
 Consider what happens when one machine runs everything. A single failure takes the whole service down, and a change to one part forces you to touch the rest. A database upgrade, for example, could knock out the website at the same time. The layout below splits the service into groups of hosts, so each part can change on its own. A group is a named set of hosts in the inventory, and the playbook addresses each part by its group name.
 
-```mermaid
-flowchart LR
-  U["Clients"] -->|HTTPS 443| N["nginx\n(web group)\nTLS, rate limits, upstream"]
-  N -->|HTTP 127.0.0.1:8000/ private net| A1["app01\nuvicorn + FastAPI"]
-  N --> A2["app02"]
-  A1 --> D[("PostgreSQL\n(db group)")]
-  A2 --> D
-  A1 -. "/metrics" .-> P["Prometheus"]
-```
+![Target architecture](./img/m4-09-1.svg)
+
+*Figure 4.9.2. Target architecture, as a diagram.*
 
 Clients reach nginx on `web01` over HTTPS. nginx forwards each request to `app01` or `app02` on the private network. Both app hosts read from PostgreSQL on `db01`, and `app01` exposes `/metrics` to Prometheus. Follow one request through the picture. It arrives at the edge, nginx opens it, picks an app host, and the app asks the database for data. The answer travels the same road in reverse. Each hop is a place where a failure can happen, and each one has its own check later in the chapter.
 
@@ -88,6 +86,10 @@ If DNS rebinding protection blocks `nip.io`, add `192.168.33.10 192.168.33.10.ni
 Choose the hostname first, because TLS and host checks both depend on it. Changing the name later means reissuing the certificate and updating the allowed list, so decide it before you build anything else.
 
 ## 2. Project layout
+
+![The site playbook imports baseline, database, app, web and verify in that order so each tier is ready before the next one depends on it.](./img/a09-site-order.svg)
+
+*Figure 4.9.3. The site playbook imports five tier playbooks in dependency order, so each tier is ready before the next one depends on it.*
 
 A playbook project grows quickly. Within a month it has inventories, roles, templates and secrets. A predictable layout means a new engineer knows where to look, and CI knows what to lint. CI is the automated checker that runs on every change before it is merged. The layout below is the one the rest of this chapter uses, so keep it in mind as you read each play.
 
@@ -164,6 +166,10 @@ Keep secrets out of this file. They live in `vault.yml`, which is encrypted, and
 Look at the `app_version` line. It is a pinned tag, and a comment says to pin rather than track a branch. That single line decides what code reaches the users, so it is worth a second look every time you change it.
 
 ## 4. The baseline and database plays
+
+![Three stacked layers, interface, client address and firewall port, that an app host must pass to reach PostgreSQL.](./img/p4-0409-three-db-limits.svg)
+
+*Figure 4.9.4. Interface, client address and firewall port are three separate limits, and an unlisted host is stopped by them.*
 
 Before the application can run, the server needs a database and a few packages. The baseline and database plays prepare that ground. They run first, so the application play never starts on a half-prepared machine, and a failure here stops the deploy before any user traffic is touched. Think of building a house. The plumbing and wiring go in before anyone moves in, and an inspector checks them before the walls close.
 
@@ -262,6 +268,18 @@ Two plays come first. The baseline play runs on every host and prepares the oper
 Two details in these plays need your attention. `become_user: postgres` needs the `acl` package for the temporary files that the unprivileged user reads. Ansible copies a small program to the host, and the `postgres` user has to be able to read it, so the ACL (access control list) grants that permission. `no_log: true` hides the password in the output, so a reader of the run log never sees it. Real databases also need backups, WAL archiving (a continuous record of changes that makes point-in-time recovery possible) and monitoring, which are outside this chapter's scope. A deployment that protects the code but not the data has missed the part that matters most in an incident.
 
 ## 5. The application play: release directories and an atomic switch
+
+![A three-phase timeline of expand, move code, then contract while old and new code share one database.](./img/p4-0409-expand-contract.svg)
+
+*Figure 4.9.5. Migrations must stay compatible with the previous release because old and new code run together during a rolling update.*
+
+![Four columns showing pre_tasks, tasks, post_tasks and handlers for one app host, with a readiness check before the host returns to the load balancer.](./img/p4-0409-app-play-stages.svg)
+
+*Figure 4.9.6. The host is drained first, built and switched next, and returned to rotation only after the readiness check passes.*
+
+![Each release lives in its own folder, a current symlink points at the live one, and rollback repoints it to the previous folder.](./img/a09-release-switch.svg)
+
+*Figure 4.9.7. Each release gets its own folder and a current symlink points at the live one, so switching or rolling back is a single pointer change.*
 
 A deploy that copies new files over the old ones leaves a half-updated app for a few seconds, and a crash in that window is hard to explain. The release-directory pattern avoids the problem. Each version lives in its own folder, and a symbolic link flips from the old folder to the new one in a single step. A symbolic link is a named pointer to a folder, and changing the pointer is a single quick operation. Rolling back is the same flip in reverse, and the old folder is still there to go back to.
 
@@ -557,6 +575,10 @@ Stage and validate every nginx change before you reload it.
 
 ## 7. Verification play
 
+![The verification play calls the HTTPS readiness URL through nginx, checks the served version, then asks each app node directly.](./img/a09-verify-paths.svg)
+
+*Figure 4.9.8. The verification play tests the public HTTPS path first, checks the served version, and then asks each app node directly.*
+
 A green deploy is not proof that users can use the app. The verification play asks the application directly, through the same path users take, and it fails the run if the answer is wrong. It is the last check before the deploy counts as done. Think of a restaurant that checks the dish before it leaves the kitchen. A chef who trusts the recipe card alone can still send out a plate with the wrong sauce.
 
 Verification checks behaviour, not just state. The play below asks the live endpoints whether they answer, and whether they serve the version you deployed. The first check goes through the public name and the proxy, which is the path a user takes. The second makes sure the version string matches the one you pinned. The third asks each app host directly, so a single broken host is found even when nginx would have routed around it.
@@ -596,6 +618,10 @@ Module idempotency and verification work as a pair. Modules verify state, while 
 
 ## 8. Idempotency and safety checks
 
+![A ladder of seven commands from syntax check to rollback with the causes of a noisy second run.](./img/p4-0409-safety-run-ladder.svg)
+
+*Figure 4.9.9. A quiet second run is what lets you trust a loud first run.*
+
 A deploy that is safe to run twice is a deploy you can retry in the middle of the night without fear. Idempotent means that running the same playbook again changes nothing once the system already matches it. This section lists the checks that keep the playbook safe on a second run, and the ones that stop it before it damages anything that is already working.
 
 Work through these commands in order. The first ones check the code, and the last two prove a canary release and a rollback. A canary release sends the new version to one host first, so a bad release harms one host rather than the whole fleet. The rollback command then shows that returning to the old version is one short command.
@@ -613,6 +639,10 @@ ansible-playbook playbooks/app.yml -e app_version=v1.4.1                  # roll
 A second run that reports `changed` tasks means something is not idempotent. Look for `command` tasks without `changed_when`, `lineinfile` regex mismatches, templates that contain timestamps, and package updates with `state: latest`. Repo clones on a moving branch, and `git` with `force`, cause the same symptom. Each of these makes the playbook do work on every run, which hides real changes in the noise. A quiet second run is what lets you trust a loud first run. Fix each one before you trust the playbook.
 
 ## 9. A container-based variant
+
+![Two columns comparing a venv release on a host with a digest-pinned container.](./img/p4-0409-venv-vs-container.svg)
+
+*Figure 4.9.10. A digest names the exact image, while a tag can be moved to a different image later.*
 
 If the application ships as an image, Ansible has less to do. An image is a packaged snapshot of the app and its libraries, and a container is a running copy of that image. Ansible installs the host prerequisites and then declares the container state. It says what should be running, and Docker works out the rest:
 
@@ -654,6 +684,10 @@ Pinning the image by digest means you name its exact fingerprint, the `sha256` v
 Once you run a fleet of containers, Kubernetes (Part 5) takes over this job. Kubernetes is a system that keeps a set of containers running across many machines and replaces the ones that fail. Ansible still helps with the node layer, such as the container runtime, GPU drivers and kubelet prerequisites, and with bootstrapping clusters through Kubespray. Kubelet is the agent that runs on each Kubernetes node, and Kubespray is an Ansible project that builds whole clusters. You can also deploy Compose files with `community.docker.docker_compose_v2`. Compose is Docker's format for describing several containers that work together.
 
 ## 10. Troubleshooting a failed deploy
+
+![A table of failed-deploy symptoms with the checks to run for each.](./img/p4-0409-deploy-troubleshoot.svg)
+
+*Figure 4.9.11. Match the symptom, run its checks in order, and collect evidence before changing anything.*
 
 A deploy fails halfway through. Some hosts run the new version, some still run the old one, and the site is up but slow. Troubleshooting starts by finding which step stopped and what state it left behind. Only then should you decide whether to roll forward or roll back. Rolling forward means fixing the problem and continuing. Rolling back means returning to the old version. The state tells you which one is safer.
 

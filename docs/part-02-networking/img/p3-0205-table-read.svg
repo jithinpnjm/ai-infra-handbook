@@ -1,0 +1,233 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a real routing table line by line</title>
+  <desc>Visual breakdown of a GPU server routing table line by line with plain-English readings and attribute legend.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#207448">Reading a real routing table line by line</text>
+
+  
+
+  
+  <g id="row1">
+    
+    <g transform="translate(50, 136)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M28 12 L28 44 M12 28 L44 28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <polyline points="22,18 28,12 34,18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <polyline points="22,38 28,44 34,38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <polyline points="18,22 12,28 18,34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <polyline points="38,22 44,28 38,34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <rect x="115" y="95" width="450" height="138" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="135" y="135" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" y="135">default via 10.20.0.1</tspan>
+      <tspan x="135" y="168">dev eno1 proto dhcp</tspan>
+      <tspan x="135" y="201">src 10.20.0.45 metric 100</tspan>
+    </text>
+    
+    <rect x="580" y="95" width="445" height="138" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="600" y="126" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="600" y="126">everywhere else goes to the</tspan>
+      <tspan x="600" y="154">gateway 10.20.0.1 out eno1;</tspan>
+      <tspan x="600" y="182">learned from DHCP; packets</tspan>
+      <tspan x="600" y="210">carry source 10.20.0.45</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row2">
+    
+    <g transform="translate(50, 279)">
+      <rect x="6" y="8" width="44" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M16 28 L16 38 M24 28 L24 38 M32 28 L32 38 M40 28 L40 38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="28" cy="18" r="4" fill="#207448" />
+    </g>
+    
+    <rect x="115" y="245" width="450" height="126" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="135" y="285" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" y="285">10.20.0.0/24 dev eno1</tspan>
+      <tspan x="135" y="318">proto kernel scope link</tspan>
+      <tspan x="135" y="351">src 10.20.0.45 metric 100</tspan>
+    </text>
+    
+    <rect x="580" y="245" width="445" height="126" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="600" y="285" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="600" y="285">connected route: no via,</tspan>
+      <tspan x="600" y="318">made by the kernel when the</tspan>
+      <tspan x="600" y="351">address was assigned</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row3">
+    
+    <g transform="translate(50, 412)">
+      <rect x="6" y="10" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M14 28 L42 28 M14 20 L24 20 M14 36 L24 36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="34" cy="28" r="3" fill="#207448" />
+    </g>
+    
+    <rect x="115" y="383" width="450" height="114" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="135" y="417" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" y="417">10.100.0.0/24 dev ens1f0</tspan>
+      <tspan x="135" y="450">proto kernel scope link</tspan>
+      <tspan x="135" y="483">src 10.100.0.45</tspan>
+    </text>
+    
+    <rect x="580" y="383" width="445" height="114" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="600" y="448" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">connected rail 0</text>
+  </g>
+
+  
+  <g id="row4">
+    
+    <g transform="translate(50, 538)">
+      <rect x="6" y="10" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M14 28 L42 28 M32 20 L42 20 M32 36 L42 36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="22" cy="28" r="3" fill="#207448" />
+    </g>
+    
+    <rect x="115" y="509" width="450" height="114" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="135" y="543" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" y="543">10.100.1.0/24 dev ens2f0</tspan>
+      <tspan x="135" y="576">proto kernel scope link</tspan>
+      <tspan x="135" y="609">src 10.100.1.45</tspan>
+    </text>
+    
+    <rect x="580" y="509" width="445" height="114" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="600" y="574" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">connected rail 1</text>
+  </g>
+
+  
+  <g id="row5">
+    
+    <g transform="translate(50, 666)">
+      <ellipse cx="28" cy="14" rx="20" ry="7" fill="none" stroke="#db8129" stroke-width="4" />
+      <path d="M8 14 L8 28 A20 7 0 0 0 48 28 L48 14" fill="none" stroke="#db8129" stroke-width="4" />
+      <path d="M8 28 L8 42 A20 7 0 0 0 48 42 L48 28" fill="none" stroke="#db8129" stroke-width="4" />
+    </g>
+    
+    <rect x="115" y="635" width="450" height="118" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+    <text x="135" y="669" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" y="669">10.30.0.0/16 via 10.20.0.254</tspan>
+      <tspan x="135" y="702">dev eno1 proto static</tspan>
+      <tspan x="135" y="735">metric 50</tspan>
+    </text>
+    
+    <rect x="580" y="635" width="445" height="118" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+    <text x="600" y="688" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="600" y="688">a static route to storage</tspan>
+      <tspan x="600" y="721">through a second router</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row6">
+    
+    <g transform="translate(50, 795)">
+      <rect x="8" y="12" width="16" height="14" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="28" y="12" width="16" height="14" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="18" y="28" width="20" height="14" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M8 46 L48 46" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-dasharray="4 4" />
+    </g>
+    
+    <rect x="115" y="765" width="450" height="116" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="135" y="799" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" y="799">172.17.0.0/16 dev docker0</tspan>
+      <tspan x="135" y="832">proto kernel scope link</tspan>
+      <tspan x="135" y="865">src 172.17.0.1 linkdown</tspan>
+    </text>
+    
+    <rect x="580" y="765" width="445" height="116" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="600" y="818" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="600" y="818">Docker bridge with</tspan>
+      <tspan x="600" y="851">no carrier</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row7">
+    
+    <g transform="translate(50, 918)">
+      <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="12" y1="12" x2="44" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <rect x="115" y="893" width="450" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="135" y="938" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" y="938">blackhole 192.0.2.0/24</tspan>
+      <tspan x="135" y="971">proto static</tspan>
+    </text>
+    
+    <rect x="580" y="893" width="445" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="600" y="954" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">silently dropped</text>
+  </g>
+
+  
+  <g id="attribute-legend">
+    
+    <rect x="1050" y="95" width="510" height="903" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="1070" y="112" width="470" height="206" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1090" y="142" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" y="142">via: next-hop router, absent</tspan>
+      <tspan x="1090" y="172">for connected routes, and it</tspan>
+      <tspan x="1090" y="202">must be reachable on a</tspan>
+      <tspan x="1090" y="232">connected route or the kernel</tspan>
+      <tspan x="1090" y="262">says Nexthop has</tspan>
+      <tspan x="1090" y="292">invalid gateway</tspan>
+    </text>
+
+    
+    <rect x="1070" y="332" width="470" height="122" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1090" y="366" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" y="366">proto: who installed it,</tspan>
+      <tspan x="1090" y="396">kernel, dhcp, static, boot,</tspan>
+      <tspan x="1090" y="426">ra, bgp, ospf, redirect</tspan>
+    </text>
+
+    
+    <rect x="1070" y="468" width="470" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1090" y="506" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" y="506">scope: global via a gateway,</tspan>
+      <tspan x="1090" y="536">link on-link, host this host</tspan>
+    </text>
+
+    
+    <rect x="1070" y="578" width="470" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1090" y="624" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">src: preferred source address</text>
+
+    
+    <rect x="1070" y="666" width="470" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1090" y="704" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" y="704">metric: lower wins among</tspan>
+      <tspan x="1090" y="734">routes with the same prefix</tspan>
+    </text>
+
+    
+    <rect x="1070" y="776" width="470" height="156" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1090" y="812" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" y="812">onlink: treat the gateway as</tspan>
+      <tspan x="1090" y="842">on-link when no connected</tspan>
+      <tspan x="1090" y="872">prefix covers it</tspan>
+      <tspan x="1090" y="902">(cloud /32 setups)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footnote">
+    <rect x="40" y="1020" width="1520" height="68" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="1062" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">ip addr add 10.100.0.45/24 dev ens1f0 adds the connected route and deleting the address deletes it</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1110" width="1520" height="65" rx="10" fill="#207448" />
+    <text x="800" y="1151" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Read each line from left to right: destination first, then how to get there</text>
+  </g>
+</svg>

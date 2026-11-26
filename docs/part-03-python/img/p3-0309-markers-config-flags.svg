@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Markers, pytest configuration and the flags that do most of the work</title>
+  <desc>Visual infographic explaining pytest markers, pyproject.toml configuration options, and command-line execution flags.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="48" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Markers, pytest configuration and the flags </tspan>
+    <tspan x="800" dy="54">that do most of the work</tspan>
+  </text>
+
+  
+  <rect x="40" y="130" width="1520" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(65, 142)">
+    <path d="M 8 4 L 36 4 A 4 4 0 0 1 40 8 L 40 44 L 24 32 L 8 44 Z" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  <text x="125" y="174" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Markers</text>
+
+  
+  <rect x="65" y="198" width="1470" height="82" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="232" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">@pytest.mark.slow, @pytest.mark.gpu; built-in skip, skipif, xfail(strict=True); </tspan>
+    <tspan x="85" dy="32">register markers in config; select with -m "not slow"</tspan>
+  </text>
+
+  
+  <rect x="40" y="340" width="1520" height="375" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(65, 350)">
+    <path d="M 8 4 L 30 4 L 40 14 L 40 44 A 4 4 0 0 1 36 48 L 12 48 A 4 4 0 0 1 8 44 Z" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M 30 4 L 30 14 L 40 14" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M 18 26 L 14 30 L 18 34" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <path d="M 30 26 L 34 30 L 30 34" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  <text x="125" y="384" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">pyproject.toml [tool.pytest.ini_options]</text>
+
+  
+  <rect x="65" y="408" width="1470" height="40" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="435" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">minversion = 8.0</text>
+
+  <rect x="65" y="456" width="1470" height="40" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="483" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">addopts = -ra --strict-markers --strict-config -q</text>
+
+  <rect x="65" y="504" width="1470" height="40" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="531" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">testpaths = [tests]</text>
+
+  <rect x="65" y="552" width="1470" height="40" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="579" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">markers = slow, gpu (needs a real GPU), integration (needs containers)</text>
+
+  
+  <rect x="65" y="600" width="1470" height="40" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+  <text x="85" y="627" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">filterwarnings = [error]: warnings become failures, deprecations surface early</text>
+
+  <rect x="65" y="648" width="1470" height="40" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="675" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">asyncio_mode = auto: with pytest-asyncio</text>
+
+  
+  <rect x="40" y="755" width="1520" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(65, 765)">
+    <line x1="10" y1="6" x2="10" y2="46" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 10 8 L 38 18 L 10 28 Z" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+  <text x="125" y="799" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Flags</text>
+
+  
+  <rect x="65" y="818" width="476" height="44" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="848" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">-k expr select by name</text>
+
+  <rect x="561" y="818" width="476" height="44" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="581" y="848" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">-x stop at first failure</text>
+
+  <rect x="1057" y="818" width="476" height="44" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="1077" y="848" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">--maxfail</text>
+
+  
+  <rect x="65" y="872" width="725" height="44" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="902" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">--lf and --ff rerun failures first</text>
+
+  <rect x="810" y="872" width="725" height="44" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="830" y="902" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">--pdb debugger on failure</text>
+
+  
+  <rect x="65" y="926" width="725" height="44" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="956" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">-n auto parallel with pytest-xdist</text>
+
+  <rect x="810" y="926" width="725" height="44" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="830" y="956" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">--durations=10 slowest tests</text>
+
+  
+  <rect x="65" y="980" width="1470" height="44" rx="8" fill="#ffffff" stroke="#d2e2d6" stroke-width="1.5"/>
+  <text x="85" y="1010" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">pytest-randomly randomises order to expose hidden coupling; -p no:randomly turns it off</text>
+
+  
+  <rect x="40" y="1095" width="1520" height="60" rx="10" fill="#207448"/>
+  <text x="800" y="1134" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Register your markers, and let warnings fail the build</text>
+</svg>

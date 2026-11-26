@@ -199,21 +199,9 @@ Worker node pools raise a similar choice. You can organize them as **characteris
 
 A node that will not join the cluster, or one that a GPU fault has just taken offline, is where the lifecycle matters most. The diagram below shows every state a node moves through, from creation to decommissioning. Notice that a failed validation sends the node to repair instead of into service.
 
-```mermaid
-stateDiagram-v2
-  [*] --> Provisioned: bare metal/VM created (image, BMC/PXE or cloud API)
-  Provisioned --> Configured: OS, kernel, drivers, runtime, kubelet (Ansible/image)
-  Configured --> Validating: join cluster tainted "validating"
-  Validating --> Ready: health gates pass (GPU diag, NCCL, network, storage)
-  Ready --> Cordoned: maintenance or suspected fault
-  Cordoned --> Draining: evict pods respecting PDBs/checkpoints
-  Draining --> Maintenance: upgrade, repair, reboot
-  Maintenance --> Validating: re-validate
-  Draining --> Quarantined: validation failed → hardware repair queue
-  Quarantined --> Provisioned: repaired/reimaged
-  Ready --> Decommissioned: remove (RMA, scale-in)
-  Decommissioned --> [*]
-```
+![Node lifecycle](./img/m5-19-1.svg)
+
+*Figure 5.19.1. Node lifecycle, as a diagram.*
 
 Read the diagram as a path with a side exit. A node moves forward from a bare machine to a Ready node that takes work. It can leave the path for maintenance or repair, but it must come back through validation before it takes work again. The side exit to quarantine is the one that protects your jobs. A node that fails its checks never reaches the state where a job can land on it.
 

@@ -38,13 +38,9 @@ The chapter starts with the reasons HPC sites avoid running Docker on compute no
 
 Suppose a user asks you to run Docker on the compute nodes of a shared GPU cluster. The request sounds reasonable, because the user already has a working Docker image on a laptop. Before you agree, you should know why most HPC sites say no. The diagram below shows the path a container image takes with enroot and pyxis instead.
 
-```mermaid
-flowchart LR
-  Reg["Registry / docker-registry-proxy<br/>nvcr.io#nvidia/pytorch:24.07-py3"] --> Sqsh["enroot import -> .sqsh<br/>Single Squashfs on Shared FS"]
-  Sqsh --> Pyxis["srun --container-image=...<br/>Pyxis SPANK Plugin in slurmstepd"]
-  Pyxis --> Unpack["ENROOT_DATA_PATH (Local NVMe)<br/>User Namespace + chroot + cgroup"]
-  Unpack --> Hooks["Hooks: 98-nvidia.sh, 99-mellanox.sh<br/>50-slurm-pmi.sh, 50-slurm-pytorch.sh"]
-```
+![Why not Docker on compute nodes](./img/m6-13-1.svg)
+
+*Figure 6.13.1. Why not Docker on compute nodes, as a diagram.*
 
 Read the diagram from left to right, as the life of one image. The image starts in a registry. It is converted once into a single squashfs file. Each job then asks pyxis for that file, and each task unpacks it on fast local disk. Hooks finish the job by adding the GPU, the InfiniBand devices and the Slurm variables. Keep this picture in mind, because every later section fills in one box.
 

@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1195" width="1600" height="1195">
+  <title>Packing the parcel: data, segment, packet, frame, bits and the Ethernet frame fields</title>
+  <desc>Infographic illustrating packet encapsulation from application data down to wire bits, Ethernet II frame fields, and kernel transmission to hardware.</desc>
+
+  <rect width="1600" height="1195" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Packing the parcel: data, segment, packet, frame,</text>
+  <text x="800" y="106" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">bits and the Ethernet frame fields</text>
+
+  
+  
+  <rect x="40" y="135" width="925" height="605" rx="16" fill="#eaf2ec" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(62, 150)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 0 25 L 12 25 L 18 6 L 28 44 L 38 6 L 44 25 L 56 25"/>
+  </g>
+  <text x="132" y="180" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Bits on the wire</text>
+
+  
+  <rect x="68" y="210" width="869" height="505" rx="14" fill="#deebe1" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(88, 225)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="4" width="52" height="38" rx="6"/>
+    <path d="M 12 42 L 12 48 M 26 42 L 26 48 M 40 42 L 40 48"/>
+  </g>
+  <text x="154" y="254" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">Ethernet Frame: destination and source MAC</text>
+
+  
+  <rect x="96" y="285" width="813" height="405" rx="12" fill="#d2e4d6" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(114, 298)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="6" width="52" height="34" rx="4"/>
+    <path d="M 0 10 L 26 26 L 52 10"/>
+  </g>
+  <text x="180" y="327" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">IP Packet: source and destination IP, TTL</text>
+
+  
+  <rect x="124" y="360" width="757" height="305" rx="10" fill="#c6ddcb" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(142, 372)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="10" width="22" height="26" rx="4"/>
+    <rect x="30" y="10" width="22" height="26" rx="4"/>
+    <path d="M 22 23 L 30 23"/>
+  </g>
+  <text x="206" y="400" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36">TCP Segment: source and destination ports</text>
+
+  
+  <rect x="152" y="435" width="701" height="205" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(260, 510)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="0" y="0" width="56" height="44" rx="6"/>
+    <line x1="0" y1="14" x2="56" y2="14"/>
+    <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+    <circle cx="18" cy="7" r="2.5" fill="#207448"/>
+    <circle cx="26" cy="7" r="2.5" fill="#207448"/>
+  </g>
+  <text x="336" y="542" font-family="sans-serif" font-size="32px" font-weight="bold" fill="#207448">Data (application)</text>
+
+  
+  <rect x="985" y="135" width="575" height="605" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1008, 150)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="8" y="8" width="36" height="36" rx="4"/>
+    <rect x="16" y="16" width="20" height="20" rx="2"/>
+    <line x1="16" y1="0" x2="16" y2="8"/><line x1="26" y1="0" x2="26" y2="8"/><line x1="36" y1="0" x2="36" y2="8"/>
+    <line x1="16" y1="44" x2="16" y2="52"/><line x1="26" y1="44" x2="26" y2="52"/><line x1="36" y1="44" x2="36" y2="52"/>
+    <line x1="0" y1="16" x2="8" y2="16"/><line x1="0" y1="26" x2="8" y2="26"/><line x1="0" y1="36" x2="8" y2="36"/>
+    <line x1="44" y1="16" x2="52" y2="16"/><line x1="44" y1="26" x2="52" y2="26"/><line x1="44" y1="36" x2="52" y2="36"/>
+  </g>
+  <text x="1070" y="180" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">Then the kernel hands it to hardware</text>
+
+  
+  <rect x="1005" y="205" width="535" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1025" y="237" font-family="sans-serif" font-size="24px" fill="#303a36">egress queueing discipline (qdisc):</text>
+  <text x="1025" y="269" font-family="sans-serif" font-size="24px" fill="#303a36">the waiting line;</text>
+  <text x="1025" y="303" font-family="monospace" font-size="24px" fill="#207448">tc qdisc show dev ens4;</text>
+  <text x="1025" y="337" font-family="sans-serif" font-size="24px" fill="#303a36">default fq_codel, or fq or mq</text>
+
+  
+  <rect x="1005" y="368" width="535" height="84" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1025" y="403" font-family="sans-serif" font-size="24px" fill="#303a36">NIC driver and a transmit ring</text>
+  <text x="1025" y="437" font-family="sans-serif" font-size="24px" fill="#303a36">in DMA-able memory</text>
+
+  
+  <rect x="1005" y="464" width="535" height="114" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1025" y="499" font-family="sans-serif" font-size="24px" fill="#303a36">NIC offload: checksums, and</text>
+  <text x="1025" y="533" font-family="sans-serif" font-size="24px" fill="#303a36">TSO/GSO segmentation of</text>
+  <text x="1025" y="567" font-family="sans-serif" font-size="24px" fill="#303a36">large TCP chunks</text>
+
+  
+  <rect x="1005" y="590" width="535" height="135" rx="10" fill="#fdfbf7" stroke="#207448" stroke-width="1.5"/>
+  <text x="1025" y="621" font-family="sans-serif" font-size="24px" fill="#303a36">On a VM the NIC is virtual</text>
+  <text x="1025" y="653" font-family="sans-serif" font-size="24px" fill="#303a36">(virtio-net or a cloud-specific NIC)</text>
+  <text x="1025" y="685" font-family="sans-serif" font-size="24px" fill="#303a36">and its next hop is the cloud's</text>
+  <text x="1025" y="717" font-family="sans-serif" font-size="24px" fill="#303a36">virtual network</text>
+
+  
+  
+  <rect x="40" y="760" width="370" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="60" y="810" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Preamble + SFD,</text>
+  <text x="60" y="848" font-family="sans-serif" font-size="24px" fill="#303a36">8 bytes</text>
+  <text x="60" y="894" font-family="sans-serif" font-size="24px" fill="#207448">(10101010...10101011)</text>
+
+  
+  <rect x="410" y="760" width="320" height="310" rx="12" fill="#fdf8f3" stroke="#db8129" stroke-width="3.5"/>
+  <text x="430" y="794" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129">Destination MAC,</text>
+  <text x="430" y="828" font-family="sans-serif" font-size="24px" fill="#303a36">6 bytes: for traffic</text>
+  <text x="430" y="862" font-family="sans-serif" font-size="24px" fill="#303a36">that leaves</text>
+  <text x="430" y="896" font-family="sans-serif" font-size="24px" fill="#303a36">the subnet this is</text>
+  <text x="430" y="930" font-family="sans-serif" font-size="24px" fill="#303a36">the next hop's MAC,</text>
+  <text x="430" y="964" font-family="sans-serif" font-size="24px" fill="#303a36">the gateway's, not</text>
+  <text x="430" y="998" font-family="sans-serif" font-size="24px" fill="#303a36">the final</text>
+  <text x="430" y="1032" font-family="sans-serif" font-size="24px" fill="#303a36">destination's</text>
+
+  
+  <rect x="730" y="760" width="200" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="750" y="810" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Source MAC,</text>
+  <text x="750" y="848" font-family="sans-serif" font-size="24px" fill="#303a36">6 bytes:</text>
+  <text x="750" y="886" font-family="sans-serif" font-size="24px" fill="#303a36">this NIC</text>
+
+  
+  <rect x="930" y="760" width="220" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="950" y="802" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">EtherType,</text>
+  <text x="950" y="838" font-family="sans-serif" font-size="24px" fill="#303a36">2 bytes:</text>
+  <text x="950" y="880" font-family="monospace" font-size="24px" fill="#207448">0x0800 IPv4,</text>
+  <text x="950" y="922" font-family="monospace" font-size="24px" fill="#207448">0x86DD IPv6,</text>
+  <text x="950" y="964" font-family="monospace" font-size="24px" fill="#207448">0x0806 ARP</text>
+
+  
+  <rect x="1150" y="760" width="210" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1170" y="810" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Payload,</text>
+  <text x="1170" y="848" font-family="sans-serif" font-size="24px" fill="#303a36">46 to</text>
+  <text x="1170" y="886" font-family="sans-serif" font-size="24px" fill="#303a36">1,500 bytes</text>
+
+  
+  <rect x="1360" y="760" width="200" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1380" y="810" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">FCS,</text>
+  <text x="1380" y="848" font-family="sans-serif" font-size="24px" fill="#303a36">4 bytes:</text>
+  <text x="1380" y="886" font-family="sans-serif" font-size="24px" fill="#303a36">a CRC</text>
+  <text x="1380" y="924" font-family="sans-serif" font-size="24px" fill="#303a36">trailer</text>
+
+  
+  <rect x="40" y="1095" width="1520" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1140" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">Each layer adds its own header around the one above</text>
+</svg>

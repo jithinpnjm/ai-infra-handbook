@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>SACK, tail loss probe and reordering: smarter recovery and its false alarms</title>
+  <desc>Infographic explaining SACK sender window recovery, RACK-TLP loss detection, reordering false loss alarms, and RTO versus Fast Retransmit.</desc>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <g id="header">
+    <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">SACK, tail loss probe and reordering:</text>
+    <text x="800" y="120" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">smarter recovery and its false alarms</text>
+  </g>
+
+  
+  <g id="panel-sack">
+    <rect x="40" y="145" width="1520" height="350" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="65" y="160" width="56" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="65" y1="174" x2="121" y2="174" stroke="#207448" stroke-width="3"/>
+    <circle cx="76" cy="167" r="2.5" fill="#207448"/>
+    <circle cx="85" cy="167" r="2.5" fill="#207448"/>
+    <circle cx="94" cy="167" r="2.5" fill="#207448"/>
+
+    
+    <text x="135" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">SACK</text>
+
+    
+    <g id="sender-window">
+      
+      <rect x="1030" y="160" width="76" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="1068" y="192" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">1</text>
+      
+      <rect x="1120" y="160" width="76" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="1158" y="192" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">2</text>
+      
+      <rect x="1210" y="160" width="76" height="46" rx="6" fill="#fbeae8" stroke="#c0392b" stroke-width="2.5" stroke-dasharray="5,4"/>
+      <text x="1248" y="192" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#c0392b">3</text>
+      
+      <rect x="1300" y="160" width="76" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="1338" y="192" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">4</text>
+      
+      <rect x="1390" y="160" width="76" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="1428" y="192" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">5</text>
+    </g>
+
+    
+    <rect x="65" y="220" width="1470" height="76" rx="8" fill="#ffffff" stroke="#c2d8c8" stroke-width="1.5"/>
+    <text x="85" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold">Without SACK:</tspan> the receiver can only say what is missing after the first hole, so the sender
+    </text>
+    <text x="85" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      resends everything after it (go-back-N style), or recovery takes several RTTs
+    </text>
+
+    
+    <rect x="65" y="306" width="1470" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="85" y="336" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold">With SACK (RFC 2018):</tspan> the receiver reports the ranges it holds above the gap,
+    </text>
+    <text x="85" y="366" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      the sender resends only the missing segment
+    </text>
+
+    
+    <rect x="65" y="392" width="500" height="84" rx="8" fill="#ffffff" stroke="#c2d8c8" stroke-width="1.5"/>
+    <text x="85" y="443" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">net.ipv4.tcp_sack=1 (default)</text>
+
+    <rect x="580" y="392" width="955" height="84" rx="8" fill="#ffffff" stroke="#c2d8c8" stroke-width="1.5"/>
+    <text x="600" y="426" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      timestamps <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">tcp_timestamps=1</tspan> give an RTT sample on every ACK
+    </text>
+    <text x="600" y="458" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      and cost 12 bytes per segment
+    </text>
+  </g>
+
+  
+  <g id="panel-rack-tlp">
+    <rect x="40" y="515" width="640" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="93" cy="558" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="93,542 93,558 107,558" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+    
+    <text x="135" y="568" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">RACK-TLP</text>
+
+    
+    <rect x="65" y="605" width="590" height="255" rx="8" fill="#ffffff" stroke="#c2d8c8" stroke-width="1.5"/>
+    <text x="85" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">RACK detects loss by time rather</text>
+    <text x="85" y="692" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">than packet count; TLP, the tail loss</text>
+    <text x="85" y="734" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">probe, resends the last segment after</text>
+    <text x="85" y="776" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">about 2 RTT, avoiding a full RTO when</text>
+    <text x="85" y="818" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the tail of a burst is lost</text>
+  </g>
+
+  
+  <g id="panel-reordering">
+    <rect x="720" y="515" width="840" height="370" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+
+    
+    <circle cx="752" cy="546" r="4.5" fill="#db8129"/>
+    <circle cx="752" cy="570" r="4.5" fill="#db8129"/>
+    <path d="M 758 546 C 774 546, 774 570, 790 570" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 758 570 C 774 570, 774 546, 790 546" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="796" cy="546" r="4.5" fill="#db8129"/>
+    <circle cx="796" cy="570" r="4.5" fill="#db8129"/>
+
+    
+    <text x="815" y="568" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">Reordering looks like loss</text>
+
+    
+    <rect x="745" y="605" width="790" height="185" rx="8" fill="#ffffff" stroke="#f3cfab" stroke-width="1.5"/>
+    <text x="765" y="640" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">parallel paths, multi-queue NICs and ECMP flaps</text>
+    <text x="765" y="674" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">deliver packets out of order; duplicate ACKs follow;</text>
+    <text x="765" y="708" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">TCP may retransmit data that was never lost; Linux</text>
+    <text x="765" y="742" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">adapts its reordering threshold, but heavy</text>
+    <text x="765" y="776" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">reordering lowers throughput</text>
+
+    
+    <rect x="745" y="805" width="385" height="55" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="765" y="841" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#db8129">nstat | grep -i reorder</text>
+
+    <rect x="1150" y="805" width="385" height="55" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="1170" y="841" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#db8129">TcpExtTCPSACKReorder</text>
+  </g>
+
+  
+  <g id="footer-comparison">
+    
+    <rect x="40" y="905" width="940" height="185" rx="10" fill="#ffffff" stroke="#c2d8c8" stroke-width="2"/>
+    <text x="65" y="946" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">RTO:</tspan> timer expires, RTO doubles (exponential backoff), cwnd
+    </text>
+    <text x="65" y="984" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      collapses to one segment or the initial window, slow start
+    </text>
+    <text x="65" y="1022" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      restarts; RTO = SRTT + 4 x RTTVAR, min 200 ms (TCP_RTO_MIN),
+    </text>
+    <text x="65" y="1060" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      max 120 s, tcp_retries2=15 is about 15 minutes
+    </text>
+
+    
+    <rect x="993" y="975" width="54" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1020" y="1005" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-style="italic" fill="#207448">versus</text>
+
+    
+    <rect x="1060" y="905" width="500" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1080" y="955" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Fast retransmit:</text>
+    <text x="1080" y="995" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">three duplicate ACKs, resend at</text>
+    <text x="1080" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">once, halve the window, keep the</text>
+    <text x="1080" y="1075" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">pipe full</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1115" width="1520" height="60" rx="8" fill="#207448"/>
+    <text x="800" y="1154" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">When duplicate ACKs appear, look for reordering before you assume loss</text>
+  </g>
+</svg>

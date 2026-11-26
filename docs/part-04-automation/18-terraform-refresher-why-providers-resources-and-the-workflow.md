@@ -47,16 +47,9 @@ Suppose you run the same setup script on Monday and again on Friday. Because the
 
 An imperative script says how to build something, one step at a time: create a VPC, retry if it fails, create a subnet, attach it. Each step assumes the step before it went as planned. A declarative configuration says what should exist instead: a VPC with this CIDR, a subnet inside it, and three GPU instances. The tool compares the desired state with the actual state, then performs only the actions that are needed. Run it twice and the second run finds nothing to do, so it changes nothing. Run it after someone deletes one instance by hand and it creates exactly that one instance back.
 
-```mermaid
-flowchart LR
-  C["Configuration (*.tf)\ndesired state"] --> P["terraform plan\nconfig vs state vs real world"]
-  S["State\nwhat Terraform believes exists"] --> P
-  R["Real infrastructure\n(refresh via provider APIs)"] --> P
-  P --> D["Execution plan\nadd / change / destroy / replace"]
-  D --> A["terraform apply\ncall provider APIs in dependency order"]
-  A --> S
-  A --> R
-```
+![Declarative versus imperative](./img/m4-18-1.svg)
+
+*Figure 4.18.1. Declarative versus imperative, as a diagram.*
 
 The diagram shows the loop. The plan compares three things, the configuration, the state and the real world, and apply then changes the real world and the state. Each arrow in the diagram is a question. Configuration asks what you want. State asks what Terraform last created. The real world, reached through the provider's API, answers what is there now. Apply runs only after you have read the plan, and it updates both the real world and the state file so the next plan starts from the truth.
 
@@ -100,16 +93,9 @@ When you read a plan, look at replacements first. A `-/+` on a database or clust
 
 Picture a plan that fails at 2 p.m. with a message about a timeout from an API you have never heard of. Terraform failures often come from one of its parts: a provider that cannot reach an API, or a state file that two people changed at once. To work out which part is involved, you need to know what each part does, because the error message names the part that noticed the problem, not always the part that caused it. The diagram shows how the pieces connect.
 
-```mermaid
-flowchart TB
-  CLI["Terraform CLI (core)\nparse config, build graph, diff, orchestrate"] --> PL["Provider plugins\n(separate binaries, gRPC)"]
-  CLI --> BE[("Backend\nstate storage + locking")]
-  PL --> API1["Cloud APIs: AWS / GCP / Azure / Nebius"]
-  PL --> API2["Kubernetes / Helm"]
-  PL --> API3["Vault / GitHub / DNS / Datadog / ..."]
-  REG["Registry (registry.terraform.io / opentofu.org / private)"] -. "download on init" .-> PL
-  LOCK[".terraform.lock.hcl\n(version + hashes)"] --- PL
-```
+![Architecture](./img/m4-18-2.svg)
+
+*Figure 4.18.2. Architecture, as a diagram.*
 
 The core parses HCL, resolves variables, builds the resource graph, computes the differences between configuration, state and refreshed reality, and sequences the operations. It knows nothing about clouds. You can think of the core as the planner, the part that decides what must happen and in what order, while everything cloud-specific is handled elsewhere.
 
@@ -297,12 +283,9 @@ When a dependent resource still points at the object you are replacing, add `lif
 
 Most Terraform work follows one loop: write the code, check it, plan it, review the plan, apply the saved plan, and then read the outputs. Picture a Tuesday change to add two GPU nodes. You edit the count, format the file, validate the syntax, save a plan, read it, and only then apply exactly that plan. The diagram shows that loop, and the command block after it lists the commands you will use most, with a short note on when each one earns its place.
 
-```mermaid
-flowchart LR
-  I["init"] --> F["fmt"] --> V["validate"] --> P["plan -out=tfplan"] --> R["review / policy"] --> A["apply tfplan"]
-  A --> O["output / state show"]
-  O -->|"change code"| P
-```
+![The workflow and CLI reference](./img/m4-18-3.svg)
+
+*Figure 4.18.3. The workflow and CLI reference, as a diagram.*
 
 ```bash
 terraform version                              # CLI + provider versions

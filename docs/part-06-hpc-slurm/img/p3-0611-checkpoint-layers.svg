@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Layers of protection for a long run</title>
+  <desc>Visual infographic explaining the four layers of protection and preemption handling for long-running compute jobs from weakest warning to strongest safety net.</desc>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Layers of protection for a long run</text>
+  <text x="60" y="105" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="600" fill="#303a36">Four layers from weakest warning to strongest safety net.</text>
+
+  
+  <g id="layer-1">
+    <rect x="60" y="135" width="1480" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="220" r="22" fill="#207448"/>
+    <text x="100" y="220" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g transform="translate(160, 220)">
+      <ellipse cx="0" cy="-18" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M -22 -18 v 18 a 22 8 0 0 0 44 0 v -18" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M -22 0 v 18 a 22 8 0 0 0 44 0 v -18" fill="none" stroke="#207448" stroke-width="3.5"/>
+    </g>
+    
+    <text x="215" y="174" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 1 periodic checkpoints every few minutes plus</text>
+    <text x="215" y="210" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">idempotent resume (a resumed run is safe to repeat):</text>
+    <text x="215" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the real safety net, if the job is killed with no warning</text>
+    <text x="215" y="282" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">you lose only the work since the last checkpoint</text>
+  </g>
+
+  
+  <g id="layer-2">
+    <rect x="60" y="325" width="1480" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="410" r="22" fill="#207448"/>
+    <text x="100" y="410" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g transform="translate(160, 410)">
+      <circle cx="0" cy="0" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 0 -13 v 13 h 9" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M -6 -26 h 12" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    
+    <text x="215" y="364" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 2 warning signal:</text>
+    <text x="215" y="404" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">#SBATCH --signal=B:USR1@600 --requeue --open-mode=append;</text>
+    <text x="215" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">signal can arrive up to 60 seconds early because of resolution;</text>
+    <text x="215" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">no time given means 60 seconds before the limit</text>
+  </g>
+
+  
+  <g id="layer-3">
+    <rect x="60" y="515" width="1480" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="615" r="22" fill="#207448"/>
+    <text x="100" y="615" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <g transform="translate(160, 615)">
+      <rect x="-24" y="-22" width="48" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="-24" y1="-10" x2="24" y2="-10" stroke="#207448" stroke-width="2.5"/>
+      <circle cx="-16" cy="-16" r="2" fill="#207448"/>
+      <circle cx="-10" cy="-16" r="2" fill="#207448"/>
+      <path d="M -14 2 l 6 6 l -6 6 M 0 14 h 14" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    
+    <text x="215" y="553" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 3 handler in the program:</text>
+    <text x="215" y="593" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">SLURMCheckpointer</tspan> registers handlers for <tspan font-family="ui-monospace, monospace">SIGTERM</tspan> and <tspan font-family="ui-monospace, monospace">SIGUSR1</tspan></text>
+    <text x="215" y="625" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">that only set <tspan font-family="ui-monospace, monospace">should_stop = True</tspan>; a signal can arrive in the middle of anything so a</text>
+    <text x="215" y="657" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">large checkpoint write inside a handler is unsafe; each rank checks <tspan font-family="ui-monospace, monospace">should_stop</tspan> at the</text>
+    <text x="215" y="689" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">end of the current training step and then writes the checkpoint</text>
+  </g>
+
+  
+  <g id="layer-4">
+    <rect x="60" y="735" width="1480" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="100" cy="805" r="22" fill="#207448"/>
+    <text x="100" y="805" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <g transform="translate(160, 805)">
+      <path d="M 0 -22 l 20 8 v 14 c 0 14 -12 22 -20 26 c -8 -4 -20 -12 -20 -26 v -14 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="0" y1="-8" x2="0" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="215" y="773" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 4 preemption grace:</text>
+    <text x="215" y="813" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">GraceTime</tspan> is the window between <tspan font-family="ui-monospace, monospace">SIGTERM</tspan> and <tspan font-family="ui-monospace, monospace">SIGKILL</tspan>, set per partition or <tspan font-family="ui-monospace, monospace">QOS</tspan>;</text>
+    <text x="215" y="845" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace">--requeue</tspan> or <tspan font-family="ui-monospace, monospace">--no-requeue</tspan> decides if the job returns to the queue</text>
+  </g>
+
+  
+  <g id="warning-card">
+    <rect x="60" y="897" width="1480" height="175" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(115, 984)">
+      <path d="M 0 -26 l 26 46 h -52 z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="0" y1="-11" x2="0" y2="5" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="0" cy="12" r="2.5" fill="#db8129"/>
+    </g>
+    
+    <text x="175" y="937" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Warning</text>
+    <text x="175" y="977" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">the launcher must forward the signal to the ranks or they keep running unaware;</text>
+    <text x="175" y="1009" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">test the signal path on a short limit such as <tspan font-family="ui-monospace, monospace">--time=00:03:00 --signal=B:USR1@60</tspan> with a</text>
+    <text x="175" y="1041" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">script that traps <tspan font-family="ui-monospace, monospace">USR1</tspan> and writes a file, then check <tspan font-family="ui-monospace, monospace">SLURM_RESTART_COUNT</tspan> after requeue</text>
+  </g>
+</svg>

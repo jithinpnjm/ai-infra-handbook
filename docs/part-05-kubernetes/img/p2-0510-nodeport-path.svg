@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1030" width="1600" height="1030">
+  <title>A NodePort request: DNAT to a Pod, SNAT on the way back</title>
+  <desc></desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-return" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1030" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">A NodePort request:</tspan>
+    <tspan x="800" dy="58">DNAT to a Pod, SNAT on the way back</tspan>
+  </text>
+
+  
+  <text x="937" y="208" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Reply returns through the node that took the request</text>
+
+  
+  <path d="M 1420 300 L 1420 226 L 455 226 L 455 292" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-return)" />
+
+  
+  <g id="box1">
+    <rect x="40" y="300" width="230" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="127" y="330" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="155" y1="368" x2="155" y2="384" stroke="#207448" stroke-width="4" />
+    <line x1="139" y1="384" x2="171" y2="384" stroke="#207448" stroke-width="4" />
+    <line x1="139" y1="349" x2="157" y2="349" stroke="#207448" stroke-width="3" />
+    
+    <text x="155" y="470" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="155" dy="0">External</tspan>
+      <tspan x="155" dy="42">client</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="270" y1="515" x2="312" y2="515" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <circle cx="295" cy="465" r="20" fill="#207448" />
+  <text x="295" y="473" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <g id="box2">
+    <rect x="320" y="300" width="270" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="427" y="325" width="56" height="20" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="427" y="353" width="56" height="20" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="440" cy="335" r="3" fill="#207448" />
+    <circle cx="440" cy="363" r="3" fill="#207448" />
+    
+    <rect x="355" y="390" width="200" height="40" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="455" y="418" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">nodeIP:30080</text>
+    
+    <text x="455" y="475" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="455" dy="0">Node receives</tspan>
+      <tspan x="455" dy="40">the NodePort</tspan>
+    </text>
+    
+    <text x="455" y="585" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="455" dy="0">Node rules</tspan>
+      <tspan x="455" dy="32">recognise the</tspan>
+      <tspan x="455" dy="32">port</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="590" y1="515" x2="632" y2="515" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <circle cx="615" cy="465" r="20" fill="#207448" />
+  <text x="615" y="473" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+  
+  <g id="box3">
+    <rect x="640" y="300" width="270" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="744" y="328" width="34" height="20" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="762" y="348" width="34" height="20" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+    
+    <text x="775" y="435" text-anchor="middle">
+      <tspan x="775" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">KUBE-NODEPORTS,</tspan>
+      <tspan x="775" dy="45" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">then the</tspan>
+      <tspan x="775" dy="42" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Service</tspan>
+      <tspan x="775" dy="42" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">chains</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="910" y1="515" x2="952" y2="515" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <circle cx="935" cy="465" r="20" fill="#207448" />
+  <text x="935" y="473" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+  
+  <g id="box4">
+    <rect x="960" y="300" width="270" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 1095 324 L 1123 340 L 1123 372 L 1095 388 L 1067 372 L 1067 340 Z" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1095 324 L 1095 388 M 1095 356 L 1123 340 M 1095 356 L 1067 340" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="1095" y="450" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1095" dy="0">DNAT picks</tspan>
+      <tspan x="1095" dy="42">a Pod, which</tspan>
+      <tspan x="1095" dy="42">may sit on</tspan>
+      <tspan x="1095" dy="42">another node</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1230" y1="515" x2="1272" y2="515" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <circle cx="1255" cy="465" r="20" fill="#207448" />
+  <text x="1255" y="473" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+
+  
+  <g id="box5">
+    <rect x="1280" y="300" width="280" height="430" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="5" />
+    
+    <path d="M 1420 326 L 1445 336 C 1445 360 1420 384 1420 384 C 1420 384 1395 360 1395 336 Z" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M 1408 350 L 1432 350 M 1424 343 L 1432 350 L 1424 357" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="1420" y="435" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1420" dy="0">SNAT rewrites</tspan>
+      <tspan x="1420" dy="40">the source as</tspan>
+      <tspan x="1420" dy="40">the node IP</tspan>
+      <tspan x="1420" dy="40">under the</tspan>
+      <tspan x="1420" dy="40">Cluster</tspan>
+      <tspan x="1420" dy="40">policy</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1095" y1="730" x2="1095" y2="755" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" />
+  <rect x="765" y="755" width="660" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1095" y="802" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1095" dy="0">The extra hop, and the source IP is lost,</tspan>
+    <tspan x="1095" dy="36">so the Pod sees the node as the client.</tspan>
+  </text>
+
+  
+  <rect x="40" y="910" width="1520" height="75" rx="10" fill="#207448" />
+  <text x="800" y="956" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">The price of Cluster policy is an extra hop and a lost source IP.</text>
+</svg>

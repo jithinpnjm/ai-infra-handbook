@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Ansible Automation Platform and AWX</title>
+  <desc>Architecture infographic illustrating the components of Ansible Automation Platform and AWX, including user interfaces, task dispatch mesh, execution nodes, and managed targets.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Ansible Automation Platform and AWX</text>
+
+  
+
+  
+  <path d="M 290 205 L 500 205 L 500 420 L 550 420" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 290 450 L 550 450" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 290 820 L 480 820 L 480 500 L 550 500" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+  
+  <text x="460" y="650" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">events trigger</text>
+  <text x="460" y="682" text-anchor="end" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">job templates</text>
+
+  
+  <path d="M 710 370 L 710 270" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 710 550 L 710 740" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1100 300 L 1100 370" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 870 780 L 905 780 L 905 460 L 940 460" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 870 840 L 940 840" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1260 460 L 1290 460 L 1290 590 L 1320 590" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1260 840 L 1290 840 L 1290 670 L 1320 670" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+
+  
+
+  
+  <g id="node-G">
+    <rect x="40" y="140" width="250" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(62, 177)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="44" r="7" />
+      <circle cx="12" cy="12" r="7" />
+      <circle cx="44" cy="22" r="7" />
+      <path d="M 12 37 L 12 19" />
+      <path d="M 12 30 C 12 22 28 22 37 22" />
+    </g>
+    <text x="190" y="215" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Git projects</text>
+  </g>
+
+  
+  <g id="node-U">
+    <rect x="40" y="370" width="250" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(138, 412)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="12" r="10" />
+      <path d="M 0 38 C 0 28 8 26 16 26 C 24 26 32 28 32 38" />
+      <path d="M 28 8 C 34 8 38 12 38 18 C 38 24 34 26 30 27" />
+      <path d="M 36 36 C 42 36 46 32 46 26" />
+    </g>
+    <text x="165" y="475" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Users / CI</text>
+    <text x="165" y="512" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">/ API</text>
+  </g>
+
+  
+  <g id="node-EDA">
+    <rect x="40" y="740" width="250" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(142, 778)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 2 L 6 22 L 20 22 L 14 44 L 38 18 L 24 18 Z" />
+    </g>
+    <text x="165" y="850" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Event-Driven</text>
+    <text x="165" y="885" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ansible</text>
+  </g>
+
+
+  
+
+  
+  <g id="node-DB">
+    <rect x="550" y="140" width="320" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(585, 177)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="24" cy="10" rx="20" ry="8" />
+      <path d="M 4 10 L 4 28 C 4 33 13 36 24 36 C 35 36 44 33 44 28 L 44 10" />
+      <path d="M 4 20 C 4 25 13 28 24 28 C 35 28 44 25 44 20" />
+    </g>
+    <text x="735" y="215" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">PostgreSQL</text>
+  </g>
+
+  
+  <g id="node-W">
+    <rect x="550" y="370" width="320" height="180" rx="14" fill="#fffaf3" stroke="#db8129" stroke-width="4" />
+    
+    <g transform="translate(685, 402)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="46" height="38" rx="6" />
+      <line x1="2" y1="12" x2="48" y2="12" />
+      <circle cx="8" cy="7" r="1.5" fill="#db8129" />
+      <circle cx="14" cy="7" r="1.5" fill="#db8129" />
+      <path d="M 16 24 L 11 29 L 16 34" />
+      <path d="M 34 24 L 39 29 L 34 34" />
+      <line x1="28" y1="21" x2="22" y2="37" />
+    </g>
+    <text x="710" y="478" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Web UI + REST API</text>
+    <text x="710" y="516" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" fill="#303a36">(controller)</text>
+  </g>
+
+  
+  <g id="node-Q">
+    <rect x="550" y="740" width="320" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(686, 762)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="8" r="6" />
+      <circle cx="8" cy="34" r="6" />
+      <circle cx="40" cy="34" r="6" />
+      <line x1="20" y1="13" x2="12" y2="29" />
+      <line x1="28" y1="13" x2="36" y2="29" />
+      <line x1="14" y1="34" x2="34" y2="34" />
+    </g>
+    <text x="710" y="828" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Task dispatch</text>
+    <text x="710" y="862" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">(receptor /</text>
+    <text x="710" y="894" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">automation mesh)</text>
+  </g>
+
+
+  
+
+  
+  <g id="node-H">
+    <rect x="940" y="130" width="320" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1074, 150)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 26 4 L 48 15 L 26 26 L 4 15 Z" />
+      <path d="M 4 15 L 4 36 L 26 47 L 26 26" />
+      <path d="M 48 15 L 48 36 L 26 47" />
+      <path d="M 15 20 L 37 31" />
+    </g>
+    <text x="1100" y="218" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Automation Hub</text>
+    <text x="1100" y="252" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">/ registry</text>
+    <text x="1100" y="284" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">(collections, EE images)</text>
+  </g>
+
+  
+  <g id="node-E1">
+    <rect x="940" y="370" width="320" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1074, 394)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="34" rx="4" />
+      <line x1="16" y1="6" x2="16" y2="40" />
+      <line x1="26" y1="6" x2="26" y2="40" />
+      <line x1="36" y1="6" x2="36" y2="40" />
+      <path d="M 22 17 L 32 23 L 22 29 Z" fill="#207448" />
+    </g>
+    <text x="1100" y="468" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Execution node</text>
+    <text x="1100" y="504" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">(EE container runs</text>
+    <text x="1100" y="534" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">ansible-runner)</text>
+  </g>
+
+  
+  <g id="node-E2">
+    <rect x="940" y="740" width="320" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1074, 762)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="26" y1="12" x2="26" y2="44" />
+      <path d="M 14 44 L 26 12 L 38 44" />
+      <circle cx="26" cy="8" r="4" fill="#207448" />
+      <path d="M 12 18 C 16 12 36 12 40 18" />
+      <path d="M 6 24 C 14 10 38 10 46 24" />
+    </g>
+    <text x="1100" y="828" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Execution node</text>
+    <text x="1100" y="862" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">at remote site /</text>
+    <text x="1100" y="894" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">hop node</text>
+  </g>
+
+
+  
+
+  
+  <g id="node-T">
+    <rect x="1320" y="540" width="250" height="180" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1418, 568)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="46" height="15" rx="3" />
+      <circle cx="12" cy="13" r="2" fill="#207448" />
+      <circle cx="18" cy="13" r="2" fill="#207448" />
+      <line x1="34" y1="13" x2="44" y2="13" />
+      <rect x="4" y="27" width="46" height="15" rx="3" />
+      <circle cx="12" cy="34" r="2" fill="#207448" />
+      <circle cx="18" cy="34" r="2" fill="#207448" />
+      <line x1="34" y1="34" x2="44" y2="34" />
+    </g>
+    <text x="1445" y="648" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Managed hosts</text>
+    <text x="1445" y="686" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">/ APIs</text>
+  </g>
+
+</svg>

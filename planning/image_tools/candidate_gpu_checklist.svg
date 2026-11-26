@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The 60-second checklist for a GPU node: eight read-only additions</title>
+  <desc>Eight read-only GPU checks extending the host checklist to cover GPUs, topology, Xid errors, fabric counters and pressure.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <!-- ==================== TITLE ==================== -->
+  <text x="800" y="44" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The 60-second checklist for a GPU node: </tspan>
+    <tspan x="800" dy="40">eight read-only additions</tspan>
+  </text>
+  <!-- ==================== TABLE HEADERS ==================== -->
+  <g id="header-col1">
+    <rect x="40" y="109" width="480" height="56" rx="6" fill="#207448"/>
+    <text x="280" y="149" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Command</text>
+  </g>
+  <g id="header-col2">
+    <rect x="535" y="109" width="730" height="56" rx="6" fill="#207448"/>
+    <text x="900" y="149" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">What to check</text>
+  </g>
+  <g id="header-col3">
+    <rect x="1280" y="109" width="280" height="56" rx="6" fill="#207448"/>
+    <text x="1420" y="149" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Reads which layer</text>
+  </g>
+  <!-- ==================== ROW 11 ==================== -->
+  <g id="row-11">
+    <rect x="40" y="168.5" width="480" height="128" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <circle cx="74" cy="232.5" r="24" fill="#207448"/>
+    <text x="74" y="232.5" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">11</text>
+    <text x="114" y="240.5" font-family="monospace" font-size="24" fill="#303a36"><tspan x="114" dy="0">nvidia-smi</tspan></text>
+    <rect x="535" y="168.5" width="730" height="128" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <text x="555" y="208.5" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="555" dy="0">all GPUs present, driver and CUDA versions, </tspan><tspan x="555" dy="24">memory, processes, power draw versus cap, </tspan><tspan x="555" dy="24">temperature, throttle reasons </tspan><tspan x="555" dy="24">(nvidia-smi -q -d PERFORMANCE)</tspan></text>
+    <rect x="1280" y="168.5" width="280" height="128" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+<g transform="translate(1392.0, 204.5)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="10" y="10" width="36" height="36" rx="4"/>
+  <rect x="20" y="20" width="16" height="16" fill="none"/>
+  <line x1="18" y1="2" x2="18" y2="10"/><line x1="28" y1="2" x2="28" y2="10"/><line x1="38" y1="2" x2="38" y2="10"/>
+  <line x1="18" y1="46" x2="18" y2="54"/><line x1="28" y1="46" x2="28" y2="54"/><line x1="38" y1="46" x2="38" y2="54"/>
+  <line x1="2" y1="18" x2="10" y2="18"/><line x1="2" y1="28" x2="10" y2="28"/><line x1="2" y1="38" x2="10" y2="38"/>
+  <line x1="46" y1="18" x2="54" y2="18"/><line x1="46" y1="28" x2="54" y2="28"/><line x1="46" y1="38" x2="54" y2="38"/>
+</g>
+  </g>
+  <!-- ==================== ROW 12 ==================== -->
+  <g id="row-12">
+    <rect x="40" y="300.0" width="480" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <circle cx="74" cy="352.0" r="24" fill="#207448"/>
+    <text x="74" y="352.0" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">12</text>
+    <text x="114" y="340.0" font-family="monospace" font-size="24" fill="#303a36"><tspan x="114" dy="0">nvidia-smi dmon </tspan><tspan x="114" dy="24">-s pucvmet -d 1</tspan></text>
+    <rect x="535" y="300.0" width="730" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <text x="555" y="340.0" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="555" dy="0">per-GPU power, utilisation (sm, mem, enc/dec), </tspan><tspan x="555" dy="24">clocks, memory, PCIe and NVLink throughput, </tspan><tspan x="555" dy="24">ECC counters per second</tspan></text>
+    <rect x="1280" y="300.0" width="280" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+<g transform="translate(1392.0, 324.0)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="28" cy="28" r="22"/>
+  <line x1="28" y1="28" x2="40" y2="16"/>
+  <circle cx="28" cy="28" r="3" fill="#207448"/>
+  <line x1="14" y1="28" x2="10" y2="28"/><line x1="28" y1="14" x2="28" y2="10"/><line x1="42" y1="28" x2="46" y2="28"/>
+</g>
+  </g>
+  <!-- ==================== ROW 13 ==================== -->
+  <g id="row-13">
+    <rect x="40" y="407.5" width="480" height="88" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <circle cx="74" cy="451.5" r="24" fill="#207448"/>
+    <text x="74" y="451.5" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">13</text>
+    <text x="114" y="447.5" font-family="monospace" font-size="24" fill="#303a36"><tspan x="114" dy="0">nvidia-smi topo -m and </tspan><tspan x="114" dy="24">nvidia-smi nvlink -s</tspan></text>
+    <rect x="535" y="407.5" width="730" height="88" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <text x="555" y="447.5" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="555" dy="0">topology matrix (NV#, PIX, PXB, PHB, SYS, NODE), </tspan><tspan x="555" dy="24">NVLink active links</tspan></text>
+    <rect x="1280" y="407.5" width="280" height="88" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+<g transform="translate(1392.0, 423.5)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <circle cx="12" cy="12" r="6"/>
+  <circle cx="44" cy="12" r="6"/>
+  <circle cx="12" cy="44" r="6"/>
+  <circle cx="44" cy="44" r="6"/>
+  <line x1="18" y1="12" x2="38" y2="12"/><line x1="18" y1="44" x2="38" y2="44"/>
+  <line x1="12" y1="18" x2="12" y2="38"/><line x1="44" y1="18" x2="44" y2="38"/>
+  <line x1="16" y1="16" x2="40" y2="40"/><line x1="40" y1="16" x2="16" y2="40"/>
+</g>
+  </g>
+  <!-- ==================== ROW 14 ==================== -->
+  <g id="row-14">
+    <rect x="40" y="499.0" width="480" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <circle cx="74" cy="551.0" r="24" fill="#207448"/>
+    <text x="74" y="551.0" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">14</text>
+    <text x="114" y="539.0" font-family="monospace" font-size="24" fill="#303a36"><tspan x="114" dy="0">dcgmi dmon -e ... or </tspan><tspan x="114" dy="24">dcgmi diag -r 1</tspan></text>
+    <rect x="535" y="499.0" width="730" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <text x="555" y="539.0" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="555" dy="0">SM activity and occupancy, tensor-pipe activity, </tspan><tspan x="555" dy="24">DRAM activity, NVLink and PCIe throughput; </tspan><tspan x="555" dy="24">quick health test</tspan></text>
+    <rect x="1280" y="499.0" width="280" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+<g transform="translate(1392.0, 523.0)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="6" y="6" width="18" height="18" rx="3"/>
+  <rect x="32" y="6" width="18" height="18" rx="3"/>
+  <rect x="6" y="32" width="18" height="18" rx="3"/>
+  <rect x="32" y="32" width="18" height="18" rx="3"/>
+  <line x1="15" y1="24" x2="15" y2="32"/><line x1="41" y1="24" x2="41" y2="32"/>
+  <line x1="24" y1="15" x2="32" y2="15"/><line x1="24" y1="41" x2="32" y2="41"/>
+</g>
+  </g>
+  <!-- ==================== ROW 15 ==================== -->
+  <g id="row-15">
+    <rect x="40" y="606.5" width="480" height="104" rx="6" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+    <circle cx="74" cy="658.5" r="24" fill="#db8129"/>
+    <text x="74" y="658.5" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">15</text>
+    <text x="114" y="646.5" font-family="monospace" font-size="24" fill="#303a36"><tspan x="114" dy="0">journalctl -k | grep </tspan><tspan x="114" dy="24">-iE "NVRM|Xid|nvidia"</tspan></text>
+    <rect x="535" y="606.5" width="730" height="104" rx="6" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+    <text x="555" y="646.5" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="555" dy="0">GPU errors: Xid 79 fallen off the bus, </tspan><tspan x="555" dy="24">48 63 64 94 95 ECC and retired pages, </tspan><tspan x="555" dy="24">74 NVLink errors</tspan></text>
+    <rect x="1280" y="606.5" width="280" height="104" rx="6" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+<g transform="translate(1392.0, 630.5)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M 28 6 L 50 48 L 6 48 Z"/>
+  <line x1="28" y1="20" x2="28" y2="32"/>
+  <circle cx="28" cy="40" r="2.5" fill="#db8129"/>
+</g>
+  </g>
+  <!-- ==================== ROW 16 ==================== -->
+  <g id="row-16">
+    <rect x="40" y="714.0" width="480" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <circle cx="74" cy="766.0" r="24" fill="#207448"/>
+    <text x="74" y="766.0" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">16</text>
+    <text x="114" y="754.0" font-family="monospace" font-size="24" fill="#303a36"><tspan x="114" dy="0">ibstat, ibv_devinfo, </tspan><tspan x="114" dy="24">rdma link, perfquery or </tspan><tspan x="114" dy="24">ethtool -S</tspan></text>
+    <rect x="535" y="714.0" width="730" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <text x="555" y="774.0" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="555" dy="0">link state and rate, error counters</tspan></text>
+    <rect x="1280" y="714.0" width="280" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+<g transform="translate(1392.0, 738.0)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="8" y="12" width="40" height="32" rx="4"/>
+  <rect x="16" y="20" width="10" height="16" rx="2"/>
+  <rect x="30" y="20" width="10" height="16" rx="2"/>
+  <line x1="20" y1="44" x2="20" y2="52"/><line x1="36" y1="44" x2="36" y2="52"/>
+</g>
+  </g>
+  <!-- ==================== ROW 17 ==================== -->
+  <g id="row-17">
+    <rect x="40" y="821.5" width="480" height="88" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <circle cx="74" cy="865.5" r="24" fill="#207448"/>
+    <text x="74" y="865.5" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">17</text>
+    <text x="114" y="861.5" font-family="monospace" font-size="24" fill="#303a36"><tspan x="114" dy="0">cat /proc/pressure/</tspan><tspan x="114" dy="24">{cpu,memory,io}</tspan></text>
+    <rect x="535" y="821.5" width="730" height="88" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <text x="555" y="873.5" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="555" dy="0">PSI: tasks stalled on each resource</tspan></text>
+    <rect x="1280" y="821.5" width="280" height="88" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+<g transform="translate(1392.0, 837.5)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <path d="M 10 38 A 20 20 0 1 1 46 38"/>
+  <line x1="28" y1="28" x2="38" y2="18"/>
+  <circle cx="28" cy="28" r="3" fill="#207448"/>
+  <line x1="8" y1="46" x2="48" y2="46"/>
+</g>
+  </g>
+  <!-- ==================== ROW 18 ==================== -->
+  <g id="row-18">
+    <rect x="40" y="913.0" width="480" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <circle cx="74" cy="965.0" r="24" fill="#207448"/>
+    <text x="74" y="965.0" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">18</text>
+    <text x="114" y="953.0" font-family="monospace" font-size="24" fill="#303a36"><tspan x="114" dy="0">numastat, lstopo, cat </tspan><tspan x="114" dy="24">/proc/cmdline, sysctl -a </tspan><tspan x="114" dy="24">diff versus baseline</tspan></text>
+    <rect x="535" y="913.0" width="730" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+    <text x="555" y="973.0" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="555" dy="0">placement and drift</tspan></text>
+    <rect x="1280" y="913.0" width="280" height="104" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+<g transform="translate(1392.0, 937.0)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+  <rect x="6" y="8" width="18" height="20" rx="3"/>
+  <rect x="32" y="8" width="18" height="20" rx="3"/>
+  <line x1="15" y1="28" x2="15" y2="42"/>
+  <line x1="41" y1="28" x2="41" y2="42"/>
+  <line x1="10" y1="42" x2="46" y2="42"/>
+  <rect x="18" y="42" width="20" height="10" rx="2"/>
+</g>
+  </g>
+  <!-- ==================== FOOTER PANEL ==================== -->
+  <g id="footer-panel">
+    <rect x="40" y="1020.5" width="1520" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="1060.5" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">All of them are read-only; option names vary by driver and DCGM version, </tspan>
+      <tspan x="800" dy="24">so check the flags on your own system</tspan>
+    </text>
+  </g>
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1104.0" width="1520" height="56" rx="8" fill="#207448"/>
+    <text x="800" y="1144.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Add these to the host checklist when you are on a GPU node</text>
+  </g>
+</svg>

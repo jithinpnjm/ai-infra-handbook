@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Test what the code meets in the wild: the degraded cases and the GPU-free setup</title>
+  <desc>Technical architecture infographic showing testing strategies for degraded system conditions, deterministic hermetic test design, and running GPU tool suites without GPUs.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Test what the code meets in the wild:</tspan>
+    <tspan x="800" dy="54">the degraded cases and the GPU-free setup</tspan>
+  </text>
+
+  
+  <g id="panel-degraded">
+    <rect x="50" y="150" width="720" height="940" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(75, 172)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 4 L50 14 L50 32 C50 44 28 52 28 52 C28 52 6 44 6 32 L6 14 Z"/>
+      <line x1="28" y1="20" x2="28" y2="32"/>
+      <circle cx="28" cy="40" r="2" fill="#207448"/>
+    </g>
+
+    
+    <text x="145" y="196" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">Degraded conditions to cover,</tspan>
+      <tspan x="145" dy="36">not only the happy path</tspan>
+    </text>
+
+    
+    <g transform="translate(70, 255)">
+      <rect width="680" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="3" fill="none">
+        <circle cx="18" cy="18" r="16"/>
+        <polyline points="18,8 18,18 26,18"/>
+      </g>
+      <text x="75" y="41" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">timeouts</text>
+    </g>
+
+    
+    <g transform="translate(70, 331)">
+      <rect width="680" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <path d="M6 4 L24 4 L30 10 L30 32 L6 32 Z"/>
+        <line x1="12" y1="14" x2="20" y2="14"/>
+        <line x1="12" y1="20" x2="24" y2="20" stroke-dasharray="3 3"/>
+        <line x1="12" y1="26" x2="18" y2="26" stroke-dasharray="3 3"/>
+      </g>
+      <text x="75" y="41" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">partial outputs</text>
+    </g>
+
+    
+    <g transform="translate(70, 407)">
+      <rect width="680" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <path d="M12 8 L6 8 L6 28 L12 28"/>
+        <path d="M24 8 L30 8 L30 28 L24 28"/>
+        <line x1="14" y1="18" x2="22" y2="18"/>
+      </g>
+      <text x="75" y="41" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">[N/A] fields</text>
+    </g>
+
+    
+    <g transform="translate(70, 483)">
+      <rect width="680" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <path d="M14 6 L6 6 L6 30 L14 30"/>
+        <path d="M22 6 L30 6 L30 30 L22 30"/>
+      </g>
+      <text x="75" y="41" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">empty lists</text>
+    </g>
+
+    
+    <g transform="translate(70, 559)">
+      <rect width="680" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <rect x="4" y="6" width="28" height="10" rx="2"/>
+        <rect x="4" y="20" width="28" height="10" rx="2"/>
+        <line x1="8" y1="11" x2="10" y2="11"/>
+        <line x1="8" y1="25" x2="10" y2="25"/>
+        <circle cx="26" cy="11" r="2" fill="#207448"/>
+        <line x1="26" y1="23" x2="26" y2="27"/>
+      </g>
+      <text x="75" y="41" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">500s</text>
+    </g>
+
+    
+    <g transform="translate(70, 635)">
+      <rect width="680" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <rect x="6" y="14" width="24" height="18" rx="3"/>
+        <path d="M11 14 L11 9 C11 5 14 3 18 3 C22 3 25 5 25 9 L25 14"/>
+        <circle cx="18" cy="22" r="2" fill="#207448"/>
+        <line x1="18" y1="24" x2="18" y2="27"/>
+      </g>
+      <text x="75" y="41" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">permission errors</text>
+    </g>
+
+    
+    <g transform="translate(70, 711)">
+      <rect width="680" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+        <circle cx="18" cy="18" r="14"/>
+        <path d="M18 4 A14 14 0 0 1 18 32 Z" fill="#207448"/>
+        <line x1="4" y1="18" x2="18" y2="18"/>
+      </g>
+      <text x="75" y="41" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">a node that answers slowly or halfway</text>
+    </g>
+
+    
+    <g transform="translate(70, 800)">
+      <rect width="680" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      
+      <g transform="translate(30, 102)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="24"/>
+        <circle cx="28" cy="28" r="14"/>
+        <polyline points="20,28 26,34 38,20"/>
+      </g>
+      <text x="115" y="122" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+        <tspan x="115" dy="0">every error handler deserves</tspan>
+        <tspan x="115" dy="40">a test that triggers it</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+
+  
+  <g id="panel-deterministic">
+    <rect x="810" y="150" width="740" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(835, 168)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M40 24 A16 16 0 1 0 24 40"/>
+      <polyline points="40,14 40,24 30,24"/>
+      <circle cx="24" cy="24" r="5" fill="#207448"/>
+    </g>
+
+    <text x="895" y="202" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Deterministic and hermetic</text>
+
+    
+    <g transform="translate(830, 222)">
+      <rect width="700" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="24" y="27" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">deterministic: the same run</tspan>
+        <tspan x="24" dy="26">always gives the same result</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(830, 296)">
+      <rect width="700" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="24" y="28" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">hermetic: no dependence on wall-clock time,</tspan>
+        <tspan x="24" dy="26">random numbers, the network or test order</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(830, 372)">
+      <rect width="700" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="24" y="27" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">inject clocks and random seeds</tspan>
+        <tspan x="24" dy="26">so you control them</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="panel-gpu-free">
+    <rect x="810" y="470" width="740" height="305" rx="16" fill="#fdf7f2" stroke="#db8129" stroke-width="3"/>
+
+    
+    <g transform="translate(835, 488)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="40" height="26" rx="3"/>
+      <line x1="12" y1="34" x2="12" y2="40"/>
+      <line x1="20" y1="34" x2="20" y2="40"/>
+      <line x1="28" y1="34" x2="28" y2="40"/>
+      <circle cx="24" cy="21" r="6" stroke-dasharray="3 3"/>
+    </g>
+
+    <text x="895" y="508" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+      <tspan x="895" dy="0">A GPU tool with</tspan>
+      <tspan x="895" dy="34">no GPU on the runner</tspan>
+    </text>
+
+    
+    <g transform="translate(830, 560)">
+      <rect width="700" height="52" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+      <text x="24" y="34" font-family="sans-serif" font-size="24" fill="#303a36">parse recorded nvidia-smi and dcgmi outputs</text>
+    </g>
+
+    
+    <g transform="translate(830, 620)">
+      <rect width="700" height="52" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+      <text x="24" y="34" font-family="sans-serif" font-size="24" fill="#303a36">simulate NVML with a fake module</text>
+    </g>
+
+    
+    <g transform="translate(830, 680)">
+      <rect width="700" height="78" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+      <text x="24" y="31" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">a small hardware-in-the-loop set marked gpu</tspan>
+        <tspan x="24" dy="28">runs only on labelled runners</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="side-rule" transform="translate(810, 795)">
+    <rect width="740" height="295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(25, 25)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <polyline points="20,20 28,28 20,36"/>
+      <line x1="28" y1="28" x2="36" y2="28"/>
+    </g>
+
+    <text x="95" y="60" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      push logic into pure functions:
+    </text>
+
+    <text x="30" y="118" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="30" dy="0">parsers, rules, planners, which turn input</tspan>
+      <tspan x="30" dy="38">into output without touching network,</tspan>
+      <tspan x="30" dy="38">clock or filesystem; keep I/O at the edges:</tspan>
+      <tspan x="30" dy="38">functional core, imperative shell from 3.8</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1120" width="1500" height="60" rx="12" fill="#207448"/>
+    <text x="800" y="1158" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Decide which tier a new test belongs to before you write it
+    </text>
+  </g>
+</svg>

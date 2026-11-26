@@ -1,0 +1,261 @@
+#!/usr/bin/env python3
+import pathlib
+
+def generate_svg():
+    svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Which API each HPA metric type reads</title>
+  <desc>Table comparing Kubernetes HPA metric types, their source APIs, providers, and example use cases, followed by key scaling rules.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which API each HPA metric type reads</text>
+
+  <!-- ==================== TABLE COLUMN HEADERS ==================== -->
+  <g id="table-headers">
+    <!-- Col 1: Type -->
+    <rect x="45" y="105" width="310" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="200" y="141" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Type</text>
+
+    <!-- Col 2: Source API -->
+    <rect x="365" y="105" width="365" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="547" y="141" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Source API</text>
+
+    <!-- Col 3: Provider -->
+    <rect x="740" y="105" width="385" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="932" y="141" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Provider</text>
+
+    <!-- Col 4: Example -->
+    <rect x="1135" y="105" width="420" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1345" y="141" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Example</text>
+  </g>
+
+  <!-- ==================== ROW 1: Resource ==================== -->
+  <g id="row-1">
+    <!-- Row background card / border -->
+    <rect x="45" y="171" width="1510" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Col 1: Type Pill & Icon -->
+    <rect x="55" y="181" width="290" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <!-- CPU Chip Icon (48px) -->
+    <g transform="translate(72, 204)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="32" height="32" rx="4"/>
+      <line x1="16" y1="2" x2="16" y2="8"/>
+      <line x1="24" y1="2" x2="24" y2="8"/>
+      <line x1="32" y1="2" x2="32" y2="8"/>
+      <line x1="16" y1="40" x2="16" y2="46"/>
+      <line x1="24" y1="40" x2="24" y2="46"/>
+      <line x1="32" y1="40" x2="32" y2="46"/>
+      <line x1="2" y1="16" x2="8" y2="16"/>
+      <line x1="2" y1="24" x2="8" y2="24"/>
+      <line x1="2" y1="32" x2="8" y2="32"/>
+      <line x1="40" y1="16" x2="46" y2="16"/>
+      <line x1="40" y1="24" x2="46" y2="24"/>
+      <line x1="40" y1="32" x2="46" y2="32"/>
+      <rect x="16" y="16" width="16" height="16" rx="2" fill="#207448"/>
+    </g>
+    <text x="136" y="238" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Resource</text>
+
+    <!-- Col 2: Source API -->
+    <rect x="365" y="181" width="365" height="94" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.2"/>
+    <text x="547" y="237" text-anchor="middle" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#207448">metrics.k8s.io</text>
+
+    <!-- Col 3: Provider -->
+    <rect x="740" y="181" width="385" height="94" rx="10" fill="#ffffff"/>
+    <text x="758" y="223" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="758" dy="0">metrics-server from </tspan>
+      <tspan x="758" dy="30">kubelet and cAdvisor</tspan>
+    </text>
+
+    <!-- Col 4: Example -->
+    <rect x="1135" y="181" width="420" height="94" rx="10" fill="#ffffff"/>
+    <text x="1152" y="210" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1152" dy="0">CPU or memory average </tspan>
+      <tspan x="1152" dy="28">utilisation relative to </tspan>
+      <tspan x="1152" dy="28">requests, or average value</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 2: ContainerResource ==================== -->
+  <g id="row-2">
+    <!-- Row background card -->
+    <rect x="45" y="299" width="1510" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Col 1: Type Pill & Icon -->
+    <rect x="55" y="309" width="290" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <!-- Container App Icon (48px) -->
+    <g transform="translate(64, 332)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="38" height="36" rx="5"/>
+      <rect x="11" y="14" width="24" height="21" rx="3" fill="#207448"/>
+      <line x1="4" y1="16" x2="42" y2="16"/>
+    </g>
+    <text x="116" y="365" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">ContainerResource</text>
+
+    <!-- Col 2: Source API -->
+    <rect x="365" y="309" width="365" height="94" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.2"/>
+    <text x="547" y="347" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="547" dy="0">metrics.k8s.io </tspan>
+      <tspan x="547" dy="30" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="normal" fill="#303a36">per container</tspan>
+    </text>
+
+    <!-- Col 3: Provider (empty) -->
+    <rect x="740" y="309" width="385" height="94" rx="10" fill="#ffffff"/>
+    <line x1="910" y1="356" x2="955" y2="356" stroke="#c4d5c9" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- Col 4: Example -->
+    <rect x="1135" y="309" width="420" height="94" rx="10" fill="#ffffff"/>
+    <text x="1152" y="348" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1152" dy="0">scale on the app container </tspan>
+      <tspan x="1152" dy="30">only, ignoring sidecars</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 3: Pods ==================== -->
+  <g id="row-3">
+    <!-- Row background card -->
+    <rect x="45" y="427" width="1510" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Col 1: Type Pill & Icon -->
+    <rect x="55" y="437" width="290" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <!-- Pods Icon (48px) -->
+    <g transform="translate(74, 460)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="24,4 42,14 42,34 24,44 6,34 6,14"/>
+      <circle cx="24" cy="24" r="7" fill="#207448"/>
+    </g>
+    <text x="150" y="494" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Pods</text>
+
+    <!-- Col 2: Source API -->
+    <rect x="365" y="437" width="365" height="94" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.2"/>
+    <text x="547" y="493" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">custom.metrics.k8s.io</text>
+
+    <!-- Col 3: Provider -->
+    <rect x="740" y="437" width="385" height="94" rx="10" fill="#ffffff"/>
+    <text x="758" y="479" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="758" dy="0">via Prometheus Adapter, </tspan>
+      <tspan x="758" dy="30">KEDA or vendor adapters</tspan>
+    </text>
+
+    <!-- Col 4: Example -->
+    <rect x="1135" y="437" width="420" height="94" rx="10" fill="#ffffff"/>
+    <text x="1152" y="479" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1152" dy="0">per-pod requests_in_flight </tspan>
+      <tspan x="1152" dy="30">or queue_length_per_pod</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 4: Object ==================== -->
+  <g id="row-4">
+    <!-- Row background card -->
+    <rect x="45" y="555" width="1510" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Col 1: Type Pill & Icon -->
+    <rect x="55" y="565" width="290" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <!-- Ingress / Object Routing Icon (48px) -->
+    <g transform="translate(74, 588)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="36" height="36" rx="8"/>
+      <circle cx="24" cy="18" r="4" fill="#207448"/>
+      <path d="M 24 22 L 24 29 M 16 36 L 24 29 L 32 36"/>
+      <circle cx="16" cy="36" r="2.5" fill="#207448"/>
+      <circle cx="32" cy="36" r="2.5" fill="#207448"/>
+    </g>
+    <text x="146" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Object</text>
+
+    <!-- Col 2: Source API -->
+    <rect x="365" y="565" width="365" height="94" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.2"/>
+    <text x="547" y="603" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="547" dy="0">custom.metrics.k8s.io </tspan>
+      <tspan x="547" dy="30" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="normal" fill="#303a36">for one object</tspan>
+    </text>
+
+    <!-- Col 3: Provider (empty) -->
+    <rect x="740" y="565" width="385" height="94" rx="10" fill="#ffffff"/>
+    <line x1="910" y1="612" x2="955" y2="612" stroke="#c4d5c9" stroke-width="2.5" stroke-linecap="round"/>
+
+    <!-- Col 4: Example -->
+    <rect x="1135" y="565" width="420" height="94" rx="10" fill="#ffffff"/>
+    <text x="1152" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Ingress requests_per_second</text>
+  </g>
+
+  <!-- ==================== ROW 5: External ==================== -->
+  <g id="row-5">
+    <!-- Row background card -->
+    <rect x="45" y="683" width="1510" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Col 1: Type Pill & Icon -->
+    <rect x="55" y="693" width="290" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <!-- Cloud Broker Icon (48px) -->
+    <g transform="translate(72, 716)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 34 A 7 7 0 0 1 12 21 A 11 11 0 0 1 33 16 A 9 9 0 0 1 40 28 A 7 7 0 0 1 36 34 Z"/>
+      <circle cx="19" cy="27" r="2" fill="#207448"/>
+      <circle cx="25" cy="27" r="2" fill="#207448"/>
+      <circle cx="31" cy="27" r="2" fill="#207448"/>
+    </g>
+    <text x="140" y="750" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">External</text>
+
+    <!-- Col 2: Source API -->
+    <rect x="365" y="693" width="365" height="94" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.2"/>
+    <text x="547" y="749" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">external.metrics.k8s.io</text>
+
+    <!-- Col 3: Provider -->
+    <rect x="740" y="693" width="385" height="94" rx="10" fill="#ffffff"/>
+    <text x="758" y="735" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="758" dy="0">via KEDA, Prometheus </tspan>
+      <tspan x="758" dy="30">Adapter or cloud adapters</tspan>
+    </text>
+
+    <!-- Col 4: Example -->
+    <rect x="1135" y="693" width="420" height="94" rx="10" fill="#ffffff"/>
+    <text x="1152" y="735" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1152" dy="0">SQS queue length, Pub/Sub </tspan>
+      <tspan x="1152" dy="30">backlog, global QPS</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== FOOTER RULES ==================== -->
+  <g id="footer-rules">
+    <!-- Rule 1: utilisation metrics -->
+    <g id="footer-rule-1">
+      <rect x="45" y="832" width="1510" height="74" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <!-- Icon: Request Requirement Checklist -->
+      <g transform="translate(64, 846)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="6" width="34" height="34" rx="6"/>
+        <polyline points="14,24 20,30 32,16"/>
+      </g>
+      <text x="126" y="878" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">utilisation metrics need requests on all containers or the metric is unavailable</text>
+    </g>
+
+    <!-- Rule 2: memory scaling warning (Orange Highlight) -->
+    <g id="footer-rule-2">
+      <rect x="45" y="922" width="1510" height="74" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+      <!-- Warning Alert Icon in Orange -->
+      <g transform="translate(64, 936)" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="23,6 42,40 4,40" stroke="#db8129" stroke-width="3.5" fill="none"/>
+        <line x1="23" y1="18" x2="23" y2="28" stroke="#db8129" stroke-width="3.5"/>
+        <circle cx="23" cy="34" r="2.5" fill="#db8129"/>
+      </g>
+      <text x="126" y="968" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">memory is a poor scaling signal because it does not fall after load drops</text>
+    </g>
+
+    <!-- Rule 3: freshness delay -->
+    <g id="footer-rule-3">
+      <rect x="45" y="1012" width="1510" height="114" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <!-- Clock Timer Icon -->
+      <g transform="translate(64, 1046)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="23" cy="23" r="18"/>
+        <polyline points="23,12 23,23 32,23"/>
+      </g>
+      <text x="126" y="1058" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="126" dy="0">freshness delay: metrics-server scrapes kubelets about every 15 s, </tspan>
+        <tspan x="126" dy="32">custom metrics add the Prometheus scrape interval of 15 to 30 s plus the adapter</tspan>
+      </text>
+    </g>
+  </g>
+</svg>'''
+    with open("candidate_hpa_metrics.svg", "w") as f:
+        f.write(svg)
+    print("Generated candidate_hpa_metrics.svg")
+
+if __name__ == "__main__":
+    generate_svg()
+

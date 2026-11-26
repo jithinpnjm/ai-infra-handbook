@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Exit codes tell you what happened, from 0 for success to 128 plus N for a signal</title>
+  <desc>Visual infographic explaining Linux exit codes along a horizontal number line from 0 to 255, highlighting success at 0, general errors, command execution issues, 128 plus N signals, and out of range errors.</desc>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Exit codes tell you what happened,</tspan>
+    <tspan x="800" dy="56">from 0 for success to 128 plus N for a signal</tspan>
+  </text>
+
+  
+  <g id="number-line">
+    
+    <rect x="40" y="175" width="1520" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="40" y="175" width="138" height="80" rx="14" fill="#d8ebd9" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="1122" y="175" width="220" height="80" rx="14" fill="#fff4e8" stroke="#db8129" stroke-width="3.5"/>
+
+    
+    <circle cx="109.0" cy="215" r="26" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="109.0" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">0</text>
+
+    <circle cx="330.0" cy="215" r="26" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="330.0" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">1</text>
+
+    <circle cx="571.0" cy="215" r="26" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="571.0" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">2</text>
+
+    <rect x="747.0" y="191" width="84" height="48" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="789.0" y="225" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">126</text>
+
+    <rect x="958.0" y="191" width="84" height="48" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="1000.0" y="225" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">127</text>
+
+    <text x="1232.0" y="225" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">128 + N</text>
+
+    <rect x="1429.0" y="191" width="84" height="48" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="1471.0" y="225" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">255</text>
+  </g>
+
+  
+  <g id="leader-lines" stroke="#207448" stroke-width="3" stroke-linecap="round">
+    <line x1="109.0" y1="255" x2="109.0" y2="320"/>
+    <line x1="330.0" y1="255" x2="330.0" y2="320"/>
+    <line x1="571.0" y1="255" x2="571.0" y2="320"/>
+    <line x1="789.0" y1="255" x2="789.0" y2="320"/>
+    <line x1="1000.0" y1="255" x2="1000.0" y2="320"/>
+    <line x1="1232.0" y1="255" x2="1232.0" y2="320" stroke="#db8129"/>
+    <line x1="1471.0" y1="255" x2="1471.0" y2="320"/>
+  </g>
+
+  
+  <g id="text-boxes">
+    
+    <g id="box-0">
+      <rect x="40" y="320" width="138" height="530" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      
+      <g transform="translate(81.0, 350)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="26" fill="#ffffff"/>
+        <polyline points="16,28 24,36 40,20"/>
+      </g>
+      <text x="109.0" y="475" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Success</text>
+    </g>
+
+    
+    <g id="box-1">
+      <rect x="218" y="320" width="224" height="530" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(302.0, 350)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 6 L 52 48 L 4 48 Z" fill="#e8f1ea"/>
+        <line x1="28" y1="20" x2="28" y2="32"/>
+        <circle cx="28" cy="40" r="2" fill="#207448"/>
+      </g>
+      <text x="330.0" y="445" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="330.0" dy="0">General</tspan>
+        <tspan x="330.0" dy="34">error. For</tspan>
+        <tspan x="330.0" dy="34">grep, diff</tspan>
+        <tspan x="330.0" dy="34">and cmp: no</tspan>
+        <tspan x="330.0" dy="34">match or</tspan>
+        <tspan x="330.0" dy="34">files differ,</tspan>
+        <tspan x="330.0" dy="34">not an error</tspan>
+      </text>
+    </g>
+
+    
+    <g id="box-2">
+      <rect x="482" y="320" width="178" height="530" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(543.0, 350)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="8" width="48" height="40" rx="6" fill="#e8f1ea"/>
+        <polyline points="14,22 22,28 14,34"/>
+        <line x1="26" y1="34" x2="38" y2="34"/>
+      </g>
+      <text x="571.0" y="455" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="571.0" dy="0">Misuse of</tspan>
+        <tspan x="571.0" dy="34">a command,</tspan>
+        <tspan x="571.0" dy="34">or a real</tspan>
+        <tspan x="571.0" dy="34">error for</tspan>
+        <tspan x="571.0" dy="34">grep and</tspan>
+        <tspan x="571.0" dy="34">diff</tspan>
+      </text>
+    </g>
+
+    
+    <g id="box-126">
+      <rect x="700" y="320" width="178" height="530" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(762.0, 350)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 4 L 32 4 L 46 18 L 46 52 L 8 52 Z" fill="#e8f1ea"/>
+        <circle cx="27" cy="34" r="7"/>
+        <path d="M 23 34 L 23 27 C 23 24 31 24 31 27 L 31 34"/>
+      </g>
+      <text x="789.0" y="490" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="789.0" dy="0">Found but</tspan>
+        <tspan x="789.0" dy="34">not</tspan>
+        <tspan x="789.0" dy="34">executable</tspan>
+      </text>
+    </g>
+
+    
+    <g id="box-127">
+      <rect x="918" y="320" width="164" height="530" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(972.0, 350)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="16" fill="#e8f1ea"/>
+        <line x1="36" y1="36" x2="48" y2="48"/>
+        <line x1="18" y1="18" x2="30" y2="30"/>
+        <line x1="30" y1="18" x2="18" y2="30"/>
+      </g>
+      <text x="1000.0" y="505" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1000.0" dy="0">Command</tspan>
+        <tspan x="1000.0" dy="34">not found</tspan>
+      </text>
+    </g>
+
+    
+    <g id="box-signals">
+      <rect x="1122" y="320" width="220" height="530" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+      
+      <g transform="translate(1205.0, 350)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="30,4 12,28 26,28 22,52 42,24 28,24" fill="#fff4e8"/>
+      </g>
+      
+      <rect x="1130.0" y="440" width="204" height="60" rx="10" fill="#fff8f2" stroke="#db8129" stroke-width="1.5"/>
+      <text x="1232.0" y="478" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">130 Ctrl-C</text>
+
+      <rect x="1130.0" y="525" width="204" height="60" rx="10" fill="#fff8f2" stroke="#db8129" stroke-width="1.5"/>
+      <text x="1232.0" y="563" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">137 SIGKILL</text>
+
+      <rect x="1130.0" y="610" width="204" height="60" rx="10" fill="#fff8f2" stroke="#db8129" stroke-width="1.5"/>
+      <text x="1232.0" y="648" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">143 SIGTERM</text>
+    </g>
+
+    
+    <g id="box-255">
+      <rect x="1382" y="320" width="178" height="530" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(1443.0, 350)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 6 L 48 14 L 48 30 C 48 42 28 50 28 50 C 28 50 8 42 8 30 L 8 14 Z" fill="#e8f1ea"/>
+        <line x1="28" y1="20" x2="28" y2="34"/>
+        <circle cx="28" cy="40" r="1.5" fill="#207448"/>
+      </g>
+      <text x="1471.0" y="465" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1471.0" dy="0">Status out</tspan>
+        <tspan x="1471.0" dy="34">of range,</tspan>
+        <tspan x="1471.0" dy="34">or ssh</tspan>
+        <tspan x="1471.0" dy="34">connection</tspan>
+        <tspan x="1471.0" dy="34">failure</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="caption-bar">
+    <rect x="40" y="890" width="1520" height="66" rx="12" fill="#207448"/>
+    <text x="800" y="932" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Read the code, then check which program produced it.</text>
+  </g>
+</svg>

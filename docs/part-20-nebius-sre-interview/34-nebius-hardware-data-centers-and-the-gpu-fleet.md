@@ -164,17 +164,9 @@ The operational reading is simple. Spare GPUs are paid-for idle capacity in a ma
 
 Before you draw a picture for an incident review, you need one diagram that shows which box shares which thing. Without it, the review meeting argues about the same fault from five different angles. The diagram shows the domains in one stack and what each shares. The layout is generic. Rack counts, loops and leaf mappings for Nebius are unknown, so each box is a role and not a claim.
 
-```mermaid
-flowchart TD
-  Site["Site: grid and regional network"] --> Hall["Hall: power distribution, cooling plant"]
-  Hall --> Row["Row: cooling loop? unknown"]
-  Row --> Rack["Rack: power feeds, NVLink switches, liquid loop"]
-  Rack --> Tray["Node or tray: host, NICs, driver"]
-  Tray --> GPU["GPU: die, HBM, ECC, NVLink ports"]
-  Leaf["Fabric leaf per rail"] -.->|"one NIC per node"| Tray
-  Store["Shared filesystem servers"] -.->|"checkpoints, weights"| Tray
-  FW["Driver and firmware version"] -.->|"fleet wide"| Tray
-```
+![The fleet failure-domain diagram](./img/m20-34-1.svg)
+
+*Figure 20.34.1. The fleet failure-domain diagram, as a diagram.*
 
 Solid arrows are physical containment. Dotted arrows are shared dependencies that cut across the tree. The firmware box matters most for the incident round. A bad driver rollout is a fault domain that does not follow racks at all. It can reach a node in every hall in the same afternoon, which is why it can look like a fleet-wide event with no obvious physical cause.
 

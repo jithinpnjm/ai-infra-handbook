@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Operational metrics and the billing ledger are two separate paths</title>
+  <desc>SVG infographic contrasting the approximate operational metrics path through Prometheus and Dashboards with the exact billing ledger path through durable queues and an append-only ledger.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 12 7 L 1 12 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Operational metrics and the billing ledger</tspan>
+    <tspan x="800" dy="54">are two separate paths</tspan>
+  </text>
+
+  
+  <rect x="330" y="140" width="1230" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="360" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Operational path, approximate</text>
+
+  
+  <rect x="330" y="675" width="1230" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="360" y="715" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Billing path, exact</text>
+
+  
+  <rect x="40" y="430" width="260" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(142, 455)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="16" cy="28" r="4" fill="#207448"/>
+    <circle cx="40" cy="18" r="4" fill="#207448"/>
+    <circle cx="40" cy="38" r="4" fill="#207448"/>
+    <path d="M 16 28 L 40 18 M 16 28 L 40 38" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="170" y="555" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Gateway</text>
+  <text x="170" y="620" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="170" dy="0">one row per</tspan>
+    <tspan x="170" dy="32">finished request</tspan>
+  </text>
+
+  
+  <rect x="360" y="205" width="380" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(522, 225)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 28 L 28 14 M 28 28 L 40 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="28" r="3" fill="#207448"/>
+  </g>
+  <text x="550" y="335" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Prometheus scrape</text>
+  <text x="550" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">every 30 seconds</text>
+
+  
+  <rect x="785" y="205" width="330" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(922, 225)">
+    <path d="M 6 8 L 50 8 L 34 28 L 34 46 L 22 52 L 22 28 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="950" y="335" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Recording rules</text>
+  <text x="950" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">dropping labels</text>
+
+  
+  <rect x="1160" y="205" width="380" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1322, 220)">
+    <rect x="0" y="0" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 10 32 L 22 18 L 34 26 L 46 12" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1350" y="295" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Dashboards</text>
+  
+  <g transform="translate(1336, 308)">
+    <path d="M 14 2 L 27 24 L 1 24 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="14" y1="10" x2="14" y2="16" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="14" cy="20" r="1.5" fill="#db8129"/>
+  </g>
+  <text x="1350" y="355" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1350" dy="0">sampled, increase</tspan>
+    <tspan x="1350" dy="28">extrapolates,</tspan>
+    <tspan x="1350" dy="28">lost increments</tspan>
+    <tspan x="1350" dy="28">when a pod dies</tspan>
+  </text>
+
+  
+  <rect x="360" y="735" width="380" height="270" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(522, 748)">
+    <path d="M 8 2 L 36 2 L 48 14 L 48 54 L 8 54 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 36 2 L 36 14 L 48 14" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="26" x2="40" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="16" y1="36" x2="34" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="550" y="830" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Usage record</text>
+  <text x="550" y="865" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="550" dy="0">with request id,</tspan>
+    <tspan x="550" dy="27">tenant, model,</tspan>
+    <tspan x="550" dy="27">input tokens,</tspan>
+    <tspan x="550" dy="27">output tokens, timestamp</tspan>
+  </text>
+
+  
+  <rect x="785" y="735" width="330" height="270" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(922, 790)">
+    <rect x="0" y="8" width="14" height="38" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="21" y="8" width="14" height="38" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="42" y="8" width="14" height="38" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 10 2 L 46 2" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="950" y="885" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Durable queue</text>
+
+  
+  <rect x="1160" y="735" width="380" height="270" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(1322, 755)">
+    
+    <ellipse cx="28" cy="12" rx="24" ry="8" fill="none" stroke="#db8129" stroke-width="4"/>
+    
+    <path d="M 4 12 L 4 48 C 4 56, 52 56, 52 48 L 52 12" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 4 24 C 4 32, 52 32, 52 24" fill="none" stroke="#db8129" stroke-width="3"/>
+    <path d="M 4 36 C 4 44, 52 44, 52 36" fill="none" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M 28 20 L 28 32 M 24 28 L 28 32 L 32 28" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1350" y="845" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Ledger</text>
+  <text x="1350" y="895" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1350" dy="0">request id as</tspan>
+    <tspan x="1350" dy="30">idempotency key</tspan>
+  </text>
+
+  
+  
+  <path d="M 300 500 H 330 V 345 H 358" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <line x1="740" y1="345" x2="783" y2="345" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <line x1="1115" y1="345" x2="1158" y2="345" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 300 690 H 330 V 870 H 358" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <line x1="740" y1="870" x2="783" y2="870" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <line x1="1115" y1="870" x2="1158" y2="870" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <line x1="1470" y1="735" x2="1470" y2="487" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <text x="1310" y="565" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">reconcile daily</text>
+  <text x="1310" y="610" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1310" dy="0">the ledger is the</tspan>
+    <tspan x="1310" dy="30">source of truth</tspan>
+  </text>
+
+  
+  <rect x="40" y="1055" width="1520" height="105" rx="14" fill="#207448"/>
+  <text x="800" y="1100" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">Charge from an exactly-once ledger and explain with approximate metrics,</tspan>
+    <tspan x="800" dy="34">and tell customers which is which.</tspan>
+  </text>
+</svg>

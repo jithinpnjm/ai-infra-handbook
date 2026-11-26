@@ -26,26 +26,17 @@ Each number in that sentence misleads on its own. Load average is not CPU demand
 
 Every resource has three questions: how busy is it, how long do things wait for it, and is it failing. The three questions are the same whether you are looking at a CPU, a memory bank or a disk. Sections 1 to 5 apply them to the CPU. Sections 6 to 8 cover memory, section 9 covers disk, and the rest give you tools to look inside.
 
-```mermaid
-flowchart TD
-    A["Symptom: slow or failing"] --> B["Read PSI: cpu, memory, io"]
-    B -->|"cpu some high"| C["CPU saturated"]
-    B -->|"memory some or full high"| D["Memory short"]
-    B -->|"io some high"| E["Disk waiting"]
-    C --> C1["Node busy? mpstat, vmstat r"]
-    C --> C2["Node idle but container slow? cpu.stat throttled"]
-    C --> C3["VM? steal in vmstat st"]
-    D --> D1["Swap or reclaim? vmstat si so"]
-    D --> D2["Killed? dmesg, memory.events oom_kill"]
-    E --> E1["iostat await, aqu-sz"]
-    E --> E2["Who? pidstat -d, biosnoop"]
-    C1 --> F["perf record, flame graph"]
-    D2 --> G["Read the OOM log"]
-```
+![The core ideas](./img/m20-05-1.svg)
+
+*Figure 20.5.1. The core ideas, as a diagram.*
 
 The diagram is a map you can walk down under pressure. Start at the symptom, read the pressure numbers for the three resources, and follow the branch that is high. Only at the bottom do you reach for a profiler, because a profiler is the most expensive tool on the list and it answers the question "which code" only after you know "which resource".
 
 ### 1. Load average, utilisation and saturation
+
+![A load average of 30 can be made of tasks stuck in state D waiting on disk, so the CPUs may sit idle.](./img/x05-load-counts-d-state.svg)
+
+*Figure 20.5.2. Linux counts tasks waiting on disk in the load average, so a high load can come from storage while the CPUs are idle.*
 
 An alert says load average is 30. A junior engineer says the CPUs are overloaded. A senior engineer asks which kind of load. On Linux the answer matters, because the number is not what most people think it is. Think of a shop with a long line at one slow cashier. From the door the shop looks busy, yet most of its staff are standing idle, and the line is the only part that is actually stuck.
 
@@ -60,6 +51,10 @@ Two more facts keep you honest. The average is exponentially damped, which means
 The first thing to decide: use load average only to see whether things are getting worse or better, then move to pressure and per-CPU numbers.
 
 ### 2. The run queue and pressure stall information
+
+![On two CPUs, load average keeps rising as busy threads increase, while CPU pressure stops at 100 once threads queue.](./img/x05-psi-load-vs-pressure.svg)
+
+*Figure 20.5.3. Load average grows with the number of busy threads, but CPU pressure only measures the share of time something waited, so it stops at 100.*
 
 Pressure stall information, or PSI, was added in Linux 4.20. It answers the question load average cannot: for each resource, what share of time was something waiting? The word stall means a task could not make progress because the resource was not ready. There are three files, `/proc/pressure/cpu`, `/proc/pressure/memory` and `/proc/pressure/io`.
 
@@ -84,6 +79,10 @@ The first thing to decide: read `/proc/pressure/*` before anything else, because
 
 ### 3. CPU throttling from cgroup limits in containers
 
+![A 100 ms CFS period in which five busy threads use up a one-CPU quota in 20 ms and the container is throttled for the remaining 80 ms.](./img/p2-2005-quota-stall.svg)
+
+*Figure 20.5.4. A 100 ms CFS quota period in which five threads use the quota in 20 ms, leaving 80 ms of throttling that makes requests stall.*
+
 A model-serving pod has a CPU limit of 2. The node dashboard shows 40 percent CPU. Latency is bad anyway. This is the most common modern version of a CPU saturation question, and it is the one interviewers love, because the physical CPU is not the thing that is full. The limit is the thing that is full. The container is being stopped by its own allowance while the machine sits half idle.
 
 Kubernetes turns a CPU request into cgroup CPU shares and a CPU limit into a CFS quota. CFS is the Completely Fair Scheduler, the default Linux scheduler for ordinary threads. Production Kubernetes, chapter 12, explains both. Shares are relative and only matter when the CPU is contended. The quota is an absolute cap per period. By default the period is 100 ms. A limit of 0.5 CPUs gives 50 ms of CPU time in each 100 ms. Once the quota is spent, every thread of the container waits until the next period starts.
@@ -92,16 +91,9 @@ Picture a metered tap that is open for part of every window and shut for the res
 
 The trap is threads. The book gives the example: a limit of 1 CPU and 5 busy threads. The 100 ms quota is gone after 20 ms, and the container is throttled for the remaining 80 ms. The container averages one CPU, so every monitoring graph looks calm, yet requests stall in 80 ms blocks. That is exactly what a p99 graph shows, because the slowest one percent of requests are the ones that land in a stalled block.
 
-```mermaid
-sequenceDiagram
-    participant T as "5 busy threads"
-    participant C as "CFS quota: 100 ms per 100 ms"
-    T->>C: "run, all 5 at once"
-    Note over T,C: "0 to 20 ms: quota used up"
-    C-->>T: "throttled"
-    Note over T,C: "20 to 100 ms: nothing runs"
-    C->>T: "new period, quota refilled"
-```
+![CPU throttling from cgroup limits in containers](./img/m20-05-2.svg)
+
+*Figure 20.5.5. CPU throttling from cgroup limits in containers, as a diagram.*
 
 You prove throttling with counters, not with feelings. In cgroup v2 the file `cpu.stat` has `nr_periods`, `nr_throttled` and `throttled_usec`. In cgroup v1 the same idea is `nr_throttled` and `throttled_time` in nanoseconds. Systems Performance shows a v1 example of 74 throttled periods out of 507 and 3.8 seconds throttled. The helper `c05_cpu_throttle.py` turns two samples into a ratio. On that book sample it printed `THROTTLED in 15% of periods`. Scenario 2 shows it on a live container. The file `cpu.max` shows the limit itself as quota and period, and `max 100000` means no limit.
 
@@ -117,6 +109,10 @@ The first thing to decide: for a slow container, read `cpu.stat` before you read
 
 ### 4. Steal time
 
+![A guest virtual machine looks idle while the hypervisor takes its CPU time, which shows up as steal in vmstat and mpstat.](./img/p2-2005-steal-time.svg)
+
+*Figure 20.5.6. Steal time is CPU taken by the hypervisor from a guest, visible as st in vmstat and %steal in mpstat, and guest tuning cannot recover it.*
+
 On a virtual machine, a CPU can be taken away by the hypervisor. The hypervisor is the software that shares the physical machine among several virtual machines. The guest sees a CPU that is not running its threads, and counts the time as steal. Picture a rented desk in a shared office. The desk is yours on paper, but when another tenant uses the room's power, your desk goes dark for a while. You do not see the other tenant, you only see that your work pauses.
 
 This matters for diagnosis. Inside the guest, the threads look runnable and the run queue grows, but the CPU itself seems to do nothing unusual. Without steal in the picture, the tempting move is to tune the guest's scheduler or its priorities, and none of that gives back the time the hypervisor took. In `vmstat` it is the `st` column. In `mpstat` it is `%steal`. Systems Performance, chapter 11, calls it CPU time not available to the guest, which may be consumed by other tenants, or lost to throttling by the instance type.
@@ -129,6 +125,10 @@ The first thing to decide: if `st` is non-zero and rising, move the workload or 
 
 ### 5. NUMA basics
 
+![A two-socket server where each socket has its own memory bank and GPUs, local access takes about 80 ns and remote access about 139 ns, and a data loader on the wrong socket makes the GPU wait.](./img/p3-2005-numa-gpu-sockets.svg)
+
+*Figure 20.5.7. Bind each worker to the NUMA node of its GPU, because a remote access takes about 75 percent longer.*
+
 A server with two CPU sockets has two memory banks. Each socket reaches its own bank quickly and the other bank through an interconnect, which is the wire between the sockets. That is non-uniform memory access, or NUMA. The word non-uniform means the cost depends on where the memory sits. Systems Performance describes Linux as trying to allocate on the nearest node, and `numastat` shows how well it succeeds.
 
 A small walk shows how a remote access happens. A thread runs on socket 0 and needs a page that lives on socket 1. The request crosses the interconnect, the memory answers, and the data travels back. Each step is slower than a local access, and a loop that touches that memory millions of times pays the penalty every time. Nothing crashes, so the program simply runs slower than its benchmark promised.
@@ -140,6 +140,10 @@ On a GPU host each GPU is attached closer to one CPU socket. The book shows eigh
 The first thing to decide: on a multi-socket GPU host, ask which node the GPU belongs to before you ask why the data loader is slow.
 
 ### 6. Page cache, anonymous memory and swap
+
+![Linux reclaims memory in order: the free list, then page cache, then swap, and the OOM killer last.](./img/x05-reclaim-order.svg)
+
+*Figure 20.5.8. The kernel frees memory from the cheapest source first, and the OOM killer is only the last resort.*
 
 An engineer sees `free` report 163 MB free out of 1950 MB and files a ticket. Systems Performance addresses this directly: if there is spare memory, the kernel uses it to cache files, and the cache can be reclaimed quickly when applications need it. Free memory shrinking to near zero after boot is normal, and a healthy host often looks like that for most of its life.
 
@@ -158,6 +162,10 @@ Swap activity shows as `si` and `so` in `vmstat`, and as I/O in `iostat`. The si
 The first thing to decide: alert on memory PSI and `MemAvailable`, never on `MemFree`.
 
 ### 7. The OOM killer and how to read its log
+
+![Four reading steps for an OOM kill log: scope from the constraint, the cgroup, the victim memory, and the other tasks.](./img/x05-oom-log-four-steps.svg)
+
+*Figure 20.5.9. An OOM kill log is read by checking the constraint, the cgroup it names, the victim's memory and the other large tasks.*
 
 A process vanishes. No error appears in the application log, and the pod restarts with no message that explains it. This is how the OOM killer behaves, because it sends SIGKILL, which cannot be caught. The program gets no chance to write a final line or run its cleanup. The kernel log is the only witness. Read it with `dmesg -T | grep -i -B2 -A25 'invoked oom-killer'` or `journalctl -k`.
 
@@ -182,6 +190,14 @@ The first thing to decide: read the constraint line first, because it separates 
 
 ### 8. cgroup memory limits versus node memory
 
+![Three Kubernetes QoS classes, BestEffort evicted first, Burstable second only if above requests, Guaranteed last, with the rule that decides each class.](./img/p3-2005-qos-eviction.svg)
+
+*Figure 20.5.10. The QoS class comes from requests and limits and sets the eviction order, while the kernel OOM kill follows the cgroup limit.*
+
+![A pod with a 24 GiB cgroup limit is killed on a 512 GiB node, because the kill depends on the cgroup wall and the working set rather than free node memory.](./img/p2-2005-cgroup-wall.svg)
+
+*Figure 20.5.11. A pod is killed at its cgroup memory limit even when the node has plenty of memory, so the working set is compared with the limit.*
+
 A pod has a memory limit of 24 GiB on a node with 512 GiB. The node is fine. The pod is killed. The kernel does not care about the node. It cares about the cgroup, which is the box the pod was given. Production Kubernetes explains why: memory cannot be throttled the way CPU can, so when the limit is reached the process must be killed.
 
 The cgroup v2 files to know are `memory.max`, the hard limit, `memory.high`, a throttle limit that sends processes into direct reclaim, `memory.current`, current use, and `memory.events`. Direct reclaim means the process itself stops to free memory before it can continue. The events file counts `high`, `max`, `oom` and `oom_kill`, among others. A rising `oom_kill` is your proof. The `memory.oom.group` file decides whether the whole cgroup is killed as one unit. How Linux Works, chapter 8, shows `memory.max` reading `max` when there is no limit and explains that cgroup v2 allows a process in one cgroup only.
@@ -203,6 +219,10 @@ AI Systems Performance Engineering warns that a memory limit on a model server m
 The first thing to decide: compare working set to the cgroup limit, not to node memory.
 
 ### 9. Disk latency versus throughput
+
+![Reading one iostat row in a fixed order: await, queue size, request size, then utilisation as one piece of evidence.](./img/x05-iostat-row-order.svg)
+
+*Figure 20.5.12. Utilisation is read last, after await, queue size and request size, because busy time alone does not show that anyone waited.*
 
 A database host feels slow and `iostat` shows 100 percent utilisation. Is the disk the problem? Maybe not. Systems Performance warns that `%util` is only busy time. For devices that serve many requests in parallel, such as NVMe or arrays, 100 percent does not mean saturated. A device that is busy every moment can still take each request quickly. Judge by latency and by the load applied.
 
@@ -231,6 +251,10 @@ The helper `c05_iostat_parse.py` applies those rules. On a sample NVMe row, 100 
 The first thing to decide: look at `await` and queue size before you look at `%util`.
 
 ### 10. perf and flame graphs
+
+![A flame graph where each box is a function, height is stack depth, width is the share of samples, left to right order has no meaning, and the widest tower is read first.](./img/p3-2005-flamegraph-anatomy.svg)
+
+*Figure 20.5.13. Start at the widest tower and walk up until the boxes stop being wide; the top of that path is the function using the most CPU.*
 
 Everything above points you at a resource. Sometimes the question left is which code is using it. For CPU the answer is a profile, and `perf` is the standard Linux tool. A profile samples the program's call stack at regular intervals, so the code that is on the CPU most often appears most often in the samples. Systems Performance chapter 13 gives the core command: `perf record -F 99 -a -g -- sleep 10` samples every CPU 99 times per second for ten seconds, with call stacks.
 
@@ -266,6 +290,10 @@ The honest interview answer about eBPF is short. Use a canned BCC tool to answer
 The first thing to decide: name the exact question before you name the eBPF tool.
 
 ### 12. Pinned memory and why GPU inference hosts hit host-memory limits
+
+![A worked host-memory budget where four workers with pinned and runtime memory total 28 GiB against a 24 GiB limit, so an OOM kill is expected.](./img/p2-2005-pinned-budget.svg)
+
+*Figure 20.5.14. A worked host-memory budget where unreclaimable worker memory of 28 GiB exceeds a 24 GiB pod limit, so an OOM kill is expected.*
 
 The model is on the GPU, so why is host memory the problem? Because everything around the GPU runs on the host. Weights are read from disk through the page cache. Worker processes hold a Python runtime. Data is staged in buffers before copying to the GPU. A GPU inference pod can be killed by the host memory limit while its GPUs are nearly empty, and the on-call engineer sees a healthy GPU dashboard next to a restart loop.
 

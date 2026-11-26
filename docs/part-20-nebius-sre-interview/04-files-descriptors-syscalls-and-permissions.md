@@ -36,6 +36,10 @@ A ticket arrives in the middle of the night with one of three messages in its bo
 
 ### 1. A descriptor is a small number that points at a kernel object
 
+![Five steps of one open call, from passing a file name to returning a slot number that later reads and writes use.](./img/p2-2004-open-walk.svg)
+
+*Figure 20.4.1. The steps of one open call: the kernel walks the names to the inode, creates an open file description, and returns a slot number.*
+
 Picture a process that has just opened a log file. The program holds the number 3 and passes it to every later `read` and `write`. The program never sees the file itself. Behind that number the kernel keeps three things, and each has its own limit and its own error.
 
 It helps to walk through what happens on one `open` call. The program passes a file name. The kernel walks the directory names until it reaches the inode. It then creates an open file description, which is the record of this one open, with its own offset. Finally it places a pointer to that record in the first free slot of the process's table, and returns the slot number to the program. The program never touches the inode directly. Each later `read` or `write` names only the slot, and the kernel follows the pointers from there. Once you hold that walk in your head, each error in this chapter has an obvious place on the path.
@@ -44,22 +48,19 @@ Each process has a table that maps small numbers to open files. Each entry point
 
 The manual pages support each box. `/proc/PID/fd` has one link per open descriptor. `/proc/PID/fdinfo` shows `pos`, the flags, `mnt_id`, and since Linux 5.14 the `ino` field. The counter in `/proc/sys/fs/file-nr` counts open file descriptions, which the manual calls allocated file handles.
 
-```mermaid
-flowchart LR
-  P["Process"] --> T["fd table: 0, 1, 2, 3 ..."]
-  T -->|"fd 3"| D["Open file description: offset, flags"]
-  D --> I["Inode: owner, mode, size, data map"]
-  I --> B["Data blocks"]
-  N["Directory entry: a name"] --> I
-  L1["RLIMIT_NOFILE: EMFILE"] -.-> T
-  L2["file-max: ENFILE"] -.-> D
-```
+![A descriptor is a small number that points at a kernel object](./img/m20-04-1.svg)
+
+*Figure 20.4.2. A descriptor is a small number that points at a kernel object, as a diagram.*
 
 Deleting a name lowers the link count, while an open description keeps pointing at the inode. That detail drives the deleted-file puzzle in section 5. A descriptor also need not be a disk file. The proc_pid_fd manual says pipes and sockets read as `type:[inode]`, and objects such as epoll instances read as `anon_inode:[eventpoll]`. An epoll instance is the kernel object a program uses to wait on many sockets at once.
 
 **When someone says a process leaked files, ask what kind of descriptor leaked.** Sockets, pipes, regular files and epoll instances each point to a different bug.
 
 ### 2. Three ceilings: per process, per system, and the cap on the cap
+
+![Three nested limits for open files: the per-process limit, the system-wide file-max, and the nr_open cap above both.](./img/x04-emfile-enfile-ceilings.svg)
+
+*Figure 20.4.3. EMFILE means one process hit its own limit, ENFILE means the whole machine hit the shared pool, and nr_open caps how high a process limit can go.*
 
 A server accepts connections until one day it stops, and the log fills with `Too many open files`. The text comes from one of two errors, and the open(2) manual defines both. The difference tells you where to look, so check the error name before you touch any setting.
 
@@ -108,6 +109,14 @@ A quick walk through the output helps. The first line of the grouped listing is 
 
 ### 4. strace: how to read what it prints
 
+![strace stops the program at the entry and exit of every system call and hands control to the tracer, which is why a dd run slowed by a factor of 73, so read proc and lsof first.](./img/p3-2004-ptrace-cost.svg)
+
+*Figure 20.4.4. strace uses ptrace breakpoints on every system call, so prefer proc, lsof and logs first and trace one process briefly.*
+
+![One strace line split into call name, arguments, equals sign, and the failing result with its errno.](./img/x04-strace-line-anatomy.svg)
+
+*Figure 20.4.5. Each strace line gives the call name, its arguments and a result, and a failure shows as minus one with an errno name.*
+
 A process hangs on startup, or exits with a vague error, and the logs say nothing useful. `strace` shows every system call the program makes, in order, with its result. How Linux Works, chapter 8, presents it as the tool to reach for when logs fail, especially for missing files.
 
 A line reads as the call name, its arguments, an equals sign and the result. The book's `strace cat not_a_file` ends in a line you can read at a glance.
@@ -154,6 +163,10 @@ The helper `ch04_strace_errors.py` parses lines like these, counts failures by c
 
 ### 5. Blocks, inodes, and files that are deleted but still open
 
+![A filesystem has a pool of data blocks and a pool of inodes, and df -h, df -i and du each count a different thing.](./img/x04-df-du-two-pools.svg)
+
+*Figure 20.4.6. Free bytes and free inodes are separate pools, and df and du answer different questions about them.*
+
 A disk alert fires at 95 percent. You run `du` and the numbers add up to far less than the alert claims. Or a create fails with `No space left on device` while `df -h` shows half the disk free. Both puzzles exist because a filesystem has two resources, not one. It has a pool of data blocks, and it has a database of inodes. Either pool can run out while the other still has room.
 
 How Linux Works, chapter 4, describes a traditional Unix filesystem as a pool of data blocks plus a database of inodes. An inode records the type, the permissions and where the data lives. A directory inode lists names and the inodes they refer to. The link count is the number of directory entries that point to an inode, and removing a file lowers it by one. When it reaches zero, no names remain and the kernel can delete the inode and its data.
@@ -180,22 +193,23 @@ Log rotation is the usual way this happens. A tool renames or deletes the old lo
 
 ### 6. Permission checks beyond the mode bits
 
+![A ladder of eight layers, path, identity, mode class, ACL, mount, inode flags, mandatory access control, and capabilities, each with the command that shows the evidence.](./img/p3-2004-permission-layers.svg)
+
+*Figure 20.4.7. The mode bits are one layer of eight; work down the ladder only when the layers above come back clean.*
+
+![A file owned by the service user with owner bits r-- and group bits rw-, where the owner class is decided first so the write is denied.](./img/p2-2004-first-class-only.svg)
+
+*Figure 20.4.8. The first matching permission class decides the access, so an owner with r-- cannot write even when the group bits allow it.*
+
 Back to the opening question. The file is mode 666 and the service still cannot open it. The mode bits are one layer of several, and the errno narrows the list before you check anything. Treat the mode as the first of several layers, not as the whole answer.
 
 The path comes first. The path_resolution(7) manual says the kernel walks a path one component at a time and needs search permission on each directory. A missing search bit gives `EACCES`. A file with mode 666 inside a directory with mode 600 cannot be opened by anyone except root, and chmod on the file does not help. The file is fine, and the door in front of it is locked.
 
 Think of a path as a set of rooms. You need permission to pass through each room on the way to the file, and the file itself is the last door. A missing search bit on any room, even one you did not expect, stops the walk before the file is reached. That is why the check starts with the directories and not with the file.
 
-```mermaid
-flowchart TD
-  E["open() fails"] --> Q{"Which errno?"}
-  Q -->|"ENOENT"| A1["Path, cwd, mount namespace"]
-  Q -->|"EROFS"| A2["Read-only mount or pod setting"]
-  Q -->|"EMFILE, ENFILE"| A3["Descriptor limits"]
-  Q -->|"ENOSPC, EDQUOT"| A4["Blocks, inodes, deleted-open, quota, inotify"]
-  Q -->|"EPERM"| A5["Immutable flag, capability, ID mapping"]
-  Q -->|"EACCES"| A6["Walk dirs, mode class, ACL mask, noexec, MAC"]
-```
+![Permission checks beyond the mode bits](./img/m20-04-2.svg)
+
+*Figure 20.4.9. Permission checks beyond the mode bits, as a diagram.*
 
 Next is who the process really is. The mode bits use the effective user ID and the group IDs of the process, including supplementary groups. Look at the process, not at your shell. `/proc/PID/status` shows `Uid` and `Groups`. A service started by systemd has the groups its unit gave it. If you added the account to a group later, a running process probably keeps its old list. That is my reasoning from the credentials manual. I tested it in the container. A running `sleep` started as user `u` showed `Groups: 1001`, and after `usermod -aG g1 u`, `id u` listed two groups while the running process still showed only `1001`.
 
@@ -229,6 +243,10 @@ Both `namei -l` and `findmnt` ran in the container. Neither is quoted from a man
 **In the interview, say the layers in this order, and say which one the errno points to.** That shows you do not guess.
 
 ### 7. Containers and Kubernetes change the answer
+
+![Five ordered questions for a pod file failure: which errno, is the root read-only, which user and groups, does the volume owner match fsGroup, are capabilities dropped or a policy profile applied.](./img/p3-2004-pod-denied-ladder.svg)
+
+*Figure 20.4.10. Ask five questions in order when a pod fails to read or write a file.*
 
 A pod that works on your laptop fails in the cluster with `Permission denied` or `Read-only file system`. The cause is almost always a setting, not a bug in the application. Four settings are worth knowing well enough to recite, and each one turns a familiar Linux rule into a container rule.
 
@@ -339,6 +357,10 @@ The process holds almost as many descriptors as its soft `RLIMIT_NOFILE`, and ne
 
 ### Scenario 2: the disk that is full of nothing
 
+![A deleted log stays on disk while a process holds it open, and truncating it through the descriptor frees the space.](./img/x04-deleted-open-rescue.svg)
+
+*Figure 20.4.11. A file removed while a process still has it open keeps using disk space until that descriptor is closed or the file is truncated.*
+
 Problem. An alert says a filesystem is 92 percent used. `du -sh /var/log` shows 3 GB on a 100 GB volume, and someone deleted the big log an hour ago.
 
 Reasoning. `du` walks names and `df` asks the filesystem for used blocks. If they disagree, some blocks have no name, and the usual owner is a process that still has the file open. In plain terms, the blocks are still in use but nothing in the directory tree points at them any more. A quick test is to ask whether the used number moves after the delete. If it does not, the blocks are held by a descriptor. The script holds a 20 MB file open, removes the name, then rescues and truncates it through `/proc`. Real output: used space was 27069364 KB before and after `rm`, `stat -L` showed `size=20971520 bytes, links=0`, `lsof` listed the file with `NLINK` 0, and after the truncate the size was 0 and used space fell to 27048884 KB.
@@ -375,6 +397,10 @@ The filesystem is `noexec`, so `execve` fails with `EACCES` before the mode bits
 
 ### Scenario 5: the ACL that a chmod cancelled
 
+![A named ACL entry says rw- but the mask became r-- after chmod 640, so the effective right is read-only until setfacl sets the mask to rw.](./img/p3-2004-acl-mask.svg)
+
+*Figure 20.4.12. The mask is the most any named entry can receive, so chmod 640 lowered the effective right to read-only.*
+
 Problem. A deploy script gives the service account write access through an ACL. A hardening job later runs `chmod 640` on the file. The service can only read, though `getfacl` still shows `rw-`.
 
 Reasoning. With a mask present, the group bits of the mode are the mask, and the mask limits named entries. The script grants a made-up numeric user ID write access, runs `chmod 640`, prints `getfacl` before and after, and widens the mask. Real output after the `chmod 640`: `-rw-r-----+` in `ls -l`, and `user:12345:rw-	#effective:r--` with `mask::r--` in `getfacl`. After `setfacl -m m::rw` the mask line was `mask::rw-`.
@@ -386,6 +412,10 @@ The named entry is intact but the mask is `r--`, so the effective right is read-
 </details>
 
 ### Scenario 6: readable file, locked directory
+
+![A file with mode 644 cannot be opened because the directory above it has no search bit, so the walk stops at the directory.](./img/x04-path-walk-locked-directory.svg)
+
+*Figure 20.4.13. Opening a path needs search permission on every directory along the way, so a locked directory blocks a readable file.*
 
 Problem. A secrets file is mode 644 and the service, its owner, still gets `Permission denied`. A colleague already ran `chmod 777` on it.
 

@@ -26,22 +26,9 @@ A realistic question in the interviewer's voice: "Implement a rate limiter that 
 
 Every section below has the same parts. First the situation, then the idea in plain words, then a template you can type from memory. After the template come its cost, the SRE setting, the follow-up an interviewer adds, and the bug that most often sinks the answer. Read the situation first, because it tells you which question the interviewer is really asking. All code is in `code/part20/` with the prefix `c09_`, and the blocks here are exact copies of the files. The tests carry the prefix `test_c09_`.
 
-```mermaid
-flowchart TD
-  Q["Read the problem"] --> A{"Counting or grouping?"}
-  A -->|"yes"| H["Hash map"]
-  A -->|"no"| B{"Contiguous range of a stream?"}
-  B -->|"yes"| W["Sliding window / two pointers"]
-  B -->|"no"| C{"Best k, or merge sorted inputs?"}
-  C -->|"yes"| P["Heap"]
-  C -->|"no"| D{"Time ranges overlap?"}
-  D -->|"yes"| I["Sort then sweep"]
-  D -->|"no"| E{"Things depend on things?"}
-  E -->|"yes"| G["Graph: topo sort, BFS, union-find"]
-  E -->|"no"| F{"Is there a yes/no check that flips once?"}
-  F -->|"yes"| S["Binary search on the answer"]
-  F -->|"no"| O["State and cost model: cache, limiter, ring"]
-```
+![The core ideas](./img/m20-09-1.svg)
+
+*Figure 20.9.1. The core ideas, as a diagram.*
 
 
 
@@ -136,6 +123,14 @@ Decide: if the question says "per" something, reach for a dictionary first and s
 
 ### 2. Sliding windows: rolling error rate and the maximum in a window
 
+![A deque of indexes in decreasing value order where a new value pops all smaller values from the back, the front index leaves when it falls out of the window, and the front is the maximum.](./img/p3-2009-monotonic-deque.svg)
+
+*Figure 20.9.2. Each index is appended once and removed once, so the work is O(n) even though there is a loop inside a loop.*
+
+![A rolling window keeps recent events in a deque, appending on the right and evicting old events from the left.](./img/x09-sliding-window-eviction.svg)
+
+*Figure 20.9.3. A sliding window appends new events on one end and evicts old events from the other end, so each event enters and leaves once.*
+
 An alert should fire when the error rate over the last five minutes exceeds one percent. Events arrive in time order, and the alert runs all day. The naive approach recounts the window on every event, which is wasteful when most events are the same as the last check. The better idea is to keep the events in a queue, add the new one on the right, and drop the old ones from the left, adjusting a running total as you go. The window slides along the stream, which is where the name comes from.
 
 Use `collections.deque` for the queue. Fluent Python, chapter 2, says a deque is the more efficient first-in first-out structure than a list, because popping from the front of a list shifts every element. A deque removes from either end without moving the rest, so the eviction step stays cheap no matter how long the window grows.
@@ -217,6 +212,10 @@ Decide: if the question is about "the last N items" or "the last T seconds", it 
 
 ### 3. Two pointers
 
+![Two pointers move inward over a sorted list, moving one pointer depending on whether the pair sum is too big or too small.](./img/p2-2009-two-pointers.svg)
+
+*Figure 20.9.4. Two pointers walk inward over a sorted list, moving the pointer that the sum comparison says can help.*
+
 Two sorted lists of timestamps come from two servers, and you want one merged timeline. Or you want two values in a sorted list of latencies that sum to a budget. The idea is to put one pointer at each relevant position and move the one that the comparison tells you to move. Sortedness is what makes the move safe, because it tells you which pointer can never help again. Picture two people walking up a staircase from opposite ends, each stepping only when the step they stand on is the wrong one.
 
 ```python
@@ -287,6 +286,10 @@ Every function is O(n) time and O(1) extra memory, apart from the output. The in
 Decide: if the input is sorted and you are about to write a nested loop, stop and ask whether two pointers remove the inner loop. A nested loop over sorted data is usually the first sign that the sort is being wasted.
 
 ### 4. Heaps and top-k
+
+![A min-heap of size k holds the current top k slowest samples with the fastest of them at the root, and each new sample either replaces the root or is dropped.](./img/p3-2009-heap-topk.svg)
+
+*Figure 20.9.5. The heap never holds more than k items however long the stream runs, so memory stays at O(k).*
 
 The question is "which ten endpoints are slowest" over ten million samples. Sorting everything costs O(n log n) and holds everything in memory. The idea is a min-heap of size k. The root is the weakest member of the current top k. A new sample either beats the root and replaces it, or is ignored. The heap never holds more than k items, however long the stream runs.
 
@@ -446,6 +449,14 @@ Decide: if time ranges appear, sort by start, then say whether the ends are incl
 
 ### 6. Rate limiters: four algorithms and their trade-offs
 
+![A token bucket refills at a steady rate up to a cap, a burst can spend the saved tokens at once, and after that the client can only send as fast as the bucket refills.](./img/p3-2009-token-bucket.svg)
+
+*Figure 20.9.6. The token bucket enforces the long-run rate and permits a burst up to the bucket size, and refill is computed lazily so no background thread is needed.*
+
+![A fixed window limit of 10 per second lets 20 requests through within 10 milliseconds when they straddle the window reset.](./img/x09-fixed-window-boundary-burst.svg)
+
+*Figure 20.9.7. A fixed window resets its counter at the boundary, so a client can send the full limit just before and just after it.*
+
 An API key should get 100 requests a minute. An attacker or a buggy client sends 1,000. The limiter must say yes or no in microseconds, using little memory per key. There are four standard answers, and each one trades accuracy, memory and burst behaviour differently. The question is not which algorithm is best in general. The question is which one fits the promise you made to the customer.
 
 The fixed window counts requests per clock minute and resets at the boundary. The sliding log stores a timestamp for every accepted request. The token bucket holds tokens that refill at a steady rate up to a cap. The leaky bucket is a queue that drains at a fixed rate. A fifth, the sliding window counter, is the usual compromise between accuracy and memory. Picture each one as a different kind of ticket office: one counts sales per hour, one keeps every receipt, one hands out tokens that accumulate, and one lines people up and lets them through at a fixed pace.
@@ -576,6 +587,10 @@ Decide: say "token bucket" for APIs and name the boundary burst of the fixed win
 
 ### 7. LRU cache
 
+![An LRU cache built from a hash map that points at nodes of a doubly linked list, with sentinels at both ends and the least recent node evicted first.](./img/p2-2009-lru-links.svg)
+
+*Figure 20.9.8. An LRU cache pairs a hash map for lookup with a doubly linked list that keeps the most recent entry at the front and evicts from the back.*
+
 A router caches which replica holds a prompt prefix, and the table must not grow forever. When it is full, throw away the entry used longest ago. Systems Performance, chapter 2, defines LRU as an eviction policy that removes the least recently used object when space is needed. Picture a small desk with room for only a few open files. When a new file arrives, you put away the one you have not touched for the longest time.
 
 The idea needs two things at once. Lookup by key in constant time needs a hash map. Finding and moving the oldest or newest entry in constant time needs an ordered list. The interview version asks you to write it, first with `OrderedDict`, which does both, and then from scratch with a doubly linked list. Knowing why each structure is there is worth more than typing either one from memory.
@@ -678,6 +693,10 @@ Decide: start with `OrderedDict`, say it is enough in production, and then offer
 
 ### 8. Consistent hashing with virtual nodes
 
+![A hash ring where keys move clockwise to the first node, adding a node moves only one arc, and many virtual points flatten the load.](./img/p2-2009-hash-ring.svg)
+
+*Figure 20.9.9. On a consistent hash ring, a key belongs to the first node clockwise, and virtual points flatten load from a ratio of 1.935 to 1.035.*
+
 You want requests with the same session to land on the same replica, so its cache is warm. Taking the hash modulo the number of replicas works until you add one replica, and then almost every key moves. Distributed AI Systems, chapter 9, applies consistent hashing of the user id to give the same user the same model variant. This is the generic mechanism. Nebius has not published its router algorithm, so do not describe it as theirs.
 
 The idea: put both nodes and keys on a circle by hashing them. A key belongs to the first node clockwise from it. Adding a node steals only the arc just before it, so roughly one in N keys moves. With few points the arcs have very uneven lengths, so each node gets many virtual points spread around the circle. Picture a clock face with a few hands, where each hand covers a slice, and where a slice is split into many thin pieces so that no single hand covers much more than its share.
@@ -750,6 +769,10 @@ Decide: always quote the balance number you measured as the reason for virtual n
 
 ### 9. Retry with exponential backoff and jitter
 
+![Clients that retry at the same instants create a spike, while full jitter spreads their retries across the wait window.](./img/x09-retry-jitter-herd.svg)
+
+*Figure 20.9.10. Full jitter chooses each retry delay at random up to the current ceiling, so clients that failed together do not all retry together.*
+
 A dependency returns 503 for ten seconds. Ten thousand clients retry immediately, again and again, and the dependency cannot recover. Picture a shop with a closed door, where every customer knocks at the same moment, every second, and nobody can get in while the door is shut. The idea is to wait longer after each failure, and to randomise the wait so that clients do not retry in lockstep.
 
 Full jitter means the delay is a uniform random number between zero and the current ceiling. The ceiling doubles each attempt and is capped. The randomness is what spreads the retries across time, so a thousand clients that failed together do not all come back together.
@@ -807,6 +830,10 @@ A common way to present the three rules is to name them in order, safe errors fi
 Decide: say "capped exponential backoff with full jitter, a deadline and a retry budget" as one phrase. The phrase names every part of the answer, so the interviewer hears the whole design in one breath.
 
 ### 10. Topological sort and cycle detection
+
+![Kahn's algorithm orders services so each starts after its dependencies, and leftover nodes reveal a cycle.](./img/x09-kahn-start-order.svg)
+
+*Figure 20.9.11. Kahn's algorithm starts services with no open dependencies and unlocks others as each one finishes, so any leftover node signals a cycle.*
 
 You must start services in an order where each service's dependencies are up first. Or a Terraform-like tool must apply resources in dependency order. The graph has an edge from each service to the things it needs. A valid order exists exactly when there is no cycle. Picture a set of building blocks where each one rests on others, and you must place the base pieces before the pieces that rest on them.
 
@@ -1011,6 +1038,10 @@ Decide: for a stream of "these two are connected" facts, use union-find. For a o
 
 ### 13. Binary search on the answer
 
+![A row of timeout values that go no, no, no, yes, yes, yes with the search halving the range until it finds the first yes, and returning hi plus 1 if nothing passes.](./img/p3-2009-binary-search-answer.svg)
+
+*Figure 20.9.12. When a bigger value never makes the check worse, the answers flip once and binary search finds the flip in a handful of checks.*
+
 You do not know the right timeout. You do have a yes-or-no test: with this timeout, do at least 99 percent of requests succeed? Because a larger timeout can only help, the answers go no, no, no, yes, yes, yes. Binary search finds the flip point in a handful of checks, even if each check is expensive. The search does not need to know the shape of the curve, only that the answer flips once.
 
 Picture a team that must choose a timeout for a client library. Too short, and healthy requests fail. Too long, and a stuck request holds a connection for a long time. The search asks only one question at each step: at this timeout, is the target met? Each answer narrows the range by half.
@@ -1090,6 +1121,14 @@ The cost is O(log range) calls to the check, so the total is that times the cost
 Decide: whenever a problem asks for "the minimum X such that something holds", and bigger X never makes it worse, search on X. The phrase "bigger never hurts" is the test that tells you the pattern applies.
 
 ### 14. Streaming percentiles, and why you never average percentiles
+
+![Three ways to keep a p99 for a stream, exact, a reservoir sample, and a bucket histogram, with measured bucket counts and errors against an exact p99 of 551.79.](./img/p3-2009-histogram-tradeoff.svg)
+
+*Figure 20.9.13. A finer bucket ratio costs more memory and gives a smaller error, and histograms from many servers add bucket by bucket.*
+
+![Averaging the p99 of a quiet server and a busy server gives 55 ms, while merging their requests gives a true p99 of 12 ms.](./img/x09-averaged-p99-trap.svg)
+
+*Figure 20.9.14. Averaging per-server percentiles weights small servers as heavily as large ones, so the fleet percentile must come from merged samples or histograms.*
 
 The latency SLI is p99. Servers handle millions of requests, so you cannot store every latency. Systems Performance, chapter 2, lists latency as an average or a percentile, and the percentile is the one that reveals the tail users feel. Three ideas follow, and each one answers a different part of the problem: what the percentile means, how to keep a sample of it, and how to keep a histogram of it.
 
@@ -1282,6 +1321,14 @@ Decide: for any parser, write the three bad inputs first: empty, truncated, and 
 
 ### 16. Basic concurrency: queues, counters and asyncio
 
+![A fetch_all coroutine runs several calls concurrently, each with its own timeout so a slow call fails alone, and an overall timeout that cancels whatever is still running.](./img/p3-2009-asyncio-two-timeouts.svg)
+
+*Figure 20.9.15. Wrap each call so it never raises, give it its own timeout, and put an overall timeout around the whole gather.*
+
+![Two threads each read the same counter value, add one and write back the same result, so two increments leave the count one lower, while a lock makes read, add and write one unit.](./img/p3-2009-lost-update.svg)
+
+*Figure 20.9.16. The increment is three steps, read, add and write, so without the lock two threads can overwrite each other.*
+
 An ingest service has a fast reader and slow writers. A counter is updated from many threads. A fan-out call asks five backends and must not wait for the slowest forever. These are the three concurrency questions an SRE round asks, and each one has a standard answer that is short to say and easy to get wrong.
 
 ```python
@@ -1422,6 +1469,10 @@ Think of the minimum as a guard rail rather than a threshold. It does not say wh
 Answer. Window rate plus a volume floor. Memory is the number of events in the window, so at 10,000 requests a second and a 300-second window the deque would hold three million tuples. Say that this is too much and switch to per-second buckets of two counters, which is 300 entries. This bucket trick is the same window pattern with a coarser unit, and it trades a little precision for a large drop in memory.
 
 ### Scenario 2. Fitting a maintenance job into GPU reservations
+
+![Three reservations from 0 to 4, 2 to 6 and 8 to 10 hours on a timeline need two nodes because the first two overlap during hours 2 to 4, and the third reuses a node.](./img/p3-2009-gpu-sweep.svg)
+
+*Figure 20.9.17. Sort by start and keep a min-heap of end times; if the earliest end is at or before the next start, reuse that node, otherwise open a new one.*
 
 A planner has two nodes, a stack of reservations and a job that must fit somewhere before a deadline. Problem. A node has reservations `(0, 4)` and `(2, 6)` hours, and a second node has `(8, 10)`. All are half-open. How many nodes do you need for all three, and where can a two-hour job run?
 

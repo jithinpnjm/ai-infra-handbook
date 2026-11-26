@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Four tools, three layers: engine, server, orchestrator</title>
+  <desc>Architecture flowchart showing Client / gateway flowing to Orchestrator, Server layer, Engine, and GPUs, with an autoscale and route control loop.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four tools, three layers: engine, server, orchestrator</text>
+
+  
+  <g id="node-client">
+    <rect x="410" y="120" width="780" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(448, 142)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="50" height="34" rx="4" />
+      <line x1="2" y1="14" x2="52" y2="14" />
+      <circle cx="9" cy="9" r="1.5" fill="#207448" />
+      <circle cx="15" cy="9" r="1.5" fill="#207448" />
+      <line x1="27" y1="38" x2="27" y2="48" />
+      <line x1="16" y1="48" x2="38" y2="48" />
+    </g>
+    <text x="535" y="181" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Client / gateway</text>
+  </g>
+
+  
+  <line x1="800" y1="220" x2="800" y2="278" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-orchestrator">
+    <rect x="410" y="280" width="780" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(448, 307)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="27" cy="27" r="10" />
+      <circle cx="27" cy="7" r="5" />
+      <circle cx="9" cy="41" r="5" />
+      <circle cx="45" cy="41" r="5" />
+      <line x1="27" y1="17" x2="27" y2="12" />
+      <line x1="19" y1="34" x2="13" y2="38" />
+      <line x1="35" y1="34" x2="41" y2="38" />
+    </g>
+    <text x="535" y="323" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Orchestrator</text>
+    <text x="535" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">Ray Serve LLM, Kubernetes</text>
+  </g>
+
+  
+  <line x1="800" y1="390" x2="800" y2="448" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-server">
+    <rect x="410" y="450" width="780" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(448, 477)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="5" width="50" height="44" rx="4" />
+      <line x1="2" y1="27" x2="52" y2="27" />
+      <line x1="10" y1="16" x2="30" y2="16" />
+      <circle cx="42" cy="16" r="2.5" fill="#207448" />
+      <line x1="10" y1="38" x2="30" y2="38" />
+      <circle cx="42" cy="38" r="2.5" fill="#207448" />
+    </g>
+    <text x="535" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Server layer</text>
+    <text x="535" y="530" font-family="monospace, ui-monospace, SFMono-Regular, Menlo, Consolas" font-size="24" fill="#303a36">vllm serve, trtllm-serve, Triton</text>
+  </g>
+
+  
+  <path d="M 1190 335 H 1260 Q 1280 335 1280 355 V 485 Q 1280 505 1260 505 H 1193" fill="none" stroke="#db8129" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
+  <rect x="1302" y="399" width="246" height="44" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="1.5" />
+  <text x="1425" y="429" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">autoscale, route</text>
+
+  
+  <line x1="800" y1="560" x2="800" y2="618" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-engine">
+    <rect x="410" y="620" width="780" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(448, 647)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="27" cy="27" r="9" />
+      <circle cx="27" cy="27" r="19" stroke-dasharray="9.95, 4.97" stroke-width="7" />
+    </g>
+    <text x="535" y="663" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Engine</text>
+    <text x="535" y="700" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">vLLM, TensorRT-LLM, SGLang</text>
+  </g>
+
+  
+  <line x1="800" y1="730" x2="800" y2="788" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-gpus">
+    <rect x="410" y="790" width="780" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(448, 812)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="7" y="7" width="40" height="40" rx="4" />
+      <rect x="17" y="17" width="20" height="20" rx="2" />
+      <line x1="16" y1="1" x2="16" y2="7" />
+      <line x1="27" y1="1" x2="27" y2="7" />
+      <line x1="38" y1="1" x2="38" y2="7" />
+      <line x1="16" y1="47" x2="16" y2="53" />
+      <line x1="27" y1="47" x2="27" y2="53" />
+      <line x1="38" y1="47" x2="38" y2="53" />
+      <line x1="1" y1="16" x2="7" y2="16" />
+      <line x1="1" y1="27" x2="7" y2="27" />
+      <line x1="1" y1="38" x2="7" y2="38" />
+      <line x1="47" y1="16" x2="53" y2="16" />
+      <line x1="47" y1="27" x2="53" y2="27" />
+      <line x1="47" y1="38" x2="53" y2="38" />
+    </g>
+    <text x="535" y="851" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">GPUs: weights + KV cache</text>
+  </g>
+</svg>

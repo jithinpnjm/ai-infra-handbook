@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Error budgets turn a reliability argument into arithmetic</title>
+  <desc>Flowchart demonstrating error budget governance: checking budget, routing releases through canary gates when budget remains, or analyzing root cause when exhausted to either freeze features for reliability work or log external causes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Error budgets turn a reliability argument into arithmetic</text>
+
+  
+  
+  <path d="M 800 200 L 800 250" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 620 292 L 270 292 L 270 560" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="415" y="275" width="60" height="34" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="445" y="300" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">yes</text>
+
+  
+  <path d="M 980 292 L 1070 292 L 1070 390" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="1015" y="275" width="54" height="34" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1042" y="300" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">no</text>
+
+  
+  <path d="M 960 474 L 960 515 L 800 515 L 800 560" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="850" y="498" width="60" height="34" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="880" y="523" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">yes</text>
+
+  
+  <path d="M 1180 474 L 1180 515 L 1330 515 L 1330 560" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <rect x="1225" y="498" width="54" height="34" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1252" y="523" text-anchor="middle" font-size="26" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">no</text>
+
+  
+  <path d="M 270 750 L 270 815 L 630 815 L 630 880" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 800 750 L 800 880" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1330 750 L 1330 815 L 970 815 L 970 880" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+
+  
+  <g>
+    <rect x="630" y="120" width="340" height="80" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="652" y="133" width="44" height="54" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="666" y="127" width="16" height="10" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M 662 153 L 668 159 L 682 145" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="662" y1="170" x2="684" y2="170" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="716" y="171" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Budget check</text>
+  </g>
+
+  
+  <g>
+    <rect x="620" y="250" width="360" height="84" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 648 304 A 22 22 0 1 1 692 304" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="670" y1="295" x2="684" y2="280" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="670" cy="295" r="4" fill="#207448"/>
+    <text x="714" y="303" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Budget left?</text>
+  </g>
+
+  
+  <g>
+    <rect x="875" y="390" width="390" height="84" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="918" cy="426" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="930" y1="438" x2="944" y2="452" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="918" y1="416" x2="918" y2="436" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="908" y1="426" x2="928" y2="426" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <text x="960" y="443" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Cause was ours?</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="560" width="380" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 270 584 C 282 599 282 621 278 629 L 262 629 C 258 621 258 599 270 584 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 262 619 L 252 631 L 262 629 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 278 619 L 288 631 L 278 629 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="270" cy="607" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="254" y1="639" x2="286" y2="639" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="270" y="682" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="270" dy="0">Ship, canary</tspan>
+      <tspan x="270" dy="38">with gates</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="580" y="560" width="440" height="190" rx="16" fill="#fff8f0" stroke="#db8129" stroke-width="4"/>
+    
+    <path d="M 800 584 C 818 584 824 593 824 611 C 824 627 800 641 800 641 C 800 641 776 627 776 611 C 776 593 782 584 800 584 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="792" y1="605" x2="808" y2="621" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="791" y1="619" x2="801" y2="609" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="800" y="682" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="800" dy="0">Freeze features,</tspan>
+      <tspan x="800" dy="38">fix reliability</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1120" y="560" width="420" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 1316 584 L 1338 584 L 1348 594 L 1348 638 C 1348 641 1345 644 1341 644 L 1316 644 C 1312 644 1309 641 1309 638 L 1309 591 C 1309 587 1312 584 1316 584 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 1338 584 L 1338 594 L 1348 594" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="1317" y1="606" x2="1337" y2="606" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="1317" y1="618" x2="1339" y2="618" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="1317" y1="630" x2="1331" y2="630" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="1330" y="682" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="1330" dy="0">Ship, record</tspan>
+      <tspan x="1330" dy="38">the external cause</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="540" y="880" width="520" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="568" y="904" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="568" y1="918" x2="616" y2="918" stroke="#207448" stroke-width="3"/>
+    <line x1="580" y1="899" x2="580" y2="905" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="604" y1="899" x2="604" y2="905" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 576 941 L 588 932 L 598 937 L 608 925" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="646" y="942" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Review burn weekly</text>
+  </g>
+</svg>

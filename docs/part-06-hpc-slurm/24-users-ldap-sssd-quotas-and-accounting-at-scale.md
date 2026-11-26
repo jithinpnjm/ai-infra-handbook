@@ -38,13 +38,9 @@ Suppose a new account is created on the login node but not on the compute nodes.
 
 The diagram below shows the flow this chapter builds. One validated user inventory feeds three places: the LDAP or FreeIPA directory, the Slurm accounting database, and the shared storage server. From the directory, every login and compute node reads the same identities.
 
-```mermaid
-flowchart LR
-  CSV["Validated User Inventory<br/>(identity_gen.py)"] --> LDAP["1. LDAP / FreeIPA Directory<br/>posixAccount, posixGroup, sshPublicKey"]
-  CSV --> Slurm["2. SlurmDBD Accounting<br/>sacctmgr add account & user"]
-  CSV --> Storage["3. Shared Storage Server<br/>install -d /home/user + lfs setquota"]
-  LDAP -->|"LDAPS + SSSD Cache (5400s)"| Nodes["Login & Compute Nodes<br/>NSS, PAM, sss_ssh_authorizedkeys"]
-```
+![Account synchronisation: the problem and the options](./img/m6-24-1.svg)
+
+*Figure 6.24.1. Account synchronisation: the problem and the options, as a diagram.*
 
 Read the diagram from left to right. The validated inventory is the single source of truth. The three arrows out of it are the three places that must agree about a person. The arrow from the directory to the nodes is where the identities finally get used, and the cache timeout on that arrow decides how fresh each node's view is.
 

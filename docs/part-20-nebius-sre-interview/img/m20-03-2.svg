@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img" aria-labelledby="title desc">
+  <title id="title">Hypotheses out loud: the scientific method</title>
+  <desc id="desc">A top-to-bottom scientific-method flowchart with six numbered stages and one feedback loop.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 12" refX="18" refY="6" markerWidth="18" markerHeight="12" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L18 6 L0 12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="800" y="78" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="48" font-weight="700" fill="#303a36">Hypotheses out loud: the scientific method</text>
+
+  <rect x="460" y="150" width="680" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="505" cy="195" r="24" fill="#207448"/>
+  <text x="505" y="195" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#ffffff">1</text>
+  <g transform="translate(552,187)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 4H34L48 18V52H8Z"/>
+    <path d="M34 4V18H48"/>
+    <path d="M28 26V37"/>
+    <circle cx="28" cy="44" r="2" fill="#207448" stroke="none"/>
+  </g>
+  <text x="650" y="225" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">Problem statement</text>
+
+  <rect x="460" y="325" width="680" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="505" cy="370" r="24" fill="#207448"/>
+  <text x="505" y="370" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#ffffff">2</text>
+  <g transform="translate(552,362)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="44" height="46" rx="5"/>
+    <rect x="20" y="2" width="16" height="8" rx="3"/>
+    <path d="M14 22L18 26L26 18"/>
+    <path d="M32 22H46"/>
+    <path d="M14 34L18 38L26 30"/>
+    <path d="M32 34H46"/>
+    <path d="M14 46L18 50L26 42"/>
+    <path d="M32 46H46"/>
+  </g>
+  <text x="650" y="400" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">60-second checklist</text>
+
+  <rect x="460" y="500" width="680" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="505" cy="545" r="24" fill="#207448"/>
+  <text x="505" y="545" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#ffffff">3</text>
+  <g transform="translate(552,537)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M5 43A23 23 0 0 1 51 43"/>
+    <path d="M28 43L41 24"/>
+    <circle cx="28" cy="43" r="3" fill="#207448" stroke="none"/>
+  </g>
+  <text x="650" y="559" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="650" y="559">USE sweep: errors,</tspan>
+    <tspan x="650" y="597">saturation, utilisation</tspan>
+  </text>
+
+  <rect x="460" y="675" width="680" height="130" rx="18" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  <circle cx="505" cy="720" r="24" fill="#207448"/>
+  <text x="505" y="720" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#ffffff">4</text>
+  <g transform="translate(552,712)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 5C16 5 9 14 9 24C9 31 13 35 18 40V44H38V40C43 35 47 31 47 24C47 14 40 5 28 5Z"/>
+    <path d="M23 33C25 30 31 30 33 33"/>
+    <path d="M21 49H35"/>
+    <path d="M23 53H33"/>
+  </g>
+  <text x="650" y="734" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="650" y="734">Hypothesis with</tspan>
+    <tspan x="650" y="772">a prediction</tspan>
+  </text>
+
+  <rect x="460" y="850" width="680" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="505" cy="895" r="24" fill="#207448"/>
+  <text x="505" y="895" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#ffffff">5</text>
+  <g transform="translate(552,887)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M21 5V21L9 42C5 49 8 52 13 52H43C48 52 51 49 47 42L35 21V5"/>
+    <path d="M17 5H39"/>
+    <path d="M15 37H41"/>
+  </g>
+  <text x="650" y="909" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="650" y="909">Test: observe,</tspan>
+    <tspan x="650" y="947">or reversible change</tspan>
+  </text>
+
+  <rect x="460" y="1025" width="680" height="130" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="505" cy="1070" r="24" fill="#207448"/>
+  <text x="505" y="1070" text-anchor="middle" dominant-baseline="central" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" fill="#ffffff">6</text>
+  <g transform="translate(552,1062)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="23" r="15"/>
+    <path d="M35 34L50 49"/>
+    <path d="M18 18H30"/>
+    <path d="M18 23H28"/>
+    <path d="M18 28H30"/>
+  </g>
+  <text x="650" y="1084" font-family="Arial, Helvetica, sans-serif" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="650" y="1084">Drill down:</tspan>
+    <tspan x="650" y="1122">process, syscall, code</tspan>
+  </text>
+
+  <line x1="800" y1="280" x2="800" y2="325" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="800" y1="455" x2="800" y2="500" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="800" y1="630" x2="800" y2="675" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="800" y1="805" x2="800" y2="850" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="800" y1="980" x2="800" y2="1025" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <text x="824" y="1008" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600" fill="#303a36">prediction holds</text>
+
+  <path d="M460 915H132Q120 915 120 903V752Q120 740 132 740H460" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round" marker-end="url(#arrow)"/>
+  <text x="290" y="893" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="600" fill="#303a36">prediction fails</text>
+</svg>

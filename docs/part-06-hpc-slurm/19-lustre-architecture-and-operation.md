@@ -46,27 +46,9 @@ The chapter then walks through the Lustre architecture and the role each part pl
 
 Lustre splits each file operation into two conversations. One goes to a metadata server, which knows the names, permissions and layout of the file. The other goes to storage servers, which hold the bytes. The diagram shows that split, and the table names each role.
 
-```mermaid
-flowchart TB
-  subgraph Clients
-    C1[Client with lustre.ko + LNet]
-    C2[Client]
-  end
-  subgraph Metadata
-    MGS[MGS: configuration]
-    MDS1[MDS 1] --- MDT0[(MDT0)]
-    MDS2[MDS 2] --- MDT1[(MDT1)]
-  end
-  subgraph Data
-    OSS1[OSS 1] --- OST0[(OST0)] & OST1[(OST1)]
-    OSS2[OSS 2] --- OST2[(OST2)] & OST3[(OST3)]
-  end
-  C1 -- 1 open/lookup/layout --> MDS1
-  C1 == 2 read/write stripes in parallel ==> OSS1 & OSS2
-  C2 --> MDS2
-  C2 ==> OSS2
-  Clients -. mount: find config .-> MGS
-```
+![Architecture](./img/m6-19-1.svg)
+
+*Figure 6.19.1. Architecture, as a diagram.*
 
 Read the diagram from top to bottom, as you would follow a request through a system. A client first asks a metadata server for the open, the lookup or the layout. It then reads and writes stripes in parallel with several object storage servers. Clients contact the MGS when they mount. Notice that the arrows to the storage servers are thicker than the arrows to the metadata servers. That is the picture of the design: a small number of metadata requests lead to a large flow of data.
 

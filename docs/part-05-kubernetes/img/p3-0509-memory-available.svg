@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>How the kubelet counts memory available</title>
+  <desc>Visual comparison between free in /proc/meminfo and kubelet memory.available calculation, alongside disk eviction signals.</desc>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">How the kubelet counts memory available</text>
+
+  
+  <g id="panel-left-bar">
+    <rect x="40" y="120" width="410" height="860" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(217, 148)">
+      <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="16" y1="0" x2="16" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="0" x2="28" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="0" x2="40" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="16" y1="48" x2="16" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="48" x2="28" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="48" x2="40" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="0" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="48" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="48" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="48" y1="40" x2="56" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="245" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">free in <tspan font-family="monospace">/proc/meminfo</tspan></text>
+
+    
+    
+    <rect x="70" y="280" width="350" height="570" rx="12" fill="#dce8de" stroke="#207448" stroke-width="2"/>
+    <text x="245" y="520" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="245" dy="0">MemFree tiny because</tspan>
+      <tspan x="245" dy="44">Linux fills RAM with</tspan>
+      <tspan x="245" dy="44">Buffers and Cached</tspan>
+      <tspan x="245" dy="44">page cache</tspan>
+    </text>
+
+    
+    <rect x="70" y="865" width="350" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  </g>
+
+  
+  <g id="panel-right-bar">
+    <rect x="490" y="120" width="620" height="860" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(772, 148)">
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="28" y1="2" x2="28" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="2" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="46" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="10" y1="10" x2="16" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="40" x2="46" y2="46" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="10" y1="46" x2="16" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="16" x2="46" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="800" y="232" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">kubelet memory.available =</text>
+    <text x="800" y="270" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">NodeCapacity minus working_set</text>
+
+    
+    <rect x="520" y="295" width="560" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="336" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">working_set = total_usage</tspan>
+      <tspan x="800" dy="36">minus total_inactive_file</tspan>
+    </text>
+    <text x="800" y="410" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">from <tspan font-family="monospace">cgroup memory.stat</tspan></text>
+
+    
+    <rect x="520" y="450" width="560" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="492" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Segments counted in the working set:</text>
+    <text x="800" y="552" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">anonymous and heap, pinned memory,</tspan>
+      <tspan x="800" dy="42"><tspan font-family="monospace">/dev/shm</tspan> tmpfs, active file cache</tspan>
+    </text>
+
+    
+    <rect x="520" y="685" width="560" height="265" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    <text x="800" y="744" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Segment left out:</text>
+    <text x="800" y="814" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0"><tspan font-family="monospace">inactive_file</tspan> page cache,</tspan>
+      <tspan x="800" dy="44">easily reclaimable</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-disk-signals">
+    <rect x="1150" y="120" width="410" height="860" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1327, 148)">
+      <ellipse cx="28" cy="14" rx="24" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4,14 v 14 c 0,4.4 10.7,8 24,8 13.3,0 24,-3.6 24,-8 V 14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4,28 v 14 c 0,4.4 10.7,8 24,8 13.3,0 24,-3.6 24,-8 V 28" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    <text x="1355" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Disk signals</text>
+
+    
+    <rect x="1175" y="275" width="360" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1355" y="322" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1355" dy="0"><tspan font-family="monospace">nodefs</tspan> = root filesystem</tspan>
+      <tspan x="1355" dy="38">with <tspan font-family="monospace">/var/lib/kubelet</tspan>,</tspan>
+      <tspan x="1355" dy="38"><tspan font-family="monospace">emptyDir</tspan>, logs in</tspan>
+      <tspan x="1355" dy="38"><tspan font-family="monospace">/var/log/pods</tspan></tspan>
+    </text>
+
+    
+    <rect x="1175" y="505" width="360" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1355" y="555" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1355" dy="0"><tspan font-family="monospace">imagefs</tspan> =</tspan>
+      <tspan x="1355" dy="38"><tspan font-family="monospace">/var/lib/containerd</tspan></tspan>
+      <tspan x="1355" dy="38">image layers and</tspan>
+      <tspan x="1355" dy="38">writable layers</tspan>
+    </text>
+
+    
+    <rect x="1175" y="720" width="360" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1355" y="774" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1355" dy="0">a dedicated NVMe for</tspan>
+      <tspan x="1355" dy="40"><tspan font-family="monospace">containerd</tspan> keeps a</tspan>
+      <tspan x="1355" dy="40">30 GB pull off the</tspan>
+      <tspan x="1355" dy="40">OS root disk</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-takeaway">
+    <rect x="40" y="1010" width="1520" height="90" rx="16" fill="#207448"/>
+    <text x="800" y="1066" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">a node can look full in free yet have plenty of memory available</text>
+  </g>
+</svg>

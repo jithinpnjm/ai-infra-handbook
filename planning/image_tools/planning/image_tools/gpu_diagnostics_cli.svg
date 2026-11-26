@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The GPU diagnostics CLI in four layers, with exit codes</title>
+  <desc>Visual infographic explaining the four layers of the GPU diagnostics CLI: cli.py, collect.py, parsers.py, rules.py, with models.py, exit codes, and test strip.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <g id="icon-cli" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6" fill="#ffffff" />
+      <line x1="4" y1="18" x2="52" y2="18" />
+      <circle cx="11" cy="12" r="2" fill="#207448" />
+      <circle cx="17" cy="12" r="2" fill="#207448" />
+      <path d="M 14 28 L 22 34 L 14 40" />
+      <line x1="26" y1="40" x2="38" y2="40" />
+    </g>
+    <g id="icon-collect" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="18" rx="4" fill="#ffffff" />
+      <rect x="6" y="30" width="44" height="18" rx="4" fill="#ffffff" />
+      <circle cx="14" cy="17" r="2.5" fill="#207448" />
+      <line x1="22" y1="17" x2="42" y2="17" />
+      <circle cx="14" cy="39" r="2.5" fill="#207448" />
+      <line x1="22" y1="39" x2="42" y2="39" />
+    </g>
+    <g id="icon-parser" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="44" height="44" rx="6" fill="#ffffff" />
+      <path d="M 18 18 L 12 28 L 18 38" />
+      <path d="M 38 18 L 44 28 L 38 38" />
+      <line x1="30" y1="16" x2="26" y2="40" />
+    </g>
+    <g id="icon-rules" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 L 48 28 C 48 40 28 50 28 50 C 28 50 8 40 8 28 L 8 14 Z" fill="#ffffff" />
+      <path d="M 20 28 L 26 34 L 38 20" />
+    </g>
+    <g id="icon-models" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,6 50,18 50,42 28,52 6,42 6,18" fill="#ffffff" />
+      <line x1="28" y1="6" x2="28" y2="52" />
+      <line x1="6" y1="18" x2="28" y2="30" />
+      <line x1="50" y1="18" x2="28" y2="30" />
+    </g>
+    <g id="icon-exit" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="6" width="40" height="44" rx="5" fill="#ffffff" />
+      <line x1="16" y1="18" x2="38" y2="18" />
+      <line x1="16" y1="28" x2="38" y2="28" />
+      <line x1="16" y1="38" x2="32" y2="38" />
+    </g>
+    <g id="icon-test" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 6 L 34 6" />
+      <line x1="28" y1="6" x2="28" y2="18" />
+      <path d="M 22 18 L 10 44 C 8 48 11 52 16 52 L 40 52 C 45 52 48 48 46 44 L 34 18 Z" fill="#ffffff" />
+      <line x1="16" y1="38" x2="40" y2="38" />
+    </g>
+    <g id="icon-key" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="28" r="12" fill="#207448" />
+      <circle cx="18" cy="28" r="4" fill="#ffffff" />
+      <line x1="30" y1="28" x2="50" y2="28" />
+      <line x1="42" y1="28" x2="42" y2="36" />
+      <line x1="48" y1="28" x2="48" y2="34" />
+    </g>
+  </defs>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="76" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The GPU diagnostics CLI in four layers, </tspan>
+    <tspan x="800" dy="50">with exit codes</tspan>
+  </text>
+  <g id="layer-cli">
+    <rect x="40" y="178" width="1000" height="72" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-cli" x="56" y="186" />
+    <text x="128" y="222" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan font-family="monospace">cli.py: </tspan>
+      <tspan>Click group, output formatting and exit codes</tspan>
+    </text>
+  </g>
+  <line x1="540" y1="250" x2="540" y2="290" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <g id="layer-collect">
+    <rect x="40" y="290" width="1000" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-collect" x="56" y="306" />
+    <text x="128" y="326" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="128" dy="0"><tspan font-family="monospace">collect.py: </tspan>per-host executor over SSH, an agent or Redfish, </tspan>
+      <tspan x="128" dy="30">with timeout and bounded concurrency</tspan>
+    </text>
+  </g>
+  <line x1="540" y1="378" x2="540" y2="418" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <g id="pure-layers-container">
+    <rect x="40" y="418" width="1000" height="488" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <rect x="56" y="434" width="968" height="264" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <use href="#icon-parser" x="72" y="450" />
+    <text x="144" y="470" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="144" dy="0"><tspan font-family="monospace">parsers.py: </tspan>pure functions turning nvidia-smi CSV </tspan>
+      <tspan x="144" dy="26">and dcgmi output into frozen dataclasses </tspan>
+      <tspan x="144" dy="26">(a pure function answers from its inputs alone: </tspan>
+      <tspan x="144" dy="26">no network, no clock, no randomness)</tspan>
+    </text>
+    <text x="144" y="580" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0">Gpu(index, name, temp_c, util_pct, </tspan>
+      <tspan x="144" dy="24">mem_used_mib, mem_total_mib, ecc_uncorrected); </tspan>
+      <tspan x="144" dy="24">_int maps empty, [N/A] and [Not Supported] to None; </tspan>
+      <tspan x="144" dy="24">a line without exactly 7 columns raises </tspan>
+      <tspan x="144" dy="24">ValueError unexpected nvidia-smi columns</tspan>
+    </text>
+    <line x1="540" y1="698" x2="540" y2="738" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="56" y="738" width="968" height="152" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <use href="#icon-rules" x="72" y="752" />
+    <text x="144" y="776" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan font-family="monospace">rules.py: </tspan>
+      <tspan>evaluate(gpus, expected=8, max_temp=85)</tspan>
+    </text>
+    <text x="144" y="810" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0">problems for: expected 8 GPUs but found a different count; </tspan>
+      <tspan x="144" dy="26">temp above 85; uncorrected ECC non-zero; </tspan>
+      <tspan x="144" dy="26">plus XID in a set of known codes</tspan>
+    </text>
+  </g>
+  <g id="side-models">
+    <rect x="1080" y="178" width="480" height="96" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-models" x="1096" y="198" />
+    <text x="1172" y="218" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1172" dy="0"><tspan font-family="monospace">models.py: </tspan>dataclasses </tspan>
+      <tspan x="1172" dy="32">or pydantic models</tspan>
+    </text>
+  </g>
+  <g id="exit-code-table">
+    <rect x="1080" y="314" width="480" height="592" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <rect x="1100" y="334" width="440" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <use href="#icon-exit" x="1116" y="362" />
+    <text x="1188" y="400" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan font-family="monospace">0 </tspan>
+      <tspan>all GPUs healthy</tspan>
+    </text>
+    <rect x="1100" y="478" width="440" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <use href="#icon-exit" x="1116" y="506" />
+    <text x="1188" y="528" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1188" dy="0"><tspan font-family="monospace">1 </tspan>usage or </tspan>
+      <tspan x="1188" dy="32">runtime failure</tspan>
+    </text>
+    <rect x="1100" y="622" width="440" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <use href="#icon-exit" x="1116" y="650" />
+    <text x="1188" y="688" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan font-family="monospace">3 </tspan>
+      <tspan>any GPU unhealthy</tspan>
+    </text>
+    <rect x="1100" y="766" width="440" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <use href="#icon-exit" x="1116" y="794" />
+    <text x="1188" y="816" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1188" dy="0"><tspan font-family="monospace">4 </tspan>partial </tspan>
+      <tspan x="1188" dy="32">collection failure</tspan>
+    </text>
+  </g>
+  <g id="test-strip">
+    <rect x="40" y="946" width="1520" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-test" x="56" y="973" />
+    <text x="136" y="982" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="136" dy="0">canned CSV into parse_smi_csv and evaluate: [N/A] values, wrong column count, </tspan>
+      <tspan x="136" dy="26">empty output, missing GPU; then CliRunner with a stubbed executor </tspan>
+      <tspan x="136" dy="26">asserting exit codes and JSON shape</tspan>
+    </text>
+  </g>
+  <g id="bottom-bar">
+    <rect x="40" y="1096" width="1520" height="64" rx="12" fill="#207448" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-key" x="56" y="1100" />
+    <text x="800" y="1136" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Parser, rules, executor and CLI stay separate
+    </text>
+  </g>
+</svg>

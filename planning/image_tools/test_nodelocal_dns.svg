@@ -1,0 +1,304 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>NodeLocal DNSCache: no DNAT, no conntrack, TCP on a miss</title>
+  <desc>Architecture comparison showing Kubernetes pod DNS resolution before and after NodeLocal DNSCache on a node, eliminating conntrack races, DNAT, and cross-node hops, with capacity sizing rules.</desc>
+
+  <defs>
+    <!-- Arrowhead Green (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">NodeLocal DNSCache: no DNAT, no conntrack, TCP on a miss</text>
+
+  <!-- TOP CONTAINER: Before and after on one node -->
+  <g id="container-before-after">
+    <!-- Main Outer Container Panel -->
+    <rect x="40" y="95" width="1520" height="565" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Container Header Icon: Host / Server Node (56px) -->
+    <g transform="translate(65, 110)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="4" />
+      <rect x="4" y="28" width="48" height="18" rx="4" />
+      <circle cx="12" cy="15" r="2.5" fill="#207448" />
+      <circle cx="20" cy="15" r="2.5" fill="#207448" />
+      <circle cx="12" cy="37" r="2.5" fill="#207448" />
+      <circle cx="20" cy="37" r="2.5" fill="#207448" />
+      <line x1="36" y1="15" x2="44" y2="15" />
+      <line x1="36" y1="37" x2="44" y2="37" />
+    </g>
+
+    <!-- Container Header Title (32px bold) -->
+    <text x="135" y="146" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Before and after on one node</text>
+
+    <!-- SECTION: Before -->
+    <!-- Subheading: Before -->
+    <text x="65" y="195" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Before</text>
+
+    <!-- Flow Arrows (3 orthogonal arrows) -->
+    <line x1="215" y1="298" x2="247" y2="298" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <line x1="627" y1="298" x2="659" y2="298" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <line x1="999" y1="298" x2="1031" y2="298" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Before Step 1: pod -->
+    <g id="before-step-1">
+      <rect x="65" y="210" width="150" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <!-- Number circle (r=24) -->
+      <circle cx="140" cy="242" r="24" fill="#207448" />
+      <text x="140" y="242" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <!-- Application / window icon (56px) -->
+      <g transform="translate(112, 274)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="48" height="38" rx="4" />
+        <line x1="4" y1="16" x2="52" y2="16" />
+        <circle cx="12" cy="11" r="2" fill="#207448" />
+        <circle cx="18" cy="11" r="2" fill="#207448" />
+      </g>
+      <!-- Label: pod -->
+      <text x="140" y="358" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">pod</text>
+    </g>
+
+    <!-- Before Step 2: UDP 53 to kube-dns ClusterIP 10.96.0.10 -->
+    <g id="before-step-2">
+      <rect x="247" y="210" width="380" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <!-- Number circle (r=24) -->
+      <circle cx="282" cy="242" r="24" fill="#207448" />
+      <text x="282" y="242" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <!-- Network / routing icon (56px) -->
+      <g transform="translate(320, 218)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="14" cy="24" r="8" />
+        <circle cx="42" cy="12" r="6" />
+        <circle cx="42" cy="36" r="6" />
+        <line x1="22" y1="20" x2="36" y2="15" />
+        <line x1="22" y1="28" x2="36" y2="33" />
+      </g>
+      <!-- Label -->
+      <text x="437" y="292" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="437" dy="0">UDP 53 to</tspan>
+        <tspan x="437" dy="32">kube-dns ClusterIP</tspan>
+        <tspan x="437" dy="32" font-family="monospace">10.96.0.10</tspan>
+      </text>
+    </g>
+
+    <!-- Before Step 3: DNAT and conntrack entry -->
+    <g id="before-step-3">
+      <rect x="659" y="210" width="340" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <!-- Number circle (r=24) -->
+      <circle cx="694" cy="242" r="24" fill="#207448" />
+      <text x="694" y="242" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      <!-- Translation / table icon (56px) -->
+      <g transform="translate(732, 218)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="34" rx="4" />
+        <line x1="6" y1="20" x2="50" y2="20" />
+        <line x1="28" y1="20" x2="28" y2="42" />
+      </g>
+      <!-- Label -->
+      <text x="829" y="308" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="829" dy="0">DNAT and</tspan>
+        <tspan x="829" dy="34">conntrack entry</tspan>
+      </text>
+    </g>
+
+    <!-- Before Step 4: CoreDNS pod on another node; parallel A and AAAA can race and cost 5 s -->
+    <g id="before-step-4">
+      <rect x="1031" y="210" width="504" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <!-- Number circle (r=24) -->
+      <circle cx="1066" cy="242" r="24" fill="#207448" />
+      <text x="1066" y="242" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+      <!-- Clock / timer icon (56px) -->
+      <g transform="translate(1105, 218)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="18" />
+        <polyline points="24,14 24,24 32,24" />
+      </g>
+      <!-- Label -->
+      <text x="1283" y="284" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1283" dy="0">CoreDNS pod on another node;</tspan>
+        <tspan x="1283" dy="32">parallel A and AAAA can race</tspan>
+        <tspan x="1283" dy="32">and cost 5 s</tspan>
+      </text>
+    </g>
+
+    <!-- SECTION: After -->
+    <!-- Subheading: After -->
+    <text x="65" y="432" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">After</text>
+
+    <!-- Flow Arrows (2 orthogonal arrows) -->
+    <line x1="215" y1="545" x2="250" y2="545" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <line x1="810" y1="545" x2="845" y2="545" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- After Step 1: pod -->
+    <g id="after-step-1">
+      <rect x="65" y="450" width="150" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <!-- Number circle (r=24) -->
+      <circle cx="140" cy="485" r="24" fill="#207448" />
+      <text x="140" y="485" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      <!-- Application / window icon (56px) -->
+      <g transform="translate(112, 524)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="48" height="38" rx="4" />
+        <line x1="4" y1="16" x2="52" y2="16" />
+        <circle cx="12" cy="11" r="2" fill="#207448" />
+        <circle cx="18" cy="11" r="2" fill="#207448" />
+      </g>
+      <!-- Label: pod -->
+      <text x="140" y="612" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">pod</text>
+    </g>
+
+    <!-- After Step 2: UDP or TCP 53 to 169.254.20.10 (node-local-dns DaemonSet on a dummy interface with NOTRACK iptables rules) -->
+    <!-- SINGLE ORANGE HIGHLIGHT ITEM -->
+    <g id="after-step-2">
+      <rect x="250" y="450" width="560" height="195" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+      <!-- Number circle (r=24) in orange -->
+      <circle cx="288" cy="485" r="24" fill="#db8129" />
+      <text x="288" y="485" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      <!-- Shield / cache icon (56px) in orange -->
+      <g transform="translate(325, 462)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 24 6 L 42 12 V 24 C 42 34 24 42 24 42 C 24 42 6 34 6 24 V 12 Z" />
+        <circle cx="24" cy="22" r="6" />
+      </g>
+      <!-- Label -->
+      <text x="530" y="530" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="530" dy="0">UDP or TCP 53 to </tspan><tspan font-family="monospace">169.254.20.10</tspan>
+        <tspan x="530" dy="28">(node-local-dns DaemonSet on a</tspan>
+        <tspan x="530" dy="28">dummy interface with <tspan font-family="monospace">NOTRACK</tspan></tspan>
+        <tspan x="530" dy="28">iptables rules)</tspan>
+      </text>
+    </g>
+
+    <!-- After Step 3: cache hit answers on the node with no DNAT, no conntrack and no cross-node hop; on a miss it asks the kube-dns Service over TCP 53 (avoids the UDP race and spreads load) -->
+    <g id="after-step-3">
+      <rect x="845" y="450" width="690" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <!-- Number circle (r=24) -->
+      <circle cx="883" cy="485" r="24" fill="#207448" />
+      <text x="883" y="485" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      <!-- Checkmark / server reply icon (56px) -->
+      <g transform="translate(920, 462)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="34" rx="4" />
+        <polyline points="16,25 24,33 38,17" />
+      </g>
+      <!-- Label -->
+      <text x="1190" y="530" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1190" dy="0">cache hit answers on the node with no DNAT,</tspan>
+        <tspan x="1190" dy="28">no conntrack and no cross-node hop; on a miss</tspan>
+        <tspan x="1190" dy="28">it asks the kube-dns Service over TCP 53</tspan>
+        <tspan x="1190" dy="28">(avoids the UDP race and spreads load)</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- BOTTOM ROW: Extras (Left) and Capacity side box (Right) -->
+
+  <!-- LEFT PANEL: Extras -->
+  <g id="container-extras">
+    <rect x="40" y="690" width="980" height="475" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Icon: Gear / configuration (56px) -->
+    <g transform="translate(65, 706)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="8" />
+      <path d="M 24 6 L 24 12 M 24 36 L 24 42 M 6 24 L 12 24 M 36 24 L 42 24 M 11 11 L 16 16 M 32 32 L 37 37 M 11 37 L 16 32 M 32 16 L 37 11" />
+    </g>
+
+    <!-- Heading: Extras (30px bold) -->
+    <text x="125" y="740" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Extras</text>
+
+    <!-- Card 1: negative caching: the node remembers NXDOMAIN so the next pod gets it locally -->
+    <g id="extras-card-1">
+      <rect x="65" y="765" width="930" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <!-- Memory / cache icon -->
+      <g transform="translate(80, 783)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="36" height="34" rx="3" />
+        <line x1="4" y1="18" x2="40" y2="18" />
+        <line x1="12" y1="28" x2="20" y2="28" />
+        <line x1="26" y1="28" x2="32" y2="28" />
+      </g>
+      <text x="140" y="801" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="140" dy="0">negative caching: the node remembers NXDOMAIN</tspan>
+        <tspan x="140" dy="28">so the next pod gets it locally</tspan>
+      </text>
+    </g>
+
+    <!-- Card 2: run as a critical DaemonSet with maxUnavailable 10 percent and readiness checks; if one node cache fails that node loses DNS until it restarts, so decide the fallback -->
+    <g id="extras-card-2">
+      <rect x="65" y="865" width="930" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <!-- Shield / health check icon -->
+      <g transform="translate(80, 907)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 22 4 L 38 10 V 22 C 38 32 22 38 22 38 C 22 38 6 32 6 22 V 10 Z" />
+        <polyline points="14,20 20,26 30,16" />
+      </g>
+      <text x="140" y="900" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="140" dy="0">run as a critical DaemonSet with maxUnavailable 10 percent</tspan>
+        <tspan x="140" dy="28">and readiness checks; if one node cache fails that node loses</tspan>
+        <tspan x="140" dy="28">DNS until it restarts, so decide the fallback</tspan>
+      </text>
+    </g>
+
+    <!-- Bottom Row inside Extras: Card 3 and Card 4 side by side -->
+    <!-- Card 3: Cilium alternatives: DNS proxy or localRedirectPolicy -->
+    <g id="extras-card-3">
+      <rect x="65" y="1015" width="450" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <!-- Network / proxy fork icon -->
+      <g transform="translate(80, 1055)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="14" r="5" />
+        <circle cx="34" cy="14" r="5" />
+        <circle cx="23" cy="34" r="5" />
+        <path d="M 23 29 V 22 M 23 22 L 14 18 M 23 22 L 32 18" />
+      </g>
+      <text x="135" y="1055" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="135" dy="0">Cilium alternatives:</tspan>
+        <tspan x="135" dy="28">DNS proxy or</tspan>
+        <tspan x="135" dy="28" font-family="monospace">localRedirectPolicy</tspan>
+      </text>
+    </g>
+
+    <!-- Card 4: kubelet clusterDNS points at 169.254.20.10 -->
+    <g id="extras-card-4">
+      <rect x="545" y="1015" width="450" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <!-- Config / target pointer icon -->
+      <g transform="translate(560, 1055)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="34" height="34" rx="4" />
+        <line x1="12" y1="16" x2="26" y2="16" />
+        <line x1="12" y1="24" x2="34" y2="24" />
+        <circle cx="30" cy="32" r="2.5" fill="#207448" />
+      </g>
+      <text x="615" y="1070" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="615" dy="0"><tspan font-family="monospace">kubelet clusterDNS</tspan></tspan>
+        <tspan x="615" dy="32">points at <tspan font-family="monospace">169.254.20.10</tspan></tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- RIGHT PANEL: Capacity side box -->
+  <g id="container-capacity">
+    <rect x="1060" y="690" width="500" height="475" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Icon: Capacity / Gauge (56px) -->
+    <g transform="translate(1085, 706)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18" />
+      <path d="M 12 30 A 14 14 0 1 1 36 30" />
+      <line x1="24" y1="24" x2="32" y2="16" />
+    </g>
+
+    <!-- Heading: Capacity side box (30px bold) -->
+    <text x="1145" y="740" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Capacity side box</text>
+
+    <!-- Inner Panel -->
+    <rect x="1080" y="765" width="460" height="380" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+
+    <!-- Capacity Text Body -->
+    <text x="1100" y="798" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" dy="0">load = pod count x lookup</tspan>
+      <tspan x="1100" dy="30">rate x ndots amplification;</tspan>
+      <tspan x="1100" dy="30">a 5,000 pod start can</tspan>
+      <tspan x="1100" dy="30">produce 100k+ queries</tspan>
+      <tspan x="1100" dy="30">in seconds; CoreDNS about</tspan>
+      <tspan x="1100" dy="30">10-20k QPS per core with</tspan>
+      <tspan x="1100" dy="30">caching; replicas about</tspan>
+      <tspan x="1100" dy="30">nodes/100 to nodes/20,</tspan>
+      <tspan x="1100" dy="30">minimum 3, spread across</tspan>
+      <tspan x="1100" dy="30">nodes and zones, PDB,</tspan>
+      <tspan x="1100" dy="30">system-cluster-critical</tspan>
+    </text>
+  </g>
+</svg>

@@ -55,18 +55,9 @@ Which machine should run the scheduler, and which one should run a user's code? 
 
 The diagram below shows how a user reaches the cluster. Follow the arrows from the user to the login nodes, then to the control node, and then out to the compute field. Notice that the storage, the service nodes and the out-of-band management network all connect to the same pieces from the side. They do not sit in the line of work, but the cluster cannot run without them.
 
-```mermaid
-flowchart TB
-  User((User)) -- ssh, web --> Login[Login and access nodes]
-  Login --> Sched[Control / head node: scheduler, DB, images]
-  Sched --> Compute[Compute field: CPU and GPU nodes]
-  Compute --- Store[(Shared storage: home, scratch, checkpoints)]
-  Login --- Store
-  Svc[Service nodes: DNS, DHCP, NTP, LDAP, license, build] --- Sched
-  Svc --- Compute
-  BMC[Out-of-band management: BMC, PDU, switches] -.- Compute
-  BMC -.- Sched
-```
+![Node roles: control, compute, login, service, and storage](./img/m6-02-1.svg)
+
+*Figure 6.2.1. Node roles: control, compute, login, service, and storage, as a diagram.*
 
 The table lists the five roles you will meet most often. Each row names what the role is for and, just as important, what must never happen on it. Read the right-hand column as a list of warnings before you read the middle column as a list of jobs.
 

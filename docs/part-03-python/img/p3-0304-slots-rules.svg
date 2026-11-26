@@ -1,0 +1,92 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>__slots__: four rules that decide whether the memory saving is real</title>
+  <desc>Visual infographic explaining Python __slots__ memory optimization, four inheritance and layout rules, headline benchmarks, and usage takeaways.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">__slots__: four rules that decide</tspan>
+    <tspan x="800" dy="56">whether the memory saving is real</tspan>
+  </text>
+
+  
+  <rect x="40" y="130" width="1520" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="162" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">assigning a sequence of attribute names to __slots__ reserves fixed storage per instance;</tspan>
+    <tspan x="800" dy="32">class-level descriptors manage it; no per-instance __dict__ or __weakref__</tspan>
+  </text>
+
+  
+  <rect x="40" y="226" width="1520" height="80" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(62, 238)">
+    <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 6 14 v 26 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8 v -26" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 6 27 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8" fill="none" stroke="#db8129" stroke-width="4"/>
+  </g>
+  <text x="135" y="258" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="135" dy="0">Vector2d with __slots__ = (__x, __y):</tspan>
+    <tspan x="135" dy="32">10 million instances shrink from 1.62 GiB to 655 MiB in mem_test.py</tspan>
+  </text>
+
+  
+
+  
+  <rect x="40" y="320" width="1520" height="182" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(62, 332)">
+    <rect x="16" y="4" width="24" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="2" y="36" width="22" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="32" y="36" width="22" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 20 v 8 M 13 28 h 30 M 13 28 v 8 M 43 28 v 8" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="135" y="356" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rule 1 every class in the hierarchy defines __slots__</text>
+  <text x="135" y="412" font-family="monospace" font-size="24" fill="#303a36">class C: pass; class D(C): __slots__ = [a] still gives D() an instance __dict__</text>
+  <text x="135" y="466" font-family="monospace" font-size="24" fill="#303a36">a subclass that adds no new attributes still declares __slots__ = ()</text>
+
+  
+  <rect x="40" y="516" width="1520" height="182" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(62, 528)">
+    <path d="M 28 4 L 50 12 v 18 c 0 14 -22 22 -22 22 s -22 -8 -22 -22 v -18 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="135" y="552" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rule 2 do not repeat slot names in subclasses</text>
+  <text x="135" y="608" font-family="sans-serif" font-size="24" fill="#303a36">instances inherit the union of all __slots__ along the MRO</text>
+  <text x="135" y="662" font-family="sans-serif" font-size="24" fill="#303a36">repeating a superclass slot hides its descriptor and wastes space</text>
+
+  
+  <rect x="40" y="712" width="1520" height="206" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(62, 726)">
+    <circle cx="28" cy="28" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 8 v 6 M 28 42 v 6 M 8 28 h 6 M 42 28 h 6 M 14 14 l 5 5 M 37 37 l 5 5 M 14 42 l 5 -5 M 37 19 l 5 -5" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="748" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rule 3 a slot name cannot have a class-level default</text>
+  <text x="135" y="802" font-family="monospace" font-size="24" fill="#303a36">class C: __slots__ = [a]; a = 99 raises ValueError: a in __slots__ conflicts with class variable</text>
+  <text x="135" y="852" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">under multiple inheritance at most one base may have a non-empty __slots__,</tspan>
+    <tspan x="135" dy="36">else TypeError: multiple bases have instance lay-out conflict, so mixins use __slots__ = ()</tspan>
+  </text>
+
+  
+  <rect x="40" y="932" width="1520" height="172" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(62, 944)">
+    <rect x="6" y="6" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 6 21 h 44 M 6 36 h 44" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="15" cy="14" r="2.5" fill="#207448"/>
+    <circle cx="15" cy="28.5" r="2.5" fill="#207448"/>
+    <circle cx="15" cy="43.5" r="2.5" fill="#207448"/>
+  </g>
+  <text x="135" y="968" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rule 4 slotted instances have no __dict__ unless __dict__ is listed in __slots__</text>
+  <text x="135" y="1024" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">obj.__slots__ shows only the lowest class&apos;s list,</tspan>
+    <tspan x="135" dy="36">so generic tools use dir(obj) and getattr(obj, name)</tspan>
+  </text>
+
+  
+  <rect x="40" y="1120" width="1520" height="62" rx="8" fill="#207448"/>
+  <text x="800" y="1159" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Reach for __slots__ when millions of instances exist, and keep __init__ cheap</text>
+</svg>

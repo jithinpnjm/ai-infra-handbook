@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "03",
+  "name": "p3-0103-path-walk",
+  "title": "How the kernel walks /home/alice/train.py one name at a time",
+  "spec": "Left to right chain of four directory tables, each drawn as a small two-column table (name | inode). Table 1 headed 'Root directory /' with a row 'home -> inode A'. Table 2 headed 'Directory /home (inode A)' with a row 'alice -> inode B'. Table 3 headed 'Directory /home/alice (inode B)' with a row 'train.py -> inode C'. Final box 'Inode C: type, permissions, owner, size, times, link count, pointers to data blocks' with an arrow to a stack labelled 'Data blocks on the device'. Numbered circles 1 to 4 on the arrows between tables: 1 'look up home', 2 'look up alice', 3 'look up train.py', 4 'read the inode and its data'. The path string '/home/alice/train.py' at the top with each component underlined in the matching step. Callout in orange under table 3: 'The name lives in the directory; everything else lives in the inode'. Small note at the bottom: 'rename = change one table row, so it is instant on one filesystem'.",
+  "anchor": "## 4. Inodes: what a file really is",
+  "alt": "A chain of three directory tables resolving the path home, alice and train.py to inode numbers, ending at the file inode and its data blocks.",
+  "cap": "The kernel resolves a path one component at a time, each lookup returning an inode number, and only the last inode leads to the file data."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "03",
+  "name": "p3-0103-timestamps-matrix",
+  "title": "Which timestamp changes when you do what to a file",
+  "spec": "A matrix. Columns: three timestamp cards 'mtime (contents written)', 'ctime (inode changed)', 'atime (file read)'. Rows, each an action in monospace: 'echo more >> f1' (append), 'chmod 600 f1' (permissions), 'cat f1' (read), 'ln f1 f2' (new hard link, link count changes), 'touch -d \"2026-01-01 12:00\" f1'. Cells show a green filled circle for 'changes' and a hollow circle for 'unchanged', with these facts from the chapter: append changes mtime and ctime; chmod changes only ctime; cat changes atime only occasionally because of relatime (cell labelled 'rarely: relatime'); ln changes ctime (link count); touch -d sets mtime and atime but ctime cannot be set that way (ctime filled, labelled 'ctime still moves, cannot be set'). Orange outline on the chmod row's ctime cell. Right side box 'stat shows all three; ls -l shows mtime, ls -lc ctime, ls -lu atime'. Bottom note: 'ctime is not the creation time'.",
+  "anchor": "## 6. Timestamps",
+  "alt": "A matrix of five file actions against the three timestamps mtime, ctime and atime, showing which ones change for each action.",
+  "cap": "Writing changes mtime and ctime, changing permissions changes only ctime, and reading changes atime only occasionally because of relatime."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "03",
+  "name": "p3-0103-disk-full-ladder",
+  "title": "The disk looks full: three checks before you delete anything",
+  "spec": "A vertical troubleshooting ladder starting with a top box 'Symptom: writes fail with No space left on device (ENOSPC)'. Step 1 box (number circle 1) 'df -h and df -i on the path'. Two branches: left 'df -h shows 95% used' goes to Step 2; right 'df -h shows free space but df -i shows 100% IUse%' goes to result box 'Out of inodes: millions of tiny files'. Fix list under it: 'delete or pack the small files', 'mkfs.ext4 -N for more inodes, or use XFS', 'shard your datasets'. Step 2 (circle 2) 'du -sh /* totals much less than df?' branch yes goes to result box 'Deleted but still open file': diagnose 'sudo lsof +L1' or 'ls -l /proc/<pid>/fd | grep deleted'; fix 'restart or signal the process, or : > /proc/<pid>/fd/<n>'. Branch no goes to Step 3 (circle 3) 'quota -s' and 'container writable layer full?' with result 'Quota reached or container layer full'. Each result box has a disk-cylinder or inode icon. Orange only on the inode result box. Takeaway bar: 'When a disk looks full, check inodes and deleted-but-open files before you delete anything'.",
+  "anchor": "### 1. \"No space left on device\" but `df -h` shows free space",
+  "alt": "A troubleshooting ladder for a disk that looks full, branching to out of inodes, a deleted but open file, or a quota or container layer limit.",
+  "cap": "Run df -h and df -i first, then compare du with df to find deleted-but-open files, then check quotas."
+ }
+]

@@ -34,12 +34,9 @@ You need 6.4, 6.18, 6.19, and the Part 14 basics on parallelism strategies befor
 
 Suppose many ranks each need to write their piece of one large array into the same file. A rank is one process in a parallel program, and each rank holds its own slice of the data. If every rank works on its own, the file system spends its time sorting out scattered writes from many directions. The HPC world avoids that with a layered stack, which *Parallel and High Performance Computing* (chapter 16) describes. Each layer hands its work down to the layer below, and each layer adds one kind of help.
 
-```mermaid
-flowchart TB
-  APP[Application: arrays per rank] --> H5[HDF5 / NetCDF / ADIOS: self-describing format]
-  H5 --> MPIIO[MPI-IO: collective and independent file access]
-  MPIIO --> FS[POSIX / parallel file system client: Lustre, GPFS, NFS]
-```
+![Parallel I/O in HPC: MPI-IO and HDF5](./img/m6-21-1.svg)
+
+*Figure 6.21.1. Parallel I/O in HPC: MPI-IO and HDF5, as a diagram.*
 
 Read the diagram from the top. Your application holds arrays, one set per rank. A self-describing format organizes them, so the file itself records what each array is. MPI-IO decides how the ranks touch the file. Finally, the file system client moves the bytes to the storage servers.
 

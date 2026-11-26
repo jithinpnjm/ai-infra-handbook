@@ -1,0 +1,99 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Two pointers walk toward each other on sorted data</title>
+  <desc>Visual explanation of two pointers moving inward on sorted data based on sum comparison</desc>
+
+  <defs>
+    <marker id="arrow-green-up" viewBox="0 0 12 12" refX="6" refY="2" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 10 L 6 2 L 10 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="80" y="90" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Two pointers walk toward each other on sorted data</text>
+
+  
+  <rect x="170" y="170" width="600" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(205, 197)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="28" cy="28" r="24" />
+    <circle cx="28" cy="28" r="12" />
+    <line x1="28" y1="0" x2="28" y2="56" />
+    <line x1="0" y1="28" x2="56" y2="28" />
+  </g>
+  <text x="295" y="238" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">a[i] + a[j] = target?</text>
+
+  
+  <g stroke="#207448" stroke-width="3" fill="#ffffff">
+    
+    <rect x="170" y="340" width="120" height="100" rx="8" />
+    
+    <rect x="290" y="340" width="120" height="100" rx="8" />
+    
+    <rect x="410" y="340" width="120" height="100" rx="8" />
+    
+    <rect x="530" y="340" width="120" height="100" rx="8" fill="#e8f1ea" />
+    
+    <rect x="650" y="340" width="120" height="100" rx="8" />
+  </g>
+
+  
+  <text x="230" y="402" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">a[0]</text>
+  <text x="350" y="402" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">a[1]</text>
+  <text x="470" y="402" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">a[2]</text>
+  <text x="590" y="398" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36" text-anchor="middle">...</text>
+  <text x="710" y="402" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">a[n-1]</text>
+
+  
+  <line x1="230" y1="560" x2="230" y2="455" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green-up)" />
+  <circle cx="230" cy="610" r="28" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <text x="230" y="621" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">i</text>
+
+  
+  <line x1="710" y1="560" x2="710" y2="455" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green-up)" />
+  <circle cx="710" cy="610" r="28" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <text x="710" y="621" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">j</text>
+
+  
+  <rect x="850" y="170" width="670" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  
+  <g transform="translate(885, 195)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="16" y="2" width="24" height="16" rx="4" />
+    <path d="M 28 18 L 28 32 M 10 32 L 46 32 M 10 32 L 10 40 M 46 32 L 46 40" />
+    <rect x="0" y="40" width="20" height="14" rx="3" />
+    <rect x="36" y="40" width="20" height="14" rx="3" />
+  </g>
+
+  
+  <rect x="880" y="265" width="610" height="110" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  <text x="910" y="312" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">sum too big: move j left</text>
+  <line x1="910" y1="345" x2="1450" y2="345" stroke="#db8129" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="880" y="395" width="610" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="910" y="442" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">sum too small: move i right</text>
+  <line x1="910" y1="475" x2="1450" y2="475" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="880" y="525" width="610" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="910" y="572" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">sum equal: return (i, j)</text>
+  <line x1="910" y1="605" x2="1450" y2="605" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="80" y="740" width="1440" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(115, 757)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M 18 36 C 8 28 8 14 28 6 C 44 14 44 28 34 36 L 34 44 L 18 44 Z" />
+    <line x1="20" y1="52" x2="32" y2="52" />
+  </g>
+  <text x="195" y="796" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Sortedness tells you which pointer can never help again.</text>
+</svg>

@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Long context: the cache, not the weights, sets the limit</title>
+  <desc>Visual breakdown of GPU memory allocation and KV cache capacity comparing 32,768-token long context requests against 2,500-token standard requests on four H100s and alternative H200 configurations.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Long context: the cache, not the weights, sets the limit</text>
+
+  
+  <rect x="50" y="95" width="1500" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 102)">
+    <rect x="4" y="8" width="48" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="14" y1="20" x2="36" y2="20" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="14" y1="32" x2="36" y2="32" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="42" cy="20" r="2.5" fill="#207448"/>
+    <circle cx="42" cy="32" r="2.5" fill="#207448"/>
+  </g>
+  <text x="145" y="140" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Worked example Qwen2.5-72B BF16 with 32,768 tokens of context on four H100s</text>
+
+  
+  <rect x="50" y="185" width="1500" height="225" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 198)">
+    <rect x="6" y="10" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="2" x2="16" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="2" x2="28" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40" y1="2" x2="40" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="16" y1="46" x2="16" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40" y1="46" x2="40" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="145" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Memory bar: 4 x 80 x 0.90 = 288 GB usable</text>
+
+  
+  
+  <rect x="80" y="260" width="727" height="52" rx="6" fill="#52796f"/>
+  <text x="443" y="295" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">minus weights 72.7 x 2 = 145.4 GB</text>
+
+  
+  <rect x="807" y="260" width="100" height="52" fill="#84a98c"/>
+
+  
+  <line x1="857" y1="312" x2="857" y2="335" stroke="#84a98c" stroke-width="3"/>
+  <rect x="587" y="335" width="540" height="56" rx="6" fill="#f5f8f5" stroke="#84a98c" stroke-width="2"/>
+  <text x="857" y="371" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">minus overhead 20 GB (5 GB per GPU)</text>
+
+  
+  <rect x="907" y="260" width="613" height="52" rx="6" fill="#207448"/>
+  <text x="1213" y="295" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">leaves 122.6 GB for KV cache</text>
+
+  
+  
+  <rect x="50" y="430" width="730" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 442)">
+    <rect x="8" y="4" width="40" height="48" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="18" y1="16" x2="38" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="18" y1="28" x2="38" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="18" y1="40" x2="28" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="475" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cost per request:</text>
+  <text x="75" y="520" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="75" dy="0">KV 327,680 bytes per token x 32,768 tokens</tspan>
+    <tspan x="75" dy="30">= 10.74 GB</tspan>
+  </text>
+
+  
+  <rect x="50" y="585" width="730" height="135" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(68, 597)">
+    <circle cx="28" cy="28" r="20" fill="none" stroke="#db8129" stroke-width="4"/>
+    <circle cx="28" cy="28" r="8" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="28" y1="2" x2="28" y2="10" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="46" x2="28" y2="54" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="2" y1="28" x2="10" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="46" y1="28" x2="54" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="630" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Fit:</text>
+  <text x="75" y="675" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="75" dy="0">122.6 / 10.74 = 11.4,</tspan>
+    <tspan fill="#db8129"> so 11 full-length requests</tspan>
+  </text>
+
+  
+  <rect x="820" y="430" width="730" height="290" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(842, 442)">
+    <path d="M28 8 v40 M8 22 h40 M8 22 l-6 18 h12 z M48 22 l-6 18 h12 z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="910" y="468" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="910" dy="0">Contrast same cluster</tspan>
+    <tspan x="910" dy="36">at the usual size:</tspan>
+  </text>
+  <text x="845" y="585" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="845" dy="0">122.6 / 0.8192 GB per</tspan>
+    <tspan x="845" dy="34">2,500-token request</tspan>
+    <tspan x="845" dy="48" font-family="sans-serif" font-size="32" fill="#207448">= 149 requests</tspan>
+  </text>
+
+  
+  <rect x="50" y="740" width="1500" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 755)">
+    <path d="M8 28 h16 c8 0 14 -10 20 -10 h10 M24 28 c8 0 14 10 20 10 h10" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="8" cy="28" r="3.5" fill="#207448"/>
+    <circle cx="54" cy="18" r="3.5" fill="#207448"/>
+    <circle cx="54" cy="38" r="3.5" fill="#207448"/>
+  </g>
+  <text x="145" y="785" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Alternatives:</text>
+  <text x="145" y="825" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">two H200s at 141 GB give 120 requests at 2,500 tokens but only 9 at 32,768 tokens;</tspan>
+    <tspan x="145" dy="32" font-weight="bold" fill="#207448">four H200s give 31 at the long size</tspan>
+  </text>
+
+  
+  <rect x="50" y="905" width="1500" height="145" rx="8" fill="#207448"/>
+  
+  <g transform="translate(68, 922)">
+    <path d="M8 12 h40 a6 6 0 0 1 6 6 v22 a6 6 0 0 1 -6 6 h-22 l-12 10 v-10 h-6 a6 6 0 0 1 -6 -6 v-22 a6 6 0 0 1 6 -6 z" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="145" y="945" font-family="sans-serif" font-size="30" font-weight="bold" fill="#a3e3be">Message:</text>
+  <text x="145" y="985" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="145" dy="0">weights fit comfortably but only eleven users can hold full-length conversations;</tspan>
+    <tspan x="145" dy="32">answer the customer with a price per concurrent long conversation</tspan>
+  </text>
+</svg>

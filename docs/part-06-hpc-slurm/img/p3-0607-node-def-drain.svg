@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Why a new node registers and then drains</title>
+  <desc>Infographic explaining Slurm node configuration mismatches between slurm.conf blueprint and slurmd hardware discovery causing node drain.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="60" y="75" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#207448">Why a new node registers and then drains</text>
+
+  
+
+  
+  <g id="blueprint-group">
+    <rect x="60" y="125" width="520" height="225" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 145)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 0 L 32 0 L 46 14 L 46 54 L 6 54 Z" />
+      <path d="M 32 0 L 32 14 L 46 14" />
+      <line x1="14" y1="24" x2="36" y2="24" />
+      <line x1="14" y1="34" x2="36" y2="34" />
+      <line x1="14" y1="44" x2="26" y2="44" />
+    </g>
+    <text x="155" y="175" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Blueprint:</text>
+    <text x="85" y="222" font-family="monospace" font-size="24px" fill="#303a36">NodeName line in slurm.conf,</text>
+    <text x="85" y="258" font-family="sans-serif" font-size="24px" fill="#303a36">what you promised: <tspan font-family="monospace">CPUs, Sockets,</tspan></text>
+    <text x="85" y="294" font-family="monospace" font-size="24px" fill="#303a36">CoresPerSocket, ThreadsPerCore,</text>
+    <text x="85" y="330" font-family="monospace" font-size="24px" fill="#303a36">RealMemory, Gres</text>
+  </g>
+
+  
+  <g id="reality-group">
+    <rect x="1020" y="125" width="520" height="225" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1045, 145)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="42" rx="4" />
+      <rect x="16" y="18" width="20" height="18" rx="2" />
+      <line x1="26" y1="0" x2="26" y2="6" />
+      <line x1="16" y1="0" x2="16" y2="6" />
+      <line x1="36" y1="0" x2="36" y2="6" />
+      <line x1="26" y1="48" x2="26" y2="54" />
+      <line x1="16" y1="48" x2="16" y2="54" />
+      <line x1="36" y1="48" x2="36" y2="54" />
+    </g>
+    <text x="1115" y="175" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Reality:</text>
+    <text x="1045" y="235" font-family="sans-serif" font-size="24px" fill="#303a36">what <tspan font-family="monospace">slurmd</tspan> discovers</text>
+    <text x="1045" y="275" font-family="sans-serif" font-size="24px" fill="#303a36">on the node</text>
+  </g>
+
+  
+  <g id="comparator-flow">
+    <path d="M 580 237 L 800 237" stroke="#db8129" stroke-width="4" fill="none" />
+    <path d="M 1020 237 L 800 237" stroke="#db8129" stroke-width="4" fill="none" />
+    
+    <path d="M 800 237 L 800 380" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
+  </g>
+
+  
+
+  
+  <g id="controller-group">
+    <rect x="60" y="392" width="1480" height="135" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(85, 432)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="46" height="42" rx="4" />
+      <line x1="12" y1="20" x2="22" y2="20" />
+      <line x1="12" y1="34" x2="22" y2="34" />
+      <circle cx="38" cy="20" r="2.5" fill="#db8129" />
+      <circle cx="38" cy="34" r="2.5" fill="#db8129" />
+    </g>
+    <text x="155" y="446" font-family="sans-serif" font-size="25px" fill="#303a36">controller compares the two; they differ so the node is drained with <tspan font-family="monospace">Reason Low RealMemory</tspan> or</text>
+    <text x="155" y="486" font-family="sans-serif" font-size="25px" fill="#303a36"><tspan font-family="monospace">Low socket*core*thread count</tspan> and shows state <tspan font-family="monospace">invalid</tspan> or <tspan font-family="monospace">drain</tspan></text>
+  </g>
+
+  
+
+  <g id="causes-group">
+    <rect x="60" y="552" width="1480" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(85, 577)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 27 6 L 49 46 L 5 46 Z" />
+      <line x1="27" y1="20" x2="27" y2="32" />
+      <circle cx="27" cy="40" r="1.5" fill="#207448" />
+    </g>
+    <text x="155" y="598" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Causes of a gap:</text>
+    <text x="430" y="598" font-family="sans-serif" font-size="25px" fill="#303a36">BIOS settings, hyperthreading toggled, memory modules removed, a GPU missing</text>
+  </g>
+
+  
+
+  <g id="fix-steps-group">
+    <rect x="60" y="687" width="1480" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(85, 707)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 32 10 L 42 20 L 22 40 L 12 30 Z" />
+      <path d="M 34 8 C 30 4 22 4 18 8 C 15 11 15 15 17 18 L 10 25 L 17 32 L 24 25 C 27 27 31 27 34 24 C 38 20 38 12 34 8 Z" />
+    </g>
+    <text x="150" y="736" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Fix steps:</text>
+
+    
+    <rect x="85" y="757" width="580" height="250" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <circle cx="125" cy="797" r="24" fill="#207448" />
+    <text x="125" y="806" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="165" y="805" font-family="sans-serif" font-size="24px" fill="#303a36">never guess the layout; run</text>
+    <text x="105" y="845" font-family="sans-serif" font-size="24px" fill="#303a36"><tspan font-family="monospace">slurmd -C</tspan> on the real node; it prints a</text>
+    <text x="105" y="885" font-family="sans-serif" font-size="24px" fill="#303a36">ready-made <tspan font-family="monospace">NodeName</tspan> line with <tspan font-family="monospace">CPUs,</tspan></text>
+    <text x="105" y="925" font-family="monospace" font-size="24px" fill="#303a36">Boards, SocketsPerBoard,</text>
+    <text x="105" y="965" font-family="monospace" font-size="24px" fill="#303a36">CoresPerSocket, ThreadsPerCore,</text>
+    <text x="105" y="1000" font-family="monospace" font-size="24px" fill="#303a36">RealMemory</text>
+
+    
+    <rect x="685" y="757" width="380" height="250" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <circle cx="725" cy="797" r="24" fill="#207448" />
+    <text x="725" y="806" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="765" y="805" font-family="sans-serif" font-size="24px" fill="#303a36">paste that into the</text>
+    <text x="705" y="855" font-family="sans-serif" font-size="24px" fill="#303a36">configuration</text>
+
+    
+    <rect x="1085" y="757" width="435" height="250" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <circle cx="1125" cy="797" r="24" fill="#207448" />
+    <text x="1125" y="806" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="1165" y="805" font-family="sans-serif" font-size="24px" fill="#303a36">compare <tspan font-family="monospace">slurmd -C</tspan></text>
+    <text x="1105" y="855" font-family="sans-serif" font-size="24px" fill="#303a36">output with</text>
+    <text x="1105" y="895" font-family="monospace" font-size="24px" fill="#303a36">scontrol show node</text>
+  </g>
+
+  
+
+  <g id="diagnostic-note-group">
+    <rect x="60" y="1052" width="1480" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(85, 1080)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="27" cy="27" r="22" />
+      <line x1="27" y1="17" x2="27" y2="37" />
+      <line x1="17" y1="27" x2="37" y2="27" />
+      <line x1="20" y1="20" x2="34" y2="34" />
+      <line x1="20" y1="34" x2="34" y2="20" />
+    </g>
+    <text x="155" y="1098" font-family="sans-serif" font-size="25px" fill="#303a36">asterisk in <tspan font-family="monospace">down*</tspan> means the node is not responding;</text>
+    <text x="155" y="1138" font-family="sans-serif" font-size="25px" fill="#303a36">every <tspan font-family="monospace">down</tspan>, <tspan font-family="monospace">drain</tspan> or <tspan font-family="monospace">invalid</tspan> carries a <tspan font-family="monospace">Reason</tspan> shown by <tspan font-family="monospace">scontrol show node</tspan></text>
+  </g>
+
+</svg>

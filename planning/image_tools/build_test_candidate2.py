@@ -1,0 +1,223 @@
+import xml.etree.ElementTree as ET
+import re
+
+def generate_svg():
+    bg = "#f5f8f5"
+    text_color = "#303a36"
+    main_green = "#207448"
+    light_green = "#e8f1ea"
+    orange = "#db8129"
+
+    lines = []
+    lines.append('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">')
+    lines.append('  <title>Reading data off the wire: decode, then deserialize</title>')
+    lines.append('  <desc>Reading data off the wire: decode, then deserialize</desc>')
+    lines.append('')
+    lines.append('  <defs>')
+    lines.append('    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">')
+    lines.append(f'      <path d="M 2 3 L 16 9 L 2 15 Z" fill="{main_green}" />')
+    lines.append('    </marker>')
+    lines.append('  </defs>')
+    lines.append('')
+    lines.append(f'  <!-- Canvas Background -->')
+    lines.append(f'  <rect width="1600" height="1200" fill="{bg}" />')
+    lines.append('')
+
+    # Title & Source label
+    lines.append('  <!-- Title (48px bold) -->')
+    lines.append(f'  <text x="800" y="54" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="{text_color}">Reading data off the wire: decode, then deserialize</text>')
+    lines.append('')
+    lines.append('  <!-- Source label (24px) -->')
+    lines.append(f'  <text x="800" y="96" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="{main_green}">Network Programmability and Automation chapter 8</text>')
+    lines.append('')
+
+    # ==================== FLOW SECTION ====================
+    # Row 1: y=138..294 (h=156)
+    # Box 1: bytes arrive (x=40..320, w=280)
+    lines.append('  <!-- Node 1: bytes arrive -->')
+    lines.append(f'  <rect x="40" y="138" width="280" height="156" rx="12" fill="#ffffff" stroke="{main_green}" stroke-width="2.5" />')
+    # Wire / pulse icon (56px)
+    lines.append(f'  <g transform="translate(56, 188)" stroke="{main_green}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('    <line x1="4" y1="28" x2="52" y2="28" />')
+    lines.append('    <circle cx="16" cy="14" r="5" fill="#ffffff" />')
+    lines.append('    <circle cx="40" cy="42" r="5" fill="#ffffff" />')
+    lines.append('    <polyline points="28,10 36,28 20,28 28,46" />')
+    lines.append('  </g>')
+    lines.append(f'  <text x="215" y="226" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="{text_color}">bytes arrive</text>')
+    lines.append('')
+
+    # Arrow 1: Box 1 to Box 2
+    lines.append('  <!-- Arrow 1: bytes arrive -> decode -->')
+    lines.append(f'  <line x1="320" y1="216" x2="388" y2="216" stroke="{main_green}" stroke-width="4" marker-end="url(#arrow-green)" />')
+    lines.append('')
+
+    # Box 2: decode (x=390..1060, w=670)
+    lines.append('  <!-- Node 2: decode into a UTF-8 string -->')
+    lines.append(f'  <rect x="390" y="138" width="670" height="156" rx="12" fill="#ffffff" stroke="{main_green}" stroke-width="2.5" />')
+    # Document / UTF-8 text icon (56px)
+    lines.append(f'  <g transform="translate(410, 188)" stroke="{main_green}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('    <rect x="8" y="6" width="40" height="44" rx="4" />')
+    lines.append('    <line x1="16" y1="18" x2="40" y2="18" stroke-width="3" />')
+    lines.append('    <line x1="16" y1="28" x2="36" y2="28" stroke-width="3" />')
+    lines.append('    <line x1="16" y1="38" x2="30" y2="38" stroke-width="3" />')
+    lines.append('  </g>')
+    lines.append(f'  <text x="750" y="184" text-anchor="middle" font-family="sans-serif" font-size="24" fill="{text_color}">')
+    lines.append('    <tspan x="750" dy="0">decode into a UTF-8 string, </tspan>')
+    lines.append('    <tspan x="750" dy="34">for example </tspan>')
+    lines.append('    <tspan x="750" dy="34">{"vendors":["Cisco","Juniper","Arista"]}</tspan>')
+    lines.append('  </text>')
+    lines.append('')
+
+    # Arrow 2: Box 2 to Box 3
+    lines.append('  <!-- Arrow 2: decode -> deserialize -->')
+    lines.append(f'  <line x1="1060" y1="216" x2="1128" y2="216" stroke="{main_green}" stroke-width="4" marker-end="url(#arrow-green)" />')
+    lines.append('')
+
+    # Box 3: deserialize (x=1130..1560, w=430)
+    lines.append('  <!-- Node 3: deserialize with json.loads() -->')
+    lines.append(f'  <rect x="1130" y="138" width="430" height="156" rx="12" fill="#ffffff" stroke="{main_green}" stroke-width="2.5" />')
+    # Python dict/list structures icon (56px)
+    lines.append(f'  <g transform="translate(1146, 188)" stroke="{main_green}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('    <rect x="6" y="8" width="20" height="18" rx="3" />')
+    lines.append('    <rect x="30" y="8" width="20" height="18" rx="3" />')
+    lines.append('    <rect x="18" y="30" width="20" height="18" rx="3" />')
+    lines.append('    <line x1="16" y1="26" x2="28" y2="30" />')
+    lines.append('    <line x1="40" y1="26" x2="28" y2="30" />')
+    lines.append('  </g>')
+    lines.append(f'  <text x="1370" y="180" text-anchor="middle" font-family="sans-serif" font-size="24" fill="{text_color}">')
+    lines.append('    <tspan x="1370" dy="0">deserialize with </tspan>')
+    lines.append('    <tspan x="1370" dy="30">json.loads() into </tspan>')
+    lines.append('    <tspan x="1370" dy="30">native structures: </tspan>')
+    lines.append('    <tspan x="1370" dy="30">a Python dict and list</tspan>')
+    lines.append('  </text>')
+    lines.append('')
+
+    # Row 2 (Send reverses it): y=338..454 (h=116)
+    # Box 4: serialize first (x=1130..1560, w=430)
+    lines.append('  <!-- Node 4: serialize first -->')
+    lines.append(f'  <rect x="1130" y="338" width="430" height="116" rx="12" fill="#ffffff" stroke="{main_green}" stroke-width="2.5" />')
+    # Serializer pack icon (56px)
+    lines.append(f'  <g transform="translate(1156, 368)" stroke="{main_green}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('    <rect x="8" y="10" width="40" height="36" rx="4" />')
+    lines.append('    <line x1="8" y1="22" x2="48" y2="22" />')
+    lines.append('    <polyline points="22,32 28,38 34,32" />')
+    lines.append('    <line x1="28" y1="22" x2="28" y2="38" />')
+    lines.append('  </g>')
+    lines.append(f'  <text x="1360" y="406" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="{text_color}">serialize first</text>')
+    lines.append('')
+
+    # Arrow 3: Box 4 to Box 5 (pointing left!)
+    lines.append('  <!-- Arrow 3: serialize first -> encode (pointing left) -->')
+    lines.append(f'  <line x1="1130" y1="396" x2="1062" y2="396" stroke="{main_green}" stroke-width="4" marker-end="url(#arrow-green)" />')
+    lines.append('')
+
+    # Box 5: encode (x=390..1060, w=670, ORANGE outline)
+    lines.append('  <!-- Node 5: encode (orange) -->')
+    lines.append(f'  <rect x="390" y="338" width="670" height="116" rx="12" fill="#ffffff" stroke="{orange}" stroke-width="3" />')
+    # Encoder icon (56px)
+    lines.append(f'  <g transform="translate(560, 368)" stroke="{main_green}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('    <circle cx="28" cy="28" r="20" />')
+    lines.append('    <line x1="16" y1="28" x2="40" y2="28" />')
+    lines.append('    <line x1="28" y1="16" x2="28" y2="40" />')
+    lines.append('  </g>')
+    lines.append(f'  <text x="750" y="406" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="{text_color}">encode</text>')
+    lines.append('')
+
+    # ==================== STRIP SECTION ====================
+    # y=494..584 (h=90, w=1520, x=40..1560)
+    lines.append('  <!-- Strip: screen scraping -->')
+    lines.append(f'  <rect x="40" y="494" width="1520" height="90" rx="10" fill="#ffffff" stroke="{main_green}" stroke-width="2" />')
+    # Terminal warning icon (56px)
+    lines.append(f'  <g transform="translate(60, 511)" stroke="{main_green}" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('    <rect x="6" y="8" width="44" height="40" rx="4" />')
+    lines.append('    <polyline points="14,24 22,30 14,36" stroke-width="3" />')
+    lines.append('    <line x1="26" y1="36" x2="38" y2="36" stroke-width="3" />')
+    lines.append('  </g>')
+    lines.append(f'  <text x="820" y="534" text-anchor="middle" font-family="sans-serif" font-size="24" fill="{text_color}">')
+    lines.append('    <tspan x="820" dy="0">screen scraping show interfaces em0 breaks when a vendor changes the spacing; </tspan>')
+    lines.append('    <tspan x="820" dy="32">ask for structured output: show interfaces em0 | display xml, or JSON</tspan>')
+    lines.append('  </text>')
+    lines.append('')
+
+    # ==================== TABLE SECTION ====================
+    # y=624..1060 (h=436, w=1520, x=40..1560)
+    lines.append('  <!-- Format Comparison Table Container -->')
+    lines.append(f'  <g id="comparison-table">')
+    lines.append(f'    <rect x="40" y="624" width="1520" height="436" rx="12" fill="#ffffff" stroke="{main_green}" stroke-width="2" />')
+    lines.append('')
+    # Intro header band
+    lines.append(f'    <rect x="40" y="624" width="1520" height="86" rx="12" fill="{light_green}" stroke="{main_green}" stroke-width="2" />')
+    lines.append(f'    <text x="800" y="660" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="{text_color}">')
+    lines.append('      <tspan x="800" dy="0">Markup languages like HTML annotate documents for rendering; </tspan>')
+    lines.append('      <tspan x="800" dy="30">data serialization formats represent typed data structures across languages</tspan>')
+    lines.append('    </text>')
+    lines.append('')
+    # Horizontal Dividers
+    lines.append(f'    <line x1="40" y1="796" x2="1560" y2="796" stroke="{main_green}" stroke-width="1.5" />')
+    lines.append(f'    <line x1="40" y1="896" x2="1560" y2="896" stroke="{main_green}" stroke-width="1.5" />')
+    lines.append(f'    <line x1="40" y1="996" x2="1560" y2="996" stroke="{main_green}" stroke-width="1.5" />')
+    lines.append('')
+
+    # Row 1: XML (y=710..796)
+    # XML Document outline icon
+    lines.append(f'    <g transform="translate(60, 726)" stroke="{main_green}" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('      <polyline points="18,16 8,28 18,40" />')
+    lines.append('      <polyline points="38,16 48,28 38,40" />')
+    lines.append('      <line x1="32" y1="12" x2="24" y2="44" />')
+    lines.append('    </g>')
+    lines.append(f'    <text x="820" y="744" text-anchor="middle" font-family="sans-serif" font-size="24" fill="{text_color}">')
+    lines.append('      <tspan x="820" dy="0">XML: tags, attributes, xmlns namespaces; query with XPath such as //device/model </tspan>')
+    lines.append('      <tspan x="820" dy="32">or //device[@name="leaf"]/model, or XQuery; validate with XSD (xmlschema)</tspan>')
+    lines.append('    </text>')
+    lines.append('')
+
+    # Row 2: JSON (y=796..896)
+    # JSON Curly braces icon
+    lines.append(f'    <g transform="translate(60, 818)" stroke="{main_green}" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('      <path d="M 18 12 Q 12 12 12 20 Q 12 28 6 28 Q 12 28 12 36 Q 12 44 18 44" />')
+    lines.append('      <path d="M 38 12 Q 44 12 44 20 Q 44 28 50 28 Q 44 28 44 36 Q 44 44 38 44" />')
+    lines.append('    </g>')
+    lines.append(f'    <text x="820" y="828" text-anchor="middle" font-family="sans-serif" font-size="24" fill="{text_color}">')
+    lines.append('      <tspan x="820" dy="0">JSON: lighter; validate with JSON Schema: </tspan>')
+    lines.append('      <tspan x="820" dy="30">$schema https://json-schema.org/draft/2020-12/schema, minLength, maxLength, </tspan>')
+    lines.append('      <tspan x="820" dy="30">minimum 1, maximum 4094, IPv4 pattern regexes through jsonschema.validate()</tspan>')
+    lines.append('    </text>')
+    lines.append('')
+
+    # Row 3: Protocol Buffers (y=896..996)
+    # Binary buffer blocks icon
+    lines.append(f'    <g transform="translate(60, 918)" stroke="{main_green}" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('      <rect x="8" y="10" width="18" height="16" rx="2" />')
+    lines.append('      <rect x="30" y="10" width="18" height="16" rx="2" />')
+    lines.append('      <rect x="8" y="30" width="18" height="16" rx="2" />')
+    lines.append('      <rect x="30" y="30" width="18" height="16" rx="2" />')
+    lines.append('    </g>')
+    lines.append(f'    <text x="820" y="928" text-anchor="middle" font-family="sans-serif" font-size="24" fill="{text_color}">')
+    lines.append('      <tspan x="820" dy="0">Protocol Buffers: binary, .proto files compiled with protoc, </tspan>')
+    lines.append('      <tspan x="820" dy="30">validated with protoc-gen-validate; FlatBuffers: read fields straight from the byte buffer; </tspan>')
+    lines.append('      <tspan x="820" dy="30">for high-throughput RPCs such as gRPC telemetry</tspan>')
+    lines.append('    </text>')
+    lines.append('')
+
+    # Row 4: pickle (y=996..1060)
+    # Python jar / security shield icon
+    lines.append(f'    <g transform="translate(60, 1008)" stroke="{main_green}" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">')
+    lines.append('      <path d="M 28 10 L 46 16 L 46 32 C 46 42 28 48 28 48 C 28 48 10 42 10 32 L 10 16 Z" />')
+    lines.append(f'      <circle cx="28" cy="27" r="4" fill="{main_green}" />')
+    lines.append('    </g>')
+    lines.append(f'    <text x="820" y="1038" text-anchor="middle" font-family="sans-serif" font-size="24" fill="{text_color}">pickle: Python only, unsafe on untrusted bytes</text>')
+    lines.append('  </g>')
+    lines.append('')
+
+    # ==================== BOTTOM TAKEAWAY BAR ====================
+    # y=1100..1160 (h=60, w=1520, x=40..1560)
+    lines.append('  <!-- Bottom Takeaway Bar -->')
+    lines.append(f'  <rect x="40" y="1100" width="1520" height="60" rx="10" fill="{main_green}" />')
+    lines.append(f'  <text x="800" y="1140" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Structured data beats fragile screen scraping</text>')
+    lines.append('</svg>')
+
+    return "\n".join(lines)
+
+with open("test_candidate_build2.svg", "w") as f:
+    f.write(generate_svg())
+print("Wrote test_candidate_build2.svg successfully!")

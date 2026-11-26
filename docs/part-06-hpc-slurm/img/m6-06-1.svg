@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Environment Modules (Tcl) and Lmod (Lua) in depth (Supercomputers for </title>
+  <desc>Hierarchical module tree in Lmod illustrating Core, Compiler, and MPI MODULEPATH tiers.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Environment Modules (Tcl) and Lmod (Lua) in depth </tspan>
+    <tspan x="800" dy="54">(Supercomputers for </tspan>
+  </text>
+
+  
+  <rect x="50" y="140" width="1500" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="800" y="178" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Core MODULEPATH (always visible)</text>
+
+  
+  <rect x="80" y="205" width="690" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(397, 222)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="40" height="40" rx="6" />
+    <rect x="18" y="18" width="20" height="20" rx="3" fill="#e8f1ea" />
+    <line x1="16" y1="2" x2="16" y2="8" />
+    <line x1="28" y1="2" x2="28" y2="8" />
+    <line x1="40" y1="2" x2="40" y2="8" />
+    <line x1="16" y1="48" x2="16" y2="54" />
+    <line x1="28" y1="48" x2="28" y2="54" />
+    <line x1="40" y1="48" x2="40" y2="54" />
+    <line x1="2" y1="16" x2="8" y2="16" />
+    <line x1="2" y1="28" x2="8" y2="28" />
+    <line x1="2" y1="40" x2="8" y2="40" />
+    <line x1="48" y1="16" x2="54" y2="16" />
+    <line x1="48" y1="28" x2="54" y2="28" />
+    <line x1="48" y1="40" x2="54" y2="40" />
+  </g>
+  <text x="425" y="332" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">gcc/10.4.0, gcc/15.1.0</text>
+
+  
+  <rect x="830" y="205" width="690" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(1147, 222)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="40" height="40" rx="6" />
+    <rect x="18" y="18" width="20" height="20" rx="3" fill="#e8f1ea" />
+    <line x1="16" y1="2" x2="16" y2="8" />
+    <line x1="28" y1="2" x2="28" y2="8" />
+    <line x1="40" y1="2" x2="40" y2="8" />
+    <line x1="16" y1="48" x2="16" y2="54" />
+    <line x1="28" y1="48" x2="28" y2="54" />
+    <line x1="40" y1="48" x2="40" y2="54" />
+    <line x1="2" y1="16" x2="8" y2="16" />
+    <line x1="2" y1="28" x2="8" y2="28" />
+    <line x1="2" y1="40" x2="8" y2="40" />
+    <line x1="48" y1="16" x2="54" y2="16" />
+    <line x1="48" y1="28" x2="54" y2="28" />
+    <line x1="48" y1="40" x2="54" y2="40" />
+  </g>
+  <text x="1175" y="332" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">intel/2025.0</text>
+
+  
+  <line x1="200" y1="360" x2="200" y2="565" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <rect x="245" y="410" width="370" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="430" y="446" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">module load gcc/15.1.0</text>
+
+  
+  <line x1="1400" y1="360" x2="1400" y2="565" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <rect x="955" y="410" width="400" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1155" y="446" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">module load intel/2025.0</text>
+
+  
+  <rect x="50" y="490" width="1500" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="800" y="518" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Compiler MODULEPATH </tspan>
+    <tspan x="800" dy="32">(revealed on compiler load)</tspan>
+  </text>
+
+  
+  <rect x="80" y="565" width="690" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(397, 578)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="12" r="8" />
+    <circle cx="12" cy="44" r="8" />
+    <circle cx="44" cy="44" r="8" />
+    <line x1="23" y1="18" x2="17" y2="38" />
+    <line x1="33" y1="18" x2="39" y2="38" />
+    <line x1="20" y1="44" x2="36" y2="44" />
+  </g>
+  <text x="425" y="685" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">openmpi/5.0.7 (built with gcc/15.1.0)</text>
+
+  
+  <rect x="830" y="565" width="690" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(1147, 578)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="12" r="8" />
+    <circle cx="12" cy="44" r="8" />
+    <circle cx="44" cy="44" r="8" />
+    <line x1="23" y1="18" x2="17" y2="38" />
+    <line x1="33" y1="18" x2="39" y2="38" />
+    <line x1="20" y1="44" x2="36" y2="44" />
+  </g>
+  <text x="1175" y="685" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">openmpi/5.0.7 (built with intel/2025.0)</text>
+
+  
+  <line x1="200" y1="715" x2="200" y2="915" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  <rect x="245" y="760" width="416" height="56" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="453" y="796" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">module load openmpi/5.0.7</text>
+
+  
+  <rect x="50" y="840" width="1500" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="800" y="868" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">MPI MODULEPATH </tspan>
+    <tspan x="800" dy="32">(revealed on MPI load)</tspan>
+  </text>
+
+  
+  <rect x="80" y="915" width="690" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(397, 928)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="42" rx="6" />
+    <line x1="4" y1="18" x2="52" y2="18" />
+    <circle cx="12" cy="12" r="2.5" fill="#207448" />
+    <circle cx="20" cy="12" r="2.5" fill="#207448" />
+    <circle cx="28" cy="12" r="2.5" fill="#207448" />
+    <line x1="14" y1="28" x2="26" y2="28" />
+    <line x1="14" y1="36" x2="38" y2="36" />
+  </g>
+  <text x="425" y="1035" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">hdf5, petsc, scalapack (ABI-matched)</text>
+</svg>

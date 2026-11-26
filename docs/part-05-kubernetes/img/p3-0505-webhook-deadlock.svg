@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>How a webhook with failurePolicy Fail can deadlock a cluster</title>
+  <desc>Infographic explaining how a Kubernetes admission webhook with failurePolicy Fail can deadlock a cluster during node rolls, and the safeguards to prevent it.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">How a webhook with failurePolicy Fail can deadlock a cluster</text>
+
+  
+
+  
+  <rect x="50" y="140" width="390" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="92" cy="182" r="24" fill="#207448"/>
+  <text x="92" y="191" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(136, 154)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="2" y="8" width="52" height="40" rx="6"/>
+    <line x1="12" y1="20" x2="26" y2="20"/>
+    <line x1="12" y1="34" x2="26" y2="34"/>
+    <line x1="36" y1="21" x2="46" y2="33"/>
+    <line x1="46" y1="21" x2="36" y2="33"/>
+  </g>
+  
+  <text x="74" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="74" dy="0">Webhook pods crash</tspan>
+    <tspan x="74" dy="36">or become unreachable</tspan>
+    <tspan x="74" dy="36">during a node roll</tspan>
+  </text>
+
+  
+  <line x1="440" y1="300" x2="530" y2="300" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="530" y="140" width="390" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="572" cy="182" r="24" fill="#207448"/>
+  <text x="572" y="191" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(616, 154)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 28 6 L 48 14 V 28 C 48 41 28 50 28 50 C 28 50 8 41 8 28 V 14 Z"/>
+    <line x1="18" y1="28" x2="38" y2="28"/>
+  </g>
+  
+  <text x="554" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="554" dy="0">kube-apiserver cannot</tspan>
+    <tspan x="554" dy="34">reach the webhook;</tspan>
+    <tspan x="554" dy="34">failurePolicy is Fail</tspan>
+    <tspan x="554" dy="34">so every matching write</tspan>
+    <tspan x="554" dy="34">is rejected</tspan>
+  </text>
+
+  
+  <line x1="725" y1="460" x2="725" y2="540" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="530" y="540" width="390" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="572" cy="582" r="24" fill="#207448"/>
+  <text x="572" y="591" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(616, 554)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="8" y="18" width="40" height="32" rx="5"/>
+    <path d="M 18 18 V 11 C 18 6 38 6 38 11 V 18"/>
+    <circle cx="28" cy="34" r="3" fill="#207448"/>
+  </g>
+  
+  <text x="554" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="554" dy="0">Replacement webhook</tspan>
+    <tspan x="554" dy="36">pods, kube-system</tspan>
+    <tspan x="554" dy="36">DaemonSets and coredns</tspan>
+    <tspan x="554" dy="36">cannot be created</tspan>
+  </text>
+
+  
+  <line x1="530" y1="700" x2="440" y2="700" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="50" y="540" width="390" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="92" cy="582" r="24" fill="#207448"/>
+  <text x="92" y="591" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(136, 554)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 46 22 A 18 18 0 1 0 28 46"/>
+    <polyline points="46,12 46,24 34,24"/>
+    <line x1="20" y1="20" x2="36" y2="36"/>
+  </g>
+  
+  <text x="74" y="670" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="74" dy="0">The webhook never</tspan>
+    <tspan x="74" dy="38">comes back</tspan>
+  </text>
+
+  
+  <line x1="170" y1="540" x2="170" y2="460" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="210" y="478" width="160" height="44" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="2.5"/>
+  <text x="290" y="509" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#dc2626">deadlock</text>
+
+  
+
+  
+  <rect x="970" y="140" width="580" height="720" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <text x="1005" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="34" font-weight="bold" fill="#207448">Safeguards</text>
+  
+  <g transform="translate(1468, 156)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 28 6 L 48 14 V 28 C 48 41 28 50 28 50 C 28 50 8 41 8 28 V 14 Z"/>
+    <path d="M 18 28 L 25 35 L 38 21"/>
+  </g>
+  <line x1="1005" y1="220" x2="1525" y2="220" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  
+  <rect x="1000" y="238" width="520" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1024" y="272" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1024" dy="0">tight timeoutSeconds</tspan>
+    <tspan x="1024" dy="32">(2 to 5 s instead of 10 s)</tspan>
+  </text>
+
+  
+  <rect x="1000" y="340" width="520" height="114" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1024" y="374" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1024" dy="0">namespaceSelector excludes</tspan>
+    <tspan x="1024" dy="32">kube-system and the</tspan>
+    <tspan x="1024" dy="32">webhook namespace</tspan>
+  </text>
+
+  
+  <rect x="1000" y="468" width="520" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1024" y="502" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1024" dy="0">failurePolicy Ignore for</tspan>
+    <tspan x="1024" dy="32">non-critical mutations</tspan>
+  </text>
+
+  
+  <rect x="1000" y="570" width="520" height="140" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1024" y="602" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1024" dy="0">two or more replicas across</tspan>
+    <tspan x="1024" dy="32">zones with a PodDisruptionBudget</tspan>
+    <tspan x="1024" dy="32">and system-cluster-critical</tspan>
+    <tspan x="1024" dy="32">PriorityClass</tspan>
+  </text>
+
+  
+  <rect x="1000" y="724" width="520" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1024" y="760" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1024" dy="0">ValidatingAdmissionPolicy (CEL)</tspan>
+    <tspan x="1024" dy="34">runs in process, no webhook pod</tspan>
+  </text>
+
+  
+
+  <rect x="50" y="900" width="1500" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g transform="translate(180, 912)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 6 30 L 16 30 L 22 12 L 32 44 L 38 24 L 46 30 L 52 30"/>
+  </g>
+  
+  <text x="800" y="949" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">apiserver_admission_webhook_rejection_count</text>
+</svg>

@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1030" width="1600" height="1030">
+  <title>Gang admission with Job suspend and Kueue</title>
+  <desc>Visual workflow of Kubernetes Job suspend mechanism and Kueue gang admission across six numbered steps.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1030" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Gang admission with Job suspend and Kueue</text>
+
+  
+  
+  <line x1="510" y1="315" x2="568" y2="315" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1030" y1="315" x2="1088" y2="315" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1320 475 L 1320 500 Q 1320 515 1305 515 L 295 515 Q 280 515 280 530 L 280 553" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="510" y1="715" x2="568" y2="715" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1030" y1="715" x2="1088" y2="715" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g id="step-1">
+    <rect x="50" y="155" width="460" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="94" cy="205" r="24" fill="#207448" />
+    <text x="94" y="205" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    
+    <g transform="translate(426, 180)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 6 0 L 30 0 L 42 12 L 42 48 L 6 48 Z" />
+      <path d="M 30 0 L 30 12 L 42 12" />
+      <line x1="12" y1="20" x2="28" y2="20" stroke-linecap="round" />
+      <line x1="12" y1="28" x2="34" y2="28" stroke-linecap="round" />
+      <line x1="12" y1="36" x2="24" y2="36" stroke-linecap="round" />
+    </g>
+
+    <line x1="70" y1="245" x2="490" y2="245" stroke="#c4d9cb" stroke-width="1.5" />
+    
+    <text x="75" y="320" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">User submits a Job</text>
+  </g>
+
+  
+  <g id="step-2">
+    <rect x="570" y="155" width="460" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="614" cy="205" r="24" fill="#207448" />
+    <text x="614" y="205" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+
+    
+    <g transform="translate(946, 180)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 24 2 L 44 10 L 44 26 C 44 38 34 46 24 50 C 14 46 4 38 4 26 L 4 10 Z" stroke-linejoin="round" />
+      <line x1="19" y1="20" x2="19" y2="32" stroke-linecap="round" stroke-width="3.5" />
+      <line x1="29" y1="20" x2="29" y2="32" stroke-linecap="round" stroke-width="3.5" />
+    </g>
+
+    <line x1="590" y1="245" x2="1010" y2="245" stroke="#c4d9cb" stroke-width="1.5" />
+
+    <text x="595" y="295" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="595" dy="0">Mutating admission sets</tspan>
+      <tspan x="595" dy="38" font-family="monospace">spec.suspend true</tspan>
+      <tspan x="595" dy="38">at creation</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-3">
+    <rect x="1090" y="155" width="460" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="1134" cy="205" r="24" fill="#207448" />
+    <text x="1134" y="205" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+
+    
+    <g transform="translate(1466, 180)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="24" cy="25" r="21" />
+      <line x1="9" y1="10" x2="39" y2="40" stroke-width="3.5" />
+      <text x="24" y="32" font-family="sans-serif" font-size="20" font-weight="bold" fill="#207448" stroke="none" text-anchor="middle">0</text>
+    </g>
+
+    <line x1="1110" y1="245" x2="1530" y2="245" stroke="#c4d9cb" stroke-width="1.5" />
+
+    <text x="1115" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1115" dy="0">Job controller creates</tspan>
+      <tspan x="1115" dy="34">zero Pods while suspended,</tspan>
+      <tspan x="1115" dy="34">so unqueued jobs do not</tspan>
+      <tspan x="1115" dy="34">flood kube-scheduler or</tspan>
+      <tspan x="1115" dy="34">partly claim GPUs</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="step-4">
+    <rect x="50" y="555" width="460" height="320" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    <circle cx="94" cy="605" r="24" fill="#db8129" />
+    <text x="94" y="605" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+
+    
+    <g transform="translate(426, 580)" stroke="#db8129" stroke-width="3" fill="none">
+      <rect x="6" y="6" width="36" height="36" rx="4" />
+      <line x1="14" y1="0" x2="14" y2="6" />
+      <line x1="24" y1="0" x2="24" y2="6" />
+      <line x1="34" y1="0" x2="34" y2="6" />
+      <line x1="14" y1="42" x2="14" y2="48" />
+      <line x1="24" y1="42" x2="24" y2="48" />
+      <line x1="34" y1="42" x2="34" y2="48" />
+      <line x1="0" y1="14" x2="6" y2="14" />
+      <line x1="0" y1="24" x2="6" y2="24" />
+      <line x1="0" y1="34" x2="6" y2="34" />
+      <line x1="42" y1="14" x2="48" y2="14" />
+      <line x1="42" y1="24" x2="48" y2="24" />
+      <line x1="42" y1="34" x2="48" y2="34" />
+      <rect x="12" y="12" width="10" height="10" rx="2" fill="#db8129" />
+      <rect x="26" y="12" width="10" height="10" rx="2" fill="#db8129" />
+      <rect x="12" y="26" width="10" height="10" rx="2" fill="#db8129" />
+      <rect x="26" y="26" width="10" height="10" rx="2" fill="#db8129" />
+    </g>
+
+    <line x1="70" y1="645" x2="490" y2="645" stroke="#eec69f" stroke-width="1.5" />
+
+    <text x="75" y="695" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="75" dy="0">Kueue checks ClusterQueue</tspan>
+      <tspan x="75" dy="38">GPU quota for the whole</tspan>
+      <tspan x="75" dy="38">job (gang admission)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-5">
+    <rect x="570" y="555" width="460" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="614" cy="605" r="24" fill="#207448" />
+    <text x="614" y="605" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+
+    
+    <g transform="translate(946, 582)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 6 12 L 24 12 L 42 30 L 26 46 L 6 26 Z" stroke-linejoin="round" />
+      <circle cx="16" cy="22" r="3" fill="#207448" stroke="none" />
+      <path d="M 24 22 L 30 28 L 40 18" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    <line x1="590" y1="645" x2="1010" y2="645" stroke="#c4d9cb" stroke-width="1.5" />
+
+    <text x="595" y="685" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="595" dy="0">Kueue patches</tspan>
+      <tspan x="595" dy="35"><tspan font-family="monospace">spec.suspend false</tspan> and</tspan>
+      <tspan x="595" dy="35">injects nodeSelector</tspan>
+      <tspan x="595" dy="35">and flavor labels</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-6">
+    <rect x="1090" y="555" width="460" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="1134" cy="605" r="24" fill="#207448" />
+    <text x="1134" y="605" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+
+    
+    <g transform="translate(1466, 582)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="2" y="4" width="18" height="22" rx="3" />
+      <circle cx="11" cy="15" r="3" fill="#207448" stroke="none" />
+      <rect x="26" y="4" width="18" height="22" rx="3" />
+      <circle cx="35" cy="15" r="3" fill="#207448" stroke="none" />
+      <rect x="14" y="24" width="18" height="22" rx="3" />
+      <circle cx="23" cy="35" r="3" fill="#207448" stroke="none" />
+    </g>
+
+    <line x1="1110" y1="645" x2="1530" y2="645" stroke="#c4d9cb" stroke-width="1.5" />
+
+    <text x="1115" y="710" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="1115" dy="0">Job controller creates</tspan>
+      <tspan x="1115" dy="40">all Pods at once</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer-takeaway">
+    <rect x="50" y="925" width="1500" height="75" rx="12" fill="#207448" />
+    <text x="800" y="972" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">A distributed run with half its workers is useless: all start together or not at all</text>
+  </g>
+</svg>

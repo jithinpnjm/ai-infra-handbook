@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" font-family="Helvetica Neue, Helvetica, Arial, sans-serif" role="img" aria-labelledby="ttl dsc">
+  <title id="ttl">Rpeak is the ceiling, Rmax is what you measure</title>
+  <desc id="dsc">A long Rpeak bar on top showing the theoretical ceiling, a shorter green Rmax bar beneath its left part showing the best sustained HPL rate, the orange gap between the end of Rmax and the end of Rpeak labelled as the cost of real work, the HPL efficiency formula, a worked example, three qualifying questions, and a green takeaway bar.</desc>
+
+  <rect x="0" y="0" width="1600" height="1000" fill="#f5f8f5"/>
+
+  <text x="110" y="84" font-size="48" font-weight="700" fill="#303a36">Rpeak is the ceiling, Rmax is what you measure</text>
+
+  
+  <rect x="120" y="136" width="1360" height="148" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="152" y="190" font-size="38" font-weight="700" fill="#207448">Rpeak</text>
+  <text font-size="26" fill="#303a36">
+    <tspan x="152" y="228">the theoretical ceiling: every arithmetic unit finishes</tspan>
+    <tspan x="152" y="258">an instruction on every clock cycle, with no waiting.</tspan>
+  </text>
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <rect x="1384" y="196" width="28" height="28" rx="4"/>
+    <line x1="1391" y1="186" x2="1391" y2="196"/>
+    <line x1="1398" y1="186" x2="1398" y2="196"/>
+    <line x1="1405" y1="186" x2="1405" y2="196"/>
+    <line x1="1391" y1="224" x2="1391" y2="234"/>
+    <line x1="1398" y1="224" x2="1398" y2="234"/>
+    <line x1="1405" y1="224" x2="1405" y2="234"/>
+    <line x1="1374" y1="203" x2="1384" y2="203"/>
+    <line x1="1374" y1="210" x2="1384" y2="210"/>
+    <line x1="1374" y1="217" x2="1384" y2="217"/>
+    <line x1="1412" y1="203" x2="1422" y2="203"/>
+    <line x1="1412" y1="210" x2="1422" y2="210"/>
+    <line x1="1412" y1="217" x2="1422" y2="217"/>
+  </g>
+
+  
+  <path d="M128 324 H1160 V624 H128 Q120 624 120 616 V332 Q120 324 128 324 Z" fill="#207448"/>
+  <text x="152" y="416" font-size="38" font-weight="700" fill="#ffffff">Rmax</text>
+  <text x="152" y="456" font-size="26" fill="#e8f1ea">the best sustained rate measured on HPL</text>
+  <line x1="152" y1="487" x2="1128" y2="487" stroke="#ffffff" stroke-opacity="0.35" stroke-width="2"/>
+
+  
+  <g stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M1070 411 A28 28 0 0 1 1126 411"/>
+    <line x1="1098" y1="411" x2="1114" y2="389"/>
+  </g>
+  <circle cx="1098" cy="411" r="3.5" fill="#ffffff"/>
+
+  
+  <rect x="155" y="519" width="32" height="32" rx="5" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-width="2.5"/>
+  <text x="171" y="544" font-size="24" text-anchor="middle" fill="#ffffff">?</text>
+  <text x="227" y="544" font-size="24" fill="#ffffff">which precision</text>
+
+  <rect x="489" y="519" width="32" height="32" rx="5" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-width="2.5"/>
+  <text x="505" y="544" font-size="24" text-anchor="middle" fill="#ffffff">?</text>
+  <text x="561" y="544" font-size="24" fill="#ffffff">dense or sparse</text>
+
+  <rect x="823" y="519" width="32" height="32" rx="5" fill="#ffffff" fill-opacity="0.12" stroke="#ffffff" stroke-width="2.5"/>
+  <text x="839" y="544" font-size="24" text-anchor="middle" fill="#ffffff">?</text>
+  <text x="895" y="544" font-size="24" fill="#ffffff">peak or measured</text>
+
+  
+  <rect x="1160" y="324" width="320" height="300" fill="#db8129"/>
+  <text x="1176" font-size="24" fill="#303a36">
+    <tspan x="1176" y="370">the cost of real</tspan>
+    <tspan x="1176" y="402">work: waiting for</tspan>
+    <tspan x="1176" y="434">memory, waiting</tspan>
+    <tspan x="1176" y="466">for the network,</tspan>
+    <tspan x="1176" y="498">waiting for the</tspan>
+    <tspan x="1176" y="530">slowest node, and</tspan>
+    <tspan x="1176" y="562">heat or power</tspan>
+    <tspan x="1176" y="594">limits.</tspan>
+  </text>
+
+  
+  <text x="800" y="690" font-size="34" text-anchor="middle" fill="#303a36">HPL efficiency = Rmax / Rpeak</text>
+
+  
+  <text font-size="26" text-anchor="middle" fill="#303a36">
+    <tspan x="800" y="748">38 PFLOP/s Rmax against 48.0 PFLOP/s Rpeak</tspan>
+    <tspan x="800" y="782">gives 79% HPL efficiency.</tspan>
+  </text>
+
+  
+  <rect x="120" y="840" width="1360" height="100" rx="10" fill="#207448"/>
+  <text font-size="28" font-weight="600" text-anchor="middle" fill="#ffffff">
+    <tspan x="800" y="878">Never accept a FLOPS figure without its precision,</tspan>
+    <tspan x="800" y="912">its sparsity mode, and its efficiency ratio.</tspan>
+  </text>
+</svg>

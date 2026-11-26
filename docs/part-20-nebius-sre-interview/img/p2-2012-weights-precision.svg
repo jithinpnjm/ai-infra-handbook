@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Weights memory by precision, from FP32 to 4-bit</title>
+  <desc>Horizontal bar chart showing model weights memory across FP32, BF16, FP8, and 4-bit precisions with Qwen3-8B and Qwen2.5-72B memory values.</desc>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Weights memory by precision, from FP32 to 4-bit</text>
+
+  
+  <rect x="320" y="102" width="960" height="62" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="142" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">Weights memory = parameters x bytes per parameter</text>
+
+  
+  <rect x="910" y="190" width="290" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1055" y="226" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="1055" dy="0">Qwen3-8B</tspan>
+    <tspan x="1055" dy="34">weights</tspan>
+  </text>
+
+  <rect x="1230" y="190" width="300" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1380" y="226" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="1380" dy="0">Qwen2.5-72B</tspan>
+    <tspan x="1380" dy="34">weights</tspan>
+  </text>
+
+  
+  <rect x="70" y="295" width="790" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(0, 0)">
+    <rect x="102" y="320" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="112" y1="312" x2="112" y2="320" stroke="#207448" stroke-width="3"/>
+    <line x1="122" y1="312" x2="122" y2="320" stroke="#207448" stroke-width="3"/>
+    <line x1="132" y1="312" x2="132" y2="320" stroke="#207448" stroke-width="3"/>
+    <line x1="112" y1="360" x2="112" y2="368" stroke="#207448" stroke-width="3"/>
+    <line x1="122" y1="360" x2="122" y2="368" stroke="#207448" stroke-width="3"/>
+    <line x1="132" y1="360" x2="132" y2="368" stroke="#207448" stroke-width="3"/>
+    <line x1="94" y1="330" x2="102" y2="330" stroke="#207448" stroke-width="3"/>
+    <line x1="94" y1="340" x2="102" y2="340" stroke="#207448" stroke-width="3"/>
+    <line x1="94" y1="350" x2="102" y2="350" stroke="#207448" stroke-width="3"/>
+    <line x1="142" y1="330" x2="150" y2="330" stroke="#207448" stroke-width="3"/>
+    <line x1="142" y1="340" x2="150" y2="340" stroke="#207448" stroke-width="3"/>
+    <line x1="142" y1="350" x2="150" y2="350" stroke="#207448" stroke-width="3"/>
+    <rect x="114" y="332" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="175" y="352" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">FP32, 4 bytes per parameter</text>
+  <rect x="910" y="295" width="290" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1055" y="352" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">32.8 GB</text>
+  <rect x="1230" y="295" width="300" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1380" y="352" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">290.8 GB</text>
+
+  
+  <rect x="70" y="410" width="670" height="90" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="5"/>
+  
+  <g transform="translate(0, 0)">
+    <rect x="100" y="437" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="107" y="445" width="12" height="20" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <rect x="125" y="445" width="12" height="20" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="108" y1="427" x2="108" y2="437" stroke="#207448" stroke-width="3"/>
+    <line x1="136" y1="427" x2="136" y2="437" stroke="#207448" stroke-width="3"/>
+    <line x1="108" y1="473" x2="108" y2="483" stroke="#207448" stroke-width="3"/>
+    <line x1="136" y1="473" x2="136" y2="483" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="175" y="467" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">BF16, 2 bytes</text>
+  <rect x="910" y="410" width="290" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1055" y="467" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">16.4 GB</text>
+  <rect x="1230" y="410" width="300" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1380" y="467" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">145.4 GB</text>
+
+  
+  <rect x="70" y="525" width="550" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(0, 0)">
+    <rect x="102" y="550" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="122" y1="550" x2="122" y2="590" stroke="#207448" stroke-width="2.5"/>
+    <line x1="102" y1="570" x2="142" y2="570" stroke="#207448" stroke-width="2.5"/>
+    <line x1="94" y1="560" x2="102" y2="560" stroke="#207448" stroke-width="3"/>
+    <line x1="94" y1="580" x2="102" y2="580" stroke="#207448" stroke-width="3"/>
+    <line x1="142" y1="560" x2="150" y2="560" stroke="#207448" stroke-width="3"/>
+    <line x1="142" y1="580" x2="150" y2="580" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="175" y="582" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">FP8 or INT8, 1 byte</text>
+  <rect x="910" y="525" width="290" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1055" y="582" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">8.2 GB</text>
+  <rect x="1230" y="525" width="300" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1380" y="582" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">72.7 GB</text>
+
+  
+  <rect x="70" y="640" width="430" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(0, 0)">
+    <rect x="104" y="665" width="36" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="104" y1="678" x2="140" y2="678" stroke="#207448" stroke-width="2.5"/>
+    <line x1="104" y1="692" x2="140" y2="692" stroke="#207448" stroke-width="2.5"/>
+    <line x1="122" y1="657" x2="122" y2="665" stroke="#207448" stroke-width="3"/>
+    <line x1="122" y1="705" x2="122" y2="713" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="175" y="697" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">4-bit, 0.5 bytes</text>
+  <rect x="910" y="640" width="290" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1055" y="697" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">4.1 GB</text>
+  <rect x="1230" y="640" width="300" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1380" y="697" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">36.35 GB</text>
+
+  
+  <rect x="70" y="752" width="790" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="465" y="790" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="465" dy="0">Real four-bit formats also store scales,</tspan>
+    <tspan x="465" dy="32">so the true size is slightly larger.</tspan>
+  </text>
+
+  
+  <rect x="70" y="882" width="1460" height="74" rx="12" fill="#207448"/>
+  <text x="800" y="929" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Check the weights first: if they do not fit, nothing after them matters.</text>
+</svg>

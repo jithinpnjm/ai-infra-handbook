@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>One tenant label multiplies the series count past the budget</title>
+  <desc>Visual multiplication chain demonstrating cardinality explosion from a single tenant label exceeding metrics budget</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">One tenant label multiplies the series count past the budget</text>
+
+  
+  <rect x="40" y="195" width="320" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="80" cy="240" r="24" fill="#207448" />
+  <text x="80" y="240" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <g transform="translate(240, 212)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="115 40" stroke-linecap="round" transform="rotate(135 28 28)" />
+    <circle cx="28" cy="28" r="4" fill="#207448" />
+    <line x1="28" y1="28" x2="42" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  
+  <text x="60" y="305" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Gateway counter,</text>
+  
+  <text x="60" y="355" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">model 20 x code 8</tspan>
+    <tspan x="60" dy="36">x route 5 =</tspan>
+    <tspan x="60" dy="36">800 combinations,</tspan>
+    <tspan x="60" dy="48">times 12 gateway</tspan>
+    <tspan x="60" dy="36">pods =</tspan>
+    <tspan x="60" dy="36">9,600 series.</tspan>
+  </text>
+
+  
+  <line x1="360" y1="455" x2="396" y2="455" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="400" y="195" width="330" height="520" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="440" cy="240" r="24" fill="#207448" />
+  <text x="440" y="240" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <g transform="translate(635, 212)">
+    <circle cx="24" cy="18" r="11" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 6 48 C 6 36, 15 32, 24 32 C 33 32, 42 36, 42 48" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="48" y1="20" x2="48" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="41" y1="27" x2="55" y2="27" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  
+  <text x="420" y="305" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="420" dy="0">add tenant with</tspan>
+    <tspan x="420" dy="38">1,000 values,</tspan>
+  </text>
+  
+  <text x="420" y="395" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="420" dy="0">fill 0.1, so</tspan>
+    <tspan x="420" dy="36">800 x 1,000 x 0.1 =</tspan>
+    <tspan x="420" dy="36">80,000 combinations,</tspan>
+    <tspan x="420" dy="48">times 12 pods =</tspan>
+    <tspan x="420" dy="36">960,000 series.</tspan>
+  </text>
+
+  
+  <line x1="730" y1="455" x2="766" y2="455" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="770" y="150" width="430" height="565" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="815" cy="195" r="24" fill="#207448" />
+  <text x="815" y="195" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <g transform="translate(1115, 168)">
+    <line x1="4" y1="48" x2="52" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="12" y1="48" x2="12" y2="34" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+    <line x1="22" y1="48" x2="22" y2="18" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+    <line x1="32" y1="48" x2="32" y2="6" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+    <line x1="42" y1="48" x2="42" y2="24" stroke="#207448" stroke-width="5" stroke-linecap="round" />
+  </g>
+  
+  <text x="790" y="255" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="790" dy="0">histogram with</tspan>
+    <tspan x="790" dy="38">14 buckets plus</tspan>
+    <tspan x="790" dy="38">3 series = 17 series</tspan>
+    <tspan x="790" dy="38">per combination,</tspan>
+  </text>
+  
+  <text x="790" y="425" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="790" dy="0">10,000 combinations</tspan>
+    <tspan x="790" dy="36">x 17 x 12 pods =</tspan>
+    <tspan x="790" dy="36">2,040,000 series.</tspan>
+  </text>
+  
+  <g transform="translate(785, 545)">
+    <polygon points="120,0 135,-14 150,0" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <rect x="0" y="0" width="400" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <polygon points="121,1 135,-12 149,1" fill="#ffffff" stroke="none" />
+    <text x="200" y="42" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="200" dy="0">the histogram family does</tspan>
+      <tspan x="200" dy="36">most of the damage,</tspan>
+      <tspan x="200" dy="36">not the counter.</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1200" y1="455" x2="1236" y2="455" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="1240" y="195" width="320" height="520" rx="12" fill="#fdf3e7" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="1280" cy="240" r="24" fill="#207448" />
+  <text x="1280" y="240" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <g transform="translate(1475, 212)">
+    <polygon points="28,4 4,48 52,48" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <circle cx="28" cy="42" r="2.5" fill="#db8129" />
+  </g>
+  
+  <text x="1260" y="305" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="1260" dy="0">total about</tspan>
+    <tspan x="1260" dy="38">3 million series</tspan>
+  </text>
+  
+  <text x="1260" y="395" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1260" dy="0">against a budget</tspan>
+    <tspan x="1260" dy="36">of 2,000,000</tspan>
+  </text>
+
+  
+  <g transform="translate(40, 745)">
+    <rect x="0" y="0" width="1520" height="135" rx="12" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1" />
+    
+    <rect x="100" y="42" width="880" height="52" rx="8" fill="#207448" />
+    
+    <rect x="980" y="42" width="440" height="52" rx="8" fill="#db8129" />
+    
+    <line x1="980" y1="26" x2="980" y2="108" stroke="#303a36" stroke-width="3" stroke-dasharray="6 4" />
+    
+    <text x="540" y="77" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2,000,000 budget</text>
+    <text x="1200" y="77" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">about 3 million</text>
+  </g>
+
+  
+  <g transform="translate(40, 910)">
+    <rect x="0" y="0" width="1520" height="80" rx="12" fill="#207448" />
+    <text x="760" y="49" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">One extra label with many values can multiply the whole platform total, so write the budget down first.</text>
+  </g>
+</svg>

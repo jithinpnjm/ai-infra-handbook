@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1110" viewBox="0 0 1600 1110">
+  <title>The first 90 days: learn, then small wins, then one owned improvement</title>
+  <desc>Timeline showing month one listening and mapping, month two shipping small safe improvements, month three owning one reliability improvement, and practices to avoid.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="18" markerHeight="18" refX="16" refY="9" orient="auto">
+      <polygon points="0 3, 16 9, 0 15" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1110" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="bold">
+    <tspan x="50" dy="0">The first 90 days: learn, then small wins,</tspan>
+    <tspan x="50" dy="58">then one owned improvement</tspan>
+  </text>
+
+  
+  <rect x="50" y="175" width="460" height="740" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  
+  <circle cx="95" cy="227" r="24" fill="#207448" />
+  <text x="95" y="236" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold">1</text>
+
+  
+  <text x="135" y="236" fill="#207448" font-family="sans-serif" font-size="28" font-weight="bold">Month one</text>
+
+  
+  <g transform="translate(440, 203)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="24,12 24,24 34,24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <line x1="75" y1="265" x2="485" y2="265" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <text x="75" y="334" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">Listen and map</text>
+
+  
+  <rect x="75" y="385" width="410" height="265" rx="12" fill="#e8f1ea" />
+  <text x="95" y="432" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="95" dy="0">Shadow on-call, read recent</tspan>
+    <tspan x="95" dy="36">post-mortems, learn the SLOs</tspan>
+    <tspan x="95" dy="36">and the paging alerts, draw</tspan>
+    <tspan x="95" dy="36">the request path for a token</tspan>
+    <tspan x="95" dy="36">API from edge to GPU</tspan>
+  </text>
+
+  
+  <rect x="75" y="675" width="410" height="215" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <text x="280" y="788" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="26" font-weight="bold">Fix nothing big yet</text>
+
+  
+  <line x1="510" y1="545" x2="570" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="570" y="175" width="460" height="740" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  
+  <circle cx="615" cy="227" r="24" fill="#207448" />
+  <text x="615" y="236" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold">2</text>
+
+  
+  <text x="655" y="236" fill="#207448" font-family="sans-serif" font-size="28" font-weight="bold">Month two</text>
+
+  
+  <g transform="translate(960, 203)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="24,12 24,24 34,24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <line x1="595" y1="265" x2="1005" y2="265" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <text x="595" y="315" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">
+    <tspan x="595" dy="0">Ship small safe</tspan>
+    <tspan x="595" dy="38">improvements</tspan>
+  </text>
+
+  
+  <rect x="595" y="385" width="410" height="265" rx="12" fill="#e8f1ea" />
+  <text x="615" y="468" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="615" dy="0">Fix a noisy alert, tighten</tspan>
+    <tspan x="615" dy="38">one runbook or add a</tspan>
+    <tspan x="615" dy="38">missing dashboard panel</tspan>
+  </text>
+
+  
+  <rect x="595" y="675" width="410" height="215" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <text x="800" y="770" text-anchor="middle" fill="#207448" font-family="sans-serif" font-size="26" font-weight="bold">
+    <tspan x="800" dy="0">Pages per week</tspan>
+    <tspan x="800" dy="38">before and after</tspan>
+  </text>
+
+  
+  <line x1="1030" y1="545" x2="1090" y2="545" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="1090" y="175" width="460" height="740" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  
+  <circle cx="1135" cy="227" r="24" fill="#207448" />
+  <text x="1135" y="236" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold">3</text>
+
+  
+  <text x="1175" y="236" fill="#207448" font-family="sans-serif" font-size="28" font-weight="bold">Month three</text>
+
+  
+  <g transform="translate(1480, 203)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="24,12 24,24 34,24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <line x1="1115" y1="265" x2="1525" y2="265" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  <text x="1115" y="315" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">
+    <tspan x="1115" dy="0">Own one reliability</tspan>
+    <tspan x="1115" dy="38">improvement</tspan>
+  </text>
+
+  
+  <rect x="1115" y="385" width="410" height="265" rx="12" fill="#e8f1ea" />
+  <text x="1135" y="468" fill="#303a36" font-family="sans-serif" font-size="24">
+    <tspan x="1135" dy="0">Pick from the posting with</tspan>
+    <tspan x="1135" dy="38">the team, based on the</tspan>
+    <tspan x="1135" dy="38">biggest toil or risk</tspan>
+  </text>
+
+  
+  <rect x="1115" y="675" width="410" height="215" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+  <text x="1320" y="770" text-anchor="middle" fill="#db8129" font-family="sans-serif" font-size="26" font-weight="bold">
+    <tspan x="1320" dy="0">Name the metric and</tspan>
+    <tspan x="1320" dy="38">the review date</tspan>
+  </text>
+
+  
+  <rect x="50" y="945" width="1500" height="120" rx="12" fill="#ebeeed" stroke="#8d9893" stroke-width="2" />
+
+  
+  <text x="80" y="1015" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">What I would not do</text>
+
+  
+  <line x1="430" y1="965" x2="430" y2="1045" stroke="#b5beba" stroke-width="2" />
+
+  
+  <text x="465" y="1015" fill="#303a36" font-family="sans-serif" font-size="24">Rewrite alerting in week two or change production outside the team process</text>
+</svg>

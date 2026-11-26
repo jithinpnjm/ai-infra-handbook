@@ -32,18 +32,9 @@ A realistic question: "A customer says our Token Factory endpoint was down for a
 
 Picture a Friday afternoon when a customer's application starts timing out, and the customer asks which part of the stack is failing. Before you can answer, you need to know how much of the stack you can see at all. Picture three layers stacked on top of each other. The top layer is your client, and from it you see every request you sent. The middle layer is the provider's dashboard and metrics API for your endpoint. The bottom layer is the provider's fleet: GPUs, fabric, power, cooling and the control plane. You never see the bottom layer directly. You see it through the middle layer, through the status page, and through the post-mortems the provider writes after a bad event.
 
-```mermaid
-flowchart LR
-  C["Your client and probes"] --> G["Token Factory gateway"]
-  G --> E["Model replicas on GPUs"]
-  E -.-> M["Regional monitoring"]
-  M --> S["Stored in eu-north"]
-  S --> D["Console dashboards"]
-  S --> F["Prometheus federate API"]
-  F --> P["Your Prometheus and Grafana"]
-  C --> P
-  ST["status.nebius.com"] -.-> P
-```
+![The visibility map: three layers, and you own only one](./img/m20-37-1.svg)
+
+*Figure 20.37.1. The visibility map: three layers, and you own only one, as a diagram.*
 
 Read the diagram from left to right. Your client sends a request to the Token Factory gateway, which passes it to model replicas running on GPUs. Regional monitoring watches those replicas, and the collected data ends up in storage. You reach that storage in two ways, through the console dashboards or through the Prometheus federate API, and the federate API is the one you can pull into your own tools. The status page sits off to one side.
 

@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Pod works locally, Permission denied in the cluster: five questions in order</title>
+  <desc>A vertical ladder troubleshooting guide showing five sequential questions to diagnose container permission issues in Kubernetes clusters.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="46" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Pod works locally, Permission denied</tspan>
+    <tspan x="800" dy="52">in the cluster: five questions in order</tspan>
+  </text>
+
+  
+  <g id="left-tag">
+    <rect x="45" y="130" width="295" height="155" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="192" y="168" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="192" dy="0">EROFS beats the</tspan>
+      <tspan x="192" dy="28">mode bits:</tspan>
+      <tspan x="192" dy="28">the mount check</tspan>
+      <tspan x="192" dy="28">runs first</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-1">
+    
+    <rect x="370" y="130" width="1180" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+    
+    <circle cx="412" cy="163" r="22" fill="#207448"/>
+    <text x="412" y="171" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(450, 142)">
+      <rect x="0" y="0" width="48" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="0" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="2"/>
+      <path d="M 8 20 L 15 25 L 8 30" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="20" y1="30" x2="32" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="518" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Which errno?</text>
+
+    
+    <rect x="400" y="202" width="550" height="60" rx="8" fill="#e8f1ea"/>
+    <text x="675" y="240" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">EACCES: Permission denied</text>
+
+    
+    <rect x="970" y="202" width="550" height="60" rx="8" fill="#e8f1ea"/>
+    <text x="1245" y="240" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">EROFS: Read-only file system</text>
+  </g>
+
+  
+  <line x1="960" y1="285" x2="960" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="box-2">
+    
+    <rect x="370" y="320" width="1180" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="412" cy="353" r="22" fill="#207448"/>
+    <text x="412" y="361" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(450, 332)">
+      <ellipse cx="24" cy="10" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 4 10 v 18 c 0 4 9 7 20 7 s 20 -3 20 -7 v -18" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 4 19 c 0 4 9 7 20 7 s 20 -3 20 -7" fill="none" stroke="#207448" stroke-width="2.5"/>
+    </g>
+
+    
+    <text x="518" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is the root read-only?</text>
+
+    
+    <rect x="400" y="392" width="550" height="60" rx="8" fill="#e8f1ea"/>
+    <text x="675" y="430" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">readOnlyRootFilesystem: true</text>
+
+    
+    <rect x="970" y="392" width="550" height="60" rx="8" fill="#e8f1ea"/>
+    <text x="1245" y="430" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">write to an emptyDir volume</text>
+  </g>
+
+  
+  <line x1="960" y1="475" x2="960" y2="510" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="box-3">
+    
+    <rect x="370" y="510" width="1180" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="412" cy="543" r="22" fill="#207448"/>
+    <text x="412" y="551" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(450, 522)">
+      <circle cx="24" cy="12" r="9" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 6 36 c 0 -8 8 -13 18 -13 s 18 5 18 13" fill="none" stroke="#207448" stroke-width="3.5"/>
+    </g>
+
+    
+    <text x="518" y="552" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Which user and groups inside the container?</text>
+
+    
+    <rect x="400" y="575" width="1120" height="40" rx="6" fill="#e8f1ea"/>
+    <text x="960" y="603" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">read /proc/self/status, ls -ln shows numbers</text>
+
+    
+    <rect x="400" y="622" width="1120" height="40" rx="6" fill="#e8f1ea"/>
+    <text x="960" y="650" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">hostUsers: false: IDs are mapped, 65534 is the overflow ID</text>
+  </g>
+
+  
+  <line x1="960" y1="675" x2="960" y2="710" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="box-4">
+    
+    <rect x="370" y="710" width="1180" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="412" cy="743" r="22" fill="#207448"/>
+    <text x="412" y="751" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <g transform="translate(450, 722)">
+      <path d="M 4 8 h 14 l 5 6 h 21 v 24 h -40 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="518" y="752" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Does the volume owner match fsGroup?</text>
+
+    
+    <rect x="400" y="775" width="1120" height="85" rx="8" fill="#e8f1ea"/>
+    <text x="960" y="810" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="960" dy="0">fsGroup changes ownership at mount time,</tspan>
+      <tspan x="960" dy="32">fsGroupChangePolicy: OnRootMismatch skips it when the root already matches</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="960" y1="875" x2="960" y2="910" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="box-5">
+    
+    <rect x="370" y="910" width="1180" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="412" cy="943" r="22" fill="#207448"/>
+    <text x="412" y="951" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+
+    
+    <g transform="translate(450, 922)">
+      <path d="M 24 3 l 18 7 v 14 c 0 11 -8 18 -18 22 c -10 -4 -18 -11 -18 -22 v -14 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="518" y="952" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Capabilities dropped or policy profile applied?</text>
+
+    
+    <rect x="400" y="975" width="1120" height="85" rx="8" fill="#e8f1ea"/>
+    <text x="960" y="1010" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="960" dy="0">drop: ALL removes CAP_DAC_OVERRIDE,</tspan>
+      <tspan x="960" dy="32">so even root follows the mode bits; AppArmor or SELinux</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="45" y="1115" width="1505" height="60" rx="8" fill="#207448"/>
+    <text x="797" y="1154" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Four pod settings turn Linux rules into container rules.</text>
+  </g>
+</svg>

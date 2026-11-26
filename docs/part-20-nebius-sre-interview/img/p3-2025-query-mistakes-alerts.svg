@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five query mistakes that look fine in review</title>
+  <desc>A visual comparison table showing five common PromQL query mistakes that appear correct during code review, explaining what goes wrong and providing the correct fix.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="40" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Five query mistakes that look fine in review</text>
+
+  
+  <rect x="40" y="105" width="430" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="58" y="118" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="58" y1="130" x2="102" y2="130" stroke="#207448" stroke-width="3"/>
+  <line x1="68" y1="142" x2="80" y2="142" stroke="#207448" stroke-width="3"/>
+  <text x="120" y="150" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Bad query</text>
+
+  
+  <rect x="490" y="105" width="580" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M530 118 L552 154 L508 154 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="530" y1="131" x2="530" y2="141" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="530" cy="148" r="2" fill="#207448"/>
+  <text x="575" y="150" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">What is wrong</text>
+
+  
+  <rect x="1090" y="105" width="470" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="1132" cy="140" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M1123 140 L1129 146 L1143 132" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1175" y="150" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix</text>
+
+  
+  <rect x="40" y="190" width="430" height="154" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="60" y="272" font-family="monospace" font-size="24" fill="#303a36">absent(up{job="vllm"})</text>
+
+  <rect x="490" y="190" width="580" height="154" rx="8" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  <text x="510" y="242" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="510" dy="0">silent when one of two pods</tspan>
+    <tspan x="510" dy="32">is gone; absent fires only</tspan>
+    <tspan x="510" dy="32">when every target is gone</tspan>
+  </text>
+
+  <rect x="1090" y="190" width="470" height="154" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1110" y="255" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="1110" dy="0">count(up{job="vllm"}) &lt; 2</tspan>
+    <tspan x="1110" dy="35">(test returns 1)</tspan>
+  </text>
+
+  
+  <rect x="40" y="358" width="430" height="180" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="60" y="435" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">waiting * on (pod)</tspan>
+    <tspan x="60" dy="35">kube_pod_info</tspan>
+  </text>
+
+  <rect x="490" y="358" width="580" height="180" rx="8" fill="#e8f1ea" stroke="#b8d5bf" stroke-width="1.5"/>
+  <text x="510" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="510" dy="0">many-to-one error from promtool:</tspan>
+    <tspan x="510" dy="32">multiple matches for labels:</tspan>
+    <tspan x="510" dy="32">many-to-one matching must be</tspan>
+    <tspan x="510" dy="32">explicit (group_left/group_right)</tspan>
+  </text>
+
+  <rect x="1090" y="358" width="470" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1110" y="420" font-family="sans-serif" font-size="24" fill="#207448">
+    <tspan x="1110" dy="0">add group_left (node),</tspan>
+    <tspan x="1110" dy="33">pointing at the side</tspan>
+    <tspan x="1110" dy="33">with more series</tspan>
+  </text>
+
+  
+  <rect x="40" y="552" width="430" height="154" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="60" y="600" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">sum(rate(errors[5m])) &gt; 1</tspan>
+    <tspan x="60" dy="33">with $labels.model</tspan>
+    <tspan x="60" dy="33">in the annotation</tspan>
+  </text>
+
+  <rect x="490" y="552" width="580" height="154" rx="8" fill="#e8f1ea" stroke="#b8d5bf" stroke-width="1.5"/>
+  <text x="510" y="615" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="510" dy="0">aggregation drops the label</tspan>
+    <tspan x="510" dy="34">the annotation uses</tspan>
+  </text>
+
+  <rect x="1090" y="552" width="470" height="154" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1110" y="635" font-family="monospace" font-size="24" fill="#207448">sum by (model)</text>
+
+  
+  <rect x="40" y="720" width="430" height="136" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="60" y="770" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">increase(restarts[10m])</tspan>
+    <tspan x="60" dy="34">== 1</tspan>
+  </text>
+
+  <rect x="490" y="720" width="580" height="136" rx="8" fill="#e8f1ea" stroke="#b8d5bf" stroke-width="1.5"/>
+  <text x="510" y="794" font-family="sans-serif" font-size="24" fill="#303a36">extrapolated value is 1.11</text>
+
+  <rect x="1090" y="720" width="470" height="136" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1110" y="794" font-family="monospace" font-size="24" fill="#207448">&gt; 0</text>
+
+  
+  <rect x="40" y="870" width="430" height="180" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5"/>
+  <text x="60" y="965" font-family="monospace" font-size="24" fill="#303a36">rate(x[5m]) offset 1h</text>
+
+  <rect x="490" y="870" width="580" height="180" rx="8" fill="#e8f1ea" stroke="#b8d5bf" stroke-width="1.5"/>
+  <text x="510" y="918" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="510" dy="0">parse error: offset modifier must</tspan>
+    <tspan x="510" dy="32">be preceded by an instant vector</tspan>
+    <tspan x="510" dy="32">selector or range vector</tspan>
+    <tspan x="510" dy="32">selector or a subquery</tspan>
+  </text>
+
+  <rect x="1090" y="870" width="470" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1110" y="932" font-family="sans-serif" font-size="24" fill="#207448">
+    <tspan x="1110" dy="0">rate(x[5m] offset 1h),</tspan>
+    <tspan x="1110" dy="34">offset must follow the</tspan>
+    <tspan x="1110" dy="34">selector immediately</tspan>
+  </text>
+
+  
+  <rect x="40" y="1066" width="1520" height="98" rx="8" fill="#207448"/>
+  <text x="60" y="1108" font-family="sans-serif" font-size="24" fill="#ffffff">
+    <tspan x="60" dy="0">a negative offset looks ahead of the evaluation time;</tspan>
+    <tspan x="60" dy="34">treat rate(sum(...)[5m:1m]) as suspect because a subquery hides a reset</tspan>
+  </text>
+</svg>

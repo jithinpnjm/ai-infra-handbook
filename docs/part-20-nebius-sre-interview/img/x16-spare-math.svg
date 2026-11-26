@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1030" width="1600" height="1030">
+  <title>Failure rate times repair time gives the nodes in repair, and a Poisson tail gives the spares</title>
+  <desc>Visual calculation chain and repair-time sensitivity analysis for determining infrastructure spares from failure arrival rate, repair duration, and Poisson distribution coverage.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1030" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Failure rate times repair time gives the nodes in repair,</tspan>
+    <tspan x="800" dy="55">and a Poisson tail gives the spares</tspan>
+  </text>
+
+  
+
+  
+  <g>
+    <rect x="50" y="175" width="345" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="90" cy="215" r="24" fill="#207448"/>
+    <text x="90" y="224" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(320, 195)">
+      <rect x="0" y="0" width="54" height="42" rx="5" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="12" x2="54" y2="12" stroke="#207448" stroke-width="2"/>
+      <circle cx="8" cy="6" r="2" fill="#207448"/>
+      <circle cx="15" cy="6" r="2" fill="#207448"/>
+      <circle cx="22" cy="6" r="2" fill="#207448"/>
+      <line x1="27" y1="12" x2="27" y2="42" stroke="#207448" stroke-width="2"/>
+      <line x1="0" y1="27" x2="54" y2="27" stroke="#207448" stroke-width="2"/>
+    </g>
+    
+    <text x="222" y="292" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      Arrival rate =
+    </text>
+    <text x="222" y="332" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="222" dy="0">512 x 0.10 /</tspan>
+      <tspan x="222" dy="38">8760 hours =</tspan>
+      <tspan x="222" dy="38" font-weight="bold">0.00584 nodes</tspan>
+      <tspan x="222" dy="36" font-weight="bold">per hour</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="395" y1="340" x2="433" y2="340" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="435" y="175" width="345" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="475" cy="215" r="24" fill="#207448"/>
+    <text x="475" y="224" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(705, 195)">
+      <circle cx="22" cy="22" r="20" fill="none" stroke="#207448" stroke-width="3"/>
+      <polyline points="22,10 22,22 32,22" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="607" y="298" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      In repair =
+    </text>
+    <text x="607" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="607" dy="0">0.00584 x 72 hours =</tspan>
+      <tspan x="607" dy="46" font-weight="bold">0.42 nodes</tspan>
+      <tspan x="607" dy="38" font-weight="bold">on average</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="780" y1="340" x2="818" y2="340" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="820" y="175" width="345" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="860" cy="215" r="24" fill="#207448"/>
+    <text x="860" y="224" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(1085, 195)">
+      <line x1="0" y1="40" x2="52" y2="40" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 2 40 C 10 40 16 8 26 8 C 34 8 40 28 50 40" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 36 24 C 40 32 44 38 50 40 L 36 40 Z" fill="#207448" opacity="0.4"/>
+    </g>
+    
+    <text x="992" y="295" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      Poisson tail
+    </text>
+    <text x="992" y="342" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="992" dy="0">P(out at most 2) =</tspan>
+      <tspan x="992" dy="36" font-weight="bold">0.9909,</tspan>
+      <tspan x="992" dy="44">P(out at most 3) =</tspan>
+      <tspan x="992" dy="36" font-weight="bold">0.9991</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1165" y1="340" x2="1203" y2="340" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <g>
+    <rect x="1205" y="175" width="345" height="330" rx="12" fill="#fdf6ed" stroke="#db8129" stroke-width="3"/>
+    
+    <circle cx="1245" cy="215" r="24" fill="#207448"/>
+    <text x="1245" y="224" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(1480, 195)">
+      <path d="M 22 2 L 42 10 C 42 28 22 42 22 42 C 22 42 2 28 2 10 Z" fill="none" stroke="#db8129" stroke-width="3"/>
+      <polyline points="13,20 19,27 31,14" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <text x="1377" y="306" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">
+      Spares for
+    </text>
+    <text x="1377" y="354" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      99.9 percent coverage
+    </text>
+    <text x="1377" y="426" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#db8129">
+      = 3
+    </text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="50" y="540" width="850" height="300" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="52" y="640" width="846" height="100" fill="#e8f1ea" opacity="0.6"/>
+
+    
+    <line x1="50" y1="640" x2="900" y2="640" stroke="#c8dcd0" stroke-width="1.5"/>
+    <line x1="50" y1="740" x2="900" y2="740" stroke="#c8dcd0" stroke-width="1.5"/>
+
+    
+    <line x1="310" y1="540" x2="310" y2="840" stroke="#c8dcd0" stroke-width="1.5"/>
+    <line x1="680" y1="540" x2="680" y2="840" stroke="#c8dcd0" stroke-width="1.5"/>
+
+    
+    <text x="180" y="598" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Repair 24 hours
+    </text>
+    <text x="495" y="598" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      average in repair 0.14
+    </text>
+    <text x="790" y="598" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      spares 2
+    </text>
+
+    
+    <text x="180" y="698" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Repair 72 hours
+    </text>
+    <text x="495" y="698" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      0.42
+    </text>
+    <text x="790" y="698" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      3
+    </text>
+
+    
+    <text x="180" y="798" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      Repair 336 hours
+    </text>
+    <text x="495" y="798" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      1.96
+    </text>
+    <text x="790" y="798" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      7
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="930" y="540" width="620" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1210, 570)">
+      <path d="M 30 10 A 24 24 0 1 1 6 34" fill="none" stroke="#207448" stroke-width="4.5" stroke-linecap="round"/>
+      <polygon points="30,0 42,10 30,20" fill="#207448"/>
+    </g>
+
+    
+    <text x="1240" y="700" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="1240" dy="0">repair time is as important</tspan>
+      <tspan x="1240" dy="44">as failure rate</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="875" width="1500" height="105" rx="12" fill="#207448"/>
+    <text x="800" y="922" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">Shorten the repair loop before you buy more spares,</tspan>
+      <tspan x="800" dy="38">because repair time sets the spare count as much as failure rate does.</tspan>
+    </text>
+  </g>
+</svg>

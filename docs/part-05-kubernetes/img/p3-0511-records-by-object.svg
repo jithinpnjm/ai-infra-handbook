@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1020" viewBox="0 0 1600 1020">
+  <title>Which DNS record each Kubernetes object produces</title>
+  <desc>Visual reference table showing Kubernetes DNS records produced by ClusterIP, Headless, StatefulSet, ExternalName, Pod IPs, and reverse lookups.</desc>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Which DNS record each Kubernetes object produces</text>
+
+  
+  <g id="row-clusterip">
+    <rect x="40" y="100" width="1520" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 124.5)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="10"/>
+      <path d="M28 8v6M28 42v6M8 28h6M42 28h6M14 14l4.5 4.5M37.5 37.5l4.5 4.5M14 42l4.5-4.5M37.5 18.5l4.5-4.5"/>
+    </g>
+    <text x="144" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" font-size="30" fill="#207448">ClusterIP Service svc in ns: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">svc.ns.svc.cluster.local A (AAAA for IPv6)</tspan>
+      <tspan x="144" dy="38" font-size="24">points to the single ClusterIP; named port gets SRV </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">_http._tcp.svc.ns.svc.cluster.local</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-headless">
+    <rect x="40" y="217" width="1520" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 241.5)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="14" r="5"/>
+      <circle cx="12" cy="42" r="5"/>
+      <circle cx="28" cy="42" r="5"/>
+      <circle cx="44" cy="42" r="5"/>
+      <path d="M28 19v9M12 37v-9h32v9M28 28v9"/>
+    </g>
+    <text x="144" y="259" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" font-size="30" fill="#207448">Headless Service (clusterIP None): </tspan>
+      <tspan font-size="24">same name returns several A records,</tspan>
+      <tspan x="144" dy="38" font-size="24">one per ready pod IP; </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">publishNotReadyAddresses true</tspan>
+      <tspan font-size="24"> returns all pods; one SRV per pod</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-statefulset">
+    <rect x="40" y="334" width="1520" height="105" rx="8" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(65, 358.5)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <ellipse cx="28" cy="16" rx="16" ry="6"/>
+      <path d="M12 16v12c0 3.3 7.2 6 16 6s16-2.7 16-6V16"/>
+      <path d="M12 28v12c0 3.3 7.2 6 16 6s16-2.7 16-6V28"/>
+    </g>
+    <text x="144" y="376" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" font-size="30" fill="#db8129">StatefulSet pod behind a headless Service with serviceName: </tspan>
+      <tspan x="144" dy="38" font-family="ui-monospace, monospace" font-size="24">pod-0.svc.ns.svc.cluster.local A</tspan>
+      <tspan font-size="24"> points to that pod IP (stable identity)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-externalname">
+    <rect x="40" y="451" width="1520" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 465.5)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="18"/>
+      <ellipse cx="28" cy="28" rx="8" ry="18"/>
+      <line x1="10" y1="28" x2="46" y2="28"/>
+    </g>
+    <text x="144" y="503" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" font-size="30" fill="#207448">ExternalName Service: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">CNAME</tspan>
+      <tspan font-size="24"> to the external name</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-pod-ip">
+    <rect x="40" y="548" width="1520" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 572.5)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="10" y="10" width="36" height="36" rx="6"/>
+      <path d="M10 24h36M24 10v36"/>
+    </g>
+    <text x="144" y="590" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" font-size="30" fill="#207448">Pod IP (pods insecure or verified mode): </tspan>
+      <tspan x="144" dy="38" font-family="ui-monospace, monospace" font-size="24">10-244-3-17.ns.pod.cluster.local A</tspan>
+      <tspan font-size="24"> (rarely useful)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-reverse-lookups">
+    <rect x="40" y="665" width="1520" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 679.5)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M42 20A16 16 0 1 0 42 36"/>
+      <polyline points="44 11 42 20 33 20"/>
+      <circle cx="28" cy="28" r="4"/>
+    </g>
+    <text x="144" y="717" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" font-size="30" fill="#207448">Reverse lookups: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">PTR</tspan>
+      <tspan font-size="24"> for Service and pod IPs</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-short-name">
+    <rect x="40" y="770" width="1520" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 797)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="10" y="10" width="36" height="36" rx="8"/>
+      <path d="M18 28h18M28 20l8 8-8 8"/>
+    </g>
+    <text x="144" y="812" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-size="24">from namespace ns, svc works; svc.other-ns resolves through svc.cluster.local;</tspan>
+      <tspan x="144" dy="38" font-size="24">use at least svc.ns across namespaces</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer-vocabulary">
+    <rect x="40" y="900" width="1520" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 912)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="12" y="10" width="32" height="36" rx="4"/>
+      <line x1="20" y1="20" x2="36" y2="20"/>
+      <line x1="20" y1="28" x2="36" y2="28"/>
+      <line x1="20" y1="36" x2="28" y2="36"/>
+    </g>
+    <text x="144" y="948" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">A = IPv4, AAAA = IPv6, SRV = host and port, CNAME = another name, PTR = address back to name</text>
+  </g>
+</svg>

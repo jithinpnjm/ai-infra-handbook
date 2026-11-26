@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1020" viewBox="0 0 1600 1020" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <title>Mapping array task 5 onto a learning-rate and batch-size grid</title>
+  <desc>A three-row, four-column grid of array task numbers 0 to 11 indexed by batch size rows and learning rate columns, with the task 5 cell highlighted in orange, a small arithmetic panel showing LR_IDX = 5 % 4 = 1, BS_IDX = 5 / 4 = 1 and pair = (3e-4, 32), a note about the %4 throttle, and a green takeaway bar.</desc>
+
+  <rect x="0" y="0" width="1600" height="1020" fill="#f5f8f5"/>
+
+  <text x="80" y="88" font-size="48" font-weight="700" fill="#303a36">Mapping array task 5 onto a</text>
+  <text x="80" y="144" font-size="48" font-weight="700" fill="#303a36">learning-rate and batch-size grid</text>
+  <rect x="80" y="162" width="150" height="8" rx="4" fill="#207448"/>
+
+  <rect x="304" y="210" width="858" height="136" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="409" y="256" text-anchor="middle" font-size="24" font-weight="700" fill="#303a36">learning</text>
+  <text x="409" y="286" text-anchor="middle" font-size="24" font-weight="700" fill="#303a36">rate 1e-4</text>
+  <text x="409" y="316" text-anchor="middle" font-size="24" fill="#4d5c54">(LR index 0)</text>
+  <text x="625" y="286" text-anchor="middle" font-size="24" font-weight="700" fill="#303a36">3e-4</text>
+  <text x="625" y="316" text-anchor="middle" font-size="24" fill="#4d5c54">(LR index 1)</text>
+  <text x="841" y="286" text-anchor="middle" font-size="24" font-weight="700" fill="#303a36">1e-3</text>
+  <text x="841" y="316" text-anchor="middle" font-size="24" fill="#4d5c54">(LR index 2)</text>
+  <text x="1057" y="286" text-anchor="middle" font-size="24" font-weight="700" fill="#303a36">3e-3</text>
+  <text x="1057" y="316" text-anchor="middle" font-size="24" fill="#4d5c54">(LR index 3)</text>
+
+  <text x="290" y="405" text-anchor="end" font-size="24" font-weight="700" fill="#303a36">batch size 16</text>
+  <text x="290" y="435" text-anchor="end" font-size="24" fill="#4d5c54">(BS index 0)</text>
+  <text x="290" y="523" text-anchor="end" font-size="24" font-weight="700" fill="#303a36">batch size 32</text>
+  <text x="290" y="553" text-anchor="end" font-size="24" fill="#4d5c54">(BS index 1)</text>
+  <text x="290" y="641" text-anchor="end" font-size="24" font-weight="700" fill="#303a36">batch size 64</text>
+  <text x="290" y="671" text-anchor="end" font-size="24" fill="#4d5c54">(BS index 2)</text>
+
+  <rect x="304" y="358" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="373" y="378" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="409" y="425" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">0</text>
+
+  <rect x="520" y="358" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="589" y="378" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="625" y="425" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">1</text>
+
+  <rect x="736" y="358" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="805" y="378" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="841" y="425" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">2</text>
+
+  <rect x="952" y="358" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="1021" y="378" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="1057" y="425" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">3</text>
+
+  <rect x="304" y="476" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="373" y="496" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="409" y="543" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">4</text>
+
+  <rect x="520" y="476" width="210" height="112" rx="10" fill="#db8129" stroke="#db8129" stroke-width="3"/>
+  <rect x="589" y="496" width="72" height="72" rx="10" fill="#ffffff"/>
+  <text x="625" y="543" text-anchor="middle" font-size="32" font-weight="700" fill="#db8129">5</text>
+
+  <rect x="736" y="476" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="805" y="496" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="841" y="543" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">6</text>
+
+  <rect x="952" y="476" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="1021" y="496" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="1057" y="543" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">7</text>
+
+  <rect x="304" y="594" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="373" y="614" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="409" y="661" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">8</text>
+
+  <rect x="520" y="594" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="589" y="614" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="625" y="661" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">9</text>
+
+  <rect x="736" y="594" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="805" y="614" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="841" y="661" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">10</text>
+
+  <rect x="952" y="594" width="210" height="112" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="1021" y="614" width="72" height="72" rx="10" fill="#207448"/>
+  <text x="1057" y="661" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">11</text>
+
+  <rect x="1202" y="427" width="318" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="1220" y="481" font-size="24" fill="#303a36" font-family="ui-monospace, Menlo, Consolas, monospace">LR_IDX = 5 % 4 = 1</text>
+  <text x="1220" y="527" font-size="24" fill="#303a36" font-family="ui-monospace, Menlo, Consolas, monospace">BS_IDX = 5 / 4 = 1</text>
+  <text x="1220" y="573" font-size="24" fill="#303a36" font-family="ui-monospace, Menlo, Consolas, monospace">pair = (3e-4, 32)</text>
+
+  <rect x="304" y="746" width="858" height="104" rx="14" fill="#e8f1ea"/>
+  <text x="328" y="786" font-size="24" fill="#303a36">%4 throttle: four training runs read the dataset</text>
+  <text x="328" y="816" font-size="24" fill="#303a36">at once, and the other eight wait.</text>
+
+  <rect x="80" y="890" width="1440" height="76" rx="16" fill="#207448"/>
+  <text x="800" y="938" text-anchor="middle" font-size="28" font-weight="700" fill="#ffffff">Modulo picks the learning rate, and integer division picks the batch size.</text>
+</svg>

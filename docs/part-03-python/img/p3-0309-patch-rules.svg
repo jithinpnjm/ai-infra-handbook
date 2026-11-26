@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1125" width="1600" height="1125">
+  <title>When you must patch: where to patch and what to guard</title>
+  <desc>Technical guide illustrating proper mocking scope, lookup site targeting, autospec guards, side-effect sequences, and transport-level alternatives.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1125" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="46px" font-weight="bold" fill="#303a36">When you must patch: where to patch and what to guard</text>
+
+  
+  <rect x="50" y="90" width="730" height="530" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="75" y="105" width="46" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="75" y1="117" x2="121" y2="117" stroke="#207448" stroke-width="2"/>
+  <circle cx="84" cy="111" r="2" fill="#207448"/>
+  <circle cx="91" cy="111" r="2" fill="#207448"/>
+  <polyline points="85,125 93,129 85,133" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <rect x="70" y="148" width="690" height="292" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="90" y="180" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#303a36">
+    <tspan x="90" dy="0">def test_get_retries(mocker):</tspan>
+    <tspan x="90" dy="32">  m = mocker.patch(</tspan>
+    <tspan x="90" dy="32">    "fleetctl.client.httpx.Client.get");</tspan>
+    <tspan x="90" dy="32">  m.side_effect = [</tspan>
+    <tspan x="90" dy="32">    httpx.ConnectError(boom),</tspan>
+    <tspan x="90" dy="32">    make_response(200, {ok: True})];</tspan>
+    <tspan x="90" dy="32">  assert get_json(/x) == {ok: True};</tspan>
+    <tspan x="90" dy="32">  assert m.call_count == 2</tspan>
+  </text>
+
+  
+  <rect x="70" y="460" width="310" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="110" cy="527" r="24" fill="#207448"/>
+  <text x="110" y="535" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
+  <text x="150" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="150" dy="0">call 1 raises</tspan>
+    <tspan x="150" dy="32">ConnectError</tspan>
+  </text>
+
+  
+  <line x1="380" y1="527" x2="442" y2="527" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="450" y="460" width="310" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="490" cy="527" r="24" fill="#207448"/>
+  <text x="490" y="535" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
+  <text x="530" y="515" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="530" dy="0">call 2</tspan>
+    <tspan x="530" dy="32">returns 200</tspan>
+  </text>
+
+  
+  <rect x="820" y="90" width="730" height="530" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="838" y="105" width="694" height="112" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="878" cy="161" r="22" fill="none" stroke="#db8129" stroke-width="3"/>
+  <circle cx="878" cy="161" r="8" fill="none" stroke="#db8129" stroke-width="3"/>
+  <line x1="878" y1="133" x2="878" y2="142" stroke="#db8129" stroke-width="3"/>
+  <line x1="878" y1="180" x2="878" y2="189" stroke="#db8129" stroke-width="3"/>
+  <line x1="850" y1="161" x2="859" y2="161" stroke="#db8129" stroke-width="3"/>
+  <line x1="897" y1="161" x2="906" y2="161" stroke="#db8129" stroke-width="3"/>
+  <text x="918" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">
+    <tspan x="918" dy="0">Patch where the name is looked up:</tspan>
+    <tspan x="918" dy="32">fleetctl.client.httpx, not httpx</tspan>
+  </text>
+
+  
+  <rect x="838" y="232" width="694" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 862 272 L 878 264 L 894 272 L 894 296 C 894 308 878 316 878 316 C 878 316 862 308 862 296 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <polyline points="870,290 876,295 886,284" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="918" y="267" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="918" dy="0">autospec=True or create_autospec so the mock</tspan>
+    <tspan x="918" dy="30">carries the real signature and cannot</tspan>
+    <tspan x="918" dy="30">silently accept wrong calls</tspan>
+  </text>
+
+  
+  <rect x="838" y="367" width="694" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="864" y="405" width="28" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="871" y1="415" x2="885" y2="415" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="871" y1="422" x2="885" y2="422" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="871" y1="429" x2="880" y2="429" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="918" y="413" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="918" dy="0">side_effect: a list for a sequence of results,</tspan>
+    <tspan x="918" dy="32">or an exception class to simulate a failure</tspan>
+  </text>
+
+  
+  <rect x="838" y="492" width="694" height="92" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="864" y="534" width="28" height="22" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 870 534 L 870 526 C 870 520 886 520 886 526 L 886 534" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="878" cy="545" r="2" fill="#207448"/>
+  <text x="918" y="547" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Keep mocks local to the test</text>
+
+  
+  <rect x="50" y="645" width="1500" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="95" cy="718" r="15" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="95" cy="762" r="15" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="95" y1="733" x2="95" y2="747" stroke="#207448" stroke-width="3" stroke-dasharray="2,2"/>
+  <polyline points="89,742 95,748 101,742" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="155" y="686" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="155" dy="0">intercept at the transport boundary so the real client code still runs:</tspan>
+    <tspan x="155" dy="32">responses for requests, respx for httpx, aioresponses and pytest-aiohttp,</tspan>
+    <tspan x="155" dy="32">vcrpy or pytest-recording (record once, replay later;</tspan>
+    <tspan x="155" dy="32">scrub secrets from cassettes, re-record periodically to detect drift)</tspan>
+  </text>
+
+  
+  <rect x="50" y="850" width="1500" height="145" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="83" y="904" width="24" height="30" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <rect x="91" y="914" width="24" height="30" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <line x1="97" y1="924" x2="109" y2="924" stroke="#207448" stroke-width="2"/>
+  <line x1="97" y1="930" x2="109" y2="930" stroke="#207448" stroke-width="2"/>
+  <text x="155" y="910" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#303a36">
+    <tspan x="155" dy="0">respx serves two pages: params limit=2 returns items [1, 2] with next_page_token t;</tspan>
+    <tspan x="155" dy="42">params limit=2 and page_token t returns [3]; paginate(page_size=2) == [1, 2, 3]</tspan>
+  </text>
+
+  
+  <rect x="50" y="1020" width="1500" height="75" rx="16" fill="#207448"/>
+  <text x="800" y="1067" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">Patch the lookup site, and prefer the transport boundary</text>
+</svg>

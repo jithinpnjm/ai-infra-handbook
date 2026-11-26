@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>HPA defaults are wrong for an engine that takes minutes to start</title>
+  <desc>Visual comparison showing why Kubernetes default HPA scale-up and scale-down rules cause thrashing on slow-booting engines, and tuning starting points to prevent pod flapping.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">HPA defaults are wrong for an engine</text>
+  <text x="800" y="124" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">that takes minutes to start</text>
+
+  
+  <rect x="60" y="160" width="710" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 197)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="14"/>
+    <circle cx="28" cy="28" r="24"/>
+    <line x1="28" y1="4" x2="28" y2="14"/>
+    <line x1="28" y1="42" x2="28" y2="52"/>
+    <line x1="7" y1="16" x2="16" y2="21"/>
+    <line x1="40" y1="35" x2="49" y2="40"/>
+    <line x1="7" y1="40" x2="16" y2="35"/>
+    <line x1="40" y1="21" x2="49" y2="16"/>
+  </g>
+  <text x="165" y="234" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Kubernetes defaults</text>
+
+  
+  <rect x="60" y="315" width="710" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 345)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="26" width="18" height="22" rx="4"/>
+    <rect x="30" y="14" width="18" height="34" rx="4"/>
+    <path d="M12 18 L28 4 L44 18"/>
+    <path d="M28 4 L28 26"/>
+  </g>
+  <text x="155" y="372" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="155" dy="0">scale up: no stabilization window;</tspan>
+    <tspan x="155" dy="42">may add 100 percent of replicas or</tspan>
+    <tspan x="155" dy="42">4 pods every 15 s, whichever is larger</tspan>
+  </text>
+
+  
+  <rect x="60" y="520" width="710" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 550)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <polyline points="28 14 28 28 38 28"/>
+    <path d="M10 8 L4 14"/>
+    <path d="M46 8 L52 14"/>
+  </g>
+  <text x="155" y="570" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="155" dy="0">scale down: 300 s window; one policy</tspan>
+    <tspan x="155" dy="38">removing up to 100 percent per 15 s;</tspan>
+    <tspan x="155" dy="38">the window is a rolling maximum,</tspan>
+    <tspan x="155" dy="38">the controller takes the highest</tspan>
+    <tspan x="155" dy="38">recommendation from the last window,</tspan>
+    <tspan x="155" dy="38">so a short dip changes nothing</tspan>
+  </text>
+
+  
+  <rect x="830" y="160" width="710" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(855, 197)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="8" y1="14" x2="48" y2="14"/>
+    <circle cx="20" cy="14" r="5" fill="#e8f1ea"/>
+    <line x1="8" y1="28" x2="48" y2="28"/>
+    <circle cx="36" cy="28" r="5" fill="#e8f1ea"/>
+    <line x1="8" y1="42" x2="48" y2="42"/>
+    <circle cx="16" cy="42" r="5" fill="#e8f1ea"/>
+  </g>
+  <text x="930" y="198" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="930" dy="0">Starting point for a</tspan>
+    <tspan x="930" dy="36">slow-starting engine</tspan>
+    <tspan x="930" dy="36">(author's choice, tune it)</tspan>
+  </text>
+
+  
+  <rect x="830" y="315" width="710" height="485" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(855, 350)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 6 L48 14 V26 C48 38 38 48 28 52 C18 48 8 38 8 26 V14 Z"/>
+    <circle cx="28" cy="27" r="10"/>
+    <polyline points="28 21 28 27 33 27"/>
+  </g>
+  <text x="920" y="380" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="920" dy="0">scale down: one pod per three minutes</tspan>
+    <tspan x="920" dy="48">with a 900 s window; window at least</tspan>
+    <tspan x="920" dy="48">as long as a deployment takes plus</tspan>
+    <tspan x="920" dy="48">a margin; selectPolicy Min on</tspan>
+    <tspan x="920" dy="48">scale-down picks the slowest allowed</tspan>
+    <tspan x="920" dy="48">policy; scale-up window stays 0</tspan>
+    <tspan x="920" dy="48">as long as the metric includes</tspan>
+    <tspan x="920" dy="48">the not-ready pods rule</tspan>
+  </text>
+
+  
+  <rect x="60" y="830" width="1480" height="100" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(90, 852)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 28 A20 20 0 1 1 28 48"/>
+    <polyline points="28 38 28 48 38 48"/>
+    <circle cx="28" cy="26" r="3" fill="#db8129"/>
+    <line x1="28" y1="14" x2="28" y2="20"/>
+  </g>
+  <text x="165" y="888" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">booting a service only to terminate it before it served anything</text>
+
+  
+  <rect x="60" y="955" width="1480" height="205" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 1030)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 36 C10 32 6 24 6 18 C6 8 16 2 28 2 C40 2 50 8 50 18 C50 24 46 32 38 36 L38 44 L18 44 Z"/>
+    <line x1="20" y1="52" x2="36" y2="52"/>
+    <line x1="28" y1="14" x2="28" y2="26"/>
+  </g>
+  <text x="165" y="1015" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="165" dy="0">terminating a pod takes seconds while booting one takes minutes,</tspan>
+    <tspan x="165" dy="45">so scale-down is a nearly irreversible decision; do not raise the</tspan>
+    <tspan x="165" dy="45">scale-up window to calm the graph, that delays capacity when the burst arrives</tspan>
+  </text>
+</svg>

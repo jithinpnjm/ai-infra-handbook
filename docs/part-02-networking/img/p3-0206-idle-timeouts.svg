@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Silent resets on long-lived connections: keepalives versus load balancer idle timeouts</title>
+  <desc>Visual explanation of silent connection resets caused by load balancer idle timeouts outracing default TCP keepalives, and related TCP configuration knobs.</desc>
+
+  <defs>
+    <marker id="arrow-axis" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Silent resets on long-lived connections:</tspan>
+    <tspan x="800" dy="52">keepalives versus load balancer idle timeouts</tspan>
+  </text>
+
+  
+  <rect x="50" y="140" width="880" height="525" rx="16" fill="#ffffff" stroke="#b2d2bd" stroke-width="2" />
+
+  
+  <g transform="translate(75, 160)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 14 L 28 28 L 38 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <rect x="145" y="165" width="285" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+  <text x="287" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="287" dy="0">set app keepalive</tspan>
+    <tspan x="287" dy="28">(SO_KEEPALIVE) or</tspan>
+    <tspan x="287" dy="28">interval below</tspan>
+    <tspan x="287" dy="28">the load balancer</tspan>
+    <tspan x="287" dy="28">timeout</tspan>
+  </text>
+
+  
+  <rect x="590" y="235" width="320" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="750" y="270" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="750" dy="0">tcp_keepalive_time default</tspan>
+    <tspan x="750" dy="28">7200 s: first probe sent</tspan>
+  </text>
+  <line x1="750" y1="350" x2="750" y2="400" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" />
+
+  
+  <line x1="90" y1="400" x2="890" y2="400" stroke="#207448" stroke-width="4" marker-end="url(#arrow-axis)" />
+  <text x="890" y="440" text-anchor="end" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">idle time</text>
+
+  
+  <line x1="565" y1="388" x2="575" y2="412" stroke="#207448" stroke-width="3" />
+  <line x1="575" y1="388" x2="585" y2="412" stroke="#207448" stroke-width="3" />
+
+  
+  <line x1="110" y1="390" x2="110" y2="410" stroke="#207448" stroke-width="4" />
+  <circle cx="110" cy="330" r="22" fill="#207448" />
+  <text x="110" y="338" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="110" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">last data</text>
+
+  
+  <line x1="445" y1="390" x2="445" y2="480" stroke="#db8129" stroke-width="4" />
+  <circle cx="445" cy="445" r="22" fill="#db8129" />
+  <text x="445" y="453" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <rect x="255" y="480" width="310" height="160" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="2" />
+  <text x="410" y="518" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="410" dy="0">many load balancers</tspan>
+    <tspan x="410" dy="28">drop idle flows,</tspan>
+    <tspan x="410" dy="28">for example 350 s</tspan>
+    <tspan x="410" dy="28">on some clouds</tspan>
+  </text>
+
+  
+  <line x1="750" y1="390" x2="750" y2="410" stroke="#207448" stroke-width="4" />
+  <circle cx="750" cy="205" r="22" fill="#207448" />
+  <text x="750" y="213" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <line x1="750" y1="410" x2="750" y2="470" stroke="#207448" stroke-width="2" stroke-dasharray="4 4" />
+  <circle cx="750" cy="445" r="22" fill="#207448" />
+  <text x="750" y="453" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <rect x="585" y="475" width="330" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="750" y="505" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="750" dy="0">then</tspan>
+    <tspan x="750" dy="26">tcp_keepalive_intvl</tspan>
+    <tspan x="750" dy="26">75 s between probes,</tspan>
+    <tspan x="750" dy="26">tcp_keepalive_probes</tspan>
+    <tspan x="750" dy="26">9 before the peer is</tspan>
+    <tspan x="750" dy="26">declared dead</tspan>
+  </text>
+
+  
+  <rect x="50" y="685" width="880" height="325" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(75, 715)">
+    <path d="M 28 6 L 48 16 L 48 34 C 48 44 28 52 28 52 C 28 52 8 44 8 34 L 8 16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="28" cy="42" r="2.5" fill="#207448" />
+  </g>
+
+  
+  <text x="155" y="755" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">if the keepalive is later than the idle timeout,</tspan>
+    <tspan x="155" dy="38">the NAT, firewall or load balancer</tspan>
+    <tspan x="155" dy="38">forgets the flow silently; the next packet</tspan>
+    <tspan x="155" dy="38">gets a reset:</tspan>
+    <tspan x="155" dy="46" font-family="monospace" font-weight="bold" fill="#303a36">Connection reset by peer</tspan>
+  </text>
+
+  
+  <rect x="970" y="140" width="580" height="870" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(995, 160)">
+    <line x1="6" y1="14" x2="50" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="20" cy="14" r="6" fill="#207448" />
+    <line x1="6" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="38" cy="28" r="6" fill="#207448" />
+    <line x1="6" y1="42" x2="50" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="16" cy="42" r="6" fill="#207448" />
+  </g>
+
+  
+  <text x="1070" y="200" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Related knobs</text>
+
+  
+  <rect x="990" y="230" width="540" height="195" rx="10" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5" />
+  <text x="1010" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1010" dy="0" font-family="monospace">tcp_syn_retries,</tspan>
+    <tspan x="1010" dy="27" font-family="monospace">tcp_synack_retries,</tspan>
+    <tspan x="1010" dy="27">tcp_retries2 (15, about</tspan>
+    <tspan x="1010" dy="27">15 minutes), tcp_orphan_retries:</tspan>
+    <tspan x="1010" dy="27">lower for fast failover;</tspan>
+    <tspan x="1010" dy="27">defaults tuned for lossy WAN</tspan>
+  </text>
+
+  
+  <rect x="990" y="445" width="540" height="120" rx="10" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5" />
+  <text x="1010" y="480" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1010" dy="0">tcp_fin_timeout 60 for</tspan>
+    <tspan x="1010" dy="28">orphaned FIN_WAIT_2, not</tspan>
+    <tspan x="1010" dy="28">the TIME_WAIT timer</tspan>
+  </text>
+
+  
+  <rect x="990" y="585" width="540" height="180" rx="10" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5" />
+  <text x="1010" y="618" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1010" dy="0" font-family="monospace">tcp_slow_start_after_idle=0:</tspan>
+    <tspan x="1010" dy="28">the default 1 resets cwnd</tspan>
+    <tspan x="1010" dy="28">after idle; disable for</tspan>
+    <tspan x="1010" dy="28">long-lived bursty connections</tspan>
+    <tspan x="1010" dy="28">such as gRPC and database pools</tspan>
+  </text>
+
+  
+  <rect x="990" y="785" width="540" height="180" rx="10" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5" />
+  <text x="1010" y="818" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1010" dy="0">tcp_tw_reuse=1 safely allows</tspan>
+    <tspan x="1010" dy="28">reuse of TIME_WAIT for</tspan>
+    <tspan x="1010" dy="28">outgoing connections with</tspan>
+    <tspan x="1010" dy="28">timestamps; tcp_tw_recycle</tspan>
+    <tspan x="1010" dy="28">is removed and dangerous</tspan>
+  </text>
+
+  
+  <rect x="50" y="1035" width="1500" height="90" rx="12" fill="#207448" />
+  <text x="800" y="1070" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">Ignoring idle timeouts on NATs, load balancers and firewalls</tspan>
+    <tspan x="800" dy="34">causes silent resets unless you use keepalives</tspan>
+  </text>
+</svg>

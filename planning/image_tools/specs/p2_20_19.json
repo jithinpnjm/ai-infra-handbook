@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p2-2019-budget-minutes",
+  "title": "Error budget: 0.1 percent of 43,200 minutes",
+  "spec": "Top: a formula strip in monospace 'Error budget = 100 percent minus the SLO'. Below, a 30-day window bar drawn as a long horizontal bar labelled '30 x 24 x 60 = 43,200 minutes'. A thin orange slice at the right end labelled '0.1 percent = 43.2 minutes of full outage'. Under the bar a small table with four rows, columns 'SLO', 'Budget fraction', 'Minutes per 30 days': '99 percent, 0.01, 432'; '99.9 percent, 0.001, 43.2' (orange outline); '99.95 percent, 0.0005, 21.6'; '99.99 percent, 0.0001, 4.32'. A side card for requests: 'At 100 requests per second, 30 days = 259,200,000 requests; 0.1 percent allows 259,200 failed requests'. Caption: 'The budget turns a vague target into a number you can spend.'",
+  "anchor": "### 5. Error budgets: do the arithmetic",
+  "alt": "An error budget is 100 percent minus the SLO, so a 99.9 percent target over 30 days allows 43.2 minutes of full outage.",
+  "cap": "The error budget is 100 percent minus the SLO, so 99.9 percent over 30 days allows 43.2 minutes of full outage."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p2-2019-symptom-cause",
+  "title": "Pages are for symptoms; causes become tickets",
+  "spec": "Left column: a cause card 'GPU utilisation 98 percent' with a dashed outline and the note 'High utilisation is the goal, not a fault'. An arrow to a box 'Alert at 3 a.m.' with a red bell. A second example card: 'Replica restarts: a cause' with the note 'Restart count goes up'. Right column: a symptom card 'Users see errors or slow responses' drawn with an orange outline. A two-lane split at the bottom: left lane 'Page: burn-rate alerts on gateway availability and gateway TTFT' with a green pager icon; right lane 'Ticket: causes such as KV cache above 95 percent for 15 minutes, repeated preemptions' with a grey ticket icon. A caption: 'Ask whether a user sees it. If yes, it is a symptom and can page.'",
+  "anchor": "### 7. Symptoms, not causes, and what pages",
+  "alt": "A high GPU utilisation alert is a cause and not a fault, so pages come from user-visible symptoms such as burn-rate alerts while causes become tickets.",
+  "cap": "Pages come from user-visible symptoms such as burn-rate alerts on gateway availability and TTFT, while causes such as high KV cache usage become tickets."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p2-2019-goodput-split",
+  "title": "Throughput counts everything; goodput counts what met the target",
+  "spec": "A split bar of 40,000 tokens per second drawn as one long bar. The bar is divided into two segments: a green segment labelled 'Tokens that met the TTFT and per-token limits' and a grey segment labelled 'Tokens that arrived too late for anyone to care'. A label above the whole bar 'Throughput: 40,000 tokens per second'. A label above the green segment 'Goodput: only work that met both targets'. A small chart beside it with two lines over time: 'Throughput: climbs when batch size rises' and 'Goodput: falls at the same time' drawn in orange. Formula card in monospace: 'Goodput = requests per second meeting both limits / all requests per second'. Bottom green bar: 'Report goodput next to throughput, because only goodput falls when users suffer.'",
+  "anchor": "### 9. Goodput: speed that counts",
+  "alt": "Throughput of 40,000 tokens per second includes tokens that arrive too late, while goodput counts only requests that met both the TTFT and per-token limits.",
+  "cap": "Throughput of 40,000 tokens per second includes tokens that arrived too late, while goodput counts only the requests that met both limits."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p2-2019-cashier-kitchen",
+  "title": "Measure at the gateway, explain at the engine",
+  "spec": "A two-part layout. Left part: a gateway box labelled 'Gateway: nearest the customer, SLO ratios come from here' with a cashier icon, and an arrow from the customer icon into it. Right part: an engine box labelled 'Engine: queue, prefill and decode, KV cache use, preemptions' with a kitchen icon. An arrow from the gateway into a router queue box labelled 'Request waits in the router queue, six seconds in the example'. A dashed arrow from the gateway back toward the engine labelled 'Explains why an order was slow'. Retry loop drawn between gateway and engine: 'Retry hides the first failure, so count the outcome the customer sees'. A stream card: 'Gateway sends 200 at the first token: count a stream good only if it ends with a normal finish'. Orange outline on the retry loop. Bottom note: 'The engine cannot report that it is dead, because it is the thing that died.'",
+  "anchor": "### 11. Measure at the gateway, explain at the engine",
+  "alt": "The gateway measures the outcome the customer sees and the engine explains why, with retries and streams counted by their final outcome.",
+  "cap": "The gateway measures what the customer sees, and the engine explains why, counting retries and streams by their final outcome."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "p2-2019-slo-chain",
+  "title": "From user outcome to SLI to SLO to error budget",
+  "spec": "A left-to-right chain of four rounded boxes with arrows between them and a number circle on each. Box 1 'User outcome: did the request succeed fast enough?' with a user icon. Box 2 'SLI: good events divided by all events' with a ratio icon. Box 3 'SLO: the target, for example 99.9 percent' with a target icon. Box 4 'Error budget: 100 percent minus the SLO' with a wallet icon. Arrow from box 4 to a burn-rate gauge labelled 'Burn rate: how fast the budget is spent'. Below box 2 a note 'Count the outcome the customer sees, not each attempt'. Below box 4 a note 'Latency is three numbers, and end-to-end depends on length'. Orange outline on box 3. Caption: 'A token API breaks the usual SLI recipe, so define good events per request outcome.'",
+  "anchor": "### 1. A token API breaks the usual SLI recipe",
+  "alt": "The SLI recipe for a token API runs from user outcome to SLI ratio, SLO target and error budget, with the burn rate showing how fast the budget is spent.",
+  "cap": "The SLI recipe runs from user outcome to an SLI ratio, an SLO target and an error budget, with the burn rate showing how fast the budget is spent."
+ }
+]

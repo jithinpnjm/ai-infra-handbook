@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Three cluster types and what one node failure costs</title>
+  <desc>Visual comparison of HA or load-balanced, High-productivity HTC or Grid, and HPC or AI training cluster architectures and failure outcomes.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three cluster types and what one node failure costs</text>
+
+  
+  <g>
+    
+    <rect x="40" y="115" width="480" height="920" rx="16" fill="#ffffff" stroke="#d5dfd8" stroke-width="2"/>
+
+    
+    <g transform="translate(252, 135)">
+      <rect x="14" y="2" width="28" height="14" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+      <line x1="28" y1="16" x2="28" y2="25" stroke="#207448" stroke-width="3"/>
+      <path d="M14 25 L42 25 M14 25 L14 31 M42 25 L42 31" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="3" y="31" width="22" height="22" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+      <rect x="31" y="31" width="22" height="22" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+      <line x1="7" y1="38" x2="15" y2="38" stroke="#207448" stroke-width="2"/>
+      <line x1="35" y1="38" x2="43" y2="38" stroke="#207448" stroke-width="2"/>
+    </g>
+
+    
+    <text x="280" y="235" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">HA or load-balanced</text>
+
+    
+    <rect x="60" y="275" width="440" height="190" rx="12" fill="#e8f1ea" stroke="#c4d8c9" stroke-width="1.5"/>
+    <text x="84" y="315" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="84" dy="0">goal continuous service uptime</tspan>
+      <tspan x="84" dy="32">and low latency</tspan>
+    </text>
+    <rect x="84" y="395" width="392" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="280" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">loose or replicated state</text>
+
+    
+    <rect x="60" y="480" width="440" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="84" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="84" dy="0">node failure: traffic fails over</tspan>
+      <tspan x="84" dy="34">to surviving nodes</tspan>
+    </text>
+    <rect x="84" y="635" width="392" height="90" rx="8" fill="#f0f6f2" stroke="#207448" stroke-width="1"/>
+    <text x="280" y="688" text-anchor="middle" font-family="sans-serif" font-size="24" font-style="italic" fill="#207448">(restaurant with two chefs)</text>
+
+    
+    <rect x="60" y="765" width="440" height="110" rx="10" fill="#f0f6f2" stroke="#c4d8c9" stroke-width="1.5"/>
+    <text x="84" y="805" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="84" dy="0">upgrade: take one node out</tspan>
+      <tspan x="84" dy="34">of rotation, update, return</tspan>
+    </text>
+
+    
+    <rect x="60" y="890" width="440" height="125" rx="10" fill="#ffffff" stroke="#d5dfd8" stroke-width="1.5"/>
+    <text x="84" y="925" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="84" dy="0">examples web tiers,</tspan>
+      <tspan x="84" dy="28">HA database pairs, stateless</tspan>
+      <tspan x="84" dy="28">LLM inference replicas</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="560" y="115" width="480" height="920" rx="16" fill="#ffffff" stroke="#d5dfd8" stroke-width="2"/>
+
+    
+    <g transform="translate(772, 135)">
+      <rect x="2" y="2" width="22" height="22" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+      <rect x="32" y="2" width="22" height="22" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+      <rect x="2" y="32" width="22" height="22" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+      <rect x="32" y="32" width="22" height="22" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+      <circle cx="13" cy="13" r="3" fill="#207448"/>
+      <circle cx="43" cy="13" r="3" fill="#207448"/>
+      <circle cx="13" cy="43" r="3" fill="#207448"/>
+      <circle cx="43" cy="43" r="3" fill="#207448"/>
+    </g>
+
+    
+    <text x="800" y="222" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">High-productivity</tspan>
+      <tspan x="800" dy="34">HTC or Grid</tspan>
+    </text>
+
+    
+    <rect x="580" y="275" width="440" height="190" rx="12" fill="#e8f1ea" stroke="#c4d8c9" stroke-width="1.5"/>
+    <text x="604" y="315" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="604" dy="0">goal finish a massive batch</tspan>
+      <tspan x="604" dy="32">of independent tasks</tspan>
+    </text>
+    <rect x="604" y="395" width="392" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">no coupling between workers</text>
+
+    
+    <rect x="580" y="480" width="440" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="604" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="604" dy="0">node failure: only that</tspan>
+      <tspan x="604" dy="34">node's task slice is</tspan>
+      <tspan x="604" dy="34">retried elsewhere</tspan>
+    </text>
+    <rect x="604" y="635" width="392" height="90" rx="8" fill="#f0f6f2" stroke="#207448" stroke-width="1"/>
+    <text x="800" y="688" text-anchor="middle" font-family="sans-serif" font-size="24" font-style="italic" fill="#207448">(every sock washed on its own)</text>
+
+    
+    <rect x="580" y="765" width="440" height="250" rx="10" fill="#ffffff" stroke="#d5dfd8" stroke-width="1.5"/>
+    <text x="604" y="825" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="604" dy="0">examples SETI@home,</tspan>
+      <tspan x="604" dy="38">Folding@home,</tspan>
+      <tspan x="604" dy="38">genomics sweeps,</tspan>
+      <tspan x="604" dy="38">data preprocessing</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="1080" y="115" width="480" height="920" rx="16" fill="#ffffff" stroke="#d5dfd8" stroke-width="2"/>
+
+    
+    <g transform="translate(1292, 135)">
+      <line x1="10" y1="10" x2="46" y2="10" stroke="#207448" stroke-width="3"/>
+      <line x1="10" y1="46" x2="46" y2="46" stroke="#207448" stroke-width="3"/>
+      <line x1="10" y1="10" x2="10" y2="46" stroke="#207448" stroke-width="3"/>
+      <line x1="46" y1="10" x2="46" y2="46" stroke="#207448" stroke-width="3"/>
+      <line x1="10" y1="10" x2="46" y2="46" stroke="#207448" stroke-width="2"/>
+      <line x1="46" y1="10" x2="10" y2="46" stroke="#207448" stroke-width="2"/>
+      <circle cx="10" cy="10" r="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <circle cx="46" cy="10" r="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <circle cx="10" cy="46" r="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <circle cx="46" cy="46" r="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    
+    <text x="1320" y="235" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">HPC or AI training</text>
+
+    
+    <rect x="1100" y="275" width="440" height="190" rx="12" fill="#e8f1ea" stroke="#c4d8c9" stroke-width="1.5"/>
+    <text x="1124" y="315" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1124" dy="0">goal run one tightly coupled</tspan>
+      <tspan x="1124" dy="32">program as fast as possible</tspan>
+    </text>
+    <rect x="1124" y="395" width="392" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1320" y="428" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">microsecond message passing</text>
+
+    
+    <rect x="1100" y="480" width="440" height="270" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    <text x="1124" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1124" dy="0">node failure: the entire</tspan>
+      <tspan x="1124" dy="34">multi-node job aborts and</tspan>
+      <tspan x="1124" dy="34">restarts from a checkpoint</tspan>
+    </text>
+    <rect x="1124" y="635" width="392" height="90" rx="8" fill="#fef3e7" stroke="#db8129" stroke-width="1.5"/>
+    <text x="1320" y="674" text-anchor="middle" font-family="sans-serif" font-size="24" font-style="italic" fill="#db8129">
+      <tspan x="1320" dy="0">(relay race, a fallen</tspan>
+      <tspan x="1320" dy="30">runner stops the team)</tspan>
+    </text>
+
+    
+    <rect x="1100" y="765" width="440" height="250" rx="10" fill="#ffffff" stroke="#d5dfd8" stroke-width="1.5"/>
+    <text x="1124" y="845" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1124" dy="0">examples weather forecasting,</tspan>
+      <tspan x="1124" dy="38">CFD, multi-node LLM</tspan>
+      <tspan x="1124" dy="38">pre-training</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1055" width="1520" height="90" rx="12" fill="#207448"/>
+    <text x="800" y="1092" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">use gang scheduling and fast checkpoints for tightly coupled jobs;</tspan>
+      <tspan x="800" dy="34">stateless failover or task retries for HA and HTC pools</tspan>
+    </text>
+  </g>
+</svg>

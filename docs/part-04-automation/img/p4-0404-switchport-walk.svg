@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Switchport config from data: loop, conditional, filter chain and a custom filter</title>
+  <desc>Visual explanation of data-driven switchport configuration using Jinja2 templates, loop constructs, conditionals, filter chains, and custom Python filters.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <g id="header-group">
+    <text x="50" y="65" font-family="system-ui, sans-serif" font-size="44" font-weight="bold" fill="#207448">Switchport config from data:</text>
+    <text x="50" y="110" font-family="system-ui, sans-serif" font-size="34" font-weight="bold" fill="#303a36">loop, conditional, filter chain and a custom filter</text>
+    <text x="50" y="146" font-family="system-ui, sans-serif" font-size="24" fill="#4a5752">Network Programmability and Automation chapter 9, examples 9-4 to 9-10; code/part04/yaml_jinja2_templates.py</text>
+  </g>
+
+  
+  <g id="node-data-yml">
+    <rect x="50" y="175" width="560" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 195)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 6 0 L 26 0 L 38 12 L 38 44 L 6 44 Z" />
+      <polyline points="26,0 26,12 38,12" />
+      <line x1="12" y1="22" x2="32" y2="22" />
+      <line x1="12" y1="30" x2="32" y2="30" />
+    </g>
+    <text x="135" y="228" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#207448">data.yml</text>
+    <text x="75" y="295" font-family="monospace" font-size="24" fill="#303a36">GigabitEthernet0/1 uplink: true</text>
+    <text x="75" y="345" font-family="monospace" font-size="24" fill="#303a36">GigabitEthernet0/2 and 0/3 vlan: 10</text>
+  </g>
+
+  
+  <g id="node-custom-filter">
+    <rect x="50" y="420" width="560" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 440)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <polygon points="4,4 40,4 26,22 26,40 18,34 18,22" />
+    </g>
+    <text x="135" y="472" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#207448">Custom filter</text>
+    <text x="75" y="525" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">get_interface_speed(</tspan>
+      <tspan x="95" dy="34">interface_name):</tspan>
+      <tspan x="75" dy="40">1000 for gigabit,</tspan>
+      <tspan x="75" dy="34">100 for fast, 0 otherwise</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-python-wiring">
+    <rect x="650" y="175" width="900" height="210" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(675, 195)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <circle cx="22" cy="22" r="9" />
+      <path d="M 22 2 L 22 8 M 22 36 L 22 42 M 2 22 L 8 22 M 36 22 L 42 22 M 8 8 L 12 12 M 32 32 L 36 36 M 8 36 L 12 32 M 32 12 L 36 8" />
+    </g>
+    <text x="735" y="228" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#db8129">Python wiring</text>
+    <text x="675" y="280" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="675" dy="0">ENV = Environment(loader=FileSystemLoader(.));</tspan>
+      <tspan x="675" dy="34">template = ENV.get_template(template.jinja);</tspan>
+      <tspan x="675" dy="34">ENV.filters[get_interface_speed] = get_interface_speed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-template">
+    <rect x="650" y="420" width="900" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(675, 438)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 14 6 C 6 6 6 16 6 22 C 6 28 6 38 14 38" />
+      <path d="M 30 6 C 38 6 38 16 38 22 C 38 28 38 38 30 38" />
+      <circle cx="22" cy="22" r="3" fill="#207448" />
+    </g>
+    <text x="735" y="472" font-family="system-ui, sans-serif" font-size="32" font-weight="bold" fill="#207448">Template</text>
+    <text x="675" y="515" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="675" dy="0">for interface in interface_list:</tspan>
+      <tspan x="675" dy="28">  interface {{ interface.name }};</tspan>
+      <tspan x="675" dy="28">  description {{ interface.desc | upper | reverse }};</tspan>
+      <tspan x="675" dy="28">  if interface.uplink: switchport mode trunk;</tspan>
+      <tspan x="675" dy="28">  else: switchport access vlan {{ interface.vlan }}</tspan>
+      <tspan x="675" dy="28">        and switchport mode access;</tspan>
+      <tspan x="675" dy="28">  speed {{ interface.name | get_interface_speed }}</tspan>
+    </text>
+  </g>
+
+  
+  <g id="connections" stroke-linecap="round" stroke-linejoin="round">
+    
+    <path d="M 610 280 L 642 280" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <path d="M 610 557 L 630 557 L 630 340 L 642 340" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+    
+    <path d="M 1100 385 L 1100 412" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="strip-facts">
+    <rect x="50" y="725" width="1500" height="145" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 745)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="18" />
+      <line x1="20" y1="18" x2="20" y2="28" />
+      <circle cx="20" cy="11" r="1.5" fill="#207448" />
+    </g>
+    <text x="130" y="773" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Facts strip</text>
+    <text x="75" y="817" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">template.render() accepts either a Python dict (interface_dict) or a class instance</tspan>
+      <tspan x="75" dy="34">NetworkInterface(GigabitEthernet0/1, Server Port, 10); Jinja2 resolves interface.name on both</tspan>
+    </text>
+  </g>
+
+  
+  <g id="strip-contrast">
+    <rect x="50" y="895" width="1500" height="140" rx="10" fill="#f0f5f1" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 915)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 20 L 36 20 M 20 4 L 20 36" />
+      <polyline points="10,12 4,20 10,28" />
+      <polyline points="30,12 36,20 30,28" />
+    </g>
+    <text x="130" y="943" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Contrast strip</text>
+    <text x="75" y="985" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">XSLT XML transformations use lxml.etree.XSLT;</tspan>
+      <tspan x="75" dy="34">Go text/template uses range $i, $interface := .Interfaces and template.FuncMap{ifparse: IfParse}</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bar-bottom">
+    <rect x="50" y="1055" width="1500" height="65" rx="8" fill="#207448" />
+    <text x="800" y="1096" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Data decides what differs, the template writes the pattern once</text>
+  </g>
+</svg>

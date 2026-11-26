@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Common mistakes grouped, and the three questions behind them</title>
+  <desc>Grouped matrix of Ansible operational failure modes, key diagnostic questions, and preventative practices.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="48" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Common mistakes grouped, </tspan>
+    <tspan x="800" dy="50">and the three questions behind them</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="128" width="480" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 64 158 L 78 158 L 92 172 L 78 186 L 64 172 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <circle cx="71" cy="165" r="2.5" fill="#207448"/>
+  <text x="110" y="164" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="110" dy="0">Which Ansible </tspan>
+    <tspan x="110" dy="28">version is in use?</tspan>
+  </text>
+
+  
+  <rect x="560" y="128" width="480" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="592" cy="172" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="592" cy="172" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="592" y1="150" x2="592" y2="194" stroke="#207448" stroke-width="2.5"/>
+  <line x1="570" y1="172" x2="614" y2="172" stroke="#207448" stroke-width="2.5"/>
+  <text x="630" y="164" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="630" dy="0">Which hosts does this </tspan>
+    <tspan x="630" dy="28">pattern really match?</tspan>
+  </text>
+
+  
+  <rect x="1080" y="128" width="480" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="1112" cy="168" r="12" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1121" y1="177" x2="1132" y2="188" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <polyline points="1106,168 1110,172 1117,165" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1150" y="164" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1150" dy="0">Has this change been </tspan>
+    <tspan x="1150" dy="28">checked in dry-run mode?</tspan>
+  </text>
+
+  
+  <rect x="40" y="238" width="340" height="42" rx="6" fill="#207448"/>
+  <text x="210" y="269" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Group</text>
+
+  <rect x="420" y="238" width="720" height="42" rx="6" fill="#207448"/>
+  <text x="780" y="269" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Mistake</text>
+
+  <rect x="1180" y="238" width="380" height="42" rx="6" fill="#207448"/>
+  <text x="1370" y="269" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Fix</text>
+
+  
+  <rect x="40" y="290" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 52 332 L 72 320 L 92 332 L 92 356 L 72 368 L 52 356 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <line x1="72" y1="320" x2="72" y2="344" stroke="#207448" stroke-width="3.5"/>
+  <line x1="72" y1="344" x2="52" y2="332" stroke="#207448" stroke-width="3.5"/>
+  <line x1="72" y1="344" x2="92" y2="332" stroke="#207448" stroke-width="3.5"/>
+  <text x="112" y="352" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Environment</text>
+
+  <rect x="420" y="290" width="720" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="438" y="324" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="438" dy="0">installing into system Python or relying on </tspan>
+    <tspan x="438" dy="28">the OS package; versions unpinned across a </tspan>
+    <tspan x="438" dy="28">team; missing collections in CI</tspan>
+  </text>
+
+  <rect x="1180" y="290" width="380" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1202" y="338" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1202" dy="0">venv, </tspan>
+    <tspan x="1202" dy="28">pinned requirements</tspan>
+  </text>
+
+  
+  <rect x="40" y="406" width="340" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="52" y="443" width="40" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <polyline points="58,453 64,459 58,465" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="68" y1="465" x2="78" y2="465" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="112" y="448" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="112" dy="0">Module </tspan>
+    <tspan x="112" dy="32">choice</tspan>
+  </text>
+
+  <rect x="420" y="406" width="720" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="438" y="440" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="438" dy="0">shell or command where a module exists gives </tspan>
+    <tspan x="438" dy="28">unguarded commands that always report </tspan>
+    <tspan x="438" dy="28">changed; short names instead of FQCNs</tspan>
+  </text>
+
+  <rect x="1180" y="406" width="380" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1202" y="468" font-family="sans-serif" font-size="24" fill="#303a36">modules and FQCNs</text>
+
+  
+  <rect x="40" y="522" width="340" height="168" rx="8" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+  <path d="M 72 586 L 92 594 C 92 616 72 628 72 628 C 72 628 52 616 52 594 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+  <line x1="72" y1="598" x2="72" y2="610" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="72" cy="616" r="2.5" fill="#db8129"/>
+  <text x="112" y="616" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Security</text>
+
+  <rect x="420" y="522" width="720" height="168" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="438" y="556" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="438" dy="0">host_key_checking = False in production; </tspan>
+    <tspan x="438" dy="28">root SSH logins and shared keys; become: true </tspan>
+    <tspan x="438" dy="28">globally, including file copies from the </tspan>
+    <tspan x="438" dy="28">control node; secrets in plain text in </tspan>
+    <tspan x="438" dy="28">inventories, playbooks or logs</tspan>
+  </text>
+
+  <rect x="1180" y="522" width="380" height="168" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1202" y="596" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1202" dy="0">keep checking on, </tspan>
+    <tspan x="1202" dy="28">scope become, Vault</tspan>
+  </text>
+
+  
+  <rect x="40" y="700" width="340" height="168" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="72" cy="784" r="20" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <polyline points="72,772 72,784 82,784" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="112" y="760" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="112" dy="0">Slow or </tspan>
+    <tspan x="112" dy="32">misleading </tspan>
+    <tspan x="112" dy="32">runs</tspan>
+  </text>
+
+  <rect x="420" y="700" width="720" height="168" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="438" y="734" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="438" dy="0">needless fact gathering on large fleets; </tspan>
+    <tspan x="438" dy="28">forks left at 5; treating ping as ICMP; </tspan>
+    <tspan x="438" dy="28">treating a green recap as proof the service </tspan>
+    <tspan x="438" dy="28">works (modules verify state, not </tspan>
+    <tspan x="438" dy="28">application behaviour)</tspan>
+  </text>
+
+  <rect x="1180" y="700" width="380" height="168" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1202" y="768" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1202" dy="0">tune forks and facts, </tspan>
+    <tspan x="1202" dy="28">verify the service </tspan>
+    <tspan x="1202" dy="28">separately</tspan>
+  </text>
+
+  
+  <rect x="40" y="878" width="340" height="136" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="54" y="925" width="36" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <polyline points="60,939 65,944 74,935" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="64" y1="953" x2="80" y2="953" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="112" y="955" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Process</text>
+
+  <rect x="420" y="878" width="720" height="136" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="438" y="912" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="438" dy="0">editing ansible.cfg in /etc so behaviour </tspan>
+    <tspan x="438" dy="28">differs between laptops and CI; applying </tspan>
+    <tspan x="438" dy="28">to production with no dry run; applying </tspan>
+    <tspan x="438" dy="28">to all instead of a canary limit</tspan>
+  </text>
+
+  <rect x="1180" y="878" width="380" height="136" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1202" y="940" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1202" dy="0">project ansible.cfg, </tspan>
+    <tspan x="1202" dy="28">check mode, --limit</tspan>
+  </text>
+
+  
+  <rect x="40" y="1024" width="1520" height="66" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="1051" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">the engineer knew the right step and skipped it because </tspan>
+    <tspan x="800" dy="26">the fleet looked healthy and the change looked small</tspan>
+  </text>
+
+  
+  <rect x="40" y="1102" width="1520" height="46" rx="8" fill="#207448"/>
+  <text x="800" y="1134" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Small changes are where the surprises hide</text>
+</svg>

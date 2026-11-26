@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1175" width="1600" height="1175">
+  <title>Eight posting responsibilities mapped to chapters</title>
+  <desc>Visual map connecting eight posting responsibilities across See it, Scale it, and Fix it families to their corresponding handbook chapters.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1175" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Eight posting responsibilities mapped to chapters</text>
+
+  
+  <rect x="120" y="100" width="1360" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(155, 127)">
+    <path d="M 28 4 L 52 14 C 52 38 28 52 28 52 C 28 52 4 38 4 14 Z" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round"/>
+    <path d="M 17 27 L 25 35 L 39 19" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="825" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Own reliability, performance and observability of the inference stack</text>
+
+  
+  <line x1="290" y1="210" x2="290" y2="263" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="800" y1="210" x2="800" y2="263" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="1310" y1="210" x2="1310" y2="263" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="265" width="460" height="760" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(195, 290)">
+    <path d="M 4 28 Q 28 8 52 28 Q 28 48 4 28 Z" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round"/>
+    <circle cx="28" cy="28" r="9" stroke="#207448" stroke-width="4" fill="none"/>
+  </g>
+  <text x="270" y="328" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">See it</text>
+
+  
+  <g transform="translate(80, 380)">
+    <rect width="420" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="16" y="16" width="56" height="34" rx="17" fill="#207448"/>
+    <text x="44" y="41" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">R2</text>
+    <text x="404" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">20.15, 20.25</text>
+    <text x="16" y="94" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">telemetry pipelines</text>
+  </g>
+
+  
+  <g transform="translate(80, 540)">
+    <rect width="420" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="16" y="16" width="56" height="34" rx="17" fill="#207448"/>
+    <text x="44" y="41" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">R1</text>
+    <text x="404" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">20.18, 20.19</text>
+    <text x="16" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="16" dy="0">reliability,</tspan>
+      <tspan x="16" dy="30">observability</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="570" y="265" width="460" height="760" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(695, 290)">
+    <path d="M 6 48 L 6 8 M 6 48 L 48 48 M 14 38 L 26 24 L 36 32 L 48 12 M 38 12 L 48 12 L 48 22" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="765" y="328" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Scale it</text>
+
+  
+  <g transform="translate(590, 360)">
+    <rect width="420" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="16" y="16" width="56" height="34" rx="17" fill="#207448"/>
+    <text x="44" y="41" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">R3</text>
+    <text x="404" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">20.20</text>
+    <text x="16" y="84" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="16" dy="0">Kubernetes autoscalers</tspan>
+      <tspan x="16" dy="30">for GPUs</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(590, 506)">
+    <rect width="420" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="16" y="16" width="56" height="34" rx="17" fill="#207448"/>
+    <text x="44" y="41" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">R4</text>
+    <text x="404" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">20.24</text>
+    <text x="16" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Terraform modules</text>
+  </g>
+
+  
+  <g transform="translate(590, 632)">
+    <rect width="420" height="215" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+    <rect x="16" y="16" width="56" height="34" rx="17" fill="#207448"/>
+    <text x="44" y="41" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">R5</text>
+    <text x="404" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">20.21</text>
+    <text x="16" y="80" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="16" dy="0">request routing and</tspan>
+      <tspan x="16" dy="28">retry logic</tspan>
+    </text>
+    <rect x="10" y="132" width="400" height="72" rx="8" fill="#fdf3e7" stroke="#db8129" stroke-width="1.5"/>
+    <text x="210" y="160" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="210" dy="0">Retries can multiply load</tspan>
+      <tspan x="210" dy="28">in a partial outage</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(590, 863)">
+    <rect width="420" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="16" y="16" width="56" height="34" rx="17" fill="#207448"/>
+    <text x="44" y="41" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">R8</text>
+    <text x="404" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">20.12, 20.16</text>
+    <text x="16" y="88" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="16" dy="0">cost and reliability</tspan>
+      <tspan x="16" dy="30">targets</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="1080" y="265" width="460" height="760" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1225, 290)">
+    <path d="M 12 44 L 28 28 M 24 24 C 21 21 20 15 23 10 C 26 5 32 3 37 5 L 41 9 L 36 14 L 41 19 L 46 14 L 50 18 C 52 23 50 29 45 32 C 40 35 34 34 31 31 Z" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1295" y="328" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Fix it</text>
+
+  
+  <g transform="translate(1100, 380)">
+    <rect width="420" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="16" y="16" width="56" height="34" rx="17" fill="#207448"/>
+    <text x="44" y="41" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">R6</text>
+    <text x="404" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">20.26</text>
+    <text x="16" y="94" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">runbooks and automation</text>
+  </g>
+
+  
+  <g transform="translate(1100, 540)">
+    <rect width="420" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="16" y="16" width="56" height="34" rx="17" fill="#207448"/>
+    <text x="44" y="41" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">R7</text>
+    <text x="404" y="41" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">20.27</text>
+    <text x="16" y="94" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">post-mortem culture</text>
+  </g>
+
+  
+  <rect x="60" y="1055" width="1480" height="80" rx="12" fill="#207448"/>
+  <text x="800" y="1105" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Pick the three to four lines you can back with a real story.</text>
+</svg>

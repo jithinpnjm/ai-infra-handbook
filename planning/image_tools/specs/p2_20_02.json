@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "02",
+  "name": "p2-2002-responsibility-map",
+  "title": "Eight posting responsibilities mapped to chapters",
+  "spec": "Three columns headed by the three families: 'See it', 'Scale it' and 'Fix it', with a top box 'Own reliability, performance and observability of the inference stack' feeding all three. Column 'See it' lists rows: 'R2 telemetry pipelines' with chapters '20.15, 20.25'; 'R1 reliability, observability' with chapters '20.18, 20.19'. Column 'Scale it' lists rows: 'R3 Kubernetes autoscalers for GPUs' with '20.20'; 'R4 Terraform modules' with '20.24'; 'R5 request routing and retry logic' with '20.21'; 'R8 cost and reliability targets' with '20.12, 20.16'. Column 'Fix it' lists rows: 'R6 runbooks and automation' with '20.26'; 'R7 post-mortem culture' with '20.27'. Each row is a small box with the ID in a green pill at the left and the chapter numbers at the right in monospace. Orange outline on R5 with the note 'Retries can multiply load in a partial outage'. Bottom note: 'Pick the three to four lines you can back with a real story.'",
+  "anchor": "### 2. Responsibilities, line by line",
+  "alt": "A grid that sorts the eight responsibility lines of the job posting into see it, scale it and fix it, with the handbook chapters for each line.",
+  "cap": "The eight responsibility lines of the posting, grouped into see it, scale it and fix it, each pointed at its chapters in this volume."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "02",
+  "name": "p2-2002-retry-amplification",
+  "title": "Retries that multiply load in a partial outage",
+  "spec": "Left to right, two rows. Top row labelled 'Healthy system': a client box 'Client' sends an arrow to a box 'Service' that returns an answer; a small green check on the arrow labelled 'Transient failure hidden from user'. Bottom row labelled 'Partial outage': the same client box sends an arrow to a box 'Service, partly working' that shows a red-outline cross; a loop arrow from the client back to itself labelled 'Retry', and a second arrow from the client to 'Service, partly working' labelled 'Retry again'. Above the bottom row a growing stack of request icons with the label 'Load keeps rising'. Orange outline on the 'Retry' loop arrow as the single most important element. Caption at bottom: 'Retries hide a transient failure, but in a partial outage the same retries multiply load.'",
+  "anchor": "### 3. What each responsibility likely means day to day",
+  "alt": "Two cases compared: a healthy service hides a transient failure with a retry, while in a partial outage repeated retries multiply the load on the service.",
+  "cap": "Retries hide a transient failure in a healthy system but multiply load during a partial outage, which is why retry logic needs hardening."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "02",
+  "name": "p2-2002-token-factory-planes",
+  "title": "Control plane and regional data plane",
+  "spec": "A large outer container labelled 'Token Factory' with two stacked zones. Top zone labelled 'Control plane' with a gear icon, containing the action chips 'create', 'update', 'enable', 'disable' and 'delete'. Bottom zone labelled 'Regional data plane (serves requests)' with a server icon, showing two sub-boxes 'Serverless endpoint' and 'Dedicated endpoint'. An arrow from the control plane down to the data plane labelled 'manages endpoints'. Under the dedicated endpoint box a small settings card listing the choices: 'GPU type: L40, H100, H200, B200', 'GPUs per replica', 'Min and max replicas', 'Region: EU or US'. A client box on the far left labelled 'Application' with an arrow into the data plane labelled 'OpenAI-compatible API request'. Orange outline on the data plane zone as the place where requests are served. Note: 'Region is a data-residency choice.'",
+  "anchor": "### 6. What Token Factory is, from public sources only",
+  "alt": "Token Factory split into a control plane for managing endpoints and a regional data plane that serves requests, with dedicated endpoint settings.",
+  "cap": "Token Factory separates a control plane, used to manage endpoints, from a regional data plane, where requests are served."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "02",
+  "name": "p2-2002-priority-worked",
+  "title": "Worked example of the gap-tracker priority",
+  "spec": "A three-row table drawn as cards, with columns Rank, Skill, Confidence, Posting lines, Priority, and Study. Formula banner across the top in monospace: 'priority = (5 minus confidence) x posting lines'. Row 1: 'Kubernetes operations and GPU autoscaling', confidence 2, lines 3, priority 9 (5-2)x3, study '20.20, 20.23', orange outline as the first to study. Row 2: 'Cost and capacity at scale', confidence 1, lines 2, priority 8 (5-1)x2, study '20.12, 20.16'. Row 3: 'SLOs and alert design', confidence 4, lines 3, priority 3 (5-4)x3, study '20.19'. A warning badge beside row 3 with the text 'confidence 4 without evidence: SLOs and alert design'. A side note: 'Low confidence on many lines hurts most.'",
+  "anchor": "### 7. The gap tracker: turning the table into a study order",
+  "alt": "A worked ranking of three skills using the priority formula, where low confidence across three posting lines ranks first and an unevidenced high rating triggers a warning.",
+  "cap": "A worked example of the gap-tracker formula, showing how confidence and posting lines set the study order and trigger a warning."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "02",
+  "name": "p2-2002-gpu-signals",
+  "title": "Busy GPUs can hide a drowning engine",
+  "spec": "Two side-by-side panels with green headings. Left panel 'Healthy engine': a GPU box showing a busy bar, a short waiting queue with two request chips, labelled 'Short queue'. Right panel 'Drowning engine': the same GPU box showing a busy bar at the same level, and a long waiting queue with many request chips growing to the right, labelled 'Queue keeps growing'. Both panels show the label 'GPU utilisation looks busy' with a matching bar height, drawn as a shared badge across the top of the two panels. Below the panels, a green row of three signal chips: 'Queue depth', 'Time spent waiting', 'GPU utilisation alone (misleading)'. The third chip has an orange outline and a strike line. Caption: 'Scaling on GPU utilisation alone can mislead; queue depth and waiting time show the difference.'",
+  "anchor": "### Scenario 3. Explaining \"tune autoscalers for GPU efficiency\"",
+  "alt": "Two engines both show busy GPUs, but only the one with a growing waiting queue is drowning, so queue depth is a better scaling signal than utilisation alone.",
+  "cap": "Busy GPUs can look the same for a healthy engine and a drowning one, so queue depth and waiting time are better autoscaling signals."
+ }
+]

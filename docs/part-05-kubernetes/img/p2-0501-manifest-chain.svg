@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>From index to manifest to config and layers by digest</title>
+  <desc>An infographic illustrating container image content addressing: an image index points by digest to a platform-specific image manifest, which branches by digest and size into configuration JSON and ordered tarball layers.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">From index to manifest to config and layers by digest</text>
+
+  
+
+  
+  <g id="box-1">
+    <rect x="470" y="120" width="710" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(495, 162)">
+      <rect x="0" y="8" width="46" height="52" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="8" y="0" width="46" height="52" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="18" y1="16" x2="44" y2="16" stroke="#207448" stroke-width="3"/>
+      <line x1="18" y1="26" x2="44" y2="26" stroke="#207448" stroke-width="3"/>
+      <line x1="18" y1="36" x2="36" y2="36" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="575" y="166" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Image index</text>
+    <text x="575" y="208" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" dy="0">One entry per platform,</tspan>
+      <tspan x="575" dy="32">like a menu with one entry per kitchen</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-box">
+    <rect x="1230" y="120" width="320" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(1250, 166)">
+      <rect x="0" y="0" width="48" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="0" y="28" width="48" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="10" cy="12" r="2.5" fill="#207448"/>
+      <circle cx="10" cy="40" r="2.5" fill="#207448"/>
+      <line x1="22" y1="12" x2="38" y2="12" stroke="#207448" stroke-width="2.5"/>
+      <line x1="22" y1="40" x2="38" y2="40" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="1312" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1312" dy="0">Node asks for the</tspan>
+      <tspan x="1312" dy="32">entry that matches</tspan>
+      <tspan x="1312" dy="32">its own platform</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1230" y1="195" x2="1192" y2="195" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="825" y1="270" x2="825" y2="307" stroke="#207448" stroke-width="4"/>
+  <g transform="translate(760, 307)">
+    <rect x="0" y="0" width="130" height="38" rx="19" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="65" y="27" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">digest</text>
+  </g>
+  <line x1="825" y1="345" x2="825" y2="376" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+
+  
+  <g id="side-note-box">
+    <rect x="50" y="380" width="380" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6"/>
+    <text x="75" y="426" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">mediaType:</tspan>
+      <tspan x="75" dy="34">application/vnd.oci.</tspan>
+      <tspan x="75" dy="34">image.layer.v1.tar+gzip</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-2">
+    <rect x="470" y="380" width="710" height="150" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(495, 422)">
+      <path d="M 0 4 C 0 1.8 1.8 0 4 0 L 32 0 L 48 16 L 48 56 C 48 58.2 46.2 60 44 60 L 4 60 C 1.8 60 0 58.2 0 56 Z" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 32 0 L 32 16 L 48 16" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="12" y1="26" x2="36" y2="26" stroke="#207448" stroke-width="3"/>
+      <line x1="12" y1="36" x2="36" y2="36" stroke="#207448" stroke-width="3"/>
+      <line x1="12" y1="46" x2="26" y2="46" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="575" y="426" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Image manifest for amd64/linux</text>
+    <text x="575" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" dy="0">Lists config and layers,</tspan>
+      <tspan x="575" dy="32">every entry is a digest and a size</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <path d="M 640 530 L 640 565 L 420 565 L 420 666" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <g transform="translate(270, 580)">
+    <rect x="0" y="0" width="300" height="40" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="150" y="28" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">config: digest, size</text>
+  </g>
+
+  
+  <path d="M 1010 530 L 1010 565 L 1140 565 L 1140 666" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <g transform="translate(990, 580)">
+    <rect x="0" y="0" width="300" height="40" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="150" y="28" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">layers: digest, size</text>
+  </g>
+
+  
+
+  
+  <g id="box-3">
+    <rect x="160" y="670" width="520" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(190, 700)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 22 16 L 12 28 L 22 40" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 34 16 L 44 28 L 34 40" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="268" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Config (JSON)</text>
+    
+    <rect x="190" y="776" width="460" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <line x1="220" y1="804" x2="440" y2="804" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="220" y1="828" x2="380" y2="828" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="220" y1="852" x2="520" y2="852" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <g id="box-4">
+    <rect x="740" y="670" width="800" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(770, 700)">
+      <ellipse cx="28" cy="12" rx="26" ry="9" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 2 12 L 2 28 C 2 33 14 37 28 37 C 42 37 54 33 54 28 L 54 12" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 2 28 L 2 44 C 2 49 14 53 28 53 C 42 53 54 49 54 44 L 54 28" fill="none" stroke="#207448" stroke-width="3.5"/>
+    </g>
+    <text x="848" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Layers: ordered tarballs</text>
+
+    
+    <g id="stacked-layer-bars">
+      
+      <rect x="770" y="772" width="740" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="785" y1="788" x2="815" y2="788" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+      
+      <rect x="770" y="812" width="740" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="785" y1="828" x2="815" y2="828" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+      
+      <rect x="770" y="852" width="740" height="32" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <line x1="785" y1="868" x2="815" y2="868" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+  </g>
+
+  
+  <rect x="50" y="960" width="1490" height="74" rx="12" fill="#207448"/>
+  <text x="795" y="1006" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Content addressing: every piece is named by its digest.</text>
+</svg>

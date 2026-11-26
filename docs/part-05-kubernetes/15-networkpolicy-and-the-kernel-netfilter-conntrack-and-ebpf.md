@@ -43,6 +43,14 @@ If a line feels unfamiliar when you reach its section, go back and read that sec
 
 ## 1. The NetworkPolicy API
 
+![Four example requests are checked against the selectors and ipBlock of one ingress policy with allow or deny results.](./img/p3-0515-gateway-walkthrough.svg)
+
+*Figure 5.15.1. Check each element as an OR and each field inside it as an AND to predict the result.*
+
+![A pod is open until a policy selects it, then it admits only the union of all matching allow rules.](./img/p3-0515-isolation-union.svg)
+
+*Figure 5.15.2. Policies only add allowances, so a pod is open until selected and then admits the union of every rule.*
+
 Suppose you want only the gateway to reach your model server. Without a policy, every pod in the cluster can reach it. A `NetworkPolicy` closes that gap, but its rules are easy to misread. So start with the key ideas.
 
 Think of a policy as a guest list at a door. Pods that are not on any list may come in freely, but once a list names the model server, anyone not on it is turned away. A second list, written by a different team, may add more names. The door admits anyone who appears on at least one list. Nothing on a list ever removes a name from another list, and that single rule explains most of what follows.
@@ -90,6 +98,10 @@ spec:
 
 ### Selector semantics (a common source of mistakes)
 
+![A single from element requires both the namespace and the pod label, while two separate elements admit either one.](./img/k15-selector-and-or.svg)
+
+*Figure 5.15.3. One from element matches only pods that satisfy both selectors, while two separate elements let either selector through.*
+
 Most mistakes with NetworkPolicy come from selectors, so read them slowly. Inside one `from` or `to` list, each list element is OR'd with the others. Inside one element, `namespaceSelector` and `podSelector` are AND'd. The rule then matches pods with that label inside namespaces with that label.
 
 Here is the same idea in plain words. If one list element holds both a namespace label and a pod label, a pod has to match both, like a visitor who must be on the guest list and also wear a badge. If the two labels sit in separate elements, a pod needs to match only one of them. The YAML dash decides which of those two rules you wrote, so a missing dash can quietly widen the door.
@@ -107,6 +119,14 @@ An empty `ingress: []`, or no rules with `policyTypes: [Ingress]`, denies all in
 Before you write any `from` list, check whether each element is an OR and whether the fields inside it are an AND.
 
 ### Default-deny and baseline patterns
+
+![A four-step staircase from default-deny ingress to per-app rules with audit-mode checks.](./img/p3-0515-rollout-staging.svg)
+
+*Figure 5.15.4. Add default deny in stages and preview what it would block before enforcing.*
+
+![A namespace baseline of three NetworkPolicies: a default deny for all traffic, a DNS allowance and an allowance for traffic inside the namespace.](./img/p2-0515-default-deny-base.svg)
+
+*Figure 5.15.5. A namespace baseline has three NetworkPolicies: default deny for all ingress and egress, restored DNS, and traffic inside the namespace.*
 
 The three policies below form a baseline you can apply to a namespace. The first denies everything, the second restores DNS, and the third allows traffic inside the namespace.
 
@@ -152,6 +172,10 @@ A practical habit is to review policy changes the same way you review applicatio
 Start with ingress, and add egress only after audit mode shows what it would block.
 
 ### Proving a default deny with a test Pod
+
+![A test pod reaches kuard with no policy, times out under a default-deny ingress policy, and reaches it again once one allow rule is added.](./img/k15-deny-proof.svg)
+
+*Figure 5.15.6. A test pod reaches kuard before any policy, times out under default deny, and reaches it again through one allow rule.*
 
 A policy on paper is not proof. *Kubernetes: Up and Running* (3rd edition, Chapter 19) tests the rules with a small application in its own namespace. You run the app, expose it as a Service, and call it from a second Pod. Then you add a default deny, and finally a policy that lets through the one source you want. Each step shows what changed.
 
@@ -281,6 +305,10 @@ Network Policy adds one more layer of security. It builds on the ideas of defens
 
 ## 2. Things NetworkPolicy does not do (and traps)
 
+![A node diagram marks six paths that standard NetworkPolicy misses with a mitigation for each.](./img/p3-0515-uncovered-paths.svg)
+
+*Figure 5.15.7. Probes, host networking, the API server, secondary networks, Service IPs and external sources need separate handling.*
+
 Imagine a platform team that applies a default deny on Monday. On Tuesday, the readiness probes on one node start failing, and nobody remembers changing the probe settings. The cause is a gap in what the policy covers, not a bug in the policy itself. This section lists the gaps that catch teams like that one.
 
 NetworkPolicy has gaps, and several of them catch teams off guard. A policy set that looks complete can still leave a path open, or it can block a probe your platform depends on. The table lists the common traps, with a mitigation for each one.
@@ -311,18 +339,9 @@ Most of these mitigations depend on which CNI you run, so check its features bef
 
 When a packet leaves a source pod or arrives at a destination pod, the policy engine checks it in a fixed order. The diagram shows that order. The sections after it explain each stage in turn.
 
-```mermaid
-flowchart TD
-    Pkt["Packet Leaving Source Pod<br/>or Arriving at Dest Pod"] --> CT{"Existing Established Flow<br/>in conntrack / BPF CT Map?"}
-    CT -->|Yes: Stateful Reply| AllowCT["ALLOW immediately"]
-    CT -->|"No: New Connection (SYN)"| ANP{"1. AdminNetworkPolicy<br/>(Cluster Guardrails)"}
-    ANP -->|Action: Allow / Deny| Verdict1["Enforce Admin Verdict"]
-    ANP -->|Action: Pass / No Match| NP{"2. Namespace NetworkPolicy<br/>Is Pod Isolated for Direction?"}
-    NP -->|Yes: Isolated| MatchNP{"Matches Union of<br/>Calico ipsets / Cilium Identities?"}
-    MatchNP -->|Yes| AllowNP["ALLOW + Create CT Entry"]
-    MatchNP -->|No| DropNP["DROP (Log / Hubble DROPPED)"]
-    NP -->|No: Non-Isolated| BANP["3. BaselineAdminNetworkPolicy<br/>(Default Cluster Posture)"]
-```
+![How enforcement works in the kernel](./img/m5-15-1.svg)
+
+*Figure 5.15.8. How enforcement works in the kernel, as a diagram.*
 
 Read the diagram from the top, as you would trace a flow through it. An established flow is allowed straight away. A new connection goes through the admin policy first, then the namespace policy, and then the baseline policy when the pod is not isolated.
 
@@ -330,11 +349,19 @@ Picture an airport. Passengers who already passed security and are on the flight
 
 ### Netfilter basics and conntrack
 
+![Policy engines hook packets at netfilter points such as PREROUTING and FORWARD, while conntrack lets established replies pass without the policy being read again.](./img/p2-0515-netfilter-hooks.svg)
+
+*Figure 5.15.9. Netfilter hooks catch pod traffic, and conntrack lets replies match ESTABLISHED and RELATED without a second policy check.*
+
 Policy engines hook into packets as they cross the node. Pod egress is caught on the host-side veth, or at tc ingress on the veth. Pod ingress is caught when the packet is delivered to the veth, and node-to-pod traffic is caught as well. Linux netfilter provides the hooks `PREROUTING`, `FORWARD`, `INPUT`, `OUTPUT` and `POSTROUTING`, which iptables and nftables use.
 
 Conntrack tracks flows, so a rule can match `ESTABLISHED,RELATED`, and replies pass automatically. That is the stateful property. Think of the conntrack table as a list of connections that are already open, with the addresses and ports on each side. When a reply arrives, the kernel checks that list first, and a match goes through without the policy being read again. Conntrack entries persist across rule changes, so an established connection can keep running after you apply a policy that would block new connections. This is a common surprise during testing. The connection continues until it ends or its entry times out. To cut existing flows, delete the entries with `conntrack -D`, or use CNI features that flush on policy change.
 
 ### Calico (iptables dataplane)
+
+![Calico chains dispatch to per-workload and per-policy chains that match source addresses in ipsets.](./img/p3-0515-calico-ipset-chains.svg)
+
+*Figure 5.15.10. Selectors become ipsets so label changes only add or remove set members instead of rewriting rules.*
 
 When you run Calico, its Felix agent compiles policy into iptables chains. It uses ipsets for the selectors:
 
@@ -352,6 +379,10 @@ In plain words, Calico builds a list of pod addresses for each selector and then
 Selectors become ipsets, and ipsets update incrementally. A membership change is just an `ipset add` or `ipset del`, which is cheap. The number of rules grows with policies times ports, not with the number of pods. Calico's eBPF dataplane replaces these chains with BPF programs and maps. To inspect the result, run `iptables-save | grep cali-`, `ipset list | head`, `calicoctl get networkpolicy -A -o wide` and `calicoctl get globalnetworkpolicy`. The last command, `calicoctl get workloadendpoint -n ns pod -o yaml`, shows the applied profiles.
 
 ### Cilium (eBPF)
+
+![Cilium turns pod labels into an identity number, and the per-endpoint policy map is keyed by identity, port, protocol and direction.](./img/p2-0515-cilium-identity.svg)
+
+*Figure 5.15.11. Cilium turns labels into an identity number, and each endpoint's policy map is keyed by that identity, port, protocol and direction.*
 
 Each endpoint has BPF programs at tc ingress and egress on its device. In plain words, Cilium gives each set of labels a number, and the kernel checks that number instead of an address. A pod's label set is turned into an identity once, and the policy table is a lookup keyed by that number. The result is easy to reason about, because "this identity may reach that port" reads the same way on every node.
 
@@ -429,6 +460,10 @@ The DNS rule does more than allow lookups. It gives Cilium visibility into DNS, 
 Walk through the three egress blocks in order. The first block lets the trainer reach the DNS pods, which is what lets Cilium watch the answers. The second block allows the two named destinations on port 443, and it relies on the answers the first block observed. The third block allows the Kubernetes API by entity name, so you do not have to hard-code the API server's address. Remove the first block and the second block stops working, because Cilium no longer learns which addresses belong to those names. That dependency is the most common mistake with `toFQDNs`.
 
 ### Admin and baseline network policies
+
+![AdminNetworkPolicy is evaluated before namespace NetworkPolicies and BaselineAdminNetworkPolicy after them, as bookends around tenant policy.](./img/p2-0515-admin-bookends.svg)
+
+*Figure 5.15.12. AdminNetworkPolicy is evaluated before namespace NetworkPolicies, and BaselineAdminNetworkPolicy after them as the default posture.*
 
 The `policy.networking.k8s.io` API group, defined by SIG Network, adds two cluster-scoped kinds. `AdminNetworkPolicy` runs before namespace NetworkPolicies. It supports `Allow`, `Deny` and `Pass` with a priority, so cluster admins can set guardrails that tenants cannot override. `BaselineAdminNetworkPolicy` runs after NetworkPolicies and sets the default posture. For example, it can deny egress to the Internet unless something else allows it. Cilium, Calico, OVN-K, Antrea and others are adding support. Check how mature each implementation is before you depend on it.
 
@@ -510,6 +545,10 @@ The `io.cilium.k8s.policy.*` label selectors pick out service accounts. Cilium t
 
 ## 5. Policy design for a multi-tenant GPU platform
 
+![Six platform zones, from edge and serving to training and notebooks, each with the network policy stance for its workloads.](./img/p2-0515-zone-stance.svg)
+
+*Figure 5.15.13. Six platform zones on a multi-tenant GPU cluster each take a different network policy stance, from gateway-only ingress to restricted notebook egress.*
+
 Not every zone of the cluster deserves the same policy. A serving zone with a gateway in front of it has different needs from a training zone full of jobs. The table lists each zone, the workloads it runs and the stance to take.
 
 | Zone | Examples | Policy stance |
@@ -542,6 +581,10 @@ Rules 2 and 8 explain why the default deny is worth protecting. Once a team star
 Protect the default-deny, and change only the allowances you need.
 
 ## 6. Testing and debugging
+
+![A method for testing a network flow: define it, locate the policies at both ends, predict the result, run the test and compare.](./img/p2-0515-predict-test.svg)
+
+*Figure 5.15.14. To test a network flow, define it, locate the policies at both ends, predict the result, then test and compare the two.*
 
 The method is simple to state. Define the exact flow: source pod, destination pod or IP, port and direction. Identify the applicable policies at both ends, predict the result, and then test it. The commands below follow that order, with Kubernetes checks first and then the tool for your CNI.
 

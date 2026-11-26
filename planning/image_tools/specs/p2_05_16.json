@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p2-0516-rbac-check",
+  "title": "Two checks at the door: who you are, then what you may do",
+  "spec": "A horizontal pipeline of four boxes left to right with numbered arrows. Box 1 'Request arrives' with a client icon. Box 2 'Authentication: who is calling?' with a badge icon and the note 'user, ServiceAccount, or no identity'. Box 3 'Authorization: identity, resource (HTTP path) and verb' with a key icon. Box 4 split into two outcomes: 'Allowed: the action proceeds' in green and 'Denied: HTTP 403' in red. Above box 3 a small grid of three inputs feeding in: 'Identity', 'Resource (HTTP path)', 'Verb'. Under the pipeline a note 'RBAC decides who can ask, not what the answer does.' Orange outline on box 3 as the RBAC check. A dashed note near box 2 'An empty identity is still a caller'. Bottom red-bordered warning card: 'Set --anonymous-auth=false on a cluster exposed to a hostile environment.'",
+  "anchor": "### Why RBAC matters and how a request is checked",
+  "alt": "A request is first authenticated to establish who is calling, then authorized by RBAC on identity, resource and verb, with a 403 for a failed check.",
+  "cap": "A request first passes authentication to find the caller, then RBAC checks the identity, resource and verb, and a failed check returns HTTP 403."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p2-0516-verb-map",
+  "title": "RBAC verbs mapped to HTTP methods",
+  "spec": "A two-column table drawn as rows of cards. Left column header 'Verb', right column header 'HTTP method', and a third column 'Meaning'. Rows: 'create' | 'POST' | 'Create a new resource'. 'delete' | 'DELETE' | 'Delete an existing resource'. 'get' | 'GET' | 'Get a resource'. 'list' | 'GET' | 'List a collection'. 'patch' | 'PATCH' | 'Modify via a partial change'. 'update' | 'PUT' | 'Modify via a complete object'. 'watch' | 'GET' | 'Watch for streaming updates'. 'proxy' | 'GET' | 'Connect via a streaming WebSocket proxy'. Three rows get, list and watch all show a GET pill with a bracket labelled 'Same HTTP method, different permission'. Orange outline on the three GET rows. Side card for a monitoring agent: 'Needs list and watch on pods' with a green check, and 'create, update, delete' with a red cross labelled 'Not needed'. Bottom note: 'Start each Role from the smallest verb set the workload needs.'",
+  "anchor": "### Verbs and HTTP methods",
+  "alt": "RBAC verbs mapped to HTTP methods, where get, list and watch all use GET, and a monitoring agent needs only list and watch.",
+  "cap": "RBAC verbs roughly match HTTP methods, but get, list and watch all use GET, so a monitoring agent needs only list and watch."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p2-0516-config-doors",
+  "title": "Pick how the app reads config: file, env or API",
+  "spec": "Top banner: 'Config comes from the platform at runtime, not from inside the image'. Three columns of options drawn as cards: 'Mounted file (preferred)': a volume icon, a pod box with a path chip '/etc/my-app/config.json' and the note 'The Pod spec names the volume and path'; 'Environment variables': an env icon with the note 'Read once at start'; 'Client API': an API icon with the note 'The app asks the API server itself'. Left side, a warning card on a baked-in config: 'Config inside the image: anyone with pull access to the registry holds the database password'. An arrow from the warning card to a red cross over the baked-in path. Orange outline on the mounted file card as the preferred method. Bottom strip: 'A ConfigMap mounted as a file is named in the Pod spec.'",
+  "anchor": "### Choosing how an application reads ConfigMaps and Secrets",
+  "alt": "Config should come from the platform at runtime, with a mounted file preferred over environment variables or a client API call, and baked-in config rejected.",
+  "cap": "Config should come from the platform at runtime, and a ConfigMap or Secret mounted as a file is the preferred way to read it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p2-0516-layers-secrets",
+  "title": "Defence in depth: layers from hardware up",
+  "spec": "A vertical stack of five layers drawn as stacked slabs, bottom to top: 'Physical datacenter security', 'Drive retirement: zero out, then crush or shred', 'Host and API server access', 'Encryption at rest for Secrets (KMS or static key)', 'RBAC: least-privilege Roles for each workload'. Each slab has a lock icon of increasing size. A side arrow labelled 'Each layer covers a risk the layer above cannot cover'. A house-with-locks icon at the side labelled 'Several locks, no single lock is the plan'. Orange outline on the 'Host and API server access' slab with the note 'Anyone with root on the host can read etcd'. Caption at the bottom: 'Most teams start with safe enough, then harden over time.'",
+  "anchor": "### Defense in depth for secrets",
+  "alt": "Defence in depth for secrets as a stack of layers from physical security up to application credentials, with several locks and no single lock as the plan.",
+  "cap": "Defence in depth for secrets is a stack of layers from physical security up to application credentials, where each layer covers a risk the one above cannot."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p2-0516-rbac-verbs-rule",
+  "title": "A Role grants verbs on a resource, default deny",
+  "spec": "A central Role card titled 'Role: grants verbs on a resource' with three attached chips: 'Resource: pods', 'Verbs: list, watch', 'Namespace: one namespace'. Two outcome panels below. Left panel, green check, 'Monitoring agent: list and watch on pods, nothing else', with a short verb set listed. Right panel, red cross, 'Attempt to create or delete a pod: 403 Forbidden' with an arrow from the request chip 'create pods' into the denied outcome. A small note 'Denied by default unless a Role grants the verb'. Orange outline on the 403 panel as the default result. Caption: 'Start each Role from the smallest verb set the workload needs.'",
+  "anchor": "### Verbs and HTTP methods",
+  "alt": "A Role grants a set of verbs on a resource, so a monitoring agent that holds only list and watch is denied when it tries to create a Pod.",
+  "cap": "A monitoring agent with only list and watch on pods is refused when it tries to create a pod, because a Role grants only the verbs it names."
+ }
+]

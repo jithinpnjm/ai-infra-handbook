@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Green gauges are not the same as a working system</title>
+  <desc>Infographic illustrating the gap between operational gauge indicators and whether a system accomplishes its actual intended purpose.</desc>
+
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Green gauges are not the same as a working system</text>
+
+  
+  <g id="left-panel">
+    <rect x="50" y="120" width="670" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(75, 140)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 12 36 A 20 20 0 1 1 44 36" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="28" x2="28" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+    </g>
+    
+    <text x="145" y="178" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">What the gauges say</text>
+
+    
+    <rect x="75" y="215" width="620" height="65" rx="10" fill="#ffffff" stroke="#98c2a6" stroke-width="2"/>
+    <circle cx="115" cy="247" r="18" fill="#207448"/>
+    <path d="M 106 247 L 113 254 L 125 240" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="150" y="256" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">all links up</text>
+
+    
+    <rect x="75" y="295" width="620" height="65" rx="10" fill="#ffffff" stroke="#98c2a6" stroke-width="2"/>
+    <circle cx="115" cy="327" r="18" fill="#207448"/>
+    <path d="M 106 327 L 113 334 L 125 320" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="150" y="336" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">BGP established</text>
+
+    
+    <rect x="75" y="375" width="620" height="65" rx="10" fill="#ffffff" stroke="#98c2a6" stroke-width="2"/>
+    <circle cx="115" cy="407" r="18" fill="#207448"/>
+    <path d="M 106 407 L 113 414 L 125 400" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="150" y="416" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">every light green</text>
+
+    
+    <rect x="75" y="455" width="620" height="75" rx="10" fill="#ffffff" stroke="#98c2a6" stroke-width="2"/>
+    <circle cx="115" cy="492" r="18" fill="#207448"/>
+    <path d="M 106 492 L 113 499 L 125 485" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="150" y="485" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="150" dy="0">cable voltage and resistance</tspan>
+      <tspan x="150" dy="30">readings correct</tspan>
+    </text>
+  </g>
+
+  
+  <g id="gap-area">
+    <line x1="800" y1="140" x2="800" y2="280" stroke="#db8129" stroke-width="3" stroke-dasharray="8 8"/>
+    <rect x="740" y="300" width="120" height="70" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="800" y="347" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">gap</text>
+    <line x1="800" y1="390" x2="800" y2="530" stroke="#db8129" stroke-width="3" stroke-dasharray="8 8"/>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="880" y="120" width="670" height="430" rx="16" fill="#fdf6ee" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(905, 140)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#db8129" stroke-width="4"/>
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#db8129" stroke-width="3"/>
+      <circle cx="28" cy="28" r="5" fill="#db8129"/>
+    </g>
+    
+    <text x="975" y="178" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">What the purpose needs</text>
+
+    
+    <rect x="905" y="215" width="620" height="85" rx="10" fill="#ffffff" stroke="#f2b47e" stroke-width="2"/>
+    <g transform="translate(920, 230)">
+      <rect x="6" y="8" width="36" height="32" rx="4" fill="none" stroke="#db8129" stroke-width="3"/>
+      <line x1="6" y1="20" x2="42" y2="20" stroke="#db8129" stroke-width="2"/>
+      <circle cx="16" cy="30" r="3" fill="#db8129"/>
+      <circle cx="32" cy="30" r="3" fill="#db8129"/>
+    </g>
+    <text x="980" y="250" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="980" dy="0">the all-reduce reaches 90%</tspan>
+      <tspan x="980" dy="30">of line rate</tspan>
+    </text>
+
+    
+    <rect x="905" y="315" width="620" height="85" rx="10" fill="#ffffff" stroke="#f2b47e" stroke-width="2"/>
+    <g transform="translate(920, 330)">
+      <path d="M 10 6 L 30 6 L 38 14 L 38 42 L 10 42 Z" fill="none" stroke="#db8129" stroke-width="3"/>
+      <line x1="16" y1="22" x2="32" y2="22" stroke="#db8129" stroke-width="2"/>
+      <line x1="16" y1="30" x2="28" y2="30" stroke="#db8129" stroke-width="2"/>
+    </g>
+    <text x="980" y="350" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="980" dy="0">users read files at</tspan>
+      <tspan x="980" dy="30">normal speed</tspan>
+    </text>
+
+    
+    <rect x="905" y="415" width="620" height="115" rx="10" fill="#ffffff" stroke="#f2b47e" stroke-width="2"/>
+    <g transform="translate(920, 445)">
+      <line x1="24" y1="46" x2="24" y2="16" stroke="#db8129" stroke-width="3"/>
+      <circle cx="24" cy="16" r="4" fill="#db8129"/>
+      <circle cx="10" cy="10" r="6" fill="none" stroke="#db8129" stroke-width="2.5"/>
+      <circle cx="38" cy="10" r="6" fill="none" stroke="#db8129" stroke-width="2.5"/>
+      <circle cx="24" cy="30" r="6" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    </g>
+    <text x="980" y="455" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="980" dy="0">the wind-speed system the splice</tspan>
+      <tspan x="980" dy="32">fed can be calibrated</tspan>
+    </text>
+  </g>
+
+  
+  <g id="story-strip">
+    <rect x="50" y="575" width="1500" height="240" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(80, 605)">
+      <path d="M 6 12 C 16 8, 28 8, 28 16 L 28 46 C 28 38, 16 38, 6 42 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 50 12 C 40 8, 28 8, 28 16 L 28 46 C 28 38, 40 38, 50 42 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="28" y1="16" x2="28" y2="46" stroke="#207448" stroke-width="3.5"/>
+    </g>
+
+    <text x="165" y="625" font-family="sans-serif" font-size="24.5" fill="#303a36">
+      <tspan x="165" dy="0">A cable team insisted a repaired splice was fine because voltage</tspan>
+      <tspan x="165" dy="35">and resistance were correct; the wind-speed system it fed could not be calibrated;</tspan>
+      <tspan x="165" dy="35">the dispute lasted days; a capacitive crosstalk test finally found the splice faulty</tspan>
+      <tspan x="165" dy="35">because it matched the purpose of the splice; everyone had been measuring</tspan>
+      <tspan x="165" dy="35">what was easy to measure, not what the cable was for</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-strip">
+    <rect x="50" y="840" width="1500" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(80, 875)">
+      <rect x="8" y="6" width="40" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 16 20 L 22 26 L 34 14" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="18" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <text x="165" y="895" font-family="sans-serif" font-size="25.5" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Before you test: write down the purpose and one measurable target;</tspan>
+      <tspan x="165" dy="40">check it at the very end after every fix</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1000" width="1500" height="80" rx="12" fill="#207448"/>
+    <text x="800" y="1050" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A system is working only if it accomplishes what it is supposed to do</text>
+  </g>
+</svg>

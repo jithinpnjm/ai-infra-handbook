@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 950" width="1600" height="950">
+  <title>Know the layers and who owns each</title>
+  <desc>Architecture infographic illustrating the layers from workload and orchestrator down to compute, fabric, data, and quota.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="950" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Know the layers and who owns each</text>
+
+  
+  
+  <path d="M 370 340 L 450 340" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 760 340 L 840 340" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1180 340 L 1245 340" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 760 410 L 795 410 Q 805 410 805 420 L 805 715 Q 805 725 815 725 L 840 725" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1180 410 L 1205 410 Q 1215 410 1215 420 L 1215 715 Q 1215 725 1225 725 L 1245 725" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+
+  
+  <g id="node-workload">
+    <rect x="60" y="220" width="310" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="187" y="250" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="187" y1="264" x2="243" y2="264" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="197" cy="257" r="2.5" fill="#207448"/>
+    <circle cx="205" cy="257" r="2.5" fill="#207448"/>
+    <polyline points="197,284 207,274 216,281 233,270" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="215" y="360" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="215" dy="0">Workload</tspan>
+      <tspan x="215" dy="38">and SLO</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-orchestrator">
+    <rect x="450" y="220" width="310" height="240" rx="14" fill="#fdf6ec" stroke="#db8129" stroke-width="3"/>
+    
+    <circle cx="605" cy="273" r="14" fill="none" stroke="#db8129" stroke-width="3.5"/>
+    <circle cx="605" cy="273" r="5" fill="#db8129"/>
+    <circle cx="605" cy="250" r="4.5" fill="none" stroke="#db8129" stroke-width="3"/>
+    <line x1="605" y1="259" x2="605" y2="255" stroke="#db8129" stroke-width="3"/>
+    <circle cx="585" cy="285" r="4.5" fill="none" stroke="#db8129" stroke-width="3"/>
+    <line x1="595" y1="279" x2="590" y2="282" stroke="#db8129" stroke-width="3"/>
+    <circle cx="625" cy="285" r="4.5" fill="none" stroke="#db8129" stroke-width="3"/>
+    <line x1="615" y1="279" x2="620" y2="282" stroke="#db8129" stroke-width="3"/>
+    
+    <text x="605" y="380" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Orchestrator</text>
+  </g>
+
+  
+  <g id="node-compute">
+    <rect x="840" y="220" width="340" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="988" y="251" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="998" y="261" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="999" y1="245" x2="999" y2="251" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="1021" y1="245" x2="1021" y2="251" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="999" y1="295" x2="999" y2="301" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="1021" y1="295" x2="1021" y2="301" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="982" y1="262" x2="988" y2="262" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="982" y1="284" x2="988" y2="284" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="1032" y1="262" x2="1038" y2="262" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="1032" y1="284" x2="1038" y2="284" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="1010" y="348" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="1010" dy="0" font-size="30" font-weight="bold">Compute:</tspan>
+      <tspan x="1010" dy="35" font-size="24">platform, preset,</tspan>
+      <tspan x="1010" dy="33" font-size="24">region</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-fabric">
+    <rect x="1245" y="220" width="310" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="1377" y="250" width="18" height="13" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="1405" y="250" width="18" height="13" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="1391" y="282" width="18" height="13" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="1386" y1="263" x2="1396" y2="282" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1414" y1="263" x2="1404" y2="282" stroke="#207448" stroke-width="2.5"/>
+    <line x1="1395" y1="256" x2="1405" y2="256" stroke="#207448" stroke-width="2.5"/>
+    
+    <text x="1400" y="360" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="1400" dy="0" font-size="30" font-weight="bold">Fabric:</tspan>
+      <tspan x="1400" dy="38" font-size="24">InfiniBand cluster</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-data">
+    <rect x="840" y="605" width="340" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <ellipse cx="1010" cy="636" rx="26" ry="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 984,636 L 984,653 A 26 8 0 0 0 1036,653 L 1036,636" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 984,653 L 984,670 A 26 8 0 0 0 1036,670 L 1036,653" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="1024" cy="653" r="2" fill="#207448"/>
+    <circle cx="1024" cy="670" r="2" fill="#207448"/>
+    
+    <text x="1010" y="733" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="1010" dy="0" font-size="30" font-weight="bold">Data:</tspan>
+      <tspan x="1010" dy="35" font-size="24">disks, shared FS,</tspan>
+      <tspan x="1010" dy="33" font-size="24">buckets</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-quota">
+    <rect x="1245" y="605" width="310" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <path d="M 1376,666 A 24 24 0 1 1 1424,666" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="1400" y1="662" x2="1415" y2="647" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="1400" cy="662" r="3.5" fill="#207448"/>
+    <line x1="1377" y1="651" x2="1383" y2="654" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="1400" y1="640" x2="1400" y2="646" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="1423" y1="651" x2="1417" y2="654" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <text x="1400" y="733" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="1400" dy="0" font-size="30" font-weight="bold">Quota,</tspan>
+      <tspan x="1400" dy="35" font-size="24">capacity block,</tspan>
+      <tspan x="1400" dy="33" font-size="24">spot</tspan>
+    </text>
+  </g>
+</svg>

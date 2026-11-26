@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A variable is a suggestion, a cgroup is a fence</title>
+  <desc>Visual comparison showing that CUDA_VISIBLE_DEVICES only suggests visibility while cgroup device control enforces a strict boundary for GPU access.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">A variable is a suggestion, a cgroup is a fence</text>
+  <text x="800" y="108" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="600" fill="#303a36">Two lanes for a job allocated GPUs 3 and 7 on a node.</text>
+
+  
+
+  
+  <g id="lane-cuda-visible-devices">
+    <rect x="40" y="145" width="740" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(68, 162)">
+      <path d="M18 24 V16 C18 8 24 2 32 2 C40 2 46 8 46 16 V20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <rect x="8" y="24" width="40" height="30" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="36" r="3" fill="#207448"/>
+      <path d="M28 39 V46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="145" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Only CUDA_VISIBLE_DEVICES:</text>
+    <text x="70" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">a process can ignore it and open /dev/nvidia3</tspan>
+      <tspan x="70" dy="38">directly even if that GPU belongs to someone</tspan>
+      <tspan x="70" dy="38">else; nvidia-smi lists every GPU in the box</tspan>
+      <tspan x="70" dy="38">because nothing stopped it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="lane-cgroup-control">
+    <rect x="820" y="145" width="740" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(848, 162)">
+      <path d="M28 4 L8 12 V28 C8 42 16 50 28 54 C40 50 48 42 48 28 V12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M20 28 L26 34 L38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="925" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">cgroup device control:</text>
+    <text x="850" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="850" dy="0">TaskPlugin=task/cgroup and ConstrainDevices=yes</tspan>
+      <tspan x="850" dy="32">in cgroup.conf (default is no); the job</tspan>
+      <tspan x="850" dy="32">cgroup gets only the device files of its</tspan>
+      <tspan x="850" dy="32">allocated GRES; opening any other device</tspan>
+      <tspan x="850" dy="32">fails with a permission error; nvidia-smi</tspan>
+      <tspan x="850" dy="32">lists only allocated GPUs; requires GRES</tspan>
+      <tspan x="850" dy="32">File= entries or autodetect</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="shared-control-files">
+    <rect x="40" y="515" width="740" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(68, 532)">
+      <rect x="8" y="4" width="34" height="46" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M16 16 H34 M16 26 H34 M16 36 H26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M42 14 V48 H22" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="145" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">Shared control files</tspan>
+      <tspan x="145" dy="38">jobs may use:</tspan>
+    </text>
+    <text x="70" y="660" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">/dev/nvidiactl, /dev/nvidia-uvm,</tspan>
+      <tspan x="70" dy="40">/dev/nvidia-caps/* (MIG)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="containers">
+    <rect x="820" y="515" width="740" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(848, 532)">
+      <path d="M28 4 L50 16 V40 L28 52 L6 40 V16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M28 16 V52 M28 16 L6 16 M28 16 L50 16" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="925" y="572" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Containers:</text>
+    <text x="850" y="620" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="850" dy="0">need device nodes and driver libraries</tspan>
+      <tspan x="850" dy="30">injected, through enroot and pyxis or</tspan>
+      <tspan x="850" dy="30">nvidia-container-toolkit; without them the</tspan>
+      <tspan x="850" dy="30">container sees no GPU; cgroup limits</tspan>
+      <tspan x="850" dy="30">still apply</tspan>
+    </text>
+  </g>
+
+  
+  <g id="quick-check-commands">
+    <rect x="40" y="795" width="1520" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(68, 815)">
+      <rect x="4" y="6" width="48" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M14 20 L22 27 L14 34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M26 34 H38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="145" y="855" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Quick check commands:</text>
+    <text x="70" y="905" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">srun --gres=gpu:1 bash -c nvidia-smi -L; ls /dev/nvidia* : one GPU listed</tspan>
+      <tspan x="70" dy="40">srun --gres=gpu:1 bash -c CUDA_VISIBLE_DEVICES=1 nvidia-smi -L</tspan>
+      <tspan x="70" dy="32">: must not reveal GPUs outside the allocation</tspan>
+    </text>
+  </g>
+
+  
+  <g id="warning-node">
+    <rect x="40" y="1025" width="1520" height="135" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(68, 1045)">
+      <path d="M28 4 L4 48 H52 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M28 20 V32" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="40" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="145" y="1068" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Warning</text>
+    <text x="145" y="1108" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">test after every driver, kernel, systemd or container runtime change:</tspan>
+      <tspan x="145" dy="35">daemon-reload or a cgroup v2 mismatch has reset device permissions on running nodes</tspan>
+    </text>
+  </g>
+</svg>

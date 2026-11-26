@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Two checks at the door: who you are, then what you may do</title>
+  <desc>Visual pipeline illustrating Kubernetes API authentication and authorization stages including inputs, outcomes, and anonymous caller considerations.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-down" viewBox="0 0 12 12" refX="6" refY="10" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 2 1 L 6 10 L 10 1 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Two checks at the door:</tspan>
+    <tspan x="800" dy="56">who you are, then what you may do</tspan>
+  </text>
+
+  
+  <g>
+    <rect x="335" y="180" width="340" height="84" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8,6" />
+    <text x="505" y="215" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="505" dy="0">An empty identity</tspan>
+      <tspan x="505" dy="32">is still a caller</tspan>
+    </text>
+    <path d="M 505 264 L 505 340" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="6,4" marker-end="url(#arrow-down)" />
+  </g>
+
+  
+  <g>
+    <rect x="755" y="170" width="390" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="767" y="180" width="178" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="856" y="209" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Identity</text>
+
+    <rect x="955" y="180" width="178" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1044" y="209" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Verb</text>
+
+    
+    <rect x="767" y="228" width="366" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="950" y="257" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Resource (HTTP path)</text>
+
+    
+    <path d="M 950 280 L 950 340" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="45" y="340" width="210" height="350" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(150, 420)">
+      <rect x="-28" y="-28" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M -36 18 L 36 18 L 28 10 L -28 10 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M -16 -12 L -8 -6 L -16 0 M -4 0 L 8 0" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    <text x="150" y="540" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="150" dy="0">Request</tspan>
+      <tspan x="150" dy="40">arrives</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <path d="M 255 515 L 335 515" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+    <circle cx="295" cy="515" r="22" fill="#207448" />
+    <text x="295" y="523" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  </g>
+
+  
+  <g>
+    <rect x="335" y="340" width="340" height="350" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(505, 405)">
+      <rect x="-24" y="-20" width="48" height="60" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M -12 -28 C -12 -34 12 -34 12 -28 L 12 -20 L -12 -20 Z" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="-16" y="-10" width="14" height="16" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+      <path d="M 4 -6 L 16 -6 M 4 0 L 16 0 M -16 16 L 16 16 M -16 24 L 8 24" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+
+    <text x="505" y="490" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="505" dy="0">Authentication:</tspan>
+      <tspan x="505" dy="38">who is calling?</tspan>
+    </text>
+
+    <text x="505" y="585" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="505" dy="0">user,</tspan>
+      <tspan x="505" dy="32">ServiceAccount,</tspan>
+      <tspan x="505" dy="32">or no identity</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <path d="M 675 515 L 755 515" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+    <circle cx="715" cy="515" r="22" fill="#207448" />
+    <text x="715" y="523" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  </g>
+
+  
+  <g>
+    <rect x="755" y="340" width="390" height="350" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="5" />
+
+    
+    <g transform="translate(950, 405)">
+      <circle cx="-16" cy="0" r="14" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="-16" cy="0" r="5" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M -2 0 L 26 0" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M 14 0 L 14 10 M 24 0 L 24 13" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    <text x="950" y="480" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="950" dy="0">Authorization:</tspan>
+    </text>
+
+    <text x="950" y="530" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="950" dy="0">identity,</tspan>
+      <tspan x="950" dy="36">resource (HTTP path)</tspan>
+      <tspan x="950" dy="36">and verb</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <path d="M 1145 515 L 1225 515" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+    <circle cx="1185" cy="515" r="22" fill="#207448" />
+    <text x="1185" y="523" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  </g>
+
+  
+  <g>
+    <rect x="1225" y="340" width="330" height="350" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g>
+      <rect x="1240" y="355" width="300" height="150" rx="10" fill="#dcf2e3" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="1390" cy="390" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 1382 390 L 1388 396 L 1399 383" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      
+      <text x="1390" y="435" text-anchor="middle" font-family="sans-serif" fill="#207448">
+        <tspan x="1390" dy="0" font-size="28" font-weight="bold">Allowed:</tspan>
+        <tspan x="1390" dy="32" font-size="24">the action</tspan>
+        <tspan x="1390" dy="28" font-size="24">proceeds</tspan>
+      </text>
+    </g>
+
+    
+    <g>
+      <rect x="1240" y="525" width="300" height="150" rx="10" fill="#fdeeed" stroke="#c53030" stroke-width="2" />
+      
+      <circle cx="1390" cy="565" r="16" fill="none" stroke="#c53030" stroke-width="3.5" />
+      <path d="M 1382 557 L 1398 573 M 1398 557 L 1382 573" fill="none" stroke="#c53030" stroke-width="3.5" stroke-linecap="round" />
+
+      <text x="1390" y="620" text-anchor="middle" fill="#c53030">
+        <tspan x="1390" dy="0" font-family="sans-serif" font-size="28" font-weight="bold">Denied:</tspan>
+        <tspan x="1390" dy="34" font-family="monospace" font-size="26" font-weight="bold">HTTP 403</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g>
+    <rect x="350" y="735" width="900" height="66" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="777" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">RBAC decides who can ask, not what the answer does.</text>
+  </g>
+
+  
+  <g>
+    <rect x="180" y="845" width="1240" height="105" rx="12" fill="#fff7f7" stroke="#c53030" stroke-width="3" />
+    
+    <g transform="translate(235, 897)">
+      <path d="M 0 -26 L 24 20 L -24 20 Z" fill="none" stroke="#c53030" stroke-width="3.5" stroke-linejoin="round" />
+      <path d="M 0 -13 L 0 4 M 0 11 L 0 13" fill="none" stroke="#c53030" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    
+    <text x="285" y="885" fill="#303a36">
+      <tspan font-family="sans-serif" font-size="24" font-weight="bold">Set </tspan>
+      <tspan font-family="monospace" font-size="24" font-weight="bold" fill="#c53030">--anonymous-auth=false</tspan>
+      <tspan x="285" dy="36" font-family="sans-serif" font-size="24">on a cluster exposed to a hostile environment.</tspan>
+    </text>
+  </g>
+</svg>

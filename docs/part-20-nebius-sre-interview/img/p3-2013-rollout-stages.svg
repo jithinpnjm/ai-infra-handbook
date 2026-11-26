@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Rolling out a new model or engine safely</title>
+  <desc>Staircase progression from shadow traffic to full rollout, with evaluation gates between steps and contrast with A/B testing.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 10 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Rolling out a new model or engine safely</text>
+
+  
+  <g transform="translate(50, 140)">
+    
+    <path d="M 0 52 L 18 52 L 18 36 L 36 36 L 36 20 L 54 20 L 54 4" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="70" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#207448">Staircase</text>
+  </g>
+
+  
+  <rect x="50" y="360" width="340" height="320" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="88" cy="398" r="24" fill="#207448" />
+  <text x="88" y="407" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(126, 374)">
+    <rect x="2" y="2" width="26" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="16" y="14" width="26" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="4 3" />
+  </g>
+  <text x="184" y="408" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 1</text>
+  
+  <text x="74" y="462" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="74" dy="0">shadow: mirror</tspan>
+    <tspan x="74" dy="34">traffic to the new</tspan>
+    <tspan x="74" dy="34">version and discard</tspan>
+    <tspan x="74" dy="34">its output; learn</tspan>
+    <tspan x="74" dy="34">speed and errors</tspan>
+    <tspan x="74" dy="34">with no user risk</tspan>
+  </text>
+
+  
+  <path d="M 390 400 H 405 V 320 H 416" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="420" y="280" width="410" height="400" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="458" cy="318" r="24" fill="#207448" />
+  <text x="458" y="327" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(496, 294)">
+    <circle cx="16" cy="14" r="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 4 40 C 4 28 28 28 28 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="34" cy="16" r="6" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 26 40 C 26 32 44 32 44 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="554" y="328" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 2</text>
+  
+  <text x="444" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="444" dy="0">canary by tenant: start</tspan>
+    <tspan x="444" dy="34">with internal tenants;</tspan>
+    <tspan x="444" dy="34">send a small share such</tspan>
+    <tspan x="444" dy="34">as 10 percent and step</tspan>
+    <tspan x="444" dy="34">up through larger</tspan>
+    <tspan x="444" dy="34">shares if error rate</tspan>
+    <tspan x="444" dy="34">and latency hold</tspan>
+  </text>
+
+  
+  <path d="M 830 320 H 845 V 240 H 856" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="860" y="200" width="300" height="480" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="898" cy="238" r="24" fill="#207448" />
+  <text x="898" y="247" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(936, 214)">
+    <path d="M 6 38 L 18 38 L 18 26 L 30 26 L 30 14 L 42 14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 28 6 L 42 6 L 42 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="994" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 3</text>
+  
+  <text x="884" y="320" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="884" dy="0">wider canary</tspan>
+    <tspan x="884" dy="34">steps</tspan>
+  </text>
+
+  
+  <path d="M 1160 240 H 1175 V 160 H 1186" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1190" y="120" width="360" height="560" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+  
+  <circle cx="1228" cy="158" r="24" fill="#207448" />
+  <text x="1228" y="167" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1266, 134)">
+    <rect x="6" y="4" width="36" height="10" rx="2" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="6" y="18" width="36" height="10" rx="2" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="6" y="32" width="36" height="10" rx="2" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="9" r="1.5" fill="#207448" />
+    <circle cx="12" cy="23" r="1.5" fill="#207448" />
+    <circle cx="12" cy="37" r="1.5" fill="#207448" />
+  </g>
+  <text x="1324" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Stage 4</text>
+  
+  <text x="1214" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1214" dy="0">full rollout; keep</tspan>
+    <tspan x="1214" dy="34">the old version</tspan>
+    <tspan x="1214" dy="34">capacity until the</tspan>
+    <tspan x="1214" dy="34">new one has served</tspan>
+    <tspan x="1214" dy="34">peak traffic;</tspan>
+    <tspan x="1214" dy="34">rollback is one</tspan>
+    <tspan x="1214" dy="34">command</tspan>
+  </text>
+
+  
+  <path d="M 405 680 V 710" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" />
+  <path d="M 845 680 V 710" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" />
+  <path d="M 1175 680 V 710" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" />
+
+  
+  <rect x="50" y="710" width="1500" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(80, 730)">
+    <path d="M 28 6 L 48 14 V 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 V 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 20 28 L 26 34 L 38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="156" y="768" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Gate under each step</text>
+  
+  <text x="80" y="818" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">TTFT, ITL, error rate and finish_reason distribution</tspan>
+    <tspan x="80" dy="34">(a model change can shift finish_reason without raising errors);</tspan>
+    <tspan x="80" dy="34">a gate is a check that must pass before the next step</tspan>
+  </text>
+
+  
+  <rect x="50" y="945" width="1500" height="195" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(80, 965)">
+    <path d="M 28 10 V 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 12 18 L 28 14 L 44 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 6 30 L 12 18 L 18 30 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 38 30 L 44 18 L 50 30 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 18 46 H 38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="156" y="1003" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Contrast</text>
+  
+  <text x="80" y="1055" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">canary versus A/B test: in an A/B test each user stays in one group</tspan>
+    <tspan x="80" dy="34">so the comparison is fair</tspan>
+  </text>
+</svg>

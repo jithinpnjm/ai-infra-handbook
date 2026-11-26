@@ -1,0 +1,354 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Pageable versus pinned host memory: why memlock decides whether registration works</title>
+  <desc>Visual comparison of pageable and pinned host memory transfers to GPU, RLIMIT_MEMLOCK limit outcomes, configuration locations, and operational consequences.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#c0392b" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Pageable versus pinned host memory:</text>
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">why memlock decides whether registration works</text>
+
+  
+  <rect x="50" y="145" width="1500" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="68" y="158" width="250" height="138" rx="8" fill="#e8f1ea" />
+  
+  <g transform="translate(163, 170)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="60" height="34" rx="4" />
+    <line x1="10" y1="34" x2="10" y2="42" stroke-width="3" />
+    <line x1="22" y1="34" x2="22" y2="42" stroke-width="3" />
+    <line x1="38" y1="34" x2="38" y2="42" stroke-width="3" />
+    <line x1="50" y1="34" x2="50" y2="42" stroke-width="3" />
+    <line x1="16" y1="12" x2="44" y2="12" stroke-dasharray="4 4" stroke-width="2" />
+    <line x1="16" y1="22" x2="44" y2="22" stroke-dasharray="4 4" stroke-width="2" />
+  </g>
+  <text x="193" y="248" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="193" dy="0">Pageable</tspan>
+    <tspan x="193" dy="34">host memory</tspan>
+  </text>
+
+  
+  <rect x="340" y="166" width="220" height="122" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <circle cx="365" cy="191" r="16" fill="#207448" />
+  <text x="365" y="197" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(435, 178)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="46" height="28" rx="3" />
+    <line x1="15" y1="0" x2="15" y2="28" />
+    <line x1="31" y1="0" x2="31" y2="28" />
+  </g>
+  <text x="450" y="254" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">host buffer</text>
+
+  
+  <line x1="560" y1="227" x2="598" y2="227" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="608" y="160" width="340" height="134" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <circle cx="633" cy="185" r="16" fill="#207448" />
+  <text x="633" y="191" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(755, 170)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="6" width="32" height="24" rx="2" />
+    <rect x="12" y="0" width="32" height="24" rx="2" stroke-dasharray="3 3" />
+    <path d="M 16 18 L 28 18" marker-end="url(#arrow-green)" stroke-width="2" />
+  </g>
+  <text x="778" y="242" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="778" dy="0">staging copy into</tspan>
+    <tspan x="778" dy="36">a pinned buffer</tspan>
+  </text>
+
+  
+  <line x1="948" y1="227" x2="986" y2="227" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="996" y="166" width="220" height="122" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+  <circle cx="1021" cy="191" r="16" fill="#207448" />
+  <text x="1021" y="197" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(1090, 176)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="36" height="32" rx="3" />
+    <rect x="8" y="7" width="20" height="18" fill="#e8f1ea" />
+    <line x1="6" y1="32" x2="6" y2="38" />
+    <line x1="18" y1="32" x2="18" y2="38" />
+    <line x1="30" y1="32" x2="30" y2="38" />
+  </g>
+  <text x="1106" y="246" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1106" dy="0">DMA to</tspan>
+    <tspan x="1106" dy="34">the GPU</tspan>
+  </text>
+
+  
+  <rect x="1236" y="166" width="294" height="122" rx="8" fill="#fdf2f2" stroke="#c0392b" stroke-width="2" stroke-dasharray="6 4" />
+  
+  <g transform="translate(1368, 178)" stroke="#c0392b" stroke-width="3" fill="none">
+    <circle cx="15" cy="15" r="14" />
+    <line x1="15" y1="7" x2="15" y2="17" />
+    <circle cx="15" cy="22" r="1.5" fill="#c0392b" />
+  </g>
+  <text x="1383" y="244" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c0392b">
+    <tspan x="1383" dy="0">extra copy; no overlap</tspan>
+    <tspan x="1383" dy="30">with compute</tspan>
+  </text>
+
+
+  
+  <rect x="50" y="328" width="1500" height="175" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+
+  
+  <rect x="68" y="342" width="250" height="147" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2" />
+  
+  <g transform="translate(163, 354)" stroke="#db8129" stroke-width="3" fill="none">
+    <rect x="0" y="14" width="60" height="30" rx="3" />
+    <line x1="10" y1="44" x2="10" y2="50" stroke-width="3" />
+    <line x1="22" y1="44" x2="22" y2="50" stroke-width="3" />
+    <line x1="38" y1="44" x2="38" y2="50" stroke-width="3" />
+    <line x1="50" y1="44" x2="50" y2="50" stroke-width="3" />
+    
+    <rect x="22" y="20" width="16" height="14" rx="2" fill="#fff8f0" />
+    <path d="M 25 20 L 25 14 A 5 5 0 0 1 35 14 L 35 20" />
+  </g>
+  <text x="193" y="430" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="193" dy="0">Pinned</tspan>
+    <tspan x="193" dy="32">(page-locked)</tspan>
+    <tspan x="193" dy="32">memory</tspan>
+  </text>
+
+  
+  <rect x="340" y="354" width="220" height="122" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2" />
+  <circle cx="365" cy="379" r="16" fill="#db8129" />
+  <text x="365" y="385" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(435, 366)" stroke="#db8129" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="46" height="28" rx="3" />
+    <line x1="15" y1="0" x2="15" y2="28" />
+    <line x1="31" y1="0" x2="31" y2="28" />
+    <circle cx="23" cy="14" r="4" fill="#db8129" />
+  </g>
+  <text x="450" y="442" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">host buffer</text>
+
+  
+  <line x1="560" y1="415" x2="628" y2="415" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="638" y="354" width="220" height="122" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2" />
+  <circle cx="663" cy="379" r="16" fill="#db8129" />
+  <text x="663" y="385" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(732, 364)" stroke="#db8129" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="36" height="32" rx="3" />
+    <rect x="8" y="7" width="20" height="18" fill="#fff8f0" />
+    <line x1="6" y1="32" x2="6" y2="38" />
+    <line x1="18" y1="32" x2="18" y2="38" />
+    <line x1="30" y1="32" x2="30" y2="38" />
+  </g>
+  <text x="748" y="434" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="748" dy="0">DMA to</tspan>
+    <tspan x="748" dy="34">the GPU</tspan>
+  </text>
+
+  
+  <rect x="880" y="342" width="650" height="147" rx="8" fill="#f5fbf7" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(900, 395)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 0 26 A 20 20 0 1 1 36 26" />
+    <line x1="18" y1="18" x2="28" y2="8" stroke-width="3" stroke="#db8129" />
+  </g>
+  <text x="950" y="385" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="950" dy="0" font-weight="bold" fill="#207448">typically 2x to 3x faster; allows asynchronous overlap</tspan>
+    <tspan x="950" dy="35">through <tspan font-family="monospace">cudaMemcpyAsync</tspan>, <tspan font-family="monospace">pin_memory=True</tspan></tspan>
+    <tspan x="950" dy="35">and <tspan font-family="monospace">non_blocking=True</tspan></tspan>
+  </text>
+
+
+  
+
+  
+  <rect x="50" y="525" width="730" height="335" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="70" y="542" width="690" height="66" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(88, 550)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 18 2 L 36 8 L 36 24 C 36 36 18 46 18 46 C 18 46 0 36 0 24 L 0 8 Z" />
+    <circle cx="18" cy="20" r="4" fill="#207448" />
+    <line x1="18" y1="24" x2="18" y2="30" stroke-width="3" />
+  </g>
+  <text x="430" y="586" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">RLIMIT_MEMLOCK (ulimit -l)</text>
+
+  
+  <line x1="240" y1="608" x2="240" y2="628" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <line x1="580" y1="608" x2="580" y2="706" stroke="#c0392b" stroke-width="3" marker-end="url(#arrow-red)" />
+
+  
+  <rect x="70" y="630" width="690" height="66" rx="8" fill="#f5fbf7" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(90, 642)" stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="20" cy="20" r="18" />
+    <polyline points="10,20 17,27 30,12" />
+  </g>
+  <text x="145" y="672" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">unlimited: pinning succeeds</text>
+
+  
+  <rect x="70" y="710" width="690" height="135" rx="8" fill="#fdf2f2" stroke="#c0392b" stroke-width="2" />
+  
+  <g transform="translate(90, 730)" stroke="#c0392b" stroke-width="3" fill="none">
+    <path d="M 20 4 L 38 36 L 2 36 Z" />
+    <line x1="20" y1="16" x2="20" y2="26" />
+    <circle cx="20" cy="31" r="1.5" fill="#c0392b" />
+  </g>
+  <text x="145" y="742" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0" font-weight="bold" fill="#c0392b">low limit: ibv_reg_mr errors,</tspan>
+    <tspan x="145" dy="32">CUDA out of memory while pinning host memory,</tspan>
+    <tspan x="145" dy="32">NCCL ibv_reg_mr failures</tspan>
+  </text>
+  
+  <rect x="490" y="784" width="255" height="46" rx="6" fill="#ffffff" stroke="#c0392b" stroke-width="2" stroke-dasharray="4 3" />
+  <text x="617" y="816" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c0392b">the GPU has room</text>
+
+
+  
+  <rect x="805" y="525" width="745" height="335" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(820, 538)">
+    <rect x="0" y="0" width="715" height="52" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(14, 11)" stroke="#207448" stroke-width="2.5" fill="none">
+      <path d="M 4 2 L 18 2 L 26 10 L 26 28 L 4 28 Z" />
+      <polyline points="18,2 18,10 26,10" />
+    </g>
+    <text x="54" y="34" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">/etc/security/limits.d/*.conf</tspan>
+      <tspan font-family="sans-serif"> for logins</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(820, 600)">
+    <rect x="0" y="0" width="715" height="52" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(14, 11)" stroke="#207448" stroke-width="2.5" fill="none">
+      <circle cx="15" cy="15" r="9" />
+      <path d="M 15 2 L 15 6 M 15 24 L 15 28 M 2 15 L 6 15 M 24 15 L 28 15" />
+    </g>
+    <text x="54" y="34" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">LimitMEMLOCK=infinity</tspan>
+      <tspan font-family="sans-serif"> for systemd units</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(820, 662)">
+    <rect x="0" y="0" width="715" height="52" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(14, 11)" stroke="#207448" stroke-width="2.5" fill="none">
+      <rect x="2" y="8" width="26" height="18" rx="3" />
+      <line x1="8" y1="14" x2="12" y2="14" />
+      <line x1="16" y1="14" x2="20" y2="14" />
+    </g>
+    <text x="54" y="34" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">--ulimit memlock=-1:-1</tspan>
+      <tspan font-family="sans-serif"> for Docker</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(820, 724)">
+    <rect x="0" y="0" width="715" height="52" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(14, 11)" stroke="#207448" stroke-width="2.5" fill="none">
+      <rect x="3" y="3" width="10" height="10" />
+      <rect x="17" y="3" width="10" height="10" />
+      <rect x="10" y="17" width="10" height="10" />
+      <path d="M 8 13 L 15 17 M 22 13 L 15 17" stroke-width="1.5" />
+    </g>
+    <text x="54" y="34" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Slurm PropagateResourceLimits</text>
+  </g>
+
+  
+  <g transform="translate(820, 786)">
+    <rect x="0" y="0" width="715" height="52" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(14, 11)" stroke="#207448" stroke-width="2.5" fill="none">
+      <circle cx="15" cy="15" r="12" />
+      <circle cx="15" cy="15" r="4" />
+      <line x1="15" y1="3" x2="15" y2="11" />
+      <line x1="15" y1="19" x2="15" y2="27" />
+      <line x1="3" y1="15" x2="11" y2="15" />
+      <line x1="19" y1="15" x2="27" y2="15" />
+    </g>
+    <text x="54" y="34" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">runtime configuration for Kubernetes</text>
+  </g>
+
+
+  
+
+  
+  <rect x="50" y="880" width="480" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(262, 895)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="36" height="44" rx="3" />
+    <line x1="8" y1="12" x2="28" y2="12" stroke-dasharray="3 3" />
+    <line x1="8" y1="20" x2="28" y2="20" stroke-dasharray="3 3" />
+    <rect x="20" y="24" width="22" height="18" rx="2" fill="#e8f1ea" stroke="#207448" />
+    <path d="M 25 24 L 25 18 A 6 6 0 0 1 37 18 L 37 24" />
+  </g>
+  <text x="290" y="964" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="290" dy="0" font-weight="bold" fill="#207448">Pinned pages are unevictable</tspan>
+    <tspan x="290" dy="30">(counted in Mlocked and</tspan>
+    <tspan x="290" dy="30">Unevictable and in</tspan>
+    <tspan x="290" dy="30">cgroup accounting)</tspan>
+  </text>
+
+  
+  <rect x="560" y="880" width="480" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(775, 895)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="25" cy="25" r="22" />
+    <polyline points="25,12 25,25 35,25" />
+    <line x1="25" y1="0" x2="25" y2="3" />
+  </g>
+  <text x="800" y="976" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0" font-weight="bold" fill="#207448">Pinning is slow:</tspan>
+    <tspan x="800" dy="36">allocate once up front,</tspan>
+    <tspan x="800" dy="36">not per batch</tspan>
+  </text>
+
+  
+  <rect x="1070" y="880" width="480" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1282, 895)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="24" height="20" rx="2" fill="#e8f1ea" />
+    <rect x="30" y="0" width="24" height="20" rx="2" fill="#e8f1ea" />
+    <rect x="0" y="26" width="24" height="20" rx="2" fill="#e8f1ea" />
+    <rect x="30" y="26" width="24" height="20" rx="2" fill="#e8f1ea" />
+  </g>
+  <text x="1310" y="976" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1310" dy="0" font-weight="bold" fill="#207448">Huge pages for pinned buffers</tspan>
+    <tspan x="1310" dy="36">reduce mappings and</tspan>
+    <tspan x="1310" dy="36">registration cost</tspan>
+  </text>
+
+
+  
+  <rect x="50" y="1108" width="1500" height="66" rx="8" fill="#207448" />
+  
+  <g transform="translate(80, 1123)" stroke="#ffffff" stroke-width="3" fill="none">
+    <circle cx="8" cy="18" r="6" />
+    <circle cx="36" cy="18" r="6" />
+    <line x1="14" y1="18" x2="30" y2="18" />
+  </g>
+  <text x="815" y="1150" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    GPUDirect RDMA, GPUDirect Storage and InfiniBand verbs need registered, pinned memory too
+  </text>
+
+</svg>

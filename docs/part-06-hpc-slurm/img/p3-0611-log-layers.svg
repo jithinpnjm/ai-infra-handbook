@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Three layers to untangle interleaved training logs</title>
+  <desc>Visual infographic explaining three stacked layers to resolve interleaved distributed training logs: per-node files, task-prefixed output, and per-rank Python logs.</desc>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three layers to untangle interleaved training logs</text>
+
+  
+  <g id="problem-picture">
+    <rect x="80" y="105" width="1440" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(112, 144)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 14,20 L 42,20 M 14,28 L 34,28 M 14,36 L 42,36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="38" cy="28" r="3" fill="#207448"/>
+    </g>
+
+    <text x="195" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="195" dy="0">progress bars, warnings and a stack trace from different</tspan>
+      <tspan x="195" dy="38">processes mixed in the middle of each other</tspan>
+    </text>
+  </g>
+
+  
+  <g id="layer-1">
+    <rect x="80" y="270" width="1440" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(112, 305)">
+      <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 6,14 v 14 a 22,8 0 0,0 44,0 v -14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 6,28 v 14 a 22,8 0 0,0 44,0 v -14" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    <text x="195" y="342" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 1 per-node file:</text>
+    <text x="195" y="392" font-size="25" fill="#303a36">
+      <tspan x="195" dy="0" font-family="ui-monospace, monospace" font-weight="bold">#SBATCH --output=logs/train_%j_%N.out and --error=logs/train_%j_%N.err</tspan>
+      <tspan x="195" dy="42" font-family="system-ui, -apple-system, sans-serif">so each node writes its own file; ranks on one node still share a file</tspan>
+    </text>
+  </g>
+
+  
+  <g id="layer-2">
+    <rect x="80" y="550" width="1440" height="255" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(112, 585)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 12,18 l 12,10 l -12,10" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="30" y1="38" x2="44" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="195" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 2 task-prefixed output:</text>
+    <text x="195" y="668" font-size="25" fill="#303a36">
+      <tspan x="195" dy="0"><tspan font-family="ui-monospace, monospace" font-weight="bold">srun --label python train.py</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> prefixes every stdout and stderr line</tspan></tspan>
+      <tspan x="195" dy="40" font-family="system-ui, -apple-system, sans-serif">with the global task ID such as <tspan font-family="ui-monospace, monospace" font-weight="bold">0: or 1:;</tspan> <tspan font-family="ui-monospace, monospace" font-weight="bold">grep</tspan> one rank;</tspan>
+      <tspan x="195" dy="42" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" fill="#db8129">quickest fix when debugging</tspan>
+    </text>
+  </g>
+
+  
+  <g id="layer-3">
+    <rect x="80" y="835" width="1440" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(112, 870)">
+      <rect x="5" y="0" width="46" height="56" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="15" y1="18" x2="41" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="15" y1="30" x2="41" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="15" y1="42" x2="31" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="195" y="907" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 3 per-rank Python log:</text>
+    <text x="195" y="955" font-size="25" fill="#303a36">
+      <tspan x="195" dy="0" font-family="system-ui, -apple-system, sans-serif">Python logging writes each rank to <tspan font-family="ui-monospace, monospace" font-weight="bold">train_rank_RANK.log;</tspan></tspan>
+      <tspan x="195" dy="40" font-family="system-ui, -apple-system, sans-serif">only <tspan font-family="ui-monospace, monospace" font-weight="bold">rank == 0</tspan> attaches a <tspan font-family="ui-monospace, monospace" font-weight="bold">StreamHandler</tspan> to console stdout;</tspan>
+      <tspan x="195" dy="40" font-family="system-ui, -apple-system, sans-serif">the other ranks write quietly to their own files</tspan>
+    </text>
+  </g>
+</svg>

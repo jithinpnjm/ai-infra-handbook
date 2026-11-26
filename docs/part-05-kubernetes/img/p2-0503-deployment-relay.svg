@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Spec says 3, status says 2: who owns the missing Pod</title>
+  <desc>Infographic showing the Kubernetes controller chain reconciling spec and status to create a missing Pod</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Spec says 3, status says 2:</tspan>
+    <tspan x="800" dy="58">who owns the missing Pod</tspan>
+  </text>
+
+  
+
+  
+  <rect x="60" y="175" width="870" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="110" cy="242" r="24" fill="#207448"/>
+  <text x="110" y="242" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="151" y="221" width="48" height="42" rx="4"/>
+    <line x1="151" y1="233" x2="199" y2="233" stroke-width="3"/>
+    <rect x="159" y="241" width="13" height="13" rx="2" stroke-width="3"/>
+    <rect x="178" y="241" width="13" height="13" rx="2" stroke-width="3"/>
+  </g>
+  <text x="225" y="228" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Deployment controller:</text>
+  <text x="225" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="225" dy="0">ReplicaSet exists and matches,</tspan>
+    <tspan x="225" dy="30">nothing to change</tspan>
+  </text>
+
+  
+  <line x1="495" y1="310" x2="495" y2="333" stroke="#207448" stroke-width="4"/>
+  <polygon points="487,333 503,333 495,345" fill="#207448"/>
+
+  
+  <rect x="60" y="345" width="870" height="135" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  <circle cx="110" cy="412" r="24" fill="#207448"/>
+  <text x="110" y="412" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="165" y="394" width="34" height="34" rx="4" stroke-width="3" stroke-dasharray="4 3"/>
+    <rect x="151" y="404" width="34" height="34" rx="4" stroke-width="4" fill="#e8f1ea"/>
+    <circle cx="161" cy="421" r="2.5" fill="#207448" stroke="none"/>
+    <circle cx="168" cy="421" r="2.5" fill="#207448" stroke="none"/>
+    <circle cx="175" cy="421" r="2.5" fill="#207448" stroke="none"/>
+  </g>
+  <text x="225" y="398" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">ReplicaSet controller:</text>
+  <text x="225" y="430" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="225" dy="0">desired 3, only 2 Pods exist,</tspan>
+    <tspan x="225" dy="30">creates the missing Pod</tspan>
+  </text>
+
+  
+  <line x1="495" y1="480" x2="495" y2="503" stroke="#207448" stroke-width="4"/>
+  <polygon points="487,503 503,503 495,515" fill="#207448"/>
+
+  
+  <rect x="60" y="515" width="870" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="110" cy="582" r="24" fill="#207448"/>
+  <text x="110" y="582" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="175" cy="582" r="21" stroke-width="4"/>
+    <line x1="175" y1="582" x2="175" y2="570" stroke-width="4"/>
+    <line x1="175" y1="582" x2="185" y2="582" stroke-width="4"/>
+    <line x1="175" y1="556" x2="175" y2="561" stroke-width="3"/>
+    <line x1="175" y1="603" x2="175" y2="608" stroke-width="3"/>
+    <line x1="149" y1="582" x2="154" y2="582" stroke-width="3"/>
+    <line x1="196" y1="582" x2="201" y2="582" stroke-width="3"/>
+  </g>
+  <text x="225" y="568" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Scheduler:</text>
+  <text x="225" y="600" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="225" dy="0">one new Pod with no node name,</tspan>
+    <tspan x="225" dy="30">places it</tspan>
+  </text>
+
+  
+  <line x1="495" y1="650" x2="495" y2="673" stroke="#207448" stroke-width="4"/>
+  <polygon points="487,673 503,673 495,685" fill="#207448"/>
+
+  
+  <rect x="60" y="685" width="870" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="110" cy="752" r="24" fill="#207448"/>
+  <text x="110" y="752" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g stroke="#207448" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="156" y="733" width="38" height="38" rx="4" stroke-width="4"/>
+    <rect x="165" y="742" width="20" height="20" rx="2" stroke-width="3"/>
+    <line x1="165" y1="727" x2="165" y2="733" stroke-width="3"/>
+    <line x1="175" y1="727" x2="175" y2="733" stroke-width="3"/>
+    <line x1="185" y1="727" x2="185" y2="733" stroke-width="3"/>
+    <line x1="165" y1="771" x2="165" y2="777" stroke-width="3"/>
+    <line x1="175" y1="771" x2="175" y2="777" stroke-width="3"/>
+    <line x1="185" y1="771" x2="185" y2="777" stroke-width="3"/>
+    <line x1="150" y1="742" x2="156" y2="742" stroke-width="3"/>
+    <line x1="150" y1="752" x2="156" y2="752" stroke-width="3"/>
+    <line x1="150" y1="762" x2="156" y2="762" stroke-width="3"/>
+    <line x1="194" y1="742" x2="200" y2="742" stroke-width="3"/>
+    <line x1="194" y1="752" x2="200" y2="752" stroke-width="3"/>
+    <line x1="194" y1="762" x2="200" y2="762" stroke-width="3"/>
+  </g>
+  <text x="225" y="738" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kubelet on the chosen node:</text>
+  <text x="225" y="770" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="225" dy="0">starts the container,</tspan>
+    <tspan x="225" dy="30">reports Ready</tspan>
+  </text>
+
+  
+  <line x1="495" y1="820" x2="495" y2="843" stroke="#207448" stroke-width="4"/>
+  <polygon points="487,843 503,843 495,855" fill="#207448"/>
+
+  
+  <rect x="60" y="855" width="870" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="110" cy="922" r="24" fill="#207448"/>
+  <text x="110" y="922" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g stroke="#207448" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="175" cy="922" r="9" stroke-width="4"/>
+    <path d="M 171 905 L 179 905 L 180 910 L 185 912 L 189 908 L 195 914 L 191 918 L 193 923 L 198 924 L 198 932 L 193 933 L 191 938 L 195 942 L 189 948 L 185 944 L 180 946 L 179 951 L 171 951 L 170 946 L 165 944 L 161 948 L 155 942 L 159 938 L 157 933 L 152 932 L 152 924 L 157 923 L 159 918 L 155 914 L 161 908 L 165 912 L 170 910 Z" stroke-width="3.5"/>
+  </g>
+  <text x="225" y="908" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">EndpointSlice controller:</text>
+  <text x="225" y="940" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="225" dy="0">adds the new Pod address</tspan>
+    <tspan x="225" dy="30">to the Service</tspan>
+  </text>
+
+  
+  <rect x="970" y="175" width="570" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="1010" y="215" width="490" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1255" y="278" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">spec (desired): 3</text>
+
+  
+  <path d="M 1080 350 L 1055 350 Q 1045 350 1045 365 L 1045 490 Q 1045 505 1030 505 Q 1045 505 1045 520 L 1045 645 Q 1045 660 1055 660 L 1080 660" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <text x="1075" y="475" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1075" dy="0">The gap shows what</tspan>
+    <tspan x="1075" dy="36">controllers have</tspan>
+    <tspan x="1075" dy="36">not done yet</tspan>
+  </text>
+
+  
+  <rect x="1010" y="685" width="490" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1255" y="748" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">status (observed): 2</text>
+
+  
+  <text x="1255" y="890" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1255" dy="0">Level-triggered: controllers</tspan>
+    <tspan x="1255" dy="34">compare current with desired</tspan>
+    <tspan x="1255" dy="34">on every resync.</tspan>
+  </text>
+</svg>

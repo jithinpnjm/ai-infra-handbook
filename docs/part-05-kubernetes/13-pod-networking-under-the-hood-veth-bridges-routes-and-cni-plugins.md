@@ -98,20 +98,9 @@ This is what the simple `bridge` CNI plugin does for a single node. The table be
 
 Each node owns a slice of the pod CIDR. The `node.spec.podCIDR` field records that slice. For example, node A might own `10.244.1.0/24` and node B `10.244.2.0/24`. Packets can cross between the two nodes in three ways, and the diagram shows all three.
 
-```mermaid
-flowchart TB
-  subgraph A["Node A (10.244.1.0/24)"]
-    PA["pod 10.244.1.12 eth0"] --- VA["veth"]
-    VA --- BA["cni0 bridge / or routed /32"]
-  end
-  subgraph B["Node B (10.244.2.0/24)"]
-    PB["pod 10.244.2.7 eth0"] --- VB["veth"]
-    VB --- BB["cni0 / routes"]
-  end
-  BA -->|"1) Overlay: VXLAN/Geneve/IPIP encapsulation over node IPs"| BB
-  BA -->|"2) Routed: node route 10.244.2.0/24 via nodeB (static, BGP, cloud route table)"| BB
-  BA -->|"3) Underlay-native: pod IPs from the VPC/fabric subnet (ENI, SR-IOV, macvlan)"| BB
-```
+![Multi-node: how pods on different nodes talk](./img/m5-13-1.svg)
+
+*Figure 5.13.1. Multi-node: how pods on different nodes talk, as a diagram.*
 
 1. **Overlay**, using Flannel VXLAN, Calico VXLAN or IPIP, Cilium VXLAN or Geneve, or Weave. It works on any L3 network. The cost is encapsulation overhead. VXLAN adds 50 bytes, which reduces the MTU. Encapsulation and decapsulation also take CPU, though modern NICs can offload that work. Overlays make traffic harder to see.
 2. **Routed (L3, no encapsulation)**. Nodes learn pod CIDR routes in one of three ways: BGP, from Calico, Cilium BGP or kube-router; static routes; or cloud route tables. The `host-gw` option in Flannel works only when nodes share L2. This design gives the best performance and clean traceability. It does require control of the underlay, or BGP peering with ToR switches. It fits leaf-spine fabrics that run BGP to hosts, as covered in 2.15 and 2.16.

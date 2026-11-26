@@ -1,0 +1,2 @@
+from audit_pad_strict import check_strict_paddings
+check_strict_paddings("candidate_throttling.svg")

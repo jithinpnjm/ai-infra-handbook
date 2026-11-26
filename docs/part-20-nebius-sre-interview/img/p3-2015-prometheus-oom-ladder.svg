@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1010" width="1600" height="1010">
+  <title>Prometheus is out of memory: what to do in order</title>
+  <desc>Numbered ladder of steps to resolve Prometheus out-of-memory errors caused by high cardinality, alongside the anti-pattern of adding memory first and key operational alerts.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1010" fill="#f5f8f5" />
+
+  
+  <text x="60" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Prometheus is out of memory: what to do in order</text>
+
+  
+  <rect x="60" y="130" width="950" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="105" cy="177" r="24" fill="#207448" />
+  <text x="105" y="177" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="170" cy="162" rx="20" ry="7" />
+    <path d="M 150 162 v 12 c 0 3.8 9 7 20 7 s 20 -3.2 20 -7 v -12" />
+    <path d="M 150 174 v 12 c 0 3.8 9 7 20 7 s 20 -3.2 20 -7 v -12" />
+  </g>
+  <text x="220" y="167" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="220" dy="0">Ask the TSDB status endpoint which metric names</tspan>
+    <tspan x="220" dy="32">and which labels have the most series</tspan>
+  </text>
+
+  
+  <line x1="105" y1="224" x2="105" y2="252" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="256" width="950" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="105" cy="303" r="24" fill="#207448" />
+  <text x="105" y="303" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 150 286 v 34 h 40" />
+    <path d="M 154 314 l 12 -4 l 8 -20 l 12 -2" />
+    <circle cx="174" cy="290" r="3" fill="#207448" />
+  </g>
+  <text x="220" y="293" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="220" dy="0">Look at <tspan font-family="ui-monospace, monospace" font-weight="bold">scrape_series_added</tspan> for a recent jump,</tspan>
+    <tspan x="220" dy="32">the signature of a new unbounded label</tspan>
+  </text>
+
+  
+  <line x1="105" y1="350" x2="105" y2="378" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="382" width="950" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="105" cy="429" r="24" fill="#207448" />
+  <text x="105" y="429" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 179 411 c -9 0 -17 7 -19 19 l 10 10 c 12 -2 19 -10 19 -19 c 0 -5 -5 -10 -10 -10 z" />
+    <path d="M 160 430 l -8 4 l 2 -8" />
+    <path d="M 170 440 l 4 -8 l 8 2" />
+    <circle cx="175" cy="423" r="2.5" fill="#207448" />
+  </g>
+  <text x="220" y="439" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Find the matching deploy</text>
+
+  
+  <line x1="105" y1="476" x2="105" y2="504" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="60" y="508" width="950" height="94" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  <circle cx="105" cy="555" r="24" fill="#db8129" />
+  <text x="105" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <g stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 152 538 h 36 l -14 16 v 16 l -8 -4 v -12 z" />
+    <line x1="182" y1="562" x2="192" y2="572" />
+    <line x1="192" y1="562" x2="182" y2="572" />
+  </g>
+  <text x="220" y="545" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="220" dy="0" font-weight="bold">Mitigate: drop the label</tspan>
+    <tspan x="220" dy="32">with relabeling at the scrape</tspan>
+  </text>
+
+  
+  <line x1="105" y1="602" x2="105" y2="630" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="634" width="950" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="105" cy="681" r="24" fill="#207448" />
+  <text x="105" y="681" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="152" y="663" width="36" height="36" rx="4" />
+    <path d="M 161 677 l -4 4 l 4 4" />
+    <path d="M 179 677 l 4 4 l -4 4" />
+    <line x1="172" y1="673" x2="168" y2="689" />
+  </g>
+  <text x="220" y="691" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Fix the code that adds the label</text>
+
+  
+  <line x1="105" y1="728" x2="105" y2="756" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="760" width="950" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="105" cy="807" r="24" fill="#207448" />
+  <text x="105" y="807" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 170 787 l 18 6 v 12 c 0 12 -18 18 -18 18 s -18 -6 -18 -18 v -12 z" />
+    <path d="M 164 804 l 4 4 l 9 -9" />
+  </g>
+  <text x="220" y="797" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="220" dy="0" font-weight="bold">Prevent: the linter at review,</tspan>
+    <tspan x="220" dy="32">plus scrape limits and the churn alert</tspan>
+  </text>
+
+  
+  <rect x="1050" y="130" width="490" height="724" rx="14" fill="#ffffff" stroke="#303a36" stroke-width="2" stroke-dasharray="8 6" />
+
+  
+  <g transform="translate(1295, 235)">
+    
+    <rect x="-38" y="-45" width="76" height="90" rx="6" fill="#f5f8f5" stroke="#303a36" stroke-width="2.5" />
+    <rect x="-26" y="-35" width="20" height="24" rx="2" fill="#e8f1ea" stroke="#303a36" stroke-width="1.5" />
+    <rect x="6" y="-35" width="20" height="24" rx="2" fill="#e8f1ea" stroke="#303a36" stroke-width="1.5" />
+    <rect x="-26" y="0" width="20" height="24" rx="2" fill="#e8f1ea" stroke="#303a36" stroke-width="1.5" />
+    <rect x="6" y="0" width="20" height="24" rx="2" fill="#e8f1ea" stroke="#303a36" stroke-width="1.5" />
+    <line x1="-30" y1="35" x2="30" y2="35" stroke="#303a36" stroke-width="3" stroke-dasharray="4 3" />
+    
+    <circle cx="0" cy="0" r="56" fill="none" stroke="#303a36" stroke-width="5" />
+    <line x1="-39" y1="-39" x2="39" y2="39" stroke="#303a36" stroke-width="5" />
+  </g>
+
+  
+  <text x="1295" y="375" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1295" dy="0">add more memory first:</tspan>
+    <tspan x="1295" dy="44">more memory only delays</tspan>
+    <tspan x="1295" dy="44">the same failure</tspan>
+  </text>
+
+  
+  <g transform="translate(1120, 525)" stroke="#303a36" stroke-linecap="round">
+    
+    <line x1="20" y1="230" x2="330" y2="230" stroke-width="2.5" />
+    <line x1="20" y1="230" x2="20" y2="30" stroke-width="2.5" />
+    
+    <line x1="20" y1="140" x2="330" y2="140" stroke="#7a8b82" stroke-width="2" stroke-dasharray="6 4" />
+    <line x1="20" y1="70" x2="330" y2="70" stroke="#7a8b82" stroke-width="2" stroke-dasharray="6 4" />
+    
+    <path d="M 25 210 Q 150 190 220 135 T 310 65" fill="none" stroke="#303a36" stroke-width="4" />
+    
+    <circle cx="310" cy="65" r="14" fill="#f5f8f5" stroke="#303a36" stroke-width="2.5" />
+    <line x1="302" y1="57" x2="318" y2="73" stroke-width="3" />
+    <line x1="318" y1="57" x2="302" y2="73" stroke-width="3" />
+  </g>
+
+  
+  <rect x="60" y="886" width="1480" height="84" rx="12" fill="#207448" />
+  
+  <g transform="translate(90, 912)" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 16 6 A 12 12 0 0 0 4 18 C 4 24 1 27 1 27 H 31 C 31 27 28 24 28 18 A 12 12 0 0 0 16 6 Z" />
+    <path d="M 12 27 A 4 4 0 0 0 20 27" />
+  </g>
+  <text x="800" y="938" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">scrape limits fail the whole scrape, so alert on scrape health</text>
+</svg>

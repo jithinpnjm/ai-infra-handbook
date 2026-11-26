@@ -32,6 +32,10 @@ Picture a team lead with a folder of old incidents, choosing which story fits wh
 
 ### 1. A behavioural answer about an incident is a short report with numbers
 
+![Five parts of a behavioural incident answer in order: impact, role, decisions, result and change, each with the number to include](./img/x27-five-part-incident-story.svg)
+
+*Figure 20.27.1. Incident story: give the impact in numbers first, then your role, decisions, result and the measurable change, in about three minutes.*
+
 Picture a candidate who starts an outage story with the weather on the day it began. The listener waits for the impact and never hears it. You are asked about a past outage. The common failure is a long, chronological story that ends with "and then we fixed it". The interviewer learns nothing about your judgement. They cannot tell whether the incident was small or large, or whether you led it or watched it. A short report with numbers answers those questions in the first few seconds.
 
 Numbers are not decoration. A share of requests, a duration and a count of people affected tell the listener how much to care, and they give you something concrete to defend if the interviewer pushes back. A vague word like "big" or "bad" gives them nothing to hold. If you do not remember an exact figure, give your best estimate and say how you got it, which is a stronger answer than a blank.
@@ -54,6 +58,10 @@ A three-minute story has room for one clear decision and one clear change. Tryin
 
 ### 2. Incident roles: one person decides, one person changes things, one person talks
 
+![Three signs for declaring an incident beside a four-step handover with an explicit acknowledgement.](./img/p3-2027-declare-handover.svg)
+
+*Figure 20.27.2. The outgoing commander stays on the call until the successor firmly acknowledges.*
+
 An incident grows from one engineer to five. Everyone starts typing in the same chat, two people restart the same service, and nobody tells the customer anything. Roles fix this by giving each kind of work one owner.
 
 Picture yourself as the commander with that chat open. Your first job is not to fix anything. It is to say, in one sentence, who holds each role, so that the engineer who would have restarted the service knows to wait for the operations lead. That sentence is short, and it changes the whole room.
@@ -62,20 +70,9 @@ The Google SRE book chapter Managing Incidents defines four roles. The incident 
 
 The workbook chapter Incident Response adds that the person who declares the incident usually starts as commander. They can hand the role on and take operations instead. It also says that once three or more people work an incident, you should start a shared state document with working theories, eliminated causes and suspect graphs. Chat is for decisions. The document is for evidence. A shared state document is simply a page everyone writes to, and it is the place to look when the chat has become too busy to read.
 
-```mermaid
-flowchart TD
-  IC["Incident commander: state, roles, decisions"]
-  OPS["Operations lead: the only one changing the system"]
-  COM["Communications lead: updates on a fixed cadence"]
-  PLAN["Planning: bugs, handoff, revert list"]
-  DOC["Shared incident document"]
-  IC --> OPS
-  IC --> COM
-  IC --> PLAN
-  OPS --> DOC
-  COM --> DOC
-  PLAN --> DOC
-```
+![Incident roles: one person decides, one person changes things, one person talks](./img/m20-27-1.svg)
+
+*Figure 20.27.3. Incident roles: one person decides, one person changes things, one person talks, as a diagram.*
 
 The Google SRE book gives three signs that you should declare an incident. A second team is needed, the outage is visible to customers, or the problem is unsolved after an hour of focused analysis. Declaring early is better than starting the process hours into a worsening problem. Declaring costs very little, while declaring late can cost the whole night.
 
@@ -86,6 +83,10 @@ In an interview, name the roles you filled. If you did everything yourself, say 
 A useful test is whether someone else could tell, from your answer alone, who did what. If the answer leaves that open, add one sentence that names the role and the person.
 
 ### 3. Severity definitions: tie them to customer impact and to a response
+
+![A table of SEV1 to ticket levels with customer impact, a token API example, first response time and update cadence.](./img/p3-2027-severity-table.svg)
+
+*Figure 20.27.4. Pick the level from impact, then attach a response time and an update cadence.*
 
 Picture two engineers arguing on a call about whether to wake a manager at night. The argument is not really about the bug. It is about how much the outage matters, and nobody agreed on that in advance. Severity answers two questions fast. How quickly must someone move, and who must be woken up? Without agreed levels, every incident gets argued about at the worst moment.
 
@@ -104,6 +105,10 @@ A level is a setting, not a verdict. You can raise it when the impact grows and 
 
 When an interviewer gives you an incident, declare a level within the first two minutes and say why. That is the habit 20.26 drills. Saying the reason is what turns a declared level into a judgement the interviewer can follow.
 ### 4. A blameless post-mortem has a fixed structure and measured impact
+
+![A stack of the eight post-mortem sections between pre-agreed triggers and the blameless writing rules.](./img/p3-2027-postmortem-anatomy.svg)
+
+*Figure 20.27.5. A fixed structure with measured impact keeps the write-up about the system, not the person.*
 
 Picture a post-mortem meeting where the first question is who pressed the button. The room goes quiet, and the next person who makes a mistake learns to stay quiet too. An incident ends and someone must write it up. If the writing hunts for the person who pushed the button, the next engineer hides their mistake. The Google SRE book chapter Postmortem Culture says blame discourages escalation and can lead to incidents being hidden. A blameless post-mortem identifies contributing causes without blaming any individual or team. It assumes people acted in good faith with the information they had. Blameless does not mean nobody did anything. It means the review looks for the conditions that let the action happen.
 
@@ -194,6 +199,10 @@ When you write a post-mortem, write the impact and the action table first, becau
 Write the timeline as it happened, not as you wish it had happened. A timeline that shows a fast detection the team did not really have will fall apart the first time someone checks the alert history. Use the timestamps from the systems you watched, and mark any gap as a gap.
 
 ### 5. Action items are where most post-mortems fail
+
+![Three post-mortem action types, prevent, detect and mitigate, each with an example, and the rewrite of a weak action into a checkable one](./img/x27-action-types-matrix.svg)
+
+*Figure 20.27.6. Action items: a prevent item changes the system so the failure cannot repeat, while detect and mitigate items only shorten or soften the next one.*
 
 Picture the review meeting ending with a long list of actions and nobody assigned to check on them. Three weeks after the review, nobody can say what happened to the action items. The usual reasons are vague wording, shared ownership and no way to tell when an item is done. The workbook says to prefer changing automation and processes over asking people to behave differently, since human vigilance is unreliable. It says each item needs a single owner, a priority and a tracking reference, and a verifiable end state. Words like "improve" are hard to measure.
 
@@ -372,6 +381,10 @@ Owners matter for a practical reason. When an action has several names on it, ea
 
 ### 6. Toil is the work that tells you what to automate
 
+![Two break-even calculations for toil automation: a restart task that pays back in eight months, and a workbook example that pays back after thirty pages](./img/x27-toil-breakeven.svg)
+
+*Figure 20.27.7. Toil break-even: divide the automation cost by the monthly cost of the repetitive work to see when a fix pays for itself.*
+
 An on-call engineer restarts the same pod for the fifth time this week. Each restart takes four minutes, and it never gets better. That is toil. The restart is quick, which is why nobody complains about it. Toil is the sum of many quick things that wear people down over a quarter.
 
 The Google SRE book chapter Eliminating Toil defines toil as operational work that is manual, repetitive, automatable, tactical, without enduring value, and scaling linearly with the service. Read the definition as a checklist. A task that fails one of the tests is not toil, and a task that passes all of them is a strong candidate for automation. Overhead such as meetings is not toil. Grungy work that leaves lasting improvement is not toil either. The chapter sets a goal of keeping toil below half of each SRE's time, because toil expands to fill all available time if left alone. It names burnout, slower feature delivery and talent leaving as harms.
@@ -385,6 +398,10 @@ Here is the arithmetic for a made-up task. A restart is needed 15 times a month 
 **Rank toil by hours per month and by the cost of getting it wrong, then automate the top of the list first.** In the interview, say how you would measure toil, not just that you want less of it.
 
 ### 7. A runbook is for the engineer who is half asleep
+
+![Seven runbook writing rules with an example for each, aimed at a tired engineer at 03:10.](./img/p3-2027-runbook-rules.svg)
+
+*Figure 20.27.8. An old runbook that looks confident is more dangerous than a missing one.*
 
 Picture a runbook as the only help available at that hour. The page arrives at 03:10. The engineer is tired, does not know this service well, and has the runbook in one tab. If the runbook is an essay, they will skip to a command and run it without reading the warning.
 
@@ -408,6 +425,10 @@ If a runbook step is deterministic, ask whether a script should do it instead. A
 
 ### 8. On-call health is measured, not felt
 
+![Google on-call load figures beside a table of five on-call health measures with warning signs.](./img/p3-2027-oncall-health.svg)
+
+*Figure 20.27.9. Measure pages per shift for four weeks before changing anything.*
+
 Picture a team that says its on-call is fine, while two people quietly look for other jobs. Pager load and sleep are measurable, and you should treat them like any other service level.
 
 The Google SRE book chapter Being On-Call gives figures. On-call should take no more than 25 percent of an SRE's time, with at least 50 percent for engineering. The maximum is two incidents per 12-hour shift, because handling one incident, including root cause and follow-up, averages about 6 hours. A single-site team needs 8 engineers for a rotation, or 6 per site with two sites. Read these as Google's figures for Google's teams, and use them as a reference point. The workbook defines pager load as paging incidents per shift and adds that an incident may involve more than one page. It says a 21-day trailing average is useful for spotting trends.
@@ -430,23 +451,19 @@ Think of on-call health as a service you run for your own team. It has a load, a
 
 ### 9. Error budgets turn a reliability argument into arithmetic
 
+![Budget arithmetic of 43.2 minutes with 92.6 percent spent, two options for the release and the budget policy rules.](./img/p3-2027-budget-negotiation.svg)
+
+*Figure 20.27.10. A number said first turns the argument from who is right into what the options cost.*
+
 Picture a product engineer who wants to ship a risky feature on Friday, and you who want to delay it. Without a shared number, the argument becomes a contest of seniority and charm. The Google SRE book chapter Embracing Risk describes the way out. Product and SRE jointly set an error budget derived from the SLO. It is the amount of unreliability allowed in the period. While budget remains, releases ship. When it is gone, risk-taking slows. The book says this gives both sides a shared, objective metric so decisions do not depend on negotiating skill.
 
 The same chapter warns that a budget policy only works if SRE has the authority to stop launches when the SLO is broken. The workbook's example policy is concrete. If the service exceeds its budget over the preceding four weeks, changes and releases stop except for P0 issues and security fixes, until the service is back within its SLO. The team must work on reliability if a code bug or process error caused the overrun. It may continue feature work if a company-wide network problem caused it. Disputes go to a named senior person, in the example the CTO. A policy with a named tie-breaker is what keeps the budget from becoming a suggestion.
 
 Here is the arithmetic for a negotiation. A 99.9 percent SLO over 30 days allows 0.1 percent of 43,200 minutes, which is 43.2 minutes. A fictional 40-minute incident uses 92.6 percent of that. Say the number first. Then offer the product engineer a choice: spend the remaining 3.2 minutes of risk on the Friday release, or hold it until the budget recovers. A number said first turns the conversation from who is right into what the options cost.
 
-```mermaid
-flowchart TD
-  A["Budget check"] --> B{"Budget left?"}
-  B -- "yes" --> C["Ship, canary with gates"]
-  B -- "no" --> D{"Cause was ours?"}
-  D -- "yes" --> E["Freeze features, fix reliability"]
-  D -- "no" --> F["Ship, record the external cause"]
-  C --> G["Review burn weekly"]
-  E --> G
-  F --> G
-```
+![Error budgets turn a reliability argument into arithmetic](./img/m20-27-2.svg)
+
+*Figure 20.27.11. Error budgets turn a reliability argument into arithmetic, as a diagram.*
 
 To work with product engineers, bring the budget, not opinions. Offer cheap reliability: canary gates, feature flags and rollbacks. Ask what latency or error figure their users notice, and set the SLO from that. The same chapter adds that if the budget is exhausted so often that launches stall, the team can loosen the SLO.
 
@@ -474,6 +491,10 @@ Picture a Monday review where a colleague hands you a draft post-mortem that has
 
 ### Scenario 1: repair a weak post-mortem
 
+![A before and after comparison of a weak post-mortem summary and actions against checkable prevent, detect and mitigate actions.](./img/p3-2027-weak-to-strong-postmortem.svg)
+
+*Figure 20.27.12. Remove the person from the summary and give every action an owner, a date and a measure.*
+
 A teammate hands you the bad fixture. The Summary says "Human error during a config push broke the endpoint". The action table says "Improve monitoring" owned by everyone, and "Be more careful with config pushes". Read the draft as its reader will. The person is the story, and nothing in the action table can be checked.
 
 Run the linter first, so the list of problems comes from a rule and not from your mood. It reports fifteen findings, from missing sections to blame language. Take them in order of value, not in the order the linter prints them. First, rewrite the summary without a person in it: "A config change reduced the cache budget and the rollout tool promoted it." Second, add the impact numbers. Third, replace each action using the table in core idea 5.
@@ -483,6 +504,10 @@ The actions become: add a canary latency gate (prevent), add a per-group alert w
 A good post-mortem reads as a plan. The reader should finish it knowing what changed, who will check it, and how they will know it worked.
 
 ### Scenario 2: timeline and time-to-resolve from messy notes
+
+![Timeline of seven incident events from rollout start to incident closed, with detect, mitigate and resolve times measured from the start of impact](./img/x27-incident-time-measures.svg)
+
+*Figure 20.27.13. Incident timeline: detect, mitigate and resolve times are all measured from the moment impact started, so a late page cannot shrink the numbers.*
 
 Picture the notes after the call, written in a hurry and out of order. You were commander. At the end of the incident you have seven lines of notes. The builder parses them, sorts them and computes three figures from the start tag. The fixture notes give detect at 19 minutes, mitigate at 40, resolve at 113.
 

@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>A pod will not start: the order of questions</title>
+  <desc>Kubernetes pod startup troubleshooting ladder and common failure resolutions.</desc>
+
+  <defs>
+    <marker id="ladder-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="68" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="bold">A pod will not start: the order of questions</text>
+
+  
+  <rect x="50" y="130" width="860" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="95" cy="175" r="24" fill="#207448"/>
+  <text x="95" y="184" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold">1</text>
+  
+  <rect x="142" y="147" width="52" height="52" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="142" y1="165" x2="194" y2="165" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="153" cy="156" r="3" fill="#207448"/>
+  <circle cx="163" cy="156" r="3" fill="#207448"/>
+  <rect x="152" y="175" width="32" height="14" rx="2" stroke="#207448" stroke-width="2.5" fill="none"/>
+  
+  <text x="220" y="168" fill="#303a36">
+    <tspan x="220" font-family="monospace" font-size="30" font-weight="bold">kubectl get pod: </tspan><tspan font-family="sans-serif" font-size="24">read the status column (Pending, Init:Error,</tspan>
+    <tspan x="220" dy="36" font-family="sans-serif" font-size="24">ImagePullBackOff, CrashLoopBackOff,</tspan>
+    <tspan x="220" dy="32" font-family="sans-serif" font-size="24">Running but 0/1 Ready)</tspan>
+  </text>
+
+  
+  <line x1="480" y1="305" x2="480" y2="343" stroke="#207448" stroke-width="4" marker-end="url(#ladder-arrow)"/>
+
+  
+  <rect x="50" y="345" width="860" height="175" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  
+  <circle cx="95" cy="390" r="24" fill="#207448"/>
+  <text x="95" y="399" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold">2</text>
+  
+  <rect x="145" y="362" width="46" height="56" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+  <rect x="158" y="356" width="20" height="10" rx="3" stroke="#207448" stroke-width="2.5" fill="#e8f1ea"/>
+  <line x1="154" y1="378" x2="182" y2="378" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="154" y1="390" x2="182" y2="390" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <line x1="154" y1="402" x2="174" y2="402" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <text x="220" y="383" fill="#303a36">
+    <tspan x="220" font-family="monospace" font-size="30" font-weight="bold">kubectl describe pod: </tspan><tspan font-family="sans-serif" font-size="24">read the Events from the bottom up</tspan>
+    <tspan x="220" dy="36" font-family="sans-serif" font-size="24">(Scheduled, Pulling, Pulled, Created, Started,</tspan>
+    <tspan x="220" dy="32" font-family="sans-serif" font-size="24">FailedScheduling, Unhealthy, OOMKilled)</tspan>
+  </text>
+
+  
+  <line x1="480" y1="520" x2="480" y2="558" stroke="#207448" stroke-width="4" marker-end="url(#ladder-arrow)"/>
+
+  
+  <rect x="50" y="560" width="860" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="95" cy="605" r="24" fill="#207448"/>
+  <text x="95" y="614" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold">3</text>
+  
+  <rect x="142" y="577" width="52" height="52" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M 158 589 C 152 589, 152 597, 149 601 C 152 605, 152 613, 158 613" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <path d="M 178 589 C 184 589, 184 597, 187 601 C 184 605, 184 613, 178 613" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <line x1="163" y1="601" x2="173" y2="601" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <text x="220" y="598" fill="#303a36">
+    <tspan x="220" font-family="monospace" font-size="28" font-weight="bold">kubectl get pod -o jsonpath</tspan>
+    <tspan x="220" dy="34" font-family="monospace" font-size="28" font-weight="bold">status.containerStatuses lastState: </tspan><tspan font-family="sans-serif" font-size="24" font-weight="normal">reason and exit code</tspan>
+  </text>
+
+  
+  <line x1="480" y1="715" x2="480" y2="753" stroke="#207448" stroke-width="4" marker-end="url(#ladder-arrow)"/>
+
+  
+  <rect x="50" y="755" width="860" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="95" cy="800" r="24" fill="#207448"/>
+  <text x="95" y="809" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold">4</text>
+  
+  <circle cx="168" cy="802" r="25" stroke="#207448" stroke-width="4" fill="none"/>
+  <polyline points="168,787 168,802 180,808" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  
+  <text x="220" y="800" fill="#303a36">
+    <tspan x="220" font-family="monospace" font-size="28" font-weight="bold">kubectl logs --previous --timestamps: </tspan>
+    <tspan x="220" dy="36" font-family="sans-serif" font-size="24">what the app said before it stopped</tspan>
+  </text>
+
+  
+  <line x1="480" y1="890" x2="480" y2="928" stroke="#207448" stroke-width="4" marker-end="url(#ladder-arrow)"/>
+
+  
+  <rect x="50" y="930" width="860" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="95" cy="975" r="24" fill="#207448"/>
+  <text x="95" y="984" text-anchor="middle" fill="#ffffff" font-family="sans-serif" font-size="26" font-weight="bold">5</text>
+  
+  <rect x="142" y="947" width="52" height="52" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M 152 965 L 163 973 L 152 981" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <line x1="168" y1="981" x2="182" y2="981" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  
+  <text x="220" y="972" fill="#303a36" font-family="monospace" font-size="24" font-weight="bold">
+    <tspan x="220">kubectl debug -it pod</tspan>
+    <tspan x="220" dy="32">--image=nicolaka/netshoot --target=container,</tspan>
+    <tspan x="220" dy="32">or kubectl debug node/name</tspan>
+  </text>
+
+  
+  
+  <rect x="960" y="130" width="590" height="945" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="975" y="148" width="560" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="995" y="210" fill="#303a36">
+    <tspan x="995" font-family="monospace" font-size="24" font-weight="bold">Insufficient nvidia.com/gpu -&gt;</tspan>
+    <tspan x="995" dy="34" font-family="sans-serif" font-size="24">add capacity, tolerations, queue</tspan>
+  </text>
+
+  
+  <rect x="975" y="320" width="560" height="140" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="995" y="380" fill="#303a36">
+    <tspan x="995" font-family="sans-serif" font-size="25" font-weight="bold">untolerated taint -&gt;</tspan>
+    <tspan x="995" dy="34" font-family="sans-serif" font-size="24">add toleration</tspan>
+  </text>
+
+  
+  <rect x="975" y="485" width="560" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="995" y="550" fill="#303a36">
+    <tspan x="995" font-family="monospace" font-size="24" font-weight="bold">CreateContainerConfigError -&gt;</tspan>
+    <tspan x="995" dy="34" font-family="sans-serif" font-size="24">missing ConfigMap or Secret key</tspan>
+  </text>
+
+  
+  <rect x="975" y="660" width="560" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="995" y="725" fill="#303a36">
+    <tspan x="995" font-family="monospace" font-size="25" font-weight="bold">OOMKilled exit 137 -&gt;</tspan>
+    <tspan x="995" dy="34" font-family="sans-serif" font-size="24">raise memory limit,</tspan>
+    <tspan x="995" dy="32" font-family="sans-serif" font-size="24">fewer dataloader workers, shm</tspan>
+  </text>
+
+  
+  <rect x="975" y="875" width="560" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="995" y="935" fill="#303a36">
+    <tspan x="995" font-family="sans-serif" font-size="25" font-weight="bold">Running not Ready -&gt;</tspan>
+    <tspan x="995" dy="34" font-family="sans-serif" font-size="24">readiness probe</tspan>
+  </text>
+</svg>

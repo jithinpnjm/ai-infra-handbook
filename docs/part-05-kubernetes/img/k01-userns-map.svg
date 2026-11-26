@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 940" width="1600" height="940">
+  <title>Root inside the container is an ordinary user outside</title>
+  <desc>Visual infographic explaining how container user namespaces map root UID 0 to an unprivileged subordinate UID on the host, with the kernel translating IDs on access checks.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="14" refY="9" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="940" fill="#f5f8f5"/>
+
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Root inside the container is an ordinary user outside</text>
+
+  <g id="left-box">
+    <rect x="60" y="130" width="430" height="450" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    <g transform="translate(90, 160)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="46" rx="8"/>
+      <line x1="0" y1="14" x2="56" y2="14"/>
+      <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="18" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="26" cy="7" r="2.5" fill="#207448"/>
+      <path d="M 12 28 L 20 33 L 12 38" stroke-width="3"/>
+      <line x1="26" y1="38" x2="38" y2="38" stroke-width="3"/>
+    </g>
+    <text x="165" y="198" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">a container process</text>
+
+    <rect x="85" y="240" width="380" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    <text x="275" y="325" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="275" dy="0">runs as UID 0</tspan>
+      <tspan x="275" dy="36">inside the container</tspan>
+    </text>
+
+    <rect x="200" y="420" width="150" height="58" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="275" y="458" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">root</text>
+  </g>
+
+  <g id="center-mapping-table">
+    <rect x="530" y="130" width="540" height="260" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    <g transform="translate(560, 148)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="42" rx="6"/>
+      <line x1="4" y1="18" x2="52" y2="18" stroke-width="3"/>
+      <line x1="4" y1="32" x2="52" y2="32" stroke-width="3"/>
+      <line x1="28" y1="6" x2="28" y2="48" stroke-width="3"/>
+    </g>
+    <text x="630" y="186" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">mapping table</text>
+
+    <rect x="555" y="210" width="490" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="244" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">container UID 0</text>
+
+    <line x1="800" y1="262" x2="800" y2="306" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <text x="818" y="290" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">maps to</text>
+
+    <rect x="555" y="316" width="490" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="350" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">host UID in the subordinate range</text>
+  </g>
+
+  <g id="center-kernel-box">
+    <rect x="530" y="420" width="540" height="160" rx="16" fill="#207448" stroke="#207448" stroke-width="3"/>
+
+    <g transform="translate(555, 472)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="6"/>
+      <circle cx="28" cy="28" r="7" stroke-width="3"/>
+      <line x1="18" y1="2" x2="18" y2="10"/>
+      <line x1="28" y1="2" x2="28" y2="10"/>
+      <line x1="38" y1="2" x2="38" y2="10"/>
+      <line x1="18" y1="46" x2="18" y2="54"/>
+      <line x1="28" y1="46" x2="28" y2="54"/>
+      <line x1="38" y1="46" x2="38" y2="54"/>
+      <line x1="2" y1="18" x2="10" y2="18"/>
+      <line x1="2" y1="28" x2="10" y2="28"/>
+      <line x1="2" y1="38" x2="10" y2="38"/>
+      <line x1="46" y1="18" x2="54" y2="18"/>
+      <line x1="46" y1="28" x2="54" y2="28"/>
+      <line x1="46" y1="38" x2="54" y2="38"/>
+    </g>
+    <text x="825" y="488" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">
+      <tspan x="825" dy="0">kernel translates the ID</tspan>
+      <tspan x="825" dy="40">on every check</tspan>
+    </text>
+  </g>
+
+  <g id="right-box">
+    <rect x="1110" y="130" width="430" height="450" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    <g transform="translate(1140, 160)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6"/>
+      <line x1="12" y1="18" x2="34" y2="18" stroke-width="3"/>
+      <line x1="12" y1="28" x2="34" y2="28" stroke-width="3"/>
+      <line x1="12" y1="38" x2="34" y2="38" stroke-width="3"/>
+      <circle cx="42" cy="18" r="2.5" fill="#207448"/>
+      <circle cx="42" cy="28" r="2.5" fill="#207448"/>
+      <circle cx="42" cy="38" r="2.5" fill="#207448"/>
+    </g>
+    <text x="1215" y="198" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">the host</text>
+
+    <rect x="1135" y="240" width="380" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    <text x="1325" y="400" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">regular account range</text>
+  </g>
+
+  <g id="grey-note">
+    <rect x="1110" y="620" width="430" height="140" rx="12" fill="#eceeeb" stroke="#8a968f" stroke-width="2"/>
+
+    <g transform="translate(1132, 668)" stroke="#8a968f" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 4 L 26 4 L 38 16 L 38 42 L 6 42 Z"/>
+      <polyline points="26,4 26,16 38,16"/>
+      <line x1="12" y1="24" x2="28" y2="24" stroke-width="2.5"/>
+      <line x1="12" y1="32" x2="28" y2="32" stroke-width="2.5"/>
+    </g>
+
+    <text x="1340" y="666" text-anchor="middle" fill="#303a36">
+      <tspan x="1340" dy="0" font-family="monospace" font-size="24">/etc/subuid</tspan>
+      <tspan x="1340" dy="32" font-family="monospace" font-size="24">and /etc/subgid</tspan>
+      <tspan x="1340" dy="34" font-family="sans-serif" font-size="24">define the range</tspan>
+    </text>
+  </g>
+
+  <g id="orange-note">
+    <rect x="60" y="800" width="1480" height="90" rx="16" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+
+    <g transform="translate(90, 818)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 10 L 26 4 L 40 10 C 40 26 26 42 26 42 C 26 42 12 26 12 10 Z"/>
+      <line x1="26" y1="16" x2="26" y2="25" stroke-width="3"/>
+      <circle cx="26" cy="32" r="2" fill="#db8129"/>
+    </g>
+
+    <text x="820" y="855" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">root inside the container has no power over files and processes outside it</text>
+  </g>
+</svg>

@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "x12-ridge",
+  "title": "Decode sits far below the ridge, prefill sits above it",
+  "spec": "A horizontal log-style intensity axis labelled FLOP per byte with two marked points. A vertical dashed line labelled ridge point at 295 FLOP/B, computed as 989.5 TFLOPS divided by 3.35 TB/s. Left of the line, a green box labelled Decode at batch 1 at about 1 FLOP/B, with an arrow from the box to a note labelled bandwidth sets the speed. Right of the line, a green box labelled Prefill of a long prompt, with an arrow to a note labelled compute sets the speed. Above the axis, a small chip icon beside the words Compute-bound and a small disk-stream icon beside the words Bandwidth-bound. Orange highlight only on the decode box, because it sits far below the ridge. Under the axis a formula line: Ridge point = 989.5e12 FLOP/s / 3.35e12 B/s = 295 FLOP/B. Green takeaway bar: Long prompts are compute-bound, and decode at batch one is bandwidth-bound.",
+  "anchor": "### 5. Prefill is compute-bound, decode is bandwidth-bound",
+  "alt": "Decode at batch one sits near 1 FLOP per byte, far left of the H100 ridge point near 295, so memory bandwidth limits it, while long prefill lies right of the ridge.",
+  "cap": "Arithmetic intensity against the H100 ridge point decides whether a phase is limited by compute or by memory bandwidth."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "x12-batch-curve",
+  "title": "Batching raises total tokens per second but cuts each request's speed",
+  "spec": "A two-series bar chart with batch sizes on the horizontal axis: 1, 8, 32, 64, 128. Tall green bars show Tokens/s total: 200, 1,385, 3,802, 5,361, 6,744. A second series of smaller grey bars or dots shows Tokens/s per request: 200, 173, 119, 84, 53. Value labels on each bar. Above the batch 128 group, a small annotation with a double-headed arrow reading 34 times more total throughput. Next to the batch 64 group a label reading the knee is near here. Orange highlight on the batch 128 total bar only, with the note the gain from doubling the batch has shrunk to about 26 percent. Below the chart a formula line: step time = (weights + batch x context x bytes per token) / bandwidth, with Qwen3-8B on one H100 at 2,500 tokens of context. Green takeaway bar: Choose the batch by the latency target, not by the largest number that fits.",
+  "anchor": "### 6. How batching changes the numbers",
+  "alt": "Total decode throughput on one H100 rises from 200 to 6,744 tokens per second as batch grows from 1 to 128, while per-request speed falls from 200 to 53.",
+  "cap": "Batching shares the weight read across requests, so total throughput rises while each request gets fewer tokens per second."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "x12-gpu-seconds",
+  "title": "One request uses GPU seconds for prefill and then for decode",
+  "spec": "A horizontal timeline bar for one request on one GPU, drawn left to right with two adjacent blocks. First block labelled Prefill, 2,000 prompt tokens, 0.0829 s, at 24,134 tokens/s. Second block labelled Decode, 500 output tokens, 0.0933 s, at 5,361 tokens/s at batch 64. A bracket above both blocks labelled GPU seconds per request: 0.0829 + 0.0933 = 0.1762 s. Three numbered step circles in time order on the blocks: 1 for prefill, 2 for decode, 3 for the result. From the bracket an arrow to a result box on the right labelled Requests per second: 1 / 0.1762 = 5.68. Below the timeline a small note box with Little's law check: 64 in flight / 5.68 per s = 11.3 s in system, and 22.4 ms per output token. Orange highlight on the result box 5.68. Note under the bar: this is a ceiling, not a promise.",
+  "anchor": "### 7. Tokens per second and requests per second per GPU",
+  "alt": "A request's prefill time of 0.0829 seconds and decode time of 0.0933 seconds add on one GPU, giving 5.68 requests per second.",
+  "cap": "Prefill and decode share one GPU, so their seconds add, and the reciprocal gives the per-GPU request rate."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "x12-replica-headroom",
+  "title": "Headroom and one spare turn 7 GPUs into 9",
+  "spec": "A row of square GPU icons, each about 56 px, for three cases stacked vertically as three rows. Row one labelled No headroom: 40 / 5.68 = 7.04, so 7 GPUs run at 100 percent of the ceiling. Row two labelled 90 percent headroom: 40 / (5.68 x 0.9) = 7.83, rounds up to 8 GPUs. Row three labelled 90 percent headroom plus N+1: 8 GPUs plus 1 spare = 9 GPUs, with the spare drawn as a dashed outline icon. A small arrow from row two to row three labelled if one fails, the other 8 still carry the peak. Orange highlight on the dashed spare icon in row three. A header above the rows: Demand 40 requests per second, ceiling 5.68 per GPU. Formula line at the bottom: replicas = ceil(QPS / (replica_QPS x target_utilisation)) + spares. Green takeaway bar: the buffer must exist before the peak arrives, because scaling is slow.",
+  "anchor": "### 8. GPUs for a target QPS, with headroom and N+1",
+  "alt": "Forty requests per second at 5.68 per GPU needs seven GPUs with no headroom, eight at 90 percent target, and nine with one spare.",
+  "cap": "Sizing to the bare peak leaves no room for a burst or a failure, so the plan adds headroom and one spare replica."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "x12-alert-backtrack",
+  "title": "Working backwards from a live alert to the token count",
+  "spec": "A left-to-right chain of four boxes with arrows between them, each box holding one step number in a green circle. Box 1: KV budget 50.6 GB, with 95 percent in use, about 48.07 GB. Arrow to box 2: divide by 60 requests, 0.80 GB per request. Arrow to box 3: divide by 147,456 bytes per token, about 5,430 tokens per request. Arrow to box 4, drawn in orange: planned 2,500 tokens, live more than twice that. Above the chain a small gauge icon reading KV-cache usage 95 percent and a window icon for the 60 requests running. Below box 4 a short list of three actions as small labels: check the prompt-length histogram, lower the batch ceiling, shed or queue, add replicas. Green takeaway bar: the estimate tells you which question to ask in ten seconds.",
+  "anchor": "### Scenario 3: the alert that disagrees with the estimate",
+  "alt": "A KV cache at 95 percent with 60 requests implies about 5,430 tokens per request, more than twice the planned 2,500.",
+  "cap": "Working backwards from live cache usage and request count shows that real prompts are longer than the estimate assumed."
+ }
+]

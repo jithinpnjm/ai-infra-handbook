@@ -362,19 +362,9 @@ Picture a production job that needs the SSH key and the Vault password. If every
 
 AWX is the open-source upstream project, and you can deploy it on Kubernetes through the AWX operator, a controller that installs and manages AWX for you. AAP is Red Hat's supported product built from it. AAP adds Automation Hub for certified and private collections, Event-Driven Ansible, Insights, analytics and support. The concepts transfer directly between the two, so the rest of this section applies to either one.
 
-```mermaid
-flowchart LR
-  U["Users / CI / API"] --> W["Web UI + REST API\n(controller)"]
-  W --> DB[("PostgreSQL")]
-  W --> Q["Task dispatch (receptor / automation mesh)"]
-  Q --> E1["Execution node (EE container runs ansible-runner)"]
-  Q --> E2["Execution node at remote site / hop node"]
-  E1 --> T["Managed hosts / APIs"]
-  E2 --> T
-  G["Git projects"] --> W
-  H["Automation Hub / registry\n(collections, EE images)"] --> E1
-  EDA["Event-Driven Ansible"] -->|"events trigger job templates"| W
-```
+![Ansible Automation Platform and AWX](./img/m4-15-1.svg)
+
+*Figure 4.15.1. Ansible Automation Platform and AWX, as a diagram.*
 
 Read the diagram from the users at the top. A user, a CI job or an API call reaches the controller, which is the web UI and the REST API. The controller keeps its state in PostgreSQL, and it hands each job to an execution node through the automation mesh. The execution node runs the job inside an EE container. The job then talks to the managed hosts, while the controller reads its playbooks from Git and its images and collections from the hub. Event-Driven Ansible sits off to the side and starts job templates when an event arrives.
 

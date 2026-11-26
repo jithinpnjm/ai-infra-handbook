@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The quality configuration in pyproject.toml and pre-commit, line by line</title>
+  <desc>Visual guide to quality gate configurations in pyproject.toml for ruff, strict mypy, and coverage alongside pre-commit hooks, typing conventions, and CI enforcement.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="40" y="76" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">The quality configuration in pyproject.toml</tspan>
+    <tspan x="40" dy="54">and pre-commit, line by line</tspan>
+  </text>
+
+  <!-- Left Panel: pyproject.toml quality configuration -->
+  <rect x="40" y="160" width="740" height="742" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <!-- Left Panel Header Icon: Config File Outline (44x44) -->
+  <g transform="translate(65, 170)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 4 L 28 4 L 38 14 L 38 40 L 6 40 Z"/>
+    <polyline points="28,4 28,14 38,14"/>
+    <line x1="12" y1="22" x2="26" y2="22"/>
+    <line x1="12" y1="28" x2="32" y2="28"/>
+    <line x1="12" y1="34" x2="22" y2="34"/>
+  </g>
+
+  <!-- Card 1: [tool.ruff] -->
+  <rect x="60" y="230" width="700" height="82" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="84" y="264" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="84" dy="0">[tool.ruff]</tspan>
+    <tspan x="84" dy="27">line-length = 100, target-version = py311</tspan>
+  </text>
+
+  <!-- Card 2: lint select -->
+  <rect x="60" y="322" width="700" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="84" y="356" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="84" dy="0">lint select = E, F, I, B, UP, S, C4, SIM,</tspan>
+    <tspan x="84" dy="27">PT, RUF, ASYNC, T20: pycodestyle, pyflakes,</tspan>
+    <tspan x="84" dy="27">isort, bugbear, upgrade, bandit and more</tspan>
+  </text>
+
+  <!-- Card 3: ignore and per-file-ignores -->
+  <rect x="60" y="442" width="700" height="82" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="84" y="476" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="84" dy="0">ignore = [S101]: asserts allowed in tests;</tspan>
+    <tspan x="84" dy="27">per-file-ignores tests/** = [S, T20]</tspan>
+  </text>
+
+  <!-- Card 4: [tool.mypy] -->
+  <rect x="60" y="534" width="700" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="84" y="568" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="84" dy="0">[tool.mypy] python_version 3.11,</tspan>
+    <tspan x="84" dy="27">strict = true, warn_unused_ignores = true,</tspan>
+    <tspan x="84" dy="27">exclude build/</tspan>
+  </text>
+
+  <!-- Card 5: [tool.coverage.run] -->
+  <rect x="60" y="654" width="700" height="82" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="84" y="688" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="84" dy="0">[tool.coverage.run]</tspan>
+    <tspan x="84" dy="27">branch = true, source = [fleetctl]</tspan>
+  </text>
+
+  <!-- Card 6: [tool.coverage.report] - ORANGE highlight -->
+  <rect x="60" y="746" width="700" height="138" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="84" y="780" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="84" dy="0">[tool.coverage.report] <tspan fill="#db8129" font-weight="bold">fail_under = 85</tspan>,</tspan>
+    <tspan x="84" dy="26">show_missing = true, exclude_also:</tspan>
+    <tspan x="84" dy="26">if TYPE_CHECKING, raise NotImplementedError,</tspan>
+    <tspan x="84" dy="26">if __name__ == __main__</tspan>
+  </text>
+
+  <!-- Right Panel: pre-commit configuration -->
+  <rect x="820" y="160" width="740" height="742" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  <!-- Right Panel Header Icon: Security Shield Outline (44x44) -->
+  <g transform="translate(845, 170)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 8 L 22 4 L 38 8 C 38 24 22 36 22 38 C 22 36 6 24 6 8 Z"/>
+    <polyline points="14,20 19,25 29,15"/>
+  </g>
+
+  <!-- Card 7: ruff-pre-commit -->
+  <rect x="840" y="230" width="700" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="864" y="278" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">ruff-pre-commit rev v0.6.9:</tspan>
+    <tspan x="864" dy="32">ruff with --fix, and ruff-format</tspan>
+  </text>
+
+  <!-- Card 8: mirrors-mypy -->
+  <rect x="840" y="394" width="700" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="864" y="446" font-family="monospace" font-size="24" fill="#303a36">mirrors-mypy rev v1.11.2 with types-PyYAML</text>
+
+  <!-- Card 9: pre-commit-hooks -->
+  <rect x="840" y="528" width="700" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="864" y="572" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">pre-commit-hooks rev v4.6.0: check-yaml,</tspan>
+    <tspan x="864" dy="32">end-of-file-fixer, trailing-whitespace,</tspan>
+    <tspan x="864" dy="32">detect-private-key</tspan>
+  </text>
+
+  <!-- Card 10: Notes -->
+  <rect x="840" y="722" width="700" height="162" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text x="864" y="768" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">the versions are examples; pin the versions</tspan>
+    <tspan x="864" dy="34">you have reviewed; run the same hooks in CI</tspan>
+    <tspan x="864" dy="34">so nobody can bypass them</tspan>
+  </text>
+
+  <!-- Typing Strip -->
+  <rect x="40" y="942" width="1520" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <!-- Typing Icon: Code Tag (44x44) -->
+  <g transform="translate(68, 975)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="14,10 4,22 14,34"/>
+    <polyline points="30,10 40,22 30,34"/>
+    <line x1="25" y1="6" x2="19" y2="38"/>
+  </g>
+
+  <text x="145" y="976" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">annotate public functions; Protocol for injected collaborators so fakes type-check;</tspan>
+    <tspan x="145" dy="27">TypedDict, dataclasses or pydantic for payloads; avoid Any creep;</tspan>
+    <tspan x="145" dy="27">type checker is a required CI check, not only an editor feature</tspan>
+  </text>
+
+  <!-- Bottom Bar -->
+  <rect x="40" y="1092" width="1520" height="65" rx="10" fill="#207448"/>
+  
+  <!-- Bottom Bar Icon: Check Circle -->
+  <g transform="translate(75, 1106)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="16"/>
+    <polyline points="11,18 16,23 25,13"/>
+  </g>
+
+  <text x="800" y="1133" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Configure the gates once in pyproject.toml and the hooks file</text>
+</svg>

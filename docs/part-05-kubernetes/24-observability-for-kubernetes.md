@@ -63,22 +63,9 @@ The three methods overlap on purpose. RED is the view from a customer standing a
 
 The diagram shows the pipeline on a GPU worker node. Exporters and application endpoints feed Prometheus, Fluent Bit or Alloy feeds Loki, and Prometheus sends alerts to Alertmanager. Follow the arrows from left to right. Each arrow is a separate job, and each job can fail on its own.
 
-```mermaid
-flowchart LR
-    subgraph Node["GPU Worker Node"]
-        Exp["cAdvisor / kubelet<br/>node-exporter / DCGM<br/>App /metrics + OTel SDK"]
-        FB["Fluent Bit / Alloy<br/>(/var/log/pods + journald)"]
-    end
-    subgraph Mon["Observability Pipeline"]
-        Prom["Prometheus (Operator)<br/>ServiceMonitor / PodMonitor<br/> PrometheusRule (SLO burn)"]
-        Loki["Loki / OpenSearch<br/>(Low-cardinality labels)"]
-        OTel["OTel Collector -> Tempo / Jaeger<br/>(Trace -> Span -> Tags)"]
-    end
-    Exp -->|"Pull scrape (15s)"| Prom
-    Prom -->|"Remote Write / Sidecar"| Thanos["Thanos / Mimir<br/>(S3 Long-Term Store + Dedup)"]
-    Prom -->|"Firing alerts + Watchdog"| AM["Alertmanager<br/>(Group / Inhibit / Route)"]
-    FB --> Loki
-```
+![Prometheus and the Operator](./img/m5-24-1.svg)
+
+*Figure 5.24.1. Prometheus and the Operator, as a diagram.*
 
 ### Why Prometheus became the default
 

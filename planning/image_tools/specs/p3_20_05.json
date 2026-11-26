@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "p3-2005-numa-gpu-sockets",
+  "title": "NUMA: local memory is fast, remote memory crosses the interconnect",
+  "spec": "Two large boxes side by side labelled 'Socket 0 (NUMA node 0)' and 'Socket 1 (NUMA node 1)', each containing a chip icon labelled 'CPU', a memory bank box 'Memory bank 0' or 'Memory bank 1', and four GPU boxes labelled 'GPU' (four and four, eight GPUs total). A double-headed horizontal bar between the sockets labelled 'interconnect'. Green solid arrow inside socket 0 from CPU to its own memory bank labelled 'local access: about 80 ns'. Orange arrow from socket 0 CPU across the interconnect to Memory bank 1 labelled 'remote access: about 139 ns, roughly 75 percent slower'. Below: a box 'Data loader on the wrong socket pulls every batch across the interconnect, the GPU waits'. Right side a small box with monospace 'numactl --cpunodebind=NODE --membind=NODE' and 'numastat: numa_hit vs numa_miss and numa_foreign'. Note: 'NUMA policy is not always inherited by child processes and Python workers, apply it inside each worker and check.' Takeaway bar: 'On a multi-socket GPU host, ask which node the GPU belongs to before you ask why the data loader is slow.'",
+  "anchor": "### 5. NUMA basics",
+  "alt": "A two-socket server where each socket has its own memory bank and GPUs, local access takes about 80 ns and remote access about 139 ns, and a data loader on the wrong socket makes the GPU wait.",
+  "cap": "Bind each worker to the NUMA node of its GPU, because a remote access takes about 75 percent longer."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "p3-2005-qos-eviction",
+  "title": "QoS classes decide who is evicted first under node memory pressure",
+  "spec": "A horizontal row of three boxes ordered left to right with an arrow along the bottom labelled 'eviction order under node memory pressure: first to last'. Box 1 'BestEffort' with rule 'No requests or limits' and badge 'Evicted first' in orange outline. Box 2 'Burstable' with rule 'Some request or limit, not Guaranteed' and badge 'Evicted after BestEffort, only if above requests'. Box 3 'Guaranteed' with rule 'Request equals limit for CPU and memory in every container' and badge 'Evicted last'. Under box 2 a callout: 'A high limit alone gives Burstable, not Guaranteed'. Below the row a separate two-box comparison: 'kubelet eviction: node pressure, different evidence' versus 'kernel OOM kill: the cgroup hit memory.max, memory.events oom_kill rises', joined by the text 'different events, do not use the same fix'. Also a mini bar: 'memory.current includes page cache; alert on the working set against the limit'.",
+  "anchor": "### 8. cgroup memory limits versus node memory",
+  "alt": "Three Kubernetes QoS classes, BestEffort evicted first, Burstable second only if above requests, Guaranteed last, with the rule that decides each class.",
+  "cap": "The QoS class comes from requests and limits and sets the eviction order, while the kernel OOM kill follows the cgroup limit."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "p3-2005-flamegraph-anatomy",
+  "title": "How to read a flame graph",
+  "spec": "Centre: a stylised flame graph made of stacked rectangles on a baseline, three towers of different widths, one wide tower highlighted with an orange outline. Callouts with arrows: 'Each box is a function', 'Vertical axis: stack depth, the top box is what was on CPU', 'Horizontal axis: share of samples, wider means more time', 'Left-to-right order has no meaning, it is alphabetical', 'A wide box could be slow or just called often, sampling does not show call counts'. Top strip, three numbered steps with arrows: '1 perf record -F 99 -a -g -- sleep 10' (samples every CPU 99 times per second for ten seconds), '2 perf script report flamegraph (perf 5.8 and newer)' or 'perf script, stackcollapse-perf.pl, flamegraph.pl', '3 Read the widest tower from the bottom upward'. Bottom note: 'One hot function may need a better algorithm. Many small callers may need less work overall.' Takeaway bar: 'Reach for a profile only after a resource is proven short, and sample before you trace.'",
+  "anchor": "### 10. perf and flame graphs",
+  "alt": "A flame graph where each box is a function, height is stack depth, width is the share of samples, left to right order has no meaning, and the widest tower is read first.",
+  "cap": "Start at the widest tower and walk up until the boxes stop being wide; the top of that path is the function using the most CPU."
+ }
+]

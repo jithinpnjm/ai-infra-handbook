@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What the canary host sees in the driver-tuning play</title>
+  <desc>Timeline of the canary host gpu001 through Slurm drain pre-task, driver configuration tasks, handler reload, validation, and rollout gate.</desc>
+  <defs>
+  </defs>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="50" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">What the canary host sees in the driver-tuning play</text>
+  <!-- Story strip -->
+  <g id="story-strip">
+    <rect x="40" y="72" width="1520" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(65, 92)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,6 52,48 4,48" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="41" r="2" fill="#207448" />
+    </g>
+    <text x="145" y="110" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">if the parameter is wrong for one hardware model, every node of that model fails together </tspan>
+      <tspan x="145" dy="34">and the Slurm queue fills with failed jobs before anyone reads the first alert</tspan>
+    </text>
+  </g>
+  <!-- Play configuration card -->
+  <g id="play-config">
+    <rect x="40" y="178" width="1520" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(68, 190)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="4" y1="12" x2="48" y2="12" />
+      <circle cx="16" cy="12" r="5" fill="#ffffff" />
+      <line x1="4" y1="28" x2="48" y2="28" />
+      <circle cx="36" cy="28" r="5" fill="#ffffff" />
+    </g>
+    <text x="145" y="217" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">serial [1, 10%, 100%], max_fail_percentage 5, expected_gpus 8</text>
+  </g>
+  <!-- Pre-step -->
+  <g id="pre-step">
+    <rect x="40" y="252" width="1520" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(71, 262)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="18" r="13" />
+      <line x1="28" y1="28" x2="42" y2="42" />
+    </g>
+    <text x="145" y="291" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">run --check --diff --limit gpu001 first</text>
+  </g>
+  <!-- Step 1: Pre-task DRAIN check (Orange accent) -->
+  <g id="step-1">
+    <rect x="40" y="326" width="1520" height="96" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <circle cx="93" cy="374" r="24" fill="#db8129" />
+    <path d="M 89 367 L 95 362 L 95 386 M 86 386 L 104 386" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="145" y="364" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">pre_task: delegate to the first slurm_controller host: scontrol show node gpu001, </tspan>
+      <tspan x="145" dy="34">check_mode false, changed_when false, failed_when DRAIN not in node_state.stdout</tspan>
+    </text>
+  </g>
+  <!-- Step 2: sysctl vm.swappiness -->
+  <g id="step-2">
+    <rect x="40" y="432" width="1520" height="64" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="93" cy="464" r="24" fill="#207448" />
+    <path d="M 84 457 C 84 451 102 451 102 459 C 102 465 85 470 84 476 L 103 476" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="145" y="471" font-family="monospace" font-size="24" fill="#303a36">sysctl: vm.swappiness = 1 persisted in /etc/sysctl.d/90-ai.conf, reload true</text>
+  </g>
+  <!-- Step 3: template override.conf -->
+  <g id="step-3">
+    <rect x="40" y="506" width="1520" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="93" cy="571" r="24" fill="#207448" />
+    <path d="M 85 560 L 101 560 L 93 569 C 100 569 102 575 102 578 C 102 583 92 584 85 581" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="145" y="544" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">template: nvidia-persistenced.override.conf.j2 to </tspan>
+      <tspan x="145" dy="34">/etc/systemd/system/nvidia-persistenced.service.d/override.conf </tspan>
+      <tspan x="145" dy="34">mode 0644, notify Restart persistenced</tspan>
+    </text>
+  </g>
+  <!-- Step 4: restart persistenced handler -->
+  <g id="step-4">
+    <rect x="40" y="646" width="1520" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="93" cy="678" r="24" fill="#207448" />
+    <path d="M 96 690 L 96 666 L 84 682 L 102 682" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="145" y="685" font-family="monospace" font-size="24" fill="#303a36">handler: restart nvidia-persistenced with daemon_reload, only if the template changed</text>
+  </g>
+  <!-- Step 5: nvidia-smi validation -->
+  <g id="step-5">
+    <rect x="40" y="720" width="1520" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="93" cy="768" r="24" fill="#207448" />
+    <path d="M 100 757 L 86 757 L 86 767 C 86 767 101 767 101 774 C 101 780 91 781 85 778" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="145" y="758" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">post_task: nvidia-smi --query-gpu=index --format=csv,noheader; </tspan>
+      <tspan x="145" dy="34">failed_when stdout_lines length != expected_gpus</tspan>
+    </text>
+  </g>
+  <!-- Validation Gate -->
+  <g id="gate">
+    <rect x="40" y="826" width="1520" height="96" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(65, 846)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="4" />
+      <line x1="6" y1="20" x2="50" y2="20" />
+      <line x1="6" y1="36" x2="50" y2="36" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+    <text x="145" y="864" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">validation failure stops the play before the 10 percent batch </tspan>
+      <tspan x="145" dy="34">because of max_fail_percentage</tspan>
+    </text>
+  </g>
+  <!-- Strip: Resume Slurm nodes -->
+  <g id="strip-resume">
+    <rect x="40" y="932" width="1520" height="64" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(71, 942)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="18" />
+      <polyline points="14,22 20,28 30,16" />
+    </g>
+    <text x="145" y="971" font-family="sans-serif" font-size="24" fill="#303a36">resume the Slurm nodes in a separate, explicit play once validation has passed</text>
+  </g>
+  <!-- Bottom Takeaway Bar -->
+  <g id="bottom-bar">
+    <rect x="40" y="1090" width="1520" height="70" rx="14" fill="#207448" />
+    <text x="800" y="1134" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Apply in small batches and validate each node as it goes</text>
+  </g>
+</svg>

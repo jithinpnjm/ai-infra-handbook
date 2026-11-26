@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "x22-memory-budget-stack",
+  "title": "From one 80 GB card to about 389,100 tokens of KV cache",
+  "spec": "A vertical stacked bar on the left, drawn to scale, labelled 'One H100, 80 GB'. Top segment is the full card, 80 GB, outlined. Next, a bracket marks the top 8 GB as 'Left free by gpu_memory_utilization 0.90' with the monospace note '80 x 0.90 = 72 GB' written beside the bracket for the usable part. The usable part is 72 GB, split into three stacked segments from top to bottom: a grey segment 'Weights, Llama 3.1 8B: 16 GB' (8 billion parameters at 2 bytes each), a grey segment 'Overhead: 5 GB' with the small sans note 'planning assumption', and a green segment 'Left for KV cache: 51 GB' (72 - 16 - 5). The green segment is the largest and is drawn with a light green panel fill. To the right of the bar, a column of four calculation boxes joined by downward arrows, each box with a monospace formula and a sans label. Box 1 'KV bytes per token': '2 x 32 x 8 x 128 x 2 = 131,072 bytes'. Box 2 'Tokens that fit': '51e9 / 131,072 = about 389,100' (this is the single orange highlight). Box 3 'Full-length requests at 16,384 tokens': '389,100 / 16,384 = about 23.7'. Box 4 'Average length when 128 requests run': '389,100 / 128 = about 3,040 tokens'. Each box has a small icon: chip for box 1, disk cylinder for box 2, window for box 3, clock for box 4. Title: 'From one 80 GB card to about 389,100 tokens of KV cache'. Takeaway bar at the bottom in green: 'Size the cache first, then set the sequence cap and the length limit so that your real average request fits.'",
+  "anchor": "### 3. The knobs that decide memory",
+  "alt": "A stacked bar shows one 80 GB card. Utilisation 0.90 gives 72 GB usable. Weights take 16 GB and overhead takes 5 GB, which leaves 51 GB for the KV cache. Divided by 131,072 bytes per token, that is about 389,100 tokens, or about 3,040 tokens per request when 128 requests run.",
+  "cap": "The KV cache is the memory left after the weights and overhead. Dividing it by the cost of one token gives the number of tokens the card can hold."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "x22-health-what-each-proves",
+  "title": "Each health endpoint proves a different slice of the engine",
+  "spec": "Nested rounded rectangles, one inside the next, drawn as concentric boxes with the outermost largest. Outer box, light green panel labelled 'Not proved by any health endpoint' with the sans lines 'Good tokens', 'A short queue' and 'Room in the KV cache'. Inside it, a middle box labelled 'One-token generation' with the monospace note 'SGLang /health and TensorRT-LLM /health_generate'. Inside the middle box, the innermost box labelled 'Engine client is alive' with the monospace note 'vLLM /health, returns 200 or 503'. Use a window icon or gear icon at the top left of the innermost box and a shield icon on the outer box. To the right of the rings, a separate column with one box titled 'Triton' and three stacked sub-boxes with monospace labels 'v2/health/live', 'v2/health/ready' and 'v2/models/name/ready', with the sans line 'Process up, server ready and each model ready are separate.' Use a thin dashed line (no arrowhead) from the Triton column to the rings to show it is a separate design, not a deeper ring. The innermost box is the single orange highlight with the sans note 'Use for startup and forgiving liveness'. Title: 'Each health endpoint proves a different slice of the engine'. Takeaway bar at the bottom in green: 'Decide what each probe may kill, and make sure only a truly dead process can cause a restart.'",
+  "anchor": "### 8. Health endpoints: what they prove and what they do not",
+  "alt": "Nested boxes show what health checks prove. The innermost box is the engine client being alive, checked by vLLM /health. The middle box is one-token generation, checked by SGLang and TensorRT-LLM. The outer box lists what no health endpoint proves, such as good tokens, a short queue and free cache. A separate column shows Triton's live, ready and per-model ready endpoints.",
+  "cap": "A health endpoint proves only the slice of the engine it checks. Use the forgiving checks for restarts and keep load judgement in readiness."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "x22-startup-probe-budget-timeline",
+  "title": "A startup probe budget must be longer than the measured start",
+  "spec": "A horizontal time axis from 0 s to 900 s with tick labels at 0 s, 400 s and 900 s along the bottom and a small clock icon at the left labelled 'Time since container start'. Three horizontal bars stacked one above another, all starting at 0 s. Bar 1, green, labelled 'Engine start takes 400 s' and ending at the 400 s tick, with the sans note 'includes a fresh image pull'. Bar 2, orange outline, labelled 'Probe budget too short' ending before the 400 s tick, with a red-orange stop mark at its end and the monospace line 'Container vllm failed startup probe, will be restarted' under it. Bar 3, green, labelled 'Raised probe budget: 10 s period x 90 failures = 900 s' and ending at the 900 s tick, drawn with a dashed end to show it has slack beyond the 400 s start. A vertical dashed line at the 400 s tick running through all bars labelled 'Engine ready'. Below the bars, a small box with the monospace text 'KeyboardInterrupt: terminated' labelled 'Log of the killed container'. Title: 'A startup probe budget must be longer than the measured start'. Takeaway bar at the bottom in green: 'Raise the budget above the measured start, pre-pull the image, and stagger the roll.'",
+  "anchor": "### Scenario B. Slow rollout, pods killed during start",
+  "alt": "A time axis shows an engine that takes 400 seconds to start. A probe budget that ends before 400 seconds kills the container before it is ready. A raised budget of 900 seconds, from a 10 second period and 90 failures, covers the start with room to spare.",
+  "cap": "A startup probe that gives up before the engine is ready makes the kubelet restart a healthy engine. The budget must exceed the measured start time."
+ }
+]

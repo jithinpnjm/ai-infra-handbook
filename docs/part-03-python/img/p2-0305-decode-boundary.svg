@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <title>Decode at the input boundary, work in str, and encode at the output boundary</title>
+  <desc>Visual explanation of the Unicode sandwich pattern: decoding bytes at the input boundary, processing text as str Unicode code points in program logic, and encoding to bytes at the output boundary, with common decode and encode failure modes.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="12" refY="7" orient="auto">
+      <path d="M 0 1.5 L 12 7 L 0 12.5 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Decode at the input boundary, work in str,</tspan>
+    <tspan x="800" dy="56">and encode at the output boundary</tspan>
+  </text>
+
+  
+  <rect x="50" y="170" width="280" height="340" rx="12" fill="#f0f2f0" stroke="#a0aaa4" stroke-width="2"/>
+  
+  
+  <g transform="translate(162, 195)">
+    <ellipse cx="28" cy="14" rx="26" ry="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 2 14 v 24 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10 v -24" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 2 26 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <text x="190" y="285" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="190" dy="0">Input</tspan>
+    <tspan x="190" dy="36">boundary:</tspan>
+  </text>
+  <text x="190" y="370" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="190" dy="0">bytes from a file,</tspan>
+    <tspan x="190" dy="32">socket or</tspan>
+    <tspan x="190" dy="32">command output</tspan>
+  </text>
+
+  
+  <line x1="330" y1="310" x2="630" y2="310" stroke="#207448" stroke-width="5" marker-end="url(#arrowhead)"/>
+  <text x="480" y="255" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">decode(</text>
+  <text x="480" y="285" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">encoding=utf-8)</text>
+
+  
+  <rect x="630" y="150" width="340" height="375" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+
+  
+  <g transform="translate(772, 175)">
+    <rect x="0" y="0" width="56" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="4"/>
+    <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+    <circle cx="20" cy="7" r="2.5" fill="#207448"/>
+    <path d="M 16 30 L 24 24 L 16 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="32" x2="40" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="800" y="285" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Program logic</tspan>
+    <tspan x="800" dy="38">works in str:</tspan>
+  </text>
+  <text x="800" y="405" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    Unicode code points
+  </text>
+
+  
+  <line x1="970" y1="310" x2="1270" y2="310" stroke="#207448" stroke-width="5" marker-end="url(#arrowhead)"/>
+  <text x="1120" y="255" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">encode(</text>
+  <text x="1120" y="285" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">encoding=utf-8)</text>
+
+  
+  <rect x="1270" y="170" width="280" height="340" rx="12" fill="#f0f2f0" stroke="#a0aaa4" stroke-width="2"/>
+
+  
+  <g transform="translate(1382, 195)">
+    <rect x="0" y="0" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="42" x2="10" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40" y1="42" x2="46" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="4" y1="52" x2="52" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="12" y1="18" x2="24" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="12" y1="26" x2="36" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="1410" y="285" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1410" dy="0">Output</tspan>
+    <tspan x="1410" dy="36">boundary:</tspan>
+  </text>
+  <text x="1410" y="370" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1410" dy="0">bytes to a file,</tspan>
+    <tspan x="1410" dy="32">socket or</tspan>
+    <tspan x="1410" dy="32">stdout</tspan>
+  </text>
+
+  
+  <line x1="480" y1="310" x2="480" y2="555" stroke="#c53030" stroke-width="2.5" stroke-dasharray="6 6"/>
+  <circle cx="480" cy="310" r="5" fill="#c53030"/>
+
+  <line x1="1120" y1="310" x2="1120" y2="555" stroke="#c53030" stroke-width="2.5" stroke-dasharray="6 6"/>
+  <circle cx="1120" cy="310" r="5" fill="#c53030"/>
+
+  
+  <rect x="290" y="555" width="380" height="155" rx="10" fill="#fdf2f2" stroke="#c53030" stroke-width="2.5"/>
+  <text x="480" y="598" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#c53030">
+    UnicodeDecodeError:
+  </text>
+  <text x="480" y="640" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="480" dy="0">bytes do not match the</tspan>
+    <tspan x="480" dy="32">encoding you assumed</tspan>
+  </text>
+
+  
+  <rect x="930" y="555" width="380" height="155" rx="10" fill="#fdf2f2" stroke="#c53030" stroke-width="2.5"/>
+  <text x="1120" y="598" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#c53030">
+    UnicodeEncodeError:
+  </text>
+  <text x="1120" y="640" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0">target encoding cannot</tspan>
+    <tspan x="1120" dy="32">represent a character</tspan>
+  </text>
+
+  
+  <rect x="250" y="755" width="1100" height="70" rx="10" fill="#fff9f3" stroke="#db8129" stroke-width="3"/>
+  <text x="800" y="799" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+    Always pass encoding explicitly. Set PYTHONUTF8=1 in containers.
+  </text>
+
+  
+  <rect x="50" y="870" width="1500" height="85" rx="12" fill="#207448"/>
+  <text x="800" y="923" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+    bytes are what disks and sockets carry; str is what your code should handle.
+  </text>
+</svg>

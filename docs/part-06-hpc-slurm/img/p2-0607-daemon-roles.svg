@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Slurm's cooperating daemons and the commands that reach them</title>
+  <desc>Slurm's cooperating daemons and the commands that reach them</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Slurm's cooperating daemons</tspan>
+    <tspan x="800" dy="54">and the commands that reach them</tspan>
+  </text>
+
+  
+  <rect x="50" y="145" width="1500" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(75, 162)">
+    <rect x="0" y="0" width="48" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 10 12 L 18 18 L 10 24" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="22" y1="24" x2="36" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="190" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">Login and submit nodes</text>
+
+  
+  <rect x="75" y="215" width="130" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="140" y="249" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">sbatch</text>
+
+  <rect x="220" y="215" width="110" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="275" y="249" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">srun</text>
+
+  <rect x="345" y="215" width="130" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="410" y="249" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">salloc</text>
+
+  <rect x="490" y="215" width="130" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="555" y="249" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">squeue</text>
+
+  <rect x="635" y="215" width="120" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="695" y="249" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">sinfo</text>
+
+  <rect x="770" y="215" width="140" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="840" y="249" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">scancel</text>
+
+  
+  <rect x="75" y="285" width="835" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <text x="95" y="327" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#207448">Accounting queries</text>
+
+  <rect x="365" y="293" width="120" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="425" y="326" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">sacct</text>
+
+  <rect x="500" y="293" width="160" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="580" y="326" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">sacctmgr</text>
+
+  <rect x="675" y="293" width="140" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="745" y="326" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#303a36" text-anchor="middle">sreport</text>
+
+
+  
+  <rect x="50" y="405" width="1500" height="460" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(75, 420)">
+    <circle cx="20" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="2" x2="20" y2="8" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="32" x2="20" y2="38" stroke="#207448" stroke-width="4"/>
+    <line x1="2" y1="20" x2="8" y2="20" stroke="#207448" stroke-width="4"/>
+    <line x1="32" y1="20" x2="38" y2="20" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="135" y="450" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">Control plane</text>
+
+  
+  <rect x="75" y="475" width="450" height="360" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <g transform="translate(95, 495)">
+    <rect x="0" y="0" width="52" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="10" y1="40" x2="10" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="26" y1="40" x2="26" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="42" y1="40" x2="42" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="12" x2="36" y2="12" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="20" x2="30" y2="20" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="28" x2="24" y2="28" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="95" y="585" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="32px" font-weight="bold">slurmctld:</tspan>
+    <tspan x="95" dy="42" font-size="24px">controller, port 6817,</tspan>
+    <tspan x="95" dy="36" font-size="24px">queue, scheduler,</tspan>
+    <tspan x="95" dy="36" font-size="24px">node and job state</tspan>
+  </text>
+
+  
+  <rect x="585" y="475" width="440" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(605, 495)">
+    <circle cx="20" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="20" cy="20" r="6" fill="#207448"/>
+  </g>
+  <text x="605" y="565" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="30px" font-weight="bold">slurmdbd:</tspan>
+    <tspan x="605" dy="38" font-size="24px">accounting daemon, port 6819</tspan>
+  </text>
+
+  
+  <g transform="translate(1085, 475)">
+    <path d="M 10 20 v 125 a 210 20 0 0 0 420 0 v -125 Z" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <ellipse cx="220" cy="20" rx="210" ry="20" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(25, 45)">
+      <ellipse cx="18" cy="10" rx="14" ry="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 4 10 v 18 a 14 6 0 0 0 28 0 v -18" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 4 19 a 14 6 0 0 0 28 0" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="75" y="90" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan font-size="28px" font-weight="bold">MariaDB or MySQL:</tspan>
+      <tspan x="75" dy="38" font-size="24px">accounting database</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="585" y="670" width="440" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6"/>
+  <g transform="translate(605, 690)">
+    <rect x="4" y="4" width="44" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="4,3"/>
+    <path d="M 16 20 h 20" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="605" y="750" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="28px" font-weight="bold">Backup slurmctld (optional):</tspan>
+    <tspan x="605" dy="38" font-size="24px">shared StateSaveLocation</tspan>
+  </text>
+
+  
+  <rect x="1085" y="670" width="440" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6"/>
+  <g transform="translate(1105, 690)">
+    <circle cx="20" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="5,3"/>
+    <ellipse cx="20" cy="20" rx="8" ry="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="4" y1="20" x2="36" y2="20" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="1105" y="750" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="28px" font-weight="bold">slurmrestd (optional):</tspan>
+    <tspan x="1105" dy="38" font-size="24px">REST API</tspan>
+  </text>
+
+
+  
+  <rect x="50" y="895" width="1500" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(75, 910)">
+    <rect x="0" y="0" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="0" y="18" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="10" cy="7" r="2" fill="#207448"/>
+    <circle cx="10" cy="25" r="2" fill="#207448"/>
+  </g>
+  <text x="135" y="938" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">Compute nodes</text>
+
+  
+  <rect x="85" y="965" width="1430" height="105" rx="10" fill="#dce9df" stroke="#207448" stroke-width="2"/>
+  <rect x="75" y="975" width="1430" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(100, 1002)">
+    <rect x="0" y="0" width="50" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="12" y="12" width="26" height="26" rx="3" fill="#207448"/>
+    <line x1="16" y1="0" x2="16" y2="-6" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="0" x2="34" y2="-6" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="50" x2="16" y2="56" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="50" x2="34" y2="56" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="175" y="1038" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">slurmd on each node</text>
+
+
+  
+  
+  <path d="M 300 375 L 300 475" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 525 557 L 585 557" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1025 557 L 1085 557" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 300 835 L 300 975" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+
+  
+  <rect x="50" y="1115" width="1500" height="55" rx="8" fill="#207448"/>
+  <text x="800" y="1151" font-family="system-ui, -apple-system, sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">When a job is stuck, the first question is which daemon is involved.</text>
+</svg>

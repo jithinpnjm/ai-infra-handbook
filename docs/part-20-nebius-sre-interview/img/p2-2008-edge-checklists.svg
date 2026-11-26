@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Edge-case probes for each input type</title>
+  <desc>A visual reference grid of edge-case probe inputs for String, List, Two lists, Intervals, and Number types, plus global state probes.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Edge-case probes for each input type</text>
+
+  
+
+  
+  <g id="card-string">
+    <rect x="55" y="105" width="470" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(80, 125)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="48" height="44" rx="8"/>
+      <path d="M14 18 C14 14, 18 14, 18 18 C18 22, 14 24, 13 28"/>
+      <path d="M28 18 C28 14, 32 14, 32 18 C32 22, 28 24, 27 28"/>
+    </g>
+    <text x="145" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">String</text>
+    
+    
+    <rect x="75" y="195" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="290" y="226" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">empty</text>
+
+    <rect x="75" y="257" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="290" y="288" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">one character</text>
+
+    <rect x="75" y="319" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="290" y="350" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">two equal characters</text>
+
+    <rect x="75" y="381" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="290" y="412" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">all same</text>
+
+    <rect x="75" y="443" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="290" y="474" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">mixed case</text>
+
+    <rect x="75" y="505" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="290" y="536" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">spaces</text>
+  </g>
+
+  
+  <g id="card-list">
+    <rect x="565" y="105" width="470" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(590, 125)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M10 4 L4 4 L4 40 L10 40"/>
+      <path d="M38 4 L44 4 L44 40 L38 40"/>
+      <line x1="16" y1="14" x2="32" y2="14"/>
+      <line x1="16" y1="22" x2="28" y2="22"/>
+      <line x1="16" y1="30" x2="32" y2="30"/>
+    </g>
+    <text x="655" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">List</text>
+
+    
+    <rect x="585" y="195" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="800" y="226" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">empty</text>
+
+    <rect x="585" y="246" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="800" y="277" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">one item</text>
+
+    <rect x="585" y="297" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="800" y="328" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">duplicates</text>
+
+    <rect x="585" y="348" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="800" y="379" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">all equal</text>
+
+    <rect x="585" y="399" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="800" y="430" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">negatives</text>
+
+    <rect x="585" y="450" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="800" y="481" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">already sorted</text>
+
+    <rect x="585" y="501" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="800" y="532" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">reverse sorted</text>
+  </g>
+
+  
+  <g id="card-two-lists">
+    <rect x="1075" y="105" width="470" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1100, 125)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="2" y="4" width="20" height="36" rx="4"/>
+      <rect x="26" y="4" width="20" height="36" rx="4"/>
+      <line x1="7" y1="14" x2="17" y2="14"/>
+      <line x1="7" y1="22" x2="17" y2="22"/>
+      <line x1="31" y1="14" x2="41" y2="14"/>
+      <line x1="31" y1="22" x2="41" y2="22"/>
+    </g>
+    <text x="1165" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Two lists</text>
+
+    
+    <rect x="1095" y="215" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1310" y="246" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">both empty</text>
+
+    <rect x="1095" y="295" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1310" y="326" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">one empty</text>
+
+    <rect x="1095" y="375" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1310" y="406" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">same length</text>
+
+    <rect x="1095" y="455" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1310" y="486" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">different lengths</text>
+  </g>
+
+  
+
+  
+  <g id="card-intervals">
+    <rect x="305" y="600" width="470" height="365" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(330, 620)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="2" y1="36" x2="46" y2="36"/>
+      <path d="M8 16 L8 24 L24 24 L24 16"/>
+      <path d="M28 8 L28 16 L42 16 L42 8"/>
+    </g>
+    <text x="395" y="653" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Intervals</text>
+
+    
+    <rect x="325" y="685" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="540" y="716" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">empty</text>
+
+    <rect x="325" y="737" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="540" y="768" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">one</text>
+
+    <rect x="325" y="789" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="540" y="820" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">touching ends</text>
+
+    <rect x="325" y="841" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="540" y="872" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">one inside another</text>
+
+    <rect x="325" y="893" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="540" y="924" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">out of order</text>
+  </g>
+
+  
+  <g id="card-number">
+    <rect x="825" y="600" width="470" height="365" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(850, 620)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="16" y1="6" x2="12" y2="38"/>
+      <line x1="32" y1="6" x2="28" y2="38"/>
+      <line x1="6" y1="16" x2="38" y2="16"/>
+      <line x1="4" y1="28" x2="36" y2="28"/>
+    </g>
+    <text x="910" y="653" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Number</text>
+
+    
+    <rect x="845" y="685" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1060" y="716" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">0</text>
+
+    <rect x="845" y="737" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1060" y="768" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">1</text>
+
+    <rect x="845" y="789" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1060" y="820" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">-1</text>
+
+    <rect x="845" y="841" width="430" height="44" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1060" y="872" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">a very large value</text>
+
+    
+    <rect x="845" y="893" width="430" height="44" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3.5"/>
+    <text x="1060" y="924" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">a float such as 0.1 + 0.2</text>
+  </g>
+
+  
+  <g id="band-state">
+    <rect x="55" y="995" width="1490" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(80, 1021)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M40 24 A16 16 0 1 0 36 36"/>
+      <polyline points="40 14 40 24 30 24"/>
+    </g>
+    <text x="145" y="1057" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Add for any state</text>
+
+    
+    <rect x="525" y="1023" width="270" height="48" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="660" y="1055" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">first call</text>
+
+    <rect x="825" y="1023" width="290" height="48" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="970" y="1055" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">repeat call</text>
+
+    <rect x="1145" y="1023" width="370" height="48" rx="8" fill="#ffffff" stroke="#b2cebc" stroke-width="1.5"/>
+    <text x="1330" y="1055" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="600" fill="#303a36">call after reset</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="55" y="1120" width="1490" height="54" rx="8" fill="#207448"/>
+    <text x="800" y="1156" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Run the checklist for the input type before you say I think it works.</text>
+  </g>
+</svg>

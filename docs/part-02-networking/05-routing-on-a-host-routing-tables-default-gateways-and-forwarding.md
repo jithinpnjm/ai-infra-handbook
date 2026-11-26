@@ -64,6 +64,10 @@ Keep these five outcomes in mind, because every command in this chapter is a way
 
 ## 2. Reading the routing table
 
+![Seven routing table lines from a GPU server, each paired with a plain reading, beside a legend of via, proto, scope, src, metric and onlink.](./img/p3-0205-table-read.svg)
+
+*Figure 2.5.3. Each routing table line starts with the destination and then says how to get there, and connected routes have no via.*
+
 When a node cannot reach something, its routing table is the first place to look, the way you would check a map before blaming the car. You read it with `ip route show`. The commands below show the IPv4 main table, the IPv6 table, and every table on the machine.
 
 ```bash
@@ -116,6 +120,10 @@ Try one more case, this time with a tie. Imagine two routes to the same /24 pref
 
 ### The default gateway
 
+![Two NICs each installing a default route, the kernel choosing by metric, the failover to the higher metric route when carrier is lost, and the rp_filter risk and fix.](./img/p3-0205-default-accident.svg)
+
+*Figure 2.5.4. With two default routes the lowest metric wins and the other takes over on link loss, but replies on the wrong NIC may hit rp_filter.*
+
 The default route matches everything that no more specific route covers. It is the "everywhere else" sign. Its next hop is the default gateway. By convention the gateway is the first usable address in the subnet, such as 10.20.0.1, but that is only a convention. Without a default route, a host reaches only its connected and static destinations.
 
 Multiple default routes are a common accident on multi-NIC servers, often because each NIC gets one from DHCP. Picture two signposts that both say "everywhere else", pointing in different directions. With equal metrics, the kernel uses the first one. With different metrics, it uses the lowest. If the preferred NIC goes down, the other one takes over, and replies that arrive on the wrong NIC may be dropped by `rp_filter`. Keep exactly one default route per routing table, and reach other networks with specific routes or policy routing.
@@ -144,9 +152,13 @@ The first command returns a gateway, the second is on-link, and the third asks w
 
 ## 3. Routing tables, rules and special routes
 
+![A rule list walk where a reply sourced from 10.100.1.45 matches a custom rule and uses table 101 while any other source falls through to the main table.](./img/p3-0205-rule-walk.svg)
+
+*Figure 2.5.5. A reply sourced from 10.100.1.45 hits the custom rule and table 101, while any other source falls through to main and the ordinary default route.*
+
 ![Linux routing tables and rules](./img/n05-rules.svg)
 
-*Figure 2.5.3. Rules in ip rule decide which routing table the kernel looks in, starting with local, then main, then default.*
+*Figure 2.5.6. Rules in ip rule decide which routing table the kernel looks in, starting with local, then main, then default.*
 
 A single routing table is not enough for a server with several networks, because one list cannot express "traffic from this NIC goes this way". So Linux keeps several. Each table has a number. Names for some of them live in `/etc/iproute2/rt_tables`. Linux has up to 2^32 routing tables in total.
 
@@ -171,6 +183,10 @@ Read the rules from the top, the way the kernel does. They send lookups to `loca
 Follow one packet through those rules to see why they matter. A reply sourced from 10.100.1.45 reaches the lookup. The kernel walks the rules in priority order. The custom rule matches the source address, so the lookup goes to table 101 and finds the default route there. A reply from any other source skips that rule, falls through to `main`, and takes the ordinary default route. Same machine, same destination, two different roads, decided purely by who the packet says it is from.
 
 ### Special route types
+
+![A table of blackhole, unreachable, prohibit, throw and local routes showing the command, the packet's fate, what the sender hears and typical use.](./img/p3-0205-special-routes.svg)
+
+*Figure 2.5.7. A blackhole drops silently while unreachable and prohibit drop with an ICMP message, and a local route makes an address local for VIPs.*
 
 Sometimes you want a destination dropped, rejected or treated as local, instead of sent to a gateway. A route does not always have to be a direction. It can also be a "do not go there" sign. The commands below add those special route types.
 
@@ -211,6 +227,10 @@ Keep it simple where you can. Give local hosts only a default route. When you ne
 
 ## 4. Choosing the source address
 
+![A decision order for the source address: bound address first, then the route src, then the primary address of the output interface, with the IPv6 RFC 6724 note.](./img/p3-0205-source-pick.svg)
+
+*Figure 2.5.8. The kernel uses the bound address, then the route's src, then the primary address of the output interface.*
+
 Suppose a server has several addresses and an application opens a connection. Which address does the packet carry as its source? The receiver will use that address to reply, so a wrong choice means the reply may never come back. For a packet the host generates itself, the kernel follows a fixed order. If the application bound a specific address, the kernel uses that address. If not, it uses the route's `src`, when one is set. If neither applies, it uses the primary address of the output interface, in the same subnet as the next hop. `ip addr` marks the primary address and labels the others `secondary`.
 
 For IPv6, RFC 6724 rules choose among the candidate addresses. They match scope, prefer public over temporary addresses according to `use_tempaddr`, and look at the longest common prefix.
@@ -221,9 +241,13 @@ The `src` attribute pins the source for a route. For example, `ip route add 10.3
 
 ## 5. Multiple interfaces: weak host model, rp_filter and asymmetric routing
 
+![The reverse path filter guard question, its three modes with the effective value as the maximum of all and interface settings, and how to find the silent drops with nstat.](./img/p3-0205-rpfilter.svg)
+
+*Figure 2.5.9. Strict rp_filter drops packets whose best return route uses another interface, and the effective setting is the maximum of the all and per-interface values.*
+
 ![Weak host model with two NICs](./img/n05-weakhost.svg)
 
-*Figure 2.5.4. Linux routes replies by destination only, so a reply can leave on a different NIC than the request arrived on.*
+*Figure 2.5.10. Linux routes replies by destination only, so a reply can leave on a different NIC than the request arrived on.*
 
 Consider a server with two NICs on two subnets. A request arrives on NIC B, addressed to B's address, and the reply leaves through NIC A. That happens because Linux uses the weak host model for IPv4. In plain words, "weak host" means the machine thinks of its addresses as belonging to the whole host, not to one particular card. The kernel accepts a packet addressed to any of its local addresses, on any interface. Subject to the ARP policies in chapter 2.3, it may also answer from any interface.
 
@@ -248,6 +272,10 @@ sudo sysctl -w net.ipv4.conf.all.log_martians=1        # log packets with imposs
 ```
 
 ### Diagnosing "SSH works on NIC A but not NIC B"
+
+![A five step ladder to diagnose SSH working on one NIC but not another: configuration, packet capture of reply interface, ip route get from the B address, rp_filter counter and ARP behaviour.](./img/p3-0205-ssh-nic-ladder.svg)
+
+*Figure 2.5.11. Work from configuration, to which interface replies leave on, to ip route get, rp_filter and ARP, cheapest question first.*
 
 When SSH works on one NIC but not on the other, work through these checks. Each one narrows down the cause, and the order is deliberate, from the cheapest question to the more detailed one.
 
@@ -316,6 +344,10 @@ Use `ip route replace` in scripts, because it adds the route or updates an exist
 
 ## 7. Linux as a router: forwarding
 
+![A topology of two hosts and a router namespace, with a ladder of failures from no route, to forwarding off, to no return route, then a working ping, plus the firewall and NAT checks.](./img/p3-0205-forwarding-ladder.svg)
+
+*Figure 2.5.12. A Linux host forwards only after ip_forward is set to 1, and each side also needs a route, including the return path.*
+
 Suppose a lab subnet needs to reach another network through this server. By default, a Linux host does not forward packets between its interfaces. It behaves as an end system, which is a machine that sends and receives its own traffic but does not carry other people's. To make it a router, you turn forwarding on, usually with the `ip_forward` setting.
 
 ```bash
@@ -343,13 +375,17 @@ Forwarding shows up in several roles, and it helps to recognise them. A host can
 
 ### ICMP redirects and source routing
 
+![A host, its gateway and a better next hop on the same subnet, with the gateway forwarding the packet and sending an ICMP Redirect, and the sysctl settings that turn redirects and source routing off.](./img/p3-0205-redirect.svg)
+
+*Figure 2.5.13. A router that forwards a packet back out the arrival interface sends an ICMP Redirect, and production hosts disable redirects and source routing.*
+
 A router sends an ICMP Redirect when it forwards a packet out the same interface it arrived on, to a next hop on the sender's own subnet. It is the router saying, "you did not need to ask me, the better door is right next to you." The message says, in effect, use gateway X for that destination. The host may then install a cached host route marked `proto redirect`. Redirects are mostly a legacy feature that complicates security and troubleshooting. Production hosts turn them off with `net.ipv4.conf.all.accept_redirects=0`, `send_redirects=0` and `secure_redirects=0`. Do the same for IP source routing, which is an attack vector, with `accept_source_route=0`. To check these settings, run `sysctl -a | grep -E 'redirects|source_route'`.
 
 ## 8. Multipath (ECMP) routes
 
 ![ECMP multipath route](./img/n05-ecmp.svg)
 
-*Figure 2.5.5. A multipath route has several equal-cost next hops, and the hash policy decides which packet details pick the path.*
+*Figure 2.5.14. A multipath route has several equal-cost next hops, and the hash policy decides which packet details pick the path.*
 
 Suppose two links lead to the same destination, and both cost the same. It would be wasteful to leave one idle. A multipath route lets the host use both. A route can have several equal-cost next hops. The kernel picks one next hop per flow, using a hash, so that the packets of a flow stay in order. A hash is a quick calculation that turns details of a packet into a number, so the same flow always lands on the same path.
 
@@ -378,6 +414,10 @@ IPv6 has no ARP and no broadcast. Neighbour discovery does that job instead. Pri
 
 ## 10. Containers, VMs and Kubernetes: more routing tables than you think
 
+![A pod namespace routing table, the node's routes to each pod through overlay or BGP, and a hostNetwork pod sharing the node's tables, with the commands to inspect each.](./img/p3-0205-k8s-tables.svg)
+
+*Figure 2.5.15. A pod, the node and a hostNetwork pod each have their own view of routing, so check both namespaces when traffic fails.*
+
 Each network namespace has its own interfaces and routing tables (chapter 2.25). A namespace is a separate copy of the network stack, a bit like a separate apartment with its own front door. So a pod's routing table is separate from the table on the node it runs on. A pod's namespace has a default route through the CNI's gateway, which is the host-side veth peer or bridge address. The node holds routes to each pod's /32 or /24. Those routes may go through overlay tunnel devices (VXLAN, Geneve, IPIP), or they may be BGP-advertised pod prefixes, as in Calico and Cilium native routing.
 
 When traffic fails between pods or to the Internet, check the routes in both namespaces, because the fault may be on either side. Run `kubectl exec ... -- ip route` for the pod, or `nsenter -t <pid> -n ip route`. On the node, run `ip route | grep -E 'cali|cni|flannel|cilium|vxlan'`. Pods with `hostNetwork: true` use the node's tables instead, so if you see the node's routes inside such a pod, that is why.
@@ -390,7 +430,7 @@ When a host cannot reach a destination, you can work through the diagram from th
 
 ![Diagnosing routing problems](./img/m2-05-2.svg)
 
-*Figure 2.5.6. Diagnosing routing problems, as a diagram.*
+*Figure 2.5.16. Diagnosing routing problems, as a diagram.*
 
 The checklist below lists the commands for these checks. They are `ip -br addr`, `ip -br link`, `ip route show table all`, `ip rule show`, `ip route get <dest> [from <src>]`, `ip neigh`, `sysctl net.ipv4.conf.all.rp_filter net.ipv4.ip_forward`, `ss -tn`, `tracepath`, `mtr -n`, `sudo tcpdump -ni any`, `nstat -z | grep -i drop`, `nft list ruleset` and `conntrack -L`.
 
@@ -400,7 +440,7 @@ Document the intended routing for each class of server. Then automate an audit t
 
 ![GPU server with six networks](./img/n05-sixnets.svg)
 
-*Figure 2.5.7. One default route on management, a static route for storage, and one subnet per rail keep each kind of traffic on its own NIC.*
+*Figure 2.5.17. One default route on management, a static route for storage, and one subnet per rail keep each kind of traffic on its own NIC.*
 
 Consider a GPU server with `eno1` on management (10.20.0.0/24, carrying the default route), `eno2` on storage (10.30.4.0/24, reaching the NFS and Lustre servers at 10.30.0.0/16), and eight back-end NICs, `ens1f0..ens8f0`, for RoCE rails. Each rail gets one /24, `10.100.R.0/24`, with no gateway. The rail switches run in L2, or they are routed with a /31 per link. This is the kind of machine that turns the chapter into a real puzzle.
 

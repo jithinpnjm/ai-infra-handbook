@@ -38,24 +38,9 @@ Imagine you join a team that runs two clusters, one built with xCAT and one with
 
 Each manager has its own vocabulary, so the same job can look different from one tool to the next. The diagram below shows how each one is organized. You will find the database, the node record and the image in every design, but the names change.
 
-```mermaid
-flowchart TB
-  subgraph xCAT["xCAT (Relational Tables + Objects)"]
-    X1["xcatd + Service Nodes<br/>tabdump / chdef / nodeset / rpower"]
-    X2["statelite: NFS root + litefile tmpfs"]
-    X1 --> X2
-  end
-  subgraph WW4["Warewulf 4 (GitOps + OCI)"]
-    W1["warewulfd + nodes.conf (YAML)<br/>wwctl configure / node / image"]
-    W2["Container Chroot + System/Runtime Overlays (.ww)"]
-    W1 --> W2
-  end
-  subgraph BCM["NVIDIA Base Command Manager"]
-    B1["Head Node CMDaemon + Provisioning Nodes<br/>cmsh / Base View / JSON-RPC"]
-    B2["/cm/images + Categories + Node Installer"]
-    B1 --> B2
-  end
-```
+![Common model](./img/m6-23-1.svg)
+
+*Figure 6.23.1. Common model, as a diagram.*
 
 Read the diagram from top to bottom. Each box holds a central service, such as a daemon or a database. The arrow shows which piece depends on which, so the service at the top of each box hands work down to the image layer beneath it.
 

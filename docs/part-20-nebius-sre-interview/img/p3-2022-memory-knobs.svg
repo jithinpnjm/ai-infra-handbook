@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four vLLM flags that decide GPU memory</title>
+  <desc>Visual infographic explaining the four vLLM memory configuration flags, their defaults, behaviors, risks, and the causes of startup and runtime out-of-memory errors.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Four vLLM flags that decide GPU memory</text>
+
+  
+  <rect x="40" y="140" width="740" height="430" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(72, 168)">
+    <rect x="8" y="8" width="40" height="40" rx="4" fill="none" stroke="#db8129" stroke-width="4"/>
+    <rect x="18" y="18" width="20" height="20" rx="2" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    <line x1="16" y1="0" x2="16" y2="8" stroke="#db8129" stroke-width="3"/>
+    <line x1="28" y1="0" x2="28" y2="8" stroke="#db8129" stroke-width="3"/>
+    <line x1="40" y1="0" x2="40" y2="8" stroke="#db8129" stroke-width="3"/>
+    <line x1="16" y1="48" x2="16" y2="56" stroke="#db8129" stroke-width="3"/>
+    <line x1="28" y1="48" x2="28" y2="56" stroke="#db8129" stroke-width="3"/>
+    <line x1="40" y1="48" x2="40" y2="56" stroke="#db8129" stroke-width="3"/>
+    <line x1="0" y1="16" x2="8" y2="16" stroke="#db8129" stroke-width="3"/>
+    <line x1="0" y1="28" x2="8" y2="28" stroke="#db8129" stroke-width="3"/>
+    <line x1="0" y1="40" x2="8" y2="40" stroke="#db8129" stroke-width="3"/>
+    <line x1="48" y1="16" x2="56" y2="16" stroke="#db8129" stroke-width="3"/>
+    <line x1="48" y1="28" x2="56" y2="28" stroke="#db8129" stroke-width="3"/>
+    <line x1="48" y1="40" x2="56" y2="40" stroke="#db8129" stroke-width="3"/>
+  </g>
+  <text x="144" y="206" font-family="monospace" font-size="30" font-weight="bold" fill="#db8129">gpu_memory_utilization:</text>
+  <text x="72" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="72" dy="0">fraction of the GPU this instance may use;</tspan>
+    <tspan x="72" dy="34">v0.32.0 default 0.92, range above 0 up to 1;</tspan>
+    <tspan x="72" dy="34">per-instance limit that ignores other</tspan>
+    <tspan x="72" dy="34">processes, so two instances on one GPU need</tspan>
+    <tspan x="72" dy="34">fractions that add up to less than one;</tspan>
+    <tspan x="72" dy="34">raising it gives more KV cache (memory left</tspan>
+    <tspan x="72" dy="34">after weights) but removes headroom for</tspan>
+    <tspan x="72" dy="34">activation spikes, the runtime OOM form</tspan>
+  </text>
+
+  
+  <rect x="820" y="140" width="740" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(852, 168)">
+    <rect x="4" y="8" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="3"/>
+    <polyline points="18,22 12,28 18,34" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="38,22 44,28 38,34" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="18" x2="12" y2="38" stroke="#207448" stroke-width="3"/>
+    <line x1="44" y1="18" x2="44" y2="38" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="924" y="206" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">max_model_len:</text>
+  <text x="852" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="852" dy="0">longest sequence the engine accepts, prompt</tspan>
+    <tspan x="852" dy="34">plus output; the start-up log Maximum</tspan>
+    <tspan x="852" dy="34">concurrency line depends on it; cheapest way</tspan>
+    <tspan x="852" dy="34">to make capacity numbers honest; risk is</tspan>
+    <tspan x="852" dy="34">rejecting a long customer request, so set it</tspan>
+    <tspan x="852" dy="34">from your traffic not the model card</tspan>
+  </text>
+
+  
+  <rect x="40" y="610" width="740" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(72, 638)">
+    <rect x="4" y="6" width="48" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="4" y="23" width="48" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="4" y="40" width="48" height="10" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+  </g>
+  <text x="144" y="676" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">max_num_seqs:</text>
+  <text x="72" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="72" dy="0">caps requests running in one step; class</tspan>
+    <tspan x="72" dy="34">default 128 but read the start-up log</tspan>
+    <tspan x="72" dy="34">for the value in force; high cap with a</tspan>
+    <tspan x="72" dy="34">small cache admits work you cannot hold,</tspan>
+    <tspan x="72" dy="34">so preemption (remove a running request,</tspan>
+    <tspan x="72" dy="34">recompute later); lowering it is a</tspan>
+    <tspan x="72" dy="34">documented fix</tspan>
+  </text>
+
+  
+  <rect x="820" y="610" width="740" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(852, 638)">
+    <rect x="4" y="10" width="48" height="32" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="10" y1="42" x2="10" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="42" x2="18" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="26" y1="42" x2="26" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="42" x2="34" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="42" y1="42" x2="42" y2="48" stroke="#207448" stroke-width="3"/>
+    <rect x="10" y="16" width="9" height="18" fill="none" stroke="#207448" stroke-width="2"/>
+    <rect x="23" y="16" width="9" height="18" fill="none" stroke="#207448" stroke-width="2"/>
+    <rect x="36" y="16" width="9" height="18" fill="none" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="924" y="662" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="924" dy="0">kv_cache_memory_bytes</tspan>
+    <tspan x="924" dy="36">via --kv-cache-memory:</tspan>
+  </text>
+  <text x="852" y="744" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="852" dy="0">sets the cache size directly and ignores the</tspan>
+    <tspan x="852" dy="34">utilisation fraction; skips memory profiling</tspan>
+    <tspan x="852" dy="34">so start-up is shorter; low value caps</tspan>
+    <tspan x="852" dy="34">concurrency, high value fails at allocation;</tspan>
+    <tspan x="852" dy="34">valid only for the same GPU and the same</tspan>
+    <tspan x="852" dy="34">free memory, a value from another machine</tspan>
+    <tspan x="852" dy="34">is not safe</tspan>
+  </text>
+
+  
+  <rect x="40" y="1064" width="1520" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="70" y="1102" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">startup OOM: weights plus activation peak plus graph memory do not fit the requested fraction;</tspan>
+    <tspan x="70" dy="36">runtime OOM: a spike or longer prompts consumed the headroom</tspan>
+  </text>
+</svg>

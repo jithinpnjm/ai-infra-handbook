@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which filter for which need, with worked expressions</title>
+  <desc>Visual reference guide pairing common Ansible needs with their corresponding filters, worked expressions, and results.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which filter for which need, with worked expressions</text>
+
+  
+  <g id="filter-table">
+    
+    <rect x="40" y="95" width="1520" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <polygon points="56,105 96,105 82,124 82,141 70,141 70,124" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <text x="110" y="134" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Need</text>
+
+    
+    <rect x="430" y="103" width="46" height="38" rx="5" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="430" y1="114" x2="476" y2="114" stroke="#207448" stroke-width="2" />
+    <path d="M442,124 L437,129 L442,134 M464,124 L469,129 L464,134" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="490" y="134" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Filter</text>
+
+    
+    <rect x="40" y="151" width="1520" height="42" fill="#ffffff" />
+    <line x1="40" y1="193" x2="1560" y2="193" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="180" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Dict merge (recursive)</text>
+    <text x="430" y="180" font-family="monospace" font-size="24" fill="#303a36">base | combine(override, recursive=True)</text>
+
+    
+    <rect x="40" y="193" width="1520" height="42" fill="#f5f8f5" />
+    <line x1="40" y1="235" x2="1560" y2="235" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="222" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">List and dict</text>
+    <text x="430" y="222" font-family="monospace" font-size="24" fill="#303a36">dict2items, items2dict, zip, zip_longest, product, permutations</text>
+
+    
+    <rect x="40" y="235" width="1520" height="42" fill="#ffffff" />
+    <line x1="40" y1="277" x2="1560" y2="277" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="264" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Set operations</text>
+    <text x="430" y="264" font-family="monospace" font-size="24" fill="#303a36">union, intersect, difference, symmetric_difference, unique</text>
+
+    
+    <rect x="40" y="277" width="1520" height="42" fill="#f5f8f5" />
+    <line x1="40" y1="319" x2="1560" y2="319" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="306" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Flatten and shape</text>
+    <text x="430" y="306" font-family="monospace" font-size="24" fill="#303a36">flatten, community.general.json_query (JMESPath queries)</text>
+
+    
+    <rect x="40" y="319" width="1520" height="42" fill="#ffffff" />
+    <line x1="40" y1="361" x2="1560" y2="361" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="348" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Regex</text>
+    <text x="430" y="348" font-family="monospace" font-size="24" fill="#303a36">regex_search, regex_findall, regex_replace</text>
+
+    
+    <rect x="40" y="361" width="1520" height="42" fill="#f5f8f5" />
+    <line x1="40" y1="403" x2="1560" y2="403" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="390" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Paths</text>
+    <text x="430" y="390" font-family="monospace" font-size="24" fill="#303a36">basename, dirname, splitext</text>
+
+    
+    <rect x="40" y="403" width="1520" height="42" fill="#ffffff" />
+    <line x1="40" y1="445" x2="1560" y2="445" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="432" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Version</text>
+    <text x="430" y="432" font-family="monospace" font-size="24" fill="#303a36">is version(2.0, &gt;=), ansible.builtin.version</text>
+
+    
+    <rect x="40" y="445" width="1520" height="42" fill="#f5f8f5" />
+    <line x1="40" y1="487" x2="1560" y2="487" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="474" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Hash and crypt</text>
+    <text x="430" y="474" font-family="monospace" font-size="24" fill="#303a36">hash(sha256), password_hash(sha512, salt), b64encode</text>
+
+    
+    <rect x="40" y="487" width="1520" height="42" fill="#ffffff" />
+    <line x1="40" y1="529" x2="1560" y2="529" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="516" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Serialise</text>
+    <text x="430" y="516" font-family="monospace" font-size="24" fill="#303a36">to_json, to_nice_json, to_yaml, to_nice_yaml, from_json, from_yaml</text>
+
+    
+    <rect x="40" y="529" width="1520" height="66" fill="#f5f8f5" />
+    <line x1="40" y1="595" x2="1560" y2="595" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="568" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">IP and network</text>
+    <text x="430" y="555" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="430" dy="0">ansible.utils.ipaddr, ipsubnet, ipmath, next_nth_usable,</tspan>
+      <tspan x="430" dy="28">cidr_merge, hwaddr (needs netaddr)</tspan>
+    </text>
+
+    
+    <rect x="40" y="595" width="1520" height="42" fill="#ffffff" />
+    <line x1="40" y1="637" x2="1560" y2="637" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="624" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Defaulting</text>
+    <text x="430" y="624" font-family="monospace" font-size="24" fill="#303a36">default, default(omit), mandatory, ternary(a, b)</text>
+
+    
+    <rect x="40" y="637" width="1520" height="66" fill="#f5f8f5" />
+    <line x1="40" y1="703" x2="1560" y2="703" stroke="#207448" stroke-width="2" />
+    <text x="60" y="676" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Misc</text>
+    <text x="430" y="663" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="430" dy="0">random, shuffle, human_readable, human_to_bytes,</tspan>
+      <tspan x="430" dy="28">quote, comment, expanduser</tspan>
+    </text>
+
+    
+    <rect x="40" y="95" width="1520" height="608" rx="8" fill="none" stroke="#207448" stroke-width="2" />
+    
+    <line x1="400" y1="95" x2="400" y2="703" stroke="#207448" stroke-width="1" stroke-dasharray="4 2" />
+  </g>
+
+  
+  <g id="worked-expressions">
+    <rect x="40" y="720" width="1520" height="375" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="1476" y="738" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="1476" y1="750" x2="1532" y2="750" stroke="#207448" stroke-width="2" />
+    <polyline points="1485,759 1491,765 1485,771" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="1496" y1="771" x2="1506" y2="771" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    
+    <rect x="55" y="735" width="1400" height="72" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1" />
+    <text x="70" y="762" font-family="monospace" font-size="24" fill="#303a36">gpu_nodes | map(extract, hostvars, ansible_host) | list gives a list of addresses</text>
+    <rect x="70" y="774" width="670" height="26" rx="4" fill="#fdf3e8" stroke="#db8129" stroke-width="1.5" />
+    <text x="80" y="793" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">extract pulls one hostvar from many hosts at once</text>
+
+    
+    <rect x="55" y="813" width="1490" height="44" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1" />
+    <text x="70" y="843" font-family="monospace" font-size="24" fill="#303a36">groups[gpu] | map(extract, hostvars, rack) | unique | sort gives racks in use</text>
+
+    
+    <rect x="55" y="863" width="1490" height="44" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1" />
+    <text x="70" y="893" font-family="monospace" font-size="24" fill="#303a36">(ansible_facts[memtotal_mb] * 0.9) | int gives Slurm RealMemory at about 90 percent</text>
+
+    
+    <rect x="55" y="913" width="1490" height="44" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1" />
+    <text x="70" y="943" font-family="monospace" font-size="24" fill="#303a36">10.1.0.0/24 | ansible.utils.ipaddr(10) gives 10.1.0.10/24</text>
+
+    
+    <rect x="55" y="963" width="1490" height="44" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1" />
+    <text x="70" y="993" font-family="monospace" font-size="24" fill="#303a36">(item.size | human_to_bytes) // (1024**3) gives GiB</text>
+
+    
+    <rect x="55" y="1013" width="1490" height="44" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1" />
+    <text x="70" y="1043" font-family="monospace" font-size="24" fill="#303a36">is_prod | ternary(warn, debug)</text>
+  </g>
+
+  
+  <rect x="40" y="1115" width="1520" height="60" rx="8" fill="#207448" />
+  <text x="800" y="1153" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">A filter for your problem probably exists before you write a loop by hand</text>
+</svg>

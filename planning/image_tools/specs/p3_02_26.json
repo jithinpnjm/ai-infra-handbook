@@ -1,0 +1,172 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-tap-pipeline",
+  "title": "One ping through the capture chain: where the copy is taken",
+  "spec": "A left to right pipeline. 'NIC receives the echo request' to 'Driver wraps the frame in an sk_buff' to the tap box (orange) 'AF_PACKET socket with the BPF filter that libpcap compiled; matching packets are copied into a memory-mapped ring buffer; the kernel discards non-matching packets at the door' to 'Normal stack runs and produces the reply'. A branch from the tap down to 'ring buffer, then libpcap, then tcpdump'. The packet keeps going on its normal path. Reply arrow back out passing the tap again with the label 'the same capture sees both directions'. Under the pipeline three small notes 'Receive: tap comes before most of the stack but after GRO merging by default', 'Transmit: tap comes before the NIC, so checksum offload shows bad checksums and TSO makes packets look larger than the MTU', 'If a packet vanished before the tap, the capture shows nothing; the loss happened earlier on the path'. Fix line 'for exact wire frames: ethtool -K eth0 tso off gso off gro off rx off tx off, or capture on a mirror port or TAP'. Bottom bar: 'A capture is a camera at one point on the path'.",
+  "anchor": "## 1. How packet capture works",
+  "alt": "A ping passing the NIC, driver and sk_buff, then the AF_PACKET tap with a BPF filter copying into a ring buffer, before the normal stack replies, with the offload caveats.",
+  "cap": "The tap copies matching packets into a ring buffer without holding them back, and on transmit it sits before the NIC, so offload artefacts appear."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-drop-counters",
+  "title": "Reading the two drop counters before you trust a capture",
+  "spec": "A decision ladder starting at 'Capture finished: read the summary'. Branch 1 'N packets dropped by kernel' leads to 'the capture socket's buffer overflowed' with fixes 'raise -B', 'narrow the filter', 'write to fast storage', 'truncate with -s 96 or -s 128'. Branch 2 'N packets dropped by interface' leads to 'the NIC dropped them before the capture saw them'. Branch 3 '0 dropped by kernel' leads to 'the picture is complete', for example the sample trace '9 packets received by filter, 0 packets dropped by kernel'. Orange warning box 'A capture that lost packets can look like a healthy network; stop, reduce the snaplen, narrow the filter and capture again before you read anything into the first file'. Side worked example 'a full 1500 byte web response with -s 96 keeps the Ethernet, IP and TCP headers and a few bytes of payload; the rest is discarded before it reaches the file; you give up the body and the file stays small'. Bottom bar: 'Never trust a drop-free result from an overloaded host without checking dropped by kernel'.",
+  "anchor": "## 1. How packet capture works",
+  "alt": "A ladder reading dropped by kernel and dropped by interface, with the fixes for each, the zero drops case and a snaplen 96 example on a 1500 byte packet.",
+  "cap": "Dropped by kernel means the capture buffer overflowed, dropped by interface means the NIC lost the packets first, and either result weakens the file."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-where-to-capture",
+  "title": "Choosing a capture point: the closest point that sees what you need",
+  "spec": "A decision tree. Question at top 'Which packets must you see?'. Leaf 1 'Did the server receive the request?' to 'capture on the server interface'. Leaf 2 'Did the request leave the client at all?' to 'capture on the client interface; the offload caveat still applies'. Leaf 3 'Traffic inside a pod' to 'nsenter -t PID -n tcpdump'. Leaf 4 'Traffic crossing between namespaces' to 'bridge or veth host-side; compare both ends of a veth'. Leaf 5 'Need the wire itself, independent of the host stack' (orange) to 'switch port mirror (SPAN, ERSPAN) or TAP; mirrored traffic can be dropped under congestion'. Leaf 6 'RoCE or traffic the kernel does not see' to 'NIC or DPU capture: tcpdump -i mlx5_0 with rdma-core, ibdump, or a switch mirror'. Leaf 7 'Where was the packet dropped, without copying it?' to 'tracepoints, kfree_skb, pwru; complement, do not replace, pcap'. Warning box '-i any: all interfaces with cooked SLL headers, loses VLAN and ordering details; do not use for exact timing'. Bottom bar: 'Move the tap closer to the place you suspect'.",
+  "anchor": "### Capture points",
+  "alt": "A decision tree mapping a question to a capture point: server or client interface, nsenter in a pod, veth, a switch mirror or TAP, a NIC capture for RoCE, and kernel tracepoints.",
+  "cap": "Choose the closest capture point that sees the packets you need, and use a mirror port or TAP when you need the wire itself."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-command-anatomy",
+  "title": "Anatomy of one tcpdump command",
+  "spec": "One command shown large: 'sudo tcpdump -nni eth0 -s 96 -w /tmp/c.pcap \"host 10.0.0.5 and tcp\"'. Each piece is boxed with a bracket and a one line job. 'sudo: the right to open a raw socket'. '-nn: no name lookups, no port names'. '-i eth0: listen on the eth0 interface'. '-s 96: keep the first 96 bytes of each packet'. '-w /tmp/c.pcap: write packets to a file rather than the screen, safer than reading live' (orange). 'quoted filter: host 10.0.0.5 and tcp; single quotes stop the shell from reading the spaces and the ampersand'. Below, a strip of variations in one line each: '-c 100 stops after 100 packets', '-C 100 -W 10 ring buffer of 10 files of 100 MB', '-G 300 rotates every 300 seconds', '-B 4096 kernel buffer 4096 KiB', '-Z tcpdump drops privileges after opening', '-d shows the compiled BPF bytecode', '-tttt date and time, -ttt delta, -e link layer, -X hex plus ASCII', '--time-stamp-precision nano -j adapter_unsynced NIC hardware timestamps'. Bottom bar: 'Each piece has one job, so change one piece without touching the others'.",
+  "anchor": "## 2. tcpdump",
+  "alt": "The command sudo tcpdump -nni eth0 -s 96 -w /tmp/c.pcap host 10.0.0.5 and tcp split into its pieces with the job of each flag, plus a strip of common variations.",
+  "cap": "Each flag does one job, from opening the raw socket to truncating packets and writing to a file, and the quoted filter is read last."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-read-conversation",
+  "title": "Reading the sample trace line by line as a conversation",
+  "spec": "A numbered ladder between two hosts 'duplex.example.com (client)' and 'mikado.example.com (server)'. Line 1 'arp who-has mikado tell duplex' client to server. Line 2 'arp reply mikado is-at 0:2:2d:b:ee:4e'. Line 3 'S 3200063165 win 5840 mss 1460 sackOK (DF)' client to server SYN. Line 4 'S ack 3200063166 win 5792' server SYN-ACK. Line 5 '. ack 1' client ACK, handshake done. Line 6 'P 1:427(426)' client sends a 426 byte request. Line 7 '. ack 427' server acknowledges. Line 8 'P 1:773(772)' server sends a 772 byte response. Line 9 '. ack 773' client acknowledges. Brackets on the left 'lines 1-2: finding the link address because the client needs the server's MAC before it can send a frame', 'lines 3-5: three-way handshake', 'lines 6-9: data'. Footer 'summary: 9 packets received by filter, 0 packets dropped by kernel'. Flag legend 'S SYN, S. SYN-ACK, . ACK, P. PSH-ACK, F. FIN-ACK, R or R. RST'. Bottom bar: 'Read the flags in order; a SYN with no reply stops the story at the first line, and the next question is who stayed silent'.",
+  "anchor": "### What tcpdump shows on the wire",
+  "alt": "A ladder between a client and a server showing the nine lines of the sample trace as ARP, a SYN, SYN-ACK, ACK handshake and a request and response with acknowledgements.",
+  "cap": "The trace reads as ARP to learn the MAC, a three-packet handshake, a 426 byte request, and a 772 byte response, ending with nine packets and no drops."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-filter-vs-display",
+  "title": "Capture filter versus display filter: two places, two jobs",
+  "spec": "A pipeline with two gates. Left 'Wire and kernel'. First gate (orange) 'capture filter, pcap-filter or BPF syntax (tcpdump, tshark -f): runs in the kernel before any stream is assembled; cheap; example host 10.0.0.5 and not port 22'. Middle 'pcap file'. Second gate 'display filter (Wireshark, tshark -Y): runs on packets already captured; richer; reads fields the analysis engine adds'. Examples under it 'tcp.port == 443 keeps every TCP packet using port 443, either direction', 'tcp.flags.syn == 1 && tcp.flags.ack == 0 keeps only the first packet of each new connection', 'tcp.analysis.retransmission', 'tcp.analysis.zero_window', 'dns.flags.rcode != 0', 'tls.handshake.type == 1 (ClientHello)', 'vxlan.vni == 10100', 'frame.time_delta > 0.2'. Example commands 'tshark -i eth0 -f \"port 443\" -a duration:30 -w /tmp/t.pcapng' versus 'tshark -r c.pcap -Y tcp.analysis.retransmission'. Bottom bar: 'Use a moderate capture filter on the wire, then ask the fine questions in the display filter'.",
+  "anchor": "## 3. tshark and Wireshark",
+  "alt": "A pipeline showing a capture filter that runs in the kernel on the wire and a display filter that runs on the saved file, with example expressions for each.",
+  "cap": "The capture filter runs in the kernel before streams exist, so fine questions about flags and retransmissions belong in the display filter."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-capture-to-event",
+  "title": "From a file of thousands of packets to one event in Wireshark",
+  "spec": "A five step flow. Step 1 'Open the file'. Step 2 'Statistics, then Conversations: which pair of hosts carried the most bytes'. Step 3 'Filter on the conversation that matters'. Step 4 'Analyze, then Expert Information: retransmissions, duplicate ACKs, zero windows, out-of-order segments, full windows and resets as coloured entries' (orange). Step 5 'Click one entry and Wireshark jumps to that packet'. Side panel 'Other tools': 'Follow TCP, UDP or TLS stream reassembles a conversation', 'Decode As maps a port to a dissector, e.g. UDP 4791 as RoCE, or a custom port as VXLAN or GENEVE', 'TCP stream graphs: time-sequence, throughput, RTT, window scaling', 'time display since the previous displayed packet reveals gaps', 'File, Export Specified Packets shares only the evidence you need'. Headless alternative 'tshark -r c.pcap -q -z io,stat,1; -z conv,tcp; -z endpoints,ip; -z expert; -qz follow,tcp,ascii,5'. TLS lab 'SSLKEYLOGFILE=/tmp/keys.log curl ... then point Edit, Preferences, Protocols, TLS, (Pre)-Master-Secret log filename at the file'. Bottom bar: 'You move from thousands of packets to one event'.",
+  "anchor": "## 3. tshark and Wireshark",
+  "alt": "Five steps from opening a capture to a single packet using Conversations and Expert Information, with Follow stream, Decode As, tshark statistics and the TLS key log option.",
+  "cap": "Conversations narrows the file to one host pair and Expert Information jumps to the retransmission or reset that matters."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-silence-or-refuse",
+  "title": "Handshake outcomes: a missing SYN-ACK, a reset, or a repeating SYN",
+  "spec": "Three ladders side by side, client left and server right. Ladder A 'Healthy': SYN with options MSS, SACK permitted, timestamps, window scale; SYN-ACK; ACK. Ladder B 'Reset': SYN then 'RST' from the server; label 'a reset means someone is refusing you; usually the port is closed'. Ladder C 'Silence' (orange): SYN, then the same SYN repeated, each a little later; label 'silence means someone is ignoring you: a drop, a block or a missing route'. Under C a branching check 'Check the server's capture next: SYN there but no SYN-ACK leaves = the server or a firewall in front of it is ignoring the port; SYN never appears on the server = the path between the two hosts is the suspect'. Extra strip 'Options: one SYN with window scale and the other without suggests a middlebox stripping options; throughput then limited to 64 KB per RTT. Fix belongs to the middlebox, not the application'. Bottom bar: 'Silence means ignored, a reset means refused'.",
+  "anchor": "**Reading TCP in Wireshark and tshark** is a skill of its own, and a few patterns cover most cases. A healthy connection opens with a three-way handshake. The SYN carries options such as MSS, SACK permitted, timestamps and window scale, the server answers with a SYN-ACK, and the client confirms with an ACK. A missing SYN-ACK points to a drop, a block or a missing route. An RST in place of the SYN-ACK usually means the port is closed. In plain words, silence means someone is ignoring you, and a reset means someone is refusing you.",
+  "alt": "Three handshake ladders: a healthy SYN, SYN-ACK, ACK, a reset from a closed port, and a repeating SYN with no reply, with the server-side check for the silent case.",
+  "cap": "A reset means the port refuses you, while a SYN with no answer means a drop, a block or a missing route, which the server's capture tells apart."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-tcp-trace-signs",
+  "title": "TCP trace signs and what each one means",
+  "spec": "A two column table 'What you see in the trace' and 'What it points to'. 'Three duplicate ACKs' to 'fast retransmit; SACK blocks show which ranges arrived'. 'Zero window' to 'the receiving application is slow to read'. 'Window full' to 'the sender is limited by the receive window'. 'Bytes in flight below cwnd' to 'the application itself is the limit'. 'Delayed ACK gap of 40 ms' to 'often the Nagle algorithm'. 'RTO gap of 200 ms or more, doubling on each retry' to 'retransmission timeout'. 'Segments larger than path MTU with DF set, then ICMP type 3 code 4' to 'path MTU problem'. 'Large packets retransmitted again and again with no ICMP reply' to 'black hole'. 'RST with a different TTL, IP ID or timing from the peer' to 'probably injected by a middlebox'. 'RST after a long idle period' to 'a NAT or load balancer timeout'. 'RST after data' to 'an application that closed with unread data'. 'Bad checksum on the sending host' (orange) to 'usually offload at work; a real fault only if the receiving side sees it too'. Worked example 'an upload that pauses at regular intervals, each near a fifth of a second: a timer, not a slow disk; name the timer'. Bottom bar: 'A gap with a regular size is almost always a timer'.",
+  "anchor": "## 4. Decoding the protocols you meet in AI infrastructure",
+  "alt": "A table pairing trace signs such as duplicate ACKs, zero window, 40 ms and 200 ms gaps, ICMP 3/4, odd reset TTLs and sender bad checksums with their likely causes.",
+  "cap": "Each pattern in a TCP trace has a named cause, from Nagle and RTO timers to MTU black holes, injected resets and NAT timeouts."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-two-side-diagnosis",
+  "title": "Two captures, one verdict: where did the packet go?",
+  "spec": "A two host diagram 'client capture' and 'server capture' with a middle 'path, firewall, NAT, load balancer'. Table of five cases. 'a: SYN at the client and at the server, no SYN-ACK': 'server firewall or a full listen queue'. 'b: SYN-ACK leaves the server but never reaches the client': 'return path, asymmetric route or NAT'. 'c: RST reaches the client with a TTL different from the server's normal packets': 'a middlebox injected it' . 'd: SYN-ACK with no wscale option': 'a middlebox stripping options; throughput limited to 64 KB per RTT'. 'e: full-size segments retransmitted repeatedly, no ICMP 3/4 replies': 'MTU black hole or a stateful device dropping the packets'. Example pairing 'the client capture shows a SYN-ACK arriving and the server capture shows the same SYN-ACK leaving with the same sequence numbers: the packet is gone between the two hosts, not inside the server; check route and NAT next' (orange). Clock note 'if the two captures disagree on order, check clocks first, then match by sequence number or IP ID, not by time; PTP with hardware timestamps is precise, NTP is good to about a millisecond; merge with mergecap -a'. Bottom bar: 'Any difference between what left A and what arrived at B points to the device between them'.",
+  "anchor": "## 7. A capture-driven troubleshooting workflow",
+  "alt": "Client and server captures compared across five cases, such as no SYN-ACK, a lost SYN-ACK, a reset with a different TTL, a missing wscale and repeated full-size retransmissions, each with its cause.",
+  "cap": "Comparing what left one host with what arrived at the other points to the device between them, matched by sequence number rather than clock time."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-pattern-guesses",
+  "title": "Symptom to first guess, and the second source that confirms it",
+  "spec": "A three column table 'Pattern in the capture', 'First guess', 'Confirm with'. Rows from the chapter. 'SYN at the server, no SYN-ACK back' / 'server firewall or a full listen queue' / 'firewall counters, nstat ListenOverflows, solisten'. 'SYN-ACK at the server but not at the client' / 'return path, asymmetric route or NAT' / 'conntrack, route check'. 'Data with repeated retransmissions and no ICMP' / 'MTU black hole or a stateful device that drops' / 'path MTU, firewall counters'. 'Duplicate ACKs and SACK' / 'loss on the path' / 'ss -ti, tcpretrans'. 'RST from a different TTL' / 'a middlebox' / 'compare TTL against normal peer packets'. 'Long idle then reset' / 'a timeout' / 'conntrack and NAT timers'. 'Gaps of exactly 200 ms or 1 s' / 'RTO or delayed ACK' / 'tcpstates, ss -ti'. 'DNS answers after 5 s' / 'resolver timeout' / 'repeat the query'. 'ClientHello then nothing' / 'TLS interception or an MTU problem; post-quantum key shares make ClientHellos large' / 'check path MTU'. 'Pause frames at multi-kHz rates on one priority' / 'a PFC storm' / 'switch counters per priority'. 'ECN-marked packets arrive but no CNP comes back' / 'NIC DCQCN probably misconfigured' / 'NIC settings'. Bottom bar: 'A guess that a second source agrees with is a conclusion; one nothing else supports is only a hypothesis'. Highlight the last bar in orange.",
+  "anchor": "## 7. A capture-driven troubleshooting workflow",
+  "alt": "A table of capture patterns such as a SYN with no SYN-ACK, repeated retransmissions without ICMP, 200 ms gaps and PFC storms, with the likely cause and a second source to confirm it.",
+  "cap": "Treat each pattern as a first guess and confirm it with counters, conntrack or BPF tools before changing any setting."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-pod-capture-steps",
+  "title": "Capturing in and around a pod: three taps in order",
+  "spec": "A path drawing for one pod on a node: 'pod eth0' to 'host-side veth' to 'CNI bridge' to 'tunnel device after decapsulation' to 'uplink (outer encapsulated packet)'. Numbered capture points. 'Tap 1 inside the pod namespace: find the PID with the runtime inspect command, then sudo nsenter -t <pid> -n tcpdump -ni eth0 -w /tmp/pod.pcap'. 'Tap 2 host-side veth, found with ip -o link | grep veth, or the CNI bridge' . 'Tap 3 for overlays: the tunnel device for the inner packet after decapsulation, and the uplink for the outer, encapsulated packet'. Reading line 'a packet missing between tap 1 and tap 2 tells you where to look next'. Alternatives box 'kubectl debug node/<node> -it --image=nicolaka/netshoot gives the host namespaces', 'kubectl debug -it <pod> --image=nicolaka/netshoot --target=<container> gives an ephemeral container sharing the pod's network namespace; needs permissions and NET_RAW and NET_ADMIN capabilities', 'kubectl sniff (ksniff) streams a pod capture into Wireshark', 'docker run --network container:NAME nicolaka/netshoot tcpdump'. Orange note 'RoCE traffic in a GPU pod never enters the kernel stack: capture at the NIC with ibdump or tcpdump -i mlx5_0, or at the switch; when diagnosing the NIC of a host, capture on a different host or at the switch'. Bottom bar: 'Two files together show whether a packet left the pod and whether it reached the node'.",
+  "anchor": "## 5. Capturing at scale and in awkward places",
+  "alt": "A pod path from eth0 through the host veth and bridge to the tunnel device and uplink, with three capture points and the kubectl debug alternatives.",
+  "cap": "Capture inside the pod with nsenter, on the host veth, and at the tunnel and uplink, and compare the files to find where a packet vanished."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-mirror-options",
+  "title": "Ways to get a copy of the wire: SPAN, RSPAN, ERSPAN, sFlow, TAP and tc mirror",
+  "spec": "A table of options with one row each. 'SPAN: mirrors locally on the switch'. 'RSPAN: carries the mirror over a VLAN'. 'ERSPAN: wraps the mirror in GRE and sends it to a remote IP'. 'sFlow and IPFIX: sample the traffic'. 'TAP: optical splitter, lossless and passive' (orange). 'Linux tc mirror: tc qdisc add dev eth0 ingress; tc filter add dev eth0 parent ffff: protocol all matchall action mirred egress mirror dev dummy0, then capture on dummy0 or send the copy elsewhere'. Cautions column 'Mirror ports can drop packets when oversubscribed', 'mirrored frames may have VLAN tags stripped or added', 'mirror both directions'. Lower strip 'Trigger ring for an intermittent fault: tcpdump -C 10 -W 5 plus a script or inotify that kills tcpdump when an alert fires; stop on the event so the packets from before the fault stay on disk'. Privacy strip 'captures can hold credentials, tokens, personal data and model prompts; capture only on systems you are authorised to monitor; prefer header-only captures; scrub with tcprewrite, editcap and Wireshark masks; never post a raw capture publicly'. Bottom bar: 'Climb only as far as the question requires'.",
+  "anchor": "## 5. Capturing at scale and in awkward places",
+  "alt": "A table of SPAN, RSPAN, ERSPAN, sFlow, a TAP and a tc mirror with their trade-offs, a trigger ring buffer and privacy rules for captures.",
+  "cap": "Switch mirrors may drop under load and alter VLAN tags, a TAP is lossless, and a trigger ring buffer keeps the packets from before a fault."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-bpf-mechanism",
+  "title": "How a BPF tracing tool runs: compile, verify, attach, count, read",
+  "spec": "A five step flow. Step 1 'The tool compiles a small program and hands it to the kernel'. Step 2 'The verifier reads each instruction and rejects anything that could crash the kernel or loop without end' (orange). Step 3 'The program attaches to a probe such as the entry point of a function'. Step 4 'The event fires, the program runs, updates a counter in a map, and returns'. Step 5 'The tool reads the map every second and prints it'. Probe types panel: 'kprobes and kretprobes: kernel function enter and return', 'uprobes and uretprobes: user-space functions', 'tracepoints: stable kernel events such as tcp:tcp_retransmit_skb, sock:inet_sock_set_state, skb:kfree_skb, net:net_dev_xmit', 'USDT: static probes inside runtimes', 'perf events and timers'. Map panel 'counts, histograms and stacks aggregated inside the kernel so the tool never receives each individual event; overhead stays low'. Caution strip 'kprobe names and arguments change between kernel versions, so prefer tracepoints; avoid printing each event; needs root or CAP_BPF and CAP_PERFMON; CONFIG_DEBUG_INFO_BTF for CO-RE; libbpf-tools need no compiler on the target'. Bottom bar: 'A capture is the view from the cable, BPF tracing is the view from inside the machine'.",
+  "anchor": "## 6. BPF-based tracing for networking (BCC and bpftrace)",
+  "alt": "Five steps of a BPF tool: compile, verifier check, attach to a probe, update a kernel map when the event fires, and read the map, with probe types and cautions.",
+  "cap": "The verifier checks the program before it attaches, and counting happens in a kernel map, so the tool does not receive each event."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-bpftrace-anatomy",
+  "title": "Anatomy of a bpftrace one-liner",
+  "spec": "The command shown large: 'sudo bpftrace -e \"tracepoint:tcp:tcp_retransmit_skb { @[ntop(args->daddr)] = count(); }\"'. Pieces boxed. 'tracepoint:tcp:tcp_retransmit_skb: the event, the moment the kernel resends a segment'. '{ ... }: the action block'. '@[...]: a map keyed by'. 'ntop(args->daddr): the destination address converted to readable text'. '= count(): add one each time the event fires'. 'On stop, the map shows which destinations suffered the most retransmits' (orange). Below, the general form 'probe /filter/ { action }' with the parts: 'probe says what to watch', 'optional filter in slashes narrows it', 'action uses pid, tid, comm, nsecs, arg0..argN, retval, args->field', 'maps hold count(), sum(), avg(), min(), max(), hist(), lhist(), stats()', 'helpers printf, ntop(), ksym(), usym(), kstack, ustack', 'BEGIN, END and interval probes for setup, teardown and periodic output'. Three more examples 'kprobe:tcp_sendmsg { @send_bytes[comm] = hist(arg2); } is the send size distribution', 'kretprobe:tcp_recvmsg /retval > 0/ { @recv[comm] = sum(retval); } is bytes received per process', 'uprobe:/usr/lib/x86_64-linux-gnu/libssl.so.3:SSL_write { @[comm] = count(); } is TLS writes per process'. Bottom bar: 'You can read the whole thing in one breath'.",
+  "anchor": "### BCC and bpftrace",
+  "alt": "A bpftrace one-liner for retransmits per destination split into the tracepoint, action block, map key, ntop and count, with the general probe filter action form and three more examples.",
+  "cap": "A bpftrace program is a probe, an optional filter and an action that fills a map, such as counting retransmits per destination address."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-lab-ladder",
+  "title": "The twelve lab steps, from a healthy trace to the faults",
+  "spec": "A staircase of twelve steps in three groups. Group 'Read a healthy trace' (steps 1-2): '1 Handshake and teardown: curl to local nginx, label SYN, SYN-ACK, ACK, FIN, export with tshark -z follow', '2 Filters: five capture filters for SYN only, RST, a port range, DSCP EF and VLAN, verified with tcpdump -d and hit counts, then the same logic as display filters'. Group 'Inject a fault and compare' (steps 3-7) in orange: '3 Retransmissions and loss: tc qdisc add dev veth1 root netem loss 2%, compare with 0% loss', '4 MTU black hole: smaller MTU on a router namespace, drop ICMP type 3 code 4, then fix with MSS clamping', '5 Zero window: a server that sleeps before it reads', '6 TLS: SSLKEYLOGFILE=/tmp/keys.log curl https://localhost, read SNI and ALPN', '7 Offload artefacts: TSO and checksum offload on then off'. Group 'Wider tools' (steps 8-12): '8 Overlay: VXLAN link as in chapter 2.17, Decode As', '9 Ring buffer and trigger: tcpdump -C 10 -W 5 plus a stop script', '10 BPF tools: tcplife, tcpconnect, tcpretrans, tcpdrop, three bpftrace one-liners', '11 Container capture: nsenter, then docker run --network container:NAME nicolaka/netshoot tcpdump', '12 Clean up and delete captures, key log and ring-buffer directory'. Pre-step 'python3 code/part02/packet_capture_bpf_lab.py checks the byte-offset filters, the 8.13 Mpps rate at 100 Gb/s, ring storage with -s 96, and the two-endpoint comparison'. Bottom bar: 'The healthy trace from step 1 is the reference that makes the faulty traces stand out'.",
+  "anchor": "## 8. Hands-on lab: capture, read, and decode",
+  "alt": "The twelve lab steps grouped into reading a healthy trace, injecting faults such as loss, MTU black hole, zero window and offloads, and wider tools, after a Python offset check.",
+  "cap": "Start with a healthy handshake as the reference, then inject loss, an MTU black hole and a zero window, and finish by deleting the captures."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p3-0226-ssh-loop",
+  "title": "The SSH feedback loop in a live capture",
+  "spec": "A loop diagram. Boxes in a circle 'tcpdump runs live over an SSH session', 'it prints a line for each packet', 'the printed lines travel over the SSH connection', 'each SSH packet is captured and printed again' back to the start. Centre in orange 'the capture is useless and the session slows down; nothing is broken on the node'. Right panel 'Break the loop': 'not port 22 (essential when capturing over SSH)', 'write to a file with -w instead of printing live', 'turn name resolution off with -n or -nn', 'truncate with -s 96'. Second panel 'Other common mistakes': 'heavy bpftrace probes such as per-packet printf can hurt a busy production host', 'outbound bad checksums and giant frames are usually offload effects', 'out of order in a multi-queue capture describes the capture, not the network', 'capturing one side leaves the other side a guess', 'unsynchronised clocks cannot be compared reliably', 'kernel captures miss RDMA traffic', 'never decrypt TLS in production or share a raw capture with secrets'. Bottom bar: 'Exclude your own management session before you start'.",
+  "anchor": "## 9. Common mistakes",
+  "alt": "A loop where a live tcpdump over SSH captures and prints its own SSH packets, with the filter and file fixes and a list of other capture mistakes.",
+  "cap": "Printing a live capture over SSH captures the SSH packets that carry the output, so exclude port 22 and write to a file."
+ }
+]

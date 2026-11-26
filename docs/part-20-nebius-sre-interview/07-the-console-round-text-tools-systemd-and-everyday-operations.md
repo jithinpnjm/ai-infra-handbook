@@ -30,13 +30,9 @@ A log is open in front of you and the clock is running. The temptation is to wri
 
 Start with the look. `head -3` shows you the first lines, so you learn the format before you trust it, and `wc -l` tells you how much data you are dealing with. Next comes the narrow step. Keep only the lines that matter, using `grep` or an `awk` condition. Then extract, which means reducing each line to the one field you need. The last move is rank. Sort, count the equal lines, then use `sort -rn` on the counts and cut to the top few.
 
-```mermaid
-flowchart LR
-  L["Look: head, wc -l"] --> N["Narrow: grep or awk test"]
-  N --> E["Extract one field"]
-  E --> R["Rank: sort | uniq -c | sort -rn"]
-  R --> C["Cross-check with a second method"]
-```
+![Build every pipeline in four moves](./img/m20-07-1.svg)
+
+*Figure 20.7.1. Build every pipeline in four moves, as a diagram.*
 
 The fifth box in the diagram, the cross-check, is the step most candidates skip. Count the same thing a second way, for example with an `awk` array, and compare the two results. If the numbers differ, one of the pipelines is wrong. You found that out yourself, before the interviewer did, and that is exactly the habit they want to see. **Never report a number you have produced only one way.**
 
@@ -45,6 +41,10 @@ A cross-check does not have to be fancy. If your first pipeline used `sort` and 
 Decide: before you type the first pipe, say which field you need and how many lines you expect. Saying the expectation out loud gives you something to check the output against. If the top count comes back far larger than you guessed, stop and look again before you go on.
 
 ### 2. The traps inside field splitting
+
+![Without a sort, uniq counts the same address in several separate runs, and sorting first gives one correct count per address.](./img/x07-uniq-needs-sort.svg)
+
+*Figure 20.7.2. uniq only collapses neighbouring equal lines, so the input has to be sorted before uniq -c gives a true count.*
 
 Picture a colleague who gets a different count from you on the same log, and both of you are sure of your own number. Usually one of you split the fields wrong. Most wrong answers come from three mistakes. The first is counting fields from the left when the line has a variable number of words. In an access log the user-agent contains spaces, so the last field is the only stable one when you count from the right. That is why the request time is read with `$NF`.
 
@@ -64,6 +64,10 @@ The solutions below end with `awk 'NR<=5'` instead of `head -5` for this reason.
 Decide: use `$NF` when the tail is stable, a regular expression when the middle moves, and `sort | uniq -c` only as a pair. Each rule answers a different shape of line. Say which shape you are looking at before you choose the tool.
 
 ### 3. The Mac is not the interview box
+
+![A table of commands that behave differently on macOS and on Ubuntu with GNU tools, such as date, stat, xargs, sed and the default awk.](./img/p2-2007-mac-vs-gnu.svg)
+
+*Figure 20.7.3. Commands that behave differently on a Mac and on Ubuntu with GNU tools, so a one-liner that works on a laptop can fail on the interview box.*
 
 Your laptop runs BSD tools, and the interview shell is almost certainly GNU Linux. That gap is a real trap. Suppose you wrote a helpful one-liner on your Mac, and it worked, and then the same line failed on a server. Everything in this chapter ran twice for that reason. The first run was on macOS with `awk version 20200816`, `bash 3.2.57` and `openrsync`. The second was in a throwaway Ubuntu 24.04 container, image `ubuntu:24.04` (Ubuntu 24.04.5 LTS), kernel `6.18.37-0-virt` on aarch64, with GNU bash 5.2.21, GNU awk 5.2.1, GNU sed 4.9, GNU grep 3.11, GNU tar 1.35, GNU findutils 4.9.0, GNU coreutils sort 9.4, rsync 3.2.7, curl 8.5.0 and jq 1.7.
 
@@ -90,6 +94,10 @@ Decide: write pipelines with only POSIX features, and say out loud when you use 
 
 ### 4. Percentiles by hand
 
+![Nearest-rank percentiles on sorted request times: p50, p95 and p99 are read from fixed ranks, and the mean sits in the bulk.](./img/x07-percentile-rank.svg)
+
+*Figure 20.7.4. A nearest-rank percentile reads one sorted position, so it shows the slow tail that a mean would hide.*
+
 Your team lead asks for the typical request time at the gateway, and you have a file and a few minutes. The easy answer is the average, and the average is the trap. Systems Performance, chapter 2, names latency as an average or a percentile, and an average hides the worst users. In the fixture the mean request time is 1.606 seconds, which looks fine, while the 99th percentile is 29.176 seconds. The 504 timeouts at around 30 seconds live in the tail, and only a percentile shows them.
 
 The nearest-rank method is easy to do by hand, in a shell or on paper. Sort the values from smallest to largest, then count how many there are, which is N. For percentile p, take the value at position ceil(p/100 × N). In words, multiply p by N, divide by 100, and round up. That rounded-up number is the position you want. With 3181 lines, p95 sits at position 3023.
@@ -105,6 +113,14 @@ Picture a small list of response times sorted from fastest to slowest. Most valu
 Decide: when asked for p99, ask which window and which requests to include, then state the method you used. A p99 over the last five minutes and a p99 over the whole day answer different questions, so the window is part of the answer.
 
 ### 5. Reading journald and systemd units
+
+![A restart loop in which a service fails and is restarted every 100 milliseconds until the start limit marks the unit failed.](./img/p2-2007-restart-loop.svg)
+
+*Figure 20.7.5. A restart loop that crosses the start limit marks the unit as failed, so read the exit status and counter before changing the restart policy.*
+
+![A strict Requires dependency stops the dependent unit when its dependency fails, while a Wants dependency leaves the dependent unit running.](./img/x07-requires-wants-failure.svg)
+
+*Figure 20.7.6. Requires makes a dependent unit stop when its dependency fails, while Wants only asks for activation and leaves the failure where it started.*
 
 A service keeps dying, and the on-call engineer says "check the logs" before you have finished reading the page. On a systemd machine the first stop is the journal, not a plain text file in the log folder. How Linux Works, chapter 7, explains the flags you need, and the table below lists the ones you will use most.
 
@@ -145,6 +161,10 @@ Decide: in a restart loop, read the exit status line first, then the restart cou
 
 ### 6. Processes, signals, zombies and PID 1
 
+![Two containers compared: one with sleep as PID 1 that takes the full four-second grace period to stop, and one started with an init process that stops in 0.1 seconds.](./img/p2-2007-pid1-init.svg)
+
+*Figure 20.7.7. A container whose PID 1 has no signal handler takes the whole grace period to stop, while a container started with an init process stops at once.*
+
 A pod will not die, a process shows as `<defunct>`, and a deploy hangs for exactly 30 seconds. All three are signal stories. How Linux Works, chapter 2, says the default signal of `kill pid` is TERM, that most processes get a chance to clean up through a handler, and that a process may ignore it. `kill -STOP` freezes a process and `kill -CONT` resumes it. Run `kill -l` for the number-to-name map.
 
 SIGKILL is different. The process cannot catch or ignore it, so the kernel ends the process without asking it anything. The shell reports a death by signal as 128 plus the signal number. The demo script gives the same exit codes on the Mac and on Linux.
@@ -160,14 +180,9 @@ So 143 means the process died of TERM with no handler, and 137 means it was kill
 
 Production Kubernetes, chapter 14, gives the Kubernetes version of the same story. After the optional pre-stop hook, the kubelet sends SIGTERM and starts a termination period of 30 seconds by default. If the process is still running when the period ends, the kubelet sends SIGKILL. The book recommends that every workload handle SIGTERM. systemd works the same way. The systemd.service page says that if the process does not stop within `TimeoutStopSec=`, it is forcibly terminated by SIGKILL.
 
-```mermaid
-flowchart LR
-  S["Stop requested"] --> T["SIGTERM"]
-  T --> H{"Exits in time?"}
-  H -->|"yes"| X["Exit 0 or 143"]
-  H -->|"no: grace period over"| K["SIGKILL"]
-  K --> Y["Exit 137"]
-```
+![Processes, signals, zombies and PID 1](./img/m20-07-2.svg)
+
+*Figure 20.7.8. Processes, signals, zombies and PID 1, as a diagram.*
 
 A zombie is a finished process whose parent has not yet collected its exit status. Think of it as a note left on a desk that nobody has picked up. It uses no CPU and almost no memory, but it still holds a slot in the process table. You cannot kill a zombie, because it is already dead. You fix the parent, which must call wait, or you stop the parent so that PID 1 adopts and reaps the children. The demo script makes one on purpose. On the Mac the command name of a zombie shows as `<defunct>`. On Linux `ps -o comm` keeps the program name, and the state letter is the clue:
 
@@ -188,6 +203,14 @@ Decide: for a stuck process, send TERM and wait, then KILL, and say what you los
 The order matters for a practical reason. TERM gives the process a chance to close files, flush buffers and remove temporary state. KILL does none of that, so any data the process was holding in memory is lost. Waiting for the grace period first is the cheap way to avoid losing that data.
 
 ### 7. cron and logrotate gotchas
+
+![An unescaped percent sign in a crontab line becomes a newline, so the command is cut at the first percent sign and the redirect is lost, while the escaped version writes the date.](./img/p3-2007-cron-percent.svg)
+
+*Figure 20.7.9. In a crontab an unescaped percent sign becomes a newline and the rest goes to standard input, so write it as backslash percent.*
+
+![Log rotation renames the file, so a service that never reopens its log keeps writing to the renamed file while the new file stays empty.](./img/x07-logrotate-old-handle.svg)
+
+*Figure 20.7.10. A service that keeps its open handle after rotation writes into the renamed file, so the new log stops growing.*
 
 A nightly backup silently produces nothing, or a log file keeps growing after rotation. Both are classics, and both come from a small detail in the scheduler or the rotation tool. The crontab(5) man page says a percent sign in the command, unless escaped with a backslash, becomes a newline, and all data after the first one is sent to the command as standard input. So `date +%Y%m%d` inside a crontab line is cut in two. Task 11 below finds these lines. A test with real cron in the Ubuntu container shows the effect. Two lines ran every minute: `date +%Y%m%d > /tmp/cr1` and the same with `\%` escapes writing to `/tmp/cr2`. The file `cr2` held `20261109`. The file `cr1` was never created, because cron cut the command at the first percent sign and the redirect was on the far side of the cut.
 
@@ -225,6 +248,10 @@ The commands `id`, `findmnt`, `lsblk` and `mount` work in the container, but a c
 Decide: parse by delimiter and field number from a trusted file layout, never by guessing columns of human-formatted output. Human-formatted output changes width with the data, and a column that lined up yesterday can drift today.
 
 ### 9. tar, rsync, curl and jq one-liners
+
+![The same request for a missing page exits zero without the fail flag and exits twenty-two with it, which changes whether a script stops.](./img/p2-2007-curl-exit.svg)
+
+*Figure 20.7.11. A missing page returns exit code 0 from curl by default and exit code 22 with the fail flag, so only the second stops a script.*
 
 Picture a backup job that must copy a directory to a second host, and a colleague who asks you to check the result. Four tools turn up in every console round: `tar`, `rsync`, `curl` and `jq`. The demo script `c07_transfer_demo.sh` ran on the Mac with `openrsync` and `curl 8.9.1`, and on Ubuntu with rsync 3.2.7 and curl 8.5.0. The output was identical. On a bare Ubuntu image the script fails with `rsync: command not found` until the package is installed, which is itself a lesson about minimal hosts.
 
@@ -294,6 +321,10 @@ The interviewer asks for a short script that rotates and copies a directory, and
 Twelve tasks follow. Treat each as a timed drill with a budget of about four minutes, and stop when the time is up even if the answer is not perfect. Every fixture is **synthetic**. The generator `code/part20/c07_make_fixtures.py` writes them from a fixed seed, uses only documentation IP ranges, and the files are in `code/part20/c07_fixtures/`. Task 9 uses a generated file tree because file times cannot be stored in git. Every solution ran on the Mac with BSD tools and again on Ubuntu 24.04 with GNU awk 5.2.1 and with mawk 1.3.4. The output shown is real and was identical on all three. The test file `code/part20/test_c07_solutions.py` computes each expected answer in plain Python and compares.
 
 ### Task 1. Top five clients (fixture `access.log`)
+
+![A five-stage pipeline of awk, sort, uniq -c, awk and sort that turns access log lines into counted client addresses, with the top client 203.0.113.77 at 362 requests.](./img/p3-2007-pipeline-stages.svg)
+
+*Figure 20.7.12. Each stage does one job, and sort must come before uniq -c because uniq only merges neighbouring lines.*
 
 Your team wants the five client addresses that sent the most requests in this log. Task: list the five client addresses with the most requests.
 
@@ -477,6 +508,10 @@ Why it works: systemd logs "Scheduled restart job, restart counter is at N" at e
 
 ### Task 7. Zombies and their parents (fixture `ps.txt`)
 
+![Zombie children of one parent process, which must be fixed or stopped because a zombie cannot be killed.](./img/x07-zombie-parent-tree.svg)
+
+*Figure 20.7.13. Zombies are finished children that the parent has not collected, so the fix is in the parent and not in the zombie.*
+
 The process table is full of defunct entries, and you need to know whose children they are. Task: list zombie processes grouped by parent.
 
 Before typing, decide what marks a zombie in the process table. The state column is the honest answer, and a name that happens to start with Z is not evidence of anything.
@@ -533,6 +568,10 @@ Output:
 Why it works: the mount point is rebuilt from the sixth field on, so the space in `/mnt/model cache` survives, and `+0` turns `98%` into a number. Note that `/data` at 84 percent is just below the line. Common wrong approach: `sort -k1` on the capacity text. It printed `95% /mnt/model`, cut at the space, and let the overlay row through as a second `98%` line.
 
 ### Task 9. Old big logs with spaces in the name (generated tree)
+
+![find piped to xargs splits old requests.log and core dump.log at the spaces, while find print0 with xargs -0 keeps each name whole and uses ref.stamp as a fixed reference.](./img/p3-2007-xargs-nul.svg)
+
+*Figure 20.7.14. Pass names through find -print0 and xargs -0, and compare against ref.stamp instead of the clock.*
 
 A cleanup job needs the old, large log files in a directory tree, and the file names include spaces. Task: under a directory, list `.log` files over 100 KiB that are not newer than `ref.stamp`, safe for spaces.
 

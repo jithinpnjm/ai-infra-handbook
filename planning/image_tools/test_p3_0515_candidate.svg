@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Isolated or not: how policies add up for one pod</title>
+  <desc>Visual infographic explaining pod network policy isolation states, additive union of guest lists, and Kubernetes NetworkPolicy syntax rules.</desc>
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Isolated or not: how policies add up for one pod</text>
+  <!-- ==================== COLUMN 1: STATE A ==================== -->
+  <g id="panel-state-a">
+    <rect x="40" y="95" width="480" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(252, 115)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="44" height="44" rx="8" />
+      <line x1="28" y1="6" x2="28" y2="50" stroke-dasharray="4 4" />
+      <path d="M 12 18 L 22 28 L 12 38" />
+      <path d="M 36 18 L 44 28 L 36 38" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+    <rect x="65" y="195" width="430" height="395" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="280" y="310" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="280" dy="0">no policy selects the</tspan>
+      <tspan x="280" dy="44">pod for a direction:</tspan>
+      <tspan x="280" dy="44">non-isolated,</tspan>
+      <tspan x="280" dy="44">all traffic in that</tspan>
+      <tspan x="280" dy="44">direction allowed</tspan>
+    </text>
+  </g>
+  <!-- ==================== COLUMN 2: STATE B ==================== -->
+  <g id="panel-state-b">
+    <rect x="560" y="95" width="480" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(772, 115)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="44" height="44" rx="8" />
+      <path d="M 28 14 L 40 20 V 30 C 40 38 28 44 28 44 C 28 44 16 38 16 30 V 20 Z" />
+      <circle cx="28" cy="27" r="3" fill="#207448" />
+    </g>
+    <rect x="585" y="195" width="430" height="395" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="295" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">at least one policy</tspan>
+      <tspan x="800" dy="40">selects it and lists that</tspan>
+      <tspan x="800" dy="40">direction in policyTypes:</tspan>
+      <tspan x="800" dy="40">isolated, only traffic</tspan>
+      <tspan x="800" dy="40">allowed by the union of</tspan>
+      <tspan x="800" dy="40">all matching rules gets in</tspan>
+    </text>
+  </g>
+  <!-- ==================== COLUMN 3: GUEST LISTS & RESULT ==================== -->
+  <g id="panel-guest-lists">
+    <rect x="1080" y="95" width="480" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1292, 115)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="42" rx="6" />
+      <path d="M 20 10 V 6 C 20 4, 36 4, 36 6 V 10" />
+      <line x1="16" y1="22" x2="24" y2="22" />
+      <line x1="28" y1="22" x2="40" y2="22" />
+      <line x1="16" y1="32" x2="24" y2="32" />
+      <line x1="28" y1="32" x2="40" y2="32" />
+      <line x1="16" y1="42" x2="24" y2="42" />
+      <line x1="28" y1="42" x2="40" y2="42" />
+    </g>
+    <rect x="1105" y="185" width="430" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1320" y="228" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Policy 1 names gateway</text>
+    <rect x="1105" y="268" width="430" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1320" y="306" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1320" dy="0">Policy 2 names</tspan>
+      <tspan x="1320" dy="36">the monitoring pod</tspan>
+    </text>
+    <rect x="1105" y="375" width="430" height="215" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    <text x="1320" y="415" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1320" dy="0">anyone on at least one</tspan>
+      <tspan x="1320" dy="33">list is admitted; nothing</tspan>
+      <tspan x="1320" dy="33">on a list ever removes</tspan>
+      <tspan x="1320" dy="33">a name from another list;</tspan>
+      <tspan x="1320" dy="33">no deny rules and</tspan>
+      <tspan x="1320" dy="33">no ordering</tspan>
+    </text>
+  </g>
+  <!-- ==================== SYNTAX STRIP ==================== -->
+  <g id="syntax-strip">
+    <rect x="40" y="640" width="1520" height="470" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g id="syntax-card-1">
+      <rect x="65" y="665" width="460" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="295" y="750" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="295" dy="0">ingress: [] or no rules</tspan>
+        <tspan x="295" dy="38">with policyTypes [Ingress]</tspan>
+        <tspan x="295" dy="38">denies all ingress</tspan>
+      </text>
+    </g>
+    <g id="syntax-card-2">
+      <rect x="570" y="665" width="460" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="800" y="780" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">ingress: [{}] allows all</text>
+    </g>
+    <g id="syntax-card-3">
+      <rect x="1075" y="665" width="460" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="1305" y="760" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="1305" dy="0">omitted ports</tspan>
+        <tspan x="1305" dy="40">means any port</tspan>
+      </text>
+    </g>
+    <g id="syntax-card-4">
+      <rect x="65" y="890" width="460" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="295" y="930" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="295" dy="0">policyTypes defaults to</tspan>
+        <tspan x="295" dy="32">Ingress always and to</tspan>
+        <tspan x="295" dy="32">Egress only when the</tspan>
+        <tspan x="295" dy="32">policy has egress rules,</tspan>
+        <tspan x="295" dy="32">so set it explicitly</tspan>
+      </text>
+    </g>
+    <g id="syntax-card-5">
+      <rect x="570" y="890" width="460" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="800" y="970" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="800" dy="0">stateful: reply traffic</tspan>
+        <tspan x="800" dy="36">of an allowed connection</tspan>
+        <tspan x="800" dy="36">passes via conntrack</tspan>
+      </text>
+    </g>
+    <g id="syntax-card-6">
+      <rect x="1075" y="890" width="460" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <text x="1305" y="950" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1305" dy="0">a CNI without policy</tspan>
+        <tspan x="1305" dy="36">support (plain Flannel)</tspan>
+        <tspan x="1305" dy="36">accepts the object and</tspan>
+        <tspan x="1305" dy="36">silently ignores it</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

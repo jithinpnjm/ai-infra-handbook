@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Choosing a capture point: the closest point that sees what you need</title>
+  <desc>A decision tree mapping diagnostic questions to the closest capture point, covering server and client interfaces, container namespaces, physical wire mirrors, DPUs, and kernel drop tracepoints.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Choosing a capture point: the closest point that sees what you need</text>
+
+  <!-- Question at top -->
+  <rect x="380" y="86" width="840" height="62" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(406, 95)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="18" />
+    <path d="M 16 16 C 16 11, 28 11, 28 17 C 28 22, 22 22, 22 27" />
+    <circle cx="22" cy="33" r="1.5" fill="#207448" />
+  </g>
+  <text x="470" y="128" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Which packets must you see?</text>
+
+  <!-- ==================== ROW 1 (Leaf 1) ==================== -->
+  <!-- Left Box 1 -->
+  <rect x="40" y="176" width="640" height="94" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(60, 201)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="36" height="12" rx="2" />
+    <rect x="4" y="24" width="36" height="12" rx="2" />
+    <circle cx="12" cy="12" r="1.5" fill="#207448" />
+    <circle cx="12" cy="30" r="1.5" fill="#207448" />
+    <line x1="28" y1="12" x2="34" y2="12" />
+    <line x1="28" y1="30" x2="34" y2="30" />
+  </g>
+  <text x="120" y="217" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="120" dy="0">Did the server receive </tspan>
+    <tspan x="120" dy="34">the request?</tspan>
+  </text>
+
+  <!-- Arrow 1 -->
+  <line x1="680" y1="223" x2="730" y2="223" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Right Box 1 -->
+  <rect x="730" y="176" width="830" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(752, 201)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="36" height="28" rx="4" />
+    <line x1="12" y1="36" x2="12" y2="42" />
+    <line x1="22" y1="36" x2="22" y2="42" />
+    <line x1="32" y1="36" x2="32" y2="42" />
+    <circle cx="22" cy="22" r="5" />
+  </g>
+  <text x="814" y="233" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">capture on the server interface</text>
+
+  <!-- ==================== ROW 2 (Leaf 2) ==================== -->
+  <!-- Left Box 2 -->
+  <rect x="40" y="294" width="640" height="94" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(60, 319)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="32" height="22" rx="2" />
+    <line x1="2" y1="36" x2="42" y2="36" />
+    <line x1="18" y1="18" x2="26" y2="18" />
+  </g>
+  <text x="120" y="335" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="120" dy="0">Did the request leave the </tspan>
+    <tspan x="120" dy="34">client at all?</tspan>
+  </text>
+
+  <!-- Arrow 2 -->
+  <line x1="680" y1="341" x2="730" y2="341" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Right Box 2 -->
+  <rect x="730" y="294" width="830" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(752, 319)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="36" height="24" rx="4" />
+    <polyline points="14,22 22,30 32,16" />
+  </g>
+  <text x="814" y="335" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="814" dy="0">capture on the client interface; </tspan>
+    <tspan x="814" dy="32">the offload caveat still applies</tspan>
+  </text>
+
+  <!-- ==================== ROW 3 (Leaf 3) ==================== -->
+  <!-- Left Box 3 -->
+  <rect x="40" y="412" width="640" height="94" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(60, 437)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="32" height="32" rx="4" />
+    <circle cx="22" cy="22" r="6" />
+    <line x1="22" y1="6" x2="22" y2="12" />
+    <line x1="22" y1="32" x2="22" y2="38" />
+    <line x1="6" y1="22" x2="12" y2="22" />
+    <line x1="32" y1="22" x2="38" y2="22" />
+  </g>
+  <text x="120" y="469" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Traffic inside a pod</text>
+
+  <!-- Arrow 3 -->
+  <line x1="680" y1="459" x2="730" y2="459" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Right Box 3 -->
+  <rect x="730" y="412" width="830" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(752, 437)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="36" height="28" rx="4" />
+    <polyline points="12,18 18,22 12,26" />
+    <line x1="22" y1="26" x2="30" y2="26" />
+  </g>
+  <text x="814" y="469" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">nsenter -t PID -n tcpdump</text>
+
+  <!-- ==================== ROW 4 (Leaf 4) ==================== -->
+  <!-- Left Box 4 -->
+  <rect x="40" y="530" width="640" height="94" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(60, 555)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="16" height="24" rx="2" />
+    <rect x="24" y="10" width="16" height="24" rx="2" />
+    <line x1="16" y1="22" x2="28" y2="22" stroke-dasharray="2,2" />
+  </g>
+  <text x="120" y="571" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="120" dy="0">Traffic crossing between </tspan>
+    <tspan x="120" dy="34">namespaces</tspan>
+  </text>
+
+  <!-- Arrow 4 -->
+  <line x1="680" y1="577" x2="730" y2="577" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Right Box 4 -->
+  <rect x="730" y="530" width="830" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(752, 555)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="10" cy="22" r="6" />
+    <circle cx="34" cy="22" r="6" />
+    <line x1="16" y1="22" x2="28" y2="22" />
+  </g>
+  <text x="814" y="571" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="814" dy="0">bridge or veth host-side; </tspan>
+    <tspan x="814" dy="32">compare both ends of a veth</tspan>
+  </text>
+
+  <!-- ==================== ROW 5 (Leaf 5 - ORANGE) ==================== -->
+  <!-- Left Box 5 -->
+  <rect x="40" y="648" width="640" height="94" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(60, 673)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 36 C 14 36, 14 10, 24 10 C 34 10, 34 36, 42 36" />
+    <circle cx="6" cy="36" r="3" fill="#db8129" />
+    <circle cx="42" cy="36" r="3" fill="#db8129" />
+  </g>
+  <text x="120" y="689" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="120" dy="0">Need the wire itself, </tspan>
+    <tspan x="120" dy="34">independent of the host stack</tspan>
+  </text>
+
+  <!-- Arrow 5 (ORANGE) -->
+  <line x1="680" y1="695" x2="730" y2="695" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  <!-- Right Box 5 (ORANGE) -->
+  <rect x="730" y="648" width="830" height="94" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(752, 673)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="36" height="24" rx="4" />
+    <line x1="12" y1="22" x2="16" y2="22" />
+    <line x1="22" y1="22" x2="26" y2="22" />
+    <line x1="32" y1="22" x2="36" y2="22" />
+    <path d="M 22 10 L 22 4" />
+  </g>
+  <text x="814" y="689" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="814" dy="0">switch port mirror (SPAN, ERSPAN) or TAP; </tspan>
+    <tspan x="814" dy="32">mirrored traffic can be dropped under congestion</tspan>
+  </text>
+
+  <!-- ==================== ROW 6 (Leaf 6) ==================== -->
+  <!-- Left Box 6 -->
+  <rect x="40" y="766" width="640" height="94" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(60, 791)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="24" height="24" rx="3" />
+    <line x1="16" y1="4" x2="16" y2="10" />
+    <line x1="28" y1="4" x2="28" y2="10" />
+    <line x1="16" y1="34" x2="16" y2="40" />
+    <line x1="28" y1="34" x2="28" y2="40" />
+    <line x1="4" y1="16" x2="10" y2="16" />
+    <line x1="4" y1="28" x2="10" y2="28" />
+    <line x1="34" y1="16" x2="40" y2="16" />
+    <line x1="34" y1="28" x2="40" y2="28" />
+  </g>
+  <text x="120" y="807" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="120" dy="0">RoCE or traffic the </tspan>
+    <tspan x="120" dy="34">kernel does not see</tspan>
+  </text>
+
+  <!-- Arrow 6 -->
+  <line x1="680" y1="813" x2="730" y2="813" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Right Box 6 -->
+  <rect x="730" y="766" width="830" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(752, 791)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="12" width="36" height="20" rx="3" />
+    <rect x="14" y="16" width="12" height="12" rx="2" />
+    <line x1="8" y1="32" x2="8" y2="38" />
+    <line x1="14" y1="32" x2="14" y2="38" />
+    <line x1="20" y1="32" x2="20" y2="38" />
+  </g>
+  <text x="814" y="807" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="814" dy="0">NIC or DPU capture: tcpdump -i mlx5_0 with </tspan>
+    <tspan x="814" dy="32">rdma-core, ibdump, or a switch mirror</tspan>
+  </text>
+
+  <!-- ==================== ROW 7 (Leaf 7) ==================== -->
+  <!-- Left Box 7 -->
+  <rect x="40" y="884" width="640" height="94" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(60, 909)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="14" />
+    <line x1="30" y1="30" x2="40" y2="40" />
+    <line x1="14" y1="14" x2="26" y2="26" />
+    <line x1="26" y1="14" x2="14" y2="26" />
+  </g>
+  <text x="120" y="925" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="120" dy="0">Where was the packet dropped, </tspan>
+    <tspan x="120" dy="34">without copying it?</tspan>
+  </text>
+
+  <!-- Arrow 7 -->
+  <line x1="680" y1="931" x2="730" y2="931" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Right Box 7 -->
+  <rect x="730" y="884" width="830" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(752, 909)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="4,22 14,22 18,10 24,34 30,16 34,22 42,22" />
+  </g>
+  <text x="814" y="925" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="814" dy="0">tracepoints, kfree_skb, pwru; </tspan>
+    <tspan x="814" dy="32">complement, do not replace, pcap</tspan>
+  </text>
+
+  <!-- Warning Box -->
+  <rect x="40" y="1004" width="1520" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(62, 1020)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 6 L 40 38 L 4 38 Z" />
+    <line x1="22" y1="18" x2="22" y2="26" />
+    <circle cx="22" cy="32" r="1.5" fill="#207448" />
+  </g>
+  <text x="126" y="1036" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="126" dy="0">-i any: all interfaces with cooked SLL headers, </tspan>
+    <tspan x="126" dy="30">loses VLAN and ordering details; do not use for exact timing</tspan>
+  </text>
+
+  <!-- Bottom Bar -->
+  <rect x="40" y="1108" width="1520" height="52" rx="10" fill="#207448" />
+  <text x="800" y="1143" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Move the tap closer to the place you suspect</text>
+
+</svg>

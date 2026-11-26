@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Safety command ladder before and after a release</title>
+  <desc>Vertical ladder of seven safety commands before and after release, highlighting rerun idempotence causes.</desc>
+
+  <defs>
+    <marker id="green-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8 5 L 1 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Safety command ladder before and after a release</text>
+
+  
+  <line x1="450" y1="205" x2="450" y2="238" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+  <line x1="450" y1="325" x2="450" y2="358" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+  <line x1="450" y1="445" x2="450" y2="478" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+  <line x1="450" y1="565" x2="450" y2="598" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+  <line x1="450" y1="715" x2="450" y2="748" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+  <line x1="450" y1="865" x2="450" y2="898" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)" />
+
+  
+  <line x1="830" y1="657" x2="900" y2="657" stroke="#db8129" stroke-width="3" stroke-dasharray="8,6" />
+
+  
+  <g id="step-1">
+    <rect x="70" y="120" width="760" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="118" cy="162" r="24" fill="#207448" />
+    <text x="118" y="170" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <path d="M 172 142 h 20 l 8 8 v 26 h -28 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <path d="M 178 162 l 5 5 l 11 -11" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="240" y="171" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">--syntax-check</text>
+  </g>
+
+  
+  <g id="step-2">
+    <rect x="70" y="240" width="760" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="118" cy="282" r="24" fill="#207448" />
+    <text x="118" y="290" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <circle cx="182" cy="278" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="192" y1="288" x2="204" y2="300" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="176" y1="278" x2="188" y2="278" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="240" y="291" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">ansible-lint playbooks/</text>
+  </g>
+
+  
+  <g id="step-3">
+    <rect x="70" y="360" width="760" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="118" cy="402" r="24" fill="#207448" />
+    <text x="118" y="410" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <path d="M 166 402 Q 186 384 206 402 Q 186 420 166 402 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <circle cx="186" cy="402" r="6" fill="#207448" />
+    <text x="240" y="411" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">--check --diff preview</text>
+  </g>
+
+  
+  <g id="step-4">
+    <rect x="70" y="480" width="760" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="118" cy="522" r="24" fill="#207448" />
+    <text x="118" y="530" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <circle cx="186" cy="522" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+    <polygon points="181,513 195,522 181,531" fill="#207448" />
+    <text x="240" y="531" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">real run</text>
+  </g>
+
+  
+  <g id="step-5">
+    <rect x="70" y="600" width="760" height="115" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+    <circle cx="118" cy="657" r="24" fill="#db8129" />
+    <text x="118" y="665" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <path d="M 172 654 A 14 14 0 1 1 198 662" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 166 652 L 174 656 L 176 646" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="240" y="645" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="240" dy="0">second run expect</tspan>
+      <tspan x="240" dy="34">changed=0 except intentional tasks</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-6">
+    <rect x="70" y="750" width="760" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="118" cy="807" r="24" fill="#207448" />
+    <text x="118" y="815" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    
+    <rect x="170" y="793" width="32" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="170" y="811" width="32" height="12" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="177" cy="799" r="2" fill="#207448" />
+    <circle cx="177" cy="817" r="2" fill="#207448" />
+    <text x="240" y="795" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="240" dy="0">canary app.yml</tspan>
+      <tspan x="240" dy="34">-e app_version=v1.4.3 --limit app01</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-7">
+    <rect x="70" y="900" width="760" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="118" cy="957" r="24" fill="#207448" />
+    <text x="118" y="965" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+    
+    <path d="M 198 962 A 14 14 0 1 0 174 950" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 172 940 L 173 952 L 185 951" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="240" y="945" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="240" dy="0">rollback app.yml</tspan>
+      <tspan x="240" dy="34">-e app_version=v1.4.1</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-box">
+    <rect x="900" y="490" width="630" height="335" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="2" />
+    <text x="930" y="542" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">causes of changed on rerun:</text>
+
+    
+    <circle cx="945" cy="590" r="5" fill="#db8129" />
+    <text x="965" y="598" font-family="monospace" font-size="24" fill="#303a36">command without changed_when</text>
+
+    
+    <circle cx="945" cy="640" r="5" fill="#db8129" />
+    <text x="965" y="648" font-family="monospace" font-size="24" fill="#303a36">lineinfile regex mismatch</text>
+
+    
+    <circle cx="945" cy="690" r="5" fill="#db8129" />
+    <text x="965" y="698" font-family="monospace" font-size="24" fill="#303a36">templates with timestamps</text>
+
+    
+    <circle cx="945" cy="740" r="5" fill="#db8129" />
+    <text x="965" y="748" font-family="monospace" font-size="24" fill="#303a36">state latest</text>
+
+    
+    <circle cx="945" cy="790" r="5" fill="#db8129" />
+    <text x="965" y="798" font-family="monospace" font-size="24" fill="#303a36">git on moving branch with force</text>
+  </g>
+</svg>

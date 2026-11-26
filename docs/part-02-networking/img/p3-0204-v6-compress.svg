@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Writing an IPv6 address short: two rules, one worked example</title>
+  <desc>Visual infographic explaining the two IPv6 address compression rules with worked examples and usage formats.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="50" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" letter-spacing="-0.5">Writing an IPv6 address short: two rules, one worked example</text>
+
+  
+
+  
+  <rect x="50" y="120" width="960" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="95" cy="175" r="24" fill="#207448" />
+  <text x="95" y="183" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(135, 147)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="52" height="52" rx="8" />
+    <line x1="2" y1="28" x2="54" y2="28" />
+    <line x1="28" y1="2" x2="28" y2="54" />
+  </g>
+  
+  <text x="210" y="180" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">Full: 2001:0db8:0a0b:12f0:0000:0000:0000:8b6e</text>
+  <text x="210" y="228" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">hextets, 16 bits each, four hex digits</text>
+
+  
+  <line x1="530" y1="270" x2="530" y2="303" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="50" y="305" width="960" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="95" cy="360" r="24" fill="#207448" />
+  <text x="95" y="368" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(135, 332)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="4,6 52,6 34,30 34,50 22,42 22,30" />
+  </g>
+  
+  <rect x="288" y="386" width="60" height="34" rx="4" fill="#cbe3d0" />
+  <rect x="358" y="386" width="60" height="34" rx="4" fill="#cbe3d0" />
+  
+  <text x="210" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Rule 1: drop leading zeros in each group:</text>
+  <text x="210" y="412" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">2001:db8:a0b:12f0:0:0:0:8b6e</text>
+
+  
+  <line x1="530" y1="455" x2="530" y2="488" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="50" y="490" width="960" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="95" cy="550" r="24" fill="#207448" />
+  <text x="95" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(135, 522)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="28" r="10" />
+    <circle cx="40" cy="28" r="10" />
+    <path d="M 4 28 L 10 28" />
+    <path d="M 46 28 L 52 28" />
+  </g>
+  
+  <rect x="495" y="574" width="46" height="36" rx="6" fill="#db8129" fill-opacity="0.2" stroke="#db8129" stroke-width="2" />
+  
+  <text x="210" y="546" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Rule 2: replace the one longest run of all-zero groups with ::</text>
+  <text x="210" y="602" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">  gives 2001:db8:a0b:12f0::8b6e</text>
+
+  
+  <rect x="50" y="675" width="960" height="145" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(75, 715)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="28,4 54,50 2,50" />
+    <line x1="28" y1="20" x2="28" y2="34" />
+    <circle cx="28" cy="42" r="2" fill="#db8129" />
+  </g>
+  
+  <text x="155" y="736" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="155" dy="0">Use :: only once per address; otherwise nobody could</tspan>
+    <tspan x="155" dy="40">tell how many zero groups each one stood for</tspan>
+  </text>
+
+  
+  <rect x="50" y="845" width="960" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(75, 885)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="48" height="40" rx="6" />
+    <polyline points="14,22 22,28 14,34" />
+    <line x1="26" y1="34" x2="38" y2="34" />
+  </g>
+  
+  <text x="155" y="898" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="155" dy="0">Compress 2001:0db8:0000:0000:0000:ff00:0042:8329</tspan>
+    <tspan x="155" dy="42">gives 2001:db8::ff00:42:8329</tspan>
+  </text>
+
+  
+  <rect x="1040" y="120" width="510" height="870" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1065, 145)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24" />
+    <ellipse cx="28" cy="28" rx="12" ry="24" />
+    <line x1="4" y1="28" x2="52" y2="28" />
+  </g>
+  
+  <text x="1135" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Writing it in other places</text>
+
+  
+  <rect x="1065" y="225" width="460" height="105" rx="8" fill="#e8f1ea" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="1085" y="287" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">prefix: 2001:db8:a0b:12f0::/64</text>
+
+  
+  <rect x="1065" y="350" width="460" height="200" rx="8" fill="#e8f1ea" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="1085" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1085" dy="0" font-weight="bold">in a URL wrap it in brackets:</tspan>
+    <tspan x="1085" dy="38" font-family="monospace" font-weight="bold">http://[2001:db8::10]:8080/</tspan>
+    <tspan x="1085" dy="38">because colons would be read as the</tspan>
+    <tspan x="1085" dy="34">port separator</tspan>
+  </text>
+
+  
+  <rect x="1065" y="570" width="460" height="135" rx="8" fill="#e8f1ea" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="1085" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1085" dy="0" font-weight="bold">link-local needs an interface scope:</tspan>
+    <tspan x="1085" dy="42" font-family="monospace" font-weight="bold">fe80::1%eth0</tspan>
+  </text>
+
+  
+  <rect x="1065" y="725" width="460" height="240" rx="8" fill="#e8f1ea" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="1085" y="770" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1085" dy="0">expand with python3 -c import</tspan>
+    <tspan x="1085" dy="44">ipaddress as i; print(i.ip_address</tspan>
+    <tspan x="1085" dy="44">of 2001:db8::1</tspan>
+    <tspan x="1085" dy="44">.exploded)</tspan>
+  </text>
+
+  
+  <rect x="50" y="1015" width="1500" height="85" rx="12" fill="#207448" />
+  <text x="800" y="1068" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Eight groups of 16 bits, two compression rules</text>
+</svg>

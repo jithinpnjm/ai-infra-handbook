@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p2-0508-termination-steps",
+  "title": "Five steps from deletion request to object removal",
+  "spec": "A vertical sequence of five numbered boxes, top to bottom, with arrows between them. Box 1: 'Deletion request sets deletionTimestamp and grace period (default 30 s)', status label 'Pod moves to Terminating'. Box 2 splits into two parallel side-by-side boxes joined by a fork: left box 'EndpointSlice controller removes the pod from endpoints' and right box 'Kubelet starts killing containers'. A small race note between them: 'Connections can still arrive for a few seconds'. Box 3: 'preStop hook, then SIGTERM to PID 1, wait, then SIGKILL after the grace period' with a timer icon. Box 4: 'Runtime stops containers, CNI DEL releases the IP, volumes unmount'. Box 5: 'Kubelet sends DELETE with grace 0, Pod object removed from etcd'. Orange outline on box 3 with the note 'An app that ignores SIGTERM waits for SIGKILL: the 30 s symptom'. Bottom note in a dashed box: 'A stall at one step holds back every step after it.'",
+  "anchor": "## 7. Termination",
+  "alt": "Five steps of pod termination, from the deletion timestamp and parallel endpoint removal through preStop, SIGTERM, SIGKILL and final object removal.",
+  "cap": "Pod termination runs in five steps, from the deletion timestamp and endpoint removal through preStop, SIGTERM, SIGKILL and final removal."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p2-0508-warm-cold",
+  "title": "Warm node versus cold node start times",
+  "spec": "Two side-by-side horizontal timelines with a shared label 'Pod start', one titled 'Warm node: image cached on disk' and one titled 'Cold node: 20 GB image'. Warm timeline: short segments labelled 'API and scheduling: tens of milliseconds', 'Sandbox and CNI: 100 to 500 ms', 'Container starts: under 1 s'. Cold timeline: a long segment labelled 'Pull and unpack: minutes' and then segments labelled 'PVC attach from cloud: 5 to 60 s' and 'Load model into GPU memory: minutes'. The warm bar is drawn short and green; the cold bar is drawn much longer with an orange outline on the pull segment. A bottom note: 'Fifty cold nodes pulling at once make the whole job wait for the slowest.' Caption: 'Find the step where the pod time goes before you tune anything.'",
+  "anchor": "## 1. Timeline overview",
+  "alt": "Pod start on a warm node with the image cached takes under a second for the container, while a cold node with a 20 GB image spends minutes pulling and unpacking.",
+  "cap": "A warm node starts a container in under a second, while a cold node with a 20 GB image spends minutes on the pull and unpack."
+ }
+]

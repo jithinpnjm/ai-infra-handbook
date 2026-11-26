@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What the API promises and what it does not</title>
+  <desc>Visual explanation of the data plane API contract: promises regarding calls, data plane properties, and overload failure, contrasted against non-promises like exactly-once generation, followed by key scoping guidance.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="60" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">What the API promises and what it does not</text>
+
+  
+  <g id="col-promises">
+    
+    <rect x="60" y="110" width="710" height="56" rx="8" fill="#207448" />
+    <text x="80" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Promises</text>
+
+    
+    <g transform="translate(60, 185)">
+      <rect width="710" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="24" y="32" width="56" height="42" rx="6" />
+        <line x1="36" y1="46" x2="68" y2="46" />
+        <line x1="36" y1="58" x2="56" y2="58" />
+        <polyline points="32,74 32,86 44,74" />
+      </g>
+      <text x="100" y="55" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="100" dy="0">OpenAI-compatible streaming chat</tspan>
+        <tspan x="100" dy="34">or completion call</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(60, 325)">
+      <rect width="710" height="355" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="24" y="36" width="56" height="56" rx="6" />
+        <line x1="38" y1="52" x2="66" y2="52" />
+        <line x1="38" y1="64" x2="66" y2="64" />
+        <line x1="38" y1="76" x2="54" y2="76" />
+      </g>
+      <text x="100" y="54" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="100" dy="0" font-weight="bold">four properties of the data plane call:</tspan>
+        <tspan x="100" dy="34">carries a tenant credential,</tspan>
+        <tspan x="100" dy="34">names a model or an endpoint,</tspan>
+        <tspan x="100" dy="34">can stream tokens back,</tspan>
+        <tspan x="100" dy="34">returns token counts for billing in a</tspan>
+        <tspan x="100" dy="34">usage object with <tspan font-family="monospace">prompt_tokens</tspan> and</tspan>
+        <tspan x="100" dy="34"><tspan font-family="monospace">completion_tokens</tspan></tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(60, 700)">
+      <rect width="710" height="280" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="52" cy="62" r="28" />
+        <polyline points="52,44 52,62 66,62" />
+      </g>
+      <text x="100" y="54" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="100" dy="0" font-weight="bold">failure is part of the contract:</tspan>
+        <tspan x="100" dy="34">overload returns HTTP 429 with a</tspan>
+        <tspan x="100" dy="34">Retry-After header so clients wait instead</tspan>
+        <tspan x="100" dy="34">of retrying at random</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="col-does-not-promise">
+    
+    <rect x="830" y="110" width="710" height="56" rx="8" fill="#303a36" />
+    <text x="850" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Does not promise</text>
+
+    
+    <g transform="translate(830, 185)">
+      <rect width="710" height="795" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      
+      
+      <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="56,36 86,88 26,88" />
+        <line x1="56" y1="54" x2="56" y2="70" />
+        <circle cx="56" cy="79" r="1.5" fill="#db8129" />
+      </g>
+
+      <text x="106" y="58" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="106" dy="0" font-weight="bold" fill="#db8129">exactly-once generation:</tspan>
+        <tspan x="106" dy="42">a retry after a stream started can</tspan>
+        <tspan x="106" dy="42">produce different text because</tspan>
+        <tspan x="106" dy="42">sampling is not repeatable;</tspan>
+        <tspan x="106" dy="42">the API is at-least-once</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="footer" transform="translate(60, 1000)">
+    <rect width="1480" height="155" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="52" cy="77" r="18" />
+      <path d="M52,47 L52,53 M52,101 L52,107 M22,77 L28,77 M76,77 L82,77 M31,56 L35,60 M69,94 L73,98 M31,98 L35,94 M69,60 L73,56" />
+    </g>
+    <text x="100" y="44" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="100" dy="0">keep the surface small; a customer who wrote a script on Monday expects it to work on Friday;</tspan>
+      <tspan x="100" dy="36">ask clarifying questions first: chat or batch, which models and context lengths, availability target,</tspan>
+      <tspan x="100" dy="36">data residency, tenants</tspan>
+    </text>
+  </g>
+</svg>

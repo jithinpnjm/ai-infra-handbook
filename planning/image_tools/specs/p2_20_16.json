@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p2-2016-node-words",
+  "title": "Four words for a node out of service",
+  "spec": "Four horizontal cards in a row, left to right, each with an icon, a bold word and a one-line meaning. Card 1 'Cordon' with a stop-sign icon: 'Send no new work'. Card 2 'Drain' with an outflow arrow icon: 'Move the existing work off'. Card 3 'Quarantine' with a padlock icon: 'Out until a human or a repair process clears it'. Card 4 'Validation' with a check-list icon: 'Run the active checks'. Below the cards a dashed box with a note 'A node holds its budget slot from cordon until it returns to healthy'. A monospace sample under the box 'Stuck in repair for nine days: still counts against the budget'. Orange outline on the Quarantine card as the state with a human in the loop. Bottom green bar: 'Give every state an owner and a maximum time, and keep the node counted as lost until proven healthy.'",
+  "anchor": "### 6. The node lifecycle",
+  "alt": "Four words for a node out of service: cordon sends no new work, drain moves work off, quarantine holds the node out, and validation runs the active checks.",
+  "cap": "Cordon, drain, quarantine and validation are the four words for a node out of service, and a node counts against the budget until it is proven healthy."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p2-2016-rma-queue",
+  "title": "The RMA is a queue with an age limit",
+  "spec": "A horizontal flow of five boxes left to right with arrows. Box 1 'Quarantine the node and keep its evidence' with a bag icon. Box 2 'Evidence list' drawn as a small stack: 'Xid history', 'diagnostic output', 'temperature and ECC counters for the days before the fault', 'GPU and board serial numbers'. Box 3 'Open a case with the vendor or integrator and attach the evidence'. Box 4 'Vendor replacement: technician swaps the part' with a wait clock. Box 5 'Validation runs before the node returns to the pool'. Under box 4 a clock card: 'Every day of waiting is capacity missing from the pool'. A small list card to the side 'Track the age of every open case. Chase the oldest.' Orange outline on the wait clock as the cost of time. Bottom green bar: 'Treat the RMA as a queue with an age limit, and always run validation before the node returns.'",
+  "anchor": "### 12. The vendor RMA flow, at a conceptual level",
+  "alt": "The vendor RMA flow quarantines the node, keeps the evidence, opens a case, waits for replacement and validates before the node returns to the pool.",
+  "cap": "The vendor RMA flow quarantines the node, keeps the evidence, waits for a replacement and validates before return, tracking the age of each open case."
+ }
+]

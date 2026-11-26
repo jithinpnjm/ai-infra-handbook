@@ -36,21 +36,9 @@ Start with 6.18 and 6.19, because this chapter assumes you already know how a pa
 
 Picture a training job that runs slowly while the storage team insists the file system looks healthy. Before you can test that claim, you need a common way to describe every system. Without one, you end up comparing a BeeGFS word with a VAST word and learning nothing. The diagram below shows how each system divides its work into parts. Read each box as a job the file system must do, and notice that each product puts those jobs in different places.
 
-```mermaid
-flowchart TB
-  subgraph BeeGFS["BeeGFS (Sharded Meta + Storage)"]
-    B1["mgmtd + meta servers + storage targets<br/>(+ BeeOND job-local NVMe scratch)"]
-  end
-  subgraph GPFS["IBM Storage Scale / GPFS"]
-    G1["Distributed Metadata + Token Lock Manager<br/>+ NSD Servers / ESS Declustered RAID"]
-  end
-  subgraph WEKA["WEKA (WekaFS)"]
-    W1["User-Space DPDK/SPDK Data Plane<br/>Distributed Meta/Data (N+2/N+4) + S3 Tier"]
-  end
-  subgraph VAST["VAST Data (DASE)"]
-    V1["Stateless CNodes -> NVMe-oF Fabric<br/>-> Shared-Everything QLC/SCM DBoxes"]
-  end
-```
+![A common frame](./img/m6-20-1.svg)
+
+*Figure 6.20.1. A common frame, as a diagram.*
 
 Each system answers the same design questions, although its answers differ. The table lists those questions and says why each one matters to a GPU cluster. Think of it as a form you fill in for every candidate.
 

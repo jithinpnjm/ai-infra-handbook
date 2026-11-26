@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "x16-xid-policy",
+  "title": "Turning an Xid code into ignore, suspect or drain",
+  "spec": "A top-to-bottom decision flowchart with numbered steps in green circles. Start box labelled Xid reported on a node, with a small chip icon. Step 1 decision: Code in the catalog? If no, arrow to a box labelled Suspect, with the note never ignore an unknown code. If yes, step 2 decision: Catalog action. Three branches. Branch A labelled IGNORE (for example Xid 43, 63): arrow to a green box labelled Ignore. Branch B labelled application-level, RESTART_APP (for example Xid 13, 31, 94): arrow to a decision Same code three times within an hour on this node? If no, box labelled Suspect. If yes, box labelled Drain. Branch C labelled reset, reboot or link (for example Xid 48, 64, 79, 95, 119, 120, 74): arrow straight to an orange box labelled Drain at once. A small memory icon beside the repeat decision labelled recent Xid times kept per node. Green takeaway bar: Translate the catalog into ignore, suspect and drain, and never ignore a code you do not recognise.",
+  "anchor": "### 3. What each Xid means for the fleet",
+  "alt": "An Xid code is ignored, marked suspect, or drained, depending on its catalog action and on whether an application-level code repeats three times within an hour.",
+  "cap": "The catalog says what one GPU needs, and the fleet policy turns that into ignore, suspect or drain while remembering repeats on each node."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "x16-blast-radius",
+  "title": "Four defences stop automation from draining the fleet, and the breaker freezes it",
+  "spec": "Left panel: four stacked gate boxes in a column, each a labelled barrier with a shield or lock icon, in order: Fleet budget, 5 percent of nodes; Failure domain cap, one node per rack; Hourly rate, four drains per hour; Circuit breaker, six flagged nodes within ten minutes freezes everything. A flagged node arrow enters at the top and passes down through the gates, with a green granted exit on the right side and a held exit labelled to a human on the orange side. Right panel: a timeline of the simulated storm drawn as a vertical list of seven rows, each row with time, node and outcome: t=0s n000 cordoned; t=60s n017 cordoned; t=120s n034 cordoned; t=180s n051 cordoned; t=240s n068 suspect, hourly rate exhausted; t=300s n085 suspect, frozen many nodes flagged; t=360s n102 suspect, frozen. Cordoned rows in green, suspect rows in grey, the first frozen row in orange. Bottom summary line: frozen True, serving 196 of 200. Green takeaway bar: Automation may act freely on small, rare events, and must hand over to a person when the scale surprises it.",
+  "anchor": "### 7. Blast radius: how automation avoids draining the fleet",
+  "alt": "Four limits on automated drains stop the seventh flagged node after four cordons, and the circuit breaker freezes the fleet at 196 of 200 serving.",
+  "cap": "Blast-radius limits make automation stop and hand over to a human when many nodes fail together."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "x16-spare-math",
+  "title": "Failure rate times repair time gives the nodes in repair, and a Poisson tail gives the spares",
+  "spec": "A left-to-right calculation chain of boxes with arrows, numbered in green circles in order. Box 1: Arrival rate = 512 x 0.10 / 8760 hours = 0.00584 nodes per hour. Arrow to box 2: In repair = 0.00584 x 72 hours = 0.42 nodes on average. Arrow to box 3, a Poisson tail: P(out at most 2) = 0.9909, P(out at most 3) = 0.9991. Arrow to box 4, orange: Spares for 99.9 percent coverage = 3. Below the chain, a small table with three rows: Repair 24 hours, average in repair 0.14, spares 2; Repair 72 hours, 0.42, 3; Repair 336 hours, 1.96, 7. A small loop-arrow icon on the repair time with the note repair time is as important as failure rate. A window icon for the fleet of 512 nodes. Green takeaway bar: Shorten the repair loop before you buy more spares, because repair time sets the spare count as much as failure rate does.",
+  "anchor": "### 8. Spare pool and X+1 sizing",
+  "alt": "A 512-node fleet with 10 percent annual failure and 72-hour repairs averages 0.42 nodes in repair and needs 3 spares for 99.9 percent coverage.",
+  "cap": "The average number of nodes in repair is failure rate times repair time, and a Poisson tail turns that average into a spare count."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "x16-grace-period",
+  "title": "The grace period must cover the longest stream, or long answers get cut",
+  "spec": "A horizontal timeline in seconds from the drain signal at the left to the end of the pod shutdown at the right, with a 0 to 120 second scale and tick marks at 30, 60, 90 and 120. Top lane: a green bar for the longest stream, labelled 4,096 tokens at 40 tokens per second = 102 s, ending at 102 seconds. Middle lane: a bar for the default grace period of 30 seconds, ending at 30, with an orange cut marker at 30 labelled the default of 30 seconds would cut every long answer. Bottom lane: a bar for terminationGracePeriodSeconds 120, ending at 120, with a margin segment from 102 to 120 labelled margin. Numbered steps 1 to 3 on the lanes: 1 stop new requests, 2 let streams finish within the grace period, 3 stop the process. Small icon note: a pre-stop hook runs first, then SIGTERM. Green takeaway bar: Set the grace period from your longest honest stream plus a small margin, not an arbitrary big number.",
+  "anchor": "### 10. Draining a node that is serving inference",
+  "alt": "A 4,096-token answer at 40 tokens per second needs 102 seconds, so a 120-second grace period covers it while the default 30 seconds would cut it.",
+  "cap": "The termination grace period is a promise that a stream in progress will finish, so it must exceed the longest stream."
+ }
+]

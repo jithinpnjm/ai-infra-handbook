@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1600" height="1084" viewBox="0 0 1600 1084">
+  <title>Headroom and one spare turn 7 GPUs into 9</title>
+  <desc>Infographic explaining capacity planning: calculating GPU requirements with demand, headroom, and spare buffer.</desc>
+
+  <defs>
+    
+    <g id="gpu-chip">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <rect x="14" y="14" width="28" height="28" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <line x1="20" y1="4" x2="20" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="4" x2="28" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="4" x2="36" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      
+      <line x1="20" y1="46" x2="20" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="46" x2="28" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="46" x2="36" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      
+      <line x1="4" y1="20" x2="10" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="36" x2="10" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      
+      <line x1="46" y1="20" x2="52" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="46" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="46" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <g id="gpu-chip-spare">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="4" stroke-dasharray="6,4"/>
+      <rect x="14" y="14" width="28" height="28" rx="4" fill="#ffebd9" stroke="#db8129" stroke-width="2" stroke-dasharray="4,2"/>
+      
+      <line x1="20" y1="4" x2="20" y2="10" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="4" x2="28" y2="10" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="4" x2="36" y2="10" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      
+      <line x1="20" y1="46" x2="20" y2="52" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="46" x2="28" y2="52" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="46" x2="36" y2="52" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      
+      <line x1="4" y1="20" x2="10" y2="20" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="28" x2="10" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="4" y1="36" x2="10" y2="36" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      
+      <line x1="46" y1="20" x2="52" y2="20" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="46" y1="28" x2="52" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="46" y1="36" x2="52" y2="36" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <marker id="arrowhead" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1084" fill="#f5f8f5"/>
+
+  
+  <text x="80" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Headroom and one spare turn 7 GPUs into 9</text>
+
+  
+  <g id="header-container">
+    <rect x="80" y="120" width="1440" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="162" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Demand 40 requests per second, ceiling 5.68 per GPU</text>
+  </g>
+
+  
+  <g id="row-one-container">
+    <rect x="80" y="224" width="1440" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="110" y="268" font-family="system-ui, -apple-system, sans-serif">
+      <tspan font-size="30" font-weight="bold" fill="#303a36">No headroom: </tspan>
+      <tspan font-size="26" font-weight="normal" fill="#303a36">40 / 5.68 = 7.04, so 7 GPUs run at 100 percent of the ceiling.</tspan>
+    </text>
+    
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="110" y="296"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="190" y="296"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="270" y="296"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="350" y="296"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="430" y="296"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="510" y="296"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="590" y="296"/>
+  </g>
+
+  
+  <g id="row-two-container">
+    <rect x="80" y="424" width="1440" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="110" y="468" font-family="system-ui, -apple-system, sans-serif">
+      <tspan font-size="30" font-weight="bold" fill="#303a36">90 percent headroom: </tspan>
+      <tspan font-size="26" font-weight="normal" fill="#303a36">40 / (5.68 x 0.9) = 7.83, rounds up to 8 GPUs.</tspan>
+    </text>
+    
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="110" y="496"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="190" y="496"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="270" y="496"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="350" y="496"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="430" y="496"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="510" y="496"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="590" y="496"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="670" y="496"/>
+  </g>
+
+  
+  <g id="connection-arrow">
+    <path d="M 200 584 L 200 660" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+    <text x="230" y="630" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">if one fails, the other 8 still carry the peak</text>
+  </g>
+
+  
+  <g id="row-three-container">
+    <rect x="80" y="664" width="1440" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="110" y="708" font-family="system-ui, -apple-system, sans-serif">
+      <tspan font-size="30" font-weight="bold" fill="#303a36">90 percent headroom plus N+1: </tspan>
+      <tspan font-size="26" font-weight="normal" fill="#303a36">8 GPUs plus 1 spare = 9 GPUs</tspan>
+    </text>
+    
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="110" y="736"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="190" y="736"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="270" y="736"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="350" y="736"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="430" y="736"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="510" y="736"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="590" y="736"/>
+    <use href="#gpu-chip" xlink:href="#gpu-chip" x="670" y="736"/>
+    
+    <use href="#gpu-chip-spare" xlink:href="#gpu-chip-spare" x="750" y="736"/>
+  </g>
+
+  
+  <g id="formula-container">
+    <rect x="80" y="864" width="1440" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="908" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">replicas = ceil(QPS / (replica_QPS x target_utilisation)) + spares</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="80" y="974" width="1440" height="70" rx="8" fill="#207448"/>
+    <text x="800" y="1018" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">the buffer must exist before the peak arrives, because scaling is slow.</text>
+  </g>
+</svg>

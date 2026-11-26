@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>The .yamllint file, rule by rule</title>
+  <desc>Visual infographic explaining the .yamllint file configuration, rule protection mappings, related validation tooling, and CI best practices.</desc>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The .yamllint file, rule by rule</text>
+
+  
+  <rect x="40" y="115" width="740" height="615" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="65" y="137" width="52" height="52" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="65" y1="155" x2="117" y2="155" stroke="#207448" stroke-width="4"/>
+  <line x1="77" y1="171" x2="95" y2="171" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="77" y1="179" x2="105" y2="179" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <text x="135" y="176" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Annotated config</text>
+
+  
+  
+  <rect x="60" y="205" width="700" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="246" font-family="monospace" font-size="24" fill="#303a36">extends: default</text>
+
+  
+  <rect x="60" y="285" width="700" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="326" font-family="monospace" font-size="24" fill="#303a36">line-length: max 140, level warning</text>
+
+  
+  <rect x="60" y="365" width="700" height="100" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="85" y="405" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129" xml:space="preserve"><tspan x="85" dy="0">truthy: allowed-values ["true", "false"]: </tspan><tspan x="85" dy="34">flags yes, no, on, off</tspan></text>
+
+  
+  <rect x="60" y="480" width="700" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="521" font-family="monospace" font-size="24" fill="#303a36">indentation: spaces 2, indent-sequences true</text>
+
+  
+  <rect x="60" y="560" width="700" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="601" font-family="monospace" font-size="24" fill="#303a36">comments: min-spaces-from-content 2</text>
+
+  
+  <rect x="60" y="640" width="700" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="681" font-family="monospace" font-size="24" fill="#303a36">document-start: present false</text>
+
+  
+  <rect x="820" y="115" width="740" height="615" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <path d="M 845 142 L 871 133 L 897 142 C 897 170 871 187 871 189 C 871 187 845 170 845 142 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 860 160 L 868 168 L 883 151" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <text x="915" y="176" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">What each rule protects</text>
+
+  
+  
+  <rect x="840" y="205" width="700" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="865" y="260" font-family="sans-serif" font-size="24" fill="#303a36">truthy: the yes and no to boolean coercion</text>
+
+  
+  <rect x="840" y="325" width="700" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="865" y="380" font-family="sans-serif" font-size="24" fill="#303a36">indentation: structure is indentation</text>
+
+  
+  <rect x="840" y="445" width="700" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="865" y="492" font-family="sans-serif" font-size="24" fill="#303a36" xml:space="preserve"><tspan x="865" dy="0">key-duplicates (in the default set): </tspan><tspan x="865" dy="34">silently dropped values</tspan></text>
+
+  
+  <rect x="840" y="585" width="700" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="865" y="640" font-family="sans-serif" font-size="24" fill="#303a36">tabs: parse errors</text>
+
+  
+  <rect x="40" y="755" width="1520" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="806" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">schemas: check-jsonschema, kubeconform; models: pydantic; style: yamllint; run them in pre-commit or CI</text>
+
+  
+  <rect x="40" y="865" width="1520" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="912" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Store the rules in the repo so review and CI agree</text>
+</svg>

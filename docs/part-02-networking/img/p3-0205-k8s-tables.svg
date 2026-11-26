@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>More routing tables than you think: pod, node and hostNetwork pod</title>
+  <desc>More routing tables than you think: pod, node and hostNetwork pod</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">More routing tables than you think:</text>
+  <text x="800" y="125" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">pod, node and hostNetwork pod</text>
+
+  
+  <rect x="40" y="160" width="475" height="620" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(250, 180)">
+    <rect x="0" y="0" width="56" height="56" rx="8" stroke="#207448" stroke-width="4" fill="none" />
+    <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="9" r="2.5" fill="#207448" />
+    <circle cx="22" cy="9" r="2.5" fill="#207448" />
+    <polyline points="14,34 22,39 14,44" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="28" y1="44" x2="42" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="277" y="272" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Pod namespace</text>
+  <line x1="65" y1="295" x2="490" y2="295" stroke="#207448" stroke-width="1.5" stroke-opacity="0.4" />
+
+  
+  <text x="65" y="335" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="65" dy="0">its own interfaces and</tspan>
+    <tspan x="65" dy="32">routing table; default route</tspan>
+    <tspan x="65" dy="32">through the CNI's gateway,</tspan>
+    <tspan x="65" dy="32">the host-side veth peer</tspan>
+    <tspan x="65" dy="32">or bridge address</tspan>
+  </text>
+
+  
+  <rect x="52" y="525" width="451" height="235" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="70" y="605" font-family="monospace" font-size="24" fill="#207448">kubectl exec ... -- ip route</text>
+  <text x="70" y="685" font-family="monospace" font-size="24" fill="#207448">nsenter -t &lt;pid&gt; -n ip route</text>
+
+  
+  <rect x="605" y="160" width="520" height="620" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(837, 180)">
+    <rect x="0" y="0" width="56" height="56" rx="6" stroke="#207448" stroke-width="4" fill="none" />
+    <line x1="0" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="4" />
+    <circle cx="14" cy="14" r="3" fill="#207448" />
+    <line x1="26" y1="14" x2="44" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="14" cy="42" r="3" fill="#207448" />
+    <line x1="26" y1="42" x2="44" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="865" y="272" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Node (host namespace)</text>
+  <line x1="625" y1="295" x2="1105" y2="295" stroke="#207448" stroke-width="1.5" stroke-opacity="0.4" />
+
+  
+  <text x="625" y="335" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="625" dy="0">routes to each pod's /32 or /24;</tspan>
+    <tspan x="625" dy="32">may go through overlay tunnel</tspan>
+    <tspan x="625" dy="32">devices (VXLAN, Geneve, IPIP) or</tspan>
+    <tspan x="625" dy="32">BGP-advertised pod prefixes as in</tspan>
+    <tspan x="625" dy="32">Calico and Cilium native routing</tspan>
+  </text>
+
+  
+  <rect x="618" y="505" width="494" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="630" y="540" font-family="monospace" font-size="24" fill="#207448">
+    <tspan x="630" dy="0">ip route | grep -E</tspan>
+    <tspan x="630" dy="32">cali|cni|flannel|cilium|vxlan</tspan>
+  </text>
+
+  
+  <rect x="618" y="605" width="494" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="630" y="635" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="630" dy="0">docker0 172.17.0.0/16 appears</tspan>
+    <tspan x="630" dy="30">as a connected route and can</tspan>
+    <tspan x="630" dy="30">collide with real networks:</tspan>
+    <tspan x="630" dy="30">change default-address-pools in</tspan>
+    <tspan x="630" dy="30" font-family="monospace" fill="#207448">/etc/docker/daemon.json</tspan>
+  </text>
+
+  
+  <rect x="1175" y="160" width="385" height="620" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1339, 180)">
+    <rect x="0" y="0" width="56" height="56" rx="8" stroke="#207448" stroke-width="4" fill="none" />
+    <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="9" r="2.5" fill="#207448" />
+    <circle cx="28" cy="32" r="4" stroke="#207448" stroke-width="3" fill="none" />
+    <line x1="28" y1="36" x2="28" y2="44" stroke="#207448" stroke-width="3" />
+    <line x1="16" y1="44" x2="40" y2="44" stroke="#207448" stroke-width="3" />
+    <line x1="16" y1="44" x2="16" y2="49" stroke="#207448" stroke-width="3" />
+    <line x1="40" y1="44" x2="40" y2="49" stroke="#207448" stroke-width="3" />
+  </g>
+
+  
+  <text x="1367" y="260" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="1367" dy="0">Pod with</tspan>
+    <tspan x="1367" dy="38">hostNetwork: true</tspan>
+  </text>
+  <line x1="1195" y1="315" x2="1540" y2="315" stroke="#207448" stroke-width="1.5" stroke-opacity="0.4" />
+
+  
+  <rect x="1195" y="380" width="345" height="360" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  <text x="1367" y="525" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+    <tspan x="1367" dy="0">uses the node's</tspan>
+    <tspan x="1367" dy="42">tables, so you see</tspan>
+    <tspan x="1367" dy="42">the node's routes</tspan>
+    <tspan x="1367" dy="42">inside it</tspan>
+  </text>
+
+  
+  <line x1="515" y1="360" x2="605" y2="360" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  <text x="560" y="342" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">veth</text>
+
+  
+  <line x1="865" y1="780" x2="865" y2="880" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  <text x="880" y="838" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="start">overlay or routed</text>
+
+  
+  <rect x="40" y="880" width="1520" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(68, 917)">
+    <path d="M 12 36 A 14 14 0 0 1 20 12 A 18 18 0 0 1 48 10 A 16 16 0 0 1 60 28 A 14 14 0 0 1 54 44 L 16 44 A 12 12 0 0 1 12 36 Z" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" />
+  </g>
+
+  
+  <text x="160" y="938" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">Cloud VMs: a default route via the subnet gateway, /32 host routes with onlink,</tspan>
+    <tspan x="160" dy="36">and route tables outside the VM managed by the cloud; leave them in place</tspan>
+  </text>
+
+  
+  <rect x="40" y="1050" width="1520" height="100" rx="10" fill="#207448" />
+  <text x="800" y="1092" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    <tspan x="800" dy="0">When traffic fails, check the routes in both namespaces,</tspan>
+    <tspan x="800" dy="36">because the fault may be on either side</tspan>
+  </text>
+</svg>

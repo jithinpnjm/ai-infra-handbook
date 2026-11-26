@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The sinfo inventory script: what --list returns and why _meta matters</title>
+  <desc>Visual explanation of the Ansible sinfo dynamic inventory flow, JSON structure, Why _meta optimization, and inventory script rules.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The sinfo inventory script: what --list returns and why _meta matters</text>
+
+  
+  <g id="step1">
+    <rect x="40" y="105" width="1010" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="80" cy="150" r="22" fill="#207448"/>
+    <text x="80" y="158" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <rect x="122" y="128" width="46" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <polyline points="131,143 139,150 131,157" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="144" y1="157" x2="157" y2="157" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="190" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">ansible runs </tspan>
+      <tspan font-family="ui-monospace, monospace" font-weight="bold">slurm_inventory.py --list</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="330" y1="195" x2="330" y2="223" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead)"/>
+
+  
+  <g id="step2">
+    <rect x="40" y="225" width="1010" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="80" cy="272" r="22" fill="#207448"/>
+    <text x="80" y="280" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <rect x="122" y="248" width="46" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="131" y1="262" x2="159" y2="262" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="131" y1="272" x2="159" y2="272" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="135" cy="283" r="2.5" fill="#207448"/>
+    <circle cx="145" cy="283" r="2.5" fill="#207448"/>
+    
+    <text x="190" y="264" font-size="24" fill="#303a36">
+      <tspan x="190" dy="0" font-family="ui-monospace, monospace" font-weight="bold">sinfo -N -h -o &quot;%N|%P|%G&quot;</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> gives node, partition and GRES per line</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="330" y1="320" x2="330" y2="348" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead)"/>
+
+  
+  <g id="step3">
+    <rect x="40" y="350" width="590" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="80" cy="392" r="22" fill="#207448"/>
+    <text x="80" y="400" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <circle cx="145" cy="392" r="16" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 145 370 L 145 375 M 145 409 L 145 414 M 123 392 L 128 392 M 162 392 L 167 392" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="65" y="445" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0" font-family="system-ui, -apple-system, sans-serif">for each line: add the node to </tspan><tspan font-family="ui-monospace, monospace">slurm_nodes</tspan>
+      <tspan x="65" dy="30" font-family="system-ui, -apple-system, sans-serif">and to a </tspan><tspan font-family="ui-monospace, monospace">part_</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> group named after its partition;</tspan>
+      <tspan x="65" dy="30" font-family="system-ui, -apple-system, sans-serif">store </tspan><tspan font-family="ui-monospace, monospace">slurm_partition</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> and </tspan><tspan font-family="ui-monospace, monospace">slurm_gres</tspan>
+      <tspan x="65" dy="30" font-family="system-ui, -apple-system, sans-serif">in </tspan><tspan font-family="ui-monospace, monospace">_meta.hostvars</tspan>
+    </text>
+  </g>
+
+  
+  <g id="callout">
+    <rect x="650" y="350" width="400" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,5"/>
+    
+    <line x1="630" y1="460" x2="650" y2="460" stroke="#207448" stroke-width="2.5" stroke-dasharray="4,4"/>
+    
+    <rect x="675" y="372" width="46" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="698" y="402" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">*</text>
+    
+    <text x="675" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="675" dy="0"><tspan font-family="ui-monospace, monospace">rstrip(&quot;*&quot;)</tspan> removes the star</tspan>
+      <tspan x="675" dy="30">Slurm adds to the default</tspan>
+      <tspan x="675" dy="30">partition name so <tspan font-family="ui-monospace, monospace">part_gpu</tspan></tspan>
+      <tspan x="675" dy="30">does not appear as <tspan font-family="ui-monospace, monospace">part_gpu*</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <line x1="330" y1="570" x2="330" y2="598" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead)"/>
+
+  
+  <g id="step4">
+    <rect x="40" y="600" width="1010" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="80" cy="642" r="22" fill="#207448"/>
+    <text x="80" y="650" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <rect x="122" y="620" width="46" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 132 633 L 158 633 M 132 642 L 154 642 M 132 651 L 148 651" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="190" y="650" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#303a36">print json.dumps(inventory)</text>
+  </g>
+
+  
+  <g id="json_box">
+    <rect x="40" y="705" width="1010" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <rect x="65" y="725" width="46" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <text x="88" y="757" text-anchor="middle" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">{ }</text>
+    
+    <text x="135" y="746" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">{ <tspan font-weight="bold">_meta</tspan>: { hostvars: {...} },</tspan>
+      <tspan x="135" dy="32">  all: { children: [slurm_nodes] },</tspan>
+      <tspan x="135" dy="32">  slurm_nodes: { hosts: [...] },</tspan>
+      <tspan x="135" dy="32">  part_X: { hosts: [...] } }</tspan>
+    </text>
+  </g>
+
+  
+  <g id="why_meta">
+    <rect x="1080" y="105" width="480" height="465" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <rect x="1080" y="105" width="480" height="64" rx="12" fill="#db8129"/>
+    
+    <path d="M 1118 118 L 1104 139 L 1118 139 L 1112 156 L 1132 133 L 1118 133 Z" fill="#ffffff"/>
+    
+    <text x="1144" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Why _meta</text>
+    
+    <text x="1105" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1105" dy="0">it lets Ansible skip the</tspan>
+      <tspan x="1105" dy="34">per-host <tspan font-family="ui-monospace, monospace">--host</tspan> call, a</tspan>
+      <tspan x="1105" dy="34">major speed difference on a</tspan>
+      <tspan x="1105" dy="34">large inventory; like reading</tspan>
+      <tspan x="1105" dy="34">a full card catalogue once</tspan>
+      <tspan x="1105" dy="34">instead of walking to the</tspan>
+      <tspan x="1105" dy="34">shelf for every single book;</tspan>
+      <tspan x="1105" dy="34">the <tspan font-family="ui-monospace, monospace">--host</tspan> path just prints</tspan>
+      <tspan x="1105" dy="34">an empty JSON object</tspan>
+    </text>
+  </g>
+
+  
+  <g id="note">
+    <rect x="1080" y="595" width="480" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="1490" y="615" width="46" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 1513 615 C 1513 623 1521 623 1521 615 M 1536 638 C 1528 638 1528 646 1536 646" stroke="#207448" stroke-width="3" fill="none"/>
+    
+    <text x="1105" y="640" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1105" dy="0">scripts are the older way;</tspan>
+      <tspan x="1105" dy="34">the recommended extension is</tspan>
+      <tspan x="1105" dy="34">an inventory plugin: a Python</tspan>
+      <tspan x="1105" dy="34">class subclassing</tspan>
+      <tspan x="1105" dy="34"><tspan font-family="ui-monospace, monospace">BaseInventoryPlugin</tspan>, optionally</tspan>
+      <tspan x="1105" dy="34"><tspan font-family="ui-monospace, monospace">Constructable</tspan> and <tspan font-family="ui-monospace, monospace">Cacheable</tspan>,</tspan>
+      <tspan x="1105" dy="34">shipped in a collection</tspan>
+    </text>
+  </g>
+
+  
+  <g id="rules_strip">
+    <rect x="40" y="915" width="1520" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="65" y="942" width="50" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <path d="M 78 967 L 86 975 L 102 959" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="135" y="955" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0"><tspan font-family="ui-monospace, monospace">executable (chmod +x)</tspan>, deterministic (same API state gives the same output</tspan>
+      <tspan x="135" dy="34">so two runs can be compared line by line), prints nothing else on stdout,</tspan>
+      <tspan x="135" dy="34">exits non-zero when an API call fails</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom_bar">
+    <rect x="40" y="1080" width="1520" height="85" rx="12" fill="#207448"/>
+    
+    <path d="M 85 1098 L 105 1098 C 105 1120 95 1134 85 1140 C 75 1134 65 1120 65 1098 Z" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <polyline points="74,1118 82,1126 96,1112" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="125" y="1134" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Return _meta and fail loudly</text>
+  </g>
+</svg>

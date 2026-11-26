@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "x06-refused-timeout-reset",
+  "title": "Refused, timed out, reset: three different stories",
+  "spec": "Three side-by-side panels, each a small swimlane diagram with two vertical lanes, the left lane headed client and the right lane headed server. Panel 1 titled Connection refused: an arrow labelled SYN goes from client to server, and a short arrow labelled RST comes straight back from server to client with a timer tag of milliseconds. Sub-label: a host answered and nothing listens on the port. Panel 2 titled Connection timed out: an arrow labelled SYN goes from client to server and is drawn ending at a grey wall or dropped mark, then a second dashed arrow labelled SYN retry, a third dashed arrow labelled SYN retry, with a clock tag labelled about 127 seconds in total. Sub-label: nobody answered, the client keeps retrying. Panel 3 titled Connection reset: a handshake drawn as SYN, SYN-ACK, ACK, then data arrows labelled data flowing, then a middle box labelled middlebox forgot the flow, then an arrow labelled RST from the middle to the client when the next write happens. Sub-label: state destroyed mid-session. Monospace for SYN, RST, SYN-ACK. Orange outline on the RST arrow in panel 3 as the most common hidden cause. Title: Ask which error the client saw. Green takeaway bar: Refused points to the service, timeout points to the path or the queue, reset points to state in a middlebox.",
+  "anchor": "### 1. Refused, timed out, reset: three different stories",
+  "alt": "Three TCP failure stories: a refusal answered at once by a reset, a timeout where SYNs go unanswered, and a reset in the middle of a session.",
+  "cap": "A refused connection is answered at once, a timeout is silence while the client retries, and a reset destroys state in the middle of a session."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "x06-two-queues",
+  "title": "Two queues for one listening socket: the reception desk and the waiting room",
+  "spec": "Left to right flow. At far left, a client icon with an arrow labelled SYN arriving. First stop, a rounded box labelled SYN backlog, sub-label half-open, handshake not finished, with a cap label tcp_max_syn_backlog. A green arrow goes right to a second box labelled accept queue, sub-label established, waiting for accept, with a cap label backlog argument, capped by net.core.somaxconn. Then an arrow goes right to a server icon labelled accept call by the application. Above the accept queue box, a fill gauge labelled Recv-Q shows current length, and a second marker labelled Send-Q shows the limit. Below the flow, an orange branch: when the accept queue is full, an arrow drops from the SYN path labelled SYN dropped, client retransmits. A small counter tag labelled ListenOverflows rises. Monospace for SYN backlog cap, tcp_max_syn_backlog, net.core.somaxconn, Recv-Q, Send-Q, ListenOverflows. Two icons: a reception desk icon above the first box and a waiting room icon with chairs above the second box. Numbered steps 1 to 3 in green circles under the flow: 1 read the listener queue, 2 read the overflow counters, 3 read why accept is slow. Green takeaway bar: Read the listener queue first, then the overflow counters, then the application.",
+  "anchor": "### 4. SYN backlog and accept queue",
+  "alt": "A new connection passes a SYN backlog, then waits in the accept queue until the application calls accept, and drops happen when the queue is full.",
+  "cap": "Linux keeps two queues per listener, and a full accept queue causes SYNs to be dropped and retried by the client."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "x06-ndots-candidate-ladder",
+  "title": "One call to api.example.com under ndots 5: eight queries before the useful answer",
+  "spec": "A vertical ladder of four candidate rows, numbered 1 to 4 in green circles (r=24), each row a long rounded box with the candidate name in monospace and a count of queries on the right. Row 1: api.example.com.ml.svc.cluster.local, queries A and AAAA, running total 2, icon of a miss cross. Row 2: api.example.com.svc.cluster.local, running total 4, miss cross. Row 3: api.example.com.cluster.local, running total 6, miss cross. Row 4: api.example.com, running total 8, green check, labelled the real name and the only useful answer. Above the ladder, a box with the resolv.conf lines in monospace: search ml.svc.cluster.local svc.cluster.local cluster.local and options ndots:5. A side note with a number: api.example.com has two dots, below ndots 5 so search suffixes come first. Orange outline on row 4 cost total 8 queries. Below the ladder, two fix tiles: a tile with monospace trailing dot api.example.com. with the note sends one query per record type, and a tile with monospace dnsConfig ndots lower, and NodeLocal DNSCache. Green takeaway bar: Count the lookups one call causes before you blame CoreDNS capacity.",
+  "anchor": "### 7. DNS failures and ndots in Kubernetes",
+  "alt": "A call to api.example.com in a pod with ndots 5 tries three suffixed names before the real name, costing eight queries.",
+  "cap": "With ndots 5, a dotted name is tried with each search suffix first, so one useful answer can cost eight queries."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "x06-idle-timeout-timeline",
+  "title": "A silent stream is reset by the middlebox; a heartbeat keeps it alive",
+  "spec": "A horizontal timeline across the middle, with time markers on the top edge labelled 0 seconds, 0.3 seconds, 0.6 seconds and then the next write. Two lanes stacked vertically. Top lane titled silent client: a dot at 0 labelled last byte, then a grey band labelled quiet for longer than the idle timeout, then a middlebox icon at about 0.6 with label middlebox closes idle flow, then at the next write a red-outlined arrow labelled reset or BrokenPipe. Bottom lane titled heartbeat client: small green pulse marks at 0, 0.3 and 0.6 labelled ping every half the idle timeout, then a green line continuing with label still alive. A vertical dashed line at 0.6 across both lanes labelled idle timeout. Monospace for ping, BrokenPipeError, Flags [R], Flags [F.]. A small capture strip under the top lane shows a monospace line: Flags [F.] from the server, then ack from the client, then silence, then Flags [R] at the next client write. Orange outline on the top lane reset as the failure. Numbered steps 1 to 3 in green circles at bottom: 1 find the lowest idle timeout on the path, 2 send a heartbeat below it with margin, 3 check no hard total duration limit applies. Green takeaway bar: The reset appears only when the client speaks again, so a silent stream looks fine until its next write.",
+  "anchor": "### 11. Idle timeouts and keepalive, the streaming problem",
+  "alt": "A silent stream is closed by a middlebox after the idle timeout and fails on the next write, while a client that sends heartbeats stays alive.",
+  "cap": "A middlebox that forgets an idle flow breaks a silent stream at the next write, while periodic heartbeats keep the flow alive."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "x06-service-path-ladder",
+  "title": "The Kubernetes Service path: seven checks in order",
+  "spec": "A vertical ladder of seven numbered rungs from top to bottom, each rung a rounded card with a green number circle (r=24, white number), an outline icon at left, a bold title and a monospace check command or object name below the title. Rung 1 title Pod, check: call the pod IP and pod port directly from another pod. Rung 2 title Service, check: the Service exists, otherwise lookup fails with Name or service not known. Rung 3 title DNS, check: short, namespaced and full names resolve. Rung 4 title Endpoints, check: kubectl get endpointslices -l kubernetes.io/service-name=hostnames, and an orange callout beside it: ENDPOINTS shows none means the Service selector does not match pod labels. Rung 5 title Ports, check: Service port listed, targetPort correct, named port matched. Rung 6 title kube-proxy rules, check: iptables-save grep hostnames, or ipvsadm -ln. Rung 7 title Conntrack, check: table usage, since iptables Service load balancing depends on connection tracking. Down the left side a thin arrow labelled read top to bottom. Right side, a small box with the note: the first failing rung is where to look. Title: When a Service fails, confirm in order. Green takeaway bar: Pod, Service, DNS, endpoints, ports, kube-proxy rules, then conntrack.",
+  "anchor": "### 12. The Kubernetes Service path",
+  "alt": "Seven checks for a failing Kubernetes Service in order, from the pod through DNS and endpoints to kube-proxy rules and conntrack.",
+  "cap": "A failing Kubernetes Service is checked in a fixed order, so the first failing rung shows where to look."
+ }
+]

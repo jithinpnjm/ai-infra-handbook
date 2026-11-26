@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Ten class and typing mistakes with their fixes</title>
+  <desc>A two column table mapping ten class and typing mistakes in Python to their concrete fixes, with guidance on object copying and code review.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Ten class and typing mistakes with their fixes</text>
+
+  
+  <rect x="40" y="70" width="746" height="58" rx="8" fill="#207448"/>
+  <text x="413" y="110" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Mistake</text>
+  <rect x="814" y="70" width="746" height="58" rx="8" fill="#207448"/>
+  <text x="1187" y="110" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Fix</text>
+
+  
+  <rect x="40" y="136" width="746" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="172" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">Mutable class attributes and mutable default </tspan>
+    <tspan x="64" dy="26">arguments; forgetting default_factory in a </tspan>
+    <tspan x="64" dy="26">dataclass</tspan>
+  </text>
+  
+  <rect x="814" y="136" width="746" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="172" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="838" dy="0">create state in __init__; </tspan>
+    <tspan x="838" dy="26">field(default_factory=list)</tspan>
+  </text>
+  
+  <rect x="40" y="247" width="746" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="283" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">Deep inheritance; inconsistent super().__init__ </tspan>
+    <tspan x="64" dy="26">calls breaking cooperative inheritance; </tspan>
+    <tspan x="64" dy="26">overriding methods with different signatures</tspan>
+  </text>
+  
+  <rect x="814" y="247" width="746" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="283" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="838" dy="0">one or two levels, composition, compatible </tspan>
+    <tspan x="838" dy="26">signatures</tspan>
+  </text>
+  
+  <rect x="40" y="358" width="746" height="78" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="394" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">Classes as namespaces for functions, where a </tspan>
+    <tspan x="64" dy="26">module is the right tool, or as singletons</tspan>
+  </text>
+  
+  <rect x="814" y="358" width="746" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="394" font-family="sans-serif" font-size="24" fill="#303a36">a module and module-level objects</text>
+  
+  <rect x="40" y="443" width="746" height="78" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="479" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">Assuming type hints enforce anything at runtime; </tspan>
+    <tspan x="64" dy="26">sprinkling Any and unchecked # type: ignore</tspan>
+  </text>
+  
+  <rect x="814" y="443" width="746" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="479" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="838" dy="0">run mypy or pyright in CI; validate at the </tspan>
+    <tspan x="838" dy="26">boundary with pydantic</tspan>
+  </text>
+  
+  <rect x="40" y="528" width="746" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="564" font-family="sans-serif" font-size="24" fill="#303a36">Validating the same data over and over, or never</text>
+  
+  <rect x="814" y="528" width="746" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="564" font-family="sans-serif" font-size="24" fill="#303a36">validate once at the boundary</text>
+  
+  <rect x="40" y="587" width="746" height="78" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="623" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">Exposing mutable internals such as returning the </tspan>
+    <tspan x="64" dy="26">internal list</tspan>
+  </text>
+  
+  <rect x="814" y="587" width="746" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="623" font-family="sans-serif" font-size="24" fill="#303a36">return copies or tuples</text>
+  
+  <rect x="40" y="672" width="746" height="78" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="708" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">Overloading operators with surprising semantics, </tspan>
+    <tspan x="64" dy="26">or __eq__ without __hash__</tspan>
+  </text>
+  
+  <rect x="814" y="672" width="746" height="78" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="708" font-family="sans-serif" font-size="24" fill="#303a36">natural meanings only; keep them consistent</text>
+  
+  <rect x="40" y="757" width="746" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="793" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">IO in __init__, or catching exceptions in </tspan>
+    <tspan x="64" dy="26">constructors and leaving half-initialized </tspan>
+    <tspan x="64" dy="26">objects</tspan>
+  </text>
+  
+  <rect x="814" y="757" width="746" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="793" font-family="sans-serif" font-size="24" fill="#303a36">explicit factory classmethod or lazy connection</text>
+  
+  <rect x="40" y="868" width="746" height="104" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <text x="64" y="904" font-family="sans-serif" font-size="24" fill="#303a36">Pickling untrusted data, or relying on __del__</text>
+  
+  <rect x="814" y="868" width="746" height="104" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="904" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="838" dy="0">JSON, YAML or protobuf; __enter__ and __exit__; </tspan>
+    <tspan x="838" dy="26">pickle with __getstate__ is unsafe for untrusted </tspan>
+    <tspan x="838" dy="26">data and breaks across versions</tspan>
+  </text>
+  
+  <rect x="40" y="979" width="746" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="64" y="1015" font-family="sans-serif" font-size="24" fill="#303a36">Storing secrets in attributes that repr shows</text>
+  
+  <rect x="814" y="979" width="746" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="838" y="1015" font-family="sans-serif" font-size="24" fill="#303a36">SecretStr</text>
+
+  
+  <rect x="40" y="1041" width="1520" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <text x="800" y="1077" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">copy.copy and copy.deepcopy can be customized with __copy__ and __deepcopy__</text>
+
+  
+  <rect x="40" y="1106" width="1520" height="54" rx="8" fill="#207448"/>
+  <text x="800" y="1143" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Look for each of them in turn when you review your own code</text>
+</svg>

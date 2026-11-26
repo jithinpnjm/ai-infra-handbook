@@ -52,24 +52,9 @@ Decide what each of these failures should cost you before you pick a redundancy 
 
 Picture the one host running `slurmctld` failing at a busy hour. Without a standby, nothing new gets scheduled until someone repairs it, and every minute of that gap is a minute of idle GPUs. Suppose the one host running `slurmctld` fails. Without a standby, nothing new gets scheduled until someone repairs it. Slurm avoids that with a second controller that takes over. The diagram below shows the pattern for the controllers and for the accounting database.
 
-```mermaid
-flowchart TB
-  subgraph ControlHA["Controller HA Pair (SlurmctldTimeout=120s)"]
-    Ctl1["Primary: SlurmctldHost=ctl1"]
-    Ctl2["Standby: SlurmctldHost=ctl2"]
-    State["Shared StateSaveLocation<br/>(HA NFS / Replicated Block)"]
-    Ctl1 --> State
-    Ctl2 -.->|Heartbeat & Takeover| State
-  end
-  subgraph AcctHA["Accounting HA Pair"]
-    Dbd1["Primary: slurmdbd (db1)"]
-    Dbd2["Backup: DbdBackupHost (db2)"]
-    MySQL[("Galera / Replicated MySQL")]
-    Dbd1 --> MySQL
-    Dbd2 -.-> MySQL
-  end
-  ControlHA -->|"1. Upgrade slurmdbd -> 2. slurmctld -> 3. slurmd"| AcctHA
-```
+![Controller high availability](./img/m6-15-1.svg)
+
+*Figure 6.15.1. Controller high availability, as a diagram.*
 
 Read the diagram from left to right. The controller pair shares one state directory, so whichever controller is active reads the same job records. The accounting pair shares one database. The arrow at the bottom is the upgrade order, which section 4 explains.
 

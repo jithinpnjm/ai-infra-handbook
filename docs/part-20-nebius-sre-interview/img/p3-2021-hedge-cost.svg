@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>Hedging buys tail latency with GPU time</title>
+  <desc>Visual explainer comparing a hedge request timeline, toy-model latency results, GPU cost implications, and author rule constraints.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1 L 8 5 L 0 9 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="64" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Hedging buys tail latency with GPU time</text>
+
+  
+  <rect x="40" y="105" width="480" height="695" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(60, 125)">
+    <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="26" y1="12" x2="26" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="26" y1="26" x2="38" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="26" y1="0" x2="26" y2="4" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="125" y="160" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Timeline of a hedge</text>
+
+  
+  <line x1="82" y1="265" x2="82" y2="305" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="82" y1="520" x2="82" y2="555" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="82" y1="655" x2="82" y2="690" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <circle cx="82" cy="235" r="22" fill="#207448"/>
+  <text x="82" y="243" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <rect x="120" y="195" width="380" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="138" y="230" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="138" dy="0">request is slow because</tspan>
+    <tspan x="138" dy="30">one replica is slow</tspan>
+  </text>
+
+  
+  <circle cx="82" cy="420" r="22" fill="#db8129"/>
+  <text x="82" y="428" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <rect x="120" y="315" width="380" height="205" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="138" y="348" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="138" dy="0">after a short delay</tspan>
+    <tspan x="138" dy="30">(only on a per-try</tspan>
+    <tspan x="138" dy="30">timeout) send a second</tspan>
+    <tspan x="138" dy="30">copy to another replica</tspan>
+    <tspan x="138" dy="30">without cancelling</tspan>
+    <tspan x="138" dy="30">the first</tspan>
+  </text>
+
+  
+  <circle cx="82" cy="610" r="22" fill="#207448"/>
+  <text x="82" y="618" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <rect x="120" y="565" width="380" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="138" y="601" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="138" dy="0">use whichever</tspan>
+    <tspan x="138" dy="30">answers first</tspan>
+  </text>
+
+  
+  <circle cx="82" cy="740" r="22" fill="#207448"/>
+  <text x="82" y="748" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <rect x="120" y="700" width="380" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="138" y="736" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="138" dy="0">cancel the loser</tspan>
+    <tspan x="138" dy="30">at once</tspan>
+  </text>
+
+
+  
+  <rect x="560" y="105" width="480" height="695" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(580, 125)">
+    <rect x="2" y="2" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="14" y1="40" x2="14" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="26" y1="40" x2="26" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="38" y1="40" x2="38" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="645" y="150" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Toy-model results</text>
+  <text x="645" y="178" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="645" dy="0">(lognormal latency, shape 0.6,</tspan>
+    <tspan x="645" dy="28">independent copies)</tspan>
+  </text>
+
+  
+  <rect x="580" y="230" width="440" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="600" y="266" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">hedge at the 95th</tspan>
+    <tspan x="600" dy="30">percentile: duplicates</tspan>
+    <tspan x="600" dy="30">5 percent of requests,</tspan>
+    <tspan x="600" dy="30">p99 from 4.02 to 3.57,</tspan>
+    <tspan x="600" dy="30">about 11 percent better</tspan>
+  </text>
+
+  
+  <rect x="580" y="445" width="440" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="600" y="482" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">hedge at the 90th:</tspan>
+    <tspan x="600" dy="30">duplicates 10 percent,</tspan>
+    <tspan x="600" dy="30">p99 from 4.01 to 3.30,</tspan>
+    <tspan x="600" dy="30">about 18 percent better</tspan>
+  </text>
+
+  
+  <rect x="580" y="645" width="440" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="600" y="685" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">gain per duplicate is</tspan>
+    <tspan x="600" dy="30">modest and shrinks</tspan>
+    <tspan x="600" dy="30">as the delay grows</tspan>
+  </text>
+
+
+  
+  <rect x="1080" y="105" width="480" height="695" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(1100, 125)">
+    <rect x="8" y="8" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="18" y="18" width="16" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="2" y1="18" x2="8" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="2" y1="34" x2="8" y2="34" stroke="#207448" stroke-width="3"/>
+    <line x1="44" y1="18" x2="50" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="44" y1="34" x2="50" y2="34" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="2" x2="18" y2="8" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="2" x2="34" y2="8" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="44" x2="18" y2="50" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="44" x2="34" y2="50" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="1165" y="160" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">GPU cost</text>
+
+  
+  <rect x="1100" y="195" width="440" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1120" y="232" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0">a hedge repeats the whole</tspan>
+    <tspan x="1120" dy="30">prefill on a second GPU</tspan>
+    <tspan x="1120" dy="30">and holds KV cache until</tspan>
+    <tspan x="1120" dy="30">the loser is cancelled</tspan>
+  </text>
+
+  
+  <rect x="1100" y="375" width="440" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1120" y="415" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0">5 percent duplicates is</tspan>
+    <tspan x="1120" dy="30">roughly 5 percent more</tspan>
+    <tspan x="1120" dy="30">prefill work</tspan>
+  </text>
+
+  
+  <rect x="1100" y="510" width="440" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1120" y="546" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0">a fleet at 80 percent</tspan>
+    <tspan x="1120" dy="30">utilisation moves to</tspan>
+    <tspan x="1120" dy="30">about 84 percent and</tspan>
+    <tspan x="1120" dy="30">queueing delay rises</tspan>
+    <tspan x="1120" dy="30">steeply near the top</tspan>
+  </text>
+
+  
+  <rect x="1100" y="695" width="440" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1120" y="734" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0">independence fails exactly</tspan>
+    <tspan x="1120" dy="30">when you need hedging most</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="825" width="1520" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(60, 845)">
+    <path d="M 26 2 L 48 11 L 48 29 C 48 43 38 52 26 56 C 14 52 4 43 4 29 L 4 11 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 16 28 L 23 35 L 36 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="130" y="880" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rule box (author's reasoning, not a Nebius setting)</text>
+
+  
+  <text x="130" y="940" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan x="130" dy="0">hedge only before the first token, only for tail time to first token,</tspan>
+    <tspan x="130" dy="36">only below a fleet utilisation threshold, only inside the retry budget</tspan>
+  </text>
+</svg>

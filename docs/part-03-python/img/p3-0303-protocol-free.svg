@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Two methods in, a whole sequence out: NodeInventory and Fleet</title>
+  <desc>Visual infographic demonstrating how implementing __len__ and __getitem__ provides complete sequence behaviors for NodeInventory, contrasted with abc.Sequence inheritance in Fleet.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="16" markerHeight="12" refX="16" refY="6" orient="auto">
+      <polygon points="0 0, 16 6, 0 12" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Two methods in, a whole sequence out: </tspan>
+    <tspan x="800" dy="52">NodeInventory and Fleet</tspan>
+  </text>
+
+  
+  <g id="left-box">
+    <rect x="40" y="155" width="420" height="290" rx="16" fill="#fff7f0" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(222, 185)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="52" height="52" rx="10" fill="#ffffff" />
+      <polyline points="18,20 10,28 18,36" />
+      <polyline points="38,20 46,28 38,36" />
+      <line x1="30" y1="16" x2="26" y2="40" />
+    </g>
+    <text x="250" y="300" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="250" dy="0">You write only</tspan>
+      <tspan x="250" dy="44">__len__ and</tspan>
+      <tspan x="250" dy="44">__getitem__</tspan>
+    </text>
+  </g>
+
+  
+  <g id="second-box-fleet">
+    <rect x="40" y="485" width="420" height="400" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(222, 515)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="14" y="2" width="28" height="20" rx="4" fill="#ffffff" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <line x1="12" y1="34" x2="44" y2="34" />
+      <line x1="12" y1="34" x2="12" y2="42" />
+      <line x1="44" y1="34" x2="44" y2="42" />
+      <rect x="2" y="42" width="20" height="14" rx="3" fill="#ffffff" />
+      <rect x="34" y="42" width="20" height="14" rx="3" fill="#ffffff" />
+    </g>
+    <text x="250" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="250" dy="0">index, count, iteration,</tspan>
+      <tspan x="250" dy="36">in, reversed come from</tspan>
+      <tspan x="250" dy="36">the base class;</tspan>
+      <tspan x="250" dy="36">__getitem__ returns Fleet</tspan>
+      <tspan x="250" dy="36">for a slice</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-free">
+    <line x1="460" y1="300" x2="700" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+    <text x="580" y="280" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">you get for free</text>
+  </g>
+
+  
+  <g id="right-container">
+    <rect x="700" y="155" width="860" height="730" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="720" y="168" width="400" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="920" y="224" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">len(inv) is 52</text>
+    
+    <rect x="1140" y="168" width="400" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1340" y="210" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1340" dy="0" font-family="monospace" font-weight="bold">inv[:3]</tspan>
+      <tspan x="1340" dy="30">first three nodes</tspan>
+    </text>
+    
+    <rect x="720" y="274" width="400" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="920" y="316" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0" font-weight="bold">inv[0] ==</tspan>
+      <tspan x="920" dy="30">Node(slot=01, rack=r1)</tspan>
+    </text>
+    
+    <rect x="1140" y="274" width="400" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1340" y="316" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1340" dy="0" font-weight="bold">inv[-1] ==</tspan>
+      <tspan x="1340" dy="30">Node(slot=13, rack=r4)</tspan>
+    </text>
+    
+    <rect x="720" y="380" width="400" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="920" y="422" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0" font-family="monospace" font-weight="bold">choice(inv)</tspan>
+      <tspan x="920" dy="30">random selection</tspan>
+    </text>
+    
+    <rect x="1140" y="380" width="400" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1340" y="422" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1340" dy="0">for node in inv</tspan>
+      <tspan x="1340" dy="30">and reversed(inv)</tspan>
+    </text>
+    
+    <rect x="720" y="486" width="400" height="148" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="920" y="534" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0" font-family="monospace" font-weight="bold">inv[12::13] </tspan><tspan font-family="sans-serif">slot 13 of</tspan>
+      <tspan x="920" dy="30">every rack: start at</tspan>
+      <tspan x="920" dy="30">index 12, step 13</tspan>
+    </text>
+    
+    <rect x="1140" y="486" width="400" height="148" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1340" y="524" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1340" dy="0">Node(07, r2) in inv</tspan>
+      <tspan x="1340" dy="28">is True, Node(07, r9)</tspan>
+      <tspan x="1340" dy="28">in inv is False</tspan>
+      <tspan x="1340" dy="28">(a sequential scan)</tspan>
+    </text>
+    
+    <rect x="720" y="644" width="820" height="152" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1130" y="683" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1130" dy="0">sorted(inv, key=drain_order): slot position times the</tspan>
+      <tspan x="1130" dy="28">number of racks plus rack priority from RACK_PRIORITY</tspan>
+      <tspan x="1130" dy="28">= r4:3, r3:2, r2:1, r1:0, so slot 01 of r1 ranks 0 and</tspan>
+      <tspan x="1130" dy="28">slot 13 of r4 ranks 51</tspan>
+    </text>
+    
+    <rect x="720" y="806" width="820" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,4" />
+    <text x="1130" y="848" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">random.shuffle(inv) needs __setitem__</text>
+  </g>
+
+  
+  <g id="footnote-panel">
+    <rect x="40" y="925" width="1520" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(70, 962)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="2" width="48" height="52" rx="6" fill="#ffffff" />
+      <line x1="14" y1="16" x2="42" y2="16" />
+      <line x1="14" y1="28" x2="42" y2="28" />
+      <line x1="14" y1="40" x2="30" y2="40" />
+    </g>
+    <text x="160" y="966" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0">for built-in list or str, len(x) reads a size field in the C structure directly</tspan>
+      <tspan x="160" dy="32">in constant time; collections.abc: Iterable needs __iter__, Sized needs __len__,</tspan>
+      <tspan x="160" dy="32">Container needs __contains__; Sequence, Mapping and Set specialise them</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1095" width="1520" height="65" rx="10" fill="#207448" />
+    <text x="800" y="1136" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Anything with the right methods plugs in</text>
+  </g>
+
+</svg>

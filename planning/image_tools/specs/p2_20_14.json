@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p2-2014-rollout-compare",
+  "title": "Rolling, blue/green and canary: extra GPUs while rolling",
+  "spec": "A comparison table drawn as three columns of cards: 'Rolling update', 'Blue/green', 'Canary'. Each column has four rows with a row label on the left: 'Extra GPUs while rolling', 'Rollback speed', 'Weak point'. Rolling update: 'the surge amount, for example 1 replica', 'slow, a reverse rollout', 'old and new mix on every route'. Blue/green: 'a full second fleet, 2x', 'instant, flip the router', 'needs double the GPUs'. Canary: 'the canary replicas, at least 1', 'fast, drop its weight', 'needs a router with weights and enough traffic'. A top banner card: 'You have 8 replicas and one spare GPU: blue/green needs 16 GPUs'. Under the table a hybrid strip with three chips joined by plus signs: 'Rolling update with small surge', 'Canary gate: one new replica, small weight', 'Result: replace pods in order, promote by gate'. Orange outline on the blue/green 'needs double the GPUs' cell. Caption: 'When GPUs are scarce, a hybrid fits.'",
+  "anchor": "### 6. Rolling, blue/green and canary when you cannot double your GPUs",
+  "alt": "Comparison of rolling update, blue/green and canary by extra GPUs needed while rolling, rollback speed and weak point, with a hybrid for scarce GPUs.",
+  "cap": "Rolling update, blue/green and canary compare on extra GPUs needed, rollback speed and weak point, and a hybrid suits scarce GPUs."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p2-2014-rollback-signals",
+  "title": "Strong automatic signals roll back; weaker ones page a person",
+  "spec": "Two columns of signal cards with a divider between them. Left column titled 'Strong: roll back automatically' with cards: 'Canary produces zero tokens', 'Error rate above a hard ceiling', 'Pod restarting or failing readiness repeatedly', 'Quality score below the floor on the live eval probe'. Each card has a green automatic-action icon. Right column titled 'Weaker: hold, then page a person' with cards: 'Latency ratios', 'finish_reason shifts' with the note 'Need a baseline and enough traffic'. Each card has an amber hold icon. Bottom band: a rollback path with three steps: 'Router weight change: seconds', 'Pod replacement: a cold start', 'Previous version id still in the weights hub and cached on nodes'. An orange outline on the 'Canary produces zero tokens' card as the cheapest unambiguous signal. Caption at the bottom: 'Keep the old replicas alive until the new version has carried traffic.'",
+  "anchor": "### 9. Automatic rollback signals",
+  "alt": "Strong rollback signals such as zero tokens and a hard error ceiling trigger automatic rollback, while latency ratios and finish reason shifts are held and paged.",
+  "cap": "Strong signals such as zero tokens or a hard error ceiling roll back automatically, while weaker latency and finish reason signals hold and page a person."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p2-2014-scale-zero-cost",
+  "title": "Scale to zero: the first request pays the full cold start",
+  "spec": "A horizontal timeline of a quiet endpoint over a day, with a few short activity blips and long idle stretches drawn as flat grey bars labelled 'Idle GPU hours'. A marker at the start of a blip labelled 'First request after zero: waits for the full cold start'. A bracket above the cold start labelled 'About 170 seconds before the first token in the section 3 example', with an orange outline and the note 'Breaks an interactive timeout'. Right side: three conditions as a checklist with empty boxes: 'Client tolerates a long first request or a retry', 'Weights cached locally, so the download stage is gone', 'Owner accepts the cold-start delay on first request'. A decision line at the bottom with two options: 'Has an SLA: minimum one replica' (green) and 'Long first request acceptable: zero allowed' (grey). Caption: 'Cost saving from zero versus the cost of failing a customer's first request.'",
+  "anchor": "### 11. Scale-to-zero and the minimum replica decision",
+  "alt": "Scale-to-zero saves idle GPU hours but makes the first request after zero wait for the full cold start, so an SLA endpoint keeps at least one replica.",
+  "cap": "Scale to zero saves idle GPU hours, but the first request waits for the full cold start, so endpoints with an SLA keep at least one replica."
+ }
+]

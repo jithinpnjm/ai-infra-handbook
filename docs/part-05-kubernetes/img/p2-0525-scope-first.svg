@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Define the scope before you touch anything</title>
+  <desc>Flowchart illustrating how to systematically define scope and isolate issues across Kubernetes layers before taking troubleshooting action.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Define the scope before you touch anything</text>
+
+  
+  <rect x="340" y="95" width="920" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="375" y="118" width="44" height="54" rx="5"/>
+    <path d="M 390 118 L 390 113 C 390 110 393 108 397 108 L 401 108 C 405 108 408 110 408 113 L 408 118"/>
+    <path d="M 384 148 L 392 148 L 396 137 L 401 157 L 406 144 L 412 148"/>
+  </g>
+  <text x="445" y="140" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Symptom:</text>
+  <text x="445" y="172" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">what, who, since when, scope</text>
+
+  
+  <line x1="800" y1="195" x2="800" y2="236" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <rect x="280" y="240" width="1040" height="130" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 320 268 L 372 268 L 352 299 L 352 328 L 340 321 L 340 299 Z"/>
+  </g>
+  <text x="400" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Define scope:</text>
+  <text x="400" y="314" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">one pod, one node, one namespace or cluster-wide?</text>
+  <text x="400" y="348" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">One version or one zone?</text>
+
+  
+  <line x1="800" y1="370" x2="800" y2="411" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <rect x="300" y="415" width="1000" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="348" cy="467" r="23"/>
+    <polyline points="348,452 348,467 360,467"/>
+  </g>
+  <text x="395" y="458" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Recent changes:</text>
+  <text x="395" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">deploys, config, upgrades, node events, certs, quotas</text>
+
+  
+  <line x1="800" y1="520" x2="800" y2="561" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <polygon points="800,565 950,635 800,705 650,635" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+  
+  <g stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="800,587 816,595 800,603 784,595"/>
+    <polyline points="784,600 800,608 816,600"/>
+    <polyline points="784,605 800,613 816,605"/>
+  </g>
+  <text x="800" y="652" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Which layer?</text>
+
+  
+  <path d="M 680 649 C 480 665, 121.5 690, 121.5 776" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 720 668 C 540 685, 338.5 705, 338.5 776" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 760 686 C 660 700, 570.5 720, 570.5 776" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 800 705 L 800 776" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 840 686 C 940 700, 1014.5 720, 1014.5 776" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 880 668 C 1060 685, 1236.5 705, 1236.5 776" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 920 649 C 1120 665, 1468.5 690, 1468.5 776" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  
+
+  
+  <rect x="24" y="780" width="195" height="285" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="98.5" y="798" width="46" height="38" rx="4"/>
+    <line x1="98.5" y1="808" x2="144.5" y2="808"/>
+    <polyline points="113,819 108,824 113,829"/>
+    <polyline points="130,819 135,824 130,829"/>
+  </g>
+  <text x="121.5" y="876" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">app:</text>
+  <text x="121.5" y="918" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">logs, probes,</text>
+  <text x="121.5" y="954" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">exit codes</text>
+
+  
+  <rect x="231" y="780" width="215" height="285" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="338.5,796 360,808 360,830 338.5,842 317,830 317,808"/>
+    <line x1="338.5" y1="796" x2="338.5" y2="819"/>
+    <line x1="338.5" y1="819" x2="317" y2="830"/>
+    <line x1="338.5" y1="819" x2="360" y2="830"/>
+  </g>
+  <text x="338.5" y="876" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">pod or runtime:</text>
+  <text x="338.5" y="918" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">events, describe,</text>
+  <text x="338.5" y="954" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">crictl</text>
+
+  
+  <rect x="458" y="780" width="225" height="285" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="548" y="798" width="45" height="38" rx="4"/>
+    <line x1="548" y1="808" x2="593" y2="808"/>
+    <line x1="558" y1="794" x2="558" y2="800"/>
+    <line x1="583" y1="794" x2="583" y2="800"/>
+    <circle cx="570.5" cy="823" r="8"/>
+    <polyline points="570.5,818 570.5,823 574.5,823"/>
+  </g>
+  <text x="570.5" y="876" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">scheduling:</text>
+  <text x="570.5" y="918" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">FailedScheduling</text>
+  <text x="570.5" y="954" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">reasons</text>
+
+  
+  <rect x="695" y="780" width="210" height="285" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="800" cy="803" r="7"/>
+    <circle cx="781" cy="833" r="7"/>
+    <circle cx="819" cy="833" r="7"/>
+    <line x1="795" y1="809" x2="786" y2="827"/>
+    <line x1="805" y1="809" x2="814" y2="827"/>
+    <line x1="788" y1="833" x2="812" y2="833"/>
+  </g>
+  <text x="800" y="872" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">network:</text>
+  <text x="800" y="910" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">DNS, Service,</text>
+  <text x="800" y="944" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">endpoints, CNI,</text>
+  <text x="800" y="978" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">node, underlay</text>
+
+  
+  <rect x="917" y="780" width="195" height="285" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="1014.5" cy="803" rx="22" ry="8"/>
+    <path d="M 992.5 803 L 992.5 833 A 22 8 0 0 0 1036.5 833 L 1036.5 803"/>
+    <path d="M 992.5 818 A 22 8 0 0 0 1036.5 818"/>
+  </g>
+  <text x="1014.5" y="876" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">storage:</text>
+  <text x="1014.5" y="918" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">PVC, PV,</text>
+  <text x="1014.5" y="954" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">CSI, mount</text>
+
+  
+  <rect x="1124" y="780" width="225" height="285" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1214.5" y="801" width="44" height="36" rx="4"/>
+    <rect x="1225.5" y="810" width="22" height="18" rx="2"/>
+    <line x1="1223" y1="795" x2="1223" y2="801"/>
+    <line x1="1236" y1="795" x2="1236" y2="801"/>
+    <line x1="1250" y1="795" x2="1250" y2="801"/>
+    <line x1="1223" y1="837" x2="1223" y2="843"/>
+    <line x1="1236" y1="837" x2="1236" y2="843"/>
+    <line x1="1250" y1="837" x2="1250" y2="843"/>
+  </g>
+  <text x="1236.5" y="872" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">node:</text>
+  <text x="1236.5" y="910" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">kubelet, runtime,</text>
+  <text x="1236.5" y="944" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">kernel, GPU</text>
+  <text x="1236.5" y="978" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">and NIC health</text>
+
+  
+  <rect x="1361" y="780" width="215" height="285" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1468.5" cy="818" r="14"/>
+    <circle cx="1468.5" cy="818" r="5"/>
+    <line x1="1468.5" y1="798" x2="1468.5" y2="804"/>
+    <line x1="1468.5" y1="832" x2="1468.5" y2="838"/>
+    <line x1="1448.5" y1="818" x2="1454.5" y2="818"/>
+    <line x1="1482.5" y1="818" x2="1488.5" y2="818"/>
+  </g>
+  <text x="1468.5" y="872" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448" text-anchor="middle">control plane:</text>
+  <text x="1468.5" y="910" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">API latency, etcd,</text>
+  <text x="1468.5" y="944" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">controllers,</text>
+  <text x="1468.5" y="978" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">webhooks</text>
+
+  
+  <rect x="80" y="1090" width="1440" height="60" rx="10" fill="#207448"/>
+  <text x="800" y="1129" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Each answer removes causes from the list, as a doctor does with chest pain.</text>
+</svg>

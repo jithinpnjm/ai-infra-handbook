@@ -1,0 +1,122 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-dependency-matrix",
+  "title": "Requirement directives compared: what happens when B fails or stops",
+  "spec": "A comparison table with a header row and seven directive rows, each row a unit A that declares a directive about unit B. Columns: 'Directive in A', 'Does it start B?', 'If B fails to start or is stopped later', 'Orders A and B?'. Rows: 'Wants=B': starts B; 'A ignores the failure (soft, the recommended default, failures do not cascade)'; 'No'. 'Requires=B': starts B; 'A is stopped too (hard)'; 'No'. 'Requisite=B': does not start B, B must already be active; 'A fails immediately'; 'No'. 'BindsTo=B': like Requires; 'A also stops when B goes inactive for any reason, even a clean exit (used for devices and mounts)'; 'No'. 'PartOf=B': 'B start does not start A'; 'stop or restart of B propagates to A'; 'No'. 'Conflicts=B': 'starting A stops B'; 'both cannot be active together'; 'No'. 'After=B or Before=B': 'No, ordering only'; 'only has effect if both are in the same transaction'; 'Yes'. Last column cells green only on the After row. Orange outline on the Wants row (recommended default). Below the table a two-part formula strip: 'Wants=B (or Requires=B)' plus 'After=B' equals 'pull B in AND start A after B'. Bottom bar: 'Requirement and ordering are separate settings, so use both together'.",
+  "anchor": "## 4. Dependencies and ordering",
+  "alt": "A table comparing Wants, Requires, Requisite, BindsTo, PartOf, Conflicts and After by whether they start the other unit and what happens when it fails.",
+  "cap": "Wants is the soft default, Requires and BindsTo cascade a failure, and only After or Before sets the start order."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-enable-start-mask",
+  "title": "enable, start, disable, mask, reload, restart and daemon-reload are different jobs",
+  "spec": "Two panels. Left panel 'Does it start now, and does it start at boot?': a table with four rows and two columns of yes or no marks. 'systemctl start NAME': now yes, at boot no. 'systemctl enable NAME': now no, at boot yes (creates symlinks in a .wants or .requires directory of the target named in [Install]). 'systemctl enable --now NAME': now yes, at boot yes. 'systemctl disable NAME': removes the boot links but does not stop the unit. Below the table a strip 'mask NAME: link to /dev/null, nothing can start it, even by dependency (useful for ctrl-alt-del.target)' with orange outline. Note 'A unit with no [Install] section is static: start by hand or through a dependency, cannot be enabled'. Right panel 'Three similar commands': three cards. 'reload: the service re-reads its own configuration through ExecReload='. 'restart: stop the service and start it again'. 'daemon-reload: systemd re-reads the unit files; does NOT restart units'. Under the cards a two step arrow 'after editing a unit: daemon-reload, then restart'. Bottom bar: 'Enabling and starting are two different steps'.",
+  "anchor": "## 3. Operating systemd: `systemctl`",
+  "alt": "A table showing which systemctl commands start a unit now and at boot, plus the difference between reload, restart and daemon-reload.",
+  "cap": "Enable only arranges the boot-time start, start only runs it now, and daemon-reload re-reads unit files without restarting anything."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-status-anatomy",
+  "title": "Reading systemctl status line by line",
+  "spec": "The chapter's status output drawn as a monospace card with numbered callouts to the right. Lines: '● sshd.service - OpenBSD Secure Shell server', 'Loaded: loaded (/lib/systemd/system/ssh.service; enabled; vendor preset: enabled)', 'Active: active (running) since Fri 2025-04-16 08:15:41 UTC; 1 month 1 day ago', 'Main PID: 1110 (sshd)', 'Tasks: 1 (limit: 4915)', 'Memory: 5.1M', 'CPU: 2.103s', 'CGroup: /system.slice/ssh.service', '└─1110 \"sshd: /usr/sbin/sshd -D [listener] 0 of 10-100 startups\"', 'Apr 16 08:15:41 node1 systemd[1]: Started OpenBSD Secure Shell server.'. Callouts: 1 on Loaded 'file path, enablement state, vendor preset'; 2 on Active 'state: active (running), active (exited) for oneshots, inactive (dead), activating, failed; after a failure a Result follows: exit-code, signal, timeout or start-limit-hit' (orange, the key line); 3 on Main PID 'the tracked process'; 4 on Tasks, Memory, CPU 'accounting from the cgroup'; 5 on CGroup 'every process of the service, however many times it forked'; 6 on the last line 'newest journal lines only; the full log is journalctl -u NAME'. Bottom bar: 'Read Active first, then the Result, then the log'.",
+  "anchor": "## 3. Operating systemd: `systemctl`",
+  "alt": "An annotated systemctl status output for sshd with callouts for Loaded, Active, Main PID, resource accounting, the cgroup tree and the log lines.",
+  "cap": "The Active line gives the state and, after a failure, the Result, while the cgroup tree lists every process the service owns."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-dropin-merge",
+  "title": "Drop-ins add to list keys, so clear ExecStart before you replace it",
+  "spec": "Left: a vendor unit card '/usr/lib/systemd/system/containerd.service' with '[Service]' and 'ExecStart=/usr/bin/containerd'. Middle: two drop-in cards in a directory '/etc/systemd/system/containerd.service.d/'. Card 'Wrong: override.conf with only ExecStart=/usr/bin/containerd --config /etc/containerd/gpu-config.toml'; the result card shows two ExecStart lines in orange outline marked 'list-valued key: the assignment ADDS, so systemd sees two commands'. Card 'Right: override.conf with an empty line ExecStart= first, then ExecStart=/usr/bin/containerd --config /etc/containerd/gpu-config.toml'; the result card shows one ExecStart line, marked 'an empty assignment resets the list'. Right: a small side note 'Files are applied in lexical order: 10-limits.conf, then 50-gpu.conf' and 'List-valued keys that add: ExecStartPre=, Environment=, After='. Bottom strip with the check commands 'systemctl cat NAME' and 'systemctl show NAME -p ExecStart' and 'systemd-analyze verify /etc/systemd/system/NAME.service'. Bottom bar: 'Before you touch a vendor unit, check whether a drop-in can make the same change'.",
+  "anchor": "## 5. Overriding units: drop-ins",
+  "alt": "A vendor unit with ExecStart, a wrong drop-in that adds a second ExecStart, and a right drop-in that clears the list first.",
+  "cap": "A drop-in assignment to a list key adds to it, so write an empty ExecStart line first to replace the vendor command."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-template-instance",
+  "title": "One template file, eight instances: what %i and %I become",
+  "spec": "Top: a template card 'gpu-job@.service' with lines 'Description=Job runner bound to GPU %i', 'Environment=CUDA_VISIBLE_DEVICES=%i', 'ExecStart=/usr/local/bin/runner --gpu %i'. A command line under it 'systemctl enable --now gpu-job@0.service gpu-job@1.service' and 'systemctl start gpu-job@{0..7}.service'. Arrows fan out to three instance cards 'gpu-job@0.service: CUDA_VISIBLE_DEVICES=0, runner --gpu 0', 'gpu-job@1.service: CUDA_VISIBLE_DEVICES=1, runner --gpu 1', 'gpu-job@3.service: CUDA_VISIBLE_DEVICES=3, runner --gpu 3'. Bottom panel 'Escaping: %i versus %I' with the chapter example: device path '/dev/ttyUSB0' instantiated as 'getty@-dev-ttyUSB0.service'; '%i = -dev-ttyUSB0 (escaped, use for file names)' and '%I = /dev/ttyUSB0 (unescaped, use for arguments)'; 'systemd-escape --path /dev/ttyUSB0 computes the escaped name'. Orange on the %I line. Side list 'Other specifiers: %n full unit name, %N unescaped name, %p prefix, %H hostname, %u user'. Bottom bar: 'When you need one unit per device, write one template rather than many copies'.",
+  "anchor": "## 7. Templates and instances",
+  "alt": "A template unit gpu-job at sign dot service fanning out to numbered instances, with the difference between the escaped percent i and unescaped percent I specifiers.",
+  "cap": "The text after the at sign becomes percent i inside the template, escaped for file names, while percent capital I is the unescaped form."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-accept-modes",
+  "title": "Socket activation: Accept=true versus Accept=false",
+  "spec": "Two lanes side by side, each starting with the same box 'echo.socket: ListenStream=22222 (systemd holds the listening socket)' and a client icon 'Client connects to port 22222'. Lane 'Accept=true': systemd itself calls accept() for each connection; it starts a NEW instance per connection named 'echo@<n>-<local>-<peer>.service'; the service file is a template 'echo@.service' with 'StandardInput=socket' and 'ExecStart=/bin/cat'; the connection is the service's standard input and output so it does not need to know it is a network; note 'suits only simple services'. Three small instance boxes stacked to show one per connection. Lane 'Accept=false (default)': systemd passes the LISTENING socket to one service 'echo.service' (not a template); the service calls accept() itself and keeps control until it exits; it receives the descriptor in $LISTEN_FDS starting at descriptor 3 through sd_listen_fds(); note 'real servers that understand socket activation use this form'. Orange on the Accept=false lane. Footer test strip: 'sudo systemctl start echo.socket', 'ss -ltn | grep 22222', 'echo hi | nc localhost 22222', 'systemctl list-sockets'. Bottom bar: 'With Accept=false the service must support the handoff'.",
+  "anchor": "## 8. Socket, path and automount activation",
+  "alt": "Two lanes comparing socket activation where systemd accepts each connection and starts one instance per connection with where the service accepts connections itself.",
+  "cap": "With Accept true systemd starts one service instance per connection, and with Accept false one service receives the listening socket and accepts connections itself."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-restart-loop",
+  "title": "Restart policy and the start limit: how a crash loop ends in start-limit-hit",
+  "spec": "A cycle diagram on the left with four boxes in a ring: 'Service runs', 'Process exits or crashes', 'Restart= decides (no by default; on-failure or always for daemons that must stay up)', 'Wait RestartSec= (default 100 ms; the chapter example uses 5s)', and an arrow back to 'Service runs'. A counter box on the ring 'StartLimitBurst= starts within StartLimitIntervalSec= (both set in [Unit])'. An exit arrow from the counter leading right to an orange box 'failed (start-limit-hit): systemd stops restarting; Result shows start-limit-hit; message: start request repeated too quickly'. From that box an arrow to a green box 'Fix the cause, then systemctl reset-failed NAME; lengthen RestartSec'. Right panel 'Restart= values': 'no (default)', 'on-success', 'on-failure', 'on-abnormal', 'on-abort', 'on-watchdog', 'always'. Another note 'Restart=always can cause a crash loop that floods the logs; rely on OnFailure= to start an alert or drain unit'. Bottom bar: 'Pick Type= and Restart= before you write a service'.",
+  "anchor": "### Common [Service] options",
+  "alt": "A restart cycle of run, crash, policy decision and delay that ends in failed start-limit-hit after too many starts in the interval, with the reset-failed fix.",
+  "cap": "A restart loop that exceeds the burst limit puts the unit in failed start-limit-hit until you fix the cause and run reset-failed."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-status-code-ladder",
+  "title": "From a failed unit message or status code to the layer that broke",
+  "spec": "Two columns. Left column 'Message from systemctl or the journal' with five cards, each pointing right to a cause. 'Failed to start X: Unit X not found' to 'wrong name, path or alias; daemon-reload may fix it'. 'Job for X failed because the control process exited with error code' to 'read journalctl -xeu X'. 'start request repeated too quickly' to 'start limit hit: reset-failed, fix the cause, lengthen RestartSec'. 'Dependency failed for X' to 'a Requires dependency failed'. 'Unit is masked' to 'the unit cannot be started at all'. Right column 'status= code' with six cards. '203/EXEC' (orange) to 'ExecStart binary cannot run: path, permissions, a noexec mount, wrong architecture, or a bad shebang'. '200/CHDIR' to 'bad WorkingDirectory='. '217/USER' to 'bad User='. '226/NAMESPACE' to 'sandbox mount problem'. '1/FAILURE' to 'the program's own exit'. 'signal=KILL or code=killed' to 'killed by the OOM killer or a timeout'. 'Result: timeout' to 'unit ran past its time limit'. Bottom strip first-look commands 'systemctl status', 'journalctl -u NAME -b', 'systemctl cat', 'systemd-analyze verify FILE'. Bottom bar: 'Start with the status code, then read the journal for that unit'.",
+  "anchor": "## 14. Debugging and analysing",
+  "alt": "Failure messages and status codes such as 203 EXEC, 217 USER and 226 NAMESPACE mapped to their likely causes.",
+  "cap": "A status code such as 203 EXEC or 217 USER points at the layer that broke before you read a single log line."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-timer-triggers",
+  "title": "Timer triggers: calendar time versus time since an event",
+  "spec": "Two panels. Left panel 'Realtime (calendar): OnCalendar=' with the chapter line 'OnCalendar=Sun *-*-* 03:00:00' split into labelled parts 'DayOfWeek', 'Year-Month-Day', 'Hour:Minute:Second'. Below it syntax chips: '* wildcard', 'Mon,Fri list', 'Mon..Fri range', '*:0/15 every 15 minutes', 'hourly daily weekly monthly yearly'. Test line 'systemd-analyze calendar \"Mon..Fri 02:30\" prints the normalised form and next elapse times; --iterations=5 shows more'. Right panel 'Monotonic: counts from an event' with a small timeline: 'boot' then 'OnBootSec=' mark, then 'unit last activated' then 'OnUnitActiveSec=' mark repeating 'every N minutes since the last run'; other keys listed 'OnStartupSec=, OnUnitInactiveSec=, OnActiveSec='. Bottom row of three option cards: 'Persistent=true: remembers the last run on disk and runs a missed job at next start' (orange), 'RandomizedDelaySec=: spreads load across machines', 'AccuracySec= defaults to one minute so wake-ups combine; set 1s for precision'. Note 'Enable the timer, not the service: systemctl enable --now fstrim-data.timer; an overlapping oneshot trigger is skipped'. Bottom bar: 'Check the zone: add UTC or a zone name when it matters'.",
+  "anchor": "## 9. Timers: the cron replacement",
+  "alt": "Two panels comparing calendar triggers written with OnCalendar and monotonic triggers counted from boot or last activation, with Persistent, RandomizedDelaySec and AccuracySec.",
+  "cap": "OnCalendar fires at a wall-clock time while monotonic keys count from an event, and Persistent catches up a missed run."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-journal-storage",
+  "title": "Where the journal lives: Storage=auto can lose it at reboot",
+  "spec": "A decision flow top to bottom. Start 'journald starts with Storage=auto (the default)'. Diamond 'Does /var/log/journal exist?'. 'Yes' leads to green box 'Written to /var/log/journal on disk: survives reboot; journalctl -b -1 works after a crash'. 'No' leads to orange box 'Written to /run/log/journal, which is in memory: lost at reboot; journalctl -b -1 fails after a crash'. Beside the orange box a fix card 'Set Storage=persistent in /etc/systemd/journald.conf.d/50-persistent.conf, create the directory with sudo systemd-tmpfiles --create --prefix /var/log/journal, then sudo systemctl restart systemd-journald'. Right panel 'Limits in that file': 'SystemMaxUse=10G', 'SystemKeepFree=2G', 'SystemMaxFileSize=500M', 'MaxRetentionSec=1month', 'RateLimitIntervalSec=30s', 'RateLimitBurst=10000'. Note 'Rate limiting drops messages from a chatty service and reports Suppressed N messages from X, which can hide the error you need; raise it per unit with LogRateLimitIntervalSec= and LogRateLimitBurst=' and 'Treat the on-node journal as a short buffer: ship logs off the node'. Bottom bar: 'Before you rely on a node's logs after a reboot, confirm Storage is persistent'.",
+  "anchor": "## 12. Journald and `journalctl`",
+  "alt": "A decision flow showing journald with Storage auto writing to disk only if var log journal exists and otherwise keeping logs in memory where a reboot loses them.",
+  "cap": "With Storage auto the journal survives a reboot only if the var log journal directory exists, so set Storage to persistent."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-shutdown-sequence",
+  "title": "Shutdown order and where a 90 second reboot delay comes from",
+  "spec": "A vertical sequence of six numbered boxes. 1 'shutdown.target reached: boot sequence played backwards'. 2 'systemd stops units in the reverse order of their start'. 3 'Sends SIGTERM to the remaining processes'. 4 'Waits DefaultTimeoutStopSec, typically 90 s' (orange: the usual source of the delay). 5 'Sends SIGKILL, unmounts filesystems, remounts root read-only'. 6 'Calls reboot(2)'. Right panel 'How to shut down': 'shutdown -h now', 'systemctl poweroff', 'shutdown -r +10 schedules a reboot and creates /etc/nologin shortly before', 'shutdown -c cancels', 'systemctl reboot --force and -ff skip the unit stop: unclean last resort'. Bottom-left box 'A unit that delays shutdown by 90 seconds each time usually has a TimeoutStopSec, mount or signal-handling problem'. Command 'journalctl -b -1 -e'. Rescue strip: 'boot with systemd.unit=rescue.target or emergency.target'. Bottom bar: 'If a reboot waits, you have found the slow unit'.",
+  "anchor": "## 15. Shutdown, rescue and legacy",
+  "alt": "A six step shutdown sequence from shutdown target through SIGTERM, a 90 second wait, SIGKILL and reboot, with the commands to use and to find the slow unit.",
+  "cap": "Units stop in reverse start order, then a SIGTERM and a typical 90 second wait precede SIGKILL, so a slow stop shows up as a long reboot."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p3-0115-rc-link-names",
+  "title": "Reading a SysV rc link name: S or K, two digits, then the script",
+  "spec": "Top: the chapter listing of an rc5.d directory in two columns of monospace names 'S10sysklogd S12kerneld S15netstd_init S18netbase S20acct S20logoutd S20ppp S25netstd_nfs S30netstd_misc S45pcmcia S89atd S89cron S99gpm S99httpd S99rmnologin S99sshd'. Below, one name 'S10sysklogd' with a bracket split into three parts: 'S = start (K = stop, seen mostly in runlevels that shut the system down)', '10 = two digits from 00 to 99 that set the order', 'sysklogd = the script in init.d that the link points to (../init.d/sysklogd)'. Beside it an order arrow 'rc runs S10sysklogd start first, then S12kerneld start, down to S99sshd start' with the end S99sshd in orange. Right panel 'Runlevels to systemd targets': 'runlevel 1 rc1.d', 'runlevels 2 to 4 usually text console', 'runlevel 5 graphical login (graphical.target)', 'runlevel3.target is an alias for multi-user.target', 'who -r prints run-level 5 and the time it was set'. Bottom bar: 'systemd treats runlevels as obsolete end states and prefers targets'.",
+  "anchor": "### Runlevels: the older way to name a system state",
+  "alt": "A SysV rc5.d directory listing with one link name split into start or stop letter, two digit order and script name.",
+  "cap": "In a SysV rc directory the first letter says start or stop, the two digits set the order, and the rest names the init script."
+ }
+]

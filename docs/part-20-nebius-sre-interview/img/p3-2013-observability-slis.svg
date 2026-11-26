@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Platform SLIs and why tenant labels need care</title>
+  <desc>Platform SLIs, customer-facing views, percentile warnings, and metric cardinality rules for tenant labels.</desc>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Platform SLIs and why tenant labels need care</text>
+
+  
+  <g>
+    <rect x="50" y="120" width="560" height="980" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="95" cy="168" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="95" y1="168" x2="110" y2="153" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="95" cy="168" r="4" fill="#207448"/>
+    <line x1="95" y1="148" x2="95" y2="154" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="115" y1="168" x2="109" y2="168" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="140" y="178" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Left list of SLIs</text>
+
+    
+    <rect x="80" y="225" width="500" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="115" cy="277" r="6" fill="#207448"/>
+    <text x="135" y="286" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">time to first token</text>
+
+    
+    <rect x="80" y="355" width="500" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="115" cy="407" r="6" fill="#207448"/>
+    <text x="135" y="416" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">inter-token latency</text>
+
+    
+    <rect x="80" y="485" width="500" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="115" cy="537" r="6" fill="#207448"/>
+    <text x="135" y="546" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">end-to-end latency</text>
+
+    
+    <rect x="80" y="615" width="500" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="115" cy="667" r="6" fill="#207448"/>
+    <text x="135" y="676" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">error rate</text>
+
+    
+    <rect x="80" y="745" width="500" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="115" cy="805" r="6" fill="#207448"/>
+    <text x="135" y="813" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan x="135" dy="0" font-weight="bold">goodput:</tspan>
+      <tspan x="135" dy="38">share of requests that</tspan>
+      <tspan x="135" dy="38">meet their latency target</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="650" y="120" width="900" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="685" y="142" width="52" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="685" y1="156" x2="737" y2="156" stroke="#207448" stroke-width="3"/>
+    <circle cx="696" cy="149" r="2.5" fill="#207448"/>
+    <circle cx="704" cy="149" r="2.5" fill="#207448"/>
+    <circle cx="712" cy="149" r="2.5" fill="#207448"/>
+
+    
+    <text x="755" y="176" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Customer-facing views from Nebius</text>
+
+    
+    <rect x="680" y="198" width="840" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="710" y="238" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="710" dy="0">latency percentiles, TTFT, token throughput,</tspan>
+      <tspan x="710" dy="34">active replicas, errors by status code,</tspan>
+      <tspan x="710" dy="34">traffic by prompt size and region</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="650" y="390" width="900" height="275" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <polygon points="711,418 739,468 683,468" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="711" y1="435" x2="711" y2="451" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="711" cy="460" r="2.5" fill="#db8129"/>
+
+    
+    <text x="755" y="454" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">Warning picture</text>
+
+    
+    <rect x="680" y="474" width="840" height="175" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="710" y="514" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="710" dy="0">a Grafana board with one platform-wide average</tspan>
+      <tspan x="710" dy="34">looks calm while one tenant is badly hurt;</tspan>
+      <tspan x="710" dy="34">a percentile tells the value below which</tspan>
+      <tspan x="710" dy="34">a share of requests fall</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="650" y="705" width="900" height="395" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <ellipse cx="711" cy="739" rx="24" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 687,739 v 16 c 0,4.4 10.7,8 24,8 c 13.3,0 24,-3.6 24,-8 v -16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 687,755 v 16 c 0,4.4 10.7,8 24,8 c 13.3,0 24,-3.6 24,-8 v -16" fill="none" stroke="#207448" stroke-width="4"/>
+
+    
+    <text x="755" y="763" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Cardinality rule</text>
+
+    
+    <rect x="680" y="785" width="840" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="710" y="825" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="710" dy="0">per-tenant labels explode metric cardinality</tspan>
+      <tspan x="710" dy="36">(distinct series), each new label value</tspan>
+      <tspan x="710" dy="36">multiplies the count; keep tenant labels on the</tspan>
+      <tspan x="710" dy="36">gateway own metrics for top tenants only;</tspan>
+      <tspan x="710" dy="36">use traces and logs with sampling</tspan>
+      <tspan x="710" dy="36">for the long tail</tspan>
+    </text>
+  </g>
+</svg>

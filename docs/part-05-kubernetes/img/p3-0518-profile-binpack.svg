@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1160" viewBox="0 0 1600 1160">
+  <title>Two scheduler profiles side by side</title>
+  <desc>Visualization of Kubernetes scheduler profiles comparing default-scheduler and gpu-binpack within KubeSchedulerConfiguration, showing pod selection and node allocation strategies.</desc>
+
+  <defs>
+    <marker id="orange-arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 8 L 0 14 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Two scheduler profiles side by side</text>
+
+  
+  <rect x="50" y="85" width="1500" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(75, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24"/>
+    <polyline points="28,14 28,28 38,34"/>
+  </g>
+
+  <text x="145" y="122" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Pipeline reminder</text>
+  <text x="145" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Filter removes nodes that cannot run the pod, Score ranks feasible nodes 0 to 100,</text>
+  <text x="145" y="194" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Reserve records the choice, Permit can hold pods for gang plugins, Bind writes spec.nodeName</text>
+
+  
+  <rect x="50" y="245" width="1500" height="725" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(75, 268)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="12"/>
+    <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12"/>
+  </g>
+
+  <text x="145" y="306" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">kube-scheduler</text>
+
+  
+  <g>
+    <rect x="430" y="272" width="375" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="617" y="304" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">KubeSchedulerConfiguration</text>
+  </g>
+  <g>
+    <rect x="825" y="272" width="395" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1022" y="304" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">percentageOfNodesToScore 50</text>
+  </g>
+  <g>
+    <rect x="1240" y="272" width="225" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1352" y="304" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">parallelism 16</text>
+  </g>
+
+  
+  <rect x="740" y="342" width="725" height="68" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(755, 348)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="6"/>
+    <line x1="4" y1="18" x2="52" y2="18"/>
+    <circle cx="12" cy="12" r="2" fill="#207448"/>
+    <circle cx="20" cy="12" r="2" fill="#207448"/>
+  </g>
+  
+  <text x="825" y="385" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">A pod chooses with <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">schedulerName gpu-binpack</tspan></text>
+
+  
+  <line x1="1102" y1="410" x2="1102" y2="456" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+
+  
+  <rect x="80" y="460" width="630" height="365" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(105, 480)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <rect x="18" y="18" width="20" height="20"/>
+    <line x1="18" y1="2" x2="18" y2="10"/>
+    <line x1="38" y1="2" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="54"/>
+    <line x1="38" y1="46" x2="38" y2="54"/>
+    <line x1="2" y1="18" x2="10" y2="18"/>
+    <line x1="2" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="54" y2="18"/>
+    <line x1="46" y1="38" x2="54" y2="38"/>
+  </g>
+
+  <text x="175" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">default-scheduler</text>
+
+  <text x="105" y="580" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">NodeResourcesFit strategy LeastAllocated</text>
+  <text x="105" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">by default, spreads load</text>
+
+  
+  <g transform="translate(105, 650)">
+    
+    <rect x="0" y="0" width="130" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="12" y="15" width="106" height="52" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="12" y="80" width="106" height="52" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1" stroke-dasharray="4 4"/>
+
+    
+    <rect x="150" y="0" width="130" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="162" y="15" width="106" height="52" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="162" y="80" width="106" height="52" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1" stroke-dasharray="4 4"/>
+
+    
+    <rect x="300" y="0" width="130" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="312" y="15" width="106" height="52" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="312" y="80" width="106" height="52" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1" stroke-dasharray="4 4"/>
+
+    
+    <rect x="450" y="0" width="130" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="462" y="15" width="106" height="52" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="462" y="80" width="106" height="52" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1" stroke-dasharray="4 4"/>
+  </g>
+
+  
+  <rect x="740" y="460" width="780" height="365" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(765, 480)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="40" height="40" rx="6"/>
+    <circle cx="20" cy="20" r="4"/>
+    <circle cx="36" cy="20" r="4"/>
+    <circle cx="20" cy="36" r="4"/>
+    <circle cx="36" cy="36" r="4"/>
+    <line x1="28" y1="2" x2="28" y2="8"/>
+    <line x1="28" y1="48" x2="28" y2="54"/>
+    <line x1="2" y1="28" x2="8" y2="28"/>
+    <line x1="48" y1="28" x2="54" y2="28"/>
+  </g>
+
+  <text x="835" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">gpu-binpack</text>
+
+  <text x="765" y="575" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">NodeResourcesFit scoringStrategy MostAllocated</text>
+  <text x="765" y="612" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">with resources nvidia.com/gpu weight 5,</text>
+  <text x="765" y="648" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">cpu weight 1, memory weight 1, and</text>
+  <text x="765" y="684" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">NodeResourcesBalancedAllocation disabled in score</text>
+
+  
+  <g transform="translate(765, 715)">
+    
+    <rect x="0" y="0" width="160" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="8" y="10" width="68" height="30" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="84" y="10" width="68" height="30" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="8" y="46" width="68" height="30" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="84" y="46" width="68" height="30" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="185" y="0" width="160" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="193" y="10" width="68" height="30" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="269" y="10" width="68" height="30" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="193" y="46" width="68" height="30" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="269" y="46" width="68" height="30" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="370" y="0" width="160" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="378" y="10" width="144" height="66" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+    
+    <rect x="555" y="0" width="160" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="563" y="10" width="144" height="66" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+  </g>
+
+  
+  <rect x="80" y="855" width="1440" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="908" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">MostAllocated packs pods onto already-busy nodes so whole nodes stay free for 8-GPU jobs</text>
+
+  
+  <rect x="50" y="995" width="1500" height="135" rx="14" fill="#f5f8f5" stroke="#303a36" stroke-width="2"/>
+  
+  
+  <g transform="translate(75, 1032)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 14 Z"/>
+    <line x1="28" y1="20" x2="28" y2="30"/>
+    <circle cx="28" cy="38" r="2" fill="#207448"/>
+  </g>
+
+  <text x="145" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Warning</text>
+  <text x="145" y="1075" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">profiles inside one scheduler share its cache; separate schedulers over</text>
+  <text x="145" y="1108" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">overlapping nodes without coordination race</text>
+</svg>

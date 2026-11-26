@@ -1,0 +1,242 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-three-questions",
+  "title": "Three questions to ask of any playbook the night before a change",
+  "spec": "Three cards. Card 1 'What does it change?' answered by 'the layout of the playbook, then the modules that do the work'. Card 2 'Is it safe to run again?' answered by 'idempotency: changed=0 on the second run'. Card 3 'How do I stop it if the first batch looks wrong?' answered by 'check mode, diff, tags, limits and serial'. Under them a before and after strip 'runbook in one person's head: when that person is on leave the change waits' versus 'playbook: steps and their order written down and reviewed like any other code'. Contrast strip (orange) 'a well-written playbook reads like a runbook; a badly written one is a shell script in YAML: it always reports changed, cannot be dry-run and breaks differently on every host'. Use cases strip 'install a driver, set kernel parameters, deploy a Slurm configuration, rotate a certificate, drain and patch a node'. Bottom bar: 'The rest of the chapter answers these three questions in order'.",
+  "anchor": "## Why this matters for AI infrastructure",
+  "alt": "Three questions to ask of a playbook before a change window, what it changes, whether it is safe to run twice and how to stop it, mapped to layout, idempotency and execution controls.",
+  "cap": "A good playbook answers what it changes, whether rerunning is safe, and how you stop it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-site-yml-annotated",
+  "title": "site.yml play 1, keyword by keyword",
+  "spec": "Annotated play. Header 'name: Baseline configuration for all cluster nodes (play 1)', 'hosts: cluster', 'become: true', 'gather_facts: true', 'any_errors_fatal: false', 'max_fail_percentage: 10', 'serial: 20%: batch rolling execution', 'vars: ntp_servers'. Blocks in run order: 'pre_tasks: assert supported OS: ansible_facts[os_family] in [Debian, RedHat] with fail_msg, stops the play on an unsupported system before anything is installed' (orange); 'roles: role common (runs after pre_tasks, 4.11)'; 'tasks: Install baseline packages (package, name [chrony, rsync, htop, tmux], state present, tags [packages])'; 'post_tasks: Record run (copy content configured {{ ansible_date_time.iso8601 }} by {{ lookup(env, USER) }} to /etc/ansible-last-run mode 0644)'; 'handlers: Restart chrony (service chronyd restarted)'. Second play strip 'play 2: hosts slurm_controller, become true, tasks'. Gate analogy strip 'separate plays when different host groups need different steps; a play can act as a gate that checks the state of the world before the destructive play runs, like the security check at an airport'. Facts strip 'plays run in file order and each covers all of its hosts; a later play can use facts an earlier play gathered'. Handler order strip 'a handler restarting a service should run only after the file that configures it is in place: it runs at a flush point, not in the middle of a task'. Bottom bar: 'The file is the whole book, each play is one chapter for one group of machines'.",
+  "anchor": "## 1. Playbook anatomy",
+  "alt": "An annotated two-play site.yml showing play keywords, an OS assertion in pre_tasks, a common role, a package task with tags, a post_tasks record and a chrony handler, with the gate and handler flush notes.",
+  "cap": "Each play sets hosts, privilege, batching and variables, then runs pre_tasks, roles, tasks and post_tasks with handlers flushing at fixed points."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-five-patterns",
+  "title": "Five idioms from webservers-tls.yml",
+  "spec": "Five numbered cards. '1 Executable playbook: #!/usr/bin/env ansible-playbook as line 1 (a shebang tells the operating system which program reads the file) then chmod +x, run ./webservers-tls.yml; cowsay draws ASCII art headers: cow_selection = random or nocows = 1 in ansible.cfg'. '2 Play vars and the file module: file path={{ tls_dir }} state=directory mode=0750; enable the site with file src={{ conf_file }} dest=/etc/nginx/sites-enabled/default state=link; state absent removes a symlink or file'. '3 Upload in a loop: openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -subj /CN=localhost -keyout files/nginx.key -out files/nginx.crt on the control node; one task copy src={{ item }} dest={{ tls_dir }} mode=0600 with loop [key_file, cert_file]; copy searches files/ next to the playbook, template searches templates/'. '4 Handler deduplication (orange): four tasks notify Restart nginx (Copy TLS files, Manage nginx config template, Enable configuration, Install home page); even if all four report changed the handler runs once at the end of the tasks phase and before post_tasks; second run all four ok, handler runs zero times'. '5 Embedded HTTP smoke test: see the next figure'. Source label 'Ansible: Up and Running chapter 3, Examples 3-1 to 3-10; tested in code/part04/ansible_playbook_execution_lab.py'. Bottom bar: 'Four restart requests become one restart'.",
+  "anchor": "### Walkthrough from *Ansible: Up and Running* Chapter 3: `webservers-tls.yml`",
+  "alt": "Five playbook idioms from webservers-tls.yml: an executable shebang, play vars with the file module, a copy loop for TLS files, handler deduplication so four notifies cause one restart, and an HTTP smoke test.",
+  "cap": "Four tasks notify one handler, which runs once on the first run and zero times on the second."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-smoke-test-task",
+  "title": "The embedded smoke test, line by line",
+  "spec": "Annotated task 'Test it! https://localhost:8443/index.html'. 'delegate_to: localhost: the request leaves from the control node, not from the server under test, so the check sees the same network path a user would use'. 'become: false'. 'uri: url https://localhost:8443/index.html'. 'validate_certs: false: accepts the self-signed certificate created earlier'. 'return_content: true: copies the page body into this.content'. 'register: this'. 'failed_when: \"Running on  not in this.content\"' (orange): fails the task when the page does not contain the words Running on. 'tags: test: run this check on its own'. Outcome strip 'a page that returns a success code with an error message still fails, because the expected words are missing: short, but a real test'. Bottom bar: 'Verify the content, not only the status code'.",
+  "anchor": "### Walkthrough from *Ansible: Up and Running* Chapter 3: `webservers-tls.yml`",
+  "alt": "An annotated uri smoke test task delegated to localhost with validate_certs false, return_content and a failed_when on missing Running on text, tagged test.",
+  "cap": "The smoke test runs from the control node and fails unless the page body contains the expected text."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-task-knobs",
+  "title": "The task keywords grouped by the job each one does",
+  "spec": "A grouped table for the DCGM exporter task. 'What to run: name (always name tasks: it is the log and the documentation; name as a desired state: Ensure X is Y), the module by FQCN ansible.builtin.systemd_service with name dcgm-exporter, state started, enabled true, daemon_reload true'. 'Whether to run: when \"gpu in group_names\" (a Jinja expression, no braces), tags [monitoring, dcgm], check_mode false forces run in check mode, become true'. 'What it leaves behind: register dcgm_result saves the return dict, notify Restart dcgm-exporter triggers a handler if changed'. 'How the result is judged: changed_when false, failed_when dcgm_result.rc not in [0, 3], ignore_errors false'. 'Waiting and trying again: retries 5, delay 10, until dcgm_result is succeeded; timeout 120 per-task seconds'. 'Where and how widely: delegate_to localhost, run_once false, throttle 5 (at most 5 hosts concurrently on this task)'. 'Environment: environment, vars (task-scoped), no_log true for secrets, diff true'. Rule strip 'most keywords can be set at play, block or task level and pass down: become, environment, tags, when, vars, ignore_errors; ansible-doc -t keyword -l lists them'. Orange on the judging group. Bottom bar: 'Most tasks use only two or three of these knobs'.",
+  "anchor": "### Task anatomy and common keywords",
+  "alt": "Task keywords grouped into what to run, whether to run, what it leaves behind, how the result is judged, retries and timeout, scope and environment, with the inheritance rule from play to task.",
+  "cap": "Group the task keywords by job: run, whether, leave behind, judge, retry and scope, and name every task as a desired state."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-idempotent-mechanism",
+  "title": "How an idempotent module decides, and the toggle that is not",
+  "spec": "A decision flow. 'module compares desired state with actual state: does the package exist? is the file content identical? does the line already exist?' then decision 'same?' yes 'no change, reports ok' (green) no 'makes the change, reports changed'. Contrast panel (orange) 'toggle in disguise: a command that adds a line every time it runs, so the file grows with each rerun; mkdir describes steps and has no idea whether the directory exists'. Switch analogy 'a light switch set to on is idempotent; a toggle flips the light off on the second press'. Rules list 'declarative first: package, service, user, file, template, lineinfile, sysctl, mount, cron, git, get_url, unarchive before command or shell'; 'describe the final state: state present, absent, started, latest or directory'; 'guards when you must use command: creates: skips if a path exists, removes: skips if the path is missing, a stat task gated with when, or changed_when computed from output'. Story strip 'a playbook runs at 2 AM after a partial failure: half the hosts were already changed; an idempotent task changes what is wrong and leaves alone what is already right'. Bottom bar: 'Run it twice: the second recap must show changed=0'.",
+  "anchor": "## 2. Idempotency, the heart of playbooks",
+  "alt": "A flow in which a module compares desired and actual state and reports ok or changed, contrasted with a toggle-style command that appends a line each run, with the rules to prefer declarative modules and guards.",
+  "cap": "Idempotent modules compare desired and actual state, and command tasks need creates, removes or changed_when to behave the same way."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-timestamp-and-pinning",
+  "title": "What makes a file change every run, and how to pin what you install",
+  "spec": "Two panels. Panel 'Timestamp trap' (orange): 'a rendered file is a photograph of the desired state; a timestamp in the photograph changes every time you take a new one, so the file never matches the last run'; consequence chain 'ansible_date_time or a random value in a template' to 'file differs every run' to 'reports changed every time' to 'triggers its handlers every time'; fix 'keep timestamps, random values and ansible_date_time out of rendered content'. Panel 'Pin versions': 'prefer state: present over state: latest for reproducible results'; 'save latest for a patch play where you mean it'; 'pin versions, for example name \"nvidia-driver-550=550.90.07-1\"'. Proof strip 'test the property itself: run the playbook twice; the second recap must show changed=0; Molecule automates this check (4.13)'. Bottom bar: 'A first run that changes things is expected, a second run that changes things again is a bug'.",
+  "anchor": "## 2. Idempotency, the heart of playbooks",
+  "alt": "A timestamp rendered into a template causing a changed report and handler trigger on every run, beside the advice to pin driver versions and the twice-run test showing changed zero.",
+  "cap": "Timestamps and random values make files change on every run, so keep them out of templates and pin versions."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-three-command-tasks",
+  "title": "Three command tasks, three guard styles",
+  "spec": "Three rows. Row 1 'Create the scratch dir once: command mkdir -p /scratch, args creates /scratch': skipped if /scratch exists; note 'the file module is better'. Row 2 'Read the current DCGM profiling mode (read-only, never changed): command dcgmi profile --status, register prof, changed_when false, failed_when prof.rc != 0 and not supported not in prof.stderr'. Row 3 (orange) 'Enable MIG only if currently disabled: command nvidia-smi -i 0 -mig 1, when Disabled in mig_state.stdout, register mig_set, changed_when Enabled in mig_set.stdout': walkthrough 'checks when against the mig_state registered by an earlier task; if MIG is already enabled the task is skipped and nothing is sent to the GPU; if disabled the command runs and changed_when reads the output to decide whether the state really changed; without that last line the task would report changed every time it ran'. Test strip 'ask whether a second run would report a change; if yes, ask which part of the task keeps changing'. Bottom bar: 'If a module can express the state you want, use the module'.",
+  "anchor": "## 2. Idempotency, the heart of playbooks",
+  "alt": "Three guarded command tasks: mkdir with creates, a read-only DCGM probe with changed_when false and an MIG enable gated by when and judged by changed_when.",
+  "cap": "creates guards a one-time command, changed_when false marks a probe, and when plus changed_when gate a state change."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-module-families",
+  "title": "Module families for a GPU node: where to look for each job",
+  "spec": "A table 'Family', 'Modules', 'Note'. 'Packages' / 'ansible.builtin.package generic; apt, dnf or yum, zypper backend-specific (update_cache, cache_valid_time, autoremove, install_recommends, lock_timeout, allow_downgrade); apt_repository, deb822_repository, yum_repository, apt_key (deprecated, use keyrings with get_url); pip with virtualenv and pinned versions; dpkg_selections, package_facts' / 'package names often differ between distros: use when or vars per OS family; add NVIDIA CUDA, Docker, Kubernetes repositories with signed-by keyrings'. 'Files' / 'file (file, directory, link, absent, touch; owner, group, mode, recurse), copy (backup, validate, force, remote_src), template, lineinfile (regexp, backrefs: a regex can match several lines or none), blockinfile, replace, stat, find, fetch, synchronize (rsync), unarchive, get_url (checksum), uri, assemble (conf.d fragments), ini_file, slurp, tempfile' / '-'. 'Users' / 'user, group, authorized_key (ansible.posix), known_hosts; sudo via drop-in file in /etc/sudoers.d/ better than lineinfile with validate visudo -cf' / 'loop over a data structure instead of one task per user'. 'Services and boot' / 'service, systemd_service (daemon_reload, masked, enabled, state), reboot (reboot_timeout, test_command), wait_for, wait_for_connection' / '-'. 'Kernel and system' / 'ansible.posix.sysctl, ansible.posix.mount, community.general.modprobe, kernel_blacklist, timezone, hostname, cron, ansible.posix.at, alternatives, firewalld, ufw, seboolean, selinux' / '-'. Orange on 'Packages'. Finder strip 'ansible-doc -l | grep -i topic, or the examples at the end of ansible-doc ansible.builtin.copy'. Bottom bar: 'Know which drawer to open, not every tool in it'.",
+  "anchor": "## 3. Module families you will use daily",
+  "alt": "A table of module families for packages, files, users, services and boot, and kernel and system settings with the module names in each and how to find a module with ansible-doc.",
+  "cap": "Know the families, packages, files, users, services and kernel, and find modules with ansible-doc -l."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-hold-driver",
+  "title": "Holding the driver and kernel so a routine upgrade cannot move them",
+  "spec": "A flow. Story 'a Tuesday morning when the package manager upgrades the kernel on half the nodes and the NVIDIA driver no longer matches the new kernel' (orange). Fix task 'dpkg_selections: name {{ item }}, selection hold, loop [nvidia-driver-550, linux-image-generic], when ansible_facts[os_family] == Debian'. Notes 'when keeps the task away from RedHat-family hosts, which need a different tool for the same job'; 'package_facts inspects installed packages'. Pinning options table 'selection: hold: package cannot be moved by a routine upgrade'; 'pinned version with state present: name nvidia-driver-550=550.90.07-1'; 'state: latest allows the upgrade'. Bottom bar: 'Hold the packages that must move together'.",
+  "anchor": "### Packages and repositories",
+  "alt": "A dpkg_selections task holding nvidia-driver-550 and linux-image-generic on Debian-family hosts to stop a routine upgrade from breaking the driver and kernel match, with pinning options.",
+  "cap": "Hold the driver and kernel packages on Debian-family hosts so a routine upgrade cannot break the match."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-validate-and-checksum",
+  "title": "Two gatekeepers: validate before replace, checksum before use",
+  "spec": "Two lanes. Lane 'sshd drop-in': 'copy writes /etc/ssh/sshd_config.d/10-hardening.conf with content PermitRootLogin no and PasswordAuthentication no, owner root, group root, mode 0644, only when the content differs' to 'validate sshd -t -f %s runs against the new file before it replaces the old one' (orange) to 'if the check fails the bad drop-in never lands on the server' to 'notify Reload sshd only when the file changed, so a second run does nothing'; caution 'validating a drop-in standalone may need the main config; test carefully'. Lane 'release download': 'get_url url https://example.com/tool-{{ tool_version }}.tar.gz dest /opt/dl/ checksum sha256:{{ tool_sha256 }} mode 0644' to 'if the file already exists with the expected digest the download is skipped' to 'if the download arrives with a different digest the task fails and the damaged file is not used'. Strip 'copy also accepts backup, validate, force, remote_src; for sudo use validate visudo -cf %s'. Bottom bar: 'Check the file before it replaces anything'.",
+  "anchor": "### Files, templates and content",
+  "alt": "Two lanes showing a copy task validated with sshd -t before replacing the file and notifying a reload only on change, and a get_url download skipped or rejected by its sha256 checksum.",
+  "cap": "validate checks a new config before it replaces the old one, and a checksum skips good downloads and rejects damaged ones."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-sysctl-loop",
+  "title": "Five kernel settings from one looped task",
+  "spec": "A flow. Dictionary box 'sysctl_settings': 'vm.swappiness: 1', 'net.core.rmem_max: 268435456', 'net.core.wmem_max: 268435456', 'net.ipv4.tcp_congestion_control: bbr', 'kernel.numa_balancing: 0'. Arrow 'dict2items turns the dictionary into a list of key and value pairs' to 'loop runs the sysctl task once per pair' (orange) to task 'ansible.posix.sysctl name {{ item.key }}, value {{ item.value }}, sysctl_file /etc/sysctl.d/90-ai.conf, state present, reload true' to 'all five settings go to /etc/sysctl.d/90-ai.conf, so they persist across reboots'. Second-run box 'each pass checks its own key against the live value and against the file; only keys that differ are written, so a setting that already matches reports no change'. Analogy 'kernel parameters are dials on the control panel; some need a value only for this boot, others must survive a reboot'. Reason strip 'five separate tasks would repeat the same file name and reload flag, and a typo in one would go unnoticed'. Bottom bar: 'One loop, one file, persistent settings'.",
+  "anchor": "### Services and boot",
+  "alt": "A sysctl_settings dictionary converted with dict2items and looped through one ansible.posix.sysctl task that writes five persistent settings to 90-ai.conf and only changes keys that differ.",
+  "cap": "dict2items and a loop write five kernel settings to one persistent file, and only differing keys change on a rerun."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-instrument-modules",
+  "title": "Modules that gather, steer and debug rather than change the machine",
+  "spec": "A table 'Job', 'Modules'. 'Collect facts' / 'setup, gather_facts'. 'Handle values and checks' / 'set_fact, debug, assert, fail, pause'. 'Steer the run' / 'meta: flush_handlers, end_play, end_host, refresh_inventory, clear_facts'. 'Reuse tasks' / 'include_tasks, import_tasks, include_role, import_role, include_vars'. 'Change the inventory or run commands' / 'add_host, group_by, command, shell, raw, script, expect'. 'Wait' / 'wait_for, async_status'. Analogy 'the instruments on a dashboard, not the controls'. Platform collections panel 'a collection is a package of modules, roles and plugins that Ansible installs separately from its core: kubernetes.core (k8s and Helm), community.docker (containers), community.general (system and tool modules), community.crypto (certificates), amazon.aws, google.cloud, azure.azcollection, community.general.redfish_* for BMC power, boot, firmware and inventory (Part 7); network modules in 4.16; NVIDIA roles in 4.17'. Rule (orange) 'look for a built-in module first and add a collection only when you cannot do the job with the built-in set: every extra collection is one more version to pin and upgrade on the control node'. Bottom bar: 'Fewer moving parts means fewer surprises during a change window'.",
+  "anchor": "### Information, control flow and debugging",
+  "alt": "A table of information, control-flow and debugging modules grouped by job, with the platform collections list and the rule to prefer built-in modules before adding a collection.",
+  "cap": "Instrument modules gather and steer without changing config, and each extra collection is another version to pin."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-command-family",
+  "title": "command, shell, script, raw: shell features and safe use",
+  "spec": "A four row table 'Module', 'Shell features', 'Use'. 'command' / 'no (no pipes, redirects, $VAR, globs)' / 'default for running an executable; arguments are split safely, a list of arguments keeps spaces and special characters intact'. 'shell' / 'yes (/bin/sh -c)' / 'pipes, redirects, loops; quote variables with | quote'. 'script' / 'runs a local script remotely' / 'bigger logic hard in modules; make idempotent with creates'. 'raw' / 'raw SSH, no Python needed' / 'bootstrap Python; network gear'. Rules panel: 'when a module exists, use it'; 'when you must run a command make the task describe its effect on state: guard it with creates, removes or when, and set changed_when and failed_when from the command's actual output or exit code'; 'never rely on stdout parsing without checking rc'; 'unquoted input can become an injection risk, so pass each value through \"{{ var | quote }}\"' (orange). Story 'a vendor tool has no Ansible module and must run once on each of forty nodes: the quick fix is a command task, and the risk is that it runs again on every future run; on its own it cannot tell Ansible whether anything changed'. Bottom bar: 'A command task with no guard tells the reviewer nothing about rerunning'.",
+  "anchor": "## 4. command, shell, script, raw: when and how",
+  "alt": "A four row table of command, shell, script and raw with shell features and use, plus the rules to guard with creates, removes or when, check rc and quote variables to avoid injection.",
+  "cap": "Prefer a module, use command by default, shell only for pipes with quoted variables, and always set changed_when and failed_when."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-gpu-probe-pipefail",
+  "title": "The GPU count probe, and the pipe that hides a failure",
+  "spec": "Left annotated task 'Count visible GPUs: shell nvidia-smi -L | wc -l, args executable /bin/bash, register gpu_count, changed_when false (read-only, never changed), failed_when gpu_count.rc != 0 or (gpu_count.stdout | int) != expected_gpus, check_mode false (run even under --check, safe because read-only)'. Walk 'Ansible starts /bin/bash, which runs nvidia-smi -L and pipes the listing into wc -l; the count comes back as text in gpu_count.stdout; failed_when converts it with int and compares with the expected count; a node showing seven GPUs when eight are expected fails the task at once and the message names the task'. Right the trap (orange): 'nvidia-smi fails with an error while wc succeeds on empty output: the pipeline reports success and the playbook believes the node has no GPUs and moves on'. Fix 'set -o pipefail works only in bash, so the probe needs executable /bin/bash and set -o pipefail; if that gets fragile keep the probe simple or split it into a module call plus Jinja filters'. Bottom bar: 'A pipe takes the exit code of its last command'.",
+  "anchor": "## 4. command, shell, script, raw: when and how",
+  "alt": "An annotated shell probe counting GPUs with nvidia-smi -L piped to wc -l, failing when the count differs from expected_gpus, with the pipe trap where a failing nvidia-smi is hidden and the pipefail fix.",
+  "cap": "The probe fails on a wrong GPU count, and set -o pipefail with bash stops a failing nvidia-smi from hiding behind wc."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-check-mode-rules",
+  "title": "The rules of check mode: what it previews, and where it misleads",
+  "spec": "Five rule cards. '1 Most core modules support check mode and report what they would change; --diff adds before and after content for files and templates; together the fleet's terraform plan: ansible-playbook site.yml --check --diff --limit gpu001'. '2 command, shell and raw skip in check mode unless they have creates or removes; check_mode: false runs them anyway, only for read-only commands; modules without check mode support are skipped with a note'. '3 Dependent tasks mispredict (orange): installing a package then configuring its file; in check mode the earlier step never happens, like judging an oven that is still cold; mitigate with when: not ansible_check_mode or ignore_errors: \"{{ ansible_check_mode }}\", and set check_mode false on reads such as stat and probes'. '4 --diff can leak secrets: set diff: false on any task that renders secrets'. '5 Treat check mode as a risk reducer, not proof: follow it with a canary application and verification; scan the recap for skipped counts, a skipped task has not been previewed at all'. Override strip 'check_mode: true forces a dry run for one task even in a real run; check_mode: false forces execution in check mode'. Bottom bar: 'A clean check run means less if a risky task is in the skipped group'.",
+  "anchor": "## 5. Check mode and diff",
+  "alt": "Five check mode rules: most modules preview, command and shell skip unless guarded, dependent tasks mispredict, diff can leak secrets and a clean check run is a risk reducer, with the per-task check_mode override.",
+  "cap": "Check mode previews declarative modules, skips unguarded commands, mispredicts dependent tasks, and is not proof of safety."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-drift-detection",
+  "title": "Scheduled --check runs catch hand-made changes before anyone is surprised",
+  "spec": "A timeline. 'last week: someone logs in to a node and changes a setting by hand; nothing in the playbook knows about it'. Branch A 'no scheduled check: the next normal run quietly reverts the change' (orange). Branch B 'scheduled --check run: exits non-zero or reports changed>0, revealing the manual change before anyone is surprised'. Parse strip 'for drift detection parse the recap and look at changed= counts, or use ANSIBLE_STDOUT_CALLBACK=json or ansible.posix.json for machine-readable output; in CI treat any non-zero exit as a failure'. Evidence strip 'use the --check --diff output as evidence in pull requests (4.2)'. Bottom bar: 'A dry run notices the difference first'.",
+  "anchor": "## 5. Check mode and diff",
+  "alt": "A timeline where a hand-made change is either silently reverted by the next normal run or revealed by a scheduled check run that exits non-zero or reports changed above zero.",
+  "cap": "A scheduled --check run reveals manual changes as a non-zero exit or changed above zero, before a normal run reverts them."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-targeting-flags",
+  "title": "Targeting flags: choose hosts, choose tasks, inspect before running",
+  "spec": "A table 'Command', 'Effect'. 'ansible-playbook site.yml --limit \"gpu_h100:&rack_r01\"' / 'slice of the fleet'. '--tags packages,monitoring' / 'only tagged tasks'. '--skip-tags slow'. '--start-at-task \"Install baseline packages\"'. '--step' / 'confirm each task interactively'. '--list-tasks --list-tags --list-hosts' / 'show what a run would touch'. '-e \"nvidia_driver_branch=555\" -e @extra.yml' / 'extra variables'. '--syntax-check'. '-f 50 -vv' / 'forks and verbosity'. Tag rules panel: 'tags: on tasks, blocks, plays, roles and imports'; 'always runs unless you pass --skip-tags always'; 'never runs only when you request it'; 'small, consistent vocabulary: packages, config, services, firewall, monitoring'. Warning (orange) 'tags are a convenience, not a safety mechanism: a tagged partial run skips dependencies; a --tags config run that rewrites a Slurm config on a node whose packages were never updated leaves a correct file the node cannot read; use tags to save time on a run you already understand, not to skip steps you have not checked'. Analogy 'controls on a dimmer switch'. Bottom bar: 'Turn the change down to one host before you turn it up'.",
+  "anchor": "### Targeting and iteration",
+  "alt": "A table of ansible-playbook targeting flags for limit, tags, skip-tags, start-at-task, step, list options, extra vars, syntax check and forks, with the always and never tags and the warning that tags are not a safety mechanism.",
+  "cap": "Tags save time on a run you understand but skip dependencies, so they are a convenience and not a safety mechanism."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-serial-walk",
+  "title": "Walking the serial play: canary, then 10%, then 25%, with the failure gate",
+  "spec": "Play settings box 'hosts: gpu, serial [1, 10%, 25%], max_fail_percentage 5, any_errors_fatal true, strategy linear, order shuffle'. Timeline: 'batch 1: one host, the canary, runs the whole play alone' to 'gate: if it passes' to 'batch 2: 10% of the group' to 'gate: max_fail_percentage decides whether the play continues' to 'batch 3: 25% until the rest of the fleet is covered'. Setting meanings: 'serial limits how many hosts are in play at once; accepts integers, percentages or a growing list; foundation of rolling upgrades and canaries'; 'max_fail_percentage 5: abort the play if more than 5 percent of a batch fails'; 'any_errors_fatal true: one failure stops all hosts, use for dangerous steps' (orange); 'strategy linear: each task completes on all batch hosts before the next, default'; 'order shuffle'. Analogy 'a small test flight: if a bad change reaches two nodes out of forty, stop there and the other thirty-eight are healthy'. Bottom bar: 'The cost is time, the benefit is that a mistake stays small'.",
+  "anchor": "### Batching, strategies and failure semantics",
+  "alt": "A walk through a serial play of one canary host then 10 percent then 25 percent with the max_fail_percentage gate between batches and the meaning of each batching and failure setting.",
+  "cap": "serial runs one canary host first and grows the batch, and max_fail_percentage decides at each boundary whether the play continues."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-strategy-delegate-async",
+  "title": "Strategy, throttle, delegation and async: four ways to shape one run",
+  "spec": "Four panels. Panel 'strategy': 'linear is a single queue where everyone finishes one step before anyone starts the next'; 'free is a line of checkout counters where each shopper moves on as soon as their own basket is done: faster for independent tasks, unsuitable when later tasks depend on all hosts finishing'; 'host_pinned and debug are variations'. Panel 'throttle and run_once': 'throttle: N caps concurrency for one task, such as a package-mirror load, regardless of forks'; 'run_once: true runs a task on one host in the batch; combine with delegate_to; use delegate_facts carefully'. Panel 'delegate_to': 'runs a task on another host while keeping the current host's variables: call a load balancer API to drain a node, update DNS, talk to a BMC from a bastion; delegate_to localhost is the common case; connection variables come from the delegated host and become may differ'. Panel 'async and poll' (orange): 'a firmware flash takes most of an hour; a plain SSH session sits idle and a firewall could drop it; async moves the work to a background job on the host; async: 3600 with poll: 0 fires it in the background and async_status checks later; poll: 15 waits while it polls; helps firmware flashes, large package installs and SSH timeouts'. Timeout strip 'three forms: timeout: on tasks, the timeout setting in ansible.cfg for the SSH connection, async for long operations; a hung command without a timeout blocks the run'. Bottom bar: 'Choose the strategy by asking what must happen together'.",
+  "anchor": "### Batching, strategies and failure semantics",
+  "alt": "Four panels for strategy linear versus free, throttle and run_once, delegate_to and async with poll for long firmware flashes, with the three kinds of timeout.",
+  "cap": "linear waits for all, free lets hosts run ahead, delegate_to moves a task, and async with poll keeps a long job alive past SSH timeouts."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-failure-policy",
+  "title": "Failure policy knobs: which question each one answers",
+  "spec": "A table 'Knob', 'Question it answers'. 'any_errors_fatal' / 'should the whole play stop when one host fails?'. 'max_fail_percentage' / 'should a batch stop once too many hosts fail?'. 'ignore_errors' / 'should one failed task be ignored?' (note: taping over a smoke alarm: the recap looks green while the problem grows). 'ignore_unreachable' / 'should unreachable hosts be tolerated?'. 'force_handlers' / 'should handlers still run on a host that failed?'. Defaults box (orange) 'by default a failed host is removed from the rest of the play, and handlers do not run for failed hosts unless force_handlers: true'. Cross-reference 'rescued and ignored counters in the recap'. Bottom bar: 'Learn the defaults before an incident, because they are not always the ones you would choose'.",
+  "anchor": "### Batching, strategies and failure semantics",
+  "alt": "A table of failure policy knobs any_errors_fatal, max_fail_percentage, ignore_errors, ignore_unreachable and force_handlers with the question each answers and the default behaviour of removing failed hosts.",
+  "cap": "Each failure knob answers a different question, and by default a failed host leaves the play and its handlers do not run."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-recap-exit-reading",
+  "title": "The recap and the exit code are the same story at two sizes",
+  "spec": "Left a recap 'gpu001 : ok=12 changed=3 unreachable=0 failed=0 skipped=2 rescued=0 ignored=0' and 'gpu002 : ok=12 changed=3 unreachable=0 failed=1 skipped=2 rescued=0 ignored=0 <- failure' with orange on the failed=1 line. Explanation 'both hosts ran the same play; gpu002 reports one failed task and that line is marked; a single failed counter is enough to make the whole run worth investigating, so read every line, not only the first one'. Right the exit-code list: '0 success', '1 generic error', '2 one or more hosts failed', '3 one or more hosts unreachable', '4 parse error', '5 bad or incomplete options', '99 interrupted', '250 unexpected error'. CI strip 'in CI treat any non-zero exit as a failure'. Analogy 'the recap is an end-of-shift report a supervisor reads; the exit code is the same story in one number, which is what a CI job or scheduler sees'. Bottom bar: 'Read the scorecard, then the number'.",
+  "anchor": "### Exit codes and recap",
+  "alt": "A two-host recap where gpu002 shows failed equal to one, beside the ansible-playbook exit codes 0, 1, 2, 3, 4, 5, 99 and 250 and the CI rule to treat any non-zero exit as failure.",
+  "cap": "Every recap line matters, and the exit code compresses it into one number that CI treats as pass or fail."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-canary-walk",
+  "title": "What the canary host sees in the driver-tuning play",
+  "spec": "A step by step timeline for the canary, host gpu001. Pre-step 'run --check --diff --limit gpu001 first'. 'serial [1, 10%, 100%], max_fail_percentage 5, expected_gpus 8'. Step 1 'pre_task: delegate to the first slurm_controller host: scontrol show node gpu001, check_mode false, changed_when false, failed_when DRAIN not in node_state.stdout' (orange): the change never touches a node still accepting new jobs. Step 2 'sysctl: vm.swappiness = 1 persisted in /etc/sysctl.d/90-ai.conf, reload true'. Step 3 'template: nvidia-persistenced.override.conf.j2 to /etc/systemd/system/nvidia-persistenced.service.d/override.conf mode 0644, notify Restart persistenced'. Step 4 'handler: restart nvidia-persistenced with daemon_reload, only if the template changed'. Step 5 'post_task: nvidia-smi --query-gpu=index --format=csv,noheader; failed_when stdout_lines length != expected_gpus'. Gate 'validation failure stops the play before the 10 percent batch because of max_fail_percentage'. Strip 'resume the Slurm nodes in a separate, explicit play once validation has passed'. Story strip 'if the parameter is wrong for one hardware model, every node of that model fails together and the Slurm queue fills with failed jobs before anyone reads the first alert'. Bottom bar: 'Apply in small batches and validate each node as it goes'.",
+  "anchor": "## 7. Worked example: a safe driver-parameter rollout",
+  "alt": "The canary host timeline of a driver tuning play: a Slurm DRAIN pre-check, sysctl and template tasks, a persistenced restart handler and a GPU count validation that stops the play before the 10 percent batch.",
+  "cap": "The canary checks DRAIN first, applies the change, restarts the service only if needed, validates the GPU count, and a failure stops the rollout."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p4-0406-mistake-groups",
+  "title": "Playbook mistakes that show up on the second run",
+  "spec": "A grouped table 'Group', 'Mistakes', 'Fix'. 'Readability' / 'missing task names; names that describe commands instead of desired state' / 'name every task as Ensure X is Y'. 'Module choice and honesty' / 'shell or command for things a module does; no changed_when so the recap lies; ignoring rc' / 'module first, changed_when and failed_when'. 'Unplanned change' / 'state: latest in routine runs causes upgrades with no change request or test; unpinned driver versions pull in a driver the training stack has never seen' / 'present with pinned versions'. 'Silenced problems' (orange) / 'ignore_errors: true sprinkled through a playbook is taping over a smoke alarm; the recap looks green while the problem grows' / 'handle errors explicitly'. 'Not idempotent' / 'templates with timestamps or random values; handler storms; lineinfile with a loose regex rewriting unintended lines; editing files that should be fully templated or drop-ins' / 'stable templates, tight regexes'. 'Check mode' / 'assuming it is a perfect prediction; leaking secrets through --diff' / 'diff: false, canary'. 'Blast radius' / 'running against all with no --limit or serial and no canary; tags as the safety mechanism' / 'serial, limit'. 'Modes and timeouts' / 'unquoted modes (YAML octal pitfalls): quote 0644; long-running tasks without async or timeouts: SSH timeouts can kill firmware updates; relying on task order across plays without verifying dependencies' / 'quote modes, async, verify'. Opening strip 'the first run usually succeeds because everything is new; the second run is where hidden problems show up as a stream of changes that should not be there'. Bottom bar: 'Keep the second run in mind'.",
+  "anchor": "## 9. Common mistakes",
+  "alt": "A grouped table of playbook mistakes covering naming, module choice, unplanned upgrades, ignore_errors, non-idempotent templates, check mode assumptions, blast radius, unquoted modes and missing timeouts, each with its fix.",
+  "cap": "Playbook mistakes show up on the second run as noise, so name tasks, pin versions, guard commands and stage the rollout."
+ }
+]

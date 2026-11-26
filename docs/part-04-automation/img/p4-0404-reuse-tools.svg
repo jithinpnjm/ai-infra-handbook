@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Macro, include, import, inheritance and raw: pick the reuse tool</title>
+  <desc>A comparative table and visual guide explaining when to use macro, include, import, inheritance, and raw in Jinja templates.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Macro, include, import, inheritance and raw: pick the reuse tool</text>
+
+  
+  <rect x="40" y="125" width="260" height="52" rx="8" fill="#207448"/>
+  <text x="170" y="161" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Tool</text>
+
+  <rect x="315" y="125" width="470" height="52" rx="8" fill="#207448"/>
+  <text x="550" y="161" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">What it is</text>
+
+  <rect x="800" y="125" width="760" height="52" rx="8" fill="#207448"/>
+  <text x="1180" y="161" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Example</text>
+
+  
+  <g>
+    
+    <rect x="40" y="190" width="260" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="170" cy="235" r="14" stroke="#207448" stroke-width="4" fill="none"/>
+    <path d="M170 213 v6 M170 251 v6 M148 235 h6 M186 235 h6 M154 219 l5 5 M181 246 l5 5 M154 251 l5 -5 M181 224 l5 -5" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="170" y="318" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">macro</text>
+
+    
+    <rect x="315" y="190" width="470" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" x="335" y="235">
+      <tspan x="335" dy="0">a small function that returns</tspan>
+      <tspan x="335" dy="34">text; arguments such as the</tspan>
+      <tspan x="335" dy="34">node and a default GPU count</tspan>
+    </text>
+
+    
+    <rect x="800" y="190" width="760" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text fill="#303a36" x="822" y="226">
+      <tspan x="822" dy="0" font-family="monospace" font-size="24">macro node_line(n, default_gpus=8)</tspan>
+      <tspan x="822" dy="31" font-family="sans-serif" font-size="24">renders NodeName, CPUs and</tspan>
+      <tspan x="822" dy="31" font-family="monospace" font-size="24">Gres=gpu:{{ n.gpus | default(default_gpus) }};</tspan>
+      <tspan x="822" dy="31" font-family="sans-serif" font-size="24">call node_line(n) in a loop</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="358" width="260" height="128" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="156" y="375" width="28" height="34" rx="3" stroke="#207448" stroke-width="4" fill="none"/>
+    <rect x="146" y="385" width="28" height="34" rx="3" stroke="#207448" stroke-width="4" fill="#e8f1ea"/>
+    <line x1="152" y1="394" x2="166" y2="394" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="152" y1="402" x2="164" y2="402" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="170" y="465" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">include</text>
+
+    
+    <rect x="315" y="358" width="470" height="128" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" x="335" y="402">
+      <tspan x="335" dy="0">closer to pasting in another</tspan>
+      <tspan x="335" dy="34">file; renders it with the</tspan>
+      <tspan x="335" dy="34">same context</tspan>
+    </text>
+
+    
+    <rect x="800" y="358" width="760" height="128" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="monospace" font-size="24" fill="#303a36" x="822" y="432">include header.j2</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="499" width="260" height="128" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M148 532 v22 h44 v-22" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="170" y1="518" x2="170" y2="542" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="163 536 170 544 177 536" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="170" y="606" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">import</text>
+
+    
+    <rect x="315" y="499" width="470" height="128" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" x="335" y="573">bring macros from another file</text>
+
+    
+    <rect x="800" y="499" width="760" height="128" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="monospace" font-size="24" fill="#303a36" x="822" y="573">import macros.j2 as m, then m.node_line(n)</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="640" width="260" height="136" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="157" y="652" width="26" height="18" rx="2" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <line x1="170" y1="670" x2="170" y2="678" stroke="#207448" stroke-width="3"/>
+    <line x1="152" y1="678" x2="188" y2="678" stroke="#207448" stroke-width="3"/>
+    <line x1="152" y1="678" x2="152" y2="682" stroke="#207448" stroke-width="3"/>
+    <line x1="188" y1="678" x2="188" y2="682" stroke="#207448" stroke-width="3"/>
+    <rect x="142" y="682" width="20" height="15" rx="2" stroke="#207448" stroke-width="3" fill="none"/>
+    <rect x="178" y="682" width="20" height="15" rx="2" stroke="#207448" stroke-width="3" fill="none"/>
+    <text x="170" y="753" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">inheritance</text>
+
+    
+    <rect x="315" y="640" width="470" height="136" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" x="335" y="683">
+      <tspan x="335" dy="0">a base layout holds the common</tspan>
+      <tspan x="335" dy="34">shell, each child fills in only</tspan>
+      <tspan x="335" dy="34">its own block</tspan>
+    </text>
+
+    
+    <rect x="800" y="640" width="760" height="136" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text fill="#303a36" x="822" y="700">
+      <tspan x="822" dy="0" font-family="monospace" font-size="24">base.j2 defines block body;</tspan>
+      <tspan x="822" dy="36" font-family="monospace" font-size="24">child extends base.j2</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="789" width="260" height="136" rx="8" fill="#fdf4eb" stroke="#db8129" stroke-width="2.5"/>
+    
+    <path d="M157 808 c-6 0 -8 4 -8 10 c0 4 -3 5 -6 5 c3 0 6 1 6 5 c0 6 2 10 8 10" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <path d="M183 808 c6 0 8 4 8 10 c0 4 3 5 6 5 c-3 0 -6 1 -6 5 c0 6 -2 10 -8 10" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round"/>
+    <text x="170" y="902" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">raw</text>
+
+    
+    <rect x="315" y="789" width="470" height="136" rx="8" fill="#fdf4eb" stroke="#db8129" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" x="335" y="867">output braces literally</text>
+
+    
+    <rect x="800" y="789" width="760" height="136" rx="8" fill="#fdf4eb" stroke="#db8129" stroke-width="2"/>
+    <text fill="#303a36" x="822" y="849">
+      <tspan x="822" dy="0" font-family="monospace" font-size="24">raw {{ this is output literally }} endraw,</tspan>
+      <tspan x="822" dy="36" font-family="monospace" font-size="24">or write {{ "{{" }}</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="942" width="1520" height="114" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="68" y="979" width="50" height="40" rx="5" stroke="#207448" stroke-width="3" fill="none"/>
+    <polyline points="78 994 85 999 78 1004" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="90" y1="1004" x2="104" y2="1004" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" x="142" y="995">
+      <tspan x="142" dy="0">Prometheus alert annotations, Helm templates and Grafana are the usual cases</tspan>
+      <tspan x="142" dy="36">where a template must output literal double braces</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1080" width="1520" height="74" rx="10" fill="#207448"/>
+    <text x="800" y="1127" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">One copy of a repeated piece means a fix goes in one place</text>
+  </g>
+</svg>

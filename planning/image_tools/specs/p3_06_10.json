@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-gres-two-files",
+  "title": "Where Slurm learns about GPUs: two files and slurmd -G",
+  "spec": "Two file boxes merging into one view. Box 'slurm.conf: declares for the whole cluster: GresTypes=gpu,shard; AccountingStorageTRES=gres/gpu,gres/gpu:h100; NodeName=gpu[01-16] Gres=gpu:h100:8 (name, type, count)'. Box 'gres.conf: describes devices on each node: device files, types, CPU affinity, links; can be minimal if slurm.conf already gives name and count'. Both feed 'slurmctld with select/cons_tres tracks GRES, NUMA sockets and NVLink'. Verification arrow 'slurmd -G on the GPU node prints the GRES configuration (slurm.conf GRES merged with gres.conf for this node) and exits; check for each device: type matches the product you bought, file list covers every GPU in the box, cores belong to the socket the GPU is attached to'. Definition: 'a GRES is a consumable resource other than CPU and memory: Slurm keeps a count and subtracts what each job takes; also licences, network devices, burst buffers'. Text at least 24px.",
+  "anchor": "## 1. Generic resources (GRES)",
+  "alt": "slurm.conf and gres.conf merge into the controller's GPU view and slurmd -G shows the merged result.",
+  "cap": "slurmd -G on the node shows the merged GRES configuration to check type, files and cores."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-autodetect-values",
+  "title": "AutoDetect values and mixed node groups",
+  "spec": "Table of AutoDetect values from the gres.conf man page. 'nvml: NVIDIA GPUs through the NVIDIA Management Library; needs Slurm built with NVML support and the library present; fills Type, File, Cores (CPU affinity), Links (NVLink connectivity) and UUID; the only mode that handles MIG devices'. 'nvidia: NVIDIA GPUs without a library; does not detect MIGs or NVLinks; added in 24.11'. 'rsmi and amd: AMD GPUs'. 'oneapi: Intel'. 'nrt: AWS Trainium and Inferentia'. 'full: tries all of these in order'. 'off: turns detection off'. Mixed cluster example lines: 'NodeName=tux[0-7] AutoDetect=nvml', 'NodeName=tux[8-11] AutoDetect=rsmi', 'NodeName=tux[12-15] Name=gpu File=/dev/nvidia[0-3] (manual definition)'. Why: 'a single typo in a device path can leave one GPU invisible to the scheduler'. Failure row: 'slurmd fails with unable to load NVML: Slurm built without NVML or library missing; check build config and ldconfig -p | grep nvidia-ml'. Text at least 24px.",
+  "anchor": "### AutoDetect",
+  "alt": "A table of AutoDetect values with what each covers and an example of mixing detection modes across node groups.",
+  "cap": "Use AutoDetect=nvml on NVIDIA data-centre nodes and verify with slurmd -G."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-gres-manual-anatomy",
+  "title": "Reading a manual gres.conf line",
+  "spec": "Annotated lines. 'NodeName=gpu[01-16] Name=gpu Type=h100 File=/dev/nvidia[0-3] Cores=0-31 Links=-1,18,18,18,0,0,0,0' and 'NodeName=gpu[01-16] Name=gpu Type=h100 File=/dev/nvidia[4-7] Cores=32-63'. Field callouts: 'Name and Type: resource name and model label such as h100, a100, l40s; keep type strings short and stable because they appear in accounting and scripts; users then ask --gres=gpu:h100:4'. 'File: device files; required for the cgroup device constraint and for CUDA_VISIBLE_DEVICES; a missing or wrong File is the most common reason isolation fails'. 'Cores: logical core indices close to the device (as lstopo -l Core L#, not OS numbering); whole sockets must be specified together because Slurm co-allocates GRES and CPUs at socket granularity'. 'Links: connection counts to other devices of the same name, -1 self, 0 none, used to prefer well-connected GPUs; one entry per device; /dev/nvidiaN minor number may differ from the GPU index, which is sorted by PCI bus ID'. 'UUID with Flags=env_uuid makes CUDA_VISIBLE_DEVICES carry UUIDs'. 'Flags CountOnly, explicit (not allocated to whole-node jobs unless explicitly requested)'. Note: 'the example is illustrative'. Text at least 24px.",
+  "anchor": "### Manual definition",
+  "alt": "Two manual gres.conf lines with callouts for Name, Type, File, Cores and Links.",
+  "cap": "The File field turns a name into a real device that the cgroup can allow or deny."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-per-node-vs-total",
+  "title": "Per node or total: the first two request options",
+  "spec": "Worked comparison on a two-node job asking for four GPUs. Left '--gres=gpu:4 (or --gpus-per-node=4): per node; with --nodes=2 every node gets four GPUs, eight in total'. Right '--gpus=4 (-G 4): total for the job; Slurm decides the split, for example 2 plus 2, or all four on one node; can fragment placement and hurt NCCL, use only for jobs that tolerate it'. Below five recipes: 'single-node training, all GPUs: --gres=gpu:8 or --gpus-per-node=8, add --exclusive for a dedicated node'; 'multi-node, one process per GPU (PyTorch): --nodes=N --ntasks-per-node=8 --gpus-per-node=8 plus --cpus-per-gpu or --cpus-per-task for data-loader threads, result N times 8 ranks, one GPU each'; 'several independent tasks in one allocation: --gpus-per-task=1 with an explicit -n, each task gets its own GPU'; 'interactive: salloc --gres=gpu:1 --cpus-per-gpu=8 --mem-per-gpu=64G --time=1:00:00 then srun --pty bash'. Option notes: '--gpus-per-task needs an explicit task count and implicitly sets --tres-bind=gres/gpu:per_task:N', '--cpus-per-gpu is not compatible with --cpus-per-task', '--mem-per-gpu is exclusive with --mem and --mem-per-cpu, default is the partition DefMemPerGPU'. Text at least 24px.",
+  "anchor": "## 2. Requesting GPUs",
+  "alt": "A two-node example contrasts per-node GPU counts with a total GPU count and lists request recipes for common job shapes.",
+  "cap": "--gres counts per node while --gpus counts for the whole job."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-portable-header",
+  "title": "A batch header that does not depend on cluster defaults",
+  "spec": "Annotated sbatch header with five dimensions the script must state: '--nodes', '--gres (or --gpus-per-node)', '--cpus-per-task (or --cpus-per-gpu)', '--mem (or --mem-per-cpu or --mem-per-gpu)', '--time'. Callout 'clusters set very different defaults, such as 1 CPU core or 2 GiB of host RAM per task; with those PyTorch DataLoader workers with num_workers greater than 0 starve or are killed silently, a common cause of silent training failures when a script moves from a lab cluster to a shared production cluster'. Callout '--exclusive for large multi-node training: no other jobs share your allocated nodes, removing interference from PCIe, NUMA memory bandwidth and the shared filesystem page cache even if you do not request every CPU core'. Defaults helper: 'partition DefCpuPerGPU and DefMemPerGPU fill the blanks for users who type only --gres=gpu:1'. Rule 'write all five dimensions in the header before moving a script to another cluster'. Text at least 24px.",
+  "anchor": "### Portable resource allocation rules (*Distributed AI Systems* Chapter 8)",
+  "alt": "An sbatch header annotated with the five resource dimensions that should be stated explicitly and why --exclusive helps.",
+  "cap": "State nodes, GPUs, CPUs, memory and time explicitly so cluster defaults cannot surprise the job."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-bind-two-questions",
+  "title": "Binding answers two separate questions",
+  "spec": "Two-lane diagram on an 8-GPU, 2-socket HGX node: GPUs 0 to 3 on socket 0 (NUMA 0), GPUs 4 to 7 on socket 1. Lane 1 'Which GPU does each task get: --gpu-bind or --tres-bind=gres/gpu:...; closest binds each task to the nearest GRES; map:LIST assigns GPU IDs to tasks, as in map:0,1,2,3 or map:0*4,1*4; mask:LIST uses hexadecimal masks; per_task:N, single:N; verbose prints the decision; none turns binding off including the implicit binding from --gpus-per-task; with task/cgroup and ConstrainDevices=yes the IDs are zero-based relative to the allocation, otherwise global IDs'. Lane 2 'Which CPUs may a task run on, given its GPU: Cores= in gres.conf and --gres-flags; by default cores near a GPU are preferred; --gres-flags=enforce-binding restricts the job to the cores bound to its GPUs; disable-binding lifts it; pending reason appears when more CPUs are requested than are bound to the GPU'. Walkthrough: 'eight tasks with --gpus-per-task=1 --cpus-per-gpu=N --gpu-bind=closest put each rank on a GPU with CPUs from the same NUMA node'. Reason: 'a GPU on the far socket means every host-to-device copy crosses the slow path; data still arrives so nothing fails'. Check with nvidia-smi topo -m. Text at least 24px.",
+  "anchor": "## 3. Binding GPUs to tasks and CPUs",
+  "alt": "Two lanes show which GPU a task gets and which CPUs it may use, for a two-socket eight-GPU node.",
+  "cap": "Bind both questions so a rank's CPUs and GPU sit on the same socket."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-isolation-layers",
+  "title": "A variable is a suggestion, a cgroup is a fence",
+  "spec": "Two lanes for a job allocated GPUs 3 and 7 on a node. Lane 'Only CUDA_VISIBLE_DEVICES: a process can ignore it and open /dev/nvidia3 directly even if that GPU belongs to someone else; nvidia-smi lists every GPU in the box because nothing stopped it'. Lane 'cgroup device control: TaskPlugin=task/cgroup and ConstrainDevices=yes in cgroup.conf (default is no); the job cgroup gets only the device files of its allocated GRES; opening any other device fails with a permission error; nvidia-smi lists only allocated GPUs; requires GRES File= entries or autodetect'. Shared control files jobs may use: '/dev/nvidiactl, /dev/nvidia-uvm, /dev/nvidia-caps/* (MIG)'. Containers: 'need device nodes and driver libraries injected, through enroot and pyxis or nvidia-container-toolkit; without them the container sees no GPU; cgroup limits still apply'. Quick check commands: 'srun --gres=gpu:1 bash -c nvidia-smi -L; ls /dev/nvidia* : one GPU listed' and 'srun --gres=gpu:1 bash -c CUDA_VISIBLE_DEVICES=1 nvidia-smi -L : must not reveal GPUs outside the allocation'. Warning 'test after every driver, kernel, systemd or container runtime change: daemon-reload or a cgroup v2 mismatch has reset device permissions on running nodes'. Text at least 24px.",
+  "anchor": "## 4. Isolation: what actually stops a job from using other GPUs",
+  "alt": "An environment variable is contrasted with cgroup device control, with two check commands run after every change.",
+  "cap": "Only ConstrainDevices=yes physically stops a job from opening other GPUs."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-sharing-decision",
+  "title": "Choosing how to share a GPU, with the config for each",
+  "spec": "Decision table need to mechanism to config. 'Training, multi-GPU, performance-sensitive: whole GPUs, never share'. 'Many small inference or dev jobs, isolation required: MIG; hardware partition of A100 or H100 into up to seven isolated instances, each with own SMs, memory and bandwidth; Slurm treats each instance as a GPU with cgroup isolation and task binding; config example Gres=gpu:a100:1,gpu:a100_3g.20gb:2 with AccountingStorageTRES gres/gpu:a100_3g.20gb; Slurm does not partition the GPU: create instances with nvidia-smi mig or the GPU Operator MIG manager before slurmd starts; no dynamic MIG partitioning; static and fragmenting, a 3g.20gb instance cannot be merged; no NVLink or multi-GPU use; AutoDetect=nvml is the only mode that handles MIG'. 'Many cooperating small processes, throughput, trusted users: MPS; gres/mps count, Gres=gpu:2,mps:200 means 100 per GPU'. 'Maximum density, trusted workloads, simple: sharding; gres/shard, Gres=gpu:2,shard:64 gives 32 shards per GPU; by default it does not fence the processes or constrain device memory'. 'Fractional GPUs for notebooks and serving across a platform: consider Kubernetes (time-slicing, MIG, DRA)'. Tip 'keep MIG partitions and whole-GPU partitions separate; check with a one-GPU test in each and compare nvidia-smi -L; MIG layout must be recreated before slurmd after reboot'. Text at least 24px.",
+  "anchor": "## 5. Sharing a GPU: MIG, MPS and sharding",
+  "alt": "A decision table from workload need to whole GPU, MIG, MPS or sharding with the slurm.conf syntax for each.",
+  "cap": "MIG instances must exist before slurmd starts because Slurm does not partition GPUs dynamically."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-gpu-accounting-levers",
+  "title": "Where GPU usage is recorded, capped and billed",
+  "spec": "Four-lane diagram. 'Record: AccountingStorageTRES=gres/gpu plus typed variants such as gres/gpu:h100; check with sacct -X --format=JobID,AllocTRES%60; makes GPU usage appear in sacct and sreport'. 'Cap: GrpTRES=gres/gpu=64 on accounts; MaxTRESPerUser=gres/gpu=32 on QOS (6.9); typed TRES allow per-model limits and reports'. 'Bill: TRESBillingWeights=GRES/gpu=10,... on the partition; PriorityFlags=MAX_TRES_GRES needs Slurm 25.05 or later; GPU hours then dominate cost and fair-share'. 'Reality check: the database counts allocated time, not useful work; an idle job holding a GPU looks identical to one training hard; pair accounting with utilisation monitoring: DCGM from Part 17, and sstat and sacct GPU usage fields when AccountingStorageTRES includes gres/gpuutil or gres/gpumem enabled by JobAcctGatherParams'. Text at least 24px.",
+  "anchor": "## 6. Accounting and limits for GPUs",
+  "alt": "Four lanes for recording, capping, billing and checking GPU usage with the Slurm settings for each.",
+  "cap": "Accounting counts allocated GPU hours, so pair it with utilisation monitoring to see wasted time."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "p3-0610-troubleshoot-table",
+  "title": "GPU scheduling symptoms and first checks",
+  "spec": "Table symptom, likely cause, check. 'Invalid generic resource (gres) specification: type or name not in GresTypes or node Gres; scontrol show node, slurmd -G, typo in type'. 'Pending Resources or ReqNodeNotAvail: request not satisfiable (type, count, memory per GPU, sockets with enforce-binding) or nodes drained; scontrol show job, sinfo -o %N %G %t'. 'Node DRAIN gres/gpu count too low (0 < 8): NVML or driver failed to load, GPU missing; nvidia-smi, slurmd log, slurmd -G, dmesg Xid'. 'CUDA_VISIBLE_DEVICES empty: no File= or device constraint config, --gres not requested, --gpu-bind=none; gres.conf, scontrol show job TresPerNode'. 'Job sees all GPUs: ConstrainDevices=no; cgroup.conf'. 'Two ranks use one GPU: no per-task binding, --gpus-per-task missing, sharing configured; gpu_env_check.py per rank'. 'Slow host-device copies: CPUs on the wrong NUMA node; --gres-flags=enforce-binding, Cores=, taskset, nvidia-smi topo -m'. 'NVLink-poor pairs allocated: Links missing; slurmd -G, --gres-flags=enforce-links'. 'MIG count wrong after reboot: layout not recreated before slurmd; systemd ordering, nvidia-smi -L'. Note 'bring a recovered test node back with scontrol update NodeName=node[6-7] State=RESUME; drain a node when a GPU reports Xid, ECC or NVLink faults'. Text at least 24px.",
+  "anchor": "## 8. Troubleshooting",
+  "alt": "A table of nine GPU scheduling symptoms with likely cause and the check for each.",
+  "cap": "Run the single check in the row that matches before changing any configuration."
+ }
+]

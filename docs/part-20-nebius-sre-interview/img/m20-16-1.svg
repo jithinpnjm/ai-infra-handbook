@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>The node lifecycle</title>
+  <desc>Visual flowchart of the node remediation and recovery lifecycle from Healthy and Suspect through Cordoned, Draining, Quarantined, Repairing, RMA, and Validating.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The node lifecycle</text>
+
+  
+  <g id="node-healthy">
+    <rect x="90" y="140" width="210" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 175,172 L 215,172 C 215,198 195,214 195,214 C 195,214 175,198 175,172 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 185,191 L 192,198 L 206,183" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="195" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Healthy</text>
+  </g>
+
+  
+  <g id="node-suspect">
+    <rect x="90" y="480" width="210" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 195,508 L 219,548 L 171,548 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 195,522 L 195,534 M 195,541 L 195,543" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="195" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Suspect</text>
+  </g>
+
+  
+  <g id="node-cordoned">
+    <rect x="490" y="140" width="200" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 575,172 L 605,172 L 615,187 L 615,203 L 605,218 L 575,218 L 565,203 L 565,187 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 574,195 L 606,195" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="590" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cordoned</text>
+  </g>
+
+  
+  <g id="node-draining">
+    <rect x="740" y="140" width="200" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 820,174 L 860,174 L 847,194 L 847,208 L 833,208 L 833,194 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 840,213 L 840,217" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="840" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Draining</text>
+  </g>
+
+  
+  <g id="node-quarantined">
+    <rect x="990" y="140" width="250" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="1100" y="188" width="30" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 1106,188 L 1106,179 A 9 9 0 0 1 1124,179 L 1124,188" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 1115,196 L 1115,204" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="1115" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Quarantined</text>
+  </g>
+
+  
+  <g id="node-repairing">
+    <rect x="1320" y="140" width="220" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 1416,210 L 1436,190 M 1432,186 A 7 7 0 0 1 1444,174 L 1441,180 L 1445,184 L 1451,181 A 7 7 0 0 1 1439,193 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 1444,210 L 1424,190 M 1420,186 L 1414,180" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="1430" y="260" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Repairing</text>
+  </g>
+
+  
+  <g id="node-rma">
+    <rect x="1320" y="480" width="220" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <path d="M 1410,522 L 1430,510 L 1450,522 L 1450,544 L 1430,556 L 1410,544 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 1430,510 L 1430,556 M 1410,522 L 1430,534 L 1450,522" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <text x="1430" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">RMA</text>
+  </g>
+
+  
+  <g id="node-validating">
+    <rect x="990" y="480" width="250" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="1100" y="514" width="30" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 1109,514 L 1109,508 A 6 6 0 0 1 1121,508 L 1121,514" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 1107,532 L 1113,538 L 1123,526" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="1115" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Validating</text>
+  </g>
+
+  
+
+  
+  <path d="M 150,290 L 150,480" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="140" y="375" text-anchor="end" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="140" dy="0">soft</tspan>
+    <tspan x="140" dy="28">signal</tspan>
+  </text>
+
+  
+  <path d="M 240,480 L 240,290" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="252" y="375" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="252" dy="0">clean for</tspan>
+    <tspan x="252" dy="28">a while</tspan>
+  </text>
+
+  
+  <path d="M 300,175 L 490,175" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 300,555 L 340,555 L 340,255 L 490,255" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <text x="415" y="206" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="415" dy="0">hard</tspan>
+    <tspan x="415" dy="28">signal</tspan>
+  </text>
+
+  
+  <path d="M 690,215 L 740,215" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 940,215 L 990,215" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1240,215 L 1320,215" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1430,290 L 1430,480" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1445" y="375" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1445" dy="0">vendor</tspan>
+    <tspan x="1445" dy="28">swap</tspan>
+  </text>
+
+  
+  <path d="M 1320,555 L 1240,555" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1320,260 L 1170,260 L 1170,480" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1115,630 L 1115,780 L 45,780 L 45,215 L 90,215" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <text x="580" y="825" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">diag passes</text>
+
+  
+  <path d="M 1060,480 L 1060,290" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <text x="1045" y="375" text-anchor="end" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1045" dy="0">diag</tspan>
+    <tspan x="1045" dy="28">fails</tspan>
+  </text>
+</svg>

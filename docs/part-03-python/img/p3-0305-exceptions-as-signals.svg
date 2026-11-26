@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Exceptions as control flow: leave nested loops, signal end of input, signal a result</title>
+  <desc>Visual explanation of three Python exception idioms: raising an exception to exit deeply nested loops, catching EOFError to signal the end of input, and using exceptions to signal search results without sentinels.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Exceptions as control flow: leave nested loops,</tspan>
+    <tspan x="800" dy="54">signal end of input, signal a result</tspan>
+  </text>
+
+  
+  <g id="panel-leave-loops">
+    <rect x="40" y="140" width="480" height="920" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(252, 160)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 14 20 C 14 11 21 6 30 6 C 41 6 48 13 48 24 C 48 35 41 42 30 42 C 21 42 14 36 14 28" />
+      <polyline points="8,22 14,28 20,22" />
+      <line x1="28" y1="28" x2="52" y2="28" />
+      <polyline points="46,22 52,28 46,34" />
+    </g>
+
+    
+    <text x="280" y="248" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Leave several loops</text>
+
+    
+    <rect x="60" y="270" width="440" height="252" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="80" y="304" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">class Exitloop(Exception):</tspan>
+      <tspan x="80" dy="32">pass; try: while True:</tspan>
+      <tspan x="80" dy="32">while True: for i in</tspan>
+      <tspan x="80" dy="32">range(10): if i &gt; 3: raise</tspan>
+      <tspan x="80" dy="32">Exitloop; print(loop3: i)</tspan>
+      <tspan x="80" dy="32">... except Exitloop:</tspan>
+      <tspan x="80" dy="32">print(continuing)</tspan>
+    </text>
+
+    
+    <rect x="60" y="542" width="440" height="124" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="80" y="576" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">loop3: 0, loop3: 1, loop3:</tspan>
+      <tspan x="80" dy="32">2, loop3: 3, continuing,</tspan>
+      <tspan x="80" dy="32">i=4</tspan>
+    </text>
+
+    
+    <rect x="60" y="686" width="440" height="338" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="80" y="720" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">break exits only one level,</tspan>
+      <tspan x="80" dy="31">with break here you get an</tspan>
+      <tspan x="80" dy="31">infinite loop; i keeps its</tspan>
+      <tspan x="80" dy="31">value because assignments</tspan>
+      <tspan x="80" dy="31">in a try are not undone;</tspan>
+      <tspan x="80" dy="31">the raise works like a goto</tspan>
+      <tspan x="80" dy="31">where the except clause is</tspan>
+      <tspan x="80" dy="31">the label, and you can jump</tspan>
+      <tspan x="80" dy="31">only out of code wrapped in</tspan>
+      <tspan x="80" dy="31">a try</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-end-of-input">
+    <rect x="560" y="140" width="480" height="920" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(772, 160)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6" />
+      <line x1="4" y1="18" x2="52" y2="18" stroke-width="3" />
+      <polyline points="12,27 20,34 12,41" stroke-width="3.5" />
+      <line x1="24" y1="41" x2="38" y2="41" stroke-width="3.5" />
+    </g>
+
+    
+    <text x="800" y="248" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">End of input is a signal</text>
+
+    
+    <rect x="580" y="270" width="440" height="176" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="600" y="308" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="600" dy="0">while True: try: line =</tspan>
+      <tspan x="600" dy="34">input() except EOFError:</tspan>
+      <tspan x="600" dy="34">break else: process the</tspan>
+      <tspan x="600" dy="34">line</tspan>
+    </text>
+
+    
+    <rect x="580" y="476" width="440" height="246" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="600" y="514" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="600" dy="0">file read methods return an</tspan>
+      <tspan x="600" dy="34">empty string at end of</tspan>
+      <tspan x="600" dy="34">file, input raises</tspan>
+      <tspan x="600" dy="34">EOFError; an empty string</tspan>
+      <tspan x="600" dy="34">from input is a blank line,</tspan>
+      <tspan x="600" dy="34">not the end</tspan>
+    </text>
+
+    
+    <rect x="580" y="752" width="440" height="186" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="600" y="790" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="600" dy="0">other signal exceptions:</tspan>
+      <tspan x="600" dy="34">sys.exit() raises</tspan>
+      <tspan x="600" dy="34">SystemExit, Ctrl+C raises</tspan>
+      <tspan x="600" dy="34">KeyboardInterrupt</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-signal-result">
+    <rect x="1080" y="140" width="480" height="920" rx="16" fill="#fff9f3" stroke="#db8129" stroke-width="3" />
+
+    
+    <g transform="translate(1292, 160)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16" />
+      <line x1="36" y1="36" x2="50" y2="50" stroke-width="4.5" />
+      <polyline points="15,24 22,30 33,18" stroke-width="3.5" />
+    </g>
+
+    
+    <text x="1320" y="248" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Signal a result</text>
+
+    
+    <rect x="1100" y="270" width="440" height="196" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1120" y="306" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">class Found(Exception);</tspan>
+      <tspan x="1120" dy="32">searcher raises Found() on</tspan>
+      <tspan x="1120" dy="32">success; caller: try</tspan>
+      <tspan x="1120" dy="32">searcher() except Found:</tspan>
+      <tspan x="1120" dy="32">success else: failure</tspan>
+    </text>
+
+    
+    <rect x="1100" y="490" width="440" height="228" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1120" y="526" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">class Failure(Exception);</tspan>
+      <tspan x="1120" dy="32">searcher returns founditem</tspan>
+      <tspan x="1120" dy="32">or raises Failure();</tspan>
+      <tspan x="1120" dy="32">caller: try: item =</tspan>
+      <tspan x="1120" dy="32">searcher() except Failure:</tspan>
+      <tspan x="1120" dy="32">not found else: use item</tspan>
+    </text>
+
+    
+    <rect x="1100" y="742" width="440" height="228" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1120" y="778" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">if every object can be a</tspan>
+      <tspan x="1120" dy="32">valid return value, no</tspan>
+      <tspan x="1120" dy="32">sentinel such as None is</tspan>
+      <tspan x="1120" dy="32">safe; an exception carries</tspan>
+      <tspan x="1120" dy="32">the failure without</tspan>
+      <tspan x="1120" dy="32">touching the return value</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="40" y="1090" width="1520" height="70" rx="12" fill="#207448" />
+  <text x="800" y="1134" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">In Python every error is an exception, but not every exception is an error</text>
+</svg>

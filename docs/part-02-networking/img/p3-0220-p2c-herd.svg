@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Power of two choices: why two random looks beat scanning, and how it stops herding</title>
+  <desc>Visual infographic explaining the power of two choices algorithm compared to least connections load balancing.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 12 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Power of two choices: why two random looks</text>
+  <text x="800" y="114" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">beat scanning, and how it stops herding</text>
+
+  
+  <g id="left-panel">
+    <rect x="50" y="150" width="730" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="415" y="196" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Least connections with several balancers</text>
+
+    
+    <rect x="250" y="235" width="490" height="84" rx="10" fill="#fff7ed" stroke="#db8129" stroke-width="2" />
+    <text x="495" y="268" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">herding: a stampede</text>
+    <text x="495" y="298" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">onto the same idle server</text>
+
+    
+    <g id="lb1">
+      <rect x="80" y="230" width="150" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="115" cy="276" r="14" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 107 276 L 123 276 M 115 268 L 115 284" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <text x="180" y="285" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LB 1</text>
+    </g>
+
+    
+    <g id="lb2">
+      <rect x="80" y="365" width="150" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="115" cy="411" r="14" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 107 411 L 123 411 M 115 403 L 115 419" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <text x="180" y="420" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LB 2</text>
+    </g>
+
+    
+    <g id="lb3">
+      <rect x="80" y="500" width="150" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="115" cy="546" r="14" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 107 546 L 123 546 M 115 538 L 115 554" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <text x="180" y="555" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">LB 3</text>
+    </g>
+
+    
+    <g id="backend-c">
+      <rect x="470" y="360" width="280" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <rect x="585" y="378" width="50" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="593" y1="395" x2="627" y2="395" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="623" cy="387" r="2.5" fill="#207448" />
+      <text x="610" y="445" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+        <tspan x="610" dy="0">backend C</tspan>
+        <tspan x="610" dy="36">(lightest)</tspan>
+      </text>
+    </g>
+
+    
+    <path d="M 230 276 C 350 276, 380 395, 470 405" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <path d="M 230 411 L 470 425" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <path d="M 230 546 C 350 546, 380 455, 470 445" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="820" y="150" width="730" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1185" y="196" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Power of two choices</text>
+
+    
+    <g id="step-1">
+      <rect x="850" y="225" width="670" height="106" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="890" cy="278" r="24" fill="#207448" />
+      <text x="890" y="278" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+      <text x="932" y="263" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="932" dy="0">draw two backends at random</tspan>
+        <tspan x="932" dy="30">from the pool</tspan>
+      </text>
+
+      
+      <g transform="translate(1330, 252)">
+        <rect x="0" y="0" width="24" height="48" rx="3" fill="#ffffff" stroke="#94a3b8" stroke-width="2" />
+        <rect x="34" y="0" width="24" height="48" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+        <circle cx="46" cy="12" r="3" fill="#207448" />
+        <rect x="68" y="0" width="24" height="48" rx="3" fill="#ffffff" stroke="#94a3b8" stroke-width="2" />
+        <rect x="102" y="0" width="24" height="48" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+        <circle cx="114" cy="12" r="3" fill="#207448" />
+        <rect x="136" y="0" width="24" height="48" rx="3" fill="#ffffff" stroke="#94a3b8" stroke-width="2" />
+      </g>
+    </g>
+
+    
+    <g id="step-2">
+      <rect x="850" y="348" width="670" height="106" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="890" cy="401" r="24" fill="#207448" />
+      <text x="890" y="401" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+      <text x="932" y="386" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="932" dy="0">read a load number from each,</tspan>
+        <tspan x="932" dy="30">such as the count of queued requests</tspan>
+      </text>
+    </g>
+
+    
+    <g id="step-3">
+      <rect x="850" y="471" width="670" height="106" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="890" cy="524" r="24" fill="#207448" />
+      <text x="890" y="524" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+      <text x="932" y="532" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">send to the less loaded of the two</text>
+    </g>
+
+    
+    <g id="step-4">
+      <rect x="850" y="594" width="670" height="106" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="890" cy="647" r="24" fill="#207448" />
+      <text x="890" y="647" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+      <text x="932" y="655" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">forget the rest</text>
+    </g>
+  </g>
+
+  
+  <g id="notes-section">
+    
+    <g id="note-1">
+      <rect x="50" y="755" width="480" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="290" cy="792" r="16" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 284 792 L 296 792 M 290 786 L 290 798" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <text x="290" y="836" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="290" dy="0">does not scan all backends,</tspan>
+        <tspan x="290" dy="32">which would be slow in a</tspan>
+        <tspan x="290" dy="32">large pool</tspan>
+      </text>
+    </g>
+
+    
+    <g id="note-2">
+      <rect x="560" y="755" width="480" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <path d="M 786 784 L 800 798 L 814 784" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 786 800 L 800 786 L 814 800" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="800" y="836" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="800" dy="0">two balancer instances rarely</tspan>
+        <tspan x="800" dy="32">pick the same two backends,</tspan>
+        <tspan x="800" dy="32">so they do not stampede</tspan>
+      </text>
+    </g>
+
+    
+    <g id="note-3">
+      <rect x="1070" y="755" width="480" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="1310" cy="792" r="16" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 1302 792 L 1308 798 L 1318 786" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="1310" y="836" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="1310" dy="0">result is almost as good as</tspan>
+        <tspan x="1310" dy="32">checking every backend,</tspan>
+        <tspan x="1310" dy="32">looking at only two</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="footer-section">
+    <rect x="50" y="965" width="1500" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="1003" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Envoy LEAST_REQUEST is P2C over least-request</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="1050" width="1500" height="80" rx="12" fill="#207448" />
+    <text x="800" y="1100" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Any randomised pick breaks up synchronised stampedes</text>
+  </g>
+</svg>

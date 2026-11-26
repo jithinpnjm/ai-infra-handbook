@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "p2-0404-filter-pipe",
+  "title": "A filter chain is a conveyor belt: each filter changes the value once",
+  "anchor": "### Filters",
+  "spec": "A horizontal conveyor belt flowing from left to right with four stations, each a labelled box on the belt. Input at the far left: a small box holding a list of node records, shown as three rows 'gpu01 gpus 8', 'gpu02 gpus 8', 'login01 gpus 0'. Station 1, box: 'selectattr(gpus, ge, 8): keep nodes with 8 or more GPUs', with the output shown beneath as 'gpu01, gpu02'. Station 2, box: 'map(attribute=name): pull out the name of each node', output 'gpu01, gpu02'. Station 3, orange outline: 'join(,): glue the names with commas', output 'gpu01,gpu02'. Output at the far right: a box with the monospace text 'gpu01,gpu02'. A grey note under the belt: 'If the first filter keeps nothing, later filters receive an empty list and the output is an empty string.' Caption: 'Read a filter chain left to right, one change at a time.'",
+  "alt": "A filter chain selects nodes with at least eight GPUs, maps them to names, and joins the names with commas, one step at a time.",
+  "cap": "A filter chain works like a conveyor belt, selecting the nodes with eight or more GPUs, taking their names, and joining them with commas."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "p2-0404-whitespace-trim",
+  "title": "Block tags leave blank lines unless you trim them, and the diff shows the damage",
+  "anchor": "### Whitespace control",
+  "spec": "Two side-by-side panels with headings. Left panel, orange outline, heading 'Default rendering': a template snippet in monospace with three lines, '{% if gpus %}', 'Gres=gpu:8', '{% endif %}', and the rendered output beneath it showing the line 'Gres=gpu:8' with a blank line above and below, drawn as empty rows marked with grey dashes. A red-outline note: 'Blank lines added by every block tag. A diff now shows changes that mean nothing.' Right panel, green heading 'Trimmed rendering': the same template with a line '#jinja2: trim_blocks:True, lstrip_blocks:True' above it, and the rendered output showing only 'Gres=gpu:8' with no blank rows. A monospace note beneath: '{%- strips before a tag, -%} strips after it'. Caption: 'Always render the template and read the output.'",
+  "alt": "Without trimming, block tags leave blank lines in the rendered file, while trim_blocks and lstrip_blocks produce clean output.",
+  "cap": "Block tags leave blank lines in rendered config unless trim_blocks and lstrip_blocks are set, which keeps the diff free of noise."
+ }
+]

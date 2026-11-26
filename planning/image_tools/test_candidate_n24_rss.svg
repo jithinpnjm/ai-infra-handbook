@@ -1,0 +1,188 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Spreading a flow across queues and cores</title>
+  <desc>Visual infographic explaining network flow hashing across NIC receive queues and steering to CPU cores using RSS, RPS, and XPS.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="16" markerHeight="16" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Spreading a flow across queues and cores</text>
+
+  <!-- ==================== FLOW HASHING BANNER ==================== -->
+  <g id="flow-card">
+    <rect x="40" y="100" width="1520" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(64, 124)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="8" width="52" height="40" rx="6"/>
+      <path d="M 12 28 L 32 28"/>
+      <polyline points="26,20 34,28 26,36"/>
+      <circle cx="44" cy="28" r="3" fill="#207448"/>
+    </g>
+    <text x="145" y="142" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">A flow's addresses and ports are hashed (Toeplitz) to pick one queue, </tspan>
+      <tspan x="145" dy="34">so each flow stays on one core, keeping packet order and cache.</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== TOP DIAGRAM: NIC QUEUES -> CPU CORES ==================== -->
+  <!-- Left: NIC with receive queues Q0 to Q3 -->
+  <g id="nic-box">
+    <rect x="40" y="245" width="500" height="335" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 40,261 A 16,16 0 0,1 56,245 L 524,245 A 16,16 0 0,1 540,261 L 540,340 L 40,340 Z" fill="#e8f1ea"/>
+    <line x1="40" y1="340" x2="540" y2="340" stroke="#207448" stroke-width="1.5"/>
+    <!-- NIC Icon -->
+    <g transform="translate(64, 262)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="36" rx="4"/>
+      <line x1="14" y1="42" x2="14" y2="50"/>
+      <line x1="24" y1="42" x2="24" y2="50"/>
+      <line x1="34" y1="42" x2="34" y2="50"/>
+      <line x1="44" y1="42" x2="44" y2="50"/>
+      <circle cx="16" cy="24" r="4" fill="#207448"/>
+      <circle cx="32" cy="24" r="4" fill="#207448"/>
+    </g>
+    <text x="140" y="283" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="140" dy="0">NIC with receive </tspan>
+      <tspan x="140" dy="34">queues Q0 to Q3</tspan>
+    </text>
+    <!-- 4 Queue visual slots inside NIC -->
+    <g transform="translate(65, 358)">
+      <rect x="0" y="0" width="450" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <line x1="390" y1="0" x2="390" y2="40" stroke="#207448" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <circle cx="420" cy="20" r="7" fill="#207448"/>
+      <rect x="0" y="50" width="450" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <line x1="390" y1="50" x2="390" y2="90" stroke="#207448" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <circle cx="420" cy="70" r="7" fill="#207448"/>
+      <rect x="0" y="100" width="450" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <line x1="390" y1="100" x2="390" y2="140" stroke="#207448" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <circle cx="420" cy="120" r="7" fill="#207448"/>
+      <rect x="0" y="150" width="450" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <line x1="390" y1="150" x2="390" y2="190" stroke="#207448" stroke-width="1.5" stroke-dasharray="3,3"/>
+      <circle cx="420" cy="170" r="7" fill="#207448"/>
+    </g>
+  </g>
+
+  <!-- Connecting Arrow & Edge Label -->
+  <g id="irq-connection">
+    <line x1="540" y1="445" x2="1055" y2="445" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <rect x="620" y="325" width="360" height="94" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="360" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">each with its own </tspan>
+      <tspan x="800" dy="34">interrupt (IRQ)</tspan>
+    </text>
+  </g>
+
+  <!-- Right: a different CPU core (core 0 to 3) -->
+  <g id="cpu-box">
+    <rect x="1060" y="245" width="500" height="335" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 1060,261 A 16,16 0 0,1 1076,245 L 1544,245 A 16,16 0 0,1 1560,261 L 1560,340 L 1060,340 Z" fill="#e8f1ea"/>
+    <line x1="1060" y1="340" x2="1560" y2="340" stroke="#207448" stroke-width="1.5"/>
+    <!-- CPU Chip Icon -->
+    <g transform="translate(1084, 262)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="4"/>
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="#207448"/>
+      <line x1="16" y1="2" x2="16" y2="8"/><line x1="28" y1="2" x2="28" y2="8"/><line x1="40" y1="2" x2="40" y2="8"/>
+      <line x1="16" y1="48" x2="16" y2="54"/><line x1="28" y1="48" x2="28" y2="54"/><line x1="40" y1="48" x2="40" y2="54"/>
+      <line x1="2" y1="16" x2="8" y2="16"/><line x1="2" y1="28" x2="8" y2="28"/><line x1="2" y1="40" x2="8" y2="40"/>
+      <line x1="48" y1="16" x2="54" y2="16"/><line x1="48" y1="28" x2="54" y2="28"/><line x1="48" y1="40" x2="54" y2="40"/>
+    </g>
+    <text x="1160" y="283" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1160" dy="0">a different CPU core </tspan>
+      <tspan x="1160" dy="34">(core 0 to 3)</tspan>
+    </text>
+    <!-- 4 CPU Core visual tiles -->
+    <g transform="translate(1085, 358)">
+      <rect x="0" y="0" width="450" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="20" r="7" fill="#207448"/>
+      <line x1="60" y1="20" x2="430" y2="20" stroke="#207448" stroke-width="2"/>
+      <rect x="0" y="50" width="450" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="70" r="7" fill="#207448"/>
+      <line x1="60" y1="70" x2="430" y2="70" stroke="#207448" stroke-width="2"/>
+      <rect x="0" y="100" width="450" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="120" r="7" fill="#207448"/>
+      <line x1="60" y1="120" x2="430" y2="120" stroke="#207448" stroke-width="2"/>
+      <rect x="0" y="150" width="450" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="30" cy="170" r="7" fill="#207448"/>
+      <line x1="60" y1="170" x2="430" y2="170" stroke="#207448" stroke-width="2"/>
+    </g>
+  </g>
+
+  <!-- ==================== THREE OPTIONS IN A ROW ==================== -->
+  <!-- Option 1: RSS -->
+  <g id="option-rss">
+    <rect x="40" y="620" width="480" height="260" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(64, 640)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="10" width="48" height="34" rx="4"/>
+      <circle cx="28" cy="27" r="7"/>
+      <line x1="28" y1="14" x2="28" y2="20"/><line x1="28" y1="34" x2="28" y2="40"/>
+      <line x1="15" y1="27" x2="21" y2="27"/><line x1="35" y1="27" x2="41" y2="27"/>
+    </g>
+    <text x="135" y="662" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0" font-size="30" font-weight="bold" fill="#207448">RSS: hardware, </tspan>
+      <tspan x="135" dy="38">NIC hashes to N receive </tspan>
+      <tspan x="135" dy="34">queues </tspan><tspan font-family="monospace" fill="#207448">(ethtool -l eth0)</tspan>
+    </text>
+  </g>
+
+  <!-- Option 2: RPS -->
+  <g id="option-rps">
+    <rect x="560" y="620" width="480" height="260" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(584, 640)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="4"/>
+      <line x1="6" y1="20" x2="50" y2="20" stroke-width="3"/>
+      <circle cx="16" cy="14" r="2" fill="#207448"/>
+      <circle cx="24" cy="14" r="2" fill="#207448"/>
+      <polyline points="18,36 28,30 18,24"/>
+      <line x1="38" y1="30" x2="28" y2="30"/>
+    </g>
+    <text x="655" y="662" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="655" dy="0" font-size="30" font-weight="bold" fill="#207448">RPS: software, </tspan>
+      <tspan x="655" dy="38">steers to other CPUs </tspan>
+      <tspan x="655" dy="34">after the interrupt</tspan>
+    </text>
+  </g>
+
+  <!-- Option 3: XPS -->
+  <g id="option-xps">
+    <rect x="1080" y="620" width="480" height="260" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(1104, 640)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 8 L 48 16 L 48 32 C 48 42 28 50 28 50 C 28 50 8 42 8 32 L 8 16 Z"/>
+      <polyline points="20,28 26,34 38,22" stroke-width="3"/>
+    </g>
+    <text x="1175" y="662" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1175" dy="0" font-size="30" font-weight="bold" fill="#207448">XPS: maps CPUs to </tspan>
+      <tspan x="1175" dy="38">TX queues, avoids lock </tspan>
+      <tspan x="1175" dy="34">contention and </tspan>
+      <tspan x="1175" dy="34">cross-NUMA transmit</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ORANGE NOTE ==================== -->
+  <g id="orange-note">
+    <rect x="40" y="920" width="1520" height="80" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+    <g transform="translate(65, 932)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 48 L 6 48 Z"/>
+      <line x1="28" y1="20" x2="28" y2="34"/>
+      <circle cx="28" cy="41" r="2" fill="#db8129"/>
+    </g>
+    <text x="145" y="969" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">One core cannot process 100 Gb/s on its own</text>
+  </g>
+
+  <!-- ==================== FOOTER CHECK ==================== -->
+  <g id="footer-check">
+    <rect x="40" y="1040" width="1520" height="70" rx="12" fill="#207448"/>
+    <g transform="translate(65, 1051)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="48" height="40" rx="5"/>
+      <polyline points="12,18 20,24 12,30"/>
+      <line x1="24" y1="30" x2="36" y2="30"/>
+    </g>
+    <text x="145" y="1083" font-family="monospace" font-size="26" font-weight="bold" fill="#ffffff">
+      <tspan font-family="monospace">mpstat -P ALL 1: </tspan>
+      <tspan font-family="sans-serif">is one core at 100%?</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a traceroute or mtr: noise versus a real fault</title>
+  <desc>Visual comparison of benign traceroute noise versus real network faults, showing hop patterns, diagnostic rules, mechanism, and commands.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Reading a traceroute or mtr: noise versus a real fault</text>
+
+  
+
+  
+  <g id="upper-trace">
+    <rect x="40" y="95" width="1020" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(60, 110)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="8" fill="#207448"/>
+      <line x1="28" y1="4" x2="28" y2="14" stroke="#207448" stroke-width="4"/>
+      <line x1="28" y1="42" x2="28" y2="52" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="28" x2="14" y2="28" stroke="#207448" stroke-width="4"/>
+      <line x1="42" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    
+    <text x="130" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Hop 5 prints * * *, hops 6, 7 and 8 reply normally</text>
+
+    
+    
+    
+    <rect x="60" y="172" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="114" y="207" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">1</text>
+
+    
+    <rect x="184" y="172" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="238" y="207" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">2</text>
+
+    
+    <rect x="308" y="172" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="362" y="207" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">3</text>
+
+    
+    <rect x="432" y="172" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="486" y="207" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">4</text>
+
+    
+    <rect x="556" y="172" width="108" height="52" rx="8" fill="#d8dcd8" stroke="#88928c" stroke-width="2"/>
+    <text x="610" y="207" font-family="sans-serif" font-size="26" font-weight="bold" fill="#555f5a" text-anchor="middle">5</text>
+
+    
+    <rect x="680" y="172" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="734" y="207" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">6</text>
+
+    
+    <rect x="804" y="172" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="858" y="207" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">7</text>
+
+    
+    <rect x="928" y="172" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="982" y="207" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">8</text>
+
+    
+    <rect x="60" y="234" width="976" height="52" rx="6" fill="#f0f3f0" stroke="#bcc4be" stroke-width="1"/>
+    <text x="548" y="269" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">router declined to answer the probes, or rate-limits TTL-exceeded replies: nothing is wrong here</text>
+  </g>
+
+  
+  <g id="lower-trace">
+    <rect x="40" y="320" width="1020" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(60, 335)">
+      <polygon points="28,6 52,48 4,48" fill="none" stroke="#db8129" stroke-width="4"/>
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="3" fill="#db8129"/>
+    </g>
+
+    
+    <text x="130" y="373" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">loss starts at hop 5 and every later hop shows the same loss</text>
+
+    
+    
+    <rect x="60" y="397" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="114" y="432" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">1</text>
+
+    
+    <rect x="184" y="397" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="238" y="432" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">2</text>
+
+    
+    <rect x="308" y="397" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="362" y="432" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">3</text>
+
+    
+    <rect x="432" y="397" width="108" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="486" y="432" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">4</text>
+
+    
+    <rect x="556" y="397" width="108" height="52" rx="8" fill="#fbeee1" stroke="#db8129" stroke-width="3"/>
+    <text x="610" y="432" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">5</text>
+
+    
+    <rect x="680" y="397" width="108" height="52" rx="8" fill="#fbeee1" stroke="#db8129" stroke-width="3"/>
+    <text x="734" y="432" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">6</text>
+
+    
+    <rect x="804" y="397" width="108" height="52" rx="8" fill="#fbeee1" stroke="#db8129" stroke-width="3"/>
+    <text x="858" y="432" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">7</text>
+
+    
+    <rect x="928" y="397" width="108" height="52" rx="8" fill="#fbeee1" stroke="#db8129" stroke-width="3"/>
+    <text x="982" y="432" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">8</text>
+
+    
+    <rect x="556" y="459" width="480" height="52" rx="6" fill="#fdf4ec" stroke="#db8129" stroke-width="1.5"/>
+    <text x="796" y="494" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">persistent to the final hop: genuine, at or after hop 5</text>
+  </g>
+
+  
+  <g id="rule-box">
+    <rect x="40" y="545" width="1020" height="350" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(60, 560)">
+      <path d="M28,6 L50,14 L50,30 C50,42 28,52 28,52 C28,52 6,42 6,30 L6,14 Z" fill="none" stroke="#207448" stroke-width="4"/>
+      <polyline points="18,28 25,35 38,20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    
+    <rect x="130" y="560" width="910" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="146" y="597" font-family="sans-serif" font-size="24" fill="#303a36">a * * * at one hop matters little if later hops respond</text>
+
+    
+    <rect x="60" y="626" width="980" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="76" y="663" font-family="sans-serif" font-size="24" fill="#303a36">high latency at one hop with low latency after it: control-plane deprioritisation of ICMP</text>
+
+    
+    <rect x="60" y="692" width="980" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="76" y="729" font-family="sans-serif" font-size="24" fill="#303a36">loss at an intermediate hop that does not carry on to the final hop is rate limiting</text>
+
+    
+    <rect x="60" y="758" width="980" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="76" y="795" font-family="sans-serif" font-size="24" fill="#303a36">only latency or loss that persists all the way to the destination is real</text>
+
+    
+    <rect x="60" y="824" width="980" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="76" y="861" font-family="sans-serif" font-size="24" fill="#303a36">in the mtr pattern, one hot hop followed by clean hops is noise, a step that persists is a real fault</text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="1080" y="95" width="480" height="800" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1105, 115)">
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M28,6 L28,14 M28,42 L28,50 M6,28 L14,28 M42,28 L50,28 M12,12 L18,18 M38,38 L44,44 M12,44 L18,38 M38,18 L44,12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="1175" y="152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">How a trace is built</text>
+
+    
+    <rect x="1105" y="185" width="430" height="685" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <text x="1125" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1125" dy="0">probes with increasing TTL or</tspan>
+      <tspan x="1125" dy="38">hop limit; the router that</tspan>
+      <tspan x="1125" dy="38">decrements it to 0 returns ICMP</tspan>
+      <tspan x="1125" dy="38">time exceeded (type 11) and</tspan>
+      <tspan x="1125" dy="38">reveals itself; the destination</tspan>
+      <tspan x="1125" dy="38">answers with ICMP port</tspan>
+      <tspan x="1125" dy="38">unreachable for UDP probes,</tspan>
+      <tspan x="1125" dy="38">echo reply for ICMP probes,</tspan>
+      <tspan x="1125" dy="38">SYN-ACK or RST for TCP probes</tspan>
+    </text>
+
+    
+    <g transform="translate(1125, 605)">
+      <rect x="0" y="0" width="390" height="240" rx="8" fill="#f5f8f5" stroke="#bcc4be" stroke-width="1"/>
+
+      
+      <circle cx="45" cy="45" r="22" fill="#207448"/>
+      <text x="45" y="53" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="80" y="52" font-family="monospace" font-size="24" fill="#303a36">TTL=1 → ICMP 11</text>
+
+      <circle cx="45" cy="115" r="22" fill="#207448"/>
+      <text x="45" y="123" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="80" y="122" font-family="monospace" font-size="24" fill="#303a36">TTL=2 → ICMP 11</text>
+
+      <circle cx="45" cy="185" r="22" fill="#207448"/>
+      <text x="45" y="193" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="80" y="192" font-family="monospace" font-size="24" fill="#303a36">TTL=N → Port/Reply</text>
+    </g>
+  </g>
+
+  
+  <g id="command-strip">
+    <rect x="40" y="915" width="1520" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    
+    <rect x="60" y="935" width="670" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="76" y="977" font-family="monospace" font-size="24" fill="#303a36">traceroute -n 8.8.8.8 (UDP to high ports, 3 per hop)</text>
+
+    
+    <rect x="750" y="935" width="440" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="766" y="977" font-family="monospace" font-size="24" fill="#303a36">sudo traceroute -I -n (ICMP echo)</text>
+
+    
+    <rect x="1210" y="935" width="330" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1226" y="977" font-family="monospace" font-size="24" fill="#303a36">mtr -n -r -c 100 8.8.8.8</text>
+
+    
+    
+    <rect x="60" y="1017" width="870" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="76" y="1059" font-family="monospace" font-size="24" fill="#303a36">sudo traceroute -T -p 443 -n example.com (passes firewalls that allow 443)</text>
+
+    
+    <rect x="950" y="1017" width="590" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="966" y="1059" font-family="monospace" font-size="24" fill="#303a36">tracepath -n (no root, reports pmtu per hop)</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1120" width="1520" height="60" rx="8" fill="#207448"/>
+    <text x="800" y="1158" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">When a trace looks wrong, check the forward path with mtr from both ends before you blame a router</text>
+  </g>
+</svg>

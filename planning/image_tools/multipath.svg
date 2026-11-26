@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Multipath: one LUN, several paths</title>
+  <desc>Visual infographic explaining Linux multipath: SAN LUN with redundant paths merging into one multipathd device, LVM/filesystem layering, and rules.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Multipath: one LUN, several paths</text>
+  <!-- Left: a SAN LUN -->
+  <g id="san-lun">
+    <rect x="50" y="140" width="270" height="435" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(157, 235)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="24" ry="9" />
+      <path d="M 4 14 V 30 C 4 35 15 39 28 39 C 41 39 52 35 52 30 V 14" />
+      <path d="M 4 30 V 46 C 4 51 15 55 28 55 C 41 55 52 51 52 46 V 30" />
+    </g>
+    <text x="185" y="355" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">a SAN LUN</text>
+  </g>
+  <!-- Connection: SAN to OS -->
+  <line x1="320" y1="355" x2="636" y2="355" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="480" y="265" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="480" dy="0">Two HBAs and </tspan>
+    <tspan x="480" dy="32">two switches </tspan>
+    <tspan x="480" dy="32">giving four paths</tspan>
+  </text>
+  <!-- Middle: OS block devices -->
+  <g id="middle-os-devices">
+    <rect x="640" y="140" width="430" height="435" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(827, 162)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="6" />
+      <line x1="16" y1="2" x2="16" y2="8" />
+      <line x1="28" y1="2" x2="28" y2="8" />
+      <line x1="40" y1="2" x2="40" y2="8" />
+      <line x1="16" y1="48" x2="16" y2="54" />
+      <line x1="28" y1="48" x2="28" y2="54" />
+      <line x1="40" y1="48" x2="40" y2="54" />
+      <line x1="2" y1="16" x2="8" y2="16" />
+      <line x1="2" y1="28" x2="8" y2="28" />
+      <line x1="2" y1="40" x2="8" y2="40" />
+      <line x1="48" y1="16" x2="54" y2="16" />
+      <line x1="48" y1="28" x2="54" y2="28" />
+      <line x1="48" y1="40" x2="54" y2="40" />
+    </g>
+    <text x="855" y="254" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="855" dy="0">OS sees four </tspan>
+      <tspan x="855" dy="36">block devices </tspan>
+      <tspan x="855" dy="36">sdb, sdc, sdd, sde</tspan>
+    </text>
+    <rect x="670" y="400" width="370" height="135" rx="12" fill="#eef2f0" stroke="#8a9a94" stroke-width="2.5" />
+    <g transform="translate(827, 415)" stroke="#8a9a94" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 18 H 50" />
+      <path d="M 6 28 H 50" />
+      <path d="M 6 38 H 50" />
+    </g>
+    <text x="855" y="495" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#596561">component paths</text>
+  </g>
+  <!-- Multipath merge arrow (single orange item) -->
+  <line x1="1070" y1="465" x2="1156" y2="465" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <!-- Right: device built by multipathd and LVM/FS on top -->
+  <g id="right-stack">
+    <rect x="1160" y="140" width="390" height="435" rx="16" fill="#f0f6f2" stroke="#207448" stroke-width="2.5" />
+    <rect x="1180" y="155" width="350" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1327, 170)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="38" rx="4" />
+      <line x1="6" y1="20" x2="50" y2="20" />
+      <circle cx="14" cy="14" r="2" fill="#207448" />
+      <circle cx="22" cy="14" r="2" fill="#207448" />
+    </g>
+    <text x="1355" y="255" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1355" dy="0">then LVM and </tspan>
+      <tspan x="1355" dy="36">filesystem on top</tspan>
+    </text>
+    <line x1="1355" y1="375" x2="1355" y2="324" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1180" y="375" width="350" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(1327, 388)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14" />
+      <path d="M 28 6 V 14 M 28 42 V 50 M 6 28 H 14 M 42 28 H 50 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" />
+    </g>
+    <text x="1355" y="475" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1355" dy="0">one device built </tspan>
+      <tspan x="1355" dy="36">by multipathd</tspan>
+    </text>
+  </g>
+  <!-- Rules in a list -->
+  <g id="rules-list">
+    <rect x="50" y="625" width="1020" height="385" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(75, 650)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 C 48 34 28 48 28 48 C 28 48 8 34 8 14 Z" />
+      <polyline points="20,26 26,32 36,20" />
+    </g>
+    <circle cx="150" cy="710" r="7" fill="#207448" />
+    <text x="175" y="705" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="175" dy="0">build filesystems and LVM on the multipath device, </tspan>
+      <tspan x="175" dy="34">never on a component path</tspan>
+    </text>
+    <circle cx="150" cy="820" r="7" fill="#207448" />
+    <text x="175" y="828" font-family="sans-serif" font-size="24" fill="#303a36">exclude paths in the LVM filter</text>
+    <circle cx="150" cy="920" r="7" fill="#207448" />
+    <text x="175" y="928" font-family="sans-serif" font-size="24" fill="#303a36">blacklist local disks and virtio disks</text>
+  </g>
+  <!-- Monospace command -->
+  <g id="command-box">
+    <rect x="1120" y="625" width="430" height="385" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <path d="M 1120 641 C 1120 632 1127 625 1136 625 H 1534 C 1543 625 1550 632 1550 641 V 675 H 1120 Z" fill="#e8f1ea" />
+    <circle cx="1145" cy="650" r="5" fill="#8a9a94" />
+    <circle cx="1162" cy="650" r="5" fill="#8a9a94" />
+    <circle cx="1179" cy="650" r="5" fill="#8a9a94" />
+    <g transform="translate(1307, 715)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="12,18 24,28 12,38" />
+      <line x1="28" y1="38" x2="44" y2="38" />
+    </g>
+    <rect x="1160" y="810" width="350" height="85" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+    <text x="1335" y="862" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">multipath -ll</text>
+  </g>
+</svg>

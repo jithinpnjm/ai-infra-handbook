@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Catching too much and too little: three real failure stories</title>
+  <desc>Visual explanation of Python exception handling pitfalls, design fixes, exception objects, runtime tools, and rules of thumb.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Catching too much and too little:</tspan>
+    <tspan x="800" dy="54">three real failure stories</tspan>
+  </text>
+
+  
+
+  
+  <g>
+    
+    <rect x="40" y="135" width="670" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="76" cy="195" r="24" fill="#207448" />
+    <text x="76" y="203" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(114, 167)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="2" y="2" width="52" height="52" rx="6" />
+      <path d="M14 28 h22 M28 20 l8 8 -8 8" />
+    </g>
+    
+    <text x="186" y="183" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="186" dy="0">sys.exit(62) inside bye();</tspan>
+      <tspan x="186" dy="38">caller has an empty except</tspan>
+    </text>
+
+    
+    <rect x="725" y="135" width="835" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <text x="750" y="171" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="750" dy="0">SystemExit is a subclass of BaseException; the bare</tspan>
+      <tspan x="750" dy="32">except catches it; the program prints Got it and</tspan>
+      <tspan x="750" dy="32">then Continuing... instead of terminating</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="265" width="670" height="170" rx="10" fill="#fdf6ed" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="76" cy="350" r="24" fill="#db8129" />
+    <text x="76" y="358" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(114, 322)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="16" />
+      <path d="M12 28 h32 M28 12 v32 M16 16 l-6 -6 M40 16 l6 -6 M16 40 l-6 6 M40 40 l6 6" />
+    </g>
+    
+    <text x="186" y="318" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="186" dy="0">x = myditctionary[key]</tspan>
+      <tspan x="186" dy="36">in a try with except:</tspan>
+      <tspan x="186" dy="36">x = None</tspan>
+    </text>
+
+    
+    <rect x="725" y="265" width="835" height="170" rx="10" fill="#fdf6ed" stroke="#db8129" stroke-width="3" />
+    
+    <text x="750" y="297" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="750" dy="0">the misspelled name raises NameError, the handler</tspan>
+      <tspan x="750" dy="30">swallows it and fills in None, a typo becomes</tspan>
+      <tspan x="750" dy="30">silent data corruption and the traceback that would</tspan>
+      <tspan x="750" dy="30">have pointed at the line is gone; catching Exception</tspan>
+      <tspan x="750" dy="30">here would do the same; list KeyError instead</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="445" width="670" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="76" cy="510" r="24" fill="#207448" />
+    <text x="76" y="518" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(114, 482)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="4" width="48" height="48" rx="6" />
+      <rect x="16" y="16" width="24" height="24" rx="4" />
+      <line x1="28" y1="20" x2="28" y2="36" />
+    </g>
+    
+    <text x="186" y="488" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="186" dy="0">func() has an inner bare</tspan>
+      <tspan x="186" dy="36">except while the caller</tspan>
+      <tspan x="186" dy="36">waits for IndexError</tspan>
+    </text>
+
+    
+    <rect x="725" y="445" width="835" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <text x="750" y="504" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="750" dy="0">everything comes to the inner handler and dies;</tspan>
+      <tspan x="750" dy="32">the outer try never sees it</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="40" y="590" width="740" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(60, 604)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M28 6 L50 48 H6 Z" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="41" r="2" fill="#207448" />
+    </g>
+    
+    <text x="135" y="626" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">except (MyExcept1, MyExcept2):</tspan>
+      <tspan x="135" dy="30">breaks if you add MyExcept3 later</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="685" width="740" height="190" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(60, 705)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="18" y="4" width="20" height="14" rx="3" />
+      <line x1="28" y1="18" x2="28" y2="30" />
+      <line x1="10" y1="30" x2="46" y2="30" />
+      <line x1="10" y1="30" x2="10" y2="38" />
+      <line x1="28" y1="30" x2="28" y2="38" />
+      <line x1="46" y1="30" x2="46" y2="38" />
+      <rect x="2" y="38" width="16" height="14" rx="3" />
+      <rect x="20" y="38" width="16" height="14" rx="3" />
+      <rect x="38" y="38" width="16" height="14" rx="3" />
+    </g>
+    
+    <text x="135" y="711" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">class categories: class NumErr(Exception)</tspan>
+      <tspan x="135" dy="25">with Divzero(NumErr), Oflow(NumErr),</tspan>
+      <tspan x="135" dy="25">Uflow(NumErr); except mathlib.NumErr:</tspan>
+      <tspan x="135" dy="25">also catches future subclasses such as</tspan>
+      <tspan x="135" dy="25">Uflow without editing the except list;</tspan>
+      <tspan x="135" dy="25">General category with Specific1 and</tspan>
+      <tspan x="135" dy="25">Specific2</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="590" width="740" height="285" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(845, 610)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <polygon points="28,4 50,16 50,40 28,52 6,40 6,16" />
+      <line x1="28" y1="4" x2="28" y2="28" />
+      <line x1="28" y1="28" x2="50" y2="16" />
+      <line x1="28" y1="28" x2="6" y2="16" />
+    </g>
+    
+    <text x="915" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="915" dy="0">FormatError(Exception) stores line and</tspan>
+      <tspan x="915" dy="27">file attributes and a logerror method;</tspan>
+      <tspan x="915" dy="27">positional arguments land in exc.args and</tspan>
+      <tspan x="915" dy="27">str(exc); override __str__, not __repr__;</tspan>
+      <tspan x="915" dy="27">derive from Exception, never a standalone</tspan>
+      <tspan x="915" dy="27">class; name by condition, such as</tspan>
+      <tspan x="915" dy="27">NodeUnreachable; a Combust subclass can</tspan>
+      <tspan x="915" dy="27">override __str__ to print</tspan>
+      <tspan x="915" dy="27">Call the fire department!...</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="40" y="890" width="740" height="180" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(60, 910)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M42 6 a14 14 0 0 0 -18 18 l-16 16 a6 6 0 0 0 8 8 l16 -16 a14 14 0 0 0 18 -18 l-8 8 -8 -2 -2 -8 z" />
+    </g>
+    
+    <text x="125" y="924" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="125" dy="0">atexit runs code at shutdown;</tspan>
+      <tspan x="125" dy="27">sys.excepthook changes what the</tspan>
+      <tspan x="125" dy="27">top-level handler does; os._exit ends</tspan>
+      <tspan x="125" dy="27">immediately and skips cleanup, including</tspan>
+      <tspan x="125" dy="27">atexit handlers and finally</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="890" width="740" height="180" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(845, 910)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M28 4 L48 12 V26 C48 38 38 48 28 52 C18 48 8 38 8 26 V12 Z" />
+      <path d="M20 26 l6 6 12 -12" />
+    </g>
+    
+    <text x="915" y="921" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="915" dy="0">wrap operations that often fail (file opens,</tspan>
+      <tspan x="915" dy="26">socket calls); cleanup that must run</tspan>
+      <tspan x="915" dy="26">belongs in try/finally or with; servers,</tspan>
+      <tspan x="915" dy="26">test runners and GUIs must catch and</tspan>
+      <tspan x="915" dy="26">recover, a one-shot script often</tspan>
+      <tspan x="915" dy="26">skips handling</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1095" width="1520" height="65" rx="12" fill="#207448" />
+    <text x="800" y="1136" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      Be neither too general nor too specific, and choose the size of each try wisely
+    </text>
+  </g>
+</svg>

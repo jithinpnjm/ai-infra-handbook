@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Batching raises total tokens per second but cuts each request's speed</title>
+  <desc>A two-series bar chart illustrating how increasing batch size boosts total throughput up to a knee point while decreasing individual request speed, with scaling formula and takeaway.</desc>
+
+  <defs>
+    <marker id="arrow-start" viewBox="0 0 12 12" refX="2" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 10 2 L 2 6 L 10 10 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-end" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="85" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Batching raises total tokens per second</text>
+  <text x="60" y="140" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">but cuts each request's speed</text>
+
+  
+  <rect x="60" y="165" width="1480" height="625" rx="16" fill="#ffffff" stroke="#d0ded3" stroke-width="2"/>
+
+  
+  <g id="legend">
+    <rect x="100" y="195" width="36" height="20" rx="4" fill="#207448"/>
+    <text x="148" y="212" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Tokens/s total</text>
+
+    <rect x="360" y="195" width="36" height="20" rx="4" fill="#889690"/>
+    <text x="408" y="212" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Tokens/s per request</text>
+  </g>
+
+  
+  <line x1="90" y1="680" x2="1510" y2="680" stroke="#b0c2b5" stroke-width="2"/>
+
+  
+  <g id="annotation-34x">
+    <text x="1140" y="234" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">34 times more</text>
+    <text x="1140" y="262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">total throughput</text>
+    <line x1="1025" y1="282" x2="1255" y2="282" stroke="#207448" stroke-width="3" marker-start="url(#arrow-start)" marker-end="url(#arrow-end)"/>
+  </g>
+
+  
+  <g id="badge-knee">
+    <rect x="790" y="305" width="200" height="68" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="890" y="334" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">the knee is</text>
+    <text x="890" y="360" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">near here</text>
+  </g>
+
+  
+  <g id="note-batch-128">
+    <rect x="1220" y="360" width="300" height="176" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="2"/>
+    <text x="1370" y="398" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">the gain from</text>
+    <text x="1370" y="432" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">doubling the batch</text>
+    <text x="1370" y="466" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">has shrunk to</text>
+    <text x="1370" y="500" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">about 26 percent</text>
+  </g>
+
+  
+
+  
+  <g id="group-batch-1">
+    
+    <text x="155" y="652" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">200</text>
+    <text x="213" y="568" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#506159">200</text>
+    
+    <rect x="127" y="664" width="56" height="16" rx="4" fill="#207448"/>
+    
+    <rect x="193" y="580" width="40" height="100" rx="4" fill="#889690"/>
+    
+    <text x="180" y="722" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">1</text>
+  </g>
+
+  
+  <g id="group-batch-8">
+    
+    <text x="375" y="592" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">1,385</text>
+    <text x="433" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#506159">173</text>
+    
+    <rect x="347" y="604" width="56" height="76" rx="4" fill="#207448"/>
+    
+    <rect x="413" y="594" width="40" height="86" rx="4" fill="#889690"/>
+    
+    <text x="400" y="722" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">8</text>
+  </g>
+
+  
+  <g id="group-batch-32">
+    
+    <text x="615" y="460" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">3,802</text>
+    <text x="673" y="608" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#506159">119</text>
+    
+    <rect x="587" y="472" width="56" height="208" rx="4" fill="#207448"/>
+    
+    <rect x="653" y="620" width="40" height="60" rx="4" fill="#889690"/>
+    
+    <text x="640" y="722" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">32</text>
+  </g>
+
+  
+  <g id="group-batch-64">
+    
+    <text x="865" y="374" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">5,361</text>
+    <text x="923" y="626" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#506159">84</text>
+    
+    <rect x="837" y="386" width="56" height="294" rx="4" fill="#207448"/>
+    
+    <rect x="903" y="638" width="40" height="42" rx="4" fill="#889690"/>
+    
+    <text x="890" y="722" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">64</text>
+  </g>
+
+  
+  <g id="group-batch-128">
+    
+    <text x="1115" y="298" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">6,744</text>
+    <text x="1173" y="642" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#506159">53</text>
+    
+    <rect x="1087" y="310" width="56" height="370" rx="4" fill="#db8129"/>
+    
+    <rect x="1153" y="654" width="40" height="26" rx="4" fill="#889690"/>
+    
+    <text x="1140" y="722" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">128</text>
+  </g>
+
+  
+  <g id="formula-panel">
+    <rect x="60" y="815" width="1480" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(90, 852)">
+      <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+      
+      <line x1="16" y1="2" x2="16" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="2" x2="28" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="40" y1="2" x2="40" y2="8" stroke="#207448" stroke-width="3"/>
+      <line x1="16" y1="48" x2="16" y2="54" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="48" x2="28" y2="54" stroke="#207448" stroke-width="3"/>
+      <line x1="40" y1="48" x2="40" y2="54" stroke="#207448" stroke-width="3"/>
+      <line x1="2" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="3"/>
+      <line x1="2" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="3"/>
+      <line x1="2" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="16" x2="54" y2="16" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3"/>
+      <line x1="48" y1="40" x2="54" y2="40" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    
+    <text x="175" y="865" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">step time = (weights + batch x context x bytes per token) / bandwidth</text>
+    <text x="175" y="905" font-family="sans-serif" font-size="24" fill="#303a36">Qwen3-8B on one H100 at 2,500 tokens of context</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="970" width="1480" height="80" rx="16" fill="#207448"/>
+    <text x="800" y="1020" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Choose the batch by the latency target, not by the largest number that fits.</text>
+  </g>
+</svg>

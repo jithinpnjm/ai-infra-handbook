@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The two queues behind listen(): where a busy server drops connections</title>
+  <desc>Visual explanation of the SYN queue and Accept queue behind listen(), connection flow, failure callouts, and tuning fixes.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1600" height="1180" fill="#f5f8f5" />
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The two queues behind listen():</tspan>
+    <tspan x="800" dy="54">where a busy server drops connections</tspan>
+  </text>
+  <rect x="50" y="140" width="100" height="590" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(72, 400)">
+    <rect x="0" y="0" width="56" height="40" rx="4" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <line x1="8" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="8" y1="22" x2="36" y2="22" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="28" y1="40" x2="28" y2="50" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="12" y1="50" x2="44" y2="50" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <line x1="150" y1="175" x2="300" y2="175" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="225" y="165" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">SYN</text>
+  <line x1="300" y1="220" x2="150" y2="220" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="225" y="210" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">SYN-ACK</text>
+  <line x1="150" y1="645" x2="300" y2="645" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="225" y="635" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">ACK</text>
+  <rect x="285" y="130" width="750" height="940" rx="18" fill="none" stroke="#207448" stroke-width="1.5" stroke-dasharray="8 6" opacity="0.35" />
+  <rect x="300" y="140" width="720" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <g transform="translate(320, 165)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <line x1="18" y1="12" x2="18" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="36" y1="12" x2="36" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="9" cy="28" r="4" fill="#207448" />
+    <circle cx="27" cy="28" r="4" fill="#207448" />
+  </g>
+  <text x="395" y="180" font-family="sans-serif" font-size="28" fill="#303a36">
+    <tspan x="395" dy="0" font-weight="bold">SYN queue: half-open connections,</tspan>
+    <tspan x="395" dy="38" font-family="monospace" font-size="24">size set by tcp_max_syn_backlog</tspan>
+  </text>
+  <rect x="300" y="285" width="720" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(320, 375)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <path d="M 12 28 Q 28 14 44 28 Q 28 48 12 28 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="28" cy="28" r="5" fill="#207448" />
+  </g>
+  <text x="395" y="324" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="395" dy="0" font-weight="bold">SYN flood or sudden burst fills it;</tspan>
+    <tspan x="395" dy="24">fix with </tspan><tspan font-family="monospace">net.ipv4.tcp_syncookies=1:</tspan>
+    <tspan x="395" dy="24">the kernel encodes the connection</tspan>
+    <tspan x="395" dy="24">state in the SYN-ACK sequence number,</tspan>
+    <tspan x="395" dy="24">so no queue entry is needed, at the</tspan>
+    <tspan x="395" dy="24">cost of losing some options (a clinic</tspan>
+    <tspan x="395" dy="24">that hands each visitor a ticket</tspan>
+    <tspan x="395" dy="24">instead of keeping a waiting list)</tspan>
+  </text>
+  <rect x="300" y="560" width="420" height="170" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <g transform="translate(315, 617)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <path d="M 14 28 L 24 38 L 42 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="385" y="598" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan x="385" dy="0" font-weight="bold">Accept queue:</tspan>
+    <tspan x="385" dy="28" font-size="24">completed handshakes</tspan>
+    <tspan x="385" dy="27" font-size="24">waiting for accept(),</tspan>
+    <tspan x="385" dy="27" font-family="monospace" font-size="24">size min(backlog,</tspan>
+    <tspan x="385" dy="27" font-family="monospace" font-size="24">net.core.somaxconn)</tspan>
+  </text>
+  <line x1="720" y1="645" x2="760" y2="645" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <rect x="760" y="560" width="260" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(862, 576)">
+    <circle cx="28" cy="28" r="20" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="14 5" />
+    <circle cx="28" cy="28" r="9" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="890" y="670" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="890" dy="0">application</tspan>
+    <tspan x="890" dy="32">accept() loop</tspan>
+  </text>
+  <rect x="300" y="770" width="720" height="290" rx="14" fill="#fff6ed" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(320, 887)">
+    <polygon points="28,8 52,48 4,48" fill="#ffffff" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+    <line x1="28" y1="24" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <circle cx="28" cy="42" r="2.5" fill="#db8129" />
+  </g>
+  <text x="395" y="825" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="395" dy="0" font-weight="bold">queue full: the server drops the</tspan>
+    <tspan x="395" dy="36">final ACK or ignores the SYN; the</tspan>
+    <tspan x="395" dy="36">client believes it is connected and</tspan>
+    <tspan x="395" dy="36">retransmits; latency spikes of 1, 3</tspan>
+    <tspan x="395" dy="36">and 7 seconds; nstat counters</tspan>
+    <tspan x="395" dy="36" font-family="monospace">ListenOverflows</tspan><tspan font-family="sans-serif"> and </tspan><tspan font-family="monospace">ListenDrops</tspan><tspan font-family="sans-serif"> climb</tspan>
+  </text>
+  <rect x="1080" y="140" width="470" height="144" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1105, 184)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="36" cy="28" r="7" fill="#207448" />
+  </g>
+  <text x="1180" y="202" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan x="1180" dy="0" font-weight="bold">raise somaxconn</tspan>
+    <tspan x="1180" dy="36">to 4096 or more</tspan>
+  </text>
+  <rect x="1080" y="334" width="470" height="144" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1105, 378)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="28" cy="28" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="28" cy="28" r="6" fill="#207448" />
+  </g>
+  <text x="1180" y="370" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1180" dy="0" font-weight="bold">set the application</tspan>
+    <tspan x="1180" dy="27">backlog too, such as</tspan>
+    <tspan x="1180" dy="27" font-family="monospace">nginx listen ...</tspan>
+    <tspan x="1180" dy="27" font-family="monospace">backlog=</tspan>
+  </text>
+  <rect x="1080" y="528" width="470" height="144" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1105, 572)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <path d="M 16 38 L 28 18 L 40 38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1180" y="590" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan x="1180" dy="0" font-weight="bold">Go&apos;s net.Listen</tspan>
+    <tspan x="1180" dy="36">uses somaxconn</tspan>
+  </text>
+  <rect x="1080" y="722" width="470" height="144" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1105, 766)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="28" cy="28" r="16" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="10 4" />
+  </g>
+  <text x="1180" y="758" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1180" dy="0" font-weight="bold">fix any slow</tspan>
+    <tspan x="1180" dy="27">accept() loop, because</tspan>
+    <tspan x="1180" dy="27">that loop is what</tspan>
+    <tspan x="1180" dy="27">fills the queue</tspan>
+  </text>
+  <rect x="1080" y="916" width="470" height="144" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1105, 960)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <polyline points="16,20 26,28 16,36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="30" y1="36" x2="40" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="1180" y="978" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1180" dy="0" font-family="monospace" font-weight="bold">ss -ltn</tspan><tspan font-family="sans-serif"> shows</tspan>
+    <tspan x="1180" dy="36">queue length in </tspan><tspan font-family="monospace">Recv-Q</tspan>
+  </text>
+  <rect x="50" y="1100" width="1500" height="60" rx="10" fill="#207448" />
+  <text x="800" y="1138" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Check ListenOverflows before you change any setting</text>
+</svg>

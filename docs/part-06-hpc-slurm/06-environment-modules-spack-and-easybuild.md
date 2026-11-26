@@ -72,23 +72,9 @@ This rule is easy to break with good intentions. A user who wants a specific com
 
 ## 2. Environment Modules (Tcl) and Lmod (Lua) in depth (*Supercomputers for Linux Sysadmins* Chapter 21)
 
-```mermaid
-flowchart TB
-  subgraph CORE["Core MODULEPATH (always visible)"]
-    GCC[gcc/10.4.0, gcc/15.1.0]
-    ICC[intel/2025.0]
-  end
-  subgraph COMP["Compiler MODULEPATH (revealed on compiler load)"]
-    OMPI_G["openmpi/5.0.7 (built with gcc/15.1.0)"]
-    OMPI_I["openmpi/5.0.7 (built with intel/2025.0)"]
-  end
-  subgraph MPI["MPI MODULEPATH (revealed on MPI load)"]
-    APPS["hdf5, petsc, scalapack (ABI-matched)"]
-  end
-  GCC -- "module load gcc/15.1.0" --> OMPI_G
-  ICC -- "module load intel/2025.0" --> OMPI_I
-  OMPI_G -- "module load openmpi/5.0.7" --> APPS
-```
+![Environment Modules (Tcl) and Lmod (Lua) in depth (Supercomputers for Linux Sysadmins Chapter 21)](./img/m6-06-1.svg)
+
+*Figure 6.6.1. Environment Modules (Tcl) and Lmod (Lua) in depth (Supercomputers for Linux Sysadmins Chapter 21), as a diagram.*
 
 Most clusters want several compilers and MPI implementations installed at the same time. Typing full paths to every executable and library, in every session, quickly becomes tedious and error-prone. The Environment Modules package solves this by adding and removing paths from `PATH`, `LD_LIBRARY_PATH`, and other variables for you. It lives at `http://modules.sourceforge.net/`. The later Lua-based Lmod project lives at `https://www.tacc.utexas.edu/research-development/tacc-projects/lmod`. Both provide one command, `module`, which is really a shell function. It evaluates the output of the underlying module binary inside your current shell, so it can change your live environment directly. That is why a module can alter your session, and why a stray print statement inside a module file can break it.
 

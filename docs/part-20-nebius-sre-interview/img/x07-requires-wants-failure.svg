@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Requires spreads a failure, Wants does not</title>
+  <desc>Visual comparison showing how systemd Requires cascades a dependency failure while Wants allows the dependent unit to remain running.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Requires spreads a failure, Wants does not</text>
+
+  
+  <g id="panel-requires">
+    <rect x="60" y="105" width="710" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="415" y="152" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36" text-anchor="middle">Requires</text>
+
+    
+    <rect x="95" y="175" width="640" height="145" rx="12" fill="#e2e8e5" stroke="#8a9992" stroke-width="2" />
+    
+    <rect x="120" y="198" width="56" height="42" rx="4" fill="none" stroke="#6b7c74" stroke-width="4" />
+    <line x1="120" y1="210" x2="176" y2="210" stroke="#6b7c74" stroke-width="3" />
+    <circle cx="130" cy="204" r="2.5" fill="#6b7c74" />
+    <circle cx="140" cy="204" r="2.5" fill="#6b7c74" />
+    <text x="195" y="228" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">web.service</text>
+    <rect x="195" y="255" width="180" height="42" rx="8" fill="#ccd6d0" />
+    <text x="285" y="284" font-family="sans-serif" font-size="24" font-weight="bold" fill="#4a5751" text-anchor="middle">also stopped</text>
+
+    
+    <line x1="260" y1="320" x2="260" y2="462" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <rect x="180" y="372" width="160" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="260" y="401" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Requires</text>
+
+    
+    <line x1="570" y1="470" x2="570" y2="328" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <rect x="500" y="370" width="140" height="46" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="3" />
+    <text x="570" y="401" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">stop</text>
+
+    
+    <rect x="95" y="470" width="640" height="135" rx="12" fill="#fbebed" stroke="#c0392b" stroke-width="2" />
+    
+    <ellipse cx="148" cy="498" rx="24" ry="8" fill="none" stroke="#c0392b" stroke-width="4" />
+    <path d="M 124,516 C 124,524 172,524 172,516" fill="none" stroke="#c0392b" stroke-width="4" />
+    <path d="M 124,534 C 124,542 172,542 172,534" fill="none" stroke="#c0392b" stroke-width="4" />
+    <line x1="124" y1="498" x2="124" y2="534" stroke="#c0392b" stroke-width="4" />
+    <line x1="172" y1="498" x2="172" y2="534" stroke="#c0392b" stroke-width="4" />
+    <line x1="164" y1="486" x2="182" y2="504" stroke="#c0392b" stroke-width="4" stroke-linecap="round" />
+    <line x1="182" y1="486" x2="164" y2="504" stroke="#c0392b" stroke-width="4" stroke-linecap="round" />
+    <text x="205" y="522" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">database.service</text>
+    <rect x="205" y="546" width="120" height="40" rx="8" fill="#f8d7da" />
+    <text x="265" y="574" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c0392b" text-anchor="middle">failed</text>
+  </g>
+
+  
+  <g id="panel-wants">
+    <rect x="830" y="105" width="710" height="520" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1185" y="152" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36" text-anchor="middle">Wants</text>
+
+    
+    <rect x="865" y="175" width="640" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <rect x="890" y="190" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="890" y1="202" x2="946" y2="202" stroke="#207448" stroke-width="3" />
+    <circle cx="900" cy="196" r="2.5" fill="#207448" />
+    <circle cx="910" cy="196" r="2.5" fill="#207448" />
+    <text x="965" y="220" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">web.service</text>
+    <rect x="1270" y="190" width="215" height="40" rx="8" fill="#d1e7dd" />
+    <text x="1377" y="218" font-family="sans-serif" font-size="24" font-weight="bold" fill="#0f5132" text-anchor="middle">still running</text>
+    
+    <rect x="890" y="246" width="595" height="60" rx="8" fill="#fffbe6" stroke="#d4b106" stroke-width="2" />
+    <text x="1187" y="271" font-family="sans-serif" font-size="24" fill="#614700" text-anchor="middle">
+      <tspan x="1187" dy="0">may fail later when it cannot reach the</tspan>
+      <tspan x="1187" dy="25">database</tspan>
+    </text>
+
+    
+    <line x1="1185" y1="320" x2="1185" y2="462" stroke="#207448" stroke-width="4" stroke-dasharray="8,6" marker-end="url(#arrow-green)" />
+    <rect x="1115" y="372" width="140" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1185" y="401" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Wants</text>
+
+    
+    <rect x="865" y="470" width="640" height="135" rx="12" fill="#fbebed" stroke="#c0392b" stroke-width="2" />
+    
+    <ellipse cx="918" cy="498" rx="24" ry="8" fill="none" stroke="#c0392b" stroke-width="4" />
+    <path d="M 894,516 C 894,524 942,524 942,516" fill="none" stroke="#c0392b" stroke-width="4" />
+    <path d="M 894,534 C 894,542 942,542 942,534" fill="none" stroke="#c0392b" stroke-width="4" />
+    <line x1="894" y1="498" x2="894" y2="534" stroke="#c0392b" stroke-width="4" />
+    <line x1="942" y1="498" x2="942" y2="534" stroke="#c0392b" stroke-width="4" />
+    <line x1="934" y1="486" x2="952" y2="504" stroke="#c0392b" stroke-width="4" stroke-linecap="round" />
+    <line x1="952" y1="486" x2="934" y2="504" stroke="#c0392b" stroke-width="4" stroke-linecap="round" />
+    <text x="975" y="522" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">database.service</text>
+    <rect x="975" y="546" width="120" height="40" rx="8" fill="#f8d7da" />
+    <text x="1035" y="574" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c0392b" text-anchor="middle">failed</text>
+  </g>
+
+  
+  <g id="timing-strip">
+    <rect x="60" y="650" width="1480" height="150" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="108" cy="725" r="26" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="108,708 108,725 122,725" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="150" y="734" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Order, not dependency</text>
+
+    
+    <line x1="560" y1="668" x2="560" y2="782" stroke="#8a9992" stroke-width="3" stroke-dasharray="6,4" />
+    
+    <rect x="560" y="675" width="170" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="645" y="704" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Start A</text>
+    
+    <rect x="560" y="733" width="170" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="645" y="762" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Start B</text>
+
+    
+    <text x="770" y="714" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="770" dy="0">without an explicit ordering directive,</tspan>
+      <tspan x="770" dy="30">both start at the same time</tspan>
+    </text>
+  </g>
+
+  
+  <g id="numbered-steps">
+    
+    <rect x="60" y="825" width="710" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="872" r="24" fill="#207448" />
+    <text x="106" y="880" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="146" y="880" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ask what happens when the other unit fails</text>
+
+    
+    <rect x="830" y="825" width="710" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="876" cy="872" r="24" fill="#207448" />
+    <text x="876" y="880" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="916" y="880" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">check Order separately from the dependency</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="945" width="1480" height="80" rx="12" fill="#207448" />
+    <text x="800" y="994" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Requires spreads a failure to the dependent unit; Wants leaves the failure where it started.</text>
+  </g>
+</svg>

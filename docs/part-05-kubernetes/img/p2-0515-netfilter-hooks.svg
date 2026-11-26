@@ -1,0 +1,218 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1070" width="1600" height="1070">
+  <title>Where policy engines hook a packet, and conntrack replies</title>
+  <desc>Where policy engines hook a packet, and conntrack replies</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1070" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where policy engines hook a packet, and conntrack replies</text>
+
+  
+
+  
+  <g id="box-pod-egress">
+    <rect x="50" y="115" width="720" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(85, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="10" width="22" height="36" rx="4" />
+      <line x1="8" y1="20" x2="18" y2="20" />
+      <line x1="8" y1="28" x2="18" y2="28" />
+      <line x1="8" y1="36" x2="18" y2="36" />
+      <rect x="32" y="10" width="22" height="36" rx="4" />
+      <line x1="38" y1="20" x2="48" y2="20" />
+      <line x1="38" y1="28" x2="48" y2="28" />
+      <line x1="38" y1="36" x2="48" y2="36" />
+      <path d="M 24 28 L 32 28" stroke-dasharray="2,2" />
+    </g>
+    <text x="430" y="172" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="430" dy="0">Pod egress is caught</tspan>
+      <tspan x="430" dy="40">on the host-side veth</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-pod-ingress">
+    <rect x="830" y="115" width="720" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(865, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="10" width="22" height="36" rx="4" />
+      <line x1="8" y1="20" x2="18" y2="20" />
+      <line x1="8" y1="28" x2="18" y2="28" />
+      <line x1="8" y1="36" x2="18" y2="36" />
+      <rect x="32" y="10" width="22" height="36" rx="4" />
+      <line x1="38" y1="20" x2="48" y2="20" />
+      <line x1="38" y1="28" x2="48" y2="28" />
+      <line x1="38" y1="36" x2="48" y2="36" />
+      <path d="M 24 28 L 32 28" />
+    </g>
+    <text x="1210" y="172" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1210" dy="0">Pod ingress is caught</tspan>
+      <tspan x="1210" dy="40">when delivered to the veth</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <rect x="50" y="305" width="1500" height="220" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <text x="800" y="348" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">iptables and nftables use these hooks</text>
+
+  
+  <line x1="210" y1="435" x2="1390" y2="435" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+
+  
+  <g id="hook-prerouting">
+    <rect x="85" y="375" width="250" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(187, 390)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="23" cy="18" r="14" />
+      <path d="M 15 18 L 23 26 L 31 18" />
+    </g>
+    <text x="210" y="470" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">PREROUTING</text>
+  </g>
+
+  
+  <g id="hook-forward">
+    <rect x="380" y="375" width="250" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(482, 390)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="23" cy="18" r="14" />
+      <path d="M 13 18 L 33 18" />
+      <path d="M 25 10 L 33 18 L 25 26" />
+    </g>
+    <text x="505" y="470" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">FORWARD</text>
+  </g>
+
+  
+  <g id="hook-input">
+    <rect x="675" y="375" width="250" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(777, 390)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="4" width="28" height="28" rx="4" />
+      <path d="M 4 18 L 23 18" />
+      <path d="M 17 12 L 23 18 L 17 24" />
+    </g>
+    <text x="800" y="470" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">INPUT</text>
+  </g>
+
+  
+  <g id="hook-output">
+    <rect x="970" y="375" width="250" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1072, 390)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="4" width="28" height="28" rx="4" />
+      <path d="M 23 18 L 42 18" />
+      <path d="M 36 12 L 42 18 L 36 24" />
+    </g>
+    <text x="1095" y="470" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OUTPUT</text>
+  </g>
+
+  
+  <g id="hook-postrouting">
+    <rect x="1265" y="375" width="250" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1367, 390)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="23" cy="18" r="14" />
+      <path d="M 15 18 L 23 10 L 31 18" />
+    </g>
+    <text x="1390" y="470" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">POSTROUTING</text>
+  </g>
+
+  
+
+  
+  <line x1="505" y1="675" x2="505" y2="495" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="label-established">
+    <rect x="85" y="538" width="390" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="280" y="575" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="280" dy="0">ESTABLISHED,RELATED</tspan>
+      <tspan x="280" dy="32">matches, replies pass</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="box-conntrack-table">
+    <rect x="180" y="675" width="1240" height="235" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+
+    
+    <g transform="translate(202, 767)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 48 12 L 48 28 C 48 42 34 52 24 56 C 14 52 0 42 0 28 L 0 12 Z" />
+      <circle cx="24" cy="28" r="6" fill="#207448" />
+    </g>
+
+    
+    <g id="entry-row-1" transform="translate(270, 695)">
+      <rect x="0" y="0" width="1120" height="58" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      
+      <rect x="15" y="10" width="460" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <circle cx="35" cy="29" r="6" fill="#207448" />
+      <rect x="55" y="21" width="260" height="16" rx="4" fill="#207448" opacity="0.8" />
+      <rect x="330" y="21" width="125" height="16" rx="4" fill="#207448" opacity="0.5" />
+      
+      <g transform="translate(525, 17)" stroke="#207448" stroke-width="3" fill="none">
+        <path d="M 0 12 L 70 12" />
+        <path d="M 10 4 L 0 12 L 10 20" />
+        <path d="M 60 4 L 70 12 L 60 20" />
+      </g>
+      
+      <rect x="645" y="10" width="460" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <circle cx="665" cy="29" r="6" fill="#207448" />
+      <rect x="685" y="21" width="260" height="16" rx="4" fill="#207448" opacity="0.8" />
+      <rect x="960" y="21" width="125" height="16" rx="4" fill="#207448" opacity="0.5" />
+    </g>
+
+    
+    <g id="entry-row-2" transform="translate(270, 765)">
+      <rect x="0" y="0" width="1120" height="58" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      
+      <rect x="15" y="10" width="460" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <circle cx="35" cy="29" r="6" fill="#207448" />
+      <rect x="55" y="21" width="280" height="16" rx="4" fill="#207448" opacity="0.8" />
+      <rect x="350" y="21" width="105" height="16" rx="4" fill="#207448" opacity="0.5" />
+      
+      <g transform="translate(525, 17)" stroke="#207448" stroke-width="3" fill="none">
+        <path d="M 0 12 L 70 12" />
+        <path d="M 10 4 L 0 12 L 10 20" />
+        <path d="M 60 4 L 70 12 L 60 20" />
+      </g>
+      
+      <rect x="645" y="10" width="460" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <circle cx="665" cy="29" r="6" fill="#207448" />
+      <rect x="685" y="21" width="280" height="16" rx="4" fill="#207448" opacity="0.8" />
+      <rect x="980" y="21" width="105" height="16" rx="4" fill="#207448" opacity="0.5" />
+    </g>
+
+    
+    <g id="entry-row-3" transform="translate(270, 835)">
+      <rect x="0" y="0" width="1120" height="58" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      
+      <rect x="15" y="10" width="460" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <circle cx="35" cy="29" r="6" fill="#207448" />
+      <rect x="55" y="21" width="240" height="16" rx="4" fill="#207448" opacity="0.8" />
+      <rect x="310" y="21" width="145" height="16" rx="4" fill="#207448" opacity="0.5" />
+      
+      <g transform="translate(525, 17)" stroke="#207448" stroke-width="3" fill="none">
+        <path d="M 0 12 L 70 12" />
+        <path d="M 10 4 L 0 12 L 10 20" />
+        <path d="M 60 4 L 70 12 L 60 20" />
+      </g>
+      
+      <rect x="645" y="10" width="460" height="38" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <circle cx="665" cy="29" r="6" fill="#207448" />
+      <rect x="685" y="21" width="240" height="16" rx="4" fill="#207448" opacity="0.8" />
+      <rect x="940" y="21" width="145" height="16" rx="4" fill="#207448" opacity="0.5" />
+    </g>
+  </g>
+
+  
+  <rect x="80" y="955" width="1440" height="70" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="998" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">A reply is matched against the open-connection list first, so the policy is not read again.</text>
+</svg>

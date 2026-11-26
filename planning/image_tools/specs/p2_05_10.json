@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p2-0510-why-service",
+  "title": "Pod addresses change, so clients need a stable name",
+  "spec": "Left to right. Left column: a client box labelled 'Client' holding a memory card titled 'Remembered addresses' with two old addresses 'Pod IP A (old)' and 'Pod IP B (old)' in grey. Middle: a rollout arrow labelled 'Rollout replaces the Pods' pointing to a column of two new Pod boxes 'New Pod C' and 'New Pod D'. A red cross on the old addresses with the note 'These machines no longer exist, and nothing tells the client'. Right column: a Service box labelled 'Service: stable virtual IP and name' with arrows to the two new Pods, each labelled 'Ready endpoints'. Orange outline on the Service box. Caption at bottom: 'Service discovery answers: which processes listen at which addresses, for which service?'",
+  "anchor": "### Why a Service is needed",
+  "alt": "A client that remembers old Pod addresses sends requests to machines that no longer exist after a rollout, while a Service gives a stable address that routes to the new Pods.",
+  "cap": "After a rollout replaces the Pods, a client holding old Pod addresses fails, while a Service keeps one stable address that routes to the new Pods."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p2-0510-service-types",
+  "title": "Service types as a stack of trade-offs",
+  "spec": "A stack of four layers drawn as nested bands, bottom to top: 'ClusterIP: virtual IP reachable inside the cluster (default)', above it 'NodePort: a port 30000-32767 opened on every node', above it 'LoadBalancer: external load balancer with an external IP or hostname'. Each higher band is drawn as wrapping the band below, with the label 'builds on the type before it'. Beside the stack, a separate column of two boxes not in the stack: 'Headless (clusterIP: None): no virtual IP, DNS returns Pod IPs' and 'Services without selectors: you manage EndpointSlices'. A decision strip at the bottom in three steps: 'Only other Pods call it: ClusterIP', 'Something outside must reach it: NodePort or LoadBalancer', 'Caller needs every Pod address: headless'. Orange outline on the headless box with the note 'StatefulSets and training workers that find each other by name'.",
+  "anchor": "### Types",
+  "alt": "Service types stacked from ClusterIP to NodePort to LoadBalancer, with headless Services as a separate choice that skips the virtual IP.",
+  "cap": "Service types build on each other from ClusterIP to NodePort to LoadBalancer, while a headless Service skips the virtual IP entirely."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p2-0510-nodeport-path",
+  "title": "A NodePort request: DNAT to a Pod, SNAT on the way back",
+  "spec": "A horizontal path of five boxes left to right with numbered arrows. Box 1 'External client' connects to 'nodeIP:30080'. Arrow 1 to Box 2 'Node receives the NodePort' with the note 'Node rules recognise the port'. Arrow 2 to Box 3 'KUBE-NODEPORTS, then the Service chains'. Arrow 3 to Box 4 'DNAT picks a Pod, which may sit on another node'. Arrow 4 to Box 5 'SNAT rewrites the source as the node IP under the Cluster policy'. A dashed return arrow from Box 5 back to Box 2 labelled 'Reply returns through the node that took the request'. A note under Box 4: 'The extra hop, and the source IP is lost, so the Pod sees the node as the client.' Orange outline on Box 5 as the SNAT step that hides the client IP. Caption at the bottom: 'The price of Cluster policy is an extra hop and a lost source IP.'",
+  "anchor": "### NodePort path",
+  "alt": "A request to a node's NodePort is DNATed to a Pod that may sit on another node, then SNATed so the reply returns through the receiving node.",
+  "cap": "A NodePort request is DNATed to a Pod, possibly on another node, and SNATed under the Cluster policy so the reply returns through the receiving node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p2-0510-iptables-walk",
+  "title": "iptables walks a list; IPVS jumps to a hash",
+  "spec": "Two side-by-side panels with green headings. Left panel 'iptables mode: rules as a list': a vertical stack of rule boxes labelled 'Service 1 rule', 'Service 2 rule', 'Service 3 rule', 'Service n rule', with a scanning arrow walking down the list from top to bottom, labelled 'First packet walks the list until it matches'. Under the stack a note 'Cost grows with the number of Services: O(n)'. A second note 'Every update rewrites the whole table'. Right panel 'IPVS mode: hash lookup': a hash table box with slots, and one direct arrow from a packet icon to one slot labelled 'Hash lookup: O(1)'. Under it a note 'Incremental updates'. Bottom strip: 'Past tens of thousands of Services, consider IPVS.' Orange outline on the full-table rewrite note in the left panel as the worst update cost.",
+  "anchor": "### Why iptables struggles at scale",
+  "alt": "The iptables mode walks a rule list linearly for each packet and rewrites the whole table on update, while IPVS finds the Service in one hash lookup.",
+  "cap": "iptables mode walks a list of rules whose cost grows with the number of Services, while IPVS looks up the Service in a hash table."
+ }
+]

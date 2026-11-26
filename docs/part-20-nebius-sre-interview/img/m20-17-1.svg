@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>How to use the twelve prompts</title>
+  <desc>Flowchart illustrating the six stages of using the twelve prompts from initial inquiry to final wrap-up.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="13" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1,2 L 13,7 L 1,12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How to use the twelve prompts</text>
+
+  
+  <g id="node-a">
+    <rect x="110" y="140" width="630" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="170" cy="200" r="24" fill="#207448"/>
+    <text x="170" y="200" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(397, 165)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 8,10 C 8,6.7 10.7,4 14,4 L 42,4 C 45.3,4 48,6.7 48,10 L 48,30 C 48,33.3 45.3,36 42,36 L 24,36 L 14,46 L 14,36 C 10.7,36 8,33.3 8,30 Z"/>
+      <path d="M 23,16 C 23,13 25,11 28,11 C 31,11 33,13 33,16 C 33,19 30,20.5 28,23 L 28,25.5"/>
+      <circle cx="28" cy="30.5" r="1.5" fill="#207448"/>
+    </g>
+    <text x="425" y="300" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">0-5 ask</text>
+  </g>
+
+  
+  <g id="node-b">
+    <rect x="860" y="140" width="630" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="920" cy="200" r="24" fill="#207448"/>
+    <text x="920" y="200" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(1147, 165)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="10" y="5" width="36" height="46" rx="5"/>
+      <rect x="16" y="11" width="24" height="10" rx="2"/>
+      <circle cx="20" cy="29" r="1.5" fill="#207448"/>
+      <circle cx="28" cy="29" r="1.5" fill="#207448"/>
+      <circle cx="36" cy="29" r="1.5" fill="#207448"/>
+      <circle cx="20" cy="39" r="1.5" fill="#207448"/>
+      <circle cx="28" cy="39" r="1.5" fill="#207448"/>
+      <circle cx="36" cy="39" r="1.5" fill="#207448"/>
+    </g>
+    <text x="1175" y="300" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">5-10 estimate</text>
+  </g>
+
+  
+  <g id="node-c">
+    <rect x="110" y="440" width="630" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="170" cy="500" r="24" fill="#207448"/>
+    <text x="170" y="500" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(397, 465)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <ellipse cx="28" cy="14" rx="18" ry="6"/>
+      <path d="M 10,14 L 10,40 C 10,46 46,46 46,40 L 46,14"/>
+      <path d="M 10,27 C 10,33 46,33 46,27"/>
+    </g>
+    <text x="425" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">10-15 API and data</text>
+  </g>
+
+  
+  <g id="node-d">
+    <rect x="860" y="440" width="630" height="210" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+    <circle cx="920" cy="500" r="24" fill="#db8129"/>
+    <text x="920" y="500" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(1147, 465)" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="20" y="5" width="16" height="12" rx="2.5"/>
+      <rect x="7" y="36" width="16" height="12" rx="2.5"/>
+      <rect x="33" y="36" width="16" height="12" rx="2.5"/>
+      <path d="M 28,17 L 28,26 M 15,26 L 41,26 M 15,26 L 15,36 M 41,26 L 41,36"/>
+    </g>
+    <text x="1175" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">15-30 architecture, scale</text>
+  </g>
+
+  
+  <g id="node-e">
+    <rect x="110" y="740" width="630" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="170" cy="800" r="24" fill="#207448"/>
+    <text x="170" y="800" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <g transform="translate(397, 765)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 28,6 L 46,12 C 46,30 38,44 28,50 C 18,44 10,30 10,12 Z"/>
+      <path d="M 20,27 L 26,33 L 36,21"/>
+    </g>
+    <text x="425" y="900" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">30-37 failure, security</text>
+  </g>
+
+  
+  <g id="node-f">
+    <rect x="860" y="740" width="630" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="920" cy="800" r="24" fill="#207448"/>
+    <text x="920" y="800" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    <g transform="translate(1147, 765)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="11" y="9" width="34" height="42" rx="4"/>
+      <path d="M 21,9 L 21,5 C 21,4 22,3 23,3 L 33,3 C 34,3 35,4 35,5 L 35,9 Z"/>
+      <path d="M 18,22 L 22,26 L 29,19"/>
+      <line x1="21" y1="34" x2="37" y2="34"/>
+      <line x1="21" y1="41" x2="33" y2="41"/>
+    </g>
+    <text x="1175" y="900" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">37-40 operate, wrap</text>
+  </g>
+
+  
+  
+  <path d="M 740,245 L 860,245" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1175,350 L 1175,379 Q 1175,395 1159,395 L 441,395 Q 425,395 425,411 L 425,440" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 740,545 L 860,545" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1175,650 L 1175,679 Q 1175,695 1159,695 L 441,695 Q 425,695 425,711 L 425,740" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 740,845 L 860,845" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none" marker-end="url(#arrow-green)"/>
+</svg>

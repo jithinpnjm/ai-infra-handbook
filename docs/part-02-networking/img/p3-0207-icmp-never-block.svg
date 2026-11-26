@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>ICMP messages a firewall must never block, and what breaks if you do</title>
+  <desc>Infographic explaining essential ICMP and ICMPv6 messages that firewalls must permit, what breaks when blocked, safe restrictions, and control-plane rate limiting.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">ICMP messages a firewall must never block,</tspan>
+    <tspan x="800" dy="54">and what breaks if you do</tspan>
+  </text>
+
+  
+  <g transform="translate(40, 142)">
+    <rect width="1520" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 20)">
+      <rect x="0" y="0" width="56" height="56" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="36" x2="42" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="780" y="42" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="780" dy="0">ICMP rides directly on IP as protocol 1; ICMPv6 uses next-header 58;</tspan>
+      <tspan x="780" dy="32">each message has a type and a code, and errors quote the start of the offending packet</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 262)">
+    
+    <rect width="1040" height="820" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <path d="M 0,8 Q 0,0 8,0 L 1032,0 Q 1040,0 1040,8 L 1040,56 L 0,56 Z" fill="#207448" />
+
+    
+    <text x="60" y="38" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Message</text>
+    <line x1="300" y1="0" x2="300" y2="56" stroke="#ffffff" stroke-opacity="0.3" stroke-width="2" />
+
+    
+    <text x="360" y="38" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Needed for</text>
+    <line x1="750" y1="0" x2="750" y2="56" stroke="#ffffff" stroke-opacity="0.3" stroke-width="2" />
+
+    
+    <text x="810" y="38" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">If blocked</text>
+
+    
+    <line x1="300" y1="56" x2="300" y2="820" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5" />
+    <line x1="750" y1="56" x2="750" y2="820" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5" />
+
+    
+    <rect x="0" y="56" width="1040" height="140" fill="#ffffff" />
+    
+    <text x="24" y="96" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">type 3 code 4,</tspan>
+      <tspan x="24" dy="32">fragmentation needed</tspan>
+      <tspan x="24" dy="32">and DF set</tspan>
+    </text>
+    
+    <text x="324" y="132" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Path MTU Discovery</text>
+    
+    <rect x="760" y="66" width="270" height="120" rx="6" fill="#fff3e6" stroke="#db8129" stroke-width="2.5" />
+    <text x="774" y="98" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="774" dy="0">no way to learn</tspan>
+      <tspan x="774" dy="28">a smaller MTU;</tspan>
+      <tspan x="774" dy="28">large transfers hang</tspan>
+    </text>
+    <line x1="0" y1="196" x2="1040" y2="196" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5" />
+
+    
+    <rect x="0" y="196" width="1040" height="134" fill="#e8f1ea" fill-opacity="0.5" />
+    
+    <text x="24" y="254" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">type 11, time exceeded</tspan>
+    </text>
+    
+    <text x="324" y="234" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="324" dy="0">traceroute (code 0 TTL</tspan>
+      <tspan x="324" dy="28">expired in transit); code 1</tspan>
+      <tspan x="324" dy="28">is a fragment reassembly</tspan>
+      <tspan x="324" dy="28">timeout</tspan>
+    </text>
+    
+    <text x="774" y="270" font-family="sans-serif" font-size="24" fill="#303a36">path tracing fails</text>
+    <line x1="0" y1="330" x2="1040" y2="330" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5" />
+
+    
+    <rect x="0" y="330" width="1040" height="138" fill="#ffffff" />
+    
+    <text x="24" y="372" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">type 3 in general</tspan>
+      <tspan x="24" dy="30">(net, host, protocol,</tspan>
+      <tspan x="24" dy="30">port unreachable)</tspan>
+    </text>
+    
+    <text x="324" y="404" font-family="sans-serif" font-size="24" fill="#303a36">error feedback</text>
+    
+    <text x="774" y="390" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="774" dy="0">senders wait</tspan>
+      <tspan x="774" dy="32">for timeouts</tspan>
+    </text>
+    <line x1="0" y1="468" x2="1040" y2="468" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5" />
+
+    
+    <rect x="0" y="468" width="1040" height="196" fill="#e8f1ea" fill-opacity="0.5" />
+    
+    <text x="24" y="572" font-family="sans-serif" font-size="24" fill="#303a36">types 1, 2, 3 and 4</text>
+    
+    <text x="324" y="504" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="324" dy="0">type 2 Packet Too Big is</tspan>
+      <tspan x="324" dy="28">mandatory because routers</tspan>
+      <tspan x="324" dy="28">never fragment IPv6;</tspan>
+      <tspan x="324" dy="28">type 1 destination</tspan>
+      <tspan x="324" dy="28">unreachable; type 3</tspan>
+      <tspan x="324" dy="28">hop limit exceeded</tspan>
+    </text>
+    
+    <text x="774" y="556" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="774" dy="0">PMTUD and error</tspan>
+      <tspan x="774" dy="32">feedback break</tspan>
+    </text>
+    <line x1="0" y1="664" x2="1040" y2="664" stroke="#207448" stroke-opacity="0.2" stroke-width="1.5" />
+
+    
+    <path d="M 0,664 L 1040,664 L 1040,812 Q 1040,820 1032,820 L 8,820 Q 0,820 0,812 Z" fill="#ffffff" />
+    
+    <text x="24" y="748" font-family="sans-serif" font-size="24" fill="#303a36">types 133 to 137</text>
+    
+    <text x="324" y="698" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="324" dy="0">router solicitation and</tspan>
+      <tspan x="324" dy="26">advertisement, neighbour</tspan>
+      <tspan x="324" dy="26">solicitation and</tspan>
+      <tspan x="324" dy="26">advertisement</tspan>
+      <tspan x="324" dy="26">(replace ARP), redirect</tspan>
+    </text>
+    
+    <text x="774" y="736" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="774" dy="0">no addresses,</tspan>
+      <tspan x="774" dy="32">no neighbours</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(1110, 262)">
+    <rect width="450" height="216" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 20)">
+      <path d="M 24,4 L 44,12 L 44,28 C 44,40 24,50 24,50 C 24,50 4,40 4,28 L 4,12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    </g>
+    <text x="88" y="56" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Safe to restrict</text>
+
+    
+    <rect x="24" y="90" width="402" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="44" y="122" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">rate-limit ICMP</text>
+
+    
+    <rect x="24" y="148" width="402" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="44" y="180" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">block echo from outside</text>
+  </g>
+
+  
+  <g transform="translate(1110, 502)">
+    <rect width="450" height="580" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 20)">
+      <path d="M 6,38 A 22,22 0 1,1 46,38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="26" y1="34" x2="38" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="26" cy="34" r="4" fill="#207448" />
+    </g>
+    <text x="88" y="46" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="88" dy="0">Rate limiting by</tspan>
+      <tspan x="88" dy="36">hosts and routers</tspan>
+    </text>
+
+    
+    <rect x="20" y="122" width="410" height="438" rx="6" fill="#ffffff" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5" />
+    <text x="40" y="162" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="40" dy="0" font-family="monospace">net.ipv4.icmp_ratelimit</tspan>
+      <tspan x="40" dy="34">and </tspan><tspan font-family="monospace">icmp_ratemask</tspan><tspan>;</tspan>
+      <tspan x="40" dy="34">routers deprioritise</tspan>
+      <tspan x="40" dy="34">ICMP handled on the</tspan>
+      <tspan x="40" dy="34">control plane, so a</tspan>
+      <tspan x="40" dy="34">hop showing * * * or</tspan>
+      <tspan x="40" dy="34">high latency at one hop</tspan>
+      <tspan x="40" dy="34">with normal latency</tspan>
+      <tspan x="40" dy="34">after it is usually this,</tspan>
+      <tspan x="40" dy="34">not a real problem</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 1106)">
+    <rect width="1520" height="68" rx="8" fill="#207448" />
+    <text x="760" y="43" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      Before you block any ICMP type on a firewall, check which of the types above it would break
+    </text>
+  </g>
+</svg>

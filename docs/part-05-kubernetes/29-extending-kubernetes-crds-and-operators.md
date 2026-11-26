@@ -400,24 +400,9 @@ Notice the progression. Level 1 only installs the software from a CR. Level 5 ma
 
 Every reconcile starts from an event. The event can be a CR being created, updated or deleted, a change to an object the operator owns, or a periodic resync. A resync is a scheduled pass that re-checks everything, in case an event was missed. The flowchart shows what happens next, and it is worth reading slowly, one box at a time.
 
-```mermaid
-flowchart TB
-  EV["Event: CR created/updated/deleted OR owned object changed OR periodic resync"] --> RQ["Work queue (namespace/name)"]
-  RQ --> R["Reconcile(request)"]
-  R --> G["Get CR (cache); if gone → return"]
-  G --> D{"deletionTimestamp set?"}
-  D -- yes --> F["Run finalizer cleanup → remove finalizer → return"]
-  D -- no --> FIN["Ensure finalizer present"]
-  FIN --> V["Validate / default (defensive), resolve references"]
-  V --> C["Compute desired children from spec"]
-  C --> A["Create/patch/delete children (SSA or CreateOrUpdate), set ownerRefs"]
-  A --> S["Observe actual state: children status, external systems"]
-  S --> U["Update CR status.conditions, observedGeneration (status subresource)"]
-  U --> RQR{"Needs requeue?"}
-  RQR -- "error → backoff" --> RQ
-  RQR -- "waiting on external → RequeueAfter" --> RQ
-  RQR -- "done" --> END["return Result{}"]
-```
+![Typical operator reconcile structure](./img/m5-29-1.svg)
+
+*Figure 5.29.1. Typical operator reconcile structure, as a diagram.*
 
 Here is one pass through the flowchart for a WebApp. The event is a new WebApp. The reconcile fetches the object from the cache, and it sees that no deletion mark is set. It adds its finalizer, checks the references, and computes the six children the spec asks for. It then creates the children it does not yet have, and it sets an owner reference on each one. Next it looks at what actually exists, and it writes what it found into the status conditions. If a child is not ready yet, the reconcile asks for a later check instead of blocking. Each step is safe to run again, which is why a second pass after a crash produces the same result.
 

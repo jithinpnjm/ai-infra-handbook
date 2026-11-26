@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What node.drain really is: a bound method with __self__ and __func__</title>
+  <desc>Visual explanation of bound methods, method binding mechanics, and Python namespace scoping rules</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.05"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" font-family="system-ui, sans-serif" font-size="44" font-weight="bold" fill="#207448" text-anchor="middle">What node.drain really is: a bound method with __self__ and __func__</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="75" width="1520" height="365" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="60" y="90" width="1480" height="46" rx="8" fill="#e8f1ea"/>
+    <text x="80" y="122" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">class Hack with def doit(self, message): print(message)</text>
+
+    
+    <rect x="65" y="150" width="670" height="270" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(85, 165)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 18 38 L 26 18 L 38 18 M 16 28 L 34 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="160" y="205" font-family="ui-monospace, monospace" font-size="32" font-weight="bold" fill="#207448">Hack.doit</text>
+    
+    <rect x="85" y="235" width="630" height="165" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+    <text x="105" y="275" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">the plain function stored on the class;</tspan>
+      <tspan x="105" dy="38">calling needs the instance:</tspan>
+      <tspan x="105" dy="38" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">Hack.doit(inst, privit)</tspan>
+    </text>
+
+    
+    <rect x="765" y="150" width="775" height="270" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(785, 165)">
+      <circle cx="18" cy="28" r="12" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="38" cy="28" r="12" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="26" y1="20" x2="30" y2="36" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="860" y="195" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">inst.doit</text>
+    <text x="860" y="224" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">a bound method object holding two fields</text>
+
+    
+    <rect x="785" y="238" width="350" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+    <text x="797" y="266" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">meth.__self__ is inst</text>
+
+    <rect x="1150" y="238" width="370" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1"/>
+    <text x="1162" y="266" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">meth.__func__ is Hack.doit</text>
+
+    
+    <rect x="785" y="290" width="735" height="74" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="2"/>
+    <text x="805" y="322" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#db8129">meth(bonjour) </tspan>
+      <tspan>works like a plain function </tspan>
+      <tspan x="805" dy="30">with self already filled in</tspan>
+    </text>
+
+    <text x="785" y="398" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">can be stored in a callback list</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="455" width="1520" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(60, 480)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 20 28 L 34 28 M 28 20 L 36 28 L 28 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="135" y="498" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">I2.w() becomes C3.w(I2): </tspan>
+      <tspan dy="0">the instance becomes the first argument, received as self;</tspan>
+      <tspan x="135" dy="36" font-family="ui-monospace, monospace" font-weight="bold" fill="#303a36">Employee.giveRaise(pat) </tspan>
+      <tspan dy="0">performs both steps by hand</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="575" width="1520" height="385" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(60, 590)">
+      <rect x="4" y="8" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="22" x2="52" y2="22" stroke="#207448" stroke-width="4"/>
+      <circle cx="16" cy="15" r="3" fill="#207448"/>
+    </g>
+    <text x="135" y="628" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Where an assignment stores a name</text>
+
+    
+    <rect x="65" y="655" width="710" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+    <text x="85" y="690" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">X = 11 at module top</tspan>
+      <tspan x="85" dy="32">creates a module global manynames.X</tspan>
+    </text>
+
+    
+    <rect x="805" y="655" width="710" height="85" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+    <text x="825" y="690" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="825" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">X = 22 inside g()</tspan>
+      <tspan x="825" dy="32">is local to that call</tspan>
+    </text>
+
+    
+    <rect x="65" y="755" width="710" height="90" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+    <text x="85" y="788" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">X = 33 inside class C</tspan>
+      <tspan x="85" dy="30">becomes a class attribute C.X, which I.X inherits</tspan>
+    </text>
+
+    
+    <rect x="805" y="755" width="710" height="90" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+    <text x="825" y="788" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="825" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">self.X = 55 inside def m(self)</tspan>
+      <tspan x="825" dy="30">creates an instance attribute in I.__dict__[X]</tspan>
+    </text>
+
+    
+    <rect x="65" y="860" width="1450" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <path d="M 85 900 L 115 900" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <text x="135" y="908" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">I.__class__ </tspan>
+      <tspan>points to the class, </tspan>
+      <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">C.__bases__ </tspan>
+      <tspan>holds the direct superclasses</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="975" width="1520" height="112" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(60, 1002)">
+      <circle cx="28" cy="28" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 28 4 L 28 12 M 28 44 L 28 52 M 4 28 L 12 28 M 44 28 L 52 28 M 11 11 L 17 17 M 39 39 L 45 45 M 11 45 L 17 39 M 39 17 L 45 11" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="135" y="1022" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">the class statement is executable: it creates a class object that is itself an instance of type;</tspan>
+      <tspan x="135" dy="36">calling the class runs __new__ to allocate and __init__ to initialize</tspan>
+    </text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="40" y="1105" width="1520" height="65" rx="8" fill="#207448"/>
+    <text x="800" y="1147" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Methods are ordinary functions stored on the class</text>
+  </g>
+</svg>

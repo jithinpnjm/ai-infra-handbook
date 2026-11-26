@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p2-2023-outward-order",
+  "title": "Debug from the object outward, cheapest question first",
+  "spec": "A vertical ladder of nine numbered steps from top to bottom, each a small rounded box with a monospace command chip on the right. Step 1 'STATUS column of the pod' with chip 'kubectl get pod'. Step 2 'Events table at the bottom' with chip 'kubectl describe pod'. Step 3 'Namespace events, sorted by time' with chip 'kubectl get events'. Step 4 'Logs of the running container and the earlier one' with chips 'kubectl logs' and 'kubectl logs --previous'. Step 5 'Exec into the container, only if the pod looks fine' with chip 'kubectl exec'. Step 6 'Node: Conditions, Taints and Lease' with chip 'kubectl describe node'. Step 7 'Kubelet journal' with chip 'journalctl -xeu kubelet'. Step 8 'Container runtime' with chip 'crictl'. Step 9 'Network plugin, then DNS' as the last step. A bracket on the left spans steps 1 to 4 labelled 'Cheap: the cluster API', and a bracket spanning steps 6 to 9 labelled 'Expensive: the node'. Orange outline on step 2 as the events table where the scheduler and kubelet explain themselves. Caption: 'Each seam is a handoff between two teams, so ask who holds the object now.'",
+  "anchor": "### 1. Debug in a fixed order, from the object outward",
+  "alt": "A fixed debugging order for a pod, from the STATUS column and events through logs and exec to the node, kubelet, runtime, network and DNS.",
+  "cap": "A fixed debugging order moves from the cheap pod-level checks to the node, kubelet, runtime, network and DNS in turn."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p2-2023-owner-table",
+  "title": "Each symptom has one owner and one first object to read",
+  "spec": "A table drawn as rows of cards with columns 'Symptom', 'Owner', 'First object to read'. Row 1: 'Pending, no node assigned' | 'kube-scheduler' | 'Pod events, node Allocatable and Taints'. Row 2: 'Waiting, ImagePullBackOff' | 'kubelet and runtime' | 'Pod events, registry'. Row 3: 'Restart count rising' | 'kubelet' | 'Last State, probe events, logs --previous'. Row 4: 'Pod missing from a Service' | 'EndpointSlice controller' | 'Pod Ready condition, selector'. Row 5: 'Replica count not following load' | 'HPA controller' | 'HPA conditions, metrics'. Row 6: 'Pods vanish when a node dies' | 'node controller' | 'Node conditions, taints'. Row 7: 'Deploy rejected or hangs' | 'API server and webhooks' | 'Event text, webhook configuration'. A left-side column of small owner icons: a scheduler wheel, a kubelet gear, a controller loop arrow. Orange outline on row 4 with the note 'A Service with no endpoints: check the Ready condition'. Caption: 'Most Kubernetes failures are a disagreement between loops.'",
+  "anchor": "### 2. Know who owns each decision",
+  "alt": "Seven Kubernetes symptoms, each matched to the component that owns the decision and the first object to read.",
+  "cap": "Each Kubernetes symptom has one owning component, such as the scheduler for Pending pods or the EndpointSlice controller for a Service with no endpoints."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p2-2023-gpu-three-facts",
+  "title": "Three GPU facts: device plugin, limits, and taints",
+  "spec": "Three columns side by side, each a card with a number and a title. Card 1 'The device plugin advertises GPUs': a node box with no GPUs shown at first, then a vendor device-plugin chip that adds 'GPUs' to the node, with the note 'A GPU is not built into Kubernetes'. Card 2 'GPUs go in limits': a resource block with the monospace chip 'limits: nvidia.com/gpu' and a side note 'A limit without a request: the request becomes the limit. Both set: they must be equal'. Card 3 'GPU nodes are tainted': a node group with a taint chip 'nvidia.com/gpu=true' and a pod with a toleration icon sliding in, with the note 'A taint repels pods unless they tolerate it'. Under the three cards a line 'Three facts you must be able to say'. Orange outline on card 2's limits chip as the field most often written wrong.",
+  "anchor": "### 3. GPUs add three facts you must be able to say",
+  "alt": "Three GPU facts: a device plugin advertises GPUs to the node, GPUs are requested in limits, and GPU node groups carry a taint that pods must tolerate.",
+  "cap": "Three GPU facts matter in Kubernetes: a device plugin advertises GPUs, GPUs go in limits, and GPU node groups are tainted."
+ }
+]

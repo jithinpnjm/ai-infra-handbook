@@ -1,0 +1,172 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-schedule-vs-admit",
+  "title": "Scheduler checks totals, kubelet checks the real layout",
+  "spec": "Two stages side by side. Left 'kube-scheduler': checks node-level sums (allocatable CPUs, memory, total nvidia.com/gpu count), does not know the allocation state of each NUMA node; result green 'Scheduled: Successfully assigned ns/pod to node'. Right 'kubelet admission on the node (Topology Manager restricted or single-numa-node)': checks that requested GPUs, RDMA NICs and exclusive CPUs can all come from the same NUMA node given existing pods; fragmentation makes that impossible; result red 'pod set to Failed: TopologyAffinityError, OutOfnvidia.com/gpu, OutOfcpu or NodeAffinity'. Footer: 'A pod can pass the first check and fail the second because the totals looked fine while the layout did not'. Text at least 24px.",
+  "anchor": "### The sync loop",
+  "alt": "The scheduler passes a pod on node totals but the kubelet rejects it when NUMA alignment is impossible.",
+  "cap": "Scheduling checks totals and node admission checks the actual NUMA layout, so a scheduled pod can still be rejected."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-syncpod-steps",
+  "title": "What syncPod does for a new pod, in order",
+  "spec": "Vertical numbered list of seven boxes with the visible symptom beside each. 1 'Node admission: allocatable, selectors, host ports, tolerations, sysctls, topology, devices' symptom 'pod Failed with OutOf... reason'. 2 'Cgroup hierarchy: kubepods.slice/kubepods-qos.slice/kubepods-qos-pod-uid.slice'. 3 'Pod directories under /var/lib/kubelet/pods/uid/ (volumes, plugins, etc-hosts)'. 4 'Volumes mounted (emptyDir, configMap, secret, projected, PVC)' symptom 'ContainerCreating, FailedMount, FailedAttachVolume'. 5 'Pull secrets resolved'. 6 'Device plugin Allocate over gRPC socket in /var/lib/kubelet/device-plugins/; CPU manager static policy and topology manager pick CPUs and NUMA'. 7 'RunPodSandbox then containers over CRI'. Side box: 'Triggers: pod change, periodic resync about 1 minute, PLEG container state change; PLEG relists the runtime every second; PLEG is not healthy means the relist took too long (overloaded runtime or node)'. Text at least 24px.",
+  "anchor": "### The sync loop",
+  "alt": "Seven ordered kubelet steps from node admission to RunPodSandbox with the symptom each can show.",
+  "cap": "The kubelet runs the same seven steps for each new pod, and each step has its own visible failure."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-csi-two-step",
+  "title": "A PVC reaches the pod in three hand-offs",
+  "spec": "Left-to-right flow with paths. Step 1 'attach/detach controller attaches the block device to the node (VolumeAttachment); failure FailedAttachVolume or Multi-Attach error'. Step 2 'NodeStageVolume, once per volume per node: format on first use and mount at a node-global staging dir /var/lib/kubelet/plugins/kubernetes.io/csi/.../globalmount'. Step 3 'NodePublishVolume, once per pod: bind-mount to /var/lib/kubelet/pods/pod-uid/volumes/kubernetes.io~csi/pvc-name/mount'. Step 4 'runc bind-mounts that path into the container mount namespace'. Note: 'several pods on one node can share the one staged mount'. Footer: 'until every mount succeeds the pod stays in ContainerCreating with FailedMount events; PVC attach from the cloud takes 5 to 60 s'. Teardown: 'NodeUnpublishVolume, then NodeUnstage and detach when unused'. Text at least 24px.",
+  "anchor": "### The sync loop",
+  "alt": "A volume is attached to the node, staged once per node and published once per pod.",
+  "cap": "Stage once per node and publish once per pod explains why one device can serve several pods."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-pod-cidr",
+  "title": "Where a pod IP comes from: node CIDR then CNI IPAM",
+  "spec": "Top: 'kubeadm init --pod-network-cidr 10.244.0.0/16 sets --cluster-cidr on kube-controller-manager with --allocate-node-cidrs=true, RangeAllocator, --node-cidr-mask-size-ipv4=24'. Arrow to three node boxes each labelled with a /24 slice shown in spec.podCIDR and spec.podCIDRs. Under one node: 'CNI ADD returns JSON: ips address 10.244.1.188/24, gateway 10.244.1.1, routes, dns'. Side note: 'Cilium uses CiliumNode spec.ipam.podCIDRs; Calico uses ipPools with blockSize 26'. Bottom row: 'Overlay CNIs: VXLAN, Geneve or IP-in-IP tunnels per node' versus 'Routed CNIs: Calico BGP or Cilium native routing advertise pod CIDRs'. Rule: 'CNI must allow the local node IP to reach every pod so kubelet httpGet, tcpSocket and grpc probes work'. Text at least 24px.",
+  "anchor": "### How CNI `ADD`, IPAM, `readinessGates`, and `podCIDRs` Work (*Networking and Kubernetes* Chapters 3–4 and *Production Kubernetes* Chapter 5)",
+  "alt": "A cluster CIDR is split into per-node slices and the CNI hands each pod an address from its node's slice.",
+  "cap": "Each node owns a slice of the pod CIDR, and the CNI IPAM plugin picks the pod address from that slice."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-cni-add-call",
+  "title": "The CNI ADD call: what goes in, what comes out",
+  "spec": "Center box 'containerd RunPodSandbox runs /opt/cni/bin/plugin'. Inputs arrow: 'stdin: JSON config from /etc/cni/net.d (05-cilium.conf or 10-calico.conflist)'; 'env: CNI_COMMAND=ADD (DEL on teardown), CNI_CONTAINERID, CNI_NETNS=/var/run/netns/cni-uuid, CNI_IFNAME=eth0, CNI_PATH=/opt/cni/bin, CNI_ARGS with K8S_POD_NAMESPACE, K8S_POD_NAME, K8S_POD_INFRA_CONTAINER_ID'. Middle: 'wires veth pair or eBPF, calls IPAM plugin'. Output arrow: 'stdout JSON: cniVersion, interfaces, ips, routes, dns'. Beneath, equivalent manual commands: 'ip netns add', 'ip link add veth0 type veth peer name eth0', 'ip link set eth0 netns', 'ip netns exec ... ip addr add pod_ip/24 dev eth0', 'ip link set dev eth0 up', 'ip route add default via gw_ip', needs 'net.ipv4.ip_forward = 1'. Failure box: 'FailedCreatePodSandBox: missing CNI binary or config, exhausted IP pool, corrupted IPAM state, MTU or route conflict, CNI agent not started (node NotReady)'. Text at least 24px.",
+  "anchor": "## 4. Sandbox creation and networking",
+  "alt": "The CNI plugin receives config on stdin and CNI variables and returns an IP result as JSON.",
+  "cap": "The runtime calls the CNI binary with environment variables and config, and the plugin returns the pod IP."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-veth-finder",
+  "title": "Find the host side of a pod's eth0",
+  "spec": "Three numbered steps with sample outputs. 1 'PID=$(crictl inspect $CTR | jq -r .info.pid)' gives the pod network namespace. 2 'nsenter -t $PID -n ip link show eth0' prints '2: eth0@if47: BROADCAST,MULTICAST,UP,LOWER_UP' and the number after @if is the peer index 47. 3 On the host: 'ip link | grep ^47:' prints '47: cali8a9b1c2d@if2' (or a veth or lxc name). Draw a pod namespace box with eth0@if47 on the left, a host namespace box with cali8a9b1c2d@if2 on the right and a veth pair line between them. Result: 'tcpdump -i cali8a9b1c2d -nn captures only that pod's traffic'. Also show 'crictl pods --name trainer-0 -q' then 'crictl inspectp' for the netns path. Text at least 24px.",
+  "anchor": "### How CNI `ADD`, IPAM, `readinessGates`, and `podCIDRs` Work (*Networking and Kubernetes* Chapters 3–4 and *Production Kubernetes* Chapter 5)",
+  "alt": "The peer index after at-if in the pod namespace is looked up on the host to find the veth.",
+  "cap": "The at-if number on eth0 names the host interface at the other end of the veth pair."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-readiness-gates",
+  "title": "Ready needs the containers and every readiness gate",
+  "spec": "Two-input AND diagram. Input A 'ContainersReady: every container passes its readinessProbe'. Input B 'every condition in spec.readinessGates is True in status.conditions (for example target-health.alb.ingress.k8s.aws or www.example.com/feature-X)'. Output 'Ready=True: pod IP joins the EndpointSlices'. Timeline beneath: 'containers pass probe', 'external load balancer needs 10 to 20 s to register the pod IP and pass health checks', 'external controller patches the custom condition to True', 'Ready becomes True; until then a rolling update will not terminate old pods'. Text at least 24px.",
+  "anchor": "### How CNI `ADD`, IPAM, `readinessGates`, and `podCIDRs` Work (*Networking and Kubernetes* Chapters 3–4 and *Production Kubernetes* Chapter 5)",
+  "alt": "Ready becomes true only when container probes and every readiness gate condition are true.",
+  "cap": "A readiness gate lets an external system hold a pod out of service until it is truly reachable."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-image-pull-queue",
+  "title": "Why one big image pull blocks a node",
+  "spec": "Queue diagram on one node. 'serializeImagePulls true (default): one PullImage CRI call at a time'. A 25 GB PyTorch image takes about 3 minutes; behind it waits a tiny 5 MB busybox or monitoring pod stuck in ContainerCreating or PodInitializing. Below, the fix: 'serializeImagePulls false and maxParallelImagePulls 4 (3 to 5 concurrent) on nodes with fast NVMe and network; kubelet also enforces registryPullQPS and Burst'. Right: pull stages 'tag -> manifest or index -> config -> layers downloaded in parallel, digests verified, unpacked into the overlayfs snapshotter'. Footer: '100 GPU nodes pulling 20 GB each is a registry and bandwidth problem; pre-pull with a DaemonSet'. Text at least 24px.",
+  "anchor": "## 5. Images and containers",
+  "alt": "A single serialized image pull makes a small pod wait behind a 25 GB image on the same node.",
+  "cap": "With serialized pulls a large image blocks every other pull on the node until it finishes."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-container-start-chain",
+  "title": "From CreateContainer to PID 1",
+  "spec": "Four numbered boxes left to right. 1 'Pull: imagePullPolicy IfNotPresent, Always or Never; events Pulling and Pulled with duration'. 2 'Create: CRI plugin builds the OCI runtime spec config.json (args, env, cwd, user; mounts rootfs overlay, /proc, /sys, /dev, /dev/shm, volume binds, /etc/hosts, /etc/resolv.conf, termination log; joins sandbox net, IPC and UTS namespaces, own mnt and PID; cgroup under the pod cgroup; capabilities, seccomp, AppArmor, SELinux; devices)'. 3 'Start: containerd launches the shim, shim calls runc create (namespaces, pivot_root, cgroups, drop capabilities, install seccomp), then runc start execs the entrypoint as PID 1, child of the shim'. 4 'Probes: post-start hook, startup, readiness, liveness; exec probes via CRI ExecSync inside the container; HTTP, TCP, gRPC probes from the node to the pod IP; readiness change updates Ready then EndpointSlice controller adds or removes the IP'. Text at least 24px.",
+  "anchor": "## 5. Images and containers",
+  "alt": "Four steps from image pull to runc start and probes for each container.",
+  "cap": "The runtime turns one container spec into an OCI config, then runc builds the namespaces and starts PID 1."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-inspect-kernel-artefacts",
+  "title": "Reading what the kernel is enforcing for a container",
+  "spec": "Table with command on the left and what it proves on the right. 'ls -l /proc/PID/ns' -> 'compare inodes with the pause container: net, ipc, uts shared; pid and mnt differ unless shareProcessNamespace'. 'cat /proc/PID/cgroup' -> 'path kubepods.slice/kubepods-burstable.slice/kubepods-burstable-pod-uid.slice/cri-containerd-id.scope'. 'memory.max, cpu.max, cpu.weight, pids.max, memory.current' -> 'limits and usage now'. 'cpu.stat nr_throttled' -> 'CPU throttling'. 'memory.events oom and oom_kill' -> 'OOM kills'. 'grep Cap, NoNewPrivs, Seccomp /proc/PID/status' -> 'capabilities and seccomp'. 'mountinfo' -> 'overlay root, volume binds, /dev/shm tmpfs'. 'ls /proc/PID/root/dev/nvidia*' -> 'GPU device nodes injected'. Banner: 'If Kubernetes reports one thing and the kernel shows another, trust the kernel'. Text at least 24px.",
+  "anchor": "## 5. Images and containers",
+  "alt": "A table of node commands and the kernel facts each one proves about a running container.",
+  "cap": "The kernel files show exactly which namespaces, limits and devices a container really has."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-oom-vs-eviction",
+  "title": "Kernel OOM kill versus kubelet eviction",
+  "spec": "Two lanes. Lane 1 'Kernel cgroup OOM kill': trigger 'memory.current reaches memory.max (set from limits.memory)'; actor 'Linux kernel, synchronous, SIGKILL'; result 'container exits OOMKilled, exit code 137; kubelet restarts it in place if restartPolicy allows; memory.events shows oom and oom_kill'. Lane 2 'Kubelet node-pressure eviction': trigger 'node-wide memory.available below evictionHard (for example 100Mi) or nodefs.available below 10 percent'; actor 'kubelet eviction manager in user space'; ranking 'BestEffort, then Burstable over requests, then Guaranteed'; result 'whole pod Failed with Reason Evicted; owning controller reschedules'. Footer: 'Eviction ignores PodDisruptionBudgets; BestEffort and Burstable over requests are preferred OOM victims via oom_score_adj'. Text at least 24px.",
+  "anchor": "## 6. Running state",
+  "alt": "Two lanes compare a kernel cgroup OOM kill with a kubelet node-pressure eviction.",
+  "cap": "The kernel kills a process at its own limit, while the kubelet evicts whole pods when the node runs short."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-pid1-sigterm",
+  "title": "Why a pod takes exactly 30 seconds to die",
+  "spec": "Timeline from T+0 to T+30 s. T+0: 'kubelet sends SIGTERM to PID 1 (after preStop)'. Lane A 'PID 1 is /bin/sh or a process with no SIGTERM handler': 'the kernel ignores signals to PID 1 in a PID namespace unless a handler is registered' -> nothing happens for the whole terminationGracePeriodSeconds -> T+30 s 'SIGKILL, which the kernel never ignores' -> red 'pod takes 30 s to die'. Lane B 'PID 1 registers a SIGTERM handler': 'saves checkpoint or drains, exits 0' -> pod ends early, green. Side note: 'shell-form entrypoint can swallow SIGTERM; for training treat SIGTERM as checkpoint now and set the grace period from a measured checkpoint time plus margin'. Text at least 24px.",
+  "anchor": "## 7. Termination",
+  "alt": "A process without a SIGTERM handler ignores the signal until SIGKILL arrives at 30 seconds.",
+  "cap": "PID 1 ignores SIGTERM without a handler, so the pod waits out the whole grace period."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-terminating-dominoes",
+  "title": "Stuck in Terminating: find the first domino",
+  "spec": "Chain of dominoes left to right. 1 'Process in D state (uninterruptible I/O sleep) on a hung NFS, Lustre or Ceph mount cannot handle SIGKILL'. 2 'Container never exits'. 3 'runc cannot destroy the container cgroup'. 4 'CSI cannot unmount the busy volume: EBUSY Device or resource busy'. 5 'Sandbox and cleanup (CNI DEL, device and CPU manager releases) cannot finish'. 6 'Pod stays Terminating until the mount recovers or the node is rebooted'. Other first dominoes listed beneath: 'kubelet unresponsive or partitioned', 'finalizer on the pod (rare)', 'runtime shim hang', 'CNI DEL failure', 'preStop hook past the grace period'. Red warning: 'Do not use --force --grace-period=0 on StatefulSet pods or RWO volumes unless sure the node cannot still run them: split brain and data corruption risk'. Text at least 24px.",
+  "anchor": "## 7. Termination",
+  "alt": "A chain of six steps shows how a hung network mount keeps a pod in Terminating.",
+  "cap": "A hung step early in teardown holds back every later step, so find the first one that is still stuck."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-who-pulled-trigger",
+  "title": "Eviction, node pressure and preemption: who pulled the trigger",
+  "spec": "Three-row comparison table. Row 'API-initiated eviction (kubectl drain, Cluster Autoscaler, Karpenter)': initiator 'a person or tool via the Eviction subresource', PDB 'strictly enforced: rejected with 429 Too Many Requests if it would break minAvailable or maxUnavailable'. Row 'Kubelet node-pressure eviction': initiator 'the node, short on memory or disk', PDB 'ignored, node is in immediate danger'. Row 'Scheduler preemption': initiator 'scheduler, a higher-priority pod needs a place', PDB 'best effort: prefers victims that do not break a budget, still preempts if no other feasible node'. Footer: 'All three end in graceful termination; the reason recorded on the pod tells you which path it was; training jobs should treat SIGTERM as checkpoint now'. Text at least 24px.",
+  "anchor": "## 7. Termination",
+  "alt": "A three-row table compares who starts eviction, node pressure eviction and preemption and how each treats PDBs.",
+  "cap": "Ask who pulled the trigger, because only API eviction strictly respects PodDisruptionBudgets."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-startup-timeline-sources",
+  "title": "Where each startup interval comes from",
+  "spec": "Horizontal timeline bar split into segments with a source under each. 'Created to Scheduled': creationTimestamp versus PodScheduled lastTransitionTime, scheduler metrics. 'Scheduled to Initialized': init containers, volume mounts, sandbox; Initialized condition. 'Sandbox': kubelet_run_podsandbox_duration_seconds. 'Pull': event Pulled in X, kubelet_image_pull_duration_seconds, containerd logs. 'Container start': ContainersReady time. 'Ready': readiness probe success, Ready condition. Two bracket overlays: 'kubelet_pod_start_duration_seconds: from kubelet first seeing the pod until all regular containers run, includes image pull' and 'kubelet_pod_start_sli_duration_seconds: SIG-Scalability SLI, excludes image pull and init container runtime'. Warm node numbers: 'API and scheduling tens of ms, sandbox and CNI 100 to 500 ms, container under 1 s'; cold node: 'pull and unpack minutes, PVC attach 5 to 60 s, model load minutes'. Text at least 24px.",
+  "anchor": "## 8. Measuring pod startup latency",
+  "alt": "A startup timeline with the object or metric that measures each interval.",
+  "cap": "Build the startup timeline from conditions, events and kubelet metrics, then attack the longest segment."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-cold-start-fixes",
+  "title": "Cutting a 12 minute cold start to under 90 seconds",
+  "spec": "Before and after bar: 'cold start of 64 GPU nodes: 12 minutes' to 'under 90 seconds'. Six numbered fixes, each paired with the delay it removes: 1 'local pull-through cache with P2P distribution (Spegel or Dragonfly), lazy-pulling snapshotter (SOCI or eStargz), pre-pull with a DaemonSet' removes registry pull storms. 2 'serializeImagePulls false, maxParallelImagePulls 4, containerd on dedicated NVMe' removes serialized pulls. 3 'weights from a pre-mounted parallel filesystem (Lustre, WEKA, VAST) or local NVMe emptyDir, not 64 cloud volume attaches' removes FailedAttachVolume waits. 4 'fsGroupChangePolicy OnRootMismatch' removes recursive chown. 5 'light initContainers, never download 100 GB per boot' removes init delay. 6 'startupProbe periodSeconds 2 to 5 s' makes readiness show up sooner. Theme: 'move work out of the critical path of each pod start'. Text at least 24px.",
+  "anchor": "## 8. Measuring pod startup latency",
+  "alt": "Six changes that remove specific delays from a 64 node GPU pod cold start.",
+  "cap": "Each fix removes one delay from the critical path of a pod start."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "p3-0508-pod-stage-symptoms",
+  "title": "Match the symptom to the lifecycle stage",
+  "spec": "Ten-row ladder, one row per stage with its symptom and first command. Admission: forbidden, exceeded quota, webhook denied -> API error text, describe resourcequota. Scheduling: Pending with no node -> describe pod events, taints, Kueue Workload. Kubelet admit: OutOf..., NodeAffinity, TopologyAffinityError -> describe pod, kubelet logs, device plugin health. Volumes: ContainerCreating, FailedMount, FailedAttachVolume, Multi-Attach error -> events, kubectl get volumeattachment, CSI logs. Sandbox and CNI: FailedCreatePodSandBox -> CNI logs, /etc/cni/net.d, IPAM exhaustion, crictl pods. Image: ErrImagePull, ImagePullBackOff -> crictl pull, credentials, rate limits, DNS. Create or start: CreateContainerError, RunContainerError, StartError -> journalctl -u containerd, runc text. Run: CrashLoopBackOff, OOMKilled -> logs --previous, exit codes, dmesg. Readiness: Running but 0/1 -> probe events, app logs. Termination: Terminating forever -> kubelet logs, lsof or fuser on mounts, crictl ps -a. Text at least 24px.",
+  "anchor": "## 9. Debugging by lifecycle stage",
+  "alt": "Ten lifecycle stages each paired with their typical symptom and first commands.",
+  "cap": "Place the symptom on the lifecycle first, then run the commands for that stage."
+ }
+]

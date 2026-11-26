@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "01",
+  "name": "p3-0101-pagetable-example",
+  "title": "Worked example: translating two virtual addresses with a 4 KiB page table",
+  "spec": "Left half: a small page table drawn as a two-column table headed 'Virtual page' and 'Physical frame' with rows '2 -> 15' and '3 -> 9' and a grey row '7 -> not mapped'. Page size label 'Page = 4 KiB = 4,096 bytes'. Right half, two horizontal lanes. Lane A (green) headed 'Virtual address 8,320': step 1 box '8,320 = 2 * 4096 + 128' splits into two small boxes 'Virtual page 2' and 'Offset 128'; step 2 arrow into the page table row '2 -> 15'; step 3 box 'Physical frame 15 + offset 128' ending at a RAM block labelled 'Physical RAM, frame 15'. Lane B (orange, the single most important item) headed 'Virtual address 28,736': step 1 box '28,736 = 7 * 4096 + 64' splits into 'Virtual page 7' and 'Offset 64'; step 2 arrow into the grey row '7 -> not mapped'; step 3 box 'MMU raises a page fault'; step 4 box 'Kernel takes over: loads the page, allocates a fresh one, or kills the program (segmentation fault)'. Numbered circles 1-3 on lane A and 1-4 on lane B. Small caption under the table: 'The MMU does this in hardware on every access'.",
+  "anchor": "### Job 2: managing memory",
+  "alt": "A worked example translating virtual address 8,320 through a page table to physical frame 15, and virtual address 28,736 hitting an unmapped page and causing a page fault.",
+  "cap": "Worked example: virtual page 2 maps to frame 15 and the access succeeds, while virtual page 7 is not mapped and raises a page fault."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "01",
+  "name": "p3-0101-d-versus-z",
+  "title": "Why kill -9 fails on state D and on state Z",
+  "spec": "Two side-by-side panels with green headings. Left panel 'State D: uninterruptible sleep': a stack of boxes top to bottom 'Process (still alive)', arrow down to 'Inside a system call in the kernel', arrow down to 'Waiting on I/O: dead NFS server, failing disk, hung driver' (disk cylinder icon). A red-free crossed arrow from a box 'kill -9' that stops at the process with the label 'Signals are not delivered until the system call returns'. Under it a green box 'Fix: repair the mount or device, then look at dmesg'. Right panel 'State Z: zombie': boxes 'Process already finished', 'Memory released', 'Only a process-table entry remains (shown as defunct)'. Box 'Parent process' with an arrow labelled 'wait4()' to the entry and the note 'Entry is removed when the parent calls wait4()'. Under it a green box 'Fix: make the parent collect it; PID 1 adopts orphans'. Orange highlight only on the sentence 'If you see D, stop sending signals and look at the mount'. Bottom row shows the ps STAT letters 'S sleeping', 'R running', 'D uninterruptible', 'Z zombie' as four small tags.",
+  "anchor": "### 3. A process that \"cannot be killed\": state D",
+  "alt": "Two panels comparing a process in state D, stuck in a kernel system call waiting on I/O, with a zombie in state Z, which has finished and waits for its parent to call wait4.",
+  "cap": "State D is alive and waiting inside the kernel on I/O, while state Z is already finished and only waits for its parent to collect it."
+ }
+]

@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+  <title>A node that labels itself: custom facts in /etc/ansible/facts.d</title>
+  <desc>Custom facts in /etc/ansible/facts.d on target machines allow hosts to declare local attributes via INI or JSON executables feeding ansible_local during fact gathering.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background Canvas -->
+  <rect width="1600" height="1170" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A node that labels itself: </tspan>
+    <tspan x="800" dy="54">custom facts in /etc/ansible/facts.d</tspan>
+  </text>
+
+  <!-- ==================== FLOW SECTION: SOURCE FILES ON TARGET ==================== -->
+  <g id="source-files-container">
+    <rect x="40" y="140" width="1520" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Card 1: site.fact (INI) -->
+    <g id="card-site-fact">
+      <rect x="64" y="156" width="670" height="158" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(86, 172)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 6 L 36 6 L 48 18 L 48 50 L 8 50 Z" />
+        <polyline points="36,6 36,18 48,18" />
+        <line x1="16" y1="26" x2="32" y2="26" />
+        <line x1="16" y1="34" x2="40" y2="34" />
+        <line x1="16" y1="42" x2="28" y2="42" />
+      </g>
+      <text x="160" y="215" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="160" dy="0" font-weight="bold">site.fact (INI): </tspan>
+        <tspan x="160" dy="38" font-family="monospace">[location] rack=r07, rail=3</tspan>
+      </text>
+    </g>
+    <!-- Card 2: gpu.fact (executable) -->
+    <g id="card-gpu-fact">
+      <rect x="754" y="156" width="786" height="158" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <g transform="translate(776, 172)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="40" rx="5" />
+        <polyline points="14,22 22,28 14,34" />
+        <line x1="26" y1="34" x2="38" y2="34" />
+      </g>
+      <text x="850" y="194" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="850" dy="0" font-weight="bold">gpu.fact (executable, mode 0755): </tspan>
+        <tspan x="850" dy="32" font-family="monospace">#!/bin/sh; </tspan>
+        <tspan x="850" dy="32" font-family="monospace">n=$(nvidia-smi -L 2&gt;/dev/null | wc -l); </tspan>
+        <tspan x="850" dy="32" font-family="monospace">echo {&quot;count&quot;: $n}</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== ARROW: PLACED IN FACTS.D & GATHERED ==================== -->
+  <g id="flow-arrow-group">
+    <!-- Arrow linking files container to ansible_local container -->
+    <line x1="96" y1="330" x2="96" y2="470" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <!-- Gathering label panel -->
+    <rect x="140" y="354" width="1420" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(160, 372)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 12 L 20 12 L 26 18 L 50 18 L 50 46 L 6 46 Z" />
+      <circle cx="28" cy="32" r="6" />
+    </g>
+    <text x="240" y="392" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" dy="0">placed in /etc/ansible/facts.d/ on the target; any .fact file, or any executable, </tspan>
+      <tspan x="240" dy="34">is picked up during fact gathering; INI or JSON, or an executable printing JSON</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== DESTINATION: ANSIBLE_LOCAL ==================== -->
+  <g id="ansible-local-container">
+    <rect x="40" y="470" width="1520" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(60, 482)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="16" rx="3" />
+      <rect x="6" y="32" width="44" height="16" rx="3" />
+      <circle cx="14" cy="16" r="2.5" fill="#207448" />
+      <circle cx="14" cy="40" r="2.5" fill="#207448" />
+      <line x1="34" y1="16" x2="42" y2="16" />
+      <line x1="34" y1="40" x2="42" y2="40" />
+    </g>
+    <text x="800" y="508" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">ansible_local.&lt;name&gt;</text>
+    <rect x="140" y="534" width="670" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="475" y="576" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ansible_local.location.rack</text>
+    <rect x="850" y="534" width="670" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1185" y="576" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ansible_local.gpu.count</text>
+  </g>
+
+  <!-- ==================== TASK STRIP ==================== -->
+  <g id="task-strip">
+    <rect x="40" y="644" width="1520" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(60, 666)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="6" width="40" height="44" rx="4" />
+      <line x1="16" y1="16" x2="36" y2="16" />
+      <line x1="16" y1="26" x2="36" y2="26" />
+      <line x1="16" y1="36" x2="28" y2="36" />
+    </g>
+    <text x="140" y="684" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0" font-weight="bold">copy writes gpu.fact; setup with filter ansible_local re-reads it; </tspan>
+      <tspan x="140" dy="34" font-family="monospace">debug msg: {{ ansible_local.gpu.count }} GPUs on {{ inventory_hostname }}</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== THREE CALLOUTS ==================== -->
+  <!-- Callout 1: Live hardware counts (Orange highlight) -->
+  <g id="callout-live-script">
+    <rect x="40" y="768" width="488" height="286" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(256, 786)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <line x1="18" y1="2" x2="18" y2="10" />
+      <line x1="28" y1="2" x2="28" y2="10" />
+      <line x1="38" y1="2" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="54" />
+      <line x1="28" y1="46" x2="28" y2="54" />
+      <line x1="38" y1="46" x2="38" y2="54" />
+      <circle cx="28" cy="28" r="6" fill="#db8129" />
+    </g>
+    <text x="284" y="876" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="284" dy="0">the script runs on the target, </tspan>
+      <tspan x="284" dy="34">so it always counts the </tspan>
+      <tspan x="284" dy="34">GPUs actually present, even </tspan>
+      <tspan x="284" dy="34">if the inventory was written </tspan>
+      <tspan x="284" dy="34">before a card was replaced</tspan>
+    </text>
+  </g>
+  <!-- Callout 2: Autonomous Node Labeling -->
+  <g id="callout-self-label">
+    <rect x="556" y="768" width="488" height="286" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(772, 786)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 28 L 26 12 L 46 12 L 46 32 L 30 48 Z" />
+      <circle cx="38" cy="20" r="3" fill="#207448" />
+    </g>
+    <text x="800" y="876" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">the node carries its own </tspan>
+      <tspan x="800" dy="34">label, so the playbook </tspan>
+      <tspan x="800" dy="34">does not need a separate </tspan>
+      <tspan x="800" dy="34">spreadsheet that might </tspan>
+      <tspan x="800" dy="34">be out of date</tspan>
+    </text>
+  </g>
+  <!-- Callout 3: Host Independence -->
+  <g id="callout-host-independence">
+    <rect x="1072" y="768" width="488" height="286" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1288, 786)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 46 14 L 46 28 C 46 40 28 50 28 50 C 28 50 10 40 10 28 L 10 14 Z" />
+      <polyline points="20,28 26,34 36,22" />
+    </g>
+    <text x="1316" y="906" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1316" dy="0">attributes stay with the </tspan>
+      <tspan x="1316" dy="36">host and do not depend on </tspan>
+      <tspan x="1316" dy="36">the control node</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1080" width="1520" height="64" rx="12" fill="#207448" />
+    <g transform="translate(64, 1088)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18" />
+      <polyline points="16,24 22,30 32,18" />
+    </g>
+    <text x="800" y="1122" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The supported way for a host to declare its own attributes</text>
+  </g>
+
+</svg>

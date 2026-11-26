@@ -1,0 +1,118 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>How the kubelet counts memory available</title>
+  <desc>Visual explanation comparing how Linux free in /proc/meminfo differs from the Kubernetes kubelet memory.available calculation based on working set and disk signals.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">How the kubelet counts memory available</text>
+
+  <!-- ==================== TWO BARS FOR THE SAME NODE ==================== -->
+
+  <!-- Left Bar Container: free in /proc/meminfo -->
+  <g id="left-bar-container">
+    <rect x="60" y="105" width="690" height="550" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    <!-- Memory Chip Icon (56px, stroke 4) -->
+    <g transform="translate(85, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4"/>
+      <line x1="18" y1="2" x2="18" y2="10"/>
+      <line x1="28" y1="2" x2="28" y2="10"/>
+      <line x1="38" y1="2" x2="38" y2="10"/>
+      <line x1="18" y1="46" x2="18" y2="54"/>
+      <line x1="28" y1="46" x2="28" y2="54"/>
+      <line x1="38" y1="46" x2="38" y2="54"/>
+      <line x1="2" y1="18" x2="10" y2="18"/>
+      <line x1="2" y1="28" x2="10" y2="28"/>
+      <line x1="2" y1="38" x2="10" y2="38"/>
+      <line x1="46" y1="18" x2="54" y2="18"/>
+      <line x1="46" y1="28" x2="54" y2="28"/>
+      <line x1="46" y1="38" x2="54" y2="38"/>
+    </g>
+
+    <!-- Left Bar Title (30px bold monospace) -->
+    <text x="160" y="162" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">free in /proc/meminfo</text>
+
+    <!-- Stacked RAM representation -->
+    <!-- Large page cache segment (fill RAM) -->
+    <rect x="95" y="205" width="620" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Left Bar Description text inside the cache block -->
+    <text x="405" y="345" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="405" dy="0">MemFree tiny because Linux fills RAM</tspan>
+      <tspan x="405" dy="38">with Buffers and Cached page cache</tspan>
+    </text>
+
+    <!-- Tiny MemFree sliver at the bottom -->
+    <rect x="95" y="530" width="620" height="95" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4"/>
+  </g>
+
+  <!-- Right Bar Container: kubelet memory.available -->
+  <g id="right-bar-container">
+    <rect x="790" y="105" width="750" height="550" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    <!-- Kubelet calculation / Gear Icon (56px, stroke 4) -->
+    <g transform="translate(815, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14"/>
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12"/>
+    </g>
+
+    <!-- Right Bar Title / Formula (30px bold monospace) -->
+    <text x="890" y="152" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="890" dy="0">kubelet memory.available =</tspan>
+      <tspan x="890" dy="38">NodeCapacity minus working_set</tspan>
+    </text>
+
+    <!-- Subformula Box: working_set calculation -->
+    <rect x="825" y="220" width="680" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1165" y="258" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1165" dy="0">working_set =</tspan>
+      <tspan x="1165" dy="34">total_usage minus total_inactive_file</tspan>
+    </text>
+
+    <!-- Segments counted in the working set -->
+    <rect x="825" y="335" width="680" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1165" y="395" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1165" dy="0">anonymous and heap, pinned memory,</tspan>
+      <tspan x="1165" dy="36">/dev/shm tmpfs, active file cache</tspan>
+    </text>
+
+    <!-- Segment left out (Orange highlight #db8129 - single most important item) -->
+    <rect x="825" y="485" width="680" height="140" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="1165" y="545" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="1165" dy="0">inactive_file page cache,</tspan>
+      <tspan x="1165" dy="36">easily reclaimable</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== SECOND SMALL PANEL: DISK SIGNALS ==================== -->
+  <g id="disk-signals-container">
+    <rect x="60" y="685" width="1480" height="205" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    <!-- Disk Cylinder Icon (56px, stroke 4) -->
+    <g transform="translate(85, 705)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="20" ry="8"/>
+      <path d="M 8 14 V 42 C 8 46 17 50 28 50 C 39 50 48 46 48 42 V 14"/>
+      <path d="M 8 28 C 8 32 17 36 28 36 C 39 36 48 32 48 28"/>
+    </g>
+
+    <!-- Panel Title (30px bold sans-serif) -->
+    <text x="160" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Disk signals</text>
+
+    <!-- Panel Body (24px sans-serif) -->
+    <text x="85" y="792" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">nodefs = root filesystem with /var/lib/kubelet, emptyDir, logs in /var/log/pods;</tspan>
+      <tspan x="85" dy="34">imagefs = /var/lib/containerd image layers and writable layers;</tspan>
+      <tspan x="85" dy="34">a dedicated NVMe for containerd keeps a 30 GB pull off the OS root disk</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="60" y="910" width="1480" height="75" rx="12" fill="#207448"/>
+    <text x="800" y="955" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">a node can look full in free yet have plenty of memory available</tspan>
+    </text>
+  </g>
+</svg>

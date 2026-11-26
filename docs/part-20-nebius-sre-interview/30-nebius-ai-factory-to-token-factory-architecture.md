@@ -38,26 +38,9 @@ The word serverless appears in both, and it means different things in each. Serv
 
 The difference shows up in who does the work. With your own Managed Kubernetes you choose node groups, deploy the engine, run the gateway and own the cluster operations. With a Token Factory Dedicated Endpoint you pick a template, region, GPU type, GPUs per replica and a replica range. Nebius runs the service infrastructure, and you get no Kubernetes control surface. The first gives you more control and more work, and the second gives you fewer knobs and less to operate.
 
-```mermaid
-flowchart LR
-  Client["Client app"] -->|"API key and request"| DataPlane["Regional data-plane URL"]
-  Client -->|"manage endpoint"| Control["Control plane API"]
-  Control -->|"returns endpoint_id and routing_key"| Client
-  DataPlane --> Shared["Public Serverless pool"]
-  DataPlane --> Dedicated["Dedicated Endpoint"]
-  Shared --> Runtime["Model runtime: internals not public"]
-  Dedicated --> Runtime
-  Runtime --> Stream["Token stream"]
-  Dedicated --> Metrics["Dedicated-only metrics"]
-  DataPlane -.-> Billing["Usage and billing views: meter design not public"]
-  subgraph Cloud["AI Cloud resources a customer can build"]
-    Tenant["Tenant and IAM"] --> Proj["Project"]
-    Proj --> Net["VPC and subnet"]
-    Proj --> GPU["GPU VMs and clusters"]
-    Proj --> K8s["Managed Kubernetes"]
-    Proj --> Store["Disks, filesystems, objects"]
-  end
-```
+![Draw the product boundary before the boxes [official]](./img/m20-30-1.svg)
+
+*Figure 20.30.1. Draw the product boundary before the boxes [official], as a diagram.*
 
 Read the diagram from left to right and notice what is missing. The diagram shows the customer-visible surfaces only. Nebius's product blog says Dedicated Endpoints run on Nebius AI Cloud, on dedicated NVIDIA GPU clusters in data centers Nebius owns and operates across Europe and the US [vendor]. It does not say how an endpoint maps to cloud resources, so the diagram draws no such link. The dashed arrow to billing is there for the same reason, because the page does not show how the meter is designed.
 

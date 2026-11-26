@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Allocations, batch jobs and steps</title>
+  <desc>Slurm job lifecycle from submission, node prologue initialization, batch step execution on node 0, distributed job steps across nodes, to termination and epilog cleanup.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Allocations, batch jobs and steps</text>
+
+  
+
+  
+  <g id="node-submit">
+    <rect x="80" y="120" width="430" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="267" y="145" width="56" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="267" y1="159" x2="323" y2="159" stroke="#207448" stroke-width="2" />
+    <path d="M 276 172 L 284 178 L 276 184" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="290" y1="184" x2="302" y2="184" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="295" y="235">1. Submit</tspan>
+      <tspan x="295" y="272" font-family="monospace" font-size="24" font-weight="normal">(sbatch / salloc / srun)</tspan>
+    </text>
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="295" y="355">SPANK &amp; <tspan font-family="monospace">job_submit</tspan></tspan>
+      <tspan x="295" y="392">plugins</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="510" y1="295" x2="585" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="node-prolog">
+    <rect x="585" y="120" width="430" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="772" y="145" width="56" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="782" cy="155" r="2.5" fill="#207448" />
+    <circle cx="792" cy="155" r="2.5" fill="#207448" />
+    <rect x="772" y="172" width="56" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="782" cy="182" r="2.5" fill="#207448" />
+    <circle cx="792" cy="182" r="2.5" fill="#207448" />
+    <circle cx="818" cy="182" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <path d="M 812 182 L 816 186 L 824 178" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="800" y="235">2. Job Start</tspan>
+      <tspan x="800" y="272" font-size="24" font-weight="normal">(All Allocated Nodes)</tspan>
+    </text>
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" y="355">Root Prolog: verify</tspan>
+      <tspan x="800" y="392">GPUs &amp; <tspan font-family="monospace">/dev/shm</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1015" y1="295" x2="1090" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="node-batch">
+    <rect x="1090" y="120" width="430" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="1277" y="145" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="3.5" />
+    <rect x="1289" y="157" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 1287 139 L 1287 145 M 1297 139 L 1297 145 M 1307 139 L 1307 145 M 1317 139 L 1317 145 M 1287 201 L 1287 207 M 1297 201 L 1297 207 M 1307 201 L 1307 207 M 1317 201 L 1317 207" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1305" y="235">3. Batch Step</tspan>
+      <tspan x="1305" y="272" font-size="24" font-weight="normal">(Node 0 Only)</tspan>
+    </text>
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1305" y="355"><tspan font-family="monospace">slurmstepd</tspan> +</tspan>
+      <tspan x="1305" y="392"><tspan font-family="monospace">cgroup</tspan> namespace</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <path d="M 1305 470 L 1305 508 Q 1305 520 1293 520 L 522 520 Q 510 520 510 532 L 510 570" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+
+  
+  <g id="node-steps">
+    <rect x="270" y="570" width="480" height="350" rx="16" fill="#fdfaf6" stroke="#db8129" stroke-width="3.5" />
+    
+    <rect x="485" y="595" width="20" height="20" rx="4" fill="none" stroke="#db8129" stroke-width="3" />
+    <rect x="515" y="595" width="20" height="20" rx="4" fill="none" stroke="#db8129" stroke-width="3" />
+    <rect x="485" y="625" width="20" height="20" rx="4" fill="none" stroke="#db8129" stroke-width="3" />
+    <rect x="515" y="625" width="20" height="20" rx="4" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 505 605 L 515 605 M 505 635 L 515 635 M 495 615 L 495 625 M 525 615 L 525 625" stroke="#db8129" stroke-width="2.5" />
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="510" y="685">4. Job Steps</tspan>
+      <tspan x="510" y="722" font-family="monospace" font-size="24" font-weight="normal">(srun JOBID.0, .1)</tspan>
+    </text>
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" y="805">Tasks across nodes +</tspan>
+      <tspan x="510" y="842" font-family="monospace">HealthCheckProgram</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="750" y1="745" x2="850" y2="745" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="node-end">
+    <rect x="850" y="570" width="480" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <path d="M 1090 595 L 1118 607 C 1118 630 1106 646 1090 653 C 1074 646 1062 630 1062 607 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <path d="M 1081 623 L 1087 629 L 1099 617" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1090" y="705">5. Termination &amp; Epilog</tspan>
+    </text>
+
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" y="805" font-family="monospace">SIGTERM -&gt; SIGKILL +</tspan>
+      <tspan x="1090" y="842">Root Epilog cleanup</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>How many 2,000-token prefixes fit in each cache tier</title>
+  <desc>Visual explanation of prefix cache capacity across GPU KV budget, Host RAM, and NVMe tiers with isolation and failure considerations.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How many 2,000-token prefixes fit in each cache tier</text>
+
+  
+  <g id="header-box">
+    <rect x="60" y="105" width="1480" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(85, 132)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="14" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="14" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="14" y1="38" x2="30" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="165" y="152" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">One prefix = 2,000 tokens x 147,456 B per token = 0.295 GB;</tspan>
+      <tspan x="165" dy="36">the hot set of 5,000 prefixes = 1.475 TB (assumed)</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="nvme-tier">
+    <rect x="60" y="245" width="1480" height="535" rx="18" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(90, 275)">
+      <ellipse cx="28" cy="14" rx="24" ry="10" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4 14 v 28 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10 v -28" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 4 28 c 0 5.5 10.7 10 24 10 s 24 -4.5 24 -10" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="165" y="312" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NVMe 8 TB: 8,000 / 0.295 = 27,126 prefixes</text>
+
+    
+    <g id="ram-tier">
+      <rect x="100" y="355" width="1400" height="395" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      
+      <g transform="translate(130, 385)">
+        <rect x="4" y="8" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+        <line x1="14" y1="42" x2="14" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+        <line x1="22" y1="42" x2="22" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+        <line x1="34" y1="42" x2="34" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+        <line x1="42" y1="42" x2="42" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+        <circle cx="18" cy="24" r="3" fill="#207448"/>
+        <circle cx="28" cy="24" r="3" fill="#207448"/>
+        <circle cx="38" cy="24" r="3" fill="#207448"/>
+      </g>
+      <text x="205" y="422" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host RAM 512 GB: 512 / 0.295 = 1,736 prefixes</text>
+
+      
+      <g id="gpu-kv-tier">
+        <rect x="140" y="470" width="1320" height="250" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+        
+        <g transform="translate(180, 565)">
+          <rect x="6" y="6" width="44" height="44" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+          <line x1="16" y1="0" x2="16" y2="6" stroke="#db8129" stroke-width="4"/>
+          <line x1="28" y1="0" x2="28" y2="6" stroke="#db8129" stroke-width="4"/>
+          <line x1="40" y1="0" x2="40" y2="6" stroke="#db8129" stroke-width="4"/>
+          <line x1="16" y1="50" x2="16" y2="56" stroke="#db8129" stroke-width="4"/>
+          <line x1="28" y1="50" x2="28" y2="56" stroke="#db8129" stroke-width="4"/>
+          <line x1="40" y1="50" x2="40" y2="56" stroke="#db8129" stroke-width="4"/>
+          <line x1="0" y1="16" x2="6" y2="16" stroke="#db8129" stroke-width="4"/>
+          <line x1="0" y1="28" x2="6" y2="28" stroke="#db8129" stroke-width="4"/>
+          <line x1="0" y1="40" x2="6" y2="40" stroke="#db8129" stroke-width="4"/>
+          <line x1="50" y1="16" x2="56" y2="16" stroke="#db8129" stroke-width="4"/>
+          <line x1="50" y1="28" x2="56" y2="28" stroke="#db8129" stroke-width="4"/>
+          <line x1="50" y1="40" x2="56" y2="40" stroke="#db8129" stroke-width="4"/>
+          <rect x="16" y="16" width="24" height="24" fill="none" stroke="#db8129" stroke-width="3"/>
+        </g>
+        <text x="260" y="602" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU KV budget 50.6 GB: 50.6 / 0.295 = 171 prefixes</text>
+      </g>
+    </g>
+  </g>
+
+  
+  
+  <g id="isolation-panel">
+    <rect x="60" y="805" width="725" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(85, 830)">
+      <path d="M 28 6 L 48 14 V 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 V 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="28" y1="18" x2="28" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="165" y="854" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">keys by prefix hash, per tenant,</tspan>
+      <tspan x="165" dy="34">never shared across tenants because</tspan>
+      <tspan x="165" dy="34">a shared cache can leak timing</tspan>
+      <tspan x="165" dy="34">information</tspan>
+    </text>
+  </g>
+
+  
+  <g id="failure-panel">
+    <rect x="815" y="805" width="725" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(840, 830)">
+      <path d="M 12 28 A 18 18 0 1 1 28 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <polyline points="28,36 28,46 38,46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+    </g>
+    <text x="920" y="854" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0">a cache node restarts, every hit</tspan>
+      <tspan x="920" dy="34">becomes a miss, prefill load jumps</tspan>
+      <tspan x="920" dy="34">and TTFT breaks, so cold-cache</tspan>
+      <tspan x="920" dy="34">load must be a tested capacity case</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer-bar">
+    <rect x="60" y="1035" width="1480" height="125" rx="14" fill="#207448"/>
+    
+    <g transform="translate(85, 1070)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#ffffff" stroke-width="4"/>
+      <line x1="28" y1="24" x2="28" y2="38" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="16" r="3" fill="#ffffff"/>
+    </g>
+    <text x="165" y="1084" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="165" dy="0">only the NVMe tier holds the whole 5,000 prefix set; each tier needs a load-versus-recompute</tspan>
+      <tspan x="165" dy="36">number to justify it (see the crossover figure: recompute 82 ms, RAM 4.6 ms, NVMe 42 ms)</tspan>
+    </text>
+  </g>
+</svg>

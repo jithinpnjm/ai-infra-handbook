@@ -34,13 +34,9 @@ This chapter builds on Part 1 (boot process, systemd), Part 2 (DHCP, VLANs) and 
 
 Picture a node that powers on and sits at a blank screen. Something went wrong, and the first question is which step it reached. A node that will not boot can fail at any of five steps, so you should know the order. Network boot changes where some of the files come from, but the order of the steps stays the same.
 
-```mermaid
-flowchart LR
-  FW["1. Firmware (BIOS / UEFI)<br/>DHCPDISCOVER (Opt 60, 93)"] --> TFTP["2. DHCP + TFTP (Port 69)<br/>Loads undionly.kpxe / ipxe.efi"]
-  TFTP --> iPXE["3. iPXE Chain-Load (Opt 175)<br/>Fetches HTTP boot.ipxe -> node.ipxe"]
-  iPXE --> HTTP["4. HTTP Image Fetch<br/>vmlinuz + initrd.img + rootfs.squashfs"]
-  HTTP --> Init["5. Rootfs (OverlayFS / Disk)<br/>systemd PID 1 + cloud-init / Slurm"]
-```
+![The boot chain](./img/m6-22-1.svg)
+
+*Figure 6.22.1. The boot chain, as a diagram.*
 
 Firmware starts first. The BIOS or UEFI firmware initialises the hardware and picks a boot device from the boot order, which can be disk, USB or network. BIOS is the older firmware style, and UEFI is the newer one that replaced it on most servers.
 

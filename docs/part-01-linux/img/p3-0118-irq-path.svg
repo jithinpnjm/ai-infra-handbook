@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Interrupt path: why one core is busy with network work</title>
+  <desc>Visual explanation of the hardware interrupt path from NIC, NVMe or GPU through CPU preemption to softirqs, including commands to find and control interrupt placement.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="50" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Interrupt path: why one core is busy with network work</text>
+
+  
+
+  
+  <rect x="50" y="110" width="450" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="80" y="145" width="60" height="42" rx="4" />
+    <path d="M 80 140 L 80 195" />
+    <rect x="100" y="156" width="22" height="20" rx="2" />
+    <path d="M 92 187 L 92 195 M 102 187 L 102 195 M 112 187 L 112 195 M 122 187 L 122 195 M 132 187 L 132 195" />
+    <rect x="72" y="157" width="8" height="18" rx="1" fill="#207448" />
+  </g>
+
+  
+  <circle cx="454" cy="166" r="24" fill="#207448" />
+  <text x="454" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <text x="75" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">NIC, NVMe or GPU raises</tspan>
+    <tspan x="75" dy="36">a hardware interrupt</tspan>
+  </text>
+
+  
+  <line x1="500" y1="275" x2="571" y2="275" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="575" y="110" width="450" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="610" y="142" width="48" height="48" rx="6" />
+    <rect x="622" y="154" width="24" height="24" rx="3" />
+    
+    <path d="M 618 134 L 618 142 M 634 134 L 634 142 M 650 134 L 650 142" />
+    <path d="M 618 190 L 618 198 M 634 190 L 634 198 M 650 190 L 650 198" />
+    <path d="M 602 150 L 610 150 M 602 166 L 610 166 M 602 182 L 610 182" />
+    <path d="M 658 150 L 666 150 M 658 166 L 666 166 M 658 182 L 666 182" />
+  </g>
+
+  
+  <circle cx="979" cy="166" r="24" fill="#207448" />
+  <text x="979" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+  
+  <text x="600" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">Runs on the CPU the IRQ</tspan>
+    <tspan x="600" dy="34">is routed to and preempts</tspan>
+    <tspan x="600" dy="34">whatever runs there (shows</tspan>
+    <tspan x="600" dy="34">as hi in top and mpstat)</tspan>
+  </text>
+
+  
+  <line x1="1025" y1="275" x2="1096" y2="275" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1100" y="110" width="450" height="330" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1145" cy="166" r="14" />
+    <path d="M 1145 144 L 1145 150 M 1145 182 L 1145 188 M 1123 166 L 1129 166 M 1161 166 L 1167 166 M 1130 151 L 1135 156 M 1155 176 L 1160 181 M 1130 181 L 1135 176 M 1155 156 L 1160 151" />
+  </g>
+
+  
+  <circle cx="1504" cy="166" r="24" fill="#207448" />
+  <text x="1504" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+  
+  <text x="1125" y="215" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1125" dy="0">The driver does the urgent</tspan>
+    <tspan x="1125" dy="33">part at once and schedules</tspan>
+    <tspan x="1125" dy="33">the rest: a softirq (shows</tspan>
+    <tspan x="1125" dy="33">as si; ksoftirqd handles it;</tspan>
+    <tspan x="1125" dy="33">network receive processing</tspan>
+    <tspan x="1125" dy="33">is one example)</tspan>
+  </text>
+
+  
+
+  
+  <rect x="50" y="470" width="725" height="535" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="92" cy="515" r="14" />
+    <line x1="103" y1="526" x2="116" y2="539" />
+  </g>
+  <text x="135" y="527" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Find it</text>
+
+  
+  
+  <rect x="75" y="560" width="675" height="115" rx="10" fill="#ffffff" stroke="#cadbd0" stroke-width="1.5" />
+  <text x="100" y="605">
+    <tspan x="100" dy="0" font-family="ui-monospace, monospace" font-weight="bold" font-size="24" fill="#207448">mpstat -P ALL 1</tspan>
+    <tspan x="100" dy="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">and look for one CPU with high %soft</tspan>
+  </text>
+
+  
+  <rect x="75" y="695" width="675" height="115" rx="10" fill="#ffffff" stroke="#cadbd0" stroke-width="1.5" />
+  <text x="100" y="740">
+    <tspan x="100" dy="0" font-family="ui-monospace, monospace" font-weight="bold" font-size="24" fill="#207448">cat /proc/softirqs</tspan>
+    <tspan x="100" dy="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">to see which softirq is busy</tspan>
+  </text>
+
+  
+  <rect x="75" y="830" width="675" height="145" rx="10" fill="#ffffff" stroke="#cadbd0" stroke-width="1.5" />
+  <text x="100" y="885">
+    <tspan x="100" dy="0" font-family="ui-monospace, monospace" font-weight="bold" font-size="24" fill="#207448">watch -n1 grep -E</tspan>
+    <tspan x="100" dy="36" font-family="ui-monospace, monospace" font-weight="bold" font-size="24" fill="#207448">"mlx|nvme|eth" /proc/interrupts</tspan>
+  </text>
+
+  
+  <rect x="825" y="470" width="725" height="535" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <line x1="860" y1="503" x2="860" y2="535" />
+    <line x1="873" y1="503" x2="873" y2="535" />
+    <line x1="886" y1="503" x2="886" y2="535" />
+    <circle cx="860" cy="513" r="4" fill="#207448" />
+    <circle cx="873" cy="525" r="4" fill="#207448" />
+    <circle cx="886" cy="510" r="4" fill="#207448" />
+  </g>
+  <text x="910" y="527" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Control it</text>
+
+  
+  
+  <rect x="850" y="555" width="675" height="80" rx="10" fill="#ffffff" stroke="#cadbd0" stroke-width="1.5" />
+  <text x="875" y="590">
+    <tspan x="875" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">IRQ affinity:</tspan>
+    <tspan x="875" dy="32" font-family="ui-monospace, monospace" font-weight="bold" font-size="24" fill="#207448">/proc/irq/N/smp_affinity_list</tspan>
+  </text>
+
+  
+  <rect x="850" y="647" width="675" height="145" rx="10" fill="#ffffff" stroke="#cadbd0" stroke-width="1.5" />
+  <text x="875" y="682">
+    <tspan x="875" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">network queues: <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">ethtool -l</tspan> and <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">ethtool -L</tspan>;</tspan>
+    <tspan x="875" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">RSS and RPS through</tspan>
+    <tspan x="875" dy="34" font-family="ui-monospace, monospace" font-weight="bold" font-size="24" fill="#207448">/sys/class/net/eth0/queues/rx-*/rps_cpus</tspan>
+  </text>
+
+  
+  <rect x="850" y="804" width="675" height="66" rx="10" fill="#ffffff" stroke="#cadbd0" stroke-width="1.5" />
+  <text x="875" y="846">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" font-size="24" fill="#207448">irqaffinity=0-1</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"> at boot</tspan>
+  </text>
+
+  
+  <rect x="850" y="882" width="675" height="113" rx="10" fill="#ffffff" stroke="#cadbd0" stroke-width="1.5" />
+  <text x="875" y="916">
+    <tspan x="875" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">irqbalance spreads IRQs for you but</tspan>
+    <tspan x="875" dy="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">can fight manual pinning: stop it or set</tspan>
+    <tspan x="875" dy="32" font-family="ui-monospace, monospace" font-weight="bold" font-size="24" fill="#207448">IRQBALANCE_BANNED_CPUS</tspan>
+  </text>
+
+  
+  <rect x="50" y="1030" width="1500" height="75" rx="12" fill="#207448" />
+  <text x="800" y="1077" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Keep interrupts away from the cores that feed GPUs</text>
+
+</svg>

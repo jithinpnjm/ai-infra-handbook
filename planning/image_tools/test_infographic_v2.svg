@@ -1,0 +1,222 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Retry amplification: expected attempts per request</title>
+  <desc>Visual infographic explaining retry amplification: formula strip for expected attempts, empirical bar chart for k=4, circular loop of failure cascade, confirmation and mitigation controls, and partial outage operating rule.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1b3022" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title -->
+  <text x="40" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Retry amplification: expected attempts per request</text>
+
+  <!-- Formula Strip -->
+  <g transform="translate(40, 85)" filter="url(#shadow)">
+    <rect width="1520" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Formula Icon -->
+    <g transform="translate(24, 25)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <path d="M 14 26 Q 28 20 28 37 Q 28 54 42 48" />
+      <line x1="18" y1="37" x2="38" y2="37" />
+      <line x1="14" y1="60" x2="42" y2="60" />
+    </g>
+    <text x="108" y="44" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="108" dy="0" font-weight="bold">expected attempts = 1 + p + p squared + ... up to p to the power k minus 1,</tspan>
+      <tspan x="108" dy="34">where p is the chance one attempt fails and k is the attempts a client allows;</tspan>
+      <tspan x="108" dy="34">each term is the chance the request reaches that attempt</tspan>
+    </text>
+  </g>
+
+  <!-- Left Column: Bar Chart (Top) -->
+  <g transform="translate(40, 225)" filter="url(#shadow)">
+    <rect width="920" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Bar Chart Icon -->
+    <g transform="translate(28, 18)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="54" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+      <line x1="13" y1="36" x2="13" y2="25" stroke-width="4.5" stroke="#207448" />
+      <line x1="27" y1="36" x2="27" y2="16" stroke-width="4.5" stroke="#207448" />
+      <line x1="41" y1="36" x2="41" y2="9" stroke-width="4.5" stroke="#207448" />
+    </g>
+    <!-- Bar Chart Title -->
+    <text x="98" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">k = 4</text>
+
+    <!-- Bar 1 -->
+    <text x="28" y="104" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">p = 0.1: 1.11 attempts per request</text>
+    <rect x="580" y="86" width="310" height="24" rx="6" fill="#e8f1ea" />
+    <rect x="580" y="86" width="86" height="24" rx="6" fill="#207448" />
+
+    <!-- Bar 2 -->
+    <text x="28" y="150" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">p = 0.5: 1.875</text>
+    <rect x="580" y="132" width="310" height="24" rx="6" fill="#e8f1ea" />
+    <rect x="580" y="132" width="145" height="24" rx="6" fill="#207448" />
+
+    <!-- Bar 3 -->
+    <text x="28" y="196" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">p = 0.8: 2.95</text>
+    <rect x="580" y="178" width="310" height="24" rx="6" fill="#e8f1ea" />
+    <rect x="580" y="178" width="228" height="24" rx="6" fill="#207448" />
+  </g>
+
+  <!-- Left Column: Circular Loop Diagram (Bottom) -->
+  <g id="loop-diagram">
+    <!-- Connecting Loop Arrows -->
+    <!-- Arrow 1: Box 1 (top) to Box 2 (right) -->
+    <path d="M 725 515 L 784 515 Q 800 515 800 531 L 800 626" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+    <!-- Arrow 2: Box 2 (right) to Box 3 (bottom) -->
+    <path d="M 760 780 L 760 909 Q 760 925 744 925 L 739 925" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+    <!-- Arrow 3: Box 3 (bottom) to Box 4 (left) -->
+    <path d="M 255 925 L 211 925 Q 195 925 195 909 L 195 779" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+    <!-- Arrow 4: Box 4 (left) to Box 1 (top) -->
+    <path d="M 195 645 L 195 531 Q 195 515 211 515 L 261 515" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+    <!-- Loop Box 1 (Top) -->
+    <g transform="translate(270, 460)" filter="url(#shadow)">
+      <rect width="455" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <!-- Step 1 Number Circle -->
+      <circle cx="44" cy="38" r="24" fill="#207448" />
+      <text x="44" y="46" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <!-- Icon: server failure -->
+      <g transform="translate(80, 16)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="50" height="44" rx="6" fill="#e8f1ea" />
+        <line x1="10" y1="14" x2="40" y2="14" />
+        <line x1="10" y1="24" x2="40" y2="24" />
+        <line x1="14" y1="34" x2="36" y2="34" stroke-width="4" />
+      </g>
+      <!-- Box 1 Text -->
+      <text x="24" y="90" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">half the replicas fail</text>
+    </g>
+
+    <!-- Loop Box 2 (Right) -->
+    <g transform="translate(535, 630)" filter="url(#shadow)">
+      <rect width="425" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <!-- Step 2 Number Circle -->
+      <circle cx="44" cy="38" r="24" fill="#207448" />
+      <text x="44" y="46" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <!-- Icon: surge gauge -->
+      <g transform="translate(80, 16)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="50" height="44" rx="6" fill="#e8f1ea" />
+        <path d="M 10 32 Q 25 12 40 32" />
+        <line x1="25" y1="28" x2="35" y2="16" stroke-width="3.5" />
+      </g>
+      <!-- Box 2 Text -->
+      <text x="24" y="94" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+        <tspan x="24" dy="0">survivors get doubled</tspan>
+        <tspan x="24" dy="34">traffic and p rises</tspan>
+      </text>
+    </g>
+
+    <!-- Loop Box 3 (Bottom) - The Single Most Important Item in Orange -->
+    <g transform="translate(255, 840)" filter="url(#shadow)">
+      <rect width="480" height="170" rx="12" fill="#fff7f0" stroke="#db8129" stroke-width="3" />
+      <!-- Step 3 Number Circle (Orange) -->
+      <circle cx="44" cy="38" r="24" fill="#db8129" />
+      <text x="44" y="46" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <!-- Icon: retry circular loop (Orange) -->
+      <g transform="translate(80, 16)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="50" height="44" rx="6" fill="#fee9d6" />
+        <path d="M 35 18 A 12 12 0 1 0 38 27" />
+        <polyline points="35 13 35 20 42 20" />
+      </g>
+      <!-- Box 3 Text -->
+      <text x="24" y="92" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="24" dy="0">clients retry, so request</tspan>
+        <tspan x="24" dy="32">rate at the gateway exceeds</tspan>
+        <tspan x="24" dy="32">the user request rate</tspan>
+      </text>
+    </g>
+
+    <!-- Loop Box 4 (Left) -->
+    <g transform="translate(45, 650)" filter="url(#shadow)">
+      <rect width="360" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <!-- Step 4 Number Circle -->
+      <circle cx="44" cy="38" r="24" fill="#207448" />
+      <text x="44" y="46" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      <!-- Icon: rising load graph -->
+      <g transform="translate(80, 16)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="0" y="0" width="50" height="44" rx="6" fill="#e8f1ea" />
+        <polyline points="9 32 19 26 28 29 40 12" />
+        <polyline points="32 12 40 12 40 19" />
+      </g>
+      <!-- Box 4 Text -->
+      <text x="24" y="96" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">load rises again</text>
+    </g>
+  </g>
+
+  <!-- Right Column -->
+  <!-- Box A: Confirm -->
+  <g transform="translate(980, 225)" filter="url(#shadow)">
+    <rect width="580" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon: search / inspect -->
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="13" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="32" y1="32" x2="44" y2="44" />
+      <line x1="16" y1="22" x2="28" y2="22" />
+    </g>
+    <!-- Text -->
+    <text x="86" y="50" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">confirm:</text>
+    <text x="24" y="94" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">compare gateway request rate</tspan>
+      <tspan x="24" dy="32">against unique user requests; look for</tspan>
+      <tspan x="24" dy="35" font-family="monospace" font-weight="bold" font-size="24" fill="#207448">vllm:admission_rejections_total</tspan>
+      <tspan x="24" dy="35">rising together with client retries</tspan>
+    </text>
+  </g>
+
+  <!-- Box B: Mitigate Now -->
+  <g transform="translate(980, 505)" filter="url(#shadow)">
+    <rect width="580" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon: shield / shed -->
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 8 L 42 15 L 42 29 C 42 40 24 48 24 48 C 24 48 6 40 6 29 L 6 15 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+      <line x1="16" y1="26" x2="32" y2="26" stroke="#207448" stroke-width="3.5" />
+    </g>
+    <!-- Text -->
+    <text x="86" y="50" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">mitigate now:</text>
+    <text x="24" y="98" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">cut client retries, return 503</tspan>
+      <tspan x="24" dy="34">with a back-off hint, shed at</tspan>
+      <tspan x="24" dy="34">the edge</tspan>
+    </text>
+  </g>
+
+  <!-- Box C: Fix Later -->
+  <g transform="translate(980, 760)" filter="url(#shadow)">
+    <rect width="580" height="275" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon: gear / maintenance -->
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="9" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+      <path d="M 24 7 L 24 13 M 24 35 L 24 41 M 7 24 L 13 24 M 35 24 L 41 24 M 12 12 L 16 16 M 32 32 L 36 36 M 12 36 L 16 32 M 32 16 L 36 12" />
+    </g>
+    <!-- Text -->
+    <text x="86" y="50" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">fix later:</text>
+    <text x="24" y="96" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">retry budget (a cap on retries</tspan>
+      <tspan x="24" dy="34">as a fraction of requests),</tspan>
+      <tspan x="24" dy="34">jittered exponential back-off,</tspan>
+      <tspan x="24" dy="34">circuit breaker, idempotency keys</tspan>
+    </text>
+  </g>
+
+  <!-- Takeaway Bar at Bottom -->
+  <g transform="translate(40, 1060)" filter="url(#shadow)">
+    <rect width="1520" height="100" rx="10" fill="#207448" />
+    <!-- Icon: key takeaway shield / check -->
+    <g transform="translate(28, 26)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18" fill="#207448" />
+      <polyline points="15 24 21 30 33 18" />
+    </g>
+    <text x="96" y="44" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      <tspan x="96" dy="0">during a partial outage reduce attempts first,</tspan>
+      <tspan x="96" dy="34">more capacity will not catch up with a growing retry loop</tspan>
+    </text>
+  </g>
+</svg>

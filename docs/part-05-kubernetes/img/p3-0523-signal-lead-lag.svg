@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Leading and lagging signals for an LLM server</title>
+  <desc>Visual infographic explaining leading, middle, lagging, and weak autoscaling signals for LLM inference serving.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="40" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Leading and lagging signals for an LLM server</text>
+
+  
+  <rect x="40" y="105" width="1520" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(62, 116)">
+    <path d="M 4 8 L 14 8 L 22 36 L 46 36 L 50 16 L 17 16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="25" cy="45" r="5" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="43" cy="45" r="5" fill="none" stroke="#207448" stroke-width="4" />
+  </g>
+  <text x="135" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-style="italic" fill="#303a36">supermarket line: open another till before the line reaches the door</text>
+
+  
+  <rect x="40" y="200" width="1520" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="65" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Horizontal timeline of load building</text>
+  <line x1="510" y1="226" x2="1530" y2="226" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="40" y="272" width="610" height="385" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="75" cy="308" r="24" fill="#207448" />
+  <text x="75" y="316" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="115" y="317" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Earliest (leading)</text>
+
+  
+  <rect x="60" y="348" width="570" height="185" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(76, 362)">
+    <rect x="4" y="6" width="40" height="10" rx="3" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <rect x="4" y="20" width="40" height="10" rx="3" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <rect x="4" y="34" width="40" height="10" rx="3" fill="none" stroke="#db8129" stroke-width="3.5" />
+  </g>
+  <text x="136" y="385" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">queue depth,</text>
+  <text x="80" y="420" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">vllm:num_requests_waiting <tspan font-family="system-ui, -apple-system, sans-serif">or Triton</tspan></text>
+  <text x="80" y="454" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">nv_inference_pending_request_count:</text>
+  <text x="80" y="488" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">best primary signal, requests start</text>
+  <text x="80" y="518" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">waiting before latency climbs</text>
+
+  
+  <rect x="60" y="546" width="570" height="96" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(76, 560)">
+    <line x1="6" y1="12" x2="42" y2="12" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="6" y1="26" x2="42" y2="26" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="6" y1="40" x2="42" y2="40" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="136" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">in-flight requests or concurrency</text>
+  <text x="136" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">per replica: load versus capacity</text>
+
+  
+  <line x1="654" y1="464" x2="676" y2="464" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="680" y="272" width="430" height="385" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="715" cy="308" r="24" fill="#207448" />
+  <text x="715" y="316" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="755" y="317" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Middle</text>
+
+  
+  <rect x="700" y="348" width="390" height="294" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(720, 366)">
+    <rect x="6" y="6" width="38" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="6" y1="25" x2="44" y2="25" stroke="#207448" stroke-width="3.5" />
+    <line x1="25" y1="6" x2="25" y2="44" stroke="#207448" stroke-width="3.5" />
+  </g>
+  <text x="776" y="398" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">KV-cache utilisation</text>
+  <text x="716" y="445" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">vllm:gpu_cache_usage_perc:</text>
+  <text x="716" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">scale up at about 70 to</text>
+  <text x="716" y="532" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">80 percent sustained</text>
+
+  
+  <line x1="1114" y1="464" x2="1136" y2="464" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="1140" y="272" width="420" height="385" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1175" cy="308" r="24" fill="#207448" />
+  <text x="1175" y="316" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="1212" y="304" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Late</text>
+  <text x="1212" y="335" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">(lagging, guardrail or alert)</text>
+
+  
+  <rect x="1160" y="354" width="380" height="288" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(1180, 372)">
+    <circle cx="24" cy="24" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+    <polyline points="24,14 24,24 32,24" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="1238" y="405" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">TTFT p95,</text>
+  <text x="1180" y="462" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">inter-token latency,</text>
+  <text x="1180" y="512" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">5xx errors</text>
+
+  
+  <rect x="40" y="675" width="1520" height="295" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(62, 690)">
+    <path d="M 6 10 L 26 4 L 46 10 L 46 26 C 46 38 26 46 26 46 C 26 46 6 38 6 26 Z" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="26" y1="16" x2="26" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="26" cy="34" r="2" fill="#207448" />
+  </g>
+  <text x="122" y="724" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Weak signals</text>
+
+  
+  <rect x="60" y="748" width="470" height="204" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(76, 762)">
+    <rect x="10" y="10" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="16" y1="4" x2="16" y2="10" stroke="#207448" stroke-width="3" />
+    <line x1="32" y1="4" x2="32" y2="10" stroke="#207448" stroke-width="3" />
+    <line x1="16" y1="38" x2="16" y2="44" stroke="#207448" stroke-width="3" />
+    <line x1="32" y1="38" x2="32" y2="44" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="132" y="790" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">GPU utilisation</text>
+  <text x="76" y="828" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">DCGM_FI_DEV_GPU_UTIL:</text>
+  <text x="76" y="862" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">misleading, saturates early</text>
+  <text x="76" y="896" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">with batching, low-latency</text>
+  <text x="76" y="930" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">inference may show low use</text>
+
+  
+  <rect x="565" y="748" width="470" height="204" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(581, 762)">
+    <rect x="8" y="8" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <rect x="18" y="18" width="12" height="12" fill="none" stroke="#207448" stroke-width="2.5" />
+    <line x1="14" y1="2" x2="14" y2="8" stroke="#207448" stroke-width="2.5" />
+    <line x1="24" y1="2" x2="24" y2="8" stroke="#207448" stroke-width="2.5" />
+    <line x1="34" y1="2" x2="34" y2="8" stroke="#207448" stroke-width="2.5" />
+  </g>
+  <text x="637" y="790" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">CPU: only for</text>
+  <text x="581" y="830" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">tokenisation-heavy</text>
+  <text x="581" y="870" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">front-ends, often says</text>
+  <text x="581" y="910" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">nothing for GPU backends</text>
+
+  
+  <rect x="1070" y="748" width="470" height="204" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(1086, 762)">
+    <rect x="6" y="14" width="36" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="15" cy="26" r="3" fill="#207448" />
+    <circle cx="24" cy="26" r="3" fill="#207448" />
+    <circle cx="33" cy="26" r="3" fill="#207448" />
+  </g>
+  <text x="1138" y="790" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">RPS at the gateway:</text>
+  <text x="1086" y="830" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">needs a per-replica</text>
+  <text x="1086" y="870" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">capacity model, brittle</text>
+  <text x="1086" y="910" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">across prompt lengths</text>
+
+  
+  <rect x="40" y="990" width="1520" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(62, 1008)">
+    <rect x="8" y="10" width="34" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 17 10 L 17 6 L 33 6 L 33 10 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="16" y1="22" x2="34" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="16" y1="32" x2="34" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="16" y1="42" x2="26" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="125" y="1040" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Recipe strip:</text>
+  <text x="125" y="1080" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">scale on queue depth per replica or concurrency, minReplicas covers baseline,</text>
+  <text x="125" y="1116" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">maxReplicas bounded by GPU quota, alert on TTFT and 5xx</text>
+</svg>

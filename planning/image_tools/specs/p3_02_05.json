@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-table-read",
+  "title": "Reading a real routing table line by line",
+  "spec": "The seven example lines from the GPU server listed as rows, each with a plain-English reading beside it. 'default via 10.20.0.1 dev eno1 proto dhcp src 10.20.0.45 metric 100': 'everywhere else goes to the gateway 10.20.0.1 out eno1; learned from DHCP; packets carry source 10.20.0.45'. '10.20.0.0/24 dev eno1 proto kernel scope link src 10.20.0.45 metric 100': 'connected route: no via, made by the kernel when the address was assigned'. '10.100.0.0/24 dev ens1f0 proto kernel scope link src 10.100.0.45': 'connected rail 0'. '10.100.1.0/24 dev ens2f0 proto kernel scope link src 10.100.1.45': 'connected rail 1'. '10.30.0.0/16 via 10.20.0.254 dev eno1 proto static metric 50': 'a static route to storage through a second router' (orange). '172.17.0.0/16 dev docker0 proto kernel scope link src 172.17.0.1 linkdown': 'Docker bridge with no carrier'. 'blackhole 192.0.2.0/24 proto static': 'silently dropped'. Right side attribute legend: 'via: next-hop router, absent for connected routes, and it must be reachable on a connected route or the kernel says Nexthop has invalid gateway', 'proto: who installed it, kernel, dhcp, static, boot, ra, bgp, ospf, redirect', 'scope: global via a gateway, link on-link, host this host', 'src: preferred source address', 'metric: lower wins among routes with the same prefix', 'onlink: treat the gateway as on-link when no connected prefix covers it (cloud /32 setups)'. Footnote 'ip addr add 10.100.0.45/24 dev ens1f0 adds the connected route and deleting the address deletes it'. Bottom bar: 'Read each line from left to right: destination first, then how to get there'.",
+  "anchor": "## 2. Reading the routing table",
+  "alt": "Seven routing table lines from a GPU server, each paired with a plain reading, beside a legend of via, proto, scope, src, metric and onlink.",
+  "cap": "Each routing table line starts with the destination and then says how to get there, and connected routes have no via."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-default-accident",
+  "title": "Two default routes: which one wins, and what happens on failover",
+  "spec": "Left: a server with two NICs 'eno1' and 'ens1f0' each getting a default route from DHCP, drawn as two signposts both reading 'everywhere else' pointing different ways. Lines 'equal metrics: the kernel uses the first one', 'different metrics: the lowest wins'. Middle: failover sequence in three steps. 'Step 1: preferred route metric 100 carries traffic', 'Step 2: its interface loses carrier, the route stops being usable', 'Step 3: the metric 200 route takes over without anyone touching the table'. Warning in orange 'replies that arrive on the wrong NIC may then be dropped by rp_filter'. Right: the fix 'Keep exactly one default route per routing table; reach other networks with specific routes or policy routing; nmcli connection modify <rail NIC> ipv4.never-default yes keeps a NIC from installing a default route'. Below: 'ip route replace default via 10.20.0.1 dev eno1 metric 100 is idempotent: running it twice leaves the same result as once, which makes it safe in a script that may be run again after a failure'. Worked tie example: 'two routes to the same /24, metric 100 and metric 200: the kernel uses 100'. Bottom bar: 'Metrics are the usual way to describe primary and backup paths on a host'.",
+  "anchor": "### The default gateway",
+  "alt": "Two NICs each installing a default route, the kernel choosing by metric, the failover to the higher metric route when carrier is lost, and the rp_filter risk and fix.",
+  "cap": "With two default routes the lowest metric wins and the other takes over on link loss, but replies on the wrong NIC may hit rp_filter."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-special-routes",
+  "title": "Special route types: what the sender hears back",
+  "spec": "A table of five route types as rows with columns 'Command', 'What happens to the packet', 'What the sender hears', 'Typical use'. Row 'blackhole': 'ip route add blackhole 192.0.2.0/24', 'dropped silently', 'nothing, no answer', 'summary routes, security, avoiding loops, DDoS mitigation'. Row 'unreachable': 'ip route add unreachable 198.51.100.0/24', 'dropped', 'ICMP host unreachable', ''. Row 'prohibit': 'ip route add prohibit 203.0.113.0/24', 'dropped', 'ICMP administratively prohibited', ''. Row 'throw': 'ip route add throw 10.9.0.0/16 table 101', 'the lookup stops looking in that table', 'depends on later rules', 'policy routing'. Row 'local': 'ip route add local 10.200.0.1/32 dev lo', 'the address becomes local to this host', 'it answers', 'anycast or VIP on loopback'. Side note 'ip route show type blackhole lists them'. Second small panel 'Loopback and VIP addresses': 'lo carries 127.0.0.1/8 and ::1 and always stays up; any 127.x.y.z is local; a /32 on lo or on a dummy interface (ip link add dummy0 type dummy; ip addr add 10.255.0.45/32 dev dummy0) stays up whatever happens to physical links, so BGP designs advertise them; ip route show table local lists the addresses the kernel treats as local'. Bottom bar: 'A route can be a do-not-go-there sign, not only a direction'.",
+  "anchor": "### Special route types",
+  "alt": "A table of blackhole, unreachable, prohibit, throw and local routes showing the command, the packet's fate, what the sender hears and typical use.",
+  "cap": "A blackhole drops silently while unreachable and prohibit drop with an ICMP message, and a local route makes an address local for VIPs."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-source-pick",
+  "title": "Which source address does the packet carry? The kernel's order of checks",
+  "spec": "A top to bottom decision list. Check 1 diamond 'Did the application bind a specific address?' yes then 'use that address'. Check 2 diamond 'Does the route have a src set?' yes then 'use the route's src (for example ip route add 10.30.0.0/16 via ... src 10.20.0.45)'. Check 3 'Otherwise: the primary address of the output interface, in the same subnet as the next hop (ip addr labels the others secondary)'. Right panel 'What follows in practice': 'a packet to the Internet leaves through the default-gateway NIC with that NIC's address', 'traffic to a connected subnet uses the address on that subnet', 'two NICs on one subnet (bad practice): either may be used', 'an application bound to 0.0.0.0 gets the chosen source per destination', 'a service that must answer from one address has to bind to it, or you need policy routing'. IPv6 strip 'RFC 6724 rules choose among candidates: match scope, prefer public over temporary addresses by use_tempaddr, longest common prefix'. Debug line in orange 'Replies leave with the wrong source? Check the bound address first, then the route's src'. Bottom bar: 'The receiver replies to the source address, so a wrong choice means the reply may never come back'.",
+  "anchor": "## 4. Choosing the source address",
+  "alt": "A decision order for the source address: bound address first, then the route src, then the primary address of the output interface, with the IPv6 RFC 6724 note.",
+  "cap": "The kernel uses the bound address, then the route's src, then the primary address of the output interface."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-rule-walk",
+  "title": "Two replies, one machine, two roads: following the ip rule list",
+  "spec": "Centre: the rule list as an ordered stack. Priority '0: from all lookup local', then a custom rule 'from 10.100.1.45/32 lookup table 101' marked as lower number than main, then '32766: from all lookup main', then '32767: from all lookup default'. Two packets enter from the left. Packet A 'reply sourced from 10.100.1.45' matches the custom rule, goes to 'table 101: default via 10.100.1.1 dev ens2f0' and leaves 'out ens2f0 with its own gateway' (orange path). Packet B 'reply from any other source' skips the custom rule, falls through to 'main: default via 10.20.0.1 dev eno1' and leaves 'out eno1, the ordinary default route'. Setup commands strip 'ip rule add from 10.100.1.45/32 table 101' and 'ip route add default via 10.100.1.1 dev ens2f0 table 101'. Side table 'Tables: local 255 (kernel-maintained, consulted first), main 254 (ordinary routes), default 253 (usually empty), custom 1 to 252 and 256 up (one per NIC, tenant or VRF)'. Footnote 'rules can match source, destination, incoming interface, TOS, fwmark and uid; the routing cache was removed in kernel 3.6, lookups use the FIB trie'. Check command 'ip route get 8.8.8.8 from 10.100.0.45 iif lo'. Bottom bar: 'Same machine, same destination, two different roads, decided by who the packet says it is from'.",
+  "anchor": "## 3. Routing tables, rules and special routes",
+  "alt": "A rule list walk where a reply sourced from 10.100.1.45 matches a custom rule and uses table 101 while any other source falls through to the main table.",
+  "cap": "A reply sourced from 10.100.1.45 hits the custom rule and table 101, while any other source falls through to main and the ordinary default route."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-rpfilter",
+  "title": "Reverse path filtering: three modes, the effective value and how to see the silent drops",
+  "spec": "Left: the guard question as a small drawing 'a packet arrives on NIC B with source S; the guard asks: if I wanted to answer S, would I use the door they came through?' with two outcomes 'yes: accept' and 'no: assume the source is forged, drop'. Middle: table of modes 'rp_filter 0: no source validation', 'rp_filter 1 strict: the best route back to the source must use the same interface (RFC 3704 strict)', 'rp_filter 2 loose: the source must be reachable via any interface'. Under it the rule 'effective value for an interface = max(conf.all.rp_filter, conf.<if>.rp_filter)'. Right: the multi-homed case. 'Per-NIC subnets and asymmetric flows (rails, storage, VIPs): strict mode causes silent drops that look like packet loss in ethtool' (orange). 'Find them: nstat -az | egrep IPReversePathFilter|IpInAddrErrors, or the IPReversePathFilter counter in /proc/net/netstat'. 'Log impossible sources: sysctl -w net.ipv4.conf.all.log_martians=1, then dmesg'. 'Read settings: sysctl net.ipv4.conf.all.rp_filter net.ipv4.conf.default.rp_filter net.ipv4.conf.eth0.rp_filter'. Fix row 'set rp_filter to 2 or 0 where that fits, and use policy routing so replies leave the same NIC the requests arrived on'. Bottom bar: 'If the reply leaves on the wrong NIC, fix the routing with policy routing before you relax rp_filter'.",
+  "anchor": "## 5. Multiple interfaces: weak host model, rp_filter and asymmetric routing",
+  "alt": "The reverse path filter guard question, its three modes with the effective value as the maximum of all and interface settings, and how to find the silent drops with nstat.",
+  "cap": "Strict rp_filter drops packets whose best return route uses another interface, and the effective setting is the maximum of the all and per-interface values."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-ssh-nic-ladder",
+  "title": "SSH works on NIC A but not NIC B: five checks from cheapest to most detailed",
+  "spec": "A five-step ladder from top to bottom, each step a box with the question, the command and what a bad answer means. Step 1 'Configured?': 'ip addr, ip route, ip rule: both NICs configured, on distinct subnets, with one default gateway?'. Step 2 'Which door do replies use?': 'ping the server's B address from a client on subnet B; on the server sudo tcpdump -ni any host <client> and icmp: do requests arrive, and on which interface do replies leave?'. Step 3 'Would the kernel reply on B?': 'ip route get <client IP> from <B address>: if the reply does not leave on NIC B, add policy routing' (orange). Step 4 'Is rp_filter dropping it?': 'nstat for IPReversePathFilter; relax rp_filter'. Step 5 'Does the right NIC answer ARP?': 'check arp_ignore and arp_announce so the right NIC answers for the right address'. Left side a small drawing of the failure 'request arrives on NIC B, reply leaves via NIC A: asymmetric routing, because Linux uses the weak host model and routes replies by destination only'. Bottom bar: 'The order is deliberate: cheapest question first'.",
+  "anchor": "### Diagnosing \"SSH works on NIC A but not NIC B\"",
+  "alt": "A five step ladder to diagnose SSH working on one NIC but not another: configuration, packet capture of reply interface, ip route get from the B address, rp_filter counter and ARP behaviour.",
+  "cap": "Work from configuration, to which interface replies leave on, to ip route get, rp_filter and ARP, cheapest question first."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-forwarding-ladder",
+  "title": "Turning a host into a router: the failure at each step of the lab",
+  "spec": "A topology line 'hA 10.1.0.2/24' to 'r with 10.1.0.1/24 and 10.2.0.1/24' to 'hB 10.2.0.2/24'. Below, a ladder of five attempts, each with the symptom and the fix. 'Attempt 1: ping from hA to 10.2.0.2: Network is unreachable, hA has no route' fix 'ip -n hA route add default via 10.1.0.1'. 'Attempt 2: ping again: still fails because r does not forward; a Linux host is an end system by default and discards a packet for an address that is not its own' fix 'sysctl -w net.ipv4.ip_forward=1 inside r'. 'Attempt 3: still fails: hB has no route back, and a route is only half of a conversation' fix 'ip -n hB route add default via 10.2.0.1'. 'Attempt 4: ping works' (orange). Right panel 'What forwarding changes in the packet': 'TTL 64 becomes 63; a new frame header is built with a new MAC; the IPs stay unchanged; tcpdump -e shows the MAC rewrite'. Bottom panel 'If forwarding is on and traffic still does not pass': 'firewall FORWARD policy (nftables forward hook, default DROP under Docker)', 'rp_filter', 'ICMP redirect handling', 'NAT: nft add rule ip nat postrouting oifname eno1 masquerade', 'IPv6: accept_ra=2 to keep SLAAC while forwarding'. Persist with 'echo net.ipv4.ip_forward = 1 into /etc/sysctl.d/90-forward.conf; sysctl --system'. Bottom bar: 'Kubernetes nodes need ip_forward=1; per-core software forwarding is on the order of a few Mpps'.",
+  "anchor": "## 7. Linux as a router: forwarding",
+  "alt": "A topology of two hosts and a router namespace, with a ladder of failures from no route, to forwarding off, to no return route, then a working ping, plus the firewall and NAT checks.",
+  "cap": "A Linux host forwards only after ip_forward is set to 1, and each side also needs a route, including the return path."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-redirect",
+  "title": "ICMP redirect: the router saying the better door is next to you",
+  "spec": "A left to right drawing on one subnet with three machines in a row 'Host H', 'Router R1 (the default gateway)', 'Router R2 (better next hop)'. Arrow 1 from H to R1 'H sends a packet for a remote destination to its gateway'. Arrow 2 from R1 to R2 'R1 forwards it out the same interface it arrived on, to a next hop on H's own subnet'. Arrow 3 dashed from R1 back to H 'ICMP Redirect: use gateway R2 for that destination'. Result box 'H may install a cached host route marked proto redirect'. Right panel 'Why turn it off': 'mostly a legacy feature that complicates security and troubleshooting'. Settings box 'net.ipv4.conf.all.accept_redirects=0', 'send_redirects=0', 'secure_redirects=0', 'IP source routing is an attack vector: accept_source_route=0', 'check with sysctl -a | grep -E redirects|source_route' (orange on the settings). Lab note 'lab step: place hA and a second router on the same subnet as r, watch the ICMP Redirect and the proto redirect route, then disable redirects'. Bottom bar: 'Production hosts turn redirects off'.",
+  "anchor": "### ICMP redirects and source routing",
+  "alt": "A host, its gateway and a better next hop on the same subnet, with the gateway forwarding the packet and sending an ICMP Redirect, and the sysctl settings that turn redirects and source routing off.",
+  "cap": "A router that forwards a packet back out the arrival interface sends an ICMP Redirect, and production hosts disable redirects and source routing."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "05",
+  "name": "p3-0205-k8s-tables",
+  "title": "More routing tables than you think: pod, node and hostNetwork pod",
+  "spec": "Three boxes. Left box 'Pod namespace': 'its own interfaces and routing table; default route through the CNI's gateway, the host-side veth peer or bridge address'; check commands 'kubectl exec ... -- ip route' and 'nsenter -t <pid> -n ip route'. Middle box 'Node (host namespace)': 'routes to each pod's /32 or /24; may go through overlay tunnel devices (VXLAN, Geneve, IPIP) or BGP-advertised pod prefixes as in Calico and Cilium native routing'; check 'ip route | grep -E cali|cni|flannel|cilium|vxlan'; extra 'docker0 172.17.0.0/16 appears as a connected route and can collide with real networks: change default-address-pools in /etc/docker/daemon.json'. Right box 'Pod with hostNetwork: true': 'uses the node's tables, so you see the node's routes inside it' (orange). Arrow from pod box to node box labelled 'veth', node to wider network labelled 'overlay or routed'. Cloud strip 'Cloud VMs: a default route via the subnet gateway, /32 host routes with onlink, and route tables outside the VM managed by the cloud; leave them in place'. Bottom bar: 'When traffic fails, check the routes in both namespaces, because the fault may be on either side'.",
+  "anchor": "## 10. Containers, VMs and Kubernetes: more routing tables than you think",
+  "alt": "A pod namespace routing table, the node's routes to each pod through overlay or BGP, and a hostNetwork pod sharing the node's tables, with the commands to inspect each.",
+  "cap": "A pod, the node and a hostNetwork pod each have their own view of routing, so check both namespaces when traffic fails."
+ }
+]

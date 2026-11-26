@@ -1,0 +1,108 @@
+#!/usr/bin/env python3
+
+def generate_clean_svg():
+    svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Same cluster, four different numbers</title>
+  <desc>Visual infographic comparing cluster compute metrics from CPU baseline to GPU FP64, HPL efficiency, and BF16 AI peak with MFU.</desc>
+
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  <text x="50" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Same cluster, four different numbers</text>
+
+  <text x="50" y="104" font-family="sans-serif" font-size="24" fill="#303a36">Worked example from <tspan font-family="monospace" font-size="24">code/part06/flops.py</tspan> with the printed values.</text>
+
+  <rect x="50" y="130" width="1500" height="88" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(75, 146)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="56" rx="8"/>
+    <line x1="14" y1="20" x2="26" y2="20"/>
+    <line x1="20" y1="14" x2="20" y2="26"/>
+    <line x1="32" y1="20" x2="42" y2="20"/>
+    <line x1="14" y1="36" x2="24" y2="44"/>
+    <line x1="24" y1="36" x2="14" y2="44"/>
+    <line x1="32" y1="38" x2="42" y2="38"/>
+    <line x1="32" y1="44" x2="42" y2="44"/>
+  </g>
+  <text x="155" y="183" font-family="sans-serif" font-size="24" fill="#303a36">Rpeak GFLOP/s = nodes times sockets times cores times GHz times FP64 FLOPs per cycle per core</text>
+
+  <rect x="50" y="258" width="1500" height="88" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(75, 274)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24"/>
+    <line x1="28" y1="8" x2="28" y2="28"/>
+    <line x1="28" y1="28" x2="40" y2="28"/>
+    <line x1="28" y1="0" x2="28" y2="4"/>
+  </g>
+  <text x="155" y="311" font-family="sans-serif" font-size="24" fill="#303a36">vector N=1000: 1004 cycles pipelined versus 5000 unpipelined, 4.98 times</text>
+
+  <rect x="50" y="386" width="1500" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(75, 428)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <line x1="18" y1="2" x2="18" y2="10"/>
+    <line x1="28" y1="2" x2="28" y2="10"/>
+    <line x1="38" y1="2" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="54"/>
+    <line x1="28" y1="46" x2="28" y2="54"/>
+    <line x1="38" y1="46" x2="38" y2="54"/>
+    <line x1="2" y1="18" x2="10" y2="18"/>
+    <line x1="2" y1="28" x2="10" y2="28"/>
+    <line x1="2" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="54" y2="18"/>
+    <line x1="46" y1="28" x2="54" y2="28"/>
+    <line x1="46" y1="38" x2="54" y2="38"/>
+    <circle cx="28" cy="28" r="4" fill="#207448"/>
+  </g>
+  <text x="155" y="428" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="155" dy="0">CPU cluster Rpeak: 100 nodes times 2 sockets times 64 cores times 2.4 GHz </tspan><tspan x="155" dy="32">times 32 FLOPs per cycle (dual AVX-512 FMA) = 983.0 TFLOP/s; </tspan><tspan x="155" dy="32">with 16 FLOPs per cycle 491.5 TFLOP/s</tspan></text>
+
+  <rect x="50" y="566" width="1500" height="88" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(75, 582)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="48" height="36" rx="4"/>
+    <rect x="12" y="46" width="20" height="6" stroke-width="3"/>
+    <circle cx="28" cy="28" r="10" stroke-width="3"/>
+    <circle cx="28" cy="28" r="2" fill="#207448"/>
+  </g>
+  <text x="155" y="619" font-family="sans-serif" font-size="26" fill="#303a36">illustrative 800-GPU cluster FP64 Rpeak: 48.0 PFLOP/s</text>
+
+  <rect x="50" y="694" width="1500" height="88" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(75, 710)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24"/>
+    <line x1="10" y1="36" x2="46" y2="36" stroke-width="3"/>
+    <line x1="28" y1="36" x2="40" y2="20" stroke-linecap="round"/>
+    <circle cx="28" cy="36" r="3" fill="#207448"/>
+  </g>
+  <text x="155" y="747" font-family="sans-serif" font-size="26" fill="#303a36">HPL efficiency if Rmax is 38 PF: 38 divided by 48 = 79 percent</text>
+
+  <rect x="50" y="822" width="1500" height="88" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(75, 838)" stroke="#db8129" stroke-width="4" fill="#db8129" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="44" height="44" rx="6" fill="none"/>
+    <circle cx="17" cy="17" r="2.5"/>
+    <circle cx="28" cy="17" r="2.5"/>
+    <circle cx="39" cy="17" r="2.5"/>
+    <circle cx="17" cy="28" r="2.5"/>
+    <circle cx="28" cy="28" r="2.5"/>
+    <circle cx="39" cy="28" r="2.5"/>
+    <circle cx="17" cy="39" r="2.5"/>
+    <circle cx="28" cy="39" r="2.5"/>
+    <circle cx="39" cy="39" r="2.5"/>
+  </g>
+  <text x="155" y="875" font-family="sans-serif" font-size="26" fill="#303a36">AI peak BF16 dense, illustrative: 800 PFLOP/s; at 40 percent MFU: 320 PFLOP/s</text>
+
+  <rect x="50" y="950" width="1500" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(75, 1012)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="2" width="40" height="52" rx="4"/>
+    <line x1="8" y1="19" x2="48" y2="19" stroke-width="3"/>
+    <line x1="8" y1="36" x2="48" y2="36" stroke-width="3"/>
+    <circle cx="16" cy="10" r="1.5" fill="#207448"/>
+    <circle cx="22" cy="10" r="1.5" fill="#207448"/>
+    <circle cx="16" cy="27" r="1.5" fill="#207448"/>
+    <circle cx="22" cy="27" r="1.5" fill="#207448"/>
+    <circle cx="16" cy="44" r="1.5" fill="#207448"/>
+    <circle cx="22" cy="44" r="1.5" fill="#207448"/>
+  </g>
+  <text x="155" y="992" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="155" dy="0">the same 800 GPUs are 48 PF in FP64 and 800 PF in BF16; the number you can use is </tspan><tspan x="155" dy="32">smaller again after real efficiency; MFU is HPL efficiency for AI: how much of the </tspan><tspan x="155" dy="32">accelerator peak the training step turns into useful math; count useful FLOPs per step, </tspan><tspan x="155" dy="32">divide by step time, compare to peak at the training precision</tspan></text>
+</svg>'''
+    return svg
+
+if __name__ == "__main__":
+    svg = generate_clean_svg()
+    with open("candidate_cluster.svg", "w") as f:
+        f.write(svg)
+    print("candidate_cluster.svg written.")

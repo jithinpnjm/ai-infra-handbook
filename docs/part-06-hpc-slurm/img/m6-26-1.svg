@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060">
+  <title>The tool landscape</title>
+  <desc>Visual tool landscape showing Telemetry Collectors flowing into TSDB and Analytics, feeding Grafana Dashboards, Alertmanager, and Open XDMoD.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" fill="#303a36" font-size="48" font-weight="bold" font-family="sans-serif">The tool landscape</text>
+
+  
+  
+  
+  <rect x="40" y="105" width="480" height="915" rx="16" fill="#e8f1ea" fill-opacity="0.45" stroke="#207448" stroke-width="2.5"/>
+  <text x="65" y="152" fill="#207448" font-size="32" font-weight="bold" font-family="sans-serif">1. Telemetry Collectors</text>
+
+  
+  <rect x="60" y="175" width="440" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="85" y="195" width="42" height="42" rx="4" fill="#e8f1ea"/>
+    <rect x="96" y="206" width="20" height="20" rx="2" fill="#207448"/>
+    <line x1="95" y1="189" x2="95" y2="195"/>
+    <line x1="106" y1="189" x2="106" y2="195"/>
+    <line x1="117" y1="189" x2="117" y2="195"/>
+    <line x1="95" y1="237" x2="95" y2="243"/>
+    <line x1="106" y1="237" x2="106" y2="243"/>
+    <line x1="117" y1="237" x2="117" y2="243"/>
+    <line x1="79" y1="205" x2="85" y2="205"/>
+    <line x1="79" y1="216" x2="85" y2="216"/>
+    <line x1="79" y1="227" x2="85" y2="227"/>
+    <line x1="127" y1="205" x2="133" y2="205"/>
+    <line x1="127" y1="216" x2="133" y2="216"/>
+    <line x1="127" y1="227" x2="133" y2="227"/>
+  </g>
+  <text x="85" y="280" fill="#303a36" font-size="30" font-weight="bold" font-family="sans-serif">dcgm-exporter (:9400)</text>
+  <text x="85" y="325" fill="#506059" font-size="24" font-family="sans-serif">Xid, ECC, Tensor/DRAM, Temp</text>
+
+  
+  <rect x="60" y="390" width="440" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="85" y="410" width="48" height="20" rx="3" fill="#e8f1ea"/>
+    <rect x="85" y="436" width="48" height="20" rx="3" fill="#e8f1ea"/>
+    <line x1="93" y1="420" x2="113" y2="420"/>
+    <circle cx="123" cy="420" r="2.5" fill="#207448"/>
+    <line x1="93" y1="446" x2="113" y2="446"/>
+    <circle cx="123" cy="446" r="2.5" fill="#207448"/>
+  </g>
+  <text x="85" y="492" fill="#303a36" font-size="30" font-weight="bold" font-family="sans-serif">
+    <tspan x="85" dy="0">node_exporter +</tspan>
+    <tspan x="85" dy="36">lm_sensors</tspan>
+  </text>
+  <text x="85" y="568" fill="#506059" font-size="24" font-family="sans-serif">CPU, RAM, IB, /tmp, IPMI</text>
+
+  
+  <rect x="60" y="615" width="440" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="103" cy="640" r="17" fill="#e8f1ea"/>
+    <polyline points="103,630 103,640 111,640"/>
+    <line x1="126" y1="629" x2="142" y2="629"/>
+    <line x1="126" y1="640" x2="142" y2="640"/>
+    <line x1="126" y1="651" x2="142" y2="651"/>
+  </g>
+  <text x="85" y="700" fill="#303a36" font-size="30" font-weight="bold" font-family="sans-serif">slurm_exporter (:9341)</text>
+  <text x="85" y="750" fill="#506059" font-size="24" font-family="sans-serif">
+    <tspan x="85" dy="0">Node states, Drain reasons,</tspan>
+    <tspan x="85" dy="32">Queue</tspan>
+  </text>
+
+  
+  <rect x="60" y="840" width="440" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="88" y="856" width="42" height="36" rx="4" fill="#e8f1ea"/>
+    <line x1="99" y1="850" x2="99" y2="856"/>
+    <line x1="119" y1="850" x2="119" y2="856"/>
+    <polyline points="112,863 105,874 114,874 107,886"/>
+  </g>
+  <text x="85" y="930" fill="#303a36" font-size="30" font-weight="bold" font-family="sans-serif">SNMP / NUT / apcupsd</text>
+  <text x="85" y="972" fill="#506059" font-size="24" font-family="sans-serif">PDUs, CDUs, Switches, UPS</text>
+
+  
+  
+  
+  <rect x="570" y="105" width="470" height="915" rx="16" fill="#e8f1ea" fill-opacity="0.45" stroke="#207448" stroke-width="2.5"/>
+  <text x="595" y="152" fill="#207448" font-size="32" font-weight="bold" font-family="sans-serif">2. TSDB &amp; Analytics</text>
+
+  
+  <rect x="595" y="190" width="420" height="250" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="645" cy="222" rx="24" ry="9" fill="#fdf6ee"/>
+    <path d="M 621 222 v 28 c 0 5 11 9 24 9 s 24 -4 24 -9 v -28" fill="#fdf6ee"/>
+    <path d="M 621 236 c 0 5 11 9 24 9 s 24 -4 24 -9"/>
+    <polyline points="630,242 638,233 645,246 652,236 660,242"/>
+  </g>
+  <text x="625" y="325" fill="#303a36" font-size="32" font-weight="bold" font-family="sans-serif">
+    <tspan x="625" dy="0">Prometheus /</tspan>
+    <tspan x="625" dy="42">VictoriaMetrics</tspan>
+  </text>
+
+  
+  <rect x="595" y="570" width="420" height="250" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="625,600 625,640 671,640"/>
+    <rect x="632" y="622" width="7" height="18" fill="#e8f1ea"/>
+    <rect x="643" y="612" width="7" height="28" fill="#e8f1ea"/>
+    <rect x="654" y="605" width="7" height="35" fill="#e8f1ea"/>
+    <polyline points="635,618 646,608 658,602"/>
+  </g>
+  <text x="625" y="680" fill="#303a36" font-size="30" font-weight="bold" font-family="sans-serif">Open XDMoD + SUPReMM</text>
+  <text x="625" y="735" fill="#506059" font-size="24" font-family="sans-serif">
+    <tspan x="625" dy="0">Per-Job Efficiency &amp;</tspan>
+    <tspan x="625" dy="32">Chargeback</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="1090" y="190" width="470" height="250" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1125" y="215" width="38" height="28" rx="3" fill="#e8f1ea"/>
+    <line x1="1144" y1="243" x2="1144" y2="251"/>
+    <line x1="1136" y1="251" x2="1152" y2="251"/>
+    <polyline points="1131,232 1138,225 1145,234 1155,223"/>
+    <path d="M 1184 234 c 0 -8 -5 -12 -9 -12 s -9 4 -9 12 c -2 2 -4 4 -4 6 h 26 c 0 -2 -2 -4 -4 -6 Z" fill="#e8f1ea"/>
+    <circle cx="1175" cy="244" r="2.5" fill="#207448"/>
+  </g>
+  <text x="1125" y="315" fill="#303a36" font-size="30" font-weight="bold" font-family="sans-serif">3. Grafana Dashboards &amp;</text>
+  <text x="1125" y="365" fill="#506059" font-size="25" font-family="sans-serif">
+    <tspan x="1125" dy="0">Alertmanager</tspan>
+    <tspan x="1125" dy="34">(Runbooks / Drain)</tspan>
+  </text>
+
+  
+  
+  
+   Prom -->
+  <line x1="520" y1="315" x2="595" y2="315" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+   Graf -->
+  <line x1="1015" y1="315" x2="1090" y2="315" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+   XDMoD -->
+  <line x1="805" y1="440" x2="805" y2="570" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+</svg>

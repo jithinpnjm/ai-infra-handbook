@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Configuration layers: who wins when four sources disagree</title>
+  <desc>Visual explanation of configuration precedence across CLI flags, environment variables, config files, and defaults, validated by Pydantic.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Configuration layers: who wins when four sources disagree</text>
+
+  
+  <g id="layer-1">
+    <rect x="60" y="125" width="880" height="115" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+    <circle cx="105" cy="182" r="24" fill="#db8129" />
+    <text x="105" y="191" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(145, 154)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <path d="M14 20 L24 28 L14 36" />
+      <path d="M28 36 L42 36" />
+    </g>
+    <text x="225" y="192" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">command-line flags</text>
+  </g>
+
+  
+  <g id="layer-2">
+    <rect x="60" y="255" width="880" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="105" cy="325" r="24" fill="#207448" />
+    <text x="105" y="334" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(145, 297)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <line x1="10" y1="14" x2="46" y2="14" />
+      <line x1="10" y1="28" x2="46" y2="28" />
+      <line x1="10" y1="42" x2="46" y2="42" />
+      <circle cx="20" cy="14" r="5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+      <circle cx="36" cy="28" r="5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+      <circle cx="24" cy="42" r="5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    </g>
+    <text x="225" y="300" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">environment variables:</text>
+    <text x="225" y="340" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace" font-weight="bold" fill="#207448">FLEET_</tspan> prefix through pydantic-settings,</text>
+    <text x="225" y="374" font-family="sans-serif" font-size="24" fill="#303a36">for example <tspan font-family="monospace" font-weight="bold" fill="#207448">FLEET_TOKEN</tspan></text>
+  </g>
+
+  
+  <g id="layer-3">
+    <rect x="60" y="410" width="880" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="105" cy="512" r="24" fill="#207448" />
+    <text x="105" y="521" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(145, 484)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 4 L34 4 L46 16 L46 52 L10 52 Z" />
+      <path d="M34 4 L34 16 L46 16" />
+      <line x1="18" y1="26" x2="38" y2="26" />
+      <line x1="18" y1="36" x2="38" y2="36" />
+      <line x1="18" y1="44" x2="30" y2="44" />
+    </g>
+    <text x="225" y="445" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">config file: <tspan fill="#207448">YAML or TOML</tspan></text>
+    <text x="225" y="482" font-family="sans-serif" font-size="24" fill="#303a36">(tomllib from 3.11;</text>
+    <text x="225" y="516" font-family="monospace" font-size="24" fill="#303a36">yaml.safe_load<tspan font-family="sans-serif">, never </tspan>yaml.load<tspan font-family="sans-serif">);</tspan></text>
+    <text x="225" y="550" font-family="sans-serif" font-size="24" fill="#303a36">XDG path <tspan font-family="monospace">~/.config/fleet/config.toml</tspan>;</text>
+    <text x="225" y="584" font-family="monospace" font-weight="bold" font-size="24" fill="#207448">--config override</text>
+  </g>
+
+  
+  <g id="layer-4">
+    <rect x="60" y="630" width="880" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="105" cy="687" r="24" fill="#207448" />
+    <text x="105" y="696" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(145, 659)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="36" rx="6" />
+      <path d="M16 28 L24 36 L40 20" />
+    </g>
+    <text x="225" y="674" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">defaults:</text>
+    <text x="225" y="714" font-family="monospace" font-size="24" fill="#303a36">api_url https://fleet.example.com<tspan font-family="sans-serif">, </tspan>timeout 10.0</text>
+  </g>
+
+  
+  <g id="secrets-container">
+    <rect x="980" y="125" width="560" height="620" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1015, 155)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="22" width="40" height="28" rx="6" />
+      <path d="M18 22 L18 14 C18 7.4 21.6 4 28 4 C34.4 4 38 7.4 38 14 L38 22" />
+      <circle cx="28" cy="34" r="3" fill="#207448" />
+    </g>
+    <text x="1085" y="195" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Secrets</text>
+
+    
+    <rect x="1005" y="230" width="510" height="490" rx="10" fill="#ffffff" stroke="#c8decb" stroke-width="1.5" />
+    <text x="1035" y="280" font-family="monospace" font-weight="bold" font-size="24" fill="#207448">token: str | None = None</text>
+    <text x="1035" y="322" font-family="sans-serif" font-size="24" fill="#303a36">from env <tspan font-family="monospace" font-weight="bold" fill="#207448">FLEET_TOKEN</tspan>,</text>
+    <text x="1035" y="364" font-family="sans-serif" font-size="24" fill="#303a36">never a CLI flag, because it</text>
+    <text x="1035" y="406" font-family="sans-serif" font-size="24" fill="#303a36">appears in <tspan font-family="monospace">ps</tspan> output and</text>
+    <text x="1035" y="448" font-family="sans-serif" font-size="24" fill="#303a36">shell history; read from</text>
+    <text x="1035" y="490" font-family="sans-serif" font-size="24" fill="#303a36">environment, files or</text>
+    <text x="1035" y="532" font-family="sans-serif" font-size="24" fill="#303a36">a secret store</text>
+  </g>
+
+  
+  <g id="validation-arrow">
+    <line x1="500" y1="745" x2="500" y2="833" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+    <rect x="540" y="762" width="580" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="830" y="797" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">validate what you load with pydantic</text>
+  </g>
+
+  
+  <g id="strip-model-config">
+    <rect x="60" y="835" width="1480" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 848)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="9" />
+      <path d="M24 6 L24 11 M24 37 L24 42 M6 24 L11 24 M37 24 L42 24 M11.3 11.3 L14.8 14.8 M33.2 33.2 L36.7 36.7 M11.3 36.7 L14.8 33.2 M33.2 14.8 L36.7 11.3" />
+    </g>
+    <text x="150" y="882" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">model_config = SettingsConfigDict(env_prefix=FLEET_, env_file=.env, extra=ignore)</text>
+  </g>
+
+  
+  <g id="strip-config-show">
+    <rect x="60" y="925" width="1480" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(85, 938)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="40" height="28" rx="4" />
+      <line x1="16" y1="42" x2="36" y2="42" />
+      <line x1="26" y1="36" x2="26" y2="42" />
+      <path d="M14 18 L20 22 L14 26" />
+      <line x1="24" y1="26" x2="32" y2="26" />
+    </g>
+    <text x="150" y="972" font-family="sans-serif" font-size="25" fill="#303a36"><tspan font-family="monospace" font-weight="bold" fill="#207448">config show</tspan> prints the effective configuration with secrets redacted</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="1018" width="1480" height="80" rx="16" fill="#207448" />
+    
+    <g transform="translate(100, 1034)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 6 L42 12 L42 26 C42 36 34 44 24 48 C14 44 6 36 6 26 L6 12 Z" />
+      <path d="M16 26 L22 32 L32 20" />
+    </g>
+    <text x="800" y="1068" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Settings come from one place that validates them</text>
+  </g>
+</svg>

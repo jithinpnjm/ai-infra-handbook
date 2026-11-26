@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "x25-counter-reset-compare",
+  "title": "A counter that restarts: subtraction gets the sign wrong, increase repairs the reset",
+  "spec": "Left half: a line chart drawn as a simple outline panel with a time axis and a value axis. The counter line climbs by ten a minute from 0 to 100, then drops back to 0 at a restart point marked 'Pod restarts, counter resets to zero', then climbs again. Mark two points on the line: 'Now' at the right end and 'Ten minutes earlier' ten minutes before it, with a bracket between them labelled 'offset 10m'. Right half: two result boxes stacked vertically, each with an outline icon (gear for the query, chart for the result). Box A: monospace 'x - x offset 10m' with the result 'minus 10' and the sub-text 'Subtraction gets the sign wrong'. Box B: monospace 'increase(x[10m])' with the result '88.9' and the sub-text 'The real work done, once the reset is repaired'. Orange only on Box B's result 88.9. Under both boxes a green strip with the words 'Never subtract counters yourself'. Monospace for x - x offset 10m, increase(x[10m]) and the numbers. Keep arrows from the chart points to their boxes, not crossing each other.",
+  "anchor": "### 1. Counters, resets and what rate really computes",
+  "alt": "Chart of a counter that resets to zero, with a subtraction over ten minutes giving minus ten and increase giving 88.9",
+  "cap": "Counter reset: subtracting two counter values gives a negative number after a restart, while increase repairs the reset and reports the real work done."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "x25-alert-blind-spots",
+  "title": "Three alert checks, each covering a different kind of silent failure",
+  "spec": "Three side-by-side columns, equal width, each a green-bordered panel with a number circle (r=24, white number) at its top: 1, 2, 3 in that order. Column 1 title: 'Target exists but cannot be scraped' with monospace 'up == 0' and the sub-text 'Catches a target that is present but not scrapable'. Column 2 title: 'Some series vanished' with monospace 'count(up{job=\"vllm\"}) < 2' and the sub-text 'Counts what should be there, so it sees partial loss'. Column 3 title: 'Total blackout' with monospace 'absent(up{job=\"vllm\"})' and the sub-text 'Fires only when every vllm target is gone'. Each column has a small outline icon (shield, chip, clock) beside its title. Below the three columns, a wide light green bar titled 'Test it by deleting the series' with the sub-text 'One of two pods disappears: absent stays empty, the count returns 1'. Orange only on column 2, because the partial-loss case is the one the other two miss. Monospace for up == 0, count, absent and the selector. Draw no arrows between the columns, since they are alternatives that work together.",
+  "anchor": "### 6. Staleness, absent and silent alerts",
+  "alt": "Three alert checks side by side: up equals zero for unscrapable targets, a count for vanished series, and absent for a total blackout",
+  "cap": "Silent alerts: pair a no-data risk with a count or an absent check, because absent alone misses the loss of one pod out of several."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "x25-alertmanager-routing",
+  "title": "Alertmanager: grouped alerts, route by severity, and inhibition rules",
+  "spec": "A left-to-right flow. Left: a stack of four small alert boxes labelled with alert names in monospace: 'VllmTargetsMissing', 'ErrorRatioHigh', 'QueueDeep', 'KVCacheSaturated'. An arrow from the stack goes right into a container labelled 'Group by cluster and model' with the sub-text 'group_wait 30s, group_interval 5m, repeat_interval 12h'. Inside the group container, a box 'One notification per model and cluster'. From the group, an arrow goes to a router box 'Route by severity' that splits into two outputs. Top output: 'severity=page' leading to a box 'pager' with sub-text 'repeat_interval 4h'. Bottom output: 'severity=ticket' leading to a box 'ticket'. Above the router, a separate inhibition panel titled 'Inhibition' with two rules as rows: row 1 'VllmTargetsMissing silences ErrorRatioHigh, KVCacheSaturated and QueueDeep in the same cluster', row 2 'A page silences tickets for the same model'. Draw these two rules as dashed arrows from their source boxes to their target boxes, with the dashed arrows not crossing the solid routing arrows. Orange only on the dashed inhibition arrow from VllmTargetsMissing. Monospace for alert names, severity=page, severity=ticket, and the timing values.",
+  "anchor": "### 9. Alertmanager: grouping, inhibition and routing",
+  "alt": "Alertmanager flow: alerts grouped by cluster and model, routed by severity to a pager or a ticket queue, with inhibition rules that silence symptoms",
+  "cap": "Alertmanager routing: group by cluster and model, send pages and tickets to separate receivers, and let a cause alert or a page silence its symptoms."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "x25-exemplar-join-path",
+  "title": "From a slow histogram bucket to one trace and its logs",
+  "spec": "A left-to-right path of five numbered steps, each a box with an outline icon and a green number circle (r=24, white number). Step 1 box: 'Panel shows a red bar on a slow bucket' with a window icon. Step 2 box: 'Exemplar carries a trace ID' with a chart icon, sub-text 'Enabled in the query editor, not for instant queries'. Step 3 box: 'Open the trace' with a clock icon, sub-text 'Gateway span, router span, engine span'. Step 4 box: 'Read the trace_id from the trace' with a gear icon. Step 5 box: 'Search the same trace_id in logs' with a disk cylinder icon, sub-text 'trace_id on every gateway and engine log line'. Monospace for trace_id and the exemplar setting name. Orange only on step 2, the exemplar, because it is the join between metrics and traces. Above the path, a small label 'Turn on with --enable-feature=exemplar-storage' connected by a thin line to step 2, not crossing any arrow. Below the path, a green strip with the text 'Keep errors and slow traces with tail sampling'.",
+  "anchor": "### 14. Sampling and joining traces to metrics",
+  "alt": "Five steps from a red bar on a metrics panel through an exemplar and a trace to the matching log lines using one trace ID",
+  "cap": "Metrics to traces: an exemplar on a slow bucket links the panel to one trace, and the same trace ID finds the matching log lines."
+ }
+]

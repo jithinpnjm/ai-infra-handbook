@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-three-places",
+  "title": "Three places a failing GPU shows up",
+  "spec": "Three columns. 'Hardware reports: Xid messages, ECC counters, PCIe replays, NVLink errors'. 'Physical state: temperature, power, clock throttling'. 'Workload effect: per-replica tokens per second compared with the fleet median for the same model and GPU type'. Story strip across the top: 'one GPU overheats and slows; every token step waits for the slowest GPU, so the whole replica slows; customer sees worse time to first token long before any crash; no error appears anywhere'. Highlight on the third column: 'a throttled GPU raises no Xid so the error log stays clean; a replica 30 percent slower than the fleet median for an hour is suspect even when every hardware counter is quiet'. Footer 'each place hides failures from the other two, so watch all three'. Text at least 24px.",
+  "anchor": "### 1. A failing GPU shows up in three places before the customer notices",
+  "alt": "Three columns for hardware counters, physical state and workload comparison, with the workload check catching quiet throttling.",
+  "cap": "Comparing a replica to the fleet median catches the slowdown that no counter reports."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-xid-gauge-trap",
+  "title": "The Xid gauge stays high after the repair",
+  "spec": "Timeline with a line plot of DCGM_FI_DEV_XID_ERROR for one GPU. Steps: 'Xid 79 appears, gauge jumps to 79'; 'node repaired, but gauge stays at 79 until another Xid replaces it or the exporter restarts'; 'alert on equals 79 keeps firing after the repair'. Two alert boxes: wrong 'DCGM_FI_DEV_XID_ERROR == 79' (fires forever) and right 'value plus recency: check when the value last changed, not only what it is'. Side note linking to the stale case: 'a bad exporter restart can also re-emit a stuck gauge, so confirm a real Xid with dmesg on one node'. Footer 'verify each metric name against /metrics on your exporter version; throttle, double-bit ECC and NVLink CRC counters are not enabled by default in DCGM exporter 4.9.0, enable them'. Text at least 24px.",
+  "anchor": "### 2. The signals, with their real names",
+  "alt": "A timeline where the Xid gauge stays at 79 after repair and a naive equals-79 alert keeps firing.",
+  "cap": "Alert on the Xid value together with how recently it changed."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-passive-active-ladder",
+  "title": "Passive checks find faults, active checks prove a repaired node",
+  "spec": "Left box 'Passive: reads what hardware already reports, always on, cheap, only sees faults that already produced an error'. Right box 'Active: dcgmi diag does work on the GPU and compares with a healthy GPU, finds weak hardware not yet failed, node usually out of service'. Table of levels: 'level 1 dcgmi diag -r 1: software, driver, permissions, under 2.5 seconds'; 'level 2 -r 2: extended validation, under 2.5 min on 4 GPUs, under 10.5 min on 8'; 'level 3 -r 3: stress, power, bandwidth and NCCL tests, under 10 min on 4 GPUs, under 35 min on 8'; 'level 4 -r 4: adds memory test and power pulse test, under 45 min on 4 GPUs, under 2.25 h on 8'. Where each runs (author's mapping, not Nebius practice): 'passive: continuously on every node; level 1: when a node is about to take traffic; level 3: gate when a node leaves repair; multi-node NCCL test: gate for a node joining a training or large tensor-parallel group'. Automation note: 'exit code 0 success, 226 diagnostic ran and reported an error, add -j for JSON'. Text at least 24px.",
+  "anchor": "### 4. Passive and active checks",
+  "alt": "Passive versus active checks with the four dcgmi diag levels, their durations, and where each runs in the lifecycle.",
+  "cap": "Use passive checks to find faults and active checks to prove a node before it returns."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-detect-decide-act",
+  "title": "Detection, decision and action are three components",
+  "spec": "Left-to-right flow with three boxes. 'Detect: DCGM exporter into Prometheus for GPU counters; node problem detector daemon on every node reports permanent faults as node conditions and temporary ones as events to the API server'. Arrow to 'Decide: your own controller watches the conditions and applies the fleet policy (ignore, suspect, drain) with memory of past Xids per node'. Arrow to 'Act: calls the cordon and drain APIs through the blast-radius limiter'. Annotation under Detect: 'node problem detector says nothing about repair, so remediation is a separate job you build'. Footer 'keep the three separate so a bug in one cannot silently do the job of another'. Text at least 24px.",
+  "anchor": "### 5. Kubernetes node problem detector: where it fits",
+  "alt": "Three boxes for detect, decide and act showing node problem detector feeding a custom controller that calls cordon and drain.",
+  "cap": "Node problem detector reports problems but the repair logic is yours to build."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-repair-time-spares",
+  "title": "Repair time moves the spare count more than failure rate",
+  "spec": "Left: table for a 512-node fleet at an assumed 10 percent per year failure rate with Poisson coverage 99.9 percent. Rows: '24 hours repair: 0.14 nodes in repair on average: 2 spares'; '72 hours: 0.42: 3 spares'; '336 hours (14 days via vendor): 1.96: 7 spares'. Caption inside 'the fleet did not get less reliable; the repair loop got slower'. Right: pooled versus per-customer. 'Per-customer X+1: 16 dedicated endpoints of 32 nodes each keep their own spare = 16 spare nodes for 512 nodes' versus 'shared pool: 3 to 7 spares'. Constraints for the pool: 'spare must match GPU type and region; must load the customer's model weights before it can serve; a cold spare takes minutes, so keep a warm tier for the most demanding customers'. Footer 'shorten the repair loop before buying nodes'. Text at least 24px.",
+  "anchor": "### 8. Spare pool and X+1 sizing",
+  "alt": "A table showing spares rising from 2 to 7 as repair time grows, beside a comparison of pooled and per-customer spares.",
+  "cap": "A slower repair loop raises the spare count from three to seven without any change in failure rate."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-silent-capacity-layers",
+  "title": "Three layers that catch nodes that never rejoin",
+  "spec": "Top row of ways a node goes missing, each 'looks normal from far away': 'cordoned, the uncordon step never ran'; 'passed repair but the validation job crashed and nobody read the result'; 'came back but its readiness probe never passed'; 'device plugin did not re-register its GPUs'; 'aggressive liveness probe killed healthy workers'. Bottom three defence layers each with what it catches: 'Layer 1: time limit on every non-healthy state, stuck() in the code and NodeCordonedTooLong in Prometheus: catches a forgotten node'; 'Layer 2: compare GPUs the cluster advertises with GPUs the inventory says exist: catches a node whose state was never recorded'; 'Layer 3: a missing node still holds its slot in the limiter budget: stops automation from draining healthy capacity'. Footer 'alert on the distance between GPUs you own and GPUs actually serving, not only on errors'. Text at least 24px.",
+  "anchor": "### 9. Silent capacity loss: nodes that never rejoin",
+  "alt": "Ways a node can go missing quietly and the three defence layers that each catch a different kind of silence.",
+  "cap": "No single layer is enough because each one catches a different kind of silence."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-capacity-slos",
+  "title": "Fleet capacity SLIs and an example objective",
+  "spec": "Three SLI boxes, each with the question a manager would ask. 'SLI 1: share of time each dedicated endpoint has at least its minimum number of ready replicas; ties to the stated 99.9 percent availability'. 'SLI 2: share of time the spare pool is at or above its target size'. 'SLI 3: repair time from quarantine to healthy at the 90th percentile'. Example objective strip with the author's numbers: 'spare pool at or above target 99 percent of the time; 90th percentile repair time under 5 days; a starting point to argue about, not a standard'. Alert note: 'cordoned-node ratio alert at 5 percent matches the limiter budget; if it fires, the automation failed to stop'. Header 'a capacity SLO is about supply and leads the request SLO by hours or days'. Text at least 24px.",
+  "anchor": "### 11. A fleet-level capacity SLO",
+  "alt": "Three capacity SLIs with an example objective of 99 percent spare pool and a 5 day repair p90.",
+  "cap": "Supply SLIs warn before any customer-facing SLO moves."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-xid79-triage",
+  "title": "Xid 79 on three nodes in different racks: what to do first",
+  "spec": "Ladder. Header 'Pager: Xid 79 on three nodes, different racks, within five minutes. Xid 79 means the GPU fell off the PCIe bus'. Step 1 'a pattern across racks points to a shared cause, not three coincident hardware faults'. Step 2 'candidates: driver or firmware rollout, a bad exporter restart that re-emitted a stuck gauge, a power or cooling event'. Step 3 'check what changed in the last hour'. Step 4 'check dmesg on one node to confirm the Xid is real and not a gauge that stayed high'. Step 5 'keep the freeze; drain only nodes whose logs show a new Xid'. Side note 'the limiter already froze after the flags, as the simulation showed: serving 196 of 200, human paged'. Rule 'say the order out loud, the order is the answer'. Text at least 24px.",
+  "anchor": "### Scenario A. Three GPUs report Xid 79 within five minutes",
+  "alt": "A five step ladder from recognising a cross-rack pattern to confirming the Xid in dmesg and draining only confirmed nodes.",
+  "cap": "Read the pattern and check recent changes before draining anything."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-spare-growth",
+  "title": "Adding 256 nodes needs one more spare, not eight",
+  "spec": "Worked comparison with the assumed 10 percent annual failure and 72 hour repair. Left 'Fleet of 512: average 0.42 in repair, 3 spares, about 0.6 percent of the fleet'. Middle 'Fleet of 768: average 0.63 in repair, calculator gives 4 spares, so 256 new nodes need one more spare'. Right 'Fleet of 2,048: 7 spares, about 0.3 percent'. Command 'python3 -c from c16_spare_pool import spares_needed; print(spares_needed(768, 0.10, 72))'. Rules: 'spares do not scale linearly with fleet size; a bigger pool is cheaper per node'; 'tripling repair time triples the mean, so invest in repair speed before buying nodes'; 'failure rate and repair time must come from the fleet's own history, until then 10 percent and 72 hours are placeholders'. Text at least 24px.",
+  "anchor": "### Scenario B. The spare pool for a growing fleet",
+  "alt": "Three fleet sizes showing spares growing from 3 to 4 to 7 while the share of the fleet shrinks.",
+  "cap": "Spares grow much more slowly than the fleet, so repair speed matters more than node count."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "16",
+  "name": "p3-2016-cordoned-nine-days",
+  "title": "A node cordoned for nine days: state before cause",
+  "spec": "Decision tree. Start 'NodeCordonedTooLong fires: node out for nine days'. Question 'what is the lifecycle state?'. Branch 'repairing with a vendor case open: the age is a vendor issue, chase the case'. Branch 'cordoned with no ticket: nothing owns it, this is the silent loss; run the stuck-state check, find ticketless nodes, give each an owner'. Then 'ask why it happened: a common cause is a validation step that failed and was only logged'. Fix box 'a failed validation sends the node back to quarantine and raises a ticket: the VALIDATING to QUARANTINED edge in the state machine'. Footer 'ask about the state before the cause, because the state tells you who must act right now'. Text at least 24px.",
+  "anchor": "### Scenario C. A node has been cordoned for nine days",
+  "alt": "A decision tree from a nine-day cordon alert to vendor chasing or ownerless node, ending in a validation failure fix.",
+  "cap": "Find who owns the node before asking why it got stuck."
+ }
+]

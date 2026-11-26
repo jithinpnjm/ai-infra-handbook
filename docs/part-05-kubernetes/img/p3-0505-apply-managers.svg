@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Server-side apply: who owns replicas, Argo CD or the HPA</title>
+  <desc>Visual infographic explaining Kubernetes server-side apply ownership conflict on Deployment spec.replicas between Argo CD and HPA, with command and write mode comparison.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Server-side apply: who owns replicas, Argo CD or the HPA</text>
+
+  
+  <g id="actor-argocd">
+    <rect x="60" y="120" width="340" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="205" y="138" width="50" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="205" y1="150" x2="255" y2="150" stroke="#207448" stroke-width="3"/>
+    <circle cx="214" cy="144" r="2.5" fill="#207448"/>
+    <circle cx="222" cy="144" r="2.5" fill="#207448"/>
+    <path d="M 218 166 L 230 156 L 242 166" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text text-anchor="middle" font-family="sans-serif">
+      <tspan x="230" y="222" font-size="32" font-weight="bold" fill="#303a36">Argo CD</tspan>
+      <tspan x="230" y="265" font-size="25" font-weight="bold" fill="#207448">(manager: argocd)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="conflict-marker">
+    <rect x="430" y="120" width="740" height="180" rx="12" fill="#fff5f5" stroke="#d9383a" stroke-width="2.5"/>
+    
+    <polygon points="800,136 778,172 822,172" fill="none" stroke="#d9383a" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="800" y1="148" x2="800" y2="158" stroke="#d9383a" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="800" cy="165" r="2" fill="#d9383a"/>
+    
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#c5221f">
+      <tspan x="800" y="210">409 field conflict when a second manager</tspan>
+      <tspan x="800" y="244">changes a field another owns</tspan>
+      <tspan x="800" y="278">(unless --force-conflicts)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="actor-hpa">
+    <rect x="1200" y="120" width="340" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1345 168 A 25 25 0 1 1 1395 168" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="1370" y1="168" x2="1384" y2="150" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="1370" cy="168" r="3.5" fill="#207448"/>
+    
+    <text x="1370" y="245" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">HPA</text>
+  </g>
+
+  
+  <g id="center-deployment">
+    <rect x="420" y="340" width="760" height="175" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="782" y="358" width="36" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 772 368 L 772 396 L 782 396" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 828 368 L 828 396 L 818 396" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text text-anchor="middle" font-family="sans-serif">
+      <tspan x="800" y="432" font-size="32" font-weight="bold" fill="#303a36">Deployment spec.replicas</tspan>
+      <tspan x="800" y="482" font-size="25" fill="#207448">managedFields records one owner per field</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-left-group">
+    <path d="M 170 300 L 170 435 L 420 435" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="295" y="398">applies manifest</tspan>
+      <tspan x="295" y="426">that sets replicas</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-right-group">
+    <path d="M 1430 300 L 1430 435 L 1180 435" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1305" y="398">scales</tspan>
+      <tspan x="1305" y="426">spec.replicas</tspan>
+    </text>
+  </g>
+
+  
+  <g id="command-box">
+    <rect x="360" y="545" width="880" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="586" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">kubectl get deploy x -o yaml --show-managed-fields</text>
+  </g>
+
+  
+  <g id="comparison-strip">
+    <rect x="60" y="640" width="1480" height="340" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="80" y="655" width="1440" height="52" rx="8" fill="#e8f1ea"/>
+    <text x="110" y="689" font-family="sans-serif" font-size="24" fill="#303a36">create = insert, fails if exists</text>
+
+    
+    <rect x="80" y="718" width="1440" height="52" rx="8" fill="#e8f1ea"/>
+    <text x="110" y="752" font-family="sans-serif" font-size="24" fill="#303a36">update PUT = replace whole object, needs resourceVersion</text>
+
+    
+    <rect x="80" y="781" width="1440" height="52" rx="8" fill="#e8f1ea"/>
+    <text x="110" y="815" font-family="sans-serif" font-size="24" fill="#303a36">patch = partial change</text>
+
+    
+    <rect x="80" y="844" width="1440" height="52" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="2.5"/>
+    <rect x="80" y="844" width="10" height="52" rx="4" fill="#db8129"/>
+    <text x="110" y="878" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">apply server-side = send the fields you own</text>
+
+    
+    <rect x="80" y="907" width="1440" height="52" rx="8" fill="#e8f1ea"/>
+    <text x="110" y="941" font-family="sans-serif" font-size="24" fill="#303a36">client-side kubectl apply = three-way merge with last-applied-configuration annotation</text>
+  </g>
+
+  
+  <g id="bottom-clean-fix">
+    <rect x="60" y="1005" width="1480" height="80" rx="12" fill="#207448"/>
+    <text x="800" y="1055" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Clean fix: leave replicas out of the manifest so the HPA is the single owner</text>
+  </g>
+</svg>

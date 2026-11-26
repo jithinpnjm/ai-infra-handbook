@@ -1,0 +1,285 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Eight permission layers to check in order when a file will not open</title>
+  <desc>Infographic displaying the eight Linux permission layers to check in sequential order when a file fails to open.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Eight permission layers to check in order when a file will not open</text>
+
+  
+  <g id="top-box">
+    <rect x="585" y="80" width="700" height="54" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="935" y="117" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">File is mode 666 but open() fails</text>
+  </g>
+
+  
+  <g id="left-bracket-arrow">
+    
+    <path d="M 285,156 L 250,156 L 250,1026 L 285,1026" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    
+    <text x="145" y="210" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">cheapest and</tspan>
+      <tspan x="145" dy="30">most common</tspan>
+      <tspan x="145" dy="30">first</tspan>
+    </text>
+
+    
+    <line x1="145" y1="305" x2="145" y2="865" stroke="#207448" stroke-width="4"/>
+    <polygon points="135,865 145,885 155,865" fill="#207448"/>
+
+    
+    <text x="145" y="925" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">needs more</tspan>
+      <tspan x="145" dy="30">privilege or</tspan>
+      <tspan x="145" dy="30">host knowledge</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-1">
+    <rect x="305" y="156" width="1260" height="86" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    
+    <circle cx="345" cy="199" r="24" fill="#207448"/>
+    <text x="345" y="199" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    
+    <g transform="translate(388, 174)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 4,12 L 18,12 L 24,18 L 46,18 A 2,2 0 0,1 48,20 L 48,42 A 2,2 0 0,1 46,44 L 4,44 A 2,2 0 0,1 2,42 L 2,14 A 2,2 0 0,1 4,12 Z"/>
+    </g>
+
+    
+    <text x="458" y="191" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="458" dy="0">Path: search permission</tspan>
+      <tspan x="458" dy="32">on each directory</tspan>
+    </text>
+
+    
+    <rect x="1040" y="167" width="505" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1292" y="193" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1292" dy="0">namei -l PATH,</tspan>
+      <tspan x="1292" dy="26">strace -e trace=%file</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="935" y1="244" x2="935" y2="260" stroke="#207448" stroke-width="3"/>
+  <polygon points="928,260 935,268 942,260" fill="#207448"/>
+
+  
+  <g id="row-2">
+    <rect x="305" y="268" width="1260" height="86" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="345" cy="311" r="24" fill="#207448"/>
+    <text x="345" y="311" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    
+    <g transform="translate(388, 286)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <circle cx="25" cy="15" r="10"/>
+      <path d="M 8,42 C 8,31 15,28 25,28 C 35,28 42,31 42,42"/>
+    </g>
+
+    
+    <text x="458" y="303" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="458" dy="0">Identity: effective user,</tspan>
+      <tspan x="458" dy="32">group, supplementary groups</tspan>
+    </text>
+
+    
+    <rect x="1040" y="279" width="505" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1292" y="319" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">/proc/PID/status</text>
+  </g>
+
+  
+  <line x1="935" y1="356" x2="935" y2="372" stroke="#207448" stroke-width="3"/>
+  <polygon points="928,372 935,380 942,372" fill="#207448"/>
+
+  
+  <g id="row-3">
+    <rect x="305" y="380" width="1260" height="86" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="345" cy="423" r="24" fill="#207448"/>
+    <text x="345" y="423" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    
+    <g transform="translate(388, 398)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <circle cx="16" cy="25" r="9"/>
+      <line x1="25" y1="25" x2="45" y2="25"/>
+      <line x1="37" y1="25" x2="37" y2="33"/>
+      <line x1="43" y1="25" x2="43" y2="34"/>
+    </g>
+
+    
+    <text x="458" y="415" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="458" dy="0">Mode class:</tspan>
+      <tspan x="458" dy="32">first matching class only</tspan>
+    </text>
+
+    
+    <rect x="1040" y="391" width="505" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1292" y="431" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">stat -c %U %G %a</text>
+  </g>
+
+  
+  <line x1="935" y1="468" x2="935" y2="484" stroke="#207448" stroke-width="3"/>
+  <polygon points="928,484 935,492 942,484" fill="#207448"/>
+
+  
+  <g id="row-4">
+    <rect x="305" y="492" width="1260" height="86" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="345" cy="535" r="24" fill="#207448"/>
+    <text x="345" y="535" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    
+    <g transform="translate(388, 510)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="7" y="4" width="36" height="42" rx="3"/>
+      <line x1="17" y1="15" x2="33" y2="15" stroke-width="3"/>
+      <line x1="17" y1="25" x2="33" y2="25" stroke-width="3"/>
+      <line x1="17" y1="35" x2="33" y2="35" stroke-width="3"/>
+    </g>
+
+    
+    <text x="458" y="527" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="458" dy="0">ACL: named entries</tspan>
+      <tspan x="458" dy="32">limited by the mask</tspan>
+    </text>
+
+    
+    <rect x="1040" y="503" width="505" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1292" y="543" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">getfacl</text>
+  </g>
+
+  
+  <line x1="935" y1="580" x2="935" y2="596" stroke="#207448" stroke-width="3"/>
+  <polygon points="928,596 935,604 942,596" fill="#207448"/>
+
+  
+  <g id="row-5">
+    <rect x="305" y="604" width="1260" height="86" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="345" cy="647" r="24" fill="#207448"/>
+    <text x="345" y="647" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    
+    <g transform="translate(388, 622)" stroke="#207448" stroke-width="3.5" fill="none">
+      <ellipse cx="25" cy="11" rx="18" ry="6"/>
+      <path d="M 7,23 C 7,27 15,30 25,30 C 35,30 43,27 43,23"/>
+      <path d="M 7,35 C 7,39 15,42 25,42 C 35,42 43,39 43,35"/>
+      <line x1="7" y1="11" x2="7" y2="35"/>
+      <line x1="43" y1="11" x2="43" y2="35"/>
+    </g>
+
+    
+    <text x="458" y="639" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="458" dy="0">Mount:</tspan>
+      <tspan x="458" dy="32">ro, noexec, nosuid</tspan>
+    </text>
+
+    
+    <rect x="1040" y="615" width="505" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1292" y="655" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">/proc/self/mountinfo, findmnt</text>
+  </g>
+
+  
+  <line x1="935" y1="692" x2="935" y2="708" stroke="#207448" stroke-width="3"/>
+  <polygon points="928,708 935,716 942,708" fill="#207448"/>
+
+  
+  <g id="row-6">
+    <rect x="305" y="716" width="1260" height="86" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="345" cy="759" r="24" fill="#207448"/>
+    <text x="345" y="759" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    
+    
+    <g transform="translate(388, 734)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="9" y="20" width="32" height="24" rx="4"/>
+      <path d="M 16,20 L 16,11 C 16,4 34,4 34,11 L 34,20"/>
+      <circle cx="25" cy="30" r="2.5" fill="#207448"/>
+      <line x1="25" y1="32" x2="25" y2="38" stroke-width="2.5"/>
+    </g>
+
+    
+    <text x="458" y="751" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="458" dy="0">Inode flags:</tspan>
+      <tspan x="458" dy="32">immutable, append-only</tspan>
+    </text>
+
+    
+    <rect x="1040" y="727" width="505" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1292" y="767" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">lsattr</text>
+  </g>
+
+  
+  <line x1="935" y1="804" x2="935" y2="820" stroke="#207448" stroke-width="3"/>
+  <polygon points="928,820 935,828 942,820" fill="#207448"/>
+
+  
+  <g id="row-7">
+    <rect x="305" y="828" width="1260" height="86" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="345" cy="871" r="24" fill="#207448"/>
+    <text x="345" y="871" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+    
+    
+    <g transform="translate(388, 846)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 25,5 L 43,11 C 43,26 35,38 25,43 C 15,38 7,26 7,11 Z"/>
+      <path d="M 17,23 L 23,29 L 33,18" stroke-width="3"/>
+    </g>
+
+    
+    <text x="458" y="863" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="458" dy="0">MAC: SELinux,</tspan>
+      <tspan x="458" dy="32">AppArmor policy</tspan>
+    </text>
+
+    
+    <rect x="1040" y="839" width="505" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1292" y="879" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ausearch -m avc, dmesg</text>
+  </g>
+
+  
+  <line x1="935" y1="916" x2="935" y2="932" stroke="#207448" stroke-width="3"/>
+  <polygon points="928,932 935,940 942,932" fill="#207448"/>
+
+  
+  <g id="row-8">
+    <rect x="305" y="940" width="1260" height="86" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="345" cy="983" r="24" fill="#207448"/>
+    <text x="345" y="983" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">8</text>
+    
+    
+    <g transform="translate(388, 958)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round">
+      <circle cx="25" cy="24" r="18"/>
+      <polygon points="25,12 28,21 37,21 29,27 32,36 25,31 18,36 21,27 13,21 22,21" stroke-width="2"/>
+    </g>
+
+    
+    <text x="458" y="975" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="458" dy="0">Capabilities, userns:</tspan>
+      <tspan x="458" dy="32">bypass rights, ID mapping</tspan>
+    </text>
+
+    
+    <rect x="1040" y="951" width="505" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1292" y="991" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">CapEff, /proc/PID/uid_map</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="305" y="1060" width="1260" height="74" rx="12" fill="#207448"/>
+    <text x="935" y="1106" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Say the layers in this order, and say which one the errno points to.</text>
+  </g>
+</svg>

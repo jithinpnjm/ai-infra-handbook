@@ -1,0 +1,240 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The two-minute project walkthrough, in order</title>
+  <desc>A visual walkthrough guide detailing the six steps of a two-minute project presentation, followed by decision defense and retrospective frameworks.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The two-minute project walkthrough, in order</text>
+
+  
+
+  
+  <g>
+    <rect x="50" y="95" width="540" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="162" r="24" fill="#207448"/>
+    <text x="85" y="171" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <circle cx="145" cy="162" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="145" cy="162" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="190" y="148" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="190" dy="0">one sentence on why</tspan>
+      <tspan x="190" dy="28">the project existed</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="610" y="95" width="540" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="645" cy="162" r="24" fill="#207448"/>
+    <text x="645" y="171" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <circle cx="695" cy="154" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M681 176 c0 -10 7 -14 14 -14 s14 4 14 14" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="717" cy="158" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M707 176 c0 -8 5 -11 10 -11 s10 3 10 11" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="750" y="148" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="750" dy="0">one sentence on your</tspan>
+      <tspan x="750" dy="28">role and the team size</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="245" width="540" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="312" r="24" fill="#207448"/>
+    <text x="85" y="321" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <rect x="127" y="303" width="16" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="147" y="295" width="16" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="147" y="319" width="16" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="190" y="298" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="190" dy="0">the shape of the system</tspan>
+      <tspan x="190" dy="28">in three components</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="610" y="245" width="540" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="645" cy="312" r="24" fill="#207448"/>
+    <text x="645" y="321" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <path d="M693 328 v-16 l22 -14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M715 312 l-22 0" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="718" cy="298" r="4" fill="#207448"/>
+    <circle cx="718" cy="312" r="4" fill="#207448"/>
+    <text x="750" y="298" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="750" dy="0">the two biggest</tspan>
+      <tspan x="750" dy="28">decisions</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="395" width="540" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="470" r="24" fill="#207448"/>
+    <text x="85" y="479" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <path d="M125 484 h40" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M128 478 l12 -18 l10 8 l14 -20" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="164" cy="448" r="3" fill="#207448"/>
+    <text x="190" y="456" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="190" dy="0">the result with one</tspan>
+      <tspan x="190" dy="28">before-and-after number</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="610" y="395" width="540" height="150" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    <circle cx="645" cy="470" r="24" fill="#db8129"/>
+    <text x="645" y="479" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <circle cx="700" cy="460" r="14" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M710 470 l14 14" fill="none" stroke="#db8129" stroke-width="4"/>
+    <text x="745" y="432" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="745" dy="0">close with: the part I would</tspan>
+      <tspan x="745" dy="28">like to go deeper on is,</tspan>
+      <tspan x="745" dy="28">and name the most</tspan>
+      <tspan x="745" dy="28">interesting decision</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1170" y="95" width="380" height="450" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+    
+    <rect x="1342" y="125" width="36" height="54" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="1353" y1="133" x2="1367" y2="133" stroke="#207448" stroke-width="3"/>
+    <circle cx="1360" cy="168" r="4" fill="#207448"/>
+    <text x="1360" y="230" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1360" dy="0">expect a follow-up on</tspan>
+      <tspan x="1360" dy="38">whichever part you say</tspan>
+      <tspan x="1360" dy="38">last or leave vague;</tspan>
+      <tspan x="1360" dy="38">time it with a phone;</tspan>
+      <tspan x="1360" dy="38">numbers in brackets</tspan>
+      <tspan x="1360" dy="38">are yours to fill</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="565" width="1500" height="310" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="75" y="605" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Why did you choose X over Y?</text>
+
+    
+    <g>
+      <rect x="75" y="625" width="210" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M165 645 h30 l-10 16 v14 h-10 v-14 z" fill="none" stroke="#207448" stroke-width="3"/>
+      <text x="180" y="710" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="180" dy="0">constraint</tspan>
+        <tspan x="180" dy="28">first</tspan>
+      </text>
+    </g>
+
+    
+    <g>
+      <rect x="300" y="625" width="190" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="395" cy="658" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M388 658 l5 5 l10 -11" fill="none" stroke="#207448" stroke-width="3"/>
+      <text x="395" y="722" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">the choice</text>
+    </g>
+
+    
+    <g>
+      <rect x="505" y="625" width="430" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M705 645 l-15 15 m0 -15 l15 15" stroke="#207448" stroke-width="3"/>
+      <path d="M735 645 l-15 15 m0 -15 l15 15" stroke="#207448" stroke-width="3"/>
+      <text x="720" y="684" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="720" dy="0">two alternatives with</tspan>
+        <tspan x="720" dy="28">one reason each for</tspan>
+        <tspan x="720" dy="28">rejecting them</tspan>
+      </text>
+    </g>
+
+    
+    <g>
+      <rect x="950" y="625" width="210" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="1055" cy="655" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M1047 655 h16 M1055 647 v16" stroke="#207448" stroke-width="3"/>
+      <text x="1055" y="710" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="1055" dy="0">the cost</tspan>
+        <tspan x="1055" dy="28">accepted</tspan>
+      </text>
+    </g>
+
+    
+    <g>
+      <rect x="1175" y="625" width="350" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M1335 648 a16 16 0 1 1 -5 12" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M1335 642 v8 h-8" fill="none" stroke="#207448" stroke-width="3"/>
+      <text x="1350" y="698" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="1350" dy="0">the condition that</tspan>
+        <tspan x="1350" dy="28">would change your mind</tspan>
+      </text>
+    </g>
+
+    
+    <g>
+      <rect x="75" y="776" width="1450" height="82" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M102 805 h26 c4 0 7 3 7 7 v12 c0 4 -3 7 -7 7 h-16 l-8 7 v-7 h-2 c-4 0 -7 -3 -7 -7 v-12 c0 -4 3 -7 7 -7 z" fill="none" stroke="#207448" stroke-width="3"/>
+      <text x="155" y="812" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="155" dy="0">expect what would that condition look like in numbers</tspan>
+        <tspan x="155" dy="28">and did you test the alternative; if not, say so and why</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="895" width="1500" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="75" y="935" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">What would you do differently?</text>
+
+    
+    <g>
+      <rect x="75" y="955" width="348" height="200" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <circle cx="249" cy="998" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M262 1011 l14 14" stroke="#207448" stroke-width="4"/>
+      <path d="M241 998 h16 M249 990 v16" stroke="#207448" stroke-width="3"/>
+      <text x="249" y="1065" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="249" dy="0">one change plus</tspan>
+        <tspan x="249" dy="30">its evidence</tspan>
+      </text>
+    </g>
+
+    
+    <g>
+      <rect x="443" y="955" width="348" height="200" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M601 1010 a20 20 0 1 1 32 0 z" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="617" y1="1000" x2="627" y2="990" stroke="#207448" stroke-width="3"/>
+      <text x="617" y="1052" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="617" dy="0">what you would</tspan>
+        <tspan x="617" dy="28">measure before</tspan>
+        <tspan x="617" dy="28">starting</tspan>
+      </text>
+    </g>
+
+    
+    <g>
+      <rect x="811" y="955" width="347" height="200" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M984 982 l5 11 l12 2 l-9 8 l2 12 l-10 -6 l-10 6 l2 -12 l-9 -8 l12 -2 z" fill="none" stroke="#207448" stroke-width="3"/>
+      <text x="984" y="1065" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="984" dy="0">one thing you</tspan>
+        <tspan x="984" dy="30">would keep</tspan>
+      </text>
+    </g>
+
+    
+    <g>
+      <rect x="1178" y="955" width="347" height="200" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M1351 980 l18 10 v14 c0 12 -18 22 -18 22 s-18 -10 -18 -22 v-14 z" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="1351" y1="992" x2="1351" y2="1006" stroke="#207448" stroke-width="3"/>
+      <circle cx="1351" cy="1013" r="2" fill="#207448"/>
+      <text x="1351" y="1065" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="1351" dy="0">avoid nothing and</tspan>
+        <tspan x="1351" dy="30">avoid ten regrets</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

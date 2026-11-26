@@ -171,6 +171,14 @@ So `nest1` can reach `nest2.nest3.X`, even though `nest3` cannot see `nest2` or 
 
 ### Data hiding (`_X`, `__all__`, `__getattr__`, `__dir__`), `__future__`, and `__name__ == '__main__'`
 
+![A five step timeline of func1 and func2 showing which calls raise NameError and which print Hello, with the names assigned after each step.](./img/p3-0302-toplevel-order.svg)
+
+*Figure 3.2.6. A def only binds a name when it runs, so func1 can call func2 later, but calling func1 before func2 is assigned fails.*
+
+![A flow showing a lookup on gamod checking __dict__ first and falling through to __getattr__ for test, hack and code, with the NameError case inside the module and the __dir__ list.](./img/p3-0302-gamod-lookup.svg)
+
+*Figure 3.2.7. Only names missing from the module dictionary reach __getattr__, and a bare global lookup inside the module never does.*
+
 Python has no enforced `private` keyword for modules. Every top-level name is an exported attribute. Instead, the design goals are high cohesion and low coupling. High cohesion means the parts of a module belong together. Low coupling means it depends on as little outside itself as possible. A module should have one clear purpose. It should pass data through function arguments and return values, not change another file's globals.
 
 Even the interactive prompt runs inside a module. It is the built-in module `__main__`. So every piece of code you write lives in some module.
@@ -183,7 +191,7 @@ An explicit export list is stronger. Assigning a list of names to `__all__` tell
 
 ![What from unders import star copies, with and without __all__](./img/p02-starimport.jpg)
 
-*Figure 3.2.6. What from unders import * copies, with and without an __all__ list.*
+*Figure 3.2.8. What from unders import * copies, with and without an __all__ list.*
 
 Module-level `__getattr__` and `__dir__` add dynamic attributes. These arrived in Python 3.7, through PEP 562. If a module defines `def __getattr__(name):`, Python calls it whenever a client asks for `mod.name` and that name is not in `mod.__dict__`. The call also happens for `from mod import name`. Defining `def __dir__():` changes what `dir(mod)` returns. This replaces an older trick that swapped `sys.modules[__name__]` for a class instance.
 
@@ -214,7 +222,7 @@ The `__name__ == '__main__'` test lets one file serve two purposes. When you run
 
 ![One file, two uses: __name__ differs when run or imported](./img/p02-dualmode.jpg)
 
-*Figure 3.2.7. One file, two uses: Python sets __name__ to '__main__' when you run the file and to the module name when you import it.*
+*Figure 3.2.9. One file, two uses: Python sets __name__ to '__main__' when you run the file and to the module name when you import it.*
 
 Put your self-tests or command-line logic under `if __name__ == '__main__':`. The file then works as an importable library and as a standalone script. The book's `minmax.py` defines `def minmax(test, *args): ...` along with `lessthan` and `grtrthan`. This is different from a package's `__main__.py`, which is a bundle entry point.
 
@@ -259,13 +267,13 @@ Dotted names expose a difference between the last two. For `'email.message'`, `_
 
 ![Three ways to import a module from a string](./img/p02-importstr.jpg)
 
-*Figure 3.2.8. Three ways to import a module from a runtime string. Prefer importlib.import_module.*
+*Figure 3.2.10. Three ways to import a module from a runtime string. Prefer importlib.import_module.*
 
 The third technique reloads a whole import graph. Suppose `ra.py` sets `X = 1` and runs `import rb`. Suppose `rb.py` sets `Y = 2` and runs `import rc`. And suppose `rc.py` sets `Z = 3`. Calling `importlib.reload(ra)` reloads only `ra`. The values `ra.rb.Y` and `ra.rb.rc.Z` keep their old values. The `import rb` inside `ra.py` does nothing once `rb` is in `sys.modules`.
 
 ![reload reloads only one module, not the modules it imports](./img/p02-reloadgraph.jpg)
 
-*Figure 3.2.9. importlib.reload reloads only one module. The book's reloadall.py walks the whole import chain.*
+*Figure 3.2.11. importlib.reload reloads only one module. The book's reloadall.py walks the whole import chain.*
 
 The book's `reloadall.py` walks `module.__dict__.values()`. It keeps only entries where `type(attrobj) == types.ModuleType`. It calls `reload(module)` inside a defensive `try / except`, called `tryreload`. That guard matters, because some special modules, such as `sys.monitoring` in Python 3.12, cannot be reloaded. The walker also records visited modules, in a `visited` dictionary or `set()`. Without that record, circular imports would loop forever.
 
@@ -274,6 +282,10 @@ The book compares three versions. `reloadall.py` recurses with a `visited = {}` 
 The book checks that the second and third versions agree, ignoring order. It compares `set(res2) == set(res3)` using output from `os.popen('python3 reloadall.py tkinter').readlines()`.
 
 ### How imports work (3 steps) and the 5-component module search path
+
+![The five sys.path entries in search order with the script directory first, where a local json.py shadows the standard library, with symptoms and fixes.](./img/p3-0302-shadowing.svg)
+
+*Figure 3.2.12. The script's own folder is searched first, so a local file named like a standard module silently replaces it.*
 
 Here is the failure that starts most packaging arguments. A script imports a library happily in your terminal and fails under cron, and the only thing that changed is where Python looked. The search path is built from the environment, so the environment quietly decides what your code imports.
 
@@ -289,13 +301,13 @@ Third, Python runs the bytecode from top to bottom, inside the new module object
 
 ![How an import works: check sys.modules, then find, compile and run](./img/p02-importsteps.jpg)
 
-*Figure 3.2.10. How an import works: check sys.modules first, then find, compile and run.*
+*Figure 3.2.13. How an import works: check sys.modules first, then find, compile and run.*
 
 Python builds `sys.path` at startup from five components. They appear in this order.
 
 ![The five parts of sys.path in search order](./img/p02-syspath.jpg)
 
-*Figure 3.2.11. The five parts of sys.path, from first searched to last searched.*
+*Figure 3.2.14. The five parts of sys.path, from first searched to last searched.*
 
 1. The home directory of the program. This is the folder that holds the top-level script. In the REPL, and with `-c` or `-m`, the home directory is `''`, the current working directory. Import search paths are separate from `os.getcwd()`, which controls relative file I/O.
 2. The `PYTHONPATH` directories. On Unix and macOS they are separated by colons, as in `/Users/me/pycode/utilities:/Volumes/ssd/pycode/package1`. On Windows they are separated by semicolons, as in `C:\Users\me\pycode\utilities;d:\pycode\package1`. Set them with `export PYTHONPATH=...`. Each entry can also be a `.zip` archive.
@@ -322,7 +334,7 @@ Python caches compiled bytecode in `__pycache__/name.cpython-312.pyc`. This is t
 
 ![Bytecode caches and the three deploy options](./img/p02-pyc.jpg)
 
-*Figure 3.2.12. Bytecode caches: __pycache__ saves the compile step, and three options control it on read-only systems.*
+*Figure 3.2.15. Bytecode caches: __pycache__ saves the compile step, and three options control it on read-only systems.*
 
 ## 2. Packages
 
@@ -359,7 +371,7 @@ Name collisions are the reason packages exist. Picture two systems in one projec
 
 ![Packages stop name collisions between two utilities.py files](./img/p02-collide2.jpg)
 
-*Figure 3.2.13. Packages stop name collisions: system1.utilities and system2.utilities are both reachable.*
+*Figure 3.2.16. Packages stop name collisions: system1.utilities and system2.utilities are both reachable.*
 
 If you run `python3 system1/main.py` or `python3 system2/main.py` on its own, each script works. Its own folder is first on `sys.path`, so `import utilities` finds the right file. Each script lives in its own small world, and the small world is enough.
 
@@ -369,9 +381,13 @@ The fix is to put both folders under a common `root/` on `sys.path`. Then each f
 
 ### Dotted package walkthrough (`dir0/dir1/dir2/mod.py`), `__init__.py` roles, and `__main__.py`
 
+![The order in which dir1 and dir1.dir2 __init__.py files and mod.py run on a dotted import, the AttributeError after a bare import dir1, and the four roles of __init__.py.](./img/p3-0302-init-roles.svg)
+
+*Figure 3.2.17. A dotted import runs each folder's __init__.py in order, while importing the root package alone does not load its submodules.*
+
 ![Dotted package walkthrough tree](./img/s02-dotted.svg)
 
-*Figure 3.2.14. A dotted package tree: each dot in an import names a folder, and each folder's __init__.py runs on the way in.*
+*Figure 3.2.18. A dotted package tree: each dot in an import names a folder, and each folder's __init__.py runs on the way in.*
 
 The book's nested package gives us a small tree to walk through. Four files matter. `dir0/dir1/mod.py` sets `var = 'hack'` and prints `Loading dir1.mod`. `dir0/dir1/dir2/mod.py` sets `var = 'code'` and prints `Loading dir1.dir2.mod`. `dir1/__init__.py` sets `var = 'Python'` and prints `Running dir1.__init__.py`. And `dir1/dir2/__init__.py` sets `var = 3.12` and prints `Running dir1.dir2.__init__.py`.
 
@@ -389,7 +405,7 @@ What `__main__.py` can import depends on how you launch it, and this is the most
 
 ![Which import styles work in __main__.py for each launch command](./img/p02-mainlaunch.jpg)
 
-*Figure 3.2.15. Which import styles work in dir1/__main__.py for each way of launching it.*
+*Figure 3.2.19. Which import styles work in dir1/__main__.py for each way of launching it.*
 
 If `dir1/__main__.py` contains a plain `import mod`, then `python3 dir1` and `python3 dir1/__main__.py` both succeed. The home directory is `dir1/`, so `mod` is found. But `python3 -m dir1` fails with `ModuleNotFoundError: No module named 'mod'`. Absolute imports skip the enclosing package.
 
@@ -401,7 +417,7 @@ If `dir1/__main__.py` uses the full package path, `import dir1.mod` or `from dir
 
 ![Four import models](./img/s02-fourmodels.svg)
 
-*Figure 3.2.16. Python's four import models, from a basic module to a PEP 420 namespace package.*
+*Figure 3.2.20. Python's four import models, from a basic module to a PEP 420 namespace package.*
 
 Python has four import models, which developed over time. Basic modules use `import module`. Basic, or regular, packages use `import folder.folder.module`, with an `__init__.py` file. Package-relative imports use `from . import module`. Namespace packages, defined by PEP 420, use `import anyfolder.anyfolder.module` with no `__init__.py`, and they can span several directories. These four models explain most of the import errors you will meet.
 
@@ -411,7 +427,7 @@ In step 2, Python looks for a file such as `d/name.py`, or a compiled form such 
 
 ![Four import models, PEP 420 namespace packages (__path__), and the 4-step search algorithm](./img/m3-02-1.svg)
 
-*Figure 3.2.17. Four import models, PEP 420 namespace packages (__path__), and the 4-step search algorithm, as a diagram.*
+*Figure 3.2.21. Four import models, PEP 420 namespace packages (__path__), and the 4-step search algorithm, as a diagram.*
 
 The diagram hides one rule that matters most. In step 3, a bare directory without `__init__.py` does not end the search. Python records that directory and keeps scanning. Only when the whole scan finishes, with no regular package in step 1 and no simple module in step 2, does Python build a namespace package. Its `__path__` is a `_NamespacePath` that joins every recorded directory, and it has no `__file__` attribute.
 
@@ -423,7 +439,7 @@ For example, set `export PYTHONPATH=ns/part1:ns/part2`, then run `import sub.mod
 
 ![Two folders without __init__.py merge into one namespace package](./img/s02-nspkg.svg)
 
-*Figure 3.2.18. Two folders, one package: with no __init__.py, Python merges both sub directories into one namespace package.*
+*Figure 3.2.22. Two folders, one package: with no __init__.py, Python merges both sub directories into one namespace package.*
 
 ### Circular (`recursive`) imports: why `import recur1` fails while `import recur2` succeeds
 
@@ -431,7 +447,7 @@ Two modules can import each other without looping forever. The trick is the orde
 
 ![Why import recur1 fails while import recur2 first works](./img/p02-circular.jpg)
 
-*Figure 3.2.19. Why import recur1 fails: Y = 2 has not run when recur2 asks for it. Importing recur2 first works.*
+*Figure 3.2.23. Why import recur1 fails: Y = 2 has not run when recur2 asks for it. Importing recur2 first works.*
 
 `recur1.py` sets `X = 1`, then runs `import recur2`, then sets `Y = 2`. `recur2.py` runs `from recur1 import X` and then `from recur1 import Y`.
 
@@ -469,9 +485,13 @@ The src layout puts the package under `src/`. Tests can import `myops` only afte
 
 ## 3. Virtual environments
 
+![A shell with an activated venv versus cron or systemd with bare python3, with the absolute interpreter path fix and the checks that show which Python is running.](./img/p3-0302-service-python.svg)
+
+*Figure 3.2.24. Activation only changes the PATH of your shell, so services must call the venv interpreter by absolute path.*
+
 ![One virtual environment per project](./img/s02-venv.svg)
 
-*Figure 3.2.20. One environment per project: each .venv has its own python and site-packages, so two library versions do not clash.*
+*Figure 3.2.25. One environment per project: each .venv has its own python and site-packages, so two library versions do not clash.*
 
 Picture two projects on one machine. One needs one version of a library, and the other needs a different version. Without a virtual environment, both share the same installed packages, and one of them breaks.
 
@@ -535,9 +555,13 @@ The pip resolver has used backtracking since version 20.3. It searches for one s
 
 ### Declaring dependencies: libraries vs applications
 
+![Two panels contrasting an extra index URL that lets a public package with a higher version beat a private name with a single vetted index, plus hash, signing and audit measures.](./img/p3-0302-index-confusion.svg)
+
+*Figure 3.2.26. An extra index lets a public package outrank a private one, so use a single vetted index and hashed requirements.*
+
 ![From requirements.in to a hashed lock](./img/s02-piptools.svg)
 
-*Figure 3.2.21. Declaring dependencies: pip-compile turns an abstract list into a hashed lock, and pip-sync makes the environment match it.*
+*Figure 3.2.27. Declaring dependencies: pip-compile turns an abstract list into a hashed lock, and pip-sync makes the environment match it.*
 
 Libraries and applications need different kinds of declarations, and swapping them causes trouble in both directions. A library declares abstract, compatible ranges, such as `requests>=2.28,<3`. A range lets the library sit alongside other packages that also depend on requests. An application or deployment needs a concrete lockfile instead. The lockfile lists exact versions of everything, including transitive dependencies, along with hashes. Every machine then installs the same bits.
 
@@ -569,7 +593,7 @@ Use one tool per environment. That is the rule to remember. Mixing pip and conda
 
 ![Choosing a packaging tool by situation](./img/s02-choosetool.svg)
 
-*Figure 3.2.22. Choosing a tool: match your situation to a row. A published library gets ranges, a deployed application gets a lockfile.*
+*Figure 3.2.28. Choosing a tool: match your situation to a row. A published library gets ranges, a deployed application gets a lockfile.*
 
 The table maps common situations to a tool, so start with your situation rather than with a tool you have heard about.
 
@@ -592,7 +616,7 @@ You have a tool that works on your laptop. Then a colleague wants it, and then a
 
 ![The main tables in pyproject.toml](./img/s02-pyproject.svg)
 
-*Figure 3.2.23. pyproject.toml: four tables cover the build backend, project metadata, command launchers and plugin entry points.*
+*Figure 3.2.29. pyproject.toml: four tables cover the build backend, project metadata, command launchers and plugin entry points.*
 
 Every packaged project declares its build in a `pyproject.toml` file. The standard for this file, set by PEP 517, 518 and 621, names the build backend and the project metadata. A build backend is the tool that turns your source folder into a distributable file. The example below is a complete tool.
 
@@ -637,9 +661,13 @@ Other backends are available. `setuptools` is still common, and it has legacy `s
 
 ### Building, installing, publishing
 
+![A wheel filename split into name, version, Python tag, ABI tag and platform tag, with other tag examples and the wheel or sdist fallback flow.](./img/p3-0302-wheel-name.svg)
+
+*Figure 3.2.30. The filename tags tell you which interpreter, ABI and platform a wheel fits, and a missing match falls back to a slow source build.*
+
 ![From source to wheel and sdist](./img/s02-build.svg)
 
-*Figure 3.2.24. Building and publishing: python -m build makes an sdist and a wheel, and a wheel installs without a build step.*
+*Figure 3.2.31. Building and publishing: python -m build makes an sdist and a wheel, and a wheel installs without a build step.*
 
 Building turns your source into files you can distribute. The commands below install the build tools, build an sdist and a wheel, check them, upload them to a private index, and install them.
 
@@ -676,7 +704,7 @@ Check the tags of every wheel you plan to ship against the machines that will in
 
 ![Entry point plugin discovery](./img/s02-entrypoints.svg)
 
-*Figure 3.2.25. Entry points: an installed package advertises a plugin, and the core discovers, loads and registers it without edits.*
+*Figure 3.2.32. Entry points: an installed package advertises a plugin, and the core discovers, loads and registers it without edits.*
 
 Suppose your tool needs a new collector, such as one for GPUs. You do not want to edit the core every time. Entry points solve that problem. They let an installed distribution advertise its components to other programs, without any hard-coded imports. An entry point is a name plus a path to code, recorded in a package's metadata, where other programs can look it up. pytest plugins, Ansible and Click commands, and Prometheus collectors all work this way.
 
@@ -692,9 +720,13 @@ The loop discovers each plugin in the `myops.plugins` group, loads it, and regis
 
 ## 7. Python packaging on GPU and ML systems
 
+![A table of GPU packaging failures, such as pip replacing torch, an insufficient CUDA driver, a wrong LD_LIBRARY_PATH, a NumPy ABI break, aarch64 gaps and long extension builds, with the prevention for each.](./img/p3-0302-gpu-install-failures.svg)
+
+*Figure 3.2.33. Most GPU packaging failures come from a mismatch between the wheel, the driver and the shared libraries, and constraints files from the NGC image prevent the worst one.*
+
 ![Checking a GPU Python stack](./img/s02-gpucheck.svg)
 
-*Figure 3.2.26. GPU packaging: the host driver must be new enough for the CUDA runtime in the wheel, so check from the driver upward.*
+*Figure 3.2.34. GPU packaging: the host driver must be new enough for the CUDA runtime in the wheel, so check from the driver upward.*
 
 A training container can build without error and still fail on the first GPU call, with a message that the driver is too old. The notes below cover the packaging causes, and they show you how to check each one.
 
@@ -724,9 +756,13 @@ Check the driver and the CUDA runtime first, because a mismatch there breaks the
 
 ## 8. Containers and system integration
 
+![A ladder of deployment situations, Slurm and Kubernetes, HPC with Lmod, air-gapped clusters, tools for many servers and stock hosts, each with the recommended way to ship Python code.](./img/p3-0302-cluster-install.svg)
+
+*Figure 3.2.35. Bake and pin the environment ahead of time, and use a wheelhouse for offline clusters and node-local copies to avoid import storms.*
+
 ![A multi-stage Dockerfile](./img/s02-multistage.svg)
 
-*Figure 3.2.27. Multi-stage build: dependencies are installed in a build stage, then only the virtual environment is copied into the final image.*
+*Figure 3.2.36. Multi-stage build: dependencies are installed in a build stage, then only the virtual environment is copied into the final image.*
 
 Your service works on your laptop, and now it has to become an image that a cluster can pull. A multi-stage Dockerfile is the usual starting point for a Python service. Multi-stage means the file has more than one `FROM` line, and only the last one becomes the image you ship. The first stage builds the virtual environment. The second stage copies only that environment into a clean runtime image.
 
@@ -755,6 +791,10 @@ For systemd services, point `ExecStart=/opt/myops/.venv/bin/myops` at the virtua
 **System packages vs pip** matters on stock hosts. A script that must run on any stock host is best served by the distribution's own Python and packaged libraries, such as `python3-yaml`, `python3-requests` and `python3-psutil`. If those are not enough, ship a venv or a zipapp. `ansible` itself uses the system or a venv interpreter (`ansible_python_interpreter`) on its targets.
 
 ## 9. Troubleshooting imports and environments
+
+![A table of twelve import and install errors with their likely cause and first fix, plus deeper diagnostic commands.](./img/p3-0302-error-ladder.svg)
+
+*Figure 3.2.37. Match the exact error text to a row for the likely cause, then use the deeper tools only if the first fix fails.*
 
 When your import or install fails, start by matching the error text to a row in the table. Each row tells you the likely cause and the fix. The error text is the most reliable clue you have, so read it before you change anything.
 

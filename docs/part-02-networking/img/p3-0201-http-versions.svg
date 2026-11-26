@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>HTTP/1.1, HTTP/2 and HTTP/3 compared: how the request travels</title>
+  <desc></desc>
+  <style>
+    .title { font-family: system-ui, -apple-system, sans-serif; font-size: 48px; font-weight: bold; fill: #303a36; }
+    .col-title { font-family: system-ui, -apple-system, sans-serif; font-size: 32px; font-weight: bold; fill: #207448; }
+    .label-sans { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; fill: #303a36; }
+    .label-sans-bold { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; font-weight: bold; fill: #303a36; }
+    .label-mono { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 24px; fill: #303a36; }
+    .label-mono-bold { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 24px; font-weight: bold; fill: #207448; }
+    .orange-text { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; font-weight: bold; fill: #db8129; }
+    .bar-text { font-family: system-ui, -apple-system, sans-serif; font-size: 24px; font-weight: bold; fill: #ffffff; }
+  </style>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" class="title">
+    <tspan x="800" dy="0">HTTP/1.1, HTTP/2 and HTTP/3 compared:</tspan>
+    <tspan x="800" dy="54">how the request travels</tspan>
+  </text>
+
+  
+  <rect x="40" y="145" width="480" height="715" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="75" y="165" width="40" height="50" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="85" y1="180" x2="105" y2="180" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="85" y1="192" x2="105" y2="192" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="85" y1="204" x2="97" y2="204" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="140" y="202" class="col-title">HTTP/1.1</text>
+
+  
+  <rect x="60" y="230" width="440" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="280" y="265" text-anchor="middle" class="label-sans-bold">HTTP text over TLS over TCP</text>
+
+  
+  <rect x="60" y="296" width="440" height="210" rx="8" fill="#ffffff" stroke="#c4d7c7" stroke-width="1.5"/>
+  <text x="80" y="328" class="label-mono-bold">GET / HTTP/1.1</text>
+  <text x="80" y="362" class="label-mono">Host: example.com</text>
+  <text x="80" y="396" class="label-mono">User-Agent</text>
+  <text x="80" y="430" class="label-mono">Accept</text>
+  <rect x="76" y="444" width="180" height="34" rx="4" fill="none" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <text x="84" y="468" class="label-mono">Authorization</text>
+
+  
+  <rect x="60" y="518" width="440" height="205" rx="8" fill="#ffffff" stroke="#c4d7c7" stroke-width="1.5"/>
+  <text x="80" y="548" class="label-mono-bold">HTTP/1.1 200 OK</text>
+  <text x="80" y="578" class="label-sans">
+    <tspan x="80" dy="0">Content-Type, Content-Length or</tspan>
+    <tspan x="80" dy="28">Transfer-Encoding: chunked,</tspan>
+    <tspan x="80" dy="28">caching headers, Set-Cookie</tspan>
+  </text>
+  <text x="80" y="694" class="label-mono-bold">body</text>
+
+  
+  <rect x="60" y="735" width="440" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="80" y="774" class="label-sans">
+    <tspan x="80" dy="0">keep-alive reuses the TCP and TLS</tspan>
+    <tspan x="80" dy="32">connection for several requests</tspan>
+  </text>
+
+  
+  <rect x="560" y="145" width="480" height="715" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="595" y="165" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="605" y1="178" x2="633" y2="178" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="605" y1="189" x2="633" y2="189" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="605" y1="200" x2="633" y2="200" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="665" y="202" class="col-title">HTTP/2</text>
+
+  
+  <rect x="580" y="230" width="440" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="260" text-anchor="middle" class="label-sans-bold">
+    <tspan x="800" dy="0">binary HTTP over TLS (ALPN h2)</tspan>
+    <tspan x="800" dy="30">over TCP</tspan>
+  </text>
+
+  
+  <rect x="580" y="317" width="440" height="185" rx="8" fill="#ffffff" stroke="#c4d7c7" stroke-width="1.5"/>
+  
+  <rect x="600" y="337" width="400" height="145" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  
+  <line x1="615" y1="365" x2="985" y2="365" stroke="#c4d7c7" stroke-width="1" stroke-dasharray="4 4"/>
+  <rect x="630" y="350" width="55" height="28" rx="4" fill="#207448"/>
+  <rect x="740" y="350" width="60" height="28" rx="4" fill="#207448"/>
+  <rect x="880" y="350" width="50" height="28" rx="4" fill="#207448"/>
+  
+  <line x1="615" y1="410" x2="985" y2="410" stroke="#c4d7c7" stroke-width="1" stroke-dasharray="4 4"/>
+  <rect x="695" y="396" width="65" height="28" rx="4" fill="#3c8e5f"/>
+  <rect x="815" y="396" width="55" height="28" rx="4" fill="#3c8e5f"/>
+  <rect x="920" y="396" width="60" height="28" rx="4" fill="#3c8e5f"/>
+  
+  <line x1="615" y1="455" x2="985" y2="455" stroke="#c4d7c7" stroke-width="1" stroke-dasharray="4 4"/>
+  <rect x="650" y="441" width="50" height="28" rx="4" fill="#69af86"/>
+  <rect x="770" y="441" width="70" height="28" rx="4" fill="#69af86"/>
+  <rect x="855" y="441" width="55" height="28" rx="4" fill="#69af86"/>
+
+  
+  <rect x="580" y="514" width="440" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="552" text-anchor="middle" class="label-sans-bold">compresses headers</text>
+
+  
+  <rect x="580" y="586" width="440" height="150" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="3"/>
+  <text x="600" y="626" class="orange-text">
+    <tspan x="600" dy="0">head-of-line blocking now happens</tspan>
+    <tspan x="600" dy="32">at the TCP level: one stalled</tspan>
+    <tspan x="600" dy="32">TCP packet holds up every stream</tspan>
+  </text>
+
+  
+  <rect x="1080" y="145" width="480" height="715" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <path d="M 1135 167 L 1155 174 L 1155 194 C 1155 206 1135 214 1135 214 C 1135 214 1115 206 1115 194 L 1115 174 Z" fill="none" stroke="#207448" stroke-width="4"/>
+  <polygon points="1137,175 1129,190 1137,190 1133,205 1143,188 1135,188" fill="#207448"/>
+  <text x="1185" y="202" class="col-title">HTTP/3</text>
+
+  
+  <rect x="1100" y="230" width="440" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1320" y="260" text-anchor="middle" class="label-sans-bold">
+    <tspan x="1320" dy="0">HTTP over QUIC (includes TLS 1.3)</tspan>
+    <tspan x="1320" dy="30">over UDP/443</tspan>
+  </text>
+
+  
+  <rect x="1100" y="317" width="440" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1120" y="355" class="label-sans">recovers from loss per stream</text>
+
+  
+  <rect x="1100" y="389" width="440" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1120" y="427" class="label-sans">faster connection setup</text>
+
+  
+  <rect x="1100" y="461" width="440" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1120" y="499" class="label-sans">supports connection migration</text>
+
+  
+  <rect x="1100" y="533" width="440" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1120" y="568" class="label-mono">
+    <tspan x="1120" dy="0">try curl --http3 if your</tspan>
+    <tspan x="1120" dy="30">build supports it</tspan>
+  </text>
+
+  
+  <rect x="40" y="875" width="1520" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="85" cy="927" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 85 903 L 85 911 M 85 943 L 85 951 M 61 927 L 69 927 M 101 927 L 109 927 M 68 910 L 74 916 M 96 938 L 102 944 M 68 944 L 74 938 M 96 916 L 102 910" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="130" y="918" class="label-sans">
+    <tspan x="130" dy="0">Redirects 301, 302, 307, 308 trigger a new request, maybe a new connection: curl -L; proxies, CDNs and load balancers</tspan>
+    <tspan x="130" dy="32">may terminate TLS, rewrite headers such as X-Forwarded-For, cache and retry</tspan>
+  </text>
+
+  
+  <rect x="40" y="995" width="1520" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="85" cy="1040" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+  <polyline points="85,1026 85,1040 97,1040" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="130" y="1034" class="label-mono">
+    <tspan x="130" dy="0">TTFB = time_starttransfer = DNS + connect + TLS + server think time + one RTT;</tspan>
+    <tspan x="130" dy="30">time_total adds the body transfer</tspan>
+  </text>
+
+  
+  <rect x="40" y="1100" width="1520" height="60" rx="12" fill="#207448" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="85" cy="1130" r="16" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <polyline points="77,1130 82,1136 93,1123" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="130" y="1138" class="bar-text">If headers look right but the page is slow, compare time_starttransfer with time_total</text>
+</svg>

@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>RBAC verbs mapped to HTTP methods</title>
+  <desc>Visual mapping of Kubernetes RBAC verbs to HTTP methods, highlighting shared GET permissions and monitoring agent verb requirements.</desc>
+
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="50" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">RBAC verbs mapped to HTTP methods</text>
+
+  <!-- Left Table Container -->
+  <!-- Column Headers -->
+  <g>
+    <rect x="50" y="115" width="1030" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="138" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Verb</text>
+    <text x="338" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">HTTP method</text>
+    <text x="720" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Meaning</text>
+  </g>
+
+  <!-- Row 1: create | POST | Create a new resource -->
+  <g>
+    <rect x="50" y="175" width="1030" height="62" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="70" y="182" width="136" height="48" rx="6" fill="#e8f1ea"/>
+    <text x="138" y="214" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">create</text>
+    <rect x="270" y="182" width="136" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="338" y="214" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">POST</text>
+    <text x="440" y="214" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Create a new resource</text>
+  </g>
+
+  <!-- Row 2: delete | DELETE | Delete an existing resource -->
+  <g>
+    <rect x="50" y="247" width="1030" height="62" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="70" y="254" width="136" height="48" rx="6" fill="#e8f1ea"/>
+    <text x="138" y="286" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">delete</text>
+    <rect x="270" y="254" width="136" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="338" y="286" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">DELETE</text>
+    <text x="440" y="286" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Delete an existing resource</text>
+  </g>
+
+  <!-- Row 3: patch | PATCH | Modify via a partial change -->
+  <g>
+    <rect x="50" y="319" width="1030" height="62" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="70" y="326" width="136" height="48" rx="6" fill="#e8f1ea"/>
+    <text x="138" y="358" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">patch</text>
+    <rect x="270" y="326" width="136" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="338" y="358" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">PATCH</text>
+    <text x="440" y="358" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Modify via a partial change</text>
+  </g>
+
+  <!-- Row 4: update | PUT | Modify via a complete object -->
+  <g>
+    <rect x="50" y="391" width="1030" height="62" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="70" y="398" width="136" height="48" rx="6" fill="#e8f1ea"/>
+    <text x="138" y="430" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">update</text>
+    <rect x="270" y="398" width="136" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="338" y="430" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">PUT</text>
+    <text x="440" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Modify via a complete object</text>
+  </g>
+
+  <!-- Orange container: Three rows get, list and watch with orange outline -->
+  <g>
+    <rect x="50" y="463" width="1030" height="297" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+    <!-- Row 5: get -->
+    <rect x="70" y="475" width="136" height="48" rx="6" fill="#e8f1ea"/>
+    <text x="138" y="507" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">get</text>
+    <text x="440" y="507" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Get a resource</text>
+
+    <!-- Row 6: list -->
+    <rect x="70" y="547" width="136" height="48" rx="6" fill="#e8f1ea"/>
+    <text x="138" y="579" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">list</text>
+    <text x="440" y="579" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">List a collection</text>
+
+    <!-- Row 7: watch -->
+    <rect x="70" y="619" width="136" height="48" rx="6" fill="#e8f1ea"/>
+    <text x="138" y="651" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">watch</text>
+    <text x="440" y="651" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Watch for streaming updates</text>
+
+    <!-- Bracket for get, list, watch -->
+    <path d="M 216 499 L 232 499 C 242 499 242 567 252 577 C 242 587 242 655 232 655 L 216 655" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="252" y1="577" x2="270" y2="577" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Shared GET Pill -->
+    <rect x="270" y="553" width="136" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="338" y="585" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">GET</text>
+
+    <!-- Bracket Label inside the orange container -->
+    <rect x="70" y="693" width="990" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="565" y="728" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Same HTTP method, different permission</text>
+  </g>
+
+  <!-- Row 8: proxy | Connect via a streaming WebSocket proxy -->
+  <g>
+    <rect x="50" y="772" width="1030" height="62" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <rect x="70" y="779" width="136" height="48" rx="6" fill="#e8f1ea"/>
+    <text x="138" y="811" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">proxy</text>
+    <text x="440" y="811" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Connect via a streaming WebSocket proxy</text>
+  </g>
+
+  <!-- Side Card for a Monitoring Agent -->
+  <g>
+    <rect x="1120" y="115" width="430" height="719" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    <!-- Monitoring Agent Icon -->
+    <g transform="translate(1335, 172)">
+      <!-- Monitor / Screen outline -->
+      <rect x="-36" y="-28" width="72" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <line x1="-36" y1="8" x2="36" y2="8" stroke="#207448" stroke-width="2"/>
+      <!-- Stand -->
+      <path d="M -10 20 L -16 32 L 16 32 L 10 20 Z" fill="#207448"/>
+      <!-- Pulse / radar trace inside monitor -->
+      <path d="M -24 -4 L -12 -4 L -6 -16 L 4 10 L 12 -4 L 24 -4" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <!-- Sub-card 1: Allowed permissions -->
+    <g>
+      <rect x="1145" y="230" width="380" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <!-- Green check icon -->
+      <circle cx="1335" cy="290" r="28" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+      <path d="M 1322 290 L 1331 299 L 1350 280" fill="none" stroke="#207448" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+      <text x="1335" y="365" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+        <tspan x="1335" dy="0">Needs list and</tspan>
+        <tspan x="1335" dy="36">watch on pods</tspan>
+      </text>
+    </g>
+
+    <!-- Sub-card 2: Denied / Not needed permissions -->
+    <g>
+      <rect x="1145" y="480" width="380" height="330" rx="12" fill="#ffffff" stroke="#c53030" stroke-width="2"/>
+      
+      <!-- Red cross icon -->
+      <circle cx="1335" cy="540" r="28" fill="#fdf0f0" stroke="#c53030" stroke-width="4"/>
+      <path d="M 1323 528 L 1347 552 M 1347 528 L 1323 552" fill="none" stroke="#c53030" stroke-width="4.5" stroke-linecap="round"/>
+
+      <text x="1335" y="618" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+        <tspan x="1335" dy="0">create, update,</tspan>
+        <tspan x="1335" dy="36">delete</tspan>
+      </text>
+
+      <!-- Not needed label -->
+      <rect x="1235" y="720" width="200" height="52" rx="8" fill="#fdf0f0" stroke="#c53030" stroke-width="2"/>
+      <text x="1335" y="755" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c53030" text-anchor="middle">Not needed</text>
+    </g>
+  </g>
+
+  <!-- Bottom Note / Takeaway Bar -->
+  <g>
+    <rect x="50" y="874" width="1500" height="66" rx="12" fill="#207448"/>
+    <text x="800" y="916" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Start each Role from the smallest verb set the workload needs.</text>
+  </g>
+</svg>

@@ -38,19 +38,9 @@ It is a Monday morning, and a new GPU node has just been racked. Someone has to 
 
 Suppose a colleague edits `cgroup.conf` on a Friday afternoon, restarts a daemon, and then asks why nothing changed. Often the answer is that the edit went into a file that the daemon never reads. Before you touch any parameter, you need to know which file feeds which daemon. The diagram below shows the four configuration files and the process that reads each one.
 
-```mermaid
-flowchart LR
-  subgraph CFG["/etc/slurm configuration files"]
-    SC["slurm.conf: nodes, partitions, cons_tres, SchedulerParameters"]
-    CG["cgroup.conf: ConstrainCores, ConstrainRAMSpace, ConstrainDevices"]
-    GR["gres.conf: AutoDetect=nvml, GPU device files"]
-    TP["topology.conf / topology.yaml: SwitchName & BlockName"]
-  end
-  SC --> CTLD["slurmctld (serves configless to slurmd & sackd)"]
-  CG --> STEPD["slurmstepd (enforces cgroup v2 CPU/RAM/GPU limits)"]
-  GR --> STEPD
-  TP --> CTLD
-```
+![How Slurm configuration is organized](./img/m6-08-1.svg)
+
+*Figure 6.8.1. How Slurm configuration is organized, as a diagram.*
 
 Slurm reads `slurm.conf` and its companion files from `/etc/slurm`. The companions are `cgroup.conf`, `gres.conf`, `topology.conf` or `topology.yaml`, `plugstack.conf`, and `slurmdbd.conf`. Each file answers a different question. `slurm.conf` describes the whole cluster, meaning the nodes, the partitions and the scheduling rules. `cgroup.conf` tells the kernel how to fence a running job. `gres.conf` describes the devices on one node, and the topology file describes which switch each node hangs from. The rules here come from the `slurm.conf(5)` man page at commit `521370b`, and from Chapter 15 of Zhumatiy's *Supercomputers for Linux SysAdmins*.
 

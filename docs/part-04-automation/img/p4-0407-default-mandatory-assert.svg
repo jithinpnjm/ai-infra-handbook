@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+  <title>Fail early or fall back: default, mandatory, assert and argument specs</title>
+  <desc>A visual decision flow explaining default values, mandatory variables, assert tasks, argument specs, and type conversion filters in Ansible.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1170" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Fail early or fall back:</text>
+  <text x="40" y="130" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">default, mandatory, assert and argument specs</text>
+
+  
+  <rect x="40" y="165" width="1520" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 178)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="12" cy="24" r="6"/>
+    <circle cx="38" cy="12" r="6"/>
+    <circle cx="38" cy="36" r="6"/>
+    <path d="M 18 24 L 26 24 L 32 14"/>
+    <path d="M 26 24 L 32 34"/>
+  </g>
+  <text x="135" y="213" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">A decision flow for an optional or required value.</text>
+
+  
+  <path d="M 410 240 L 410 278" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M 1190 240 L 1190 278" stroke="#db8129" stroke-width="3" fill="none" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="40" y="280" width="740" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(65, 298)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 36 6 A 14 14 0 0 0 16 26 L 8 34 A 6 6 0 0 0 16 42 L 24 34 A 14 14 0 0 0 44 14 L 36 22 L 28 22 L 28 14 Z"/>
+  </g>
+  <text x="135" y="325" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">optional with a sensible fallback:</text>
+  <rect x="65" y="348" width="690" height="42" rx="6" fill="#e8f1ea" stroke="#a3c9b2" stroke-width="1.5"/>
+  <text x="80" y="377" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">{{ optional_var | default(x) }}</text>
+  <text x="65" y="426" font-family="sans-serif" font-size="24" fill="#303a36">supplies the spare part only when the primary</text>
+  <text x="65" y="462" font-family="sans-serif" font-size="24" fill="#303a36">is missing</text>
+
+  
+  <rect x="820" y="280" width="740" height="230" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(845, 298)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="16,6 34,6 44,16 44,34 34,44 16,44 6,34 6,16"/>
+    <line x1="25" y1="16" x2="25" y2="27"/>
+    <circle cx="25" cy="34" r="1.5" fill="#db8129"/>
+  </g>
+  <text x="915" y="325" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">required:</text>
+  <rect x="845" y="348" width="690" height="42" rx="6" fill="#fdf2e7" stroke="#db8129" stroke-width="1.5"/>
+  <text x="860" y="377" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">{{ must_exist | mandatory }}</text>
+  <text x="845" y="420" font-family="sans-serif" font-size="24" fill="#303a36">stops the job before any node is touched,</text>
+  <text x="845" y="452" font-family="sans-serif" font-size="24" fill="#303a36">much cheaper than discovering halfway through</text>
+  <text x="845" y="484" font-family="sans-serif" font-size="24" fill="#303a36">a fleet run that a rack variable was empty</text>
+
+  
+  <path d="M 410 510 L 410 543" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)"/>
+  <path d="M 1190 510 L 1190 543" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="40" y="545" width="740" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(65, 563)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 6 L 30 6 L 40 16 L 40 44 L 10 44 Z"/>
+    <path d="M 30 6 L 30 16 L 40 16"/>
+    <line x1="18" y1="26" x2="32" y2="26"/>
+    <line x1="18" y1="34" x2="28" y2="34"/>
+  </g>
+  <text x="135" y="595" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">roles: validate inputs</text>
+  <text x="65" y="635" font-family="sans-serif" font-size="24" fill="#303a36">with an argument spec in</text>
+  <rect x="65" y="655" width="690" height="42" rx="6" fill="#e8f1ea" stroke="#a3c9b2" stroke-width="1.5"/>
+  <text x="80" y="684" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">meta/argument_specs.yml (4.11)</text>
+
+  
+  <rect x="820" y="545" width="740" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(845, 563)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="30" height="34" rx="4"/>
+    <path d="M 18 6 L 32 6"/>
+    <path d="M 16 22 L 20 26 L 28 18"/>
+    <path d="M 16 34 L 20 38 L 28 30"/>
+  </g>
+  <text x="915" y="595" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">required set of checks:</text>
+  <text x="845" y="635" font-family="sans-serif" font-size="24" fill="#303a36">assert at the top of a play or role:</text>
+  <rect x="835" y="655" width="710" height="42" rx="6" fill="#e8f1ea" stroke="#a3c9b2" stroke-width="1.5"/>
+  <text x="850" y="684" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">that: [ rack is defined, gpu_count | int &gt; 0 ]:</text>
+  <text x="845" y="730" font-family="sans-serif" font-size="24" fill="#303a36">fails early with a clear message</text>
+
+  
+  <rect x="40" y="785" width="1520" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 802)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="8,8 42,8 28,24 28,40 22,36 22,24"/>
+  </g>
+  <text x="135" y="836" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Type conversion panel</text>
+  <text x="75" y="884" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">filters int, float, bool, string, list;</text>
+  <text x="75" y="924" font-family="sans-serif" font-size="24" fill="#303a36">a boolean written as a string such as &quot;yes&quot; or &quot;True&quot; needs | bool before you test it;</text>
+  <text x="75" y="964" font-family="sans-serif" font-size="24" fill="#303a36">never compare a boolean with a string: the string no is not empty so a plain if on it is true;</text>
+  <text x="75" y="1004" font-family="sans-serif" font-size="24" fill="#303a36">| bool turns the word into a real boolean first</text>
+
+  
+  <rect x="40" y="1070" width="1520" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1114" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Give every optional value a default, or check it with an assertion</text>
+</svg>

@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>How x + y finds an implementation: __add__, NotImplemented and the reflected method</title>
+  <desc>How x + y finds an implementation: __add__, NotImplemented and the reflected method</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">How x + y finds an implementation:</text>
+  <text x="40" y="118" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">__add__, NotImplemented and the reflected method</text>
+
+  
+  <rect x="40" y="150" width="940" height="545" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(60, 165)">
+    <rect x="0" y="0" width="42" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 8 18 L 34 18 M 24 10 L 34 18 L 24 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="56" y="28" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">v + other</text>
+  </g>
+
+  
+  <rect x="70" y="215" width="880" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="108" cy="247" r="22" fill="#207448" />
+  <text x="108" y="255" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(144, 227)">
+    <rect x="0" y="0" width="44" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="0" y1="12" x2="44" y2="12" stroke="#207448" stroke-width="2" />
+    <path d="M 8 26 L 16 20 L 8 14" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="22" y1="26" x2="32" y2="26" stroke="#207448" stroke-width="2" />
+  </g>
+  <text x="206" y="256" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Python calls type(v).__add__(v, other)</text>
+
+  
+  <path d="M 510 280 L 510 310" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="340" y="310" width="340" height="52" rx="26" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(355, 318)">
+    <polygon points="18,2 34,18 18,34 2,18" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="18" y="24" font-family="sans-serif" font-size="18" font-weight="bold" fill="#207448" text-anchor="middle">?</text>
+  </g>
+  <text x="400" y="345" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">is other a Vector?</text>
+
+  
+  <path d="M 400 362 L 400 376 L 270 376 L 270 395" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="335" y="371" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">yes</text>
+
+  
+  <rect x="60" y="395" width="420" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(76, 412)">
+    <circle cx="25" cy="25" r="23" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 14 25 L 22 33 L 36 17" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="136" y="432" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="136" dy="0">returns Vector(self.x +</tspan>
+    <tspan x="136" dy="30">other.x, self.y + other.y)</tspan>
+  </text>
+
+  
+  <path d="M 620 362 L 620 376 L 750 376 L 750 395" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="685" y="371" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no</text>
+
+  
+  <rect x="540" y="395" width="420" height="85" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(556, 412)">
+    <path d="M 25 3 L 45 11 L 45 26 C 45 37 25 47 25 47 C 25 47 5 37 5 26 L 5 11 Z" fill="none" stroke="#db8129" stroke-width="3" />
+    <line x1="25" y1="15" x2="25" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <circle cx="25" cy="35" r="2" fill="#db8129" />
+  </g>
+  <text x="616" y="432" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="616" dy="0">returns NotImplemented,</tspan>
+    <tspan x="616" dy="30">it does not raise</tspan>
+  </text>
+
+  
+  <path d="M 750 480 L 750 505" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="70" y="505" width="880" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="108" cy="542" r="22" fill="#207448" />
+  <text x="108" y="550" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(144, 520)">
+    <rect x="0" y="0" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 8 16 L 32 16 M 24 10 L 32 16 L 24 22" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 36 28 L 12 28 M 20 22 L 12 28 L 20 34" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="206" y="537" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="206" dy="0">Python tries the reflected method</tspan>
+    <tspan x="206" dy="28">on the other operand: __radd__</tspan>
+  </text>
+
+  
+  <path d="M 510 580 L 510 605" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="70" y="605" width="880" height="72" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="108" cy="641" r="22" fill="#207448" />
+  <text x="108" y="649" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(144, 621)">
+    <polygon points="12,2 32,2 42,12 42,32 32,42 12,42 2,32 2,12" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="14" y1="14" x2="30" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="30" y1="14" x2="14" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="206" y="649" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">if both return NotImplemented, TypeError</text>
+
+  
+  <rect x="40" y="715" width="580" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(60, 727)">
+    <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="12" y1="12" x2="28" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="28" y1="12" x2="12" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="50" y="28" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">3 * v</text>
+  </g>
+  <text x="60" y="795" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">int.__mul__ does not know Vector</tspan>
+    <tspan x="60" dy="30">and returns NotImplemented;</tspan>
+    <tspan x="60" dy="30">Python tries v.__rmul__(3);</tspan>
+    <tspan x="60" dy="30">__rmul__ = __mul__ so the result</tspan>
+    <tspan x="60" dy="30">is Vector(self.x * k, self.y * k)</tspan>
+  </text>
+
+  
+  <rect x="640" y="715" width="340" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(660, 735)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="14" y1="24" x2="34" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="24" y1="14" x2="24" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="660" y="815" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="660" dy="0">__iadd__ for +=,</tspan>
+    <tspan x="660" dy="35">falling back to</tspan>
+    <tspan x="660" dy="35">__add__</tspan>
+  </text>
+
+  
+  <rect x="1005" y="150" width="555" height="775" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1025, 168)">
+    <rect x="0" y="0" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="10" y1="14" x2="34" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="10" y1="22" x2="34" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="10" y1="30" x2="26" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="56" y="32" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Four design rules</text>
+  </g>
+
+  
+  <rect x="1025" y="225" width="515" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1040, 240)">
+    <polygon points="18,4 34,34 2,34" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="18" y1="16" x2="18" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="18" cy="29" r="1.5" fill="#207448" />
+  </g>
+  <text x="1088" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1088" dy="0">return NotImplemented instead</tspan>
+    <tspan x="1088" dy="30">of raising for unsupported</tspan>
+    <tspan x="1088" dy="30">operand types</tspan>
+  </text>
+
+  
+  <rect x="1025" y="360" width="515" height="245" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1040, 375)">
+    <rect x="4" y="4" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="10" y1="16" x2="30" y2="16" stroke="#207448" stroke-width="2" />
+    <line x1="10" y1="24" x2="30" y2="24" stroke="#207448" stroke-width="2" />
+  </g>
+  <text x="1088" y="392" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1088" dy="0">keep __eq__ and __hash__</tspan>
+    <tspan x="1088" dy="32">consistent: equal objects must</tspan>
+    <tspan x="1088" dy="32">hash equal, mutable objects</tspan>
+    <tspan x="1088" dy="32">should not be hashable; defining</tspan>
+    <tspan x="1088" dy="32">__eq__ without __hash__ makes</tspan>
+    <tspan x="1088" dy="32">instances unhashable</tspan>
+  </text>
+
+  
+  <rect x="1025" y="620" width="515" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1040, 635)">
+    <circle cx="20" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="20" cy="20" r="6" fill="#207448" />
+  </g>
+  <text x="1088" y="655" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1088" dy="0">make __repr__ always useful by</tspan>
+    <tspan x="1088" dy="32">including the fields that</tspan>
+    <tspan x="1088" dy="32">identify the object</tspan>
+  </text>
+
+  
+  <rect x="1025" y="765" width="515" height="145" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1040, 780)">
+    <rect x="4" y="4" width="14" height="14" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="22" y="4" width="14" height="14" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="4" y="22" width="14" height="14" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="22" y="22" width="14" height="14" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="1088" y="798" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1088" dy="0">prefer composition and abstract</tspan>
+    <tspan x="1088" dy="30">bases such as collections.abc.</tspan>
+    <tspan x="1088" dy="30">Sequence, Mapping and</tspan>
+    <tspan x="1088" dy="30">MutableMapping</tspan>
+  </text>
+
+  
+  <rect x="40" y="945" width="1520" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(60, 960)">
+    <rect x="0" y="0" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 12 14 L 6 22 L 12 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 32 14 L 38 22 L 32 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="25" y1="12" x2="19" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="120" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="120" dy="0">repr is unambiguous for developers and logs, str is for humans;</tspan>
+    <tspan x="120" dy="34">__slots__ = (x, y) gives smaller, faster objects with fixed attributes;</tspan>
+    <tspan x="120" dy="34">__bool__ is bool(abs(self)); __iter__ lets x, y = v unpack</tspan>
+  </text>
+
+  
+  <rect x="40" y="1100" width="1520" height="65" rx="8" fill="#207448" />
+  <text x="800" y="1142" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Return NotImplemented so Python can try the other operand before it gives up</text>
+</svg>

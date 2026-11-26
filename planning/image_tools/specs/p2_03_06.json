@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "06",
+  "name": "p2-0306-bounded-map",
+  "title": "A bounded map keeps only a fixed number of futures alive, so memory stays flat",
+  "anchor": "### Backpressure with executors (avoiding the \"10 million futures\" OOM)",
+  "spec": "A loop diagram with numbered steps 1 to 4 around a circle, with a central box 'inflight: at most max_inflight futures'. Step 1 box: 'Seed: submit the first max_inflight items from the iterator'. Arrow to step 2 box: 'wait(inflight, FIRST_COMPLETED): block until some futures finish'. Arrow to step 3 box: 'yield their results to the caller'. Arrow to step 4 box, green: 'Refill: submit the same number of new items from the iterator', which returns an arrow back to step 2. A side box, orange outline: 'Naive submit-all creates 10 million futures before any work starts, so memory grows first.' A bottom memory note: 'Memory stays at O(max_inflight), whatever the input size.' Caption: 'Feed the pool in a bounded way.'",
+  "alt": "A bounded map seeds max_inflight futures, waits for some to finish, yields their results, and refills the same number, so memory stays bounded.",
+  "cap": "A bounded map submits only a fixed number of futures at a time, refilling as they finish, so memory stays at a fixed size however large the input."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "06",
+  "name": "p2-0306-jitter-retry",
+  "title": "Fixed retry intervals sync the clients into a storm; full jitter spreads them out",
+  "anchor": "### Retries, backoff and jitter",
+  "spec": "Two timeline panels stacked. Top panel, orange outline, heading 'Fixed backoff: retries line up'. Horizontal time axis with three tick groups labelled 'retry 1 at 1 s', 'retry 2 at 2 s', 'retry 3 at 4 s'. In each group, a dense stack of many small client marks all landing on the same tick, labelled 'many clients hit the recovering API together'. A red-outline warning 'retry storm' beside the third group. Bottom panel, green heading 'Exponential backoff with full jitter: retries spread out'. The same time axis with the same tick groups, but each group shows client marks scattered across a range drawn as a shaded band, with the formula in monospace: 'delay = random.uniform(0, min(cap, base * 2 ** attempt))'. Note at the bottom: 'Cap the total time, honour Retry-After, and retry only idempotent operations.' Caption: 'Jitter keeps the load from arriving in waves.'",
+  "alt": "Fixed backoff makes many clients retry on the same ticks, while full jitter scatters each retry across a random range.",
+  "cap": "Fixed backoff makes many clients retry on the same ticks and cause a storm, while full jitter spreads each retry over a random range."
+ }
+]

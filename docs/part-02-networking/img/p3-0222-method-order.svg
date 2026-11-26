@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A method in order: monitoring, USE, static tuning, workload, then the specific questions</title>
+  <desc>Visual infographic explaining the network performance methodology in order: monitoring, USE method, static tuning, workload characterization, specific questions, and micro-benchmarking.</desc>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A method in order: monitoring, USE, static tuning,</text>
+  <text x="50" y="118" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">workload, then the specific questions</text>
+
+  
+
+  
+  <g id="step1">
+    <rect x="50" y="145" width="800" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="200" r="24" fill="#207448"/>
+    <text x="85" y="200" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    <text x="125" y="188" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">1 Performance monitoring:</text>
+    <text x="125" y="224" font-family="sans-serif" font-size="24" fill="#303a36">a baseline over time</text>
+    
+    <g transform="translate(740, 172)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="28,14 28,28 38,28"/>
+    </g>
+  </g>
+
+  
+  <g id="step2">
+    <rect x="50" y="295" width="800" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="362" r="24" fill="#207448"/>
+    <text x="85" y="362" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    <text x="125" y="335" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">2 USE method:</text>
+    <text x="125" y="372" font-family="sans-serif" font-size="24" fill="#303a36">utilization, saturation, errors for each</text>
+    <text x="125" y="404" font-family="sans-serif" font-size="24" fill="#303a36">interface and direction</text>
+    
+    <g transform="translate(740, 335)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 42 A 24 24 0 0 1 50 42"/>
+      <line x1="28" y1="42" x2="42" y2="24"/>
+      <circle cx="28" cy="42" r="3" fill="#207448"/>
+    </g>
+  </g>
+
+  
+  <g id="step3">
+    <rect x="50" y="470" width="800" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="530" r="24" fill="#207448"/>
+    <text x="85" y="530" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    <text x="125" y="510" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">3 Static performance tuning:</text>
+    <text x="125" y="546" font-family="sans-serif" font-size="24" fill="#303a36">is the configuration right before load arrives?</text>
+    
+    <g transform="translate(740, 502)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <line x1="12" y1="6" x2="12" y2="50"/>
+      <circle cx="12" cy="20" r="6" fill="#e8f1ea"/>
+      <line x1="28" y1="6" x2="28" y2="50"/>
+      <circle cx="28" cy="36" r="6" fill="#e8f1ea"/>
+      <line x1="44" y1="6" x2="44" y2="50"/>
+      <circle cx="44" cy="16" r="6" fill="#e8f1ea"/>
+    </g>
+  </g>
+
+  
+  <g id="step4">
+    <rect x="50" y="630" width="800" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="685" r="24" fill="#207448"/>
+    <text x="85" y="685" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    <text x="125" y="672" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">4 Workload characterization:</text>
+    <text x="125" y="708" font-family="sans-serif" font-size="24" fill="#303a36">what is the system being asked to do?</text>
+    
+    <g transform="translate(740, 658)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="44" rx="4"/>
+      <rect x="20" y="4" width="16" height="10" rx="2" fill="#e8f1ea"/>
+      <line x1="18" y1="24" x2="38" y2="24"/>
+      <line x1="18" y1="34" x2="38" y2="34"/>
+      <line x1="18" y1="44" x2="30" y2="44"/>
+    </g>
+  </g>
+
+  
+  <g id="step5">
+    <rect x="50" y="780" width="800" height="140" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="850" r="24" fill="#207448"/>
+    <text x="85" y="850" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+    <text x="125" y="818" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">5 Latency analysis, TCP analysis</text>
+    <text x="125" y="854" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">and packet sniffing:</text>
+    <text x="125" y="890" font-family="sans-serif" font-size="24" fill="#303a36">answer specific questions</text>
+    
+    <g transform="translate(740, 822)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="16"/>
+      <line x1="34" y1="34" x2="48" y2="48"/>
+      <line x1="16" y1="22" x2="28" y2="22"/>
+    </g>
+  </g>
+
+  
+  <g id="step6">
+    <rect x="50" y="960" width="800" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="1015" r="24" fill="#207448"/>
+    <text x="85" y="1015" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+    <text x="125" y="1002" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">6 Micro-benchmarking:</text>
+    <text x="125" y="1038" font-family="sans-serif" font-size="24" fill="#303a36">confirm the hypotheses</text>
+    
+    <g transform="translate(740, 988)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 8 L 34 8"/>
+      <path d="M 25 8 L 25 20 L 10 46 A 4 4 0 0 0 14 52 L 42 52 A 4 4 0 0 0 46 46 L 31 20 L 31 8"/>
+      <line x1="18" y1="38" x2="38" y2="38"/>
+    </g>
+  </g>
+
+  
+
+  
+  <g id="tools-method-box">
+    <rect x="880" y="145" width="670" height="430" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1480, 165)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 32 10 A 14 14 0 0 0 14 28 L 6 36 A 6 6 0 0 0 14 44 L 22 36 A 14 14 0 0 0 40 18 L 32 10 Z"/>
+      <line x1="38" y1="38" x2="48" y2="48"/>
+    </g>
+
+    
+    <text x="905" y="182" font-family="sans-serif" font-size="24" fill="#303a36">walk through the tools and read the key</text>
+    <text x="905" y="214" font-family="sans-serif" font-size="24" fill="#303a36">metric of each: <tspan font-family="monospace">nstat</tspan> or <tspan font-family="monospace">netstat -s</tspan> for</text>
+    <text x="905" y="246" font-family="sans-serif" font-size="24" fill="#303a36">retransmits and out-of-order, <tspan font-family="monospace">ip -s link</tspan></text>
+    <text x="905" y="278" font-family="sans-serif" font-size="24" fill="#303a36">for errors, drops and overruns, <tspan font-family="monospace">ss -tiepm</tspan></text>
+    <text x="905" y="310" font-family="sans-serif" font-size="24" fill="#303a36">for limiter flags, <tspan font-family="monospace">nicstat</tspan> or <tspan font-family="monospace">ip -s link</tspan></text>
+    <text x="905" y="342" font-family="sans-serif" font-size="24" fill="#303a36">throughput against negotiated speed,</text>
+    <text x="905" y="374" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">tcplife</tspan> and <tspan font-family="monospace">tcptop</tspan>, <tspan font-family="monospace">tcpdump</tspan> for short</text>
+    <text x="905" y="406" font-family="sans-serif" font-size="24" fill="#303a36">captures, <tspan font-family="monospace">perf</tspan>, <tspan font-family="monospace">BCC</tspan> or <tspan font-family="monospace">bpftrace</tspan></text>
+
+    
+    <rect x="905" y="435" width="620" height="115" rx="8" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(920, 455)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 18 4 L 34 34 L 2 34 Z"/>
+      <line x1="18" y1="16" x2="18" y2="24"/>
+      <circle cx="18" cy="29" r="1.5" fill="#db8129"/>
+    </g>
+    <text x="965" y="468" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">it finds only what the tools show:</text>
+    <text x="965" y="500" font-family="sans-serif" font-size="24" fill="#303a36">a problem that no tool measures</text>
+    <text x="965" y="532" font-family="sans-serif" font-size="24" fill="#303a36">stays invisible</text>
+  </g>
+
+  
+  <g id="workload-box">
+    <rect x="880" y="615" width="670" height="455" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1480, 635)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="12" width="38" height="14" rx="3"/>
+      <rect x="8" y="32" width="38" height="14" rx="3"/>
+      <circle cx="16" cy="19" r="2" fill="#207448"/>
+      <circle cx="16" cy="39" r="2" fill="#207448"/>
+      <path d="M 32 26 L 32 32"/>
+    </g>
+
+    
+    <text x="905" y="660" font-family="sans-serif" font-size="24" fill="#303a36">throughput in bytes per second RX and TX,</text>
+    <text x="905" y="698" font-family="sans-serif" font-size="24" fill="#303a36">packet rates, TCP connection rates for</text>
+    <text x="905" y="736" font-family="sans-serif" font-size="24" fill="#303a36">active and passive opens, average packet</text>
+    <text x="905" y="774" font-family="sans-serif" font-size="24" fill="#303a36">sizes, flows by protocol, port and peer,</text>
+    <text x="905" y="812" font-family="sans-serif" font-size="24" fill="#303a36">burstiness, time of day; top talkers;</text>
+    <text x="905" y="850" font-family="sans-serif" font-size="24" fill="#303a36">small packets are packet-rate bound,</text>
+    <text x="905" y="888" font-family="sans-serif" font-size="24" fill="#303a36">large packets bandwidth bound;</text>
+    <text x="905" y="926" font-family="sans-serif" font-size="24" fill="#303a36">removing unnecessary work (chatty</text>
+    <text x="905" y="964" font-family="sans-serif" font-size="24" fill="#303a36">protocols, repeated DNS lookups, uncached</text>
+    <text x="905" y="1002" font-family="sans-serif" font-size="24" fill="#303a36">fetches) is often the biggest win</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1120" width="1500" height="55" rx="8" fill="#207448"/>
+    <text x="800" y="1157" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">A method tells you which numbers to read first</text>
+  </g>
+</svg>

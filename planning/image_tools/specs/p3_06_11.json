@@ -1,0 +1,132 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-batch-header-anatomy",
+  "title": "Anatomy of the bert-pretrain batch script header",
+  "spec": "Annotated script. Lines with callouts: '#SBATCH --job-name=bert-pretrain', '--partition=gpu', '--nodes=2', '--ntasks-per-node=8 (one task per GPU)', '--gpus-per-node=8', '--cpus-per-gpu=12', '--mem=0 (all memory on the exclusive node)', '--exclusive', '--time=12:00:00 (always give one; backfill slips short jobs into gaps only if it knows how long each will take)', '--requeue', '--signal=B:USR1@300 (warn the batch shell 5 minutes before the limit)', '--output=logs/%x-%j.out (%x name, %j job ID, %A and %a array job and index, %N short hostname)', '--open-mode=append (a requeued job reuses its job ID and log name; truncate would erase the first run log)'. Body lines: 'set -euo pipefail', 'module purge', 'module load cuda/12.4 nccl/2.21', 'export OMP_NUM_THREADS=$SLURM_CPUS_PER_GPU', 'srun --mpi=pmix python train.py --resume-if-exists'. Rules strip: 'every #SBATCH line must come before the first executable command or the shell treats it as a comment; command-line options override the directives; default --export=ALL copies the submitter environment including modules and conda, so for reproducibility use --export=NONE with explicit setup; --wrap for a one-liner; --test-only reports when and where the job would start without submitting; if the --output directory does not exist the job fails without a log'. Text at least 24px.",
+  "anchor": "## 2. A batch script",
+  "alt": "A batch script header annotated line by line with what each directive does and the rules about directive order.",
+  "cap": "A batch script puts every setting in one reviewable file, and options on the command line override it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-srun-flags",
+  "title": "Three srun flags that change how steps share a node",
+  "spec": "Three cards. Card '--overlap: steps do not share resources by default; a second concurrent srun that wants CPUs or GPUs used by the first either waits or is rejected; --overlap allows steps to share all resources (CPUs, memory and GRES) with all other steps; explains why srun nvidia-smi in a second terminal of an interactive allocation can hang; use srun --overlap --jobid=JOBID to monitor GPUs of a running training job'. Card '--exact: without it a step may use all non-GRES resources on each node in the step allocation and take more CPU and memory than it needs; with it the step is limited to exactly what it requested; use it for several concurrent steps with different shapes; often default when you set --cpus-per-task or --cpus-per-gpu, check your release'. Card '-K or --kill-on-bad-exit: one non-zero exit ends the whole step; default comes from KillOnBadExit; without it one dead rank leaves the others hanging in a collective until the time limit, wasting GPU hours'. Footer: 'srun outside an allocation creates one and blocks, for example srun -N1 --gres=gpu:1 --pty bash; --pty gives a terminal; srun --jobid=ID attaches to a running job allocation; --mpi=list shows plugins, pmix and pmi2 are common; --label prefixes output with the task id'. Text at least 24px.",
+  "anchor": "## 3. srun",
+  "alt": "Three cards explain --overlap, --exact and --kill-on-bad-exit with the problem each one solves.",
+  "cap": "Steps do not share resources by default, so diagnostic steps need --overlap."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-env-where-set",
+  "title": "Which Slurm variables exist where",
+  "spec": "Two regions. Region 'Batch shell (runs on the first node only)': SLURM_JOB_ID, SLURM_JOB_NAME, SLURM_JOB_PARTITION, SLURM_SUBMIT_DIR, SLURM_JOB_NODELIST and SLURM_JOB_NUM_NODES (the nodelist is compressed like gpu[01-04]; expand with scontrol show hostnames $SLURM_JOB_NODELIST), SLURM_NTASKS, SLURM_NTASKS_PER_NODE, SLURM_CPUS_PER_TASK, SLURM_MEM_PER_NODE, SLURM_NODEID equal to 0 because it runs on the first node; no task rank of its own. Region 'Inside tasks launched by srun': SLURM_PROCID global rank, SLURM_LOCALID node-local rank, SLURM_NODEID node index. Extra: 'SLURM_ARRAY_JOB_ID, SLURM_ARRAY_TASK_ID, SLURM_ARRAY_TASK_COUNT for arrays', 'SLURM_RESTART_COUNT how many times the job was requeued, 0 on the first run', 'SLURM_JOB_GPUS and SLURM_GPUS_ON_NODE for GPUs'. Callout 'a script that works by hand inside salloc but gets an empty rank in a batch job: SLURM_PROCID and its relatives exist only inside srun-launched tasks, not in the batch shell'. Text at least 24px.",
+  "anchor": "### Environment variables",
+  "alt": "Slurm variables split into those set for the batch shell and those set per task by srun.",
+  "cap": "Rank variables exist only inside tasks started by srun, never in the batch shell."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-rendezvous-mapping",
+  "title": "From Slurm variables to PyTorch rendezvous values",
+  "spec": "Mapping table with arrows. 'MASTER_ADDR = first host of the allocation: scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1'. 'MASTER_PORT = 10000 + SLURM_JOB_ID modulo 20000: unlikely to collide with another job on shared nodes'. 'RANK = SLURM_PROCID'. 'LOCAL_RANK = SLURM_LOCALID'. 'WORLD_SIZE = SLURM_NTASKS'. Launch line: srun bash -c 'export RANK=$SLURM_PROCID LOCAL_RANK=$SLURM_LOCALID WORLD_SIZE=$SLURM_NTASKS; exec python train.py' (one task per GPU launched by srun). Alternative layout: 'one task per node: torchrun --nnodes=$SLURM_NNODES --nproc-per-node=8 --rdzv-backend=c10d --rdzv-endpoint=$MASTER_ADDR:29500 train.py; torchrun starts the per-GPU processes on each node itself'. Definition 'rendezvous: the handshake where workers find each other; PyTorch needs a master address, port, world size and rank'. Text at least 24px.",
+  "anchor": "### Distributed-training rendezvous from Slurm variables",
+  "alt": "A mapping from Slurm variables to MASTER_ADDR, MASTER_PORT, RANK, LOCAL_RANK and WORLD_SIZE with two launch styles.",
+  "cap": "Build all four rendezvous values from Slurm variables instead of hard-coding them."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-log-layers",
+  "title": "Three layers to untangle interleaved training logs",
+  "spec": "Three stacked layers. 'Layer 1 per-node file: #SBATCH --output=logs/train_%j_%N.out and --error=logs/train_%j_%N.err so each node writes its own file; ranks on one node still share a file'. 'Layer 2 task-prefixed output: srun --label python train.py prefixes every stdout and stderr line with the global task ID such as 0: or 1:; grep one rank; quickest fix when debugging'. 'Layer 3 per-rank Python log: Python logging writes each rank to train_rank_RANK.log; only rank == 0 attaches a StreamHandler to console stdout; the other ranks write quietly to their own files'. Problem picture: 'progress bars, warnings and a stack trace from different processes mixed in the middle of each other'. Text at least 24px.",
+  "anchor": "### Rank-specific logging vs interleaved stdout (*Distributed AI Systems* Chapter 8)",
+  "alt": "Three layers of logging from per-node files to task-prefixed output to per-rank Python logs.",
+  "cap": "Separate logs by node, then by task label, then by rank to read a distributed run."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-virtual-nodes",
+  "title": "Testing a multi-node script on one 8-GPU workstation",
+  "spec": "Diagram of one physical 8-GPU host running two slurmd daemons (Slurm built with --enable-multiple-slurmd). Virtual node node6: NodeHostname=localhost Port=17016 CPUs=112 RealMemory=240000 Gres=gpu:1, gres.conf File=/dev/nvidia6. Virtual node node7: Port=17017 same sizes, File=/dev/nvidia7. Partition gpu Nodes=node[6-7] Default=YES MaxTime=INFINITE. Checks: 'sinfo shows gpu* up infinite 2 idle node[6-7]: first proof the scheduler sees two nodes', 'srun -N 1 hostname and srun -N 2 hostname verify multi-node execution'. Purpose: 'a bug found at the end of a long wait in the shared queue costs the afternoon; test on a workstation first'. Text at least 24px.",
+  "anchor": "### Simulating a multi-node GPU cluster on a single physical machine (*Distributed AI Systems* Chapter 8)",
+  "alt": "One 8-GPU host runs two virtual Slurm nodes on different ports each mapped to its own GPU device file.",
+  "cap": "Two slurmd daemons on different ports let you test multi-node scripts without queue waits."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-interactive-paths",
+  "title": "Two ways to get an interactive GPU shell",
+  "spec": "Two paths. Path A 'salloc --partition=gpu --gres=gpu:1 --cpus-per-gpu=8 --mem-per-gpu=64G --time=2:00:00: a shell opens with Slurm variables set; by default that shell runs on the submission host, the shared login node, so a heavy test there slows everyone; then srun --pty bash gives a shell on the compute node, srun python quick_test.py runs a step, exit releases the allocation; many sites use LaunchParameters use_interactive_step so the shell lands on the compute node'. Path B 'srun --partition=gpu --gres=gpu:1 --time=1:00:00 --pty bash: one command requests, waits and drops you into a shell on the node; shorter when you do not need several steps'. Policy strip: 'an idle shell still holds its resources; sites use short time limits and a dedicated interactive or debug partition with high priority and small limits; release when finished because forgetting exit lets an allocation run quietly to its limit'. Text at least 24px.",
+  "anchor": "## 4. Interactive jobs",
+  "alt": "Two ways to get an interactive GPU shell, salloc then srun --pty or a single srun --pty, with where each shell runs.",
+  "cap": "Release interactive allocations with exit because an idle shell still holds its GPU."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-dependency-types",
+  "title": "Choosing a dependency type",
+  "spec": "Chooser table with the wish and the type. 'start when listed jobs have started or been cancelled: after:ID[+minutes]'. 'start when they have terminated for any reason (default type): afterany:ID; use between training segments because a timeout counts as a failure'. 'start only if they completed with exit code 0: afterok:ID; use for evaluation after the last segment'. 'start only if they failed (non-zero, cancelled, timeout, node failure): afternotok:ID; for cleanup or notification jobs'. 'matching array task completed successfully: aftercorr:ID'. 'only one job of the same name and user at a time: singleton; afterburstbuffer:ID for burst-buffer stage-out'. Combining: 'comma means all must hold, question mark means any one is enough, one separator type per expression: afterok:20:21,afterany:23 and afterok:20:21?afterany:23'. Chain: 'J1=$(sbatch --parsable train.sh); J2=$(sbatch --parsable --dependency=afterany:$J1 train.sh); J3=$(sbatch --parsable --dependency=afterok:$J2 evaluate.sh)'. Trap: 'once a dependency fails because of a predecessor termination state the dependent job never runs, even if the predecessor is requeued; the job pends with DependencyNeverSatisfied; add --kill-on-invalid-dep=yes to cancel it; afterok after a segment that hit its time limit leaves the next one waiting forever'. Text at least 24px.",
+  "anchor": "## 6. Dependencies and pipelines",
+  "alt": "A chooser table from the wish for what happens after a previous job to the Slurm dependency type, with combining rules and the afterok trap.",
+  "cap": "Use afterany between training segments because a timeout counts as a failure."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-checkpoint-layers",
+  "title": "Layers of protection for a long run",
+  "spec": "Four layers from weakest warning to strongest safety net. 'Layer 1 periodic checkpoints every few minutes plus idempotent resume (a resumed run is safe to repeat): the real safety net, if the job is killed with no warning you lose only the work since the last checkpoint'. 'Layer 2 warning signal: #SBATCH --signal=B:USR1@600 --requeue --open-mode=append; signal can arrive up to 60 seconds early because of resolution; no time given means 60 seconds before the limit'. 'Layer 3 handler in the program: SLURMCheckpointer registers handlers for SIGTERM and SIGUSR1 that only set should_stop = True; a signal can arrive in the middle of anything so a large checkpoint write inside a handler is unsafe; each rank checks should_stop at the end of the current training step and then writes the checkpoint'. 'Layer 4 preemption grace: GraceTime is the window between SIGTERM and SIGKILL, set per partition or QOS; --requeue or --no-requeue decides if the job returns to the queue'. Warning 'the launcher must forward the signal to the ranks or they keep running unaware; test the signal path on a short limit such as --time=00:03:00 --signal=B:USR1@60 with a script that traps USR1 and writes a file, then check SLURM_RESTART_COUNT after requeue'. Text at least 24px.",
+  "anchor": "## 7. Time limits, signals, checkpoints, requeue",
+  "alt": "Four layers of protection for a long run: periodic checkpoints, a warning signal, a safe in-program handler and the preemption grace window.",
+  "cap": "Periodic checkpoints are the real safety net and signals only reduce lost work."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-query-tools",
+  "title": "Which query command for which question",
+  "spec": "Question and command pairs. 'Where is my job and why is it waiting: squeue -u $USER -o %.10i %.9P %.20j %.8T %.10M %.6D %R (job id, partition, name, state, runtime, nodes, reason or nodes)'. 'When will it start: squeue -j JOBID --start'. 'Everything about it: scontrol show job JOBID (Reason, TresPerNode, StdOut, WorkDir, NodeList)'. 'Change it: scontrol update job JOBID TimeLimit=+2:00:00 (extend is privileged), Dependency=afterok:123, scontrol hold and release'. 'What did a finished job do: sacct -j JOBID --format=JobID,JobName,Partition,State,ExitCode,Elapsed,TotalCPU,MaxRSS,AllocTRES%50'. 'What is a running step using: sstat -j JOBID.0 --format=JobID,AveCPU,MaxRSS'. 'Stop it: scancel JOBID, scancel -u $USER --state=PENDING, scancel --signal=USR1 JOBID; scancel 12345_7 ends one array task, scancel 12345 ends all'. 'Peek inside a running job: srun --overlap --jobid=JOBID --pty bash, or srun --overlap --jobid=JOBID -w NODE nvidia-smi; site policy decides'. Rule 'sstat for a running step, sacct once finished; sacct too early shows a job that looks unfinished'. States: PENDING, RUNNING, COMPLETING, COMPLETED, FAILED, CANCELLED, TIMEOUT, NODE_FAIL, OUT_OF_MEMORY, PREEMPTED, REQUEUED, SUSPENDED. Text at least 24px.",
+  "anchor": "## 8. Monitoring, modifying, cancelling",
+  "alt": "A menu pairing each job question with the squeue, scontrol, sacct, sstat or scancel command that answers it.",
+  "cap": "Use sstat for running steps and sacct after they finish."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-linter-findings",
+  "title": "Reading sbatch linter output by prefix",
+  "spec": "Three tiers with the lint messages from the chapter. 'ERROR means the script is wrong, do not submit: no shebang line, sbatch rejects scripts that do not start with #!; --mem and --mem-per-gpu are mutually exclusive; --cpus-per-gpu is not compatible with --cpus-per-task; --gpus-per-task needs an explicit task count'. 'warn means it will probably run but likely cause a problem later: line 8 --tasks-per-node is not in the reference option list (typo or different Slurm version); no --time so the partition default applies; requeued job writes to a fixed output name so use --open-mode=append or include %j; module load without module purge mixes toolchains'. 'info is advice: job array without a %N throttle can flood the scheduler and file system; --requeue without --signal gives no warning before preemption or time limit; no set -e; mpirun inside a batch script, srun --mpi=pmix lets Slurm launch and bind ranks'. Footer: 'run from sbatch_lint.py or from a job_submit Lua plugin or a sbatch wrapper; it can also set defaults for partition, time, GPU CPU and memory and account; good script gives 0 findings, the broken script gives 4 ERRORs and 8 warnings'. Text at least 24px.",
+  "anchor": "## 9. A linter for batch scripts",
+  "alt": "Linter messages grouped into ERROR, warn and info tiers with an example for each.",
+  "cap": "Catch directive mistakes before the script waits in the queue."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-submission-patterns",
+  "title": "Submission pattern per AI workload",
+  "spec": "Table workload to pattern. 'Single-GPU experiment: --gpus=1 --cpus-per-gpu=8 --mem-per-gpu, short time, debug or interactive partition'. 'Multi-GPU single node: --gpus-per-node=8 --ntasks-per-node=8 --exclusive, torchrun --standalone or srun per GPU'. 'Multi-node DDP or FSDP: --nodes=N --ntasks-per-node=8, srun or torchrun with rendezvous from scontrol show hostnames'. 'Hyperparameter sweep: job array with a %throttle, one config per index'. 'Long run: checkpoints every K minutes, --requeue, --signal=B:USR1@..., dependency chain'. 'Data preprocessing: CPU array jobs on a cpu partition, sharded outputs, later GPU job reads them'. 'Evaluation after training: --dependency=afterok:$TRAIN or triggered from the training script'. 'Inference server batch: one job per replica, health endpoint, service discovery via a shared file or the Slurm nodelist, or move serving to Kubernetes'. 'Debugging a hang: salloc same shape, srun --pty, py-spy, NCCL_DEBUG=INFO'. Text at least 24px.",
+  "anchor": "## 10. Submission patterns for AI workloads",
+  "alt": "A table pairing nine AI workloads with the sbatch and srun pattern that suits each.",
+  "cap": "Recognise the kind of work first and reuse the pattern that already works for it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p3-0611-mistake-table",
+  "title": "Submission mistakes that become support tickets",
+  "spec": "Grouped list mistake and result. Logs: 'directory in --output does not exist: job fails without a log'; 'requeued job overwrites its own log or restarts training from scratch'. Launch: 'forgetting srun: everything runs on node 0'; 'mpirun or torchrun once per node incorrectly'; '--gres=gpu:8 in a multi-node job applies per node, so two nodes get 16 GPUs'. Resources: 'leaving --mem or --cpus-per-task unset on GPU jobs starves the data loaders and GPUs idle'; 'default --export=ALL carries a stale conda environment into the job'. Steps and chains: 'a second concurrent srun blocks because steps do not share resources by default'; 'afterok on a job that times out kills the chain silently and the downstream job sits pending'. Arrays: 'massive arrays without a throttle flood the system'; 'scancel 12345_7 ends one task, scancel 12345 ends all'. Storage: 'results written to a quota-limited $HOME can exhaust the quota and the next run cannot save'. Text at least 24px.",
+  "anchor": "## 11. Common mistakes",
+  "alt": "A grouped list of submission mistakes and what each one causes.",
+  "cap": "Most submission tickets come from a missing srun, unset memory or a dependency on a timeout."
+ }
+]

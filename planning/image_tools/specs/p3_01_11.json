@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "11",
+  "name": "p3-0111-lib-search",
+  "title": "Where ld.so looks for a library, and three ways to fix a missing one",
+  "spec": "Left: a vertical search ladder with five numbered steps, top to bottom, for library libfoo.so.1: 1 'DT_RPATH (embedded in the binary; searched before LD_LIBRARY_PATH)', 2 'LD_LIBRARY_PATH', 3 'DT_RUNPATH (embedded in the binary; searched after LD_LIBRARY_PATH)', 4 '/etc/ld.so.cache (built by ldconfig)', 5 '/lib and /usr/lib default directories'. An arrow at the bottom to a red-free box 'error while loading shared libraries: libfoo.so.1: cannot open shared object file'. Right: three fix cards matching the lab: 'Symptom: ./app fails; ldd ./app | grep foo shows not found; LD_DEBUG=libs ./app shows where it looked'; 'Fix 1, quick test: LD_LIBRARY_PATH=. ./app'; 'Fix 2, embedded: cc -o app2 main.c -L. -lfoo -Wl,-rpath,$ORIGIN, check with readelf -d app2 | grep -E RPATH|RUNPATH'; 'Fix 3, edit existing binary: patchelf --set-rpath $ORIGIN/../lib prog'. Orange on step 2 only if it can be justified: instead put orange on the LD_DEBUG=libs card (the diagnostic that shows this ladder in action). Bottom bar: 'When a library will not load, check the search path before you reinstall anything'.",
+  "anchor": "### Preloading and debugging the loader",
+  "alt": "A five step library search order from RPATH through LD_LIBRARY_PATH, RUNPATH, the ldconfig cache and default directories, with three ways to fix a missing library.",
+  "cap": "The loader tries RPATH, LD_LIBRARY_PATH, RUNPATH, the ldconfig cache and the default directories in that order."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "11",
+  "name": "p3-0111-cuda-who-brings",
+  "title": "Who supplies what when a CUDA program starts: the app brings libraries, the host brings the driver",
+  "spec": "Two columns. Left column 'Travels with the application (wheel or container image)': stacked boxes 'Python extension modules', 'libtorch_cuda.so', 'libcudart.so.12', 'libcublas.so.12', 'libcudnn.so.9', 'libnccl.so.2' with note 'found through RUNPATH with $ORIGIN; can differ per application so several CUDA versions share one host'. Right column 'Comes from the host (driver)': boxes 'libcuda.so.1 (user-space half of the driver)', 'libnvidia-ml.so, nvidia-smi', 'kernel module nvidia.ko', 'device nodes /dev/nvidiactl, /dev/nvidia0, /dev/nvidia-uvm'. A middle arrow labelled 'NVIDIA Container Toolkit injects these into the container at start' from the right column into a box 'Container'. Along the bottom the load order as numbered steps: 1 'Python extension modules', 2 'bundled CUDA libraries', 3 'libcuda.so.1 via dlopen', 4 'openat /dev/nvidiactl, /dev/nvidia0, /dev/nvidia-uvm', 5 'a storm of ioctl calls'. Command in monospace: 'strace -f -e trace=openat python -c \"import torch; torch.zeros(1).cuda()\" 2>&1 | grep -E \"\\.so|nvidia\"'. Orange on libcuda.so.1 box. Rule box: 'The application's CUDA version must be supported by the host driver'.",
+  "anchor": "## 8. AI-infrastructure patterns",
+  "alt": "Two columns showing CUDA libraries that travel with the application and the driver files that come from the host and are injected into containers, with the order in which they load.",
+  "cap": "CUDA toolkit libraries ship inside the wheel or image, while libcuda.so.1 and the kernel module must come from the host driver."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "11",
+  "name": "p3-0111-flamegraph-read",
+  "title": "How to read a CPU flame graph",
+  "spec": "A stylised flame graph drawn with rectangles stacked in rows. Bottom row one wide box 'main'. Second row two boxes 'load_data' (narrow) and 'train_step' (wide). Third row above train_step boxes 'forward' (wide) and 'backward' (narrow); above load_data a box 'read'. Fourth row above forward one wide box 'matmul' highlighted orange (a wide plateau at the top edge = where CPU time goes). Axis annotations: a vertical arrow at the left 'Y axis: call depth, callers below, callees on top'; a horizontal bracket under the graph 'X axis: width = share of samples; left to right order is alphabetical, NOT time'. Right panel four numbered reading steps: 1 'Find the widest boxes at the top edge', 2 'Follow them down to see who called them', 3 'Names like ext4, blk_, tcp_, futex hint at file, disk, network and lock activity', 4 'Check stacks are complete: short stacks hide the caller'. Bottom strip with the recipe 'perf record -F 99 -g -- sleep 30; perf report' and 'compile with -fno-omit-frame-pointer and -g; keep debug info'. Companion box 'Off-CPU flame graph: threads blocked on I/O, locks or sleep (offcputime)'.",
+  "anchor": "### The analysis methods",
+  "alt": "A stylised CPU flame graph with annotations that width is the share of samples, height is call depth, and a wide top box is where CPU time goes.",
+  "cap": "In a flame graph the width of a box is its share of samples, the height is call depth, and the order left to right carries no time meaning."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "11",
+  "name": "p3-0111-error-to-stage",
+  "title": "Which startup stage produced this error message",
+  "spec": "A horizontal pipeline of six stage boxes with number circles 1 to 6: 1 'shell fork and execve', 2 'kernel checks the file and picks a format handler', 3 'ELF loader maps LOAD segments, builds the stack', 4 'PT_INTERP: kernel maps ld.so, execution starts in the dynamic linker', 5 'ld.so loads DT_NEEDED libraries, relocates, runs constructors', 6 '_start, __libc_start_main, main'. Below each stage, in a matching column, the error messages from the chapter that come from it. Stage 1/2: 'Exec format error (wrong CPU architecture such as x86-64 on aarch64, or a script without shebang)', 'exit 126 found but not executable', 'exit 127 not found'. Stage 4: 'bad ELF interpreter / not found for a file that exists (glibc binary on Alpine musl: /lib64/ld-linux-x86-64.so.2 missing)'. Stage 5: 'libcuda.so.1: cannot open shared object file', 'error while loading shared libraries: libnccl.so.2', 'version GLIBC_2.34 not found', 'version GLIBCXX_3.4.30 not found'. Stage 6 and after: 'CUDA error: no kernel image is available for execution on the device', 'Illegal instruction (SIGILL, exit 132)', 'segfault exit 139'. Beneath, a first-check line per stage: 'file and readelf -h', 'readelf -l | grep interpreter', 'ldd, ldconfig -p, LD_DEBUG=libs', 'strace -f for the last failed call'. Orange on stage 5 column.",
+  "anchor": "## How it fails",
+  "alt": "A six stage startup pipeline with the error messages that come from each stage and the first command to run for each.",
+  "cap": "Match the error message to the startup stage that produces it, then run the first check for that stage."
+ }
+]

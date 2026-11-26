@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Numeric types and the quiet traps they hide</title>
+  <desc>Visual infographic explaining Python numeric types, operator rules, and infrastructure arithmetic traps.</desc>
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Main Title (48px bold) -->
+  <text x="800" y="64" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Numeric types and the quiet traps they hide</text>
+
+  <!-- ==================== TABLE OF SIX TYPES ==================== -->
+  <rect x="40" y="104" width="860" height="686" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Type 1: int -->
+  <rect x="54" y="118" width="832" height="88" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(68, 134)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="44" height="44" rx="8"/>
+    <path d="M22 18 L28 18 L28 38 M23 38 L33 38"/>
+  </g>
+  <text x="140" y="158" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0">int: arbitrary precision, no overflow;</tspan>
+    <tspan x="140" dy="28">0x1f, 0o17, 0b101, 1_000_000</tspan>
+  </text>
+
+  <!-- Type 2: float -->
+  <rect x="54" y="214" width="832" height="144" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(68, 258)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="21"/>
+    <path d="M14 28 Q21 16 28 28 T42 28"/>
+    <circle cx="36" cy="38" r="3" fill="#207448"/>
+  </g>
+  <text x="140" y="254" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0">float: IEEE 754 double, about 15 to 17</tspan>
+    <tspan x="140" dy="28">significant digits; 0.1 + 0.2 != 0.3,</tspan>
+    <tspan x="140" dy="28">use math.isclose; float("inf"),</tspan>
+    <tspan x="140" dy="28">nan never equals itself</tspan>
+  </text>
+
+  <!-- Type 3: complex -->
+  <rect x="54" y="366" width="832" height="64" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(68, 370)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="8" y1="46" x2="48" y2="46"/>
+    <line x1="12" y1="50" x2="12" y2="10"/>
+    <line x1="12" y1="46" x2="40" y2="18"/>
+    <circle cx="40" cy="18" r="4" fill="#207448"/>
+  </g>
+  <text x="140" y="406" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">complex: 3 + 4j, rarely used in infra</text>
+
+  <!-- Type 4: bool -->
+  <rect x="54" y="438" width="832" height="88" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(68, 454)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="14" width="44" height="28" rx="14"/>
+    <circle cx="36" cy="28" r="8" fill="#207448"/>
+  </g>
+  <text x="140" y="478" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0">bool: subclass of int,</tspan>
+    <tspan x="140" dy="28">True == 1, True + True == 2</tspan>
+  </text>
+
+  <!-- Type 5: decimal.Decimal (orange) -->
+  <rect x="54" y="534" width="832" height="88" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+  <g transform="translate(68, 550)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="21"/>
+    <path d="M28 14 L28 42 M22 20 Q28 16 34 20 Q36 24 28 27 Q20 30 22 35 Q28 40 34 36"/>
+  </g>
+  <text x="140" y="574" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0">decimal.Decimal: exact decimal arithmetic</tspan>
+    <tspan x="140" dy="28">for money and billing; construct from strings</tspan>
+  </text>
+
+  <!-- Type 6: fractions.Fraction -->
+  <rect x="54" y="630" width="832" height="64" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(68, 634)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="16" r="6" fill="#207448"/>
+    <line x1="10" y1="28" x2="46" y2="28"/>
+    <circle cx="28" cy="40" r="6" fill="#207448"/>
+  </g>
+  <text x="140" y="670" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">fractions.Fraction: exact rational numbers</text>
+
+  <!-- ==================== RIGHT PANEL: OPERATORS ==================== -->
+  <rect x="940" y="104" width="620" height="686" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Operators Header -->
+  <rect x="956" y="114" width="588" height="62" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(970, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="20"/>
+    <path d="M19 28 L37 28 M28 19 L28 37"/>
+  </g>
+  <text x="1038" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Operators</text>
+
+  <!-- Op 1 -->
+  <rect x="956" y="182" width="588" height="56" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+  <text x="976" y="222" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">/ is always true division (float)</text>
+
+  <!-- Op 2 -->
+  <rect x="956" y="244" width="588" height="84" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+  <text x="976" y="284" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="976" dy="0">// floors toward negative</tspan>
+    <tspan x="976" dy="28">infinity: -7 // 2 == -4</tspan>
+  </text>
+
+  <!-- Op 3 -->
+  <rect x="956" y="334" width="588" height="56" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+  <text x="976" y="374" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">% takes the sign of the divisor</text>
+
+  <!-- Op 4 -->
+  <rect x="956" y="396" width="588" height="56" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+  <text x="976" y="436" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">divmod(a, b)</text>
+
+  <!-- Op 5 -->
+  <rect x="956" y="458" width="588" height="84" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+  <text x="976" y="498" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="976" dy="0">round() rounds half to even:</tspan>
+    <tspan x="976" dy="28">round(2.5) == 2</tspan>
+  </text>
+
+  <!-- Op 6 -->
+  <rect x="956" y="548" width="588" height="56" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+  <text x="976" y="588" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">chained comparison 1 &lt;= x &lt; 10</text>
+
+  <!-- Op 7 -->
+  <rect x="956" y="610" width="588" height="84" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+  <text x="976" y="650" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="976" dy="0">bitwise &amp; | ^ ~ &lt;&lt; &gt;&gt; for IP</tspan>
+    <tspan x="976" dy="28">and mask: 0xFF &amp; addr</tspan>
+  </text>
+
+  <!-- Op 8 -->
+  <rect x="956" y="700" width="588" height="80" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1"/>
+  <text x="976" y="740" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="976" dy="0">random is not for security,</tspan>
+    <tspan x="976" dy="24">use secrets</tspan>
+  </text>
+
+  <!-- ==================== WORKED EXAMPLES ==================== -->
+  <!-- Example 1: disk_bytes -->
+  <rect x="40" y="830" width="740" height="108" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <g transform="translate(54, 856)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="14" rx="20" ry="8"/>
+    <path d="M8 14 V42 C8 46.4 17 50 28 50 C39 50 48 46.4 48 42 V14"/>
+    <path d="M8 28 C8 32.4 17 36 28 36 C39 36 48 32.4 48 28"/>
+  </g>
+  <text x="120" y="870" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="120" dy="0">disk_bytes / gib with gib = 1024 ** 3</tspan>
+    <tspan x="120" dy="26">gives 3577.0 GiB for</tspan>
+    <tspan x="120" dy="26">3_840_755_982_336 bytes</tspan>
+  </text>
+
+  <!-- Example 2: free_pct -->
+  <rect x="820" y="830" width="740" height="108" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <g transform="translate(834, 856)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 8 L46 16 V30 C46 41 38 49 28 52 C18 49 10 41 10 30 V16 Z"/>
+    <path d="M20 30 L26 36 L36 24"/>
+  </g>
+  <text x="900" y="870" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="900" dy="0">free_pct = 100 * free / total</tspan>
+    <tspan x="900" dy="28">if total else 0.0 guards divide by zero</tspan>
+  </text>
+
+  <!-- Example 3: timeout -->
+  <rect x="40" y="950" width="740" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <g transform="translate(54, 960)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="21"/>
+    <polyline points="28 16 28 28 36 34"/>
+  </g>
+  <text x="120" y="992" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">timeout = base * 2 ** attempt</text>
+
+  <!-- Example 4: pages, rem -->
+  <rect x="820" y="950" width="740" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+  <g transform="translate(834, 960)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="40" height="40" rx="6"/>
+    <line x1="16" y1="20" x2="40" y2="20"/>
+    <line x1="16" y1="28" x2="40" y2="28"/>
+    <line x1="16" y1="36" x2="30" y2="36"/>
+  </g>
+  <text x="900" y="992" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">pages, rem = divmod(total_items, 100)</text>
+
+  <!-- ==================== TAKEAWAY BAR ==================== -->
+  <rect x="40" y="1066" width="1520" height="94" rx="12" fill="#207448"/>
+  <text x="800" y="1106" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">Compare floats with tolerance, use // versus / on purpose,</tspan>
+    <tspan x="800" dy="32">remember bool is an int, and use the ipaddress module instead of string IP arithmetic</tspan>
+  </text>
+</svg>

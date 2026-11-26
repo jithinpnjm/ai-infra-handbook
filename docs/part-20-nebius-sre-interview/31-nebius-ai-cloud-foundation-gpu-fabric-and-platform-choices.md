@@ -49,14 +49,9 @@ For a customer design, a more practical split is the one below. Rows 2 to 5 are 
 | Orchestrator | VMs, Managed Kubernetes, Soperator, Serverless AI | each service's docs |
 | Money and supply | quota, reservation, spot, budget | quotas, capacity blocks, billing pages |
 
-```mermaid
-flowchart LR
-  W["Workload and SLO"] --> O["Orchestrator"]
-  O --> C["Compute: platform, preset, region"]
-  C --> F["Fabric: InfiniBand cluster"]
-  O --> D["Data: disks, shared FS, buckets"]
-  C --> M["Quota, capacity block, spot"]
-```
+![Know the layers and who owns each](./img/m20-31-1.svg)
+
+*Figure 20.31.1. Know the layers and who owns each, as a diagram.*
 
 **Before choosing a product, trace each requirement to the layer that can satisfy it.**
 

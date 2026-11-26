@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Reconcile hot loop and how to break it</title>
+  <desc>Visual infographic explaining the Kubernetes controller reconcile hot loop cycle and two architectural fixes to prevent endless re-queuing.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reconcile hot loop and how to break it</text>
+
+  
+  
+  
+  <rect x="60" y="130" width="330" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="105" cy="172" r="20" fill="#207448"/>
+  <text x="105" y="180" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(170, 150)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="9"/>
+    <path d="M22 4 L22 9 M22 35 L22 40 M4 22 L9 22 M35 22 L40 22 M9 9 L13 13 M31 31 L35 35 M9 35 L13 31 M31 13 L35 9"/>
+  </g>
+  
+  <text x="225" y="242" text-anchor="middle" font-family="ui-monospace, monospace, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Reconcile(key)</text>
+
+  
+  <line x1="390" y1="200" x2="470" y2="200" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="470" y="130" width="480" height="290" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="515" cy="172" r="20" fill="#207448"/>
+  <text x="515" y="180" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(565, 150)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 4 L28 4 L38 14 L38 40 L6 40 Z"/>
+    <polyline points="28,4 28,14 38,14"/>
+    <line x1="14" y1="22" x2="30" y2="22"/>
+    <line x1="14" y1="30" x2="26" y2="30"/>
+  </g>
+  
+  <text x="710" y="228" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="710" dy="0">writes object or status even</tspan>
+    <tspan x="710" dy="32">though nothing meaningful</tspan>
+    <tspan x="710" dy="32">changed (for example</tspan>
+    <tspan x="710" dy="32">status.lastChecked =</tspan>
+    <tspan x="710" dy="32">time.Now(), or unsorted</tspan>
+    <tspan x="710" dy="32">slice elements)</tspan>
+  </text>
+
+  
+  <line x1="710" y1="420" x2="710" y2="460" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="470" y="460" width="480" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="680" cy="492" r="18" fill="#207448"/>
+  <text x="680" y="499" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(720, 472)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="20" cy="9" rx="16" ry="6"/>
+    <path d="M4 9 L4 31 C4 35 20 37 20 37 C20 37 36 35 36 31 L36 9"/>
+    <path d="M4 20 C4 24 20 26 20 26 C20 26 36 24 36 20"/>
+  </g>
+  
+  <text x="710" y="552" text-anchor="middle" font-family="ui-monospace, monospace, sans-serif" font-size="26" font-weight="bold" fill="#303a36">resourceVersion increments</text>
+
+  
+  <line x1="710" y1="580" x2="710" y2="620" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="470" y="620" width="480" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="680" cy="655" r="18" fill="#207448"/>
+  <text x="680" y="662" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(718, 637)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="4" fill="#207448"/>
+    <path d="M11 11 A13 13 0 0 1 29 11"/>
+    <path d="M5 5 A21 21 0 0 1 35 5"/>
+    <path d="M11 29 A13 13 0 0 0 29 29"/>
+    <path d="M5 35 A21 21 0 0 0 35 35"/>
+  </g>
+  
+  <text x="710" y="724" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="710" dy="0">OnUpdate watch event</tspan>
+    <tspan x="710" dy="34">returns to the informer</tspan>
+  </text>
+
+  
+  <line x1="470" y1="710" x2="390" y2="710" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="60" y="650" width="330" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="180" cy="688" r="18" fill="#207448"/>
+  <text x="180" y="695" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g transform="translate(220, 668)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="34" height="8" rx="2"/>
+    <rect x="4" y="18" width="34" height="8" rx="2"/>
+    <rect x="4" y="30" width="34" height="8" rx="2"/>
+  </g>
+  
+  <text x="225" y="756" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">key re-enqueued</text>
+
+  
+  <line x1="105" y1="650" x2="105" y2="270" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="135" y="435" width="235" height="52" rx="10" fill="#fef3e7" stroke="#db8129" stroke-width="2.5"/>
+  <text x="252" y="470" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">endless tight loop</text>
+
+  
+  
+  <rect x="980" y="130" width="570" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  
+  <g transform="translate(1120, 154)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 22 L18 34 L38 10"/>
+    <circle cx="22" cy="22" r="20"/>
+  </g>
+  <text x="1285" y="185" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="36" font-weight="bold" fill="#207448">Two fixes</text>
+
+  
+  <rect x="1010" y="220" width="510" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1035" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1035" dy="0" font-weight="bold">1 Write only when state differs;</tspan>
+    <tspan x="1035" dy="40">update lastTransitionTime only</tspan>
+    <tspan x="1035" dy="40">when a condition status flips</tspan>
+    <tspan x="1035" dy="40">between True, False and Unknown</tspan>
+  </text>
+
+  
+  <rect x="1010" y="510" width="510" height="250" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1035" y="568" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1035" dy="0" font-weight="bold">2 GenerationChangedPredicate or</tspan>
+    <tspan x="1035" dy="40">ignore status-only updates:</tspan>
+    <tspan x="1035" dy="40">/status writes do not increment</tspan>
+    <tspan x="1035" dy="40">metadata.generation</tspan>
+  </text>
+
+  
+  
+  <rect x="60" y="840" width="1490" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="805" y="900" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">Detect with write rate in audit, resourceVersion churn and controller_runtime_reconcile_total</text>
+
+</svg>

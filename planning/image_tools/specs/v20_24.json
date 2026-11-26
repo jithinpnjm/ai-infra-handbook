@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "x24-test-pyramid",
+  "title": "Four test layers for a module, cheapest at the base",
+  "spec": "A pyramid with four stacked horizontal layers, widest at the bottom, narrowest at the top. Draw the layers from the bottom up, each with a number circle (r=24, white number) only if the layer is ordered by cost, which it is: 1 at the bottom. Layer 1 (base, widest): 'terraform fmt -check and terraform validate' with sub-text 'Syntax and schema, offline, every commit'. Layer 2: 'terraform test' with sub-text 'command = plan with a mock provider, expect_failures proves guards'. Monospace for terraform fmt -check, terraform validate, terraform test, command = plan, expect_failures. Layer 3: 'Policy on the plan' with sub-text 'terraform show -json, checked for deletes'. Layer 4 (top, narrowest): 'Real apply in a sandbox' with sub-text 'Tiny pool, run on a schedule, the only layer that sees quota and capacity'. Each layer has a small outline icon at its left (chip, shield, gear, clock). Right of the pyramid, a column labelled 'Runs on' with arrows: layer 1 and 2 'Every pull request', layer 4 'On a schedule, not every commit'. Orange only on layer 4 because it is the only layer that sees quota and capacity.",
+  "anchor": "### 8. Testing a module before it touches a cluster",
+  "alt": "Pyramid of four test layers from format and validate at the base to a scheduled real apply in a sandbox at the top",
+  "cap": "Module tests: cheap layers run on every pull request, and only the scheduled sandbox apply can see quota and capacity."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "x24-ci-plan-gate",
+  "title": "Three pipeline stages with a risk gate on destroys",
+  "spec": "A left-to-right flow of three stage containers, each a labelled green-bordered panel. Stage 1 container titled 'On a pull request': inside, four small boxes in a row with arrows: 'format', 'validate', 'test', 'plan'. Below the row a box 'Post the plan and the risk check result as a comment'. Stage 2 container titled 'On review': a box 'A human reads it' and a box 'Destroys and replacements need a named approver'. Stage 3 container titled 'On merge to main': a box 'Apply the saved plan from the PR' with sub-text 'If main moved, plan again'. Arrows from stage 1 to stage 2 to stage 3. Between stage 1 and stage 2, a vertical gate labelled 'Risk gate' with three rows: 'Create: fine', 'Update: normal review', 'Delete or replace a cluster or node group: blocked until the address is written into an allow list'. Orange only on the blocked row of the risk gate. Along the bottom, a side strip titled 'Scheduled drift check' with the monospace text 'plan -detailed-exitcode' and sub-text 'Exit code 2 opens a ticket'. Monospace for plan -detailed-exitcode and the stage step names.",
+  "anchor": "### 9. CI/CD for infrastructure",
+  "alt": "Three infrastructure pipeline stages from pull request plan through human review to applying the saved plan on main, with a risk gate that blocks destroys",
+  "cap": "Infrastructure CI: the pull request posts a plan, a named human approves any destroy, and main applies only the saved plan."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "x24-key-rename-destroy",
+  "title": "A renamed pool key: from a silent destroy to a moved block",
+  "spec": "A top-to-bottom flow with a starting box at the top 'Pull request renames the pool key from gpu to h100' with the monospace line 'pool[\"gpu\"] becomes pool[\"h100\"]' drawn inside. Arrow down to the box 'Terraform sees a new address and an old address' with sub-text 'Nothing links them, so this is a delete plus a create'. Arrow down to a red-free decision branch with two side-by-side paths. Left path, light green panel labelled 'No moved block': a box 'Plan destroys stateful nebius_mk8s_v1_node_group' with the monospace line 'CRITICAL nebius_mk8s_v1_node_group.pool[\"gpu\"]' and sub-text 'delete_because_each_key', then the outcome 'Risk script exits 1, pipeline stops, do not merge'. Right path, light green panel labelled 'Add a moved block': monospace 'moved from pool[\"gpu\"] to pool[\"h100\"]', then the box 'Re-plan shows zero destroys', then the outcome 'Reviewer requires zero destroys before approval'. Orange on the box 'Re-plan shows zero destroys'. Monospace for pool[\"gpu\"], pool[\"h100\"], moved, CRITICAL, delete_because_each_key.",
+  "anchor": "### Scenario A. A plan says one destroy",
+  "alt": "Flow for a renamed pool key showing the delete plus create when no moved block exists, and the zero destroy re-plan after adding a moved block",
+  "cap": "Renamed pool key: without a moved block the plan destroys the node group, and with one the re-plan shows no destroy."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "24",
+  "name": "x24-state-restore-order",
+  "title": "Recovering a lost state: check versions first, then import in dependency order",
+  "spec": "A top-down flow. Top box: 'State file for production is gone or corrupt' with a warning icon, sub-text 'The cluster still runs, so every plan looks like create everything'. Arrow down to the decision box 'Are old object versions in the bucket?' Left branch labelled 'Yes': box 'Restore the previous object version', then box 'Run plan and read the gap' with sub-text 'Shows only changes made since that version'. Right branch labelled 'No': box 'Import each object, network first, then cluster, then pools' with monospace 'import' and sub-text 'Use -generate-config-out for a draft of the resource'. Under it a loop arrow back to the box 'Run plan' with the label 'Repeat until plan shows no changes'. Both branches meet at a final green box 'Plan shows no changes'. Along the bottom, a separate strip titled 'Prevention' with four short items: 'Enable bucket versioning', 'Keep the bucket in a different project or account', 'Restore drill in a scratch project', 'Alert on deletes, policy changes and unexpected access'. Orange only on the 'Yes' branch first step, 'Restore the previous object version'. Monospace for import and -generate-config-out.",
+  "anchor": "### 10. Disaster recovery of the state itself",
+  "alt": "Flow for a lost Terraform state: restore a versioned object if one exists, otherwise import each object in dependency order until plan is clean",
+  "cap": "Lost state: check bucket versions before anything else, and if none exist, import each object until a plan shows no changes."
+ }
+]

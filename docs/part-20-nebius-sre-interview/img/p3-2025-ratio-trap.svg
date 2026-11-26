@@ -1,0 +1,88 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Never average a ratio: sum both sides, then divide</title>
+  <desc>Visual infographic explaining why Prometheus metrics should never average a ratio, showing the wrong query, the right query, proper recording rules, and best practices.</desc>
+
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Never average a ratio: sum both sides, then divide</text>
+
+  
+  <rect x="50" y="125" width="1500" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(80, 172)">
+    <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="16" x2="40" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40" y1="16" x2="16" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="165" y="172" fill="#303a36">
+    <tspan x="165" dy="0" font-family="monospace" font-size="28" font-weight="bold">avg(errors_rate / requests_rate): </tspan>
+    <tspan x="165" dy="40" font-family="sans-serif" font-size="24">each pod gets the same vote even when one pod served most of the traffic; </tspan>
+    <tspan x="165" dy="36" font-family="sans-serif" font-size="24">the exercise gives 0.25</tspan>
+  </text>
+
+  
+  <rect x="50" y="305" width="1500" height="130" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(80, 342)">
+    <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M15 28 L24 37 L41 19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="165" y="358" fill="#303a36">
+    <tspan x="165" dy="0" font-family="monospace" font-size="28" font-weight="bold">sum(errors_rate) / sum(requests_rate): </tspan>
+    <tspan x="165" dy="42" font-family="sans-serif" font-size="26" font-weight="bold">the true ratio, 0.002 in the exercise</tspan>
+  </text>
+
+  
+  <rect x="50" y="465" width="1500" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="70" y="485" width="1460" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(95, 502)">
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M28 4 L28 10 M28 46 L28 52 M4 28 L10 28 M46 28 L52 28 M11 11 L15 15 M41 41 L45 45 M11 45 L15 41 M41 15 L45 11" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="180" y="539" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">model:gateway_requests:rate5m = sum by (model) (rate(gateway_requests_total[5m]))</text>
+
+  
+  <rect x="70" y="595" width="1460" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(95, 612)">
+    <path d="M12 10 L28 4 L44 10 C44 32 28 48 28 48 C28 48 12 32 12 10 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="16" x2="28" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="28" cy="36" r="2" fill="#207448"/>
+  </g>
+  <text x="180" y="649" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">model:gateway_errors:rate5m = sum by (model) (rate(gateway_errors_total[5m]))</text>
+
+  
+  <rect x="70" y="705" width="1460" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(95, 732)">
+    <line x1="8" y1="14" x2="48" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="14" x2="28" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="16" y1="44" x2="40" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M8 14 L3 28 L13 28 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M48 14 L43 28 L53 28 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <text x="180" y="750" fill="#303a36">
+    <tspan x="180" dy="0" font-family="monospace" font-size="25" font-weight="bold">model:gateway_errors:ratio_rate5m = </tspan>
+    <tspan x="180" dy="38" font-family="monospace" font-size="25" font-weight="bold">model:gateway_errors:rate5m / model:gateway_requests:rate5m</tspan>
+  </text>
+
+  
+  <rect x="50" y="860" width="1500" height="200" rx="14" fill="#207448"/>
+  
+  <g transform="translate(85, 932)">
+    <rect x="4" y="4" width="48" height="48" rx="6" fill="none" stroke="#ffffff" stroke-width="4"/>
+    <line x1="14" y1="18" x2="38" y2="18" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="14" y1="28" x2="38" y2="28" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="14" y1="38" x2="28" y2="38" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="175" y="910" fill="#ffffff">
+    <tspan x="175" dy="0" font-family="sans-serif" font-size="25" font-weight="bold">rate per series, sum by the labels you want to keep, then divide; </tspan>
+    <tspan x="175" dy="38" font-family="sans-serif" font-size="24">the Prometheus recording-rule guide says never take the average </tspan>
+    <tspan x="175" dy="38" font-family="sans-serif" font-size="24">of a ratio or an average of an average; </tspan>
+    <tspan x="175" dy="38" font-family="sans-serif" font-size="25" font-weight="bold">a ratio of two summed rates is correct</tspan>
+  </text>
+</svg>

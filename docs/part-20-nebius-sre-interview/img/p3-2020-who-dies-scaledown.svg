@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which pod dies on scale-down, and how to protect open streams</title>
+  <desc>Visual explanation of Kubernetes ReplicaSet scale-down selection order and the four protective layers for open streaming connections.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which pod dies on scale-down, and how to protect open streams</text>
+
+  
+  
+  <rect x="40" y="110" width="740" height="895" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(68, 134)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="36" height="28" rx="4"/>
+    <line x1="10" y1="10" x2="30" y2="10"/>
+    <line x1="10" y1="16" x2="24" y2="16"/>
+    <line x1="10" y1="22" x2="18" y2="22"/>
+  </g>
+
+  
+  <text x="122" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">ReplicaSet scale-down picks, in order</text>
+
+  
+  <g transform="translate(65, 185)">
+    <rect width="690" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="42" cy="36" r="22" fill="#207448"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24">
+      <tspan x="42" y="44" text-anchor="middle" fill="#ffffff" font-weight="bold">1</tspan>
+      <tspan x="82" y="44" text-anchor="start" fill="#303a36" font-weight="600">pending pods go first</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(65, 272)">
+    <rect width="690" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="42" cy="40" r="22" fill="#207448"/>
+    <text font-size="24" fill="#303a36">
+      <tspan x="42" y="48" text-anchor="middle" fill="#ffffff" font-weight="bold" font-family="system-ui, -apple-system, sans-serif">2</tspan>
+      <tspan x="82" y="48" text-anchor="start" font-weight="600" font-family="system-ui, -apple-system, sans-serif">lower</tspan>
+      <tspan x="82" y="82" text-anchor="start" font-family="ui-monospace, monospace" font-size="24" fill="#207448">controller.kubernetes.io/pod-deletion-cost</tspan>
+      <tspan x="82" y="118" text-anchor="start" font-family="system-ui, -apple-system, sans-serif">goes first (annotation, beta since v1.22; docs</tspan>
+      <tspan x="82" y="152" text-anchor="start" font-family="system-ui, -apple-system, sans-serif">suggest updating it once before a scale-down)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(65, 472)">
+    <rect width="690" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="42" cy="36" r="22" fill="#207448"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24">
+      <tspan x="42" y="44" text-anchor="middle" fill="#ffffff" font-weight="bold">3</tspan>
+      <tspan x="82" y="44" text-anchor="start" fill="#303a36" font-weight="600">pods on nodes with more replicas</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(65, 559)">
+    <rect width="690" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="42" cy="36" r="22" fill="#207448"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24">
+      <tspan x="42" y="44" text-anchor="middle" fill="#ffffff" font-weight="bold">4</tspan>
+      <tspan x="82" y="44" text-anchor="start" fill="#303a36" font-weight="600">newer pods</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(65, 646)">
+    <rect width="690" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="42" cy="36" r="22" fill="#207448"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24">
+      <tspan x="42" y="44" text-anchor="middle" fill="#ffffff" font-weight="bold">5</tspan>
+      <tspan x="82" y="44" text-anchor="start" fill="#303a36" font-weight="600">if all ties, random</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(65, 736)">
+    <rect width="690" height="245" rx="12" fill="#fffdfa" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(32, 38)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 4 L52 48 L4 48 Z"/>
+      <line x1="28" y1="20" x2="28" y2="32"/>
+      <circle cx="28" cy="40" r="1.5" fill="#db8129"/>
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" font-weight="600">
+      <tspan x="110" y="66">nothing in that order looks at how many</tspan>
+      <tspan x="110" y="112">streams a pod holds; newer pods can</tspan>
+      <tspan x="110" y="158">hold long streams too</tspan>
+    </text>
+  </g>
+
+  
+  
+  <rect x="820" y="110" width="740" height="895" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(845, 135)">
+    <rect width="690" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(24, 47)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="26"/>
+      <polyline points="28 12 28 28 39 28"/>
+    </g>
+    <text font-size="24" fill="#303a36">
+      <tspan x="98" y="52" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">terminationGracePeriodSeconds</tspan>
+      <tspan x="98" y="90" font-family="system-ui, -apple-system, sans-serif" font-weight="600">longer than the longest stream</tspan>
+      <tspan x="98" y="124" font-family="system-ui, -apple-system, sans-serif">(default 30 s)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(845, 305)">
+    <rect width="690" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(24, 57)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="3" width="50" height="50" rx="10"/>
+      <line x1="22" y1="18" x2="22" y2="38"/>
+      <line x1="34" y1="18" x2="34" y2="38"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="98" y="52" font-weight="600">preStop hook pause (native sleep action;</tspan>
+      <tspan x="98" y="90">author uses 15 s, tune it) so load balancers</tspan>
+      <tspan x="98" y="128">stop sending new requests</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(845, 495)">
+    <rect width="690" height="260" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(24, 102)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="4 6 52 6 34 32 34 50 22 50 22 32"/>
+      <line x1="14" y1="16" x2="42" y2="16"/>
+    </g>
+    <text font-size="24" fill="#303a36">
+      <tspan x="98" y="44" font-family="system-ui, -apple-system, sans-serif" font-weight="600">engine drain: vLLM v0.32.0</tspan>
+      <tspan x="98" y="80" font-family="ui-monospace, monospace" font-size="24" fill="#207448">--shutdown-timeout</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> defaults to 0</tspan>
+      <tspan x="98" y="116" font-family="system-ui, -apple-system, sans-serif">meaning abort every in-flight request at once;</tspan>
+      <tspan x="98" y="152" font-family="system-ui, -apple-system, sans-serif">above 0 it stops taking new requests and lets</tspan>
+      <tspan x="98" y="188" font-family="system-ui, -apple-system, sans-serif">running ones finish before the parent</tspan>
+      <tspan x="98" y="224" font-family="system-ui, -apple-system, sans-serif">force-kills</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(845, 775)">
+    <rect width="690" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(24, 74)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 4 L50 14 V28 C50 42 28 52 28 52 C28 52 6 42 6 28 V14 Z"/>
+      <path d="M28 16 V40"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="98" y="56" font-weight="600">PodDisruptionBudget maxUnavailable 1,</tspan>
+      <tspan x="98" y="98">respected by node drains and cluster</tspan>
+      <tspan x="98" y="140">autoscaler evictions</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(40, 1025)">
+    <rect width="1520" height="145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="20" y="18" width="1480" height="109" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(45, 44)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="6"/>
+      <line x1="16" y1="40" x2="16" y2="28"/>
+      <line x1="28" y1="40" x2="28" y2="16"/>
+      <line x1="40" y1="40" x2="40" y2="22"/>
+    </g>
+    
+    <text x="122" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan font-weight="600">waiting-queue policy, no drain: </tspan>
+      <tspan font-weight="bold" fill="#207448">168 streams cut</tspan>
+      <tspan font-weight="600">; with a drain: </tspan>
+      <tspan font-weight="bold" fill="#207448">0</tspan>
+      <tspan font-weight="600">; in-flight policy, no drain: </tspan>
+      <tspan font-weight="bold" fill="#207448">16 cut</tspan>
+    </text>
+  </g>
+</svg>

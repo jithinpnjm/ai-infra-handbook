@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>USE sweep: one row per resource, three checks</title>
+  <desc>A grid table of Linux resources against utilisation, saturation and errors, showing the USE sweep order and commands for each check.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" font-family="Helvetica Neue, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">USE sweep: one row per resource, three checks</text>
+
+  
+  <path d="M 425 82 L 395 108 L 425 134 H 1540 V 82 Z" fill="#207448"/>
+  <text x="982" y="117" font-family="Helvetica Neue, Arial, sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Sweep order: errors first, then saturation, then utilisation</text>
+
+  
+  <rect x="395" y="145" width="375" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="582" y="180" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Utilisation</text>
+
+  <rect x="780" y="145" width="375" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="967" y="180" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Saturation</text>
+
+  <rect x="1165" y="145" width="375" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1352" y="180" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Errors</text>
+
+  
+  
+  <rect x="55" y="205" width="330" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="72" y="247" width="36" height="36" rx="4"/>
+    <rect x="82" y="257" width="16" height="16" stroke-width="2.5"/>
+    <line x1="78" y1="240" x2="78" y2="247"/>
+    <line x1="90" y1="240" x2="90" y2="247"/>
+    <line x1="102" y1="240" x2="102" y2="247"/>
+    <line x1="78" y1="283" x2="78" y2="290"/>
+    <line x1="90" y1="283" x2="90" y2="290"/>
+    <line x1="102" y1="283" x2="102" y2="290"/>
+    <line x1="65" y1="255" x2="72" y2="255"/>
+    <line x1="65" y1="265" x2="72" y2="265"/>
+    <line x1="65" y1="275" x2="72" y2="275"/>
+    <line x1="108" y1="255" x2="115" y2="255"/>
+    <line x1="108" y1="265" x2="115" y2="265"/>
+    <line x1="108" y1="275" x2="115" y2="275"/>
+  </g>
+  <text x="135" y="274" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU</text>
+
+  
+  <rect x="395" y="205" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="415" y="255" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="415" dy="0">mpstat -P ALL 1,</tspan>
+    <tspan x="415" dy="34">vmstat 1 us+sy</tspan>
+  </text>
+
+  
+  <rect x="780" y="205" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="255" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">vmstat 1 r above</tspan>
+    <tspan x="800" dy="34">CPU count, sar -q</tspan>
+  </text>
+
+  
+  <rect x="1165" y="205" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1185" y="255" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="1185" dy="0">dmesg machine check</tspan>
+    <tspan x="1185" dy="34">messages</tspan>
+  </text>
+
+  
+  
+  <rect x="55" y="333" width="330" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="68" y="375" width="48" height="28" rx="3"/>
+    <path d="M 88 403 L 90 397 L 94 397 L 96 403"/>
+    <rect x="73" y="380" width="8" height="12" stroke-width="2"/>
+    <rect x="88" y="380" width="8" height="12" stroke-width="2"/>
+    <rect x="103" y="380" width="8" height="12" stroke-width="2"/>
+  </g>
+  <text x="135" y="402" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Memory</text>
+
+  
+  <rect x="395" y="333" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="415" y="401" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">free -m, vmstat 1</text>
+
+  
+  <rect x="780" y="333" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="383" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">vmstat 1 si/so,</tspan>
+    <tspan x="800" dy="34">sar -B, OOM in dmesg</tspan>
+  </text>
+
+  
+  <rect x="1165" y="333" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1185" y="401" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">dmesg, ECC tools</text>
+
+  
+  
+  <rect x="55" y="461" width="330" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 72 499 H 112 V 535 H 104 V 543 H 80 V 535 H 72 Z"/>
+    <line x1="82" y1="507" x2="82" y2="521" stroke-width="2.5"/>
+    <line x1="88" y1="507" x2="88" y2="521" stroke-width="2.5"/>
+    <line x1="96" y1="507" x2="96" y2="521" stroke-width="2.5"/>
+    <line x1="102" y1="507" x2="102" y2="521" stroke-width="2.5"/>
+  </g>
+  <text x="135" y="511" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="135" dy="0">Network</tspan>
+    <tspan x="135" dy="36">interface</tspan>
+  </text>
+
+  
+  <rect x="395" y="461" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="415" y="511" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="415" dy="0">ip -s link,</tspan>
+    <tspan x="415" dy="34">sar -n DEV</tspan>
+  </text>
+
+  
+  <rect x="780" y="461" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="511" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">nstat TcpRetransSegs,</tspan>
+    <tspan x="800" dy="34">sar -n EDEV drops</tspan>
+  </text>
+
+  
+  <rect x="1165" y="461" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1185" y="529" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">ip -s link errors</text>
+
+  
+  
+  <rect x="55" y="589" width="330" height="124" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="92" cy="635" rx="22" ry="9"/>
+    <path d="M 70 635 V 659 A 22 9 0 0 0 114 659 V 635"/>
+    <path d="M 70 647 A 22 9 0 0 0 114 647"/>
+    <path d="M 74 671 L 92 671 M 86 666 L 92 671 L 86 676"/>
+  </g>
+  <text x="135" y="660" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Disk I/O</text>
+
+  
+  <rect x="395" y="589" width="375" height="124" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="415" y="659" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">iostat -xz 1 %util</text>
+
+  
+  <rect x="780" y="589" width="375" height="124" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="4"/>
+  <text x="800" y="620" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">iostat aqu-sz above 1</tspan>
+    <tspan x="800" dy="30">or high await</tspan>
+  </text>
+  
+  <rect x="830" y="660" width="275" height="40" rx="6" fill="#fff2e0" stroke="#db8129" stroke-width="2.5" stroke-dasharray="6,4"/>
+  <text x="967" y="688" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">say it out loud</text>
+
+  
+  <rect x="1165" y="589" width="375" height="124" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1185" y="639" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="1185" dy="0">smartctl,</tspan>
+    <tspan x="1185" dy="34">/sys error counters</tspan>
+  </text>
+
+  
+  
+  <rect x="55" y="721" width="330" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="92" cy="755" rx="22" ry="7"/>
+    <path d="M 70 755 V 767 A 22 7 0 0 0 114 767 V 755"/>
+    <path d="M 70 767 V 779 A 22 7 0 0 0 114 779 V 767"/>
+    <path d="M 70 779 V 791 A 22 7 0 0 0 114 791 V 779"/>
+  </g>
+  <text x="135" y="771" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="135" dy="0">Disk</tspan>
+    <tspan x="135" dy="36">capacity</tspan>
+  </text>
+
+  
+  <rect x="395" y="721" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="415" y="789" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">df -h</text>
+
+  
+  <rect x="780" y="721" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="771" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">not meaningful</tspan>
+    <tspan x="800" dy="34">once full</tspan>
+  </text>
+
+  
+  <rect x="1165" y="721" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1185" y="771" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="1185" dy="0">ENOSPC in strace</tspan>
+    <tspan x="1185" dy="34">or logs</tspan>
+  </text>
+
+  
+  
+  <rect x="55" y="849" width="330" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 74 883 H 96 L 108 895 V 933 H 74 Z"/>
+    <path d="M 96 883 V 895 H 108"/>
+    <line x1="82" y1="905" x2="98" y2="905" stroke-width="2.5"/>
+    <line x1="82" y1="913" x2="100" y2="913" stroke-width="2.5"/>
+    <line x1="82" y1="921" x2="94" y2="921" stroke-width="2.5"/>
+  </g>
+  <text x="135" y="899" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="135" dy="0">File</tspan>
+    <tspan x="135" dy="36">descriptors</tspan>
+  </text>
+
+  
+  <rect x="395" y="849" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="415" y="884" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="415" dy="0">/proc/sys/fs/file-nr,</tspan>
+    <tspan x="415" dy="30">ls /proc/PID/fd</tspan>
+    <tspan x="415" dy="30">against ulimit -n</tspan>
+  </text>
+
+  
+  <rect x="780" y="849" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="917" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" fill="#303a36">not meaningful</text>
+
+  
+  <rect x="1165" y="849" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1185" y="917" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">EMFILE in strace</text>
+
+  
+  
+  <rect x="55" y="977" width="330" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="82" cy="1015" r="7" stroke-width="3.5"/>
+    <path d="M 82 1022 V 1035 M 82 1035 L 72 1047 M 82 1035 L 94 1047 M 82 1035 L 106 1047"/>
+    <circle cx="72" cy="1053" r="4" fill="#207448"/>
+    <circle cx="94" cy="1053" r="4" fill="#207448"/>
+    <circle cx="106" cy="1053" r="4" fill="#207448"/>
+  </g>
+  <text x="135" y="1027" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="135" dy="0">Tasks and</tspan>
+    <tspan x="135" dy="36">threads</tspan>
+  </text>
+
+  
+  <rect x="395" y="977" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="415" y="1027" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">
+    <tspan x="415" dy="0">top Tasks against</tspan>
+    <tspan x="415" dy="34">threads-max</tspan>
+  </text>
+
+  
+  <rect x="780" y="977" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="1045" font-family="Helvetica Neue, Arial, sans-serif" font-size="24" fill="#303a36">blocked allocation</text>
+
+  
+  <rect x="1165" y="977" width="375" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1185" y="1045" font-family="SFMono-Regular, Consolas, Monaco, monospace" font-size="24" fill="#303a36">can't fork errors</text>
+
+  
+  <rect x="55" y="1115" width="1485" height="60" rx="10" fill="#207448"/>
+  <text x="797" y="1153" font-family="Helvetica Neue, Arial, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Sweep every resource, then say which cells you could not fill.</text>
+</svg>

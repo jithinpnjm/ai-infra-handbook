@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>How a BPF tracing tool runs: compile, verify, attach, count, read</title>
+  <desc>Visual explanation of how a BPF tracing tool compiles, verifies in the kernel, attaches to probes, aggregates counts in maps, and periodically reads summary data.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="16" markerHeight="16" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">How a BPF tracing tool runs: compile, verify, attach, count, read</text>
+
+  
+
+  
+  <rect x="40" y="100" width="780" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="82" cy="162" r="24" fill="#207448" />
+  <text x="82" y="171" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 132 140 L 158 140 L 172 154 L 172 186 L 132 186 Z" />
+    <path d="M 158 140 L 158 154 L 172 154" />
+    <path d="M 142 165 L 148 171 L 142 177" />
+    <line x1="154" y1="177" x2="164" y2="177" />
+  </g>
+  <text x="195" y="154" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="195" dy="0">The tool compiles a small program</tspan>
+    <tspan x="195" dy="32">and hands it to the kernel</tspan>
+  </text>
+
+  
+  <line x1="430" y1="225" x2="430" y2="268" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="40" y="270" width="780" height="125" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+  <circle cx="82" cy="332" r="24" fill="#db8129" />
+  <text x="82" y="341" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 152 308 L 172 316 C 172 342 152 356 152 356 C 152 356 132 342 132 316 Z" />
+    <path d="M 143 331 L 149 337 L 161 325" />
+  </g>
+  <text x="195" y="314" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="195" dy="0">The verifier reads each instruction</tspan>
+    <tspan x="195" dy="30">and rejects anything that could crash</tspan>
+    <tspan x="195" dy="30">the kernel or loop without end</tspan>
+  </text>
+
+  
+  <line x1="430" y1="395" x2="430" y2="438" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="40" y="440" width="780" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="82" cy="502" r="24" fill="#207448" />
+  <text x="82" y="511" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="144" cy="488" r="8" />
+    <path d="M 144 496 L 144 512 C 144 522 160 522 160 512 L 160 504" />
+    <circle cx="160" cy="486" r="6" />
+    <line x1="130" y1="524" x2="174" y2="524" />
+  </g>
+  <text x="195" y="494" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="195" dy="0">The program attaches to a probe</tspan>
+    <tspan x="195" dy="32">such as the entry point of a function</tspan>
+  </text>
+
+  
+  <line x1="430" y1="565" x2="430" y2="608" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="40" y="610" width="780" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="82" cy="672" r="24" fill="#207448" />
+  <text x="82" y="681" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 146 648 L 134 666 L 148 666 L 138 688" />
+    <rect x="154" y="652" width="20" height="24" rx="3" />
+    <line x1="164" y1="658" x2="164" y2="670" />
+    <line x1="158" y1="664" x2="170" y2="664" />
+  </g>
+  <text x="195" y="664" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="195" dy="0">The event fires, the program runs,</tspan>
+    <tspan x="195" dy="32">updates a counter in a map, and returns</tspan>
+  </text>
+
+  
+  <line x1="430" y1="735" x2="430" y2="778" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="40" y="780" width="780" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="82" cy="842" r="24" fill="#207448" />
+  <text x="82" y="851" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="152" cy="832" r="18" />
+    <polyline points="152 822 152 832 160 836" />
+    <path d="M 134 856 L 170 856" />
+    <path d="M 140 862 L 164 862" />
+  </g>
+  <text x="195" y="834" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="195" dy="0">The tool reads the map every</tspan>
+    <tspan x="195" dy="32">second and prints it</tspan>
+  </text>
+
+  
+
+  
+  <rect x="860" y="100" width="700" height="525" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="890" y="145" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Probe types</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="1515" cy="135" r="14" />
+    <line x1="1515" y1="116" x2="1515" y2="154" />
+    <line x1="1496" y1="135" x2="1534" y2="135" />
+  </g>
+
+  
+  <rect x="885" y="165" width="650" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="905" y="206" font-family="sans-serif" font-size="24" fill="#303a36">kprobes and kretprobes: kernel function enter and return</text>
+
+  
+  <rect x="885" y="243" width="650" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="905" y="284" font-family="sans-serif" font-size="24" fill="#303a36">uprobes and uretprobes: user-space functions</text>
+
+  
+  <rect x="885" y="321" width="650" height="152" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="905" y="351" font-family="sans-serif" font-size="24" fill="#303a36">tracepoints: stable kernel events such as</text>
+  <text x="905" y="381" font-family="monospace" font-size="24" fill="#207448">tcp:tcp_retransmit_skb,</text>
+  <text x="905" y="411" font-family="monospace" font-size="24" fill="#207448">sock:inet_sock_set_state,</text>
+  <text x="905" y="441" font-family="monospace" font-size="24" fill="#207448">skb:kfree_skb, net:net_dev_xmit</text>
+
+  
+  <rect x="885" y="483" width="650" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="905" y="520" font-family="sans-serif" font-size="24" fill="#303a36">USDT: static probes inside runtimes</text>
+
+  
+  <rect x="885" y="551" width="650" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="905" y="588" font-family="sans-serif" font-size="24" fill="#303a36">perf events and timers</text>
+
+  
+  <rect x="860" y="665" width="700" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="890" y="710" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Map panel</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <rect x="1498" y="692" width="34" height="26" rx="3" />
+    <line x1="1506" y1="710" x2="1506" y2="714" />
+    <line x1="1515" y1="702" x2="1515" y2="714" />
+    <line x1="1524" y1="706" x2="1524" y2="714" />
+  </g>
+  <rect x="885" y="730" width="650" height="155" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="905" y="768" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="905" dy="0">counts, histograms and stacks</tspan>
+    <tspan x="905" dy="32">aggregated inside the kernel so the tool</tspan>
+    <tspan x="905" dy="32">never receives each individual event;</tspan>
+    <tspan x="905" dy="32">overhead stays low</tspan>
+  </text>
+
+  
+  <rect x="40" y="945" width="1520" height="120" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 80 1025 L 102 985 L 124 1025 Z" />
+    <line x1="102" y1="999" x2="102" y2="1011" />
+    <circle cx="102" cy="1019" r="1.5" fill="#db8129" />
+  </g>
+  <text x="145" y="986" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">kprobe names and arguments change between kernel versions, so prefer tracepoints;</tspan>
+    <tspan x="145" dy="32">avoid printing each event; needs root or CAP_BPF and CAP_PERFMON;</tspan>
+    <tspan x="145" dy="32">CONFIG_DEBUG_INFO_BTF for CO-RE; libbpf-tools need no compiler on the target</tspan>
+  </text>
+
+  
+  <rect x="40" y="1105" width="1520" height="55" rx="8" fill="#207448" />
+  <text x="800" y="1141" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">A capture is the view from the cable, BPF tracing is the view from inside the machine</text>
+</svg>

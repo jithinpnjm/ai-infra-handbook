@@ -102,15 +102,9 @@ Imagine yourself at a whiteboard with a timer running and a person watching. The
 
 Knowing and saying are different skills. Many candidates can explain a mechanism while reading it on a page, then freeze when they must speak it. The mock protocol is built to close that gap, because it makes you produce the answer under the same conditions as the real round.
 
-```mermaid
-flowchart LR
-  A["Set a timer"] --> B["Run the round"]
-  B --> C["Record audio or screen"]
-  C --> D["Score with the rubric"]
-  D --> E["Write three fixes"]
-  E --> F["Make cards from misses"]
-  F --> A
-```
+![The mock-interview protocol](./img/m20-29-1.svg)
+
+*Figure 20.29.1. The mock-interview protocol, as a diagram.*
 
 | Round | Length | Alone | With a partner |
 |---|---|---|---|

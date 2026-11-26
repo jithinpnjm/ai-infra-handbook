@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080" font-family="Helvetica, Arial, sans-serif">
+  <title>A taint keeps guests out, a toleration lets them in, a selector takes them there</title>
+  <desc>Three step columns: a taint alone rejects a CPU pod; a toleration alone admits a GPU pod but does not force it to a GPU node; a toleration plus a nodeSelector sends the pod only to the H100 GPU node pool.</desc>
+
+  <defs>
+    <marker id="ag" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#207448"/>
+    </marker>
+    <marker id="ao" viewBox="0 0 12 12" refX="10.5" refY="6" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1,1 L11,6 L1,11 Z" fill="#db8129"/>
+    </marker>
+
+    <symbol id="ic-chip" viewBox="0 0 56 56" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="13" y="13" width="30" height="30" rx="4"/>
+      <rect x="23" y="23" width="10" height="10" rx="2"/>
+      <path d="M21 13V5 M35 13V5 M21 51V43 M35 51V43 M13 21H5 M13 35H5 M51 21H43 M51 35H43"/>
+    </symbol>
+
+    <symbol id="ic-gpu" viewBox="0 0 56 56" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="12" width="44" height="32" rx="4"/>
+      <rect x="15" y="20" width="10" height="10" rx="2"/>
+      <rect x="31" y="20" width="10" height="10" rx="2"/>
+      <path d="M15 44v6 M41 44v6"/>
+    </symbol>
+
+    <symbol id="ic-pod" viewBox="0 0 56 56" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="7" y="15" width="42" height="30" rx="5"/>
+      <path d="M15 15V9 M41 15V9"/>
+      <path d="M17 31h22"/>
+    </symbol>
+
+    <symbol id="ic-sign" viewBox="0 0 56 56" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="26" rx="5"/>
+      <path d="M28 34v16"/>
+      <path d="M16 15l12 12"/>
+    </symbol>
+
+    <symbol id="ic-badge" viewBox="0 0 56 56" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="22" r="13"/>
+      <path d="M20 32l-4 16 12-6 12 6-4-16"/>
+    </symbol>
+
+    <symbol id="ic-tag" viewBox="0 0 56 56" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 22L24 6h24v24L32 46z"/>
+      <circle cx="38" cy="18" r="4"/>
+    </symbol>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1080" fill="#f5f8f5"/>
+
+  <text x="800" y="72" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36">A taint keeps guests out, a toleration</text>
+  <text x="800" y="124" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36">lets them in, a selector takes them there</text>
+
+  
+  <rect x="40" y="165" width="490" height="775" rx="18" fill="#e8f1ea"/>
+  <rect x="555" y="165" width="490" height="775" rx="18" fill="#e8f1ea"/>
+  <rect x="1070" y="165" width="490" height="775" rx="18" fill="#e8f1ea"/>
+
+  
+  <circle cx="82" cy="200" r="24" fill="#207448"/>
+  <text x="82" y="209" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  <text x="122" y="210" font-size="30" font-weight="bold" fill="#303a36">Taint only</text>
+
+  <rect x="68" y="255" width="434" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <text x="86" y="300" font-size="30" font-weight="bold" fill="#303a36">GPU nodes</text>
+  <use href="#ic-gpu" x="141" y="325" width="56" height="56"/>
+  <use href="#ic-gpu" x="257" y="325" width="56" height="56"/>
+  <use href="#ic-gpu" x="373" y="325" width="56" height="56"/>
+
+  <rect x="150" y="395" width="10" height="50" fill="#207448" opacity="0.35"/>
+  <rect x="434" y="395" width="10" height="50" fill="#207448" opacity="0.35"/>
+
+  <rect x="78" y="445" width="420" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="96" y="492" font-size="24" font-family="SFMono-Regular, Menlo, Consolas, monospace" fill="#303a36">nvidia.com/gpu=present:</text>
+  <text x="96" y="528" font-size="24" font-family="SFMono-Regular, Menlo, Consolas, monospace" fill="#303a36">NoSchedule</text>
+
+  <path d="M288,760 V566" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#ag)"/>
+  <path d="M268,572 L308,612 M308,572 L268,612" fill="none" stroke="#b03a2e" stroke-width="7" stroke-linecap="round"/>
+  <text x="322" y="602" font-size="26" font-weight="bold" fill="#b03a2e">rejected</text>
+
+  <rect x="163" y="760" width="250" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use href="#ic-chip" x="176" y="772" width="56" height="56"/>
+  <text x="246" y="812" font-size="30" font-weight="bold" fill="#303a36">CPU pod</text>
+
+  
+  <circle cx="597" cy="200" r="24" fill="#207448"/>
+  <text x="597" y="209" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  <text x="637" y="210" font-size="30" font-weight="bold" fill="#303a36">Toleration only</text>
+
+  <rect x="590" y="250" width="420" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use href="#ic-badge" x="599" y="258" width="28" height="28"/>
+  <text x="642" y="279" font-size="24" font-family="SFMono-Regular, Menlo, Consolas, monospace" fill="#303a36">toleration nvidia.com/gpu</text>
+
+  <rect x="640" y="308" width="320" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use href="#ic-pod" x="658" y="320" width="56" height="56"/>
+  <text x="728" y="358" font-size="30" font-weight="bold" fill="#303a36">GPU pod</text>
+
+  <path d="M673,388 V636" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#ag)"/>
+  <path d="M927,388 V636" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#ao)"/>
+
+  <text x="800" y="474" text-anchor="middle" font-size="44" font-weight="bold" fill="#db8129">?</text>
+  <text x="800" y="524" text-anchor="middle" font-size="24" fill="#303a36">not forced</text>
+  <text x="800" y="556" text-anchor="middle" font-size="24" fill="#303a36">there</text>
+
+  <rect x="583" y="640" width="180" height="160" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use href="#ic-gpu" x="645" y="652" width="56" height="56"/>
+  <text x="673" y="756" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">GPU node</text>
+  <text x="673" y="788" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">pool</text>
+
+  <rect x="837" y="640" width="180" height="160" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use href="#ic-chip" x="899" y="652" width="56" height="56"/>
+  <text x="927" y="764" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">CPU node</text>
+
+  <text x="1017" y="856" text-anchor="end" font-size="24" fill="#303a36">may still land on any node</text>
+
+  
+  <circle cx="1112" cy="221" r="24" fill="#207448"/>
+  <text x="1112" y="230" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  <text x="1152" y="208" font-size="30" font-weight="bold" fill="#303a36">Toleration plus</text>
+  <text x="1152" y="244" font-size="30" font-weight="bold" fill="#303a36">nodeSelector</text>
+
+  <rect x="1105" y="262" width="420" height="44" rx="22" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use href="#ic-badge" x="1114" y="270" width="28" height="28"/>
+  <text x="1157" y="291" font-size="24" font-family="SFMono-Regular, Menlo, Consolas, monospace" fill="#303a36">toleration nvidia.com/gpu</text>
+
+  <rect x="1165" y="316" width="300" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use href="#ic-pod" x="1183" y="328" width="56" height="56"/>
+  <text x="1253" y="366" font-size="30" font-weight="bold" fill="#303a36">GPU pod</text>
+
+  <rect x="1098" y="416" width="434" height="116" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use href="#ic-tag" x="1110" y="430" width="36" height="36"/>
+  <text x="1158" y="458" font-size="24" font-family="SFMono-Regular, Menlo, Consolas, monospace" fill="#303a36">nvidia.com/gpu.product</text>
+  <text x="1158" y="490" font-size="24" font-family="SFMono-Regular, Menlo, Consolas, monospace" fill="#303a36">equals</text>
+  <text x="1158" y="522" font-size="24" font-family="SFMono-Regular, Menlo, Consolas, monospace" fill="#303a36">NVIDIA-H100 80GB HBM3</text>
+
+  <path d="M1315,532 V806" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#ag)"/>
+
+  <g opacity="0.4">
+    <rect x="1098" y="650" width="175" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <use href="#ic-chip" x="1157" y="662" width="56" height="56"/>
+    <text x="1185" y="764" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">CPU node</text>
+  </g>
+  <path d="M1236,656 L1268,688 M1268,656 L1236,688" fill="none" stroke="#b03a2e" stroke-width="6" stroke-linecap="round"/>
+
+  <g opacity="0.4">
+    <rect x="1357" y="650" width="175" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <use href="#ic-gpu" x="1416" y="662" width="56" height="56"/>
+    <text x="1444" y="752" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">other</text>
+    <text x="1444" y="784" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">GPU node</text>
+  </g>
+  <path d="M1495,656 L1527,688 M1527,656 L1495,688" fill="none" stroke="#b03a2e" stroke-width="6" stroke-linecap="round"/>
+
+  <rect x="1098" y="810" width="434" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ic-gpu" x="1114" y="838" width="56" height="56"/>
+  <text x="1196" y="860" font-size="30" font-weight="bold" fill="#303a36">H100 GPU</text>
+  <text x="1196" y="894" font-size="30" font-weight="bold" fill="#303a36">node pool</text>
+
+  
+  <rect x="40" y="960" width="1520" height="80" rx="16" fill="#207448"/>
+  <text x="800" y="994" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff">a taint keeps other pods out, a toleration only allows entry,</text>
+  <text x="800" y="1026" text-anchor="middle" font-size="26" font-weight="bold" fill="#ffffff">and a selector is what pulls the pod to the right pool.</text>
+</svg>

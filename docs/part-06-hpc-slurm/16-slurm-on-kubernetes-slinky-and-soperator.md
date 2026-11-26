@@ -48,21 +48,9 @@ Decide early whether your team can operate those extra layers before you move Sl
 
 Suppose your Slurm workers should grow and shrink the way Kubernetes workloads do. Slinky is SchedMD's answer to that, and the `slurm-operator` is the part you install. In practice, that means a new burst of demand can add worker pods, and a quiet afternoon can remove them, without someone editing `slurm.conf` by hand.
 
-```mermaid
-flowchart TB
-  subgraph Slinky["SchedMD Slinky (slurm-operator)"]
-    Op1["Slinky Operator<br/>K8s Cordon <-> slurm-operator: Drain"]
-    CRDs["CRDs: Controller, NodeSet,<br/>LoginSet, Accounting, RestApi, Token"]
-    Op1 -->|"JWT via slurmrestd"| CRDs
-  end
-  subgraph Soperator["Nebius Soperator (SlurmCluster)"]
-    Op2["Soperator + ActiveCheck CRs<br/>(k8sJob & slurmJob probes)"]
-    Pods["StatefulSets: Login, Controller, Worker"]
-    Jail[("Shared 'Jail' Rootfs PVC<br/>Unified / across all nodes")]
-    Op2 --> Pods
-    Pods --> Jail
-  end
-```
+![Slinky: slurm-operator](./img/m6-16-1.svg)
+
+*Figure 6.16.1. Slinky: slurm-operator, as a diagram.*
 
 Read the Slinky half first. The operator watches a set of custom resources, and it talks to Slurm through `slurmrestd` using a JWT token. The arrow labelled cordon and drain is the key link, because it means a change on the Kubernetes side can drain a Slurm node. The Soperator half is different. Its operator drives groups of pods, and all of them mount the same shared jail. The two halves answer the same question in different ways, and the rest of this chapter explains each one.
 

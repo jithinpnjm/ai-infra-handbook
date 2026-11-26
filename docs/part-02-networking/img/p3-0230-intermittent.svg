@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Intermittent faults: record first, then match the pattern</title>
+  <desc>Intermittent faults: record first, then match the pattern</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="76" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Intermittent faults: record first, then match the pattern</text>
+
+  
+  <rect x="40" y="130" width="460" height="900" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <g transform="translate(242, 155)">
+    <ellipse cx="28" cy="12" rx="24" ry="10" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 4 28 C 4 38 52 38 52 28" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 4 12 V 44 C 4 54 52 54 52 44 V 12" fill="none" stroke="#207448" stroke-width="4" />
+  </g>
+
+  
+  <text x="270" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="270" y="246">Start recording before</tspan>
+    <tspan x="270" y="282">the fault appears</tspan>
+  </text>
+
+  
+  
+  <rect x="60" y="306" width="420" height="96" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="270" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="270" y="346">ring buffer captures</tspan>
+    <tspan x="270" y="378" font-family="monospace">(-C -W)</tspan>
+  </text>
+
+  
+  <rect x="60" y="418" width="420" height="80" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="270" y="466" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">continuous telemetry</text>
+
+  
+  <rect x="60" y="514" width="420" height="96" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="270" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="270" y="554" font-family="monospace">ping -D -i 0.2</tspan>
+    <tspan x="270" y="586">with timestamps</tspan>
+  </text>
+
+  
+  <rect x="60" y="626" width="420" height="80" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="270" y="674" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">mtr --report loops</text>
+
+  
+  <rect x="60" y="722" width="420" height="96" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="270" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="270" y="762">scheduled <tspan font-family="monospace">ss</tspan> and <tspan font-family="monospace">nstat</tspan></tspan>
+    <tspan x="270" y="794">snapshots</tspan>
+  </text>
+
+  
+  <rect x="60" y="834" width="420" height="96" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="270" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="270" y="874">switch syslog and</tspan>
+    <tspan x="270" y="906">counters, lined up by time</tspan>
+  </text>
+
+  
+  <rect x="530" y="130" width="480" height="900" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(742, 155)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="28" cy="28" r="3" fill="#207448" />
+    <path d="M 28 14 V 28 H 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <text x="770" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="770" y="246">Periodic?</tspan>
+    <tspan x="770" y="282">look for a timer</tspan>
+  </text>
+
+  
+  
+  <rect x="550" y="306" width="440" height="80" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="770" y="354" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">30 s, 60 s, 5 min or 1 h</text>
+
+  
+  <rect x="550" y="402" width="440" height="330" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="770" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="770" y="446">cron jobs, backups,</tspan>
+    <tspan x="770" y="492">garbage collection,</tspan>
+    <tspan x="770" y="538">DHCP lease renewals,</tspan>
+    <tspan x="770" y="584">conntrack timeouts,</tspan>
+    <tspan x="770" y="630">BGP dampening,</tspan>
+    <tspan x="770" y="676">certificate or token expiry</tspan>
+  </text>
+
+  
+  <rect x="550" y="748" width="440" height="182" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="770" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="770" y="810">does it follow the load,</tspan>
+    <tspan x="770" y="852">the temperature or</tspan>
+    <tspan x="770" y="894">specific hosts?</tspan>
+  </text>
+
+  
+  <rect x="1040" y="130" width="520" height="900" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1272, 155)">
+    <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="36" y1="36" x2="50" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="1300" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="1300" y="246">Four usual causes and</tspan>
+    <tspan x="1300" y="282">the trace each leaves</tspan>
+  </text>
+
+  
+  
+  <rect x="1060" y="306" width="480" height="114" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="1084" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1084" y="342" font-weight="bold" fill="#207448">capacity limit: <tspan font-weight="normal" fill="#303a36">a rising</tspan></tspan>
+    <tspan x="1084" y="374">count that flattens at a</tspan>
+    <tspan x="1084" y="404">ceiling</tspan>
+  </text>
+
+  
+  <rect x="1060" y="434" width="480" height="76" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="1084" y="480" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">timeout:</tspan> a fixed delay
+  </text>
+
+  
+  <rect x="1060" y="524" width="480" height="88" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="1084" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1084" y="560" font-weight="bold" fill="#207448">flap:</tspan> state changes in
+    <tspan x="1084" y="592">the logs</tspan>
+  </text>
+
+  
+  <rect x="1060" y="626" width="480" height="280" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  <text x="1084" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1084" y="668" font-weight="bold" fill="#db8129">one bad member of an ECMP</tspan>
+    <tspan x="1084" y="706">or LAG set: one device in</tspan>
+    <tspan x="1084" y="744">the counters that the</tspan>
+    <tspan x="1084" y="782">others do not show; only</tspan>
+    <tspan x="1084" y="820">traffic that hashes onto</tspan>
+    <tspan x="1084" y="858">the bad path fails</tspan>
+  </text>
+
+  
+  <rect x="40" y="1054" width="1520" height="86" rx="12" fill="#207448" />
+  <text x="800" y="1108" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Set up a probe that runs all the time and writes a timestamp for every failure</text>
+</svg>

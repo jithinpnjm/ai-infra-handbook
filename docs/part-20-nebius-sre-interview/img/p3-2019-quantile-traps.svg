@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Percentile traps: sum first, mind the last bucket, count the share</title>
+  <desc>Visual infographic explaining percentile calculation traps across replicas, bucket boundary interpolation limits, and SLI measurement using request share counters.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="60" dy="0">Percentile traps: sum first,</tspan>
+    <tspan x="60" dy="56">mind the last bucket, count the share</tspan>
+  </text>
+
+  
+  <g id="panel-1">
+    
+    <rect x="60" y="175" width="1480" height="295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="110" cy="230" r="24" fill="#207448"/>
+    <text x="110" y="239" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 88 304 L 132 304 L 108 328 L 132 352 L 88 352"/>
+      <line x1="88" y1="300" x2="88" y2="308"/>
+      <line x1="88" y1="348" x2="88" y2="356"/>
+    </g>
+
+    
+    <text x="180" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      Do not average percentiles across replicas:
+    </text>
+    <text x="180" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+      averaging quantiles gives statistically nonsensical values;
+    </text>
+    <text x="180" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+      sum the histogram buckets across replicas, then compute the quantile
+    </text>
+
+    
+    <rect x="180" y="336" width="1290" height="60" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="205" y="374" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">histogram_quantile(0.99, sum by (le) (rate(gateway_ttft_seconds_bucket[5m])))</text>
+  </g>
+
+  
+  <g id="panel-2">
+    
+    <rect x="60" y="510" width="1480" height="295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="110" cy="565" r="24" fill="#207448"/>
+    <text x="110" y="574" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="82" y1="684" x2="138" y2="684"/>
+      <path d="M 88 684 L 88 664 L 98 664 L 98 684"/>
+      <path d="M 102 684 L 102 646 L 112 646 L 112 684"/>
+      <path d="M 116 684 L 116 632 L 126 632 L 126 684"/>
+      <line x1="82" y1="632" x2="138" y2="632" stroke-dasharray="4,4"/>
+      <line x1="126" y1="632" x2="136" y2="614"/>
+    </g>
+
+    
+    <text x="180" y="556" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="180" font-size="30" font-weight="bold">The quantile is interpolated inside a bucket,</tspan>
+      <tspan x="180" dy="38" font-size="30" font-weight="bold">so its error is limited by the bucket width;</tspan>
+      <tspan x="180" dy="44" font-size="26">if the true 99th percentile is above the last finite bucket</tspan>
+      <tspan x="180" dy="36" font-size="26">you get the last finite bucket boundary back:</tspan>
+      <tspan x="180" dy="36" font-size="26">a distribution with p99 past 2.5 s returns exactly 2.5,</tspan>
+      <tspan x="180" dy="36" font-size="26">which looks calm but is off the chart</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-3">
+    
+    <rect x="60" y="845" width="1480" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="60" y="845" width="12" height="310" rx="6" fill="#db8129"/>
+
+    
+    <circle cx="110" cy="900" r="24" fill="#207448"/>
+    <text x="110" y="909" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 88 970 L 110 960 L 132 970 L 132 996 C 132 1012 110 1024 110 1024 C 110 1024 88 1012 88 996 Z"/>
+      <path d="M 98 992 L 106 1000 L 122 984"/>
+    </g>
+
+    
+    <text x="180" y="892" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="180" font-size="30" font-weight="bold">Best SLI avoids the quantile:</tspan>
+      <tspan x="180" dy="40" font-size="26">the share of requests under the limit, a ratio of two bucket counters;</tspan>
+      <tspan x="180" dy="38" font-size="26">needs a bucket boundary at the limit;</tspan>
+      <tspan x="180" dy="38" font-size="26">vLLM v0.32.0 has a 1.0 s boundary in TTFT buckets</tspan>
+      <tspan x="180" dy="38" font-size="26">and a 0.1 s boundary in inter-token buckets,</tspan>
+      <tspan x="180" dy="38" font-size="26">so a 1.0 s TTFT limit and a 0.1 s ITL limit are exact</tspan>
+    </text>
+  </g>
+</svg>

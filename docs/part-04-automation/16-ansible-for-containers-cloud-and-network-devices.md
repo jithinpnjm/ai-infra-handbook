@@ -454,15 +454,9 @@ Design the fabric as data. Leaf-spine addressing, BGP unnumbered, ECMP, MTU 9216
 
 The flow below shows the whole loop, from the data model through verification and rollback.
 
-```mermaid
-flowchart LR
-  D["Data model (YAML/NetBox)\nASNs, links, VRFs, MTU, QoS"] --> T["Templates / resource modules"]
-  T --> P["Dry run: rendered/--check --diff"]
-  P --> A["Apply with commit-confirm\n(canary leaf, then batches)"]
-  A --> V["Verify: BGP, LLDP vs cabling plan, counters, ECMP"]
-  V -->|fail| R["Rollback to saved config"]
-  V -->|ok| N["Next batch / save config"]
-```
+![NVIDIA networking](./img/m4-16-1.svg)
+
+*Figure 4.16.1. NVIDIA networking, as a diagram.*
 
 If verification fails, the flow rolls back to the saved config. If it passes, the flow moves on to the next batch and saves the config.
 

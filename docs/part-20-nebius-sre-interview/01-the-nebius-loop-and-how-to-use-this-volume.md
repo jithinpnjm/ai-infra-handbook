@@ -34,15 +34,9 @@ The page describes the technical content as formats, not as a fixed order. The i
 
 The final meeting is a conversation with a team leader about the team and its projects. You may get extra technical questions, and the page says you are told in advance. Being told in advance is useful, because it lets you change your preparation for that hour.
 
-```mermaid
-flowchart LR
-  A["CV<br/>reply in 3 business days"] --> B["Recruiter call"]
-  B --> C["Technical 1<br/>60-90 min"]
-  C --> D["Technical 2<br/>60-90 min"]
-  D --> E["Technical 3<br/>60-90 min"]
-  E --> F["Final hour<br/>team leader"]
-  F --> G["Offer talk"]
-```
+![The process, stage by stage](./img/m20-01-1.svg)
+
+*Figure 20.1.1. The process, stage by stage, as a diagram.*
 
 | Stage | What Nebius states | Tag | Prepare with |
 | --- | --- | --- | --- |
@@ -68,6 +62,10 @@ The practical result is simple. **Prepare for the hardest plausible loop and lea
 The gaps in this section are not a reason to wait. Read them as a to-do list. Each unanswered question is one that your recruiter can answer in a short email, and each answer narrows the preparation you need to do. A gap that you have named and tracked is far easier to work with than a gap you only sense in the middle of a round.
 
 ### 3. How the candidate reports differ, and what to make of it
+
+![Four candidate reports shown against the official page, with the range of rounds from four to seven and the Amsterdam report marked as the hardest to prepare for.](./img/p2-2001-report-spread.svg)
+
+*Figure 20.1.2. The four candidate reports disagree on number of rounds and duration, so the Amsterdam version is the one to prepare for.*
 
 Imagine two people who sat interviews for similar SRE jobs and then compare notes. One says the whole process took about a week. The other says it dragged on for one to three months. Both are telling the truth about their own experience, and neither tells you what the next candidate will face. That is the situation with the reports in this section.
 
@@ -100,6 +98,10 @@ This reading also gives you a plan. A correct answer with no reasoning shows les
 
 ### 5. The think-aloud protocol as a script
 
+![A numbered list of seven spoken steps for a technical round, from restating the problem to offering an alternative, with the plan step highlighted.](./img/p2-2001-think-aloud.svg)
+
+*Figure 20.1.3. The seven-step think-aloud script, in the order you say it during a coding, console, design or incident round.*
+
 You get a problem and your mind goes quiet. The interviewer cannot hear quiet. Many good engineers have frozen at this point, not because they lack skill, but because speaking while thinking feels unnatural. This script gives you words to say in a fixed order, so you speak even when you are not sure. It works for coding, console, design and incident rounds. I wrote it from the official advice above, so it is a technique, not Nebius policy.
 
 1. Restate the problem in one sentence. Say: "So the input is ..., the output is ..., and the limit is ...". This shows that you understood the task before you began to solve it.
@@ -119,6 +121,10 @@ Practise this script until the sentences are boring. Then they are free when str
 Rehearsal works best with a friend who plays the interviewer. Ask them to stay quiet while you speak, and to interrupt only when you go silent. After the practice, ask them one question: could they repeat your plan back to a colleague? If the answer is yes, your reasoning is visible enough. If the answer is no, the script needs more of the small named steps in the middle.
 
 ### 6. How to handle being stuck
+
+![A five-step ladder for handling being stuck, from saying so plainly to offering a slow answer and improving it, with a thirty-second silence limit.](./img/p2-2001-stuck-ladder.svg)
+
+*Figure 20.1.4. The five-step order for handling being stuck in a technical round, with the thirty-second silence rule.*
 
 Think of the middle of a coding problem. You have tried one idea, it fails, and the next idea does not come. You will get stuck. Everyone does, and the page itself tells you that asking for a hint is fine. The mistake is not being stuck. The mistake is staying silent about it.
 
@@ -168,6 +174,10 @@ Write the replies down as they come in, next to the chapter each one affects. A 
 Ask for the format, not the questions themselves. A recruiter can tell you how long each round runs and what it covers, but they will not give you the actual prompt.
 
 ### 10. A reader's map: which chapter serves which stage
+
+![A map linking each interview stage, such as the console round, coding, system design and the final hour, to the handbook chapters that prepare for it.](./img/p2-2001-reader-map.svg)
+
+*Figure 20.1.5. A reader's map that matches each interview stage to the volume chapters to study for it, with the design drills after the depth chapters.*
 
 Suppose yourself a few weeks from the first call, with a long volume and a short calendar. You need to know which chapters come first, or you will read the wrong ones with great care. This table maps each stage to chapters. Part B is the console round. Part C is coding. Part D is system design. Part E is inference knowledge that feeds design and the incident round. Part G is the incident round and the final hour.
 

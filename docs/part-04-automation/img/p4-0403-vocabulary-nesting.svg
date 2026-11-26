@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Host, inventory, task, play, playbook: how the words nest</title>
+  <desc>A nesting diagram showing how playbook, play, task, host, and inventory relate in automation architecture, along with task execution states and declarative state management.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Host, inventory, task, play, playbook: how the words nest</text>
+
+  
+  
+  <rect x="40" y="125" width="460" height="865" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(64, 145)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="6"/>
+    <line x1="12" y1="18" x2="44" y2="18"/>
+    <line x1="12" y1="32" x2="44" y2="32"/>
+    <circle cx="16" cy="11" r="2" fill="#207448"/>
+    <circle cx="16" cy="25" r="2" fill="#207448"/>
+    <circle cx="16" cy="39" r="2" fill="#207448"/>
+  </g>
+
+  
+  <text x="136" y="165" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="136" dy="0" font-size="30" font-weight="bold">inventory:</tspan>
+    <tspan x="136" dy="32" font-size="24">the list of machines</tspan>
+    <tspan x="136" dy="30" font-size="24">with their groups</tspan>
+  </text>
+
+  
+  <rect x="64" y="275" width="412" height="690" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(84, 292)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="40" height="32" rx="4"/>
+    <circle cx="14" cy="24" r="3" fill="#207448"/>
+    <line x1="24" y1="24" x2="36" y2="24"/>
+  </g>
+  <text x="144" y="324" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="28" font-weight="bold">host: </tspan>
+    <tspan font-size="24">one machine</tspan>
+  </text>
+
+  
+  <rect x="84" y="360" width="372" height="270" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(108, 382)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="36" height="36" rx="4"/>
+    <rect x="16" y="16" width="20" height="20" rx="2" fill="#e8f1ea"/>
+    <line x1="18" y1="2" x2="18" y2="8"/>
+    <line x1="26" y1="2" x2="26" y2="8"/>
+    <line x1="34" y1="2" x2="34" y2="8"/>
+    <line x1="18" y1="44" x2="18" y2="50"/>
+    <line x1="26" y1="44" x2="26" y2="50"/>
+    <line x1="34" y1="44" x2="34" y2="50"/>
+    <line x1="2" y1="18" x2="8" y2="18"/>
+    <line x1="2" y1="26" x2="8" y2="26"/>
+    <line x1="2" y1="34" x2="8" y2="34"/>
+    <line x1="44" y1="18" x2="50" y2="18"/>
+    <line x1="44" y1="26" x2="50" y2="26"/>
+    <line x1="44" y1="34" x2="50" y2="34"/>
+  </g>
+  <text x="180" y="418" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28" font-weight="bold" fill="#207448">gpu01</text>
+  
+  <g stroke="#207448" stroke-width="2" fill="none" stroke-linecap="round">
+    <rect x="108" y="450" width="324" height="44" rx="6" fill="#ffffff"/>
+    <line x1="124" y1="472" x2="260" y2="472"/>
+    <circle cx="400" cy="472" r="6" fill="#207448"/>
+    <rect x="108" y="510" width="324" height="44" rx="6" fill="#ffffff"/>
+    <line x1="124" y1="532" x2="290" y2="532"/>
+    <circle cx="400" cy="532" r="6" fill="#207448"/>
+    <rect x="108" y="570" width="324" height="44" rx="6" fill="#ffffff"/>
+    <line x1="124" y1="592" x2="320" y2="592"/>
+    <circle cx="400" cy="592" r="6" fill="#207448"/>
+  </g>
+
+  
+  <rect x="84" y="655" width="372" height="270" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(108, 677)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="36" height="36" rx="4"/>
+    <rect x="16" y="16" width="20" height="20" rx="2" fill="#e8f1ea"/>
+    <line x1="18" y1="2" x2="18" y2="8"/>
+    <line x1="26" y1="2" x2="26" y2="8"/>
+    <line x1="34" y1="2" x2="34" y2="8"/>
+    <line x1="18" y1="44" x2="18" y2="50"/>
+    <line x1="26" y1="44" x2="26" y2="50"/>
+    <line x1="34" y1="44" x2="34" y2="50"/>
+    <line x1="2" y1="18" x2="8" y2="18"/>
+    <line x1="2" y1="26" x2="8" y2="26"/>
+    <line x1="2" y1="34" x2="8" y2="34"/>
+    <line x1="44" y1="18" x2="50" y2="18"/>
+    <line x1="44" y1="26" x2="50" y2="26"/>
+    <line x1="44" y1="34" x2="50" y2="34"/>
+  </g>
+  <text x="180" y="713" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="28" font-weight="bold" fill="#207448">gpu02</text>
+  
+  <g stroke="#207448" stroke-width="2" fill="none" stroke-linecap="round">
+    <rect x="108" y="745" width="324" height="44" rx="6" fill="#ffffff"/>
+    <line x1="124" y1="767" x2="260" y2="767"/>
+    <circle cx="400" cy="767" r="6" fill="#207448"/>
+    <rect x="108" y="805" width="324" height="44" rx="6" fill="#ffffff"/>
+    <line x1="124" y1="827" x2="290" y2="827"/>
+    <circle cx="400" cy="827" r="6" fill="#207448"/>
+    <rect x="108" y="865" width="324" height="44" rx="6" fill="#ffffff"/>
+    <line x1="124" y1="887" x2="320" y2="887"/>
+    <circle cx="400" cy="887" r="6" fill="#207448"/>
+  </g>
+
+  
+  
+  <rect x="560" y="125" width="1000" height="865" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(585, 142)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 40 L 6 10 C 6 6 10 4 14 4 L 46 4 L 46 46 L 14 46 C 10 46 6 44 6 40 Z"/>
+    <line x1="14" y1="4" x2="14" y2="46"/>
+    <polygon points="24,18 36,25 24,32" fill="#207448"/>
+  </g>
+  <text x="655" y="180" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">playbook: </tspan>
+    <tspan font-size="26">a file that holds one or more plays</tspan>
+  </text>
+
+  
+  <rect x="585" y="215" width="950" height="750" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(610, 230)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="18"/>
+    <circle cx="24" cy="24" r="8"/>
+    <line x1="24" y1="2" x2="24" y2="10"/>
+    <line x1="24" y1="38" x2="24" y2="46"/>
+    <line x1="2" y1="24" x2="10" y2="24"/>
+    <line x1="38" y1="24" x2="46" y2="24"/>
+  </g>
+  <text x="670" y="262" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">play: </tspan>
+    <tspan font-size="25">one block that targets a set of hosts</tspan>
+  </text>
+
+  
+  <rect x="610" y="295" width="180" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="700" y="328" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">hosts: gpu</text>
+
+  
+  <path d="M 610 319 L 486 319" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+
+  
+  
+  <rect x="626" y="365" width="884" height="415" rx="12" fill="#f0f5f1" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,4"/>
+  
+  <rect x="618" y="371" width="884" height="415" rx="12" fill="#f7faf8" stroke="#207448" stroke-width="1.8"/>
+  
+  <rect x="610" y="377" width="884" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(635, 393)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="10"/>
+    <path d="M 24 6 L 24 10 M 24 38 L 24 42 M 6 24 L 10 24 M 38 24 L 42 24 M 11.3 11.3 L 14.1 14.1 M 33.9 33.9 L 36.7 36.7 M 11.3 36.7 L 14.1 33.9 M 33.9 14.1 L 36.7 11.3"/>
+  </g>
+
+  
+  <text x="695" y="425" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">task</tspan>
+    <tspan font-size="24">: </tspan>
+    <tspan font-size="24">a call to a module</tspan>
+  </text>
+
+  
+  <rect x="635" y="455" width="834" height="315" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+
+  
+  <text x="660" y="500" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">package chrony is installed;</text>
+  <text x="660" y="555" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">service chronyd is enabled and running;</text>
+  <text x="660" y="610" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">file /etc/chrony.conf has this content;</text>
+  <text x="660" y="670" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="660" dy="0">the module checks the current state and</tspan>
+    <tspan x="660" dy="36">changes only what differs</tspan>
+  </text>
+
+  
+  
+  <rect x="650" y="815" width="350" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="825" y="851" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">ok (already correct)</text>
+
+  <rect x="1030" y="815" width="220" height="54" rx="8" fill="#fff3e6" stroke="#db8129" stroke-width="3"/>
+  <text x="1140" y="851" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">changed</text>
+
+  
+  <rect x="650" y="888" width="170" height="54" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.8"/>
+  <text x="735" y="924" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">failed</text>
+
+  <rect x="850" y="888" width="180" height="54" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.8"/>
+  <text x="940" y="924" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">skipped</text>
+
+  <rect x="1060" y="888" width="230" height="54" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.8"/>
+  <text x="1175" y="924" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="600" fill="#303a36">unreachable</text>
+
+  
+  <rect x="40" y="1025" width="1520" height="65" rx="10" fill="#207448"/>
+  <text x="800" y="1067" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Describe the state, and let the module decide whether anything needs to move</text>
+</svg>

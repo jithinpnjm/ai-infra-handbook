@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Three ways to guard the squaring loop against bad input</title>
+  <desc>Infographic comparing three input validation techniques for an interactive squaring loop in Python: string inspection with isdigit, exception handling with try-except-else, and float parsing.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Three ways to guard the squaring loop against bad input</text>
+
+  
+  <rect x="40" y="115" width="1520" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="65" y="127" width="34" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="74" y1="139" x2="91" y2="139" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="74" y1="149" x2="85" y2="149" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="74" y1="159" x2="89" y2="159" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="120" y="159" font-family="sans-serif" font-size="24" fill="#303a36">input always arrives as a string: reply ** 2 raises TypeError, so convert with int(reply) first</text>
+
+  
+  <rect x="40" y="205" width="1520" height="630" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <path d="M 40 217 Q 40 205 52 205 L 1548 205 Q 1560 205 1560 217 L 1560 270 L 40 270 Z" fill="#e8f1ea"/>
+  <line x1="40" y1="270" x2="1560" y2="270" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 85 227 A 15 15 0 1 0 92 248" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <polyline points="83 220 87 228 79 230" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="130" y="247" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">reply = input(&quot;Enter text:&quot;)</text>
+  <text x="780" y="247" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">if reply == &quot;stop&quot;: break</text>
+
+  
+  <g>
+    <rect x="65" y="285" width="1470" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="102" cy="367" r="24" fill="#207448"/>
+    <text x="102" y="375" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <path d="M 140 335 Q 160 325 180 335 Q 180 365 160 380 Q 140 365 140 335 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="150 352 157 359 171 345" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="200" y="352" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">check first</text>
+    <text x="200" y="390" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">with isdigit</text>
+
+    
+    <rect x="425" y="297" width="670" height="141" rx="6" fill="#f5f8f5" stroke="#c0d6c4" stroke-width="1.5"/>
+    <text x="450" y="352" font-family="monospace" font-size="24" fill="#303a36">elif not reply.isdigit(): print(&quot;Bad!&quot; * 8)</text>
+    <text x="450" y="398" font-family="monospace" font-size="24" fill="#303a36">else: print(int(reply) ** 2)</text>
+
+    
+    <rect x="1115" y="297" width="400" height="141" rx="6" fill="#e8f1ea" stroke="#c0d6c4" stroke-width="1.5"/>
+    <text x="1135" y="344" font-family="sans-serif" font-size="24" fill="#303a36">strings have no isfloat,</text>
+    <text x="1135" y="376" font-family="sans-serif" font-size="24" fill="#303a36">so a check for every</text>
+    <text x="1135" y="408" font-family="sans-serif" font-size="24" fill="#303a36">float form is a hard job</text>
+  </g>
+
+  
+  <g>
+    <rect x="65" y="465" width="1470" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="102" cy="557" r="24" fill="#207448"/>
+    <text x="102" y="565" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <path d="M 140 525 Q 160 515 180 525 Q 180 555 160 570 Q 140 555 140 525 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="160" y1="532" x2="160" y2="550" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="160" cy="558" r="2" fill="#207448"/>
+    
+    <text x="200" y="542" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">try, except,</text>
+    <text x="200" y="580" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">else</text>
+
+    
+    <rect x="425" y="477" width="445" height="161" rx="6" fill="#f5f8f5" stroke="#c0d6c4" stroke-width="1.5"/>
+    <text x="450" y="522" font-family="monospace" font-size="24" fill="#303a36">try: num = int(reply)</text>
+    <text x="450" y="564" font-family="monospace" font-size="24" fill="#303a36">except: print(&quot;Bad!&quot; * 8)</text>
+    <text x="450" y="606" font-family="monospace" font-size="24" fill="#303a36">else: print(num ** 2)</text>
+
+    
+    <rect x="890" y="477" width="625" height="161" rx="6" fill="#e8f1ea" stroke="#c0d6c4" stroke-width="1.5"/>
+    <text x="915" y="516" font-family="sans-serif" font-size="24" fill="#303a36">you do not detect the error,</text>
+    <text x="915" y="548" font-family="sans-serif" font-size="24" fill="#303a36">you respond when one happens; the else</text>
+    <text x="915" y="580" font-family="sans-serif" font-size="24" fill="#303a36">belongs to the try because its indentation</text>
+    <text x="915" y="612" font-family="sans-serif" font-size="24" fill="#303a36">lines up with try</text>
+  </g>
+
+  
+  <g>
+    <rect x="65" y="665" width="1470" height="155" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+    
+    <circle cx="102" cy="742" r="24" fill="#db8129"/>
+    <text x="102" y="750" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <circle cx="160" cy="742" r="20" fill="none" stroke="#db8129" stroke-width="3"/>
+    <path d="M 160 726 L 160 732 M 160 752 L 160 758 M 144 742 L 150 742 M 170 742 L 176 742" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="160" cy="742" r="4" fill="#db8129"/>
+    
+    <text x="200" y="752" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">try with float</text>
+
+    
+    <rect x="425" y="677" width="445" height="131" rx="6" fill="#fff8f0" stroke="#db8129" stroke-width="1.5"/>
+    <text x="450" y="752" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">print(float(reply) ** 2)</text>
+
+    
+    <rect x="890" y="677" width="625" height="131" rx="6" fill="#fff8f0" stroke="#db8129" stroke-width="1.5"/>
+    <text x="915" y="733" font-family="sans-serif" font-size="24" fill="#303a36">accepts 50, 40.5, 1.23E-100</text>
+    <text x="915" y="769" font-family="sans-serif" font-size="24" fill="#303a36">and rejects hack</text>
+  </g>
+
+  
+  
+  <g>
+    <rect x="40" y="855" width="740" height="235" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <polygon points="90 882 114 924 66 924" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="90" y1="896" x2="90" y2="910" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="90" cy="918" r="1.5" fill="#db8129"/>
+    
+    <text x="135" y="924" font-family="sans-serif" font-size="24" fill="#303a36">eval would also work but runs any</text>
+    <text x="135" y="964" font-family="sans-serif" font-size="24" fill="#303a36">expression such as 2 ** 100, so with</text>
+    <text x="135" y="1004" font-family="sans-serif" font-size="24" fill="#303a36">untrusted input use narrow tools</text>
+    <text x="135" y="1044" font-family="sans-serif" font-size="24" fill="#303a36">like int and float</text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="855" width="740" height="235" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="845" y="875" width="46" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="845" y1="886" x2="891" y2="886" stroke="#207448" stroke-width="2"/>
+    <polyline points="852 895 857 900 852 905" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="861" y1="905" x2="870" y2="905" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <text x="915" y="902" font-family="monospace" font-size="24" fill="#303a36">Enter text:5 gives 25</text>
+    <text x="915" y="942" font-family="monospace" font-size="24" fill="#303a36">xxx gives Bad! eight times</text>
+    <text x="915" y="982" font-family="monospace" font-size="24" fill="#303a36">40.5 gives 1640.25</text>
+    <text x="915" y="1022" font-family="monospace" font-size="24" fill="#303a36">1.23E-100 gives 1.5129e-200</text>
+    <text x="915" y="1062" font-family="monospace" font-size="24" fill="#303a36">stop prints Bye</text>
+  </g>
+
+  
+  <rect x="40" y="1110" width="1520" height="60" rx="8" fill="#207448"/>
+  <text x="800" y="1148" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">The last print is not indented under the loop, so it runs once after the loop exits</text>
+</svg>

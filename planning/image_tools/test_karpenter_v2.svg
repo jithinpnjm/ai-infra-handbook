@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Karpenter versus node groups, and the NodePool rules</title>
+  <desc>Technical infographic comparing Cluster Autoscaler fixed node group menu versus Karpenter just-in-time chef provisioning, beside an annotated Karpenter NodePool manifest for gpu-inference with requirements, taints, limits, and disruption policies.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Karpenter versus node groups, and the NodePool rules</text>
+
+  <!-- ==================== LEFT PANEL: menu versus chef ==================== -->
+  <g id="left-panel">
+    <!-- Panel Container -->
+    <rect x="40" y="110" width="730" height="970" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Left Panel Header Icon: Chef Hat / Menu (outline, 56px box) -->
+    <g transform="translate(68, 126)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 42 h 28 v 7 h -28 z" />
+      <path d="M 10 42 c -6 -3 -7 -13 0 -18 c -3 -8 4 -15 11 -11 c 5 -7 15 -7 20 0 c 7 -4 14 3 11 11 c 7 5 6 15 0 18" />
+      <line x1="14" y1="46" x2="30" y2="46" stroke-width="2.5" />
+    </g>
+
+    <!-- Left Panel Title (32px bold) -->
+    <text x="146" y="166" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">menu versus chef</text>
+
+    <!-- Card 1: Cluster Autoscaler (Fixed Menu) -->
+    <g id="ca-card">
+      <rect x="68" y="210" width="674" height="250" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <!-- Icon: Fixed Menu / Grid (56px) -->
+      <g transform="translate(92, 240)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="48" height="44" rx="4" />
+        <line x1="4" y1="18" x2="52" y2="18" />
+        <line x1="16" y1="26" x2="40" y2="26" />
+        <line x1="16" y1="34" x2="40" y2="34" />
+        <line x1="16" y1="42" x2="30" y2="42" />
+        <circle cx="10" cy="12" r="2" fill="#207448" />
+        <circle cx="16" cy="12" r="2" fill="#207448" />
+      </g>
+
+      <!-- Label 3: Cluster Autoscaler description -->
+      <text x="166" y="270" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="166" dy="0">Cluster Autoscaler orders from a fixed</tspan>
+        <tspan x="166" dy="38">menu of node groups, each with one</tspan>
+        <tspan x="166" dy="38">shape</tspan>
+      </text>
+    </g>
+
+    <!-- Card 2: Karpenter (Chef / Just-In-Time) -->
+    <g id="karpenter-card">
+      <rect x="68" y="485" width="674" height="565" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+      <!-- Icon: Smart Batching / Engine (56px) -->
+      <g transform="translate(92, 530)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="14" />
+        <path d="M 28 6 v 8 M 28 42 v 8 M 6 28 h 8 M 42 28 h 8 M 12 12 l 6 6 M 38 38 l 6 6 M 12 44 l 6 -6 M 38 18 l 6 -6" />
+        <circle cx="28" cy="28" r="5" fill="#207448" />
+      </g>
+
+      <!-- Label 4: Karpenter description -->
+      <text x="166" y="555" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="166" dy="0">Karpenter watches Pending pods,</tspan>
+        <tspan x="166" dy="40">batches them, computes the best set of</tspan>
+        <tspan x="166" dy="40">instance types that satisfy their</tspan>
+        <tspan x="166" dy="40">constraints, and provisions just in</tspan>
+        <tspan x="166" dy="40">time; bin-packing, spot handling with</tspan>
+        <tspan x="166" dy="40">interruption notices, automatic</tspan>
+        <tspan x="166" dy="40">rotation and drift correction</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT PANEL: annotated NodePool gpu-inference ==================== -->
+  <g id="right-panel">
+    <!-- Panel Container -->
+    <rect x="830" y="110" width="730" height="970" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Right Panel Header Icon: Manifest / NodePool (outline, 56px box) -->
+    <g transform="translate(858, 126)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="6" width="38" height="42" rx="5" />
+      <path d="M 18 18 h 18 M 18 26 h 18 M 18 34 h 12" />
+      <circle cx="14" cy="18" r="1.5" fill="#207448" />
+      <circle cx="14" cy="26" r="1.5" fill="#207448" />
+      <circle cx="14" cy="34" r="1.5" fill="#207448" />
+    </g>
+
+    <!-- Right Panel Title: annotated NodePool gpu-inference (30px bold) -->
+    <text x="930" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">annotated NodePool gpu-inference</text>
+
+    <!-- Item 1: requirements instance-family -->
+    <g id="item-requirements">
+      <rect x="858" y="210" width="674" height="78" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <g transform="translate(876, 226)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="32" height="32" rx="4" />
+        <line x1="4" y1="16" x2="36" y2="16" />
+        <circle cx="12" cy="26" r="2" fill="#207448" />
+        <circle cx="20" cy="26" r="2" fill="#207448" />
+        <circle cx="28" cy="26" r="2" fill="#207448" />
+      </g>
+      <text x="932" y="246" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="932" dy="0">requirements instance-family</tspan>
+        <tspan x="932" dy="30">In g6, g6e, p5</tspan>
+      </text>
+    </g>
+
+    <!-- Item 2: capacity-type On-demand -->
+    <g id="item-capacity">
+      <rect x="858" y="296" width="674" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <g transform="translate(876, 305)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="20" cy="20" r="14" />
+        <polyline points="14,20 18,24 26,16" />
+      </g>
+      <text x="932" y="333" font-family="monospace" font-size="24" fill="#303a36">capacity-type On-demand</text>
+    </g>
+
+    <!-- Item 3: zones us-east-1a and us-east-1b -->
+    <g id="item-zones">
+      <rect x="858" y="360" width="674" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <g transform="translate(876, 369)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="14" cy="20" r="8" />
+        <circle cx="26" cy="20" r="8" />
+      </g>
+      <text x="932" y="397" font-family="monospace" font-size="24" fill="#303a36">zones us-east-1a and us-east-1b</text>
+    </g>
+
+    <!-- Item 4: taints nvidia.com/gpu=present NoSchedule (keeps ordinary pods off) -->
+    <g id="item-taints">
+      <rect x="858" y="424" width="674" height="84" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <g transform="translate(876, 444)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 20 6 L 34 12 V 24 C 34 32 20 38 20 38 C 20 38 6 32 6 24 V 12 Z" />
+        <line x1="14" y1="22" x2="26" y2="22" />
+      </g>
+      <text x="932" y="460" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="932" dy="0" font-family="monospace">taints nvidia.com/gpu=present</tspan>
+        <tspan x="932" dy="30">NoSchedule (keeps ordinary pods off)</tspan>
+      </text>
+    </g>
+
+    <!-- Item 5: nodeClassRef EC2NodeClass gpu -->
+    <g id="item-nodeclass">
+      <rect x="858" y="516" width="674" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <g transform="translate(876, 525)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="28" height="24" rx="3" />
+        <line x1="6" y1="16" x2="34" y2="16" />
+        <line x1="20" y1="32" x2="20" y2="38" />
+        <line x1="12" y1="38" x2="28" y2="38" />
+      </g>
+      <text x="932" y="553" font-family="monospace" font-size="24" fill="#303a36">nodeClassRef EC2NodeClass gpu</text>
+    </g>
+
+    <!-- Item 6: expireAfter 720h -->
+    <g id="item-expire">
+      <rect x="858" y="580" width="674" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <g transform="translate(876, 589)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="20" cy="20" r="14" />
+        <polyline points="20,12 20,20 26,20" />
+      </g>
+      <text x="932" y="617" font-family="monospace" font-size="24" fill="#303a36">expireAfter 720h</text>
+    </g>
+
+    <!-- Item 7: limits nvidia.com/gpu 64 (cap on total GPUs) -->
+    <g id="item-limits">
+      <rect x="858" y="644" width="674" height="84" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <g transform="translate(876, 664)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="6" y1="34" x2="34" y2="34" />
+        <line x1="20" y1="10" x2="20" y2="34" />
+        <polyline points="10,16 20,10 30,16" />
+      </g>
+      <text x="932" y="680" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="932" dy="0" font-family="monospace">limits nvidia.com/gpu 64</tspan>
+        <tspan x="932" dy="30">(cap on total GPUs)</tspan>
+      </text>
+    </g>
+
+    <!-- Item 8: disruption consolidationPolicy WhenEmptyOrUnderutilized, consolidateAfter 10m, budgets nodes 10 percent -->
+    <g id="item-disruption">
+      <rect x="858" y="736" width="674" height="174" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <g transform="translate(876, 755)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 32 18 A 12 12 0 1 0 34 26" />
+        <polyline points="26,12 34,18 28,24" />
+      </g>
+      <text x="932" y="774" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="932" dy="0">disruption consolidationPolicy</tspan>
+        <tspan x="932" dy="34">WhenEmptyOrUnderutilized,</tspan>
+        <tspan x="932" dy="34">consolidateAfter 10m,</tspan>
+        <tspan x="932" dy="34">budgets nodes 10 percent</tspan>
+      </text>
+    </g>
+
+    <!-- Item 9: Warning (orange #db8129) -->
+    <g id="item-warning">
+      <rect x="858" y="918" width="674" height="132" rx="12" fill="#fff5ea" stroke="#db8129" stroke-width="2.5" />
+      <!-- Warning Triangle Icon (Orange #db8129) -->
+      <g transform="translate(876, 948)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 20 6 L 36 34 H 4 Z" />
+        <line x1="20" y1="16" x2="20" y2="24" />
+        <circle cx="20" cy="29" r="1.5" fill="#db8129" stroke="none" />
+      </g>
+      <text x="932" y="966" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+        <tspan x="932" dy="0">consolidation can remove a node under a</tspan>
+        <tspan x="932" dy="34">training job: set do-not-disrupt</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

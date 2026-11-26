@@ -1,0 +1,289 @@
+import re
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A decision tree, an alert-to-cause table and a classifier</title>
+  <desc>A triage decision tree for LLM serving failures, mapping symptoms and checks to root causes and mitigations.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="45" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A decision tree, an alert-to-cause table and a classifier</text>
+
+  <!-- ==================== ARROWS ==================== -->
+  <!-- A -> B -->
+  <line x1="400" y1="172" x2="400" y2="212" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- B -> H (yes) -->
+  <line x1="740" y1="262" x2="900" y2="262" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="820" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  <!-- B -> C (no) -->
+  <line x1="400" y1="312" x2="400" y2="352" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="418" y="338" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  <!-- C -> K (yes) -->
+  <line x1="740" y1="402" x2="900" y2="402" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="820" y="390" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  <!-- C -> D (no) -->
+  <line x1="400" y1="452" x2="400" y2="492" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="418" y="478" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  <!-- D -> L (yes) -->
+  <line x1="740" y1="542" x2="900" y2="542" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="820" y="530" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  <!-- D -> E (no) -->
+  <line x1="400" y1="592" x2="400" y2="632" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="418" y="618" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  <!-- E -> S (yes) -->
+  <line x1="740" y1="682" x2="900" y2="682" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="820" y="670" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  <!-- E -> F (no) -->
+  <line x1="400" y1="732" x2="400" y2="772" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="418" y="758" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  <!-- F -> Q (yes) -->
+  <line x1="740" y1="822" x2="900" y2="822" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="820" y="810" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  <!-- F -> G (no) -->
+  <line x1="400" y1="872" x2="400" y2="912" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="418" y="898" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  <!-- G -> X (yes) -->
+  <line x1="740" y1="962" x2="900" y2="962" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="820" y="950" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  <!-- G -> Y (no) -->
+  <line x1="400" y1="1012" x2="400" y2="1052" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="418" y="1038" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  <!-- ==================== ROW 0 ==================== -->
+  <!-- Node A: Latency or errors up -->
+  <g id="node-A">
+    <rect x="60" y="72" width="680" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(84, 94)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6,44 18,34 30,40 46,12"/>
+      <polyline points="34,12 46,12 46,24"/>
+      <line x1="6" y1="50" x2="50" y2="50" stroke-width="3"/>
+    </g>
+    <text x="165" y="132" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Latency or errors up</text>
+  </g>
+
+  <!-- ==================== ROW 1 ==================== -->
+  <!-- Node B: Tokens/s zero with work queued? -->
+  <g id="node-B">
+    <rect x="60" y="212" width="680" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(84, 234)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 42 A 22 22 0 1 1 48 42"/>
+      <line x1="28" y1="36" x2="14" y2="40"/>
+      <circle cx="28" cy="36" r="4" fill="#207448"/>
+    </g>
+    <text x="165" y="257" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Tokens/s zero</tspan>
+      <tspan x="165" dy="31" font-size="26">with work queued?</tspan>
+    </text>
+  </g>
+
+  <!-- Node H: Hang or Xid: drain, capture, restart (ORANGE ACCENT) -->
+  <g id="node-H">
+    <rect x="900" y="212" width="640" height="100" rx="14" fill="#fff8f0" stroke="#db8129" stroke-width="4"/>
+    <g transform="translate(924, 234)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4"/>
+      <line x1="20" y1="6" x2="20" y2="12" stroke-width="3"/>
+      <line x1="36" y1="6" x2="36" y2="12" stroke-width="3"/>
+      <line x1="20" y1="44" x2="20" y2="50" stroke-width="3"/>
+      <line x1="36" y1="44" x2="36" y2="50" stroke-width="3"/>
+      <line x1="6" y1="20" x2="12" y2="20" stroke-width="3"/>
+      <line x1="6" y1="36" x2="12" y2="36" stroke-width="3"/>
+      <line x1="44" y1="20" x2="50" y2="20" stroke-width="3"/>
+      <line x1="44" y1="36" x2="50" y2="36" stroke-width="3"/>
+      <line x1="21" y1="21" x2="35" y2="35" stroke-width="3.5"/>
+      <line x1="35" y1="21" x2="21" y2="35" stroke-width="3.5"/>
+    </g>
+    <text x="1005" y="257" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Hang or Xid:</tspan>
+      <tspan x="1005" dy="31" font-size="26">drain, capture, restart</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 2 ==================== -->
+  <!-- Node C: KV usage near 1 and preemptions? -->
+  <g id="node-C">
+    <rect x="60" y="352" width="680" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(84, 374)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="10" rx="3" fill="#207448" fill-opacity="0.25"/>
+      <rect x="8" y="24" width="40" height="10" rx="3" fill="#207448" fill-opacity="0.25"/>
+      <rect x="8" y="38" width="40" height="10" rx="3" fill="#207448" fill-opacity="0.25"/>
+      <line x1="51" y1="14" x2="51" y2="44"/>
+      <polyline points="47,20 51,14 55,20"/>
+    </g>
+    <text x="165" y="397" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">KV usage near 1</tspan>
+      <tspan x="165" dy="31" font-size="26">and preemptions?</tspan>
+    </text>
+  </g>
+
+  <!-- Node K: KV exhaustion: cut admission -->
+  <g id="node-K">
+    <rect x="900" y="352" width="640" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(924, 374)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 46 14 V 28 C 46 40 28 48 28 48 C 28 48 10 40 10 28 V 14 Z"/>
+      <line x1="18" y1="26" x2="38" y2="26"/>
+    </g>
+    <text x="1005" y="397" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">KV exhaustion:</tspan>
+      <tspan x="1005" dy="31" font-size="26">cut admission</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 3 ==================== -->
+  <!-- Node D: Prompt tail heavy, ITL up? -->
+  <g id="node-D">
+    <rect x="60" y="492" width="680" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(84, 514)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 46 L 12 12 Q 22 38 50 46"/>
+      <line x1="6" y1="48" x2="52" y2="48" stroke-width="3"/>
+      <line x1="34" y1="38" x2="48" y2="38" stroke-width="3" stroke-dasharray="3 3"/>
+    </g>
+    <text x="165" y="537" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Prompt tail heavy,</tspan>
+      <tspan x="165" dy="31" font-size="26">ITL up?</tspan>
+    </text>
+  </g>
+
+  <!-- Node L: Long-context HOL: isolate long prompts -->
+  <g id="node-L">
+    <rect x="900" y="492" width="640" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(924, 514)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="16" x2="48" y2="16"/>
+      <line x1="8" y1="40" x2="48" y2="40"/>
+      <line x1="8" y1="28" x2="48" y2="28" stroke-width="2" stroke-dasharray="3 3"/>
+      <rect x="12" y="11" width="10" height="10" rx="2" fill="#207448"/>
+      <rect x="28" y="35" width="18" height="10" rx="2"/>
+    </g>
+    <text x="1005" y="537" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Long-context HOL:</tspan>
+      <tspan x="1005" dy="31" font-size="26">isolate long prompts</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 4 ==================== -->
+  <!-- Node E: Ready below desired or many loading? -->
+  <g id="node-E">
+    <rect x="60" y="632" width="680" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(84, 654)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="12" width="40" height="32" rx="4"/>
+      <line x1="28" y1="20" x2="28" y2="36"/>
+      <polyline points="20,28 28,36 36,28"/>
+    </g>
+    <text x="165" y="677" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Ready below desired</tspan>
+      <tspan x="165" dy="31" font-size="26">or many loading?</tspan>
+    </text>
+  </g>
+
+  <!-- Node S: Shrink, herd or probe kills -->
+  <g id="node-S">
+    <rect x="900" y="632" width="640" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(924, 654)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="20"/>
+      <polyline points="26,10 20,28 32,28 26,46" stroke-width="4"/>
+    </g>
+    <text x="1005" y="677" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Shrink, herd or</tspan>
+      <tspan x="1005" dy="31" font-size="26">probe kills</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 5 ==================== -->
+  <!-- Node F: Waiting high, batch full? -->
+  <g id="node-F">
+    <rect x="60" y="772" width="680" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(84, 794)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 14 L 14 46 H 42 L 46 14" stroke-width="4"/>
+      <line x1="17" y1="38" x2="39" y2="38"/>
+      <line x1="15" y1="28" x2="41" y2="28"/>
+      <line x1="13" y1="18" x2="43" y2="18"/>
+    </g>
+    <text x="165" y="817" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Waiting high,</tspan>
+      <tspan x="165" dy="31" font-size="26">batch full?</tspan>
+    </text>
+  </g>
+
+  <!-- Node Q: Capacity: scale or shed -->
+  <g id="node-Q">
+    <rect x="900" y="772" width="640" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(924, 794)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="18" y="14" width="20" height="28" rx="4"/>
+      <polyline points="12,22 6,28 12,34"/>
+      <polyline points="44,22 50,28 44,34"/>
+    </g>
+    <text x="1005" y="817" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Capacity: scale</tspan>
+      <tspan x="1005" dy="31" font-size="26">or shed</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 6 ==================== -->
+  <!-- Node G: Infra green, finish_reason moved? -->
+  <g id="node-G">
+    <rect x="60" y="912" width="680" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(84, 934)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="20"/>
+      <polyline points="18,28 25,35 38,20" stroke-width="4"/>
+    </g>
+    <text x="165" y="957" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Infra green,</tspan>
+      <tspan x="165" dy="31" font-size="26">finish_reason moved?</tspan>
+    </text>
+  </g>
+
+  <!-- Node X: Quality or skew: roll back -->
+  <g id="node-X">
+    <rect x="900" y="912" width="640" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(924, 934)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 14 24 A 18 18 0 1 1 18 38"/>
+      <polyline points="6,24 14,24 14,16"/>
+    </g>
+    <text x="1005" y="957" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Quality or skew:</tspan>
+      <tspan x="1005" dy="31" font-size="26">roll back</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 7 ==================== -->
+  <!-- Node Y: Check retries, tenants, versions -->
+  <g id="node-Y">
+    <rect x="60" y="1052" width="680" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <g transform="translate(84, 1074)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="10" y1="16" x2="26" y2="16"/>
+      <line x1="10" y1="28" x2="22" y2="28"/>
+      <line x1="10" y1="40" x2="26" y2="40"/>
+      <circle cx="36" cy="30" r="12"/>
+      <line x1="45" y1="39" x2="52" y2="46" stroke-width="4"/>
+    </g>
+    <text x="165" y="1097" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Check retries,</tspan>
+      <tspan x="165" dy="31" font-size="26">tenants, versions</tspan>
+    </text>
+  </g>
+
+</svg>
+"""
+
+with open("candidate_decision_tree.svg", "w") as f:
+    f.write(svg_content.strip())
+
+print("SVG written successfully.")

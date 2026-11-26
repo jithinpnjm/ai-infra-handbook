@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Tracing one host through the /etc/hosts template</title>
+  <desc>Visual explanation of tracing one host from inventory data through the Jinja2 template to the rendered hosts file output line.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Tracing one host through the /etc/hosts template</text>
+
+  
+  <rect x="40" y="95" width="740" height="925" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="65" y="115" width="690" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(85, 145)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 12 26 V 18 A 12 12 0 0 1 36 18 V 26" />
+    <rect x="6" y="26" width="36" height="26" rx="4" fill="#e8f1ea" />
+    <circle cx="24" cy="38" r="3" fill="#207448" />
+  </g>
+  <text x="160" y="165" font-family="monospace" font-size="26" font-weight="bold" fill="#207448"># {{ ansible_managed }}</text>
+  <text x="160" y="205" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">first line marks the file as generated</tspan>
+    <tspan x="160" dy="32">so nobody edits it by hand</tspan>
+  </text>
+
+  
+  <rect x="65" y="275" width="690" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(85, 295)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="16" />
+    <path d="M 8 24 C 8 14 16 8 28 8 L 40 8 M 32 0 L 40 8 L 32 16" />
+    <circle cx="24" cy="24" r="4" fill="#207448" />
+  </g>
+  <text x="160" y="325" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">127.0.0.1 localhost</text>
+  <text x="160" y="365" font-family="sans-serif" font-size="24" fill="#303a36">second line keeps the loopback address</text>
+
+  
+  <rect x="65" y="405" width="690" height="180" rx="12" fill="#fffbf5" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(85, 435)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 40 24 A 16 16 0 1 1 24 8" />
+    <path d="M 24 0 L 24 8 L 32 8" />
+    <path d="M 8 24 A 16 16 0 1 1 24 40" />
+    <path d="M 24 48 L 24 40 L 16 40" />
+  </g>
+  <text x="160" y="455" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">for h in groups[cluster] | sort</text>
+  <text x="160" y="495" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">the loop writes one line per host</tspan>
+    <tspan x="160" dy="32">in sorted order: the sort keeps the</tspan>
+    <tspan x="160" dy="32">output the same on every render</tspan>
+  </text>
+
+  
+  <rect x="65" y="600" width="690" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(85, 625)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="32" height="32" rx="4" fill="#e8f1ea" />
+    <line x1="18" y1="2" x2="18" y2="10" />
+    <line x1="34" y1="2" x2="34" y2="10" />
+    <line x1="18" y1="42" x2="18" y2="50" />
+    <line x1="34" y1="42" x2="34" y2="50" />
+    <line x1="2" y1="18" x2="10" y2="18" />
+    <line x1="2" y1="34" x2="10" y2="34" />
+    <line x1="42" y1="18" x2="50" y2="18" />
+    <line x1="42" y1="34" x2="50" y2="34" />
+  </g>
+  <text x="160" y="640" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="160" dy="0">{{ hostvars[h][ansible_host] }}</tspan>
+    <tspan x="160" dy="32">{{ h }}.{{ cluster_domain }} {{ h }}</tspan>
+  </text>
+  <text x="160" y="715" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">each line uses the host&apos;s</tspan>
+    <tspan x="160" dy="32">ansible_host and its name, so the</tspan>
+    <tspan x="160" dy="32">file follows the inventory: add a</tspan>
+    <tspan x="160" dy="32">host to the inventory, run the</tspan>
+    <tspan x="160" dy="32">playbook, and the new line appears</tspan>
+    <tspan x="160" dy="32">without anyone touching the file</tspan>
+  </text>
+
+  
+  <rect x="65" y="920" width="690" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(85, 935)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 20 8 L 8 8 L 8 44 L 20 44" />
+    <path d="M 32 8 L 44 8 L 44 44 L 32 44" />
+  </g>
+  <text x="160" y="970" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">endfor</text>
+
+  
+  <rect x="820" y="95" width="740" height="925" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="840" y="200" width="700" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(865, 240)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="26" cy="12" rx="20" ry="8" fill="#e8f1ea" />
+    <path d="M 6 12 V 28 C 6 32 15 36 26 36 C 37 36 46 32 46 28 V 12" />
+    <path d="M 6 28 V 44 C 6 48 15 52 26 52 C 37 52 46 48 46 44 V 28" />
+  </g>
+  <text x="945" y="270" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="945" dy="0">inventory entry gpu001 with its</tspan>
+    <tspan x="945" dy="40">ansible_host value, and the</tspan>
+    <tspan x="945" dy="40">cluster_domain variable</tspan>
+  </text>
+
+  
+  <line x1="1190" y1="440" x2="1190" y2="658" stroke="#207448" stroke-width="5" marker-end="url(#arrow)" />
+
+  
+  <rect x="840" y="660" width="700" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(865, 700)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="40" height="46" rx="4" fill="#e8f1ea" />
+    <line x1="14" y1="18" x2="38" y2="18" />
+    <line x1="14" y1="28" x2="38" y2="28" />
+    <line x1="14" y1="38" x2="26" y2="38" />
+  </g>
+  <text x="945" y="730" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="945" dy="0">the ansible_host value, then gpu001</tspan>
+    <tspan x="945" dy="40">followed by the cluster_domain</tspan>
+    <tspan x="945" dy="40">value, then gpu001</tspan>
+  </text>
+
+  
+  <rect x="40" y="1035" width="1520" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(65, 1045)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 20 4 L 38 36 L 2 36 Z" fill="#e8f1ea" />
+    <line x1="20" y1="16" x2="20" y2="24" />
+    <circle cx="20" cy="30" r="1.5" fill="#207448" />
+  </g>
+  <text x="120" y="1075" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">cross-host data needs facts for those hosts: see the --limit trap</text>
+
+  
+  <rect x="40" y="1115" width="1520" height="70" rx="10" fill="#207448" />
+  <text x="800" y="1160" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Trace one value from the data to the output line</text>
+</svg>

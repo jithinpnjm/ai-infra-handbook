@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>ssh_config: the first matching Host block wins for each setting</title>
+  <desc>Visual infographic explaining how ssh_config evaluates settings from matching Host blocks in order, where the first match wins.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-slate" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#303a36" />
+    </marker>
+    <g id="icon-server" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="48" height="18" rx="4" fill="#ffffff" />
+      <rect x="4" y="30" width="48" height="18" rx="4" fill="#ffffff" />
+      <circle cx="12" cy="17" r="3" fill="#207448" />
+      <circle cx="20" cy="17" r="3" fill="#207448" />
+      <line x1="32" y1="17" x2="44" y2="17" />
+      <circle cx="12" cy="39" r="3" fill="#207448" />
+      <circle cx="20" cy="39" r="3" fill="#207448" />
+      <line x1="32" y1="39" x2="44" y2="39" />
+    </g>
+    <g id="icon-pattern" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="32" height="38" rx="4" fill="#ffffff" />
+      <path d="M 18 6 L 46 6 C 48.2 6 50 7.8 50 10 L 50 38" />
+      <line x1="14" y1="20" x2="30" y2="20" />
+      <line x1="14" y1="28" x2="26" y2="28" />
+      <line x1="14" y1="36" x2="30" y2="36" />
+    </g>
+    <g id="icon-global" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" fill="#ffffff" />
+      <ellipse cx="28" cy="28" rx="10" ry="22" />
+      <line x1="6" y1="28" x2="50" y2="28" />
+    </g>
+    <g id="icon-terminal" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="6" fill="#ffffff" />
+      <line x1="4" y1="18" x2="52" y2="18" />
+      <circle cx="11" cy="12" r="2" fill="#207448" />
+      <circle cx="17" cy="12" r="2" fill="#207448" />
+      <path d="M 12 28 L 18 34 L 12 40" />
+      <line x1="24" y1="40" x2="36" y2="40" />
+    </g>
+    <g id="icon-key" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="28" r="12" fill="#ffffff" />
+      <circle cx="18" cy="28" r="5" fill="#207448" />
+      <line x1="30" y1="28" x2="52" y2="28" />
+      <line x1="44" y1="28" x2="44" y2="36" />
+      <line x1="50" y1="28" x2="50" y2="34" />
+    </g>
+  </defs>
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">ssh_config: the first matching Host block </tspan>
+    <tspan x="800" dy="56">wins for each setting</tspan>
+  </text>
+  <g id="card-1">
+    <rect x="50" y="165" width="470" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="95" cy="205" r="24" fill="#207448" />
+    <text x="95" y="214" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="135" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host gpu01</text>
+    <use href="#icon-server" x="444" y="177" />
+    <rect x="75" y="250" width="420" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="285" font-family="monospace" font-size="24" fill="#303a36">HostName 10.20.0.11</text>
+    <rect x="75" y="320" width="420" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="355" font-family="monospace" font-size="24" fill="#303a36">User alice</text>
+  </g>
+  <g id="card-2">
+    <rect x="50" y="450" width="470" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="95" cy="490" r="24" fill="#207448" />
+    <text x="95" y="499" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="135" y="500" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host gpu* login*</text>
+    <use href="#icon-pattern" x="444" y="462" />
+    <rect x="75" y="535" width="420" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="570" font-family="monospace" font-size="24" fill="#303a36">User clusterdefault</text>
+    <rect x="75" y="605" width="420" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="640" font-family="monospace" font-size="24" fill="#303a36">ProxyJump bastion</text>
+  </g>
+  <g id="card-3">
+    <rect x="50" y="735" width="470" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <circle cx="95" cy="775" r="24" fill="#207448" />
+    <text x="95" y="784" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="135" y="785" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host *</text>
+    <use href="#icon-global" x="444" y="747" />
+    <rect x="75" y="820" width="420" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="855" font-family="monospace" font-size="24" fill="#303a36">ServerAliveInterval 30</text>
+    <rect x="75" y="890" width="420" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="95" y="925" font-family="monospace" font-size="24" fill="#303a36">User fallback</text>
+  </g>
+  <g id="panel-1">
+    <rect x="770" y="165" width="780" height="385" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-terminal" x="795" y="177" />
+    <text x="865" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">ssh gpu01 matches cards 1, 2, 3</text>
+    <rect x="795" y="250" width="730" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="285" font-family="sans-serif" font-size="24" fill="#303a36">HostName 10.20.0.11 (from card 1)</text>
+    <rect x="795" y="320" width="730" height="54" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="815" y="355" font-family="sans-serif" font-size="24" fill="#303a36">User alice (card 1 wins over cards 2 and 3)</text>
+    <rect x="795" y="390" width="730" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="425" font-family="sans-serif" font-size="24" fill="#303a36">ProxyJump bastion (card 2)</text>
+    <rect x="795" y="460" width="730" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="495" font-family="sans-serif" font-size="24" fill="#303a36">ServerAliveInterval 30 (card 3)</text>
+  </g>
+  <g id="panel-2">
+    <rect x="770" y="590" width="780" height="385" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-terminal" x="795" y="602" />
+    <text x="865" y="640" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">ssh gpu02 matches cards 2, 3</text>
+    <rect x="795" y="675" width="730" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="710" font-family="sans-serif" font-size="24" fill="#303a36">HostName gpu02 (no card sets it)</text>
+    <rect x="795" y="745" width="730" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="780" font-family="sans-serif" font-size="24" fill="#303a36">User clusterdefault (card 2)</text>
+    <rect x="795" y="815" width="730" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="850" font-family="sans-serif" font-size="24" fill="#303a36">ProxyJump bastion (card 2)</text>
+    <rect x="795" y="885" width="730" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="815" y="920" font-family="sans-serif" font-size="24" fill="#303a36">ServerAliveInterval 30 (card 3)</text>
+  </g>
+  <path d="M 795 277 L 522 277" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 795 347 L 522 347" stroke="#db8129" stroke-width="3.5" fill="none" marker-end="url(#arrow-orange)" />
+  <path d="M 795 417 C 650 417, 650 620, 522 620" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 795 487 C 610 487, 610 835, 522 835" stroke="#303a36" stroke-width="3" fill="none" marker-end="url(#arrow-slate)" />
+  <path d="M 795 772 C 670 772, 670 562, 522 562" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 795 842 C 685 842, 685 644, 522 644" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 795 912 C 660 912, 660 859, 522 859" stroke="#303a36" stroke-width="3" fill="none" marker-end="url(#arrow-slate)" />
+  <g id="bottom-bar">
+    <rect x="50" y="1030" width="1500" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-key" x="75" y="1042" />
+    <text x="150" y="1078" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Put specific hosts above wildcards; ssh -G hostname prints the effective result</text>
+  </g>
+</svg>

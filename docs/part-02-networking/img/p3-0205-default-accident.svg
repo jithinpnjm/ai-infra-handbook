@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Two default routes: which one wins, and what happens on failover</title>
+  <desc>Visual infographic explaining how dual default routes interact, failover mechanics across metrics, reverse-path filtering warnings, and the recommended single-route configuration.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="68" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Two default routes: which one wins, and what happens on failover</text>
+
+  
+  <g id="left-column">
+    
+    <rect x="40" y="110" width="460" height="420" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <rect x="68" y="132" width="44" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="76" y1="144" x2="84" y2="144" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="76" y1="154" x2="84" y2="154" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="102" cy="144" r="2.5" fill="#207448" />
+    <circle cx="102" cy="154" r="2.5" fill="#207448" />
+
+    
+    <text x="126" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Server Dual NICs</text>
+
+    
+    <rect x="68" y="184" width="404" height="142" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="86" y="222" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">eno1</text>
+    
+    <path d="M 86 238 L 86 312 M 86 242 L 314 242 L 334 266 L 314 290 L 86 290 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="100" y="274" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">everywhere else</text>
+
+    
+    <rect x="68" y="344" width="404" height="142" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="86" y="382" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">ens1f0</text>
+    
+    <path d="M 454 398 L 454 472 M 454 402 L 226 402 L 206 426 L 226 450 L 454 450 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="238" y="434" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">everywhere else</text>
+
+    
+    <rect x="40" y="546" width="460" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="76" cy="582" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 76 562 L 76 566 M 76 598 L 76 602 M 56 582 L 60 582 M 92 582 L 96 582" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="104" y="590" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Routing Selection</text>
+
+    <text x="64" y="632" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">equal metrics: the kernel uses the first one</tspan>
+      <tspan x="64" dy="46">different metrics: the lowest wins</tspan>
+    </text>
+  </g>
+
+  
+  <g id="middle-column">
+    <rect x="532" y="110" width="536" height="646" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <circle cx="566" cy="148" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="616" cy="148" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="574" y1="148" x2="608" y2="148" stroke="#207448" stroke-width="3" />
+    <text x="638" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Failover Sequence</text>
+
+    
+    <rect x="554" y="184" width="492" height="122" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="590" cy="245" r="22" fill="#207448" />
+    <text x="590" y="253" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="626" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="626" dy="0">Step 1: preferred route metric 100</tspan>
+      <tspan x="626" dy="32">carries traffic</tspan>
+    </text>
+
+    
+    <line x1="800" y1="306" x2="800" y2="328" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="554" y="332" width="492" height="122" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="590" cy="393" r="22" fill="#207448" />
+    <text x="590" y="401" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="626" y="383" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="626" dy="0">Step 2: its interface loses carrier,</tspan>
+      <tspan x="626" dy="32">the route stops being usable</tspan>
+    </text>
+
+    
+    <line x1="800" y1="454" x2="800" y2="476" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="554" y="480" width="492" height="122" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="590" cy="541" r="22" fill="#207448" />
+    <text x="590" y="549" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="626" y="531" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="626" dy="0">Step 3: the metric 200 route takes over</tspan>
+      <tspan x="626" dy="32">without anyone touching the table</tspan>
+    </text>
+
+    
+    <line x1="800" y1="602" x2="800" y2="620" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <rect x="554" y="624" width="492" height="114" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <path d="M 588 686 L 574 712 L 602 712 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+    <line x1="588" y1="694" x2="588" y2="702" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="588" cy="707" r="1.5" fill="#db8129" />
+    <text x="618" y="668" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="618" dy="0">replies that arrive on the wrong</tspan>
+      <tspan x="618" dy="32">NIC may then be dropped by rp_filter</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-column">
+    <rect x="1100" y="110" width="460" height="646" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <path d="M 1136 138 L 1156 130 L 1176 138 L 1176 156 C 1176 170 1156 178 1156 178 C 1156 178 1136 170 1136 156 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <path d="M 1147 154 L 1153 160 L 1165 148" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="1192" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">The Fix</text>
+
+    
+    <rect x="1122" y="184" width="416" height="552" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1142" y="234" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1142" dy="0" font-weight="bold">Keep exactly one default route</tspan>
+      <tspan x="1142" dy="34" font-weight="bold">per routing table; reach other</tspan>
+      <tspan x="1142" dy="34" font-weight="bold">networks with specific routes or</tspan>
+      <tspan x="1142" dy="34" font-weight="bold">policy routing;</tspan>
+
+      <tspan x="1142" dy="64" font-family="monospace" font-size="24" fill="#207448">nmcli connection modify</tspan>
+      <tspan x="1142" dy="34" font-family="monospace" font-size="24" fill="#207448">&lt;rail NIC&gt; ipv4.never-default</tspan>
+      <tspan x="1142" dy="34" font-family="monospace" font-size="24" fill="#207448">yes</tspan>
+      <tspan x="1142" dy="48" font-family="sans-serif" font-size="24" fill="#303a36">keeps a NIC from installing a</tspan>
+      <tspan x="1142" dy="34" font-family="sans-serif" font-size="24" fill="#303a36">default route</tspan>
+    </text>
+  </g>
+
+  
+  <g id="lower-section">
+    
+    <rect x="40" y="780" width="1520" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <path d="M 66 846 L 98 846 M 82 846 L 82 810 M 70 816 L 94 816 M 70 816 L 62 834 L 78 834 Z M 94 816 L 86 834 L 102 834 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <text x="122" y="845" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      two routes to the same /24, metric 100 and metric 200: the kernel uses 100
+    </text>
+
+    
+    <rect x="40" y="910" width="1520" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <path d="M 88 958 A 16 16 0 1 1 80 944" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 80 934 L 80 946 L 92 946" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="122" y="956" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">
+      ip route replace default via 10.20.0.1 dev eno1 metric 100
+    </text>
+    <text x="122" y="1000" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="122" dy="0">is idempotent: running it twice leaves the same result as once, which makes it safe in a script</tspan>
+      <tspan x="122" dy="34">that may be run again after a failure</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway">
+    <rect x="40" y="1094" width="1520" height="68" rx="10" fill="#207448" />
+    <text x="800" y="1138" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Metrics are the usual way to describe primary and backup paths on a host
+    </text>
+  </g>
+</svg>

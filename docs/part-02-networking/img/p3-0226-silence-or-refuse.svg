@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Handshake outcomes: a missing SYN-ACK, a reset, or a repeating SYN</title>
+  <desc>Visual explanation of TCP handshake outcomes: healthy three-way handshake, connection reset from a closed port, and silence from packet drops with server-side capture diagnostics.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Handshake outcomes: a missing SYN-ACK,</tspan>
+    <tspan x="800" dy="54">a reset, or a repeating SYN</tspan>
+  </text>
+
+  
+  <g id="ladder-a">
+    <rect x="40" y="185" width="480" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(65, 200)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 14 V 28 C 50 42 28 50 28 50 C 28 50 6 42 6 28 V 14 Z" />
+      <polyline points="18,27 25,34 38,20" />
+    </g>
+    <text x="140" y="240" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Healthy</text>
+
+    
+    <circle cx="105" cy="285" r="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="455" cy="285" r="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <line x1="105" y1="299" x2="105" y2="660" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 6" />
+    <line x1="455" y1="299" x2="455" y2="660" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 6" />
+
+    
+    <rect x="70" y="315" width="380" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="260" y="352" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="260" dy="0">SYN with options MSS,</tspan>
+      <tspan x="260" dy="26">SACK permitted,</tspan>
+      <tspan x="260" dy="26">timestamps, window</tspan>
+      <tspan x="260" dy="26">scale</tspan>
+    </text>
+    <line x1="105" y1="475" x2="437" y2="475" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="455" y1="545" x2="123" y2="545" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <rect x="175" y="514" width="150" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="250" y="553" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">SYN-ACK</text>
+
+    
+    <line x1="105" y1="625" x2="437" y2="625" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <rect x="195" y="594" width="110" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="250" y="633" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">ACK</text>
+  </g>
+
+  
+  <g id="ladder-b">
+    <rect x="560" y="185" width="480" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(585, 200)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="12" y1="28" x2="44" y2="28" />
+    </g>
+    <text x="655" y="240" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Reset</text>
+
+    
+    <circle cx="625" cy="285" r="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="975" cy="285" r="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <line x1="625" y1="299" x2="625" y2="485" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 6" />
+    <line x1="975" y1="299" x2="975" y2="485" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 6" />
+
+    
+    <line x1="625" y1="345" x2="957" y2="345" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <rect x="745" y="314" width="110" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="353" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">SYN</text>
+
+    
+    <line x1="975" y1="435" x2="643" y2="435" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <rect x="745" y="404" width="110" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="443" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">RST</text>
+
+    
+    <rect x="590" y="520" width="420" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="800" y="558" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">a reset means someone is</tspan>
+      <tspan x="800" dy="32">refusing you; usually</tspan>
+      <tspan x="800" dy="32">the port is closed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="ladder-c">
+    <rect x="1080" y="185" width="480" height="500" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+
+    
+    <g transform="translate(1105, 200)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="6,20 18,20 32,10 32,46 18,36 6,36" />
+      <line x1="40" y1="20" x2="52" y2="36" />
+      <line x1="52" y1="20" x2="40" y2="36" />
+    </g>
+    <text x="1175" y="240" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Silence</text>
+
+    
+    <circle cx="1145" cy="285" r="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="1495" cy="285" r="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <line x1="1145" y1="299" x2="1145" y2="485" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 6" />
+    <line x1="1495" y1="299" x2="1495" y2="485" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 6" />
+
+    
+    <line x1="1145" y1="315" x2="1477" y2="315" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <line x1="1145" y1="460" x2="1477" y2="460" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="1150" y="333" width="340" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1320" y="369" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1320" dy="0">SYN, then the same</tspan>
+      <tspan x="1320" dy="26">SYN repeated, each</tspan>
+      <tspan x="1320" dy="26">a little later</tspan>
+    </text>
+
+    
+    <rect x="1110" y="520" width="420" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1320" y="558" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1320" dy="0">silence means someone is</tspan>
+      <tspan x="1320" dy="32">ignoring you: a drop, a</tspan>
+      <tspan x="1320" dy="32">block or a missing route</tspan>
+    </text>
+  </g>
+
+  
+  <g id="extra-strip">
+    <rect x="40" y="730" width="1000" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(65, 755)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="16" x2="48" y2="16" />
+      <circle cx="20" cy="16" r="6" fill="#ffffff" />
+      <line x1="8" y1="36" x2="48" y2="36" />
+      <circle cx="36" cy="36" r="6" fill="#ffffff" />
+    </g>
+    <rect x="140" y="745" width="875" height="285" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="577" y="810" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="577" dy="0">Options: one SYN with window scale and the other without</tspan>
+      <tspan x="577" dy="42">suggests a middlebox stripping options; throughput then</tspan>
+      <tspan x="577" dy="42">limited to 64 KB per RTT. Fix belongs to the middlebox,</tspan>
+      <tspan x="577" dy="42">not the application</tspan>
+    </text>
+  </g>
+
+  
+  <g id="branching-check">
+    <rect x="1080" y="730" width="480" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <rect x="1100" y="745" width="440" height="285" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1320" y="782" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1320" dy="0">Check the server's</tspan>
+      <tspan x="1320" dy="25">capture next: SYN there</tspan>
+      <tspan x="1320" dy="25">but no SYN-ACK leaves =</tspan>
+      <tspan x="1320" dy="25">the server or a firewall</tspan>
+      <tspan x="1320" dy="25">in front of it is</tspan>
+      <tspan x="1320" dy="25">ignoring the port;</tspan>
+      <tspan x="1320" dy="25">SYN never appears on</tspan>
+      <tspan x="1320" dy="25">the server = the path</tspan>
+      <tspan x="1320" dy="25">between the two hosts</tspan>
+      <tspan x="1320" dy="25">is the suspect</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1090" width="1520" height="65" rx="14" fill="#207448" />
+    <text x="800" y="1132" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Silence means ignored, a reset means refused</text>
+  </g>
+</svg>

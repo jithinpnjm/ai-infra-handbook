@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four things every target needs before the first run</title>
+  <desc>
+    Four things every target needs before the first run
+    skip one item and the first run fails with an error that points somewhere else
+    1 User with key authentication: ssh-keygen -t ed25519, ssh-copy-id user@host; prefer a dedicated automation user; the public half goes on the target and the private half never leaves the control node; no password crosses the network
+    2 Passwordless sudo for root tasks (or become with a vaulted password): manage in /etc/sudoers.d/ansible and validate with visudo -cf (a typo in sudoers can lock everyone out of root, including you)
+    3 Python 3, time sync, name resolution: SSH keys and TLS certificates fail when clocks drift too far apart; an ansible_host set to a name must resolve from the control node
+    4 Host key handled on the first connection: ssh-keyscan into known_hosts, or host_key_checking = False only for labs; in production keep checking on because disabling it exposes you to man-in-the-middle attacks (someone sitting between the control node and the real server)
+    Commit the requirements files first, so a failure means something real
+  </desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Four things every target needs before the first run</text>
+
+  
+  <g id="warning-strip">
+    <rect x="60" y="80" width="1480" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="115" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">skip one item and the first run fails with an error that points somewhere else</text>
+  </g>
+
+  
+  <g id="card-1">
+    <rect x="60" y="155" width="1480" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="102" cy="198" r="12" />
+      <line x1="114" y1="198" x2="136" y2="198" />
+      <line x1="126" y1="198" x2="126" y2="208" />
+      <line x1="134" y1="198" x2="134" y2="205" />
+    </g>
+    
+    <text x="160" y="206" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">1 User with key authentication:</text>
+    
+    <text x="85" y="248" font-size="24">
+      <tspan font-family="monospace" fill="#303a36">ssh-keygen -t ed25519, ssh-copy-id user@host;</tspan>
+      <tspan font-family="sans-serif" fill="#303a36"> prefer a dedicated automation user;</tspan>
+    </text>
+    
+    <rect x="85" y="275" width="1430" height="82" rx="8" fill="#ffffff" stroke="#c4d8c8" stroke-width="1.5" />
+    <text x="105" y="308" font-family="sans-serif" font-size="24" fill="#303a36">the public half goes on the target and the private half never leaves the control node;</text>
+    <text x="105" y="340" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">no password crosses the network</text>
+  </g>
+
+  
+  <g id="card-2">
+    <rect x="60" y="395" width="1480" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 96,420 L 132,420 C 132,442 124,456 114,461 C 104,456 96,442 96,420 Z" />
+      <path d="M 105,439 L 112,446 L 124,432" />
+    </g>
+    
+    <text x="160" y="446" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">2 Passwordless sudo for root tasks (or become with a vaulted password):</text>
+    
+    <text x="85" y="488" font-size="24">
+      <tspan font-family="sans-serif" fill="#303a36">manage in </tspan>
+      <tspan font-family="monospace" fill="#303a36">/etc/sudoers.d/ansible</tspan>
+      <tspan font-family="sans-serif" fill="#303a36"> and validate with </tspan>
+      <tspan font-family="monospace" fill="#303a36">visudo -cf</tspan>
+    </text>
+    
+    <rect x="85" y="515" width="1430" height="82" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="2" />
+    <text x="105" y="564" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">a typo in sudoers can lock everyone out of root, including you</text>
+  </g>
+
+  
+  <g id="card-3">
+    <rect x="60" y="635" width="1480" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="114" cy="678" r="18" />
+      <polyline points="114,666 114,678 126,678" />
+    </g>
+    
+    <text x="160" y="686" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">3 Python 3, time sync, name resolution:</text>
+    
+    <text x="85" y="728" font-size="24">
+      <tspan font-family="sans-serif" fill="#303a36">an </tspan>
+      <tspan font-family="monospace" fill="#303a36">ansible_host</tspan>
+      <tspan font-family="sans-serif" fill="#303a36"> set to a name must resolve from the control node</tspan>
+    </text>
+    
+    <rect x="85" y="755" width="1430" height="82" rx="8" fill="#ffffff" stroke="#c4d8c8" stroke-width="1.5" />
+    <text x="105" y="804" font-family="sans-serif" font-size="24" fill="#303a36">SSH keys and TLS certificates fail when clocks drift too far apart;</text>
+  </g>
+
+  
+  <g id="card-4">
+    <rect x="60" y="875" width="1480" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="96" y="904" width="36" height="22" rx="4" />
+      <line x1="102" y1="915" x2="116" y2="915" />
+      <circle cx="124" cy="915" r="1" fill="#207448" stroke-width="2" />
+      <path d="M 106,926 L 106,935 L 122,935 L 122,926" />
+    </g>
+    
+    <text x="160" y="926" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">4 Host key handled on the first connection:</text>
+    
+    <text x="85" y="968" font-size="24">
+      <tspan font-family="monospace" fill="#303a36">ssh-keyscan</tspan>
+      <tspan font-family="sans-serif" fill="#303a36"> into </tspan>
+      <tspan font-family="monospace" fill="#303a36">known_hosts</tspan>
+      <tspan font-family="sans-serif" fill="#303a36">, or </tspan>
+      <tspan font-family="monospace" fill="#303a36">host_key_checking = False</tspan>
+      <tspan font-family="sans-serif" fill="#303a36"> only for labs;</tspan>
+    </text>
+    
+    <rect x="85" y="995" width="1430" height="82" rx="8" fill="#ffffff" stroke="#c4d8c8" stroke-width="1.5" />
+    <text x="105" y="1028" font-family="sans-serif" font-size="24" fill="#303a36">in production keep checking on because disabling it exposes you to man-in-the-middle attacks</text>
+    <text x="105" y="1060" font-family="sans-serif" font-size="24" fill="#303a36">(someone sitting between the control node and the real server)</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="1115" width="1480" height="60" rx="8" fill="#207448" />
+    <text x="800" y="1153" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Commit the requirements files first, so a failure means something real</text>
+  </g>
+</svg>

@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five iteration styles timed on range(10,000): the winner flips with the operation</title>
+  <desc>Visual comparison of execution times for five Python iteration styles comparing built-in C function abs(x) versus user expression x + 10.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    Five iteration styles timed on range(10,000):
+    <tspan x="800" dy="54">the winner flips with the operation</tspan>
+  </text>
+
+  
+  <rect x="60" y="150" width="1480" height="495" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(90, 172)">
+    <rect x="4" y="4" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="16" y="16" width="24" height="24" rx="3" fill="#207448"/>
+    
+    <line x1="14" y1="0" x2="14" y2="4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="28" y1="0" x2="28" y2="4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="0" x2="42" y2="4" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="14" y1="52" x2="14" y2="56" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="28" y1="52" x2="28" y2="56" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="42" y1="52" x2="42" y2="56" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <line x1="0" y1="14" x2="4" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="28" x2="4" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="0" y1="42" x2="4" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="52" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="52" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="52" y1="42" x2="56" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="165" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Built-in C function abs(x)</text>
+  <text x="165" y="232" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">timer_tests.py</text>
+
+  
+  
+  <g transform="translate(90, 250)">
+    <rect x="0" y="0" width="860" height="62" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="20" y="28" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">list(map(abs, repslist)) 0.144 s</text>
+    <rect x="20" y="42" width="730" height="10" rx="5" fill="#d8e6db"/>
+    <rect x="20" y="42" width="210" height="10" rx="5" fill="#db8129"/>
+  </g>
+
+  
+  <g transform="translate(90, 324)">
+    <rect x="0" y="0" width="860" height="62" rx="8" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="20" y="28" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">[abs(x) for x in repslist] 0.208 s</text>
+    <rect x="20" y="42" width="730" height="10" rx="5" fill="#d8e6db"/>
+    <rect x="20" y="42" width="304" height="10" rx="5" fill="#207448"/>
+  </g>
+
+  
+  <g transform="translate(90, 398)">
+    <rect x="0" y="0" width="860" height="62" rx="8" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="20" y="28" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">for loop with res.append(abs(x)) 0.260 s</text>
+    <rect x="20" y="42" width="730" height="10" rx="5" fill="#d8e6db"/>
+    <rect x="20" y="42" width="380" height="10" rx="5" fill="#207448"/>
+  </g>
+
+  
+  <g transform="translate(90, 472)">
+    <rect x="0" y="0" width="860" height="62" rx="8" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="20" y="28" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">list(abs(x) for x in repslist) 0.411 s</text>
+    <rect x="20" y="42" width="730" height="10" rx="5" fill="#d8e6db"/>
+    <rect x="20" y="42" width="600" height="10" rx="5" fill="#207448"/>
+  </g>
+
+  
+  <g transform="translate(90, 546)">
+    <rect x="0" y="0" width="860" height="62" rx="8" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="20" y="28" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">list(gen()) 0.412 s</text>
+    <rect x="20" y="42" width="730" height="10" rx="5" fill="#d8e6db"/>
+    <rect x="20" y="42" width="602" height="10" rx="5" fill="#207448"/>
+  </g>
+
+  
+  <g transform="translate(975, 250)">
+    <rect x="0" y="0" width="540" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="30" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="30" dy="0">map wins with a built-in C</tspan>
+      <tspan x="30" dy="34">function because no Python</tspan>
+      <tspan x="30" dy="34">frame is created per item</tspan>
+    </text>
+  </g>
+
+  <g transform="translate(975, 438)">
+    <rect x="0" y="0" width="540" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="30" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="30" dy="0">generator forms are slower:</tspan>
+      <tspan x="30" dy="32">forcing a generator into a list</tspan>
+      <tspan x="30" dy="32">all at once adds overhead</tspan>
+      <tspan x="30" dy="32">on every item</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="60" y="665" width="1480" height="415" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(90, 687)">
+    <rect x="4" y="4" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="3"/>
+    <circle cx="12" cy="11" r="2" fill="#207448"/>
+    <circle cx="19" cy="11" r="2" fill="#207448"/>
+    <circle cx="26" cy="11" r="2" fill="#207448"/>
+    <path d="M 14 31 L 22 37 L 14 43" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="43" x2="42" y2="43" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="165" y="717" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">User expression x + 10</text>
+  <text x="165" y="747" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">timer_tests2.py</text>
+
+  
+  
+  <g transform="translate(90, 765)">
+    <rect x="0" y="0" width="860" height="64" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="20" y="29" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">[x + 10 for x in repslist] 0.244 s</text>
+    <rect x="20" y="43" width="730" height="10" rx="5" fill="#d8e6db"/>
+    <rect x="20" y="43" width="356" height="10" rx="5" fill="#db8129"/>
+  </g>
+
+  
+  <g transform="translate(90, 845)">
+    <rect x="0" y="0" width="860" height="64" rx="8" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="20" y="29" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">for loop 0.287 s</text>
+    <rect x="20" y="43" width="730" height="10" rx="5" fill="#d8e6db"/>
+    <rect x="20" y="43" width="419" height="10" rx="5" fill="#207448"/>
+  </g>
+
+  
+  <g transform="translate(90, 925)">
+    <rect x="0" y="0" width="860" height="64" rx="8" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5"/>
+    <text x="20" y="29" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">list(map(lambda x: x + 10, repslist)) 0.496 s</text>
+    <rect x="20" y="43" width="730" height="10" rx="5" fill="#d8e6db"/>
+    <rect x="20" y="43" width="724" height="10" rx="5" fill="#207448"/>
+  </g>
+
+  
+  <g transform="translate(975, 765)">
+    <rect x="0" y="0" width="540" height="224" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="30" y="53" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="30" dy="0">with a user expression a lambda</tspan>
+      <tspan x="30" dy="34">adds function-call frame overhead</tspan>
+      <tspan x="30" dy="34">on each of the 10,000 calls,</tspan>
+      <tspan x="30" dy="34">so the comprehension wins</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="60" y="1105" width="1480" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1149" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Measure the operation you actually have</text>
+</svg>

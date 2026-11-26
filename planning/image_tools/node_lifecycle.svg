@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Node lifecycle</title>
+  <desc>State diagram showing Kubernetes and cloud or bare-metal node lifecycle states: Provisioned, Configured, Validating, Ready, Cordoned, Draining, Maintenance, Quarantined, and Decommissioned, including health validation gates, drainage, maintenance loops, and hardware repair queues.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448"/>
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#303a36" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <!-- Title -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Node lifecycle</text>
+  <!-- Start state [*] -->
+  <circle cx="130" cy="95" r="16" fill="#207448"/>
+  <!-- End state [*] -->
+  <circle cx="1380" cy="1135" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="1380" cy="1135" r="10" fill="#207448"/>
+  <!-- Transitions and Arrows -->
+  <path d="M 130 111 L 130 170" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="160.0" y="43.0" width="350" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="335" y="75.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">bare metal/VM created</text>
+  <text x="335" y="103.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(image, BMC/PXE</text>
+  <text x="335" y="131.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">or cloud API)</text>
+  <path d="M 370 235 L 370 235" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 510 235 L 650 235" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="370.0" y="167.0" width="280" height="136" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="510" y="201.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">OS, kernel,</text>
+  <text x="510" y="229.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">drivers, runtime,</text>
+  <text x="510" y="257.0" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">kubelet</text>
+  <text x="510" y="285.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(Ansible/image)</text>
+  <path d="M 950 235 L 1230 235" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="950.0" y="183.0" width="280" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="1090" y="215.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">join cluster</text>
+  <text x="1090" y="243.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">tainted</text>
+  <text x="1090" y="271.0" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">"validating"</text>
+  <path d="M 1380 300 L 1380 560" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="1240.0" y="378.0" width="280" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="1380" y="410.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">health gates pass</text>
+  <text x="1380" y="438.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(GPU diag, NCCL,</text>
+  <text x="1380" y="466.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">network, storage)</text>
+  <path d="M 1310 690 L 1310 820 L 800 820 L 800 950" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <rect x="960.0" y="782.0" width="260" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="1090" y="814.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">maintenance or</text>
+  <text x="1090" y="842.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">suspected fault</text>
+  <path d="M 650 1015 L 370 1015" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="370.0" y="963.0" width="280" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="510" y="995.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">evict pods</text>
+  <text x="510" y="1023.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">respecting</text>
+  <text x="510" y="1051.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">PDBs/checkpoints</text>
+  <path d="M 290 950 L 290 820 L 730 820 L 730 690" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <rect x="375.0" y="782.0" width="270" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="510" y="814.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">upgrade, repair,</text>
+  <text x="510" y="842.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">reboot</text>
+  <path d="M 870 560 L 870 430 L 1310 430 L 1310 300" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <rect x="970.0" y="402.0" width="240" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="1090" y="438.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">re-validate</text>
+  <path d="M 150 950 L 150 690" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="80.0" y="768.0" width="280" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="220" y="800.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">validation failed</text>
+  <text x="220" y="828.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">→ hardware repair</text>
+  <text x="220" y="856.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">queue</text>
+  <path d="M 220 560 L 220 300" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="80.0" y="402.0" width="280" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="220" y="438.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">repaired/reimaged</text>
+  <path d="M 1450 690 L 1450 950" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="1320.0" y="782.0" width="260" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)"/>
+  <text x="1450" y="814.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">remove</text>
+  <text x="1450" y="842.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(RMA, scale-in)</text>
+  <path d="M 1380 1080 L 1380 1115" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <!-- State Nodes -->
+  <!-- Node: Provisioned -->
+  <g id="node-provisioned">
+    <rect x="70" y="170" width="300" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <g transform="translate(192, 182)">
+          <rect x="6" y="8" width="44" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+          <line x1="12" y1="20" x2="36" y2="20" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="12" y1="28" x2="36" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="12" y1="36" x2="26" y2="36" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="42" cy="36" r="2.5" fill="#207448"/>
+        </g>
+    <text x="220.0" y="272" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Provisioned</text>
+  </g>
+  <!-- Node: Configured -->
+  <g id="node-configured">
+    <rect x="650" y="170" width="300" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <g transform="translate(772, 182)">
+          <circle cx="28" cy="28" r="10" fill="none" stroke="#207448" stroke-width="3.5"/>
+          <path d="M28 10 v6 m0 24 v6 m-18 -18 h6 m24 0 h6 m-15 -11 l4 4 m14 14 l4 4 m-22 0 l4 -4 m14 -14 l4 -4" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        </g>
+    <text x="800.0" y="272" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Configured</text>
+  </g>
+  <!-- Node: Validating -->
+  <g id="node-validating">
+    <rect x="1230" y="170" width="300" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <g transform="translate(1352, 182)">
+          <rect x="12" y="10" width="32" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+          <path d="M22 6 h12 v6 h-12 z" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+          <path d="M19 28 l6 6 l12 -12" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+    <text x="1380.0" y="272" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Validating</text>
+  </g>
+  <!-- Node: Quarantined -->
+  <g id="node-quarantined">
+    <rect x="70" y="560" width="300" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <g transform="translate(192, 572)">
+          <path d="M28 8 l16 6 v12 c0 12 -16 20 -16 20 s-16 -8 -16 -20 v-12 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+          <line x1="28" y1="20" x2="28" y2="30" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+          <circle cx="28" cy="36" r="2.5" fill="#207448"/>
+        </g>
+    <text x="220.0" y="662" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Quarantined</text>
+  </g>
+  <!-- Node: Maintenance -->
+  <g id="node-maintenance">
+    <rect x="650" y="560" width="300" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <g transform="translate(772, 572)">
+          <path d="M38 12 a8 8 0 0 1 -10 10 l-14 14 a4 4 0 0 1 -6 -6 l14 -14 a8 8 0 0 1 10 -10 c1 2 2 4 6 6 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+        </g>
+    <text x="800.0" y="662" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Maintenance</text>
+  </g>
+  <!-- Node: Ready -->
+  <g id="node-ready">
+    <rect x="1230" y="560" width="300" height="130" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4" filter="url(#shadow)"/>
+    <g transform="translate(1352, 572)">
+          <path d="M28 8 l16 6 v12 c0 12 -16 20 -16 20 s-16 -8 -16 -20 v-12 z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+          <path d="M20 26 l6 6 l12 -12" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+    <text x="1380.0" y="662" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ready</text>
+  </g>
+  <!-- Node: Draining -->
+  <g id="node-draining">
+    <rect x="70" y="950" width="300" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <g transform="translate(192, 962)">
+          <rect x="8" y="12" width="26" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+          <path d="M24 28 h20 m-6 -6 l6 6 l-6 6" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </g>
+    <text x="220.0" y="1052" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Draining</text>
+  </g>
+  <!-- Node: Cordoned -->
+  <g id="node-cordoned">
+    <rect x="650" y="950" width="300" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <g transform="translate(772, 962)">
+          <circle cx="28" cy="28" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
+          <line x1="15" y1="15" x2="41" y2="41" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        </g>
+    <text x="800.0" y="1052" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cordoned</text>
+  </g>
+  <!-- Node: Decommissioned -->
+  <g id="node-decommissioned">
+    <rect x="1230" y="950" width="300" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#shadow)"/>
+    <g transform="translate(1352, 962)">
+          <rect x="8" y="10" width="40" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+          <line x1="16" y1="18" x2="40" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+          <line x1="40" y1="18" x2="16" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        </g>
+    <text x="1380.0" y="1052" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Decommissioned</text>
+  </g>
+</svg>

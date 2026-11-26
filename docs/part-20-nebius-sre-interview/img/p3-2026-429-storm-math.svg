@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Incident 3: why raising the rate limits is the wrong dial</title>
+  <desc>Infographic explaining why raising rate limits fails when KV cache memory exhaustion triggers router shedding.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="76" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Incident 3: why raising the rate limits is the wrong dial</text>
+  <text x="40" y="118" font-family="sans-serif" font-size="24" fill="#303a36">Drill numbers are invented.</text>
+
+  
+  <g id="kv-arithmetic">
+    <rect x="40" y="160" width="480" height="560" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="66" y="180" width="30" height="30" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <line x1="60" y1="188" x2="66" y2="188" stroke="#207448" stroke-width="3"/>
+    <line x1="60" y1="202" x2="66" y2="202" stroke="#207448" stroke-width="3"/>
+    <line x1="96" y1="188" x2="102" y2="188" stroke="#207448" stroke-width="3"/>
+    <line x1="96" y1="202" x2="102" y2="202" stroke="#207448" stroke-width="3"/>
+    <line x1="74" y1="174" x2="74" y2="180" stroke="#207448" stroke-width="3"/>
+    <line x1="88" y1="174" x2="88" y2="180" stroke="#207448" stroke-width="3"/>
+    <line x1="74" y1="210" x2="74" y2="216" stroke="#207448" stroke-width="3"/>
+    <line x1="88" y1="210" x2="88" y2="216" stroke="#207448" stroke-width="3"/>
+    <line x1="77" y1="195" x2="85" y2="195" stroke="#207448" stroke-width="2.5"/>
+    <line x1="81" y1="191" x2="81" y2="199" stroke="#207448" stroke-width="2.5"/>
+    
+    <text x="120" y="206" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">KV arithmetic</text>
+    
+    <text x="65" y="252" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">KV per token =</tspan>
+      <tspan x="65" dy="28">2 x layers x heads x</tspan>
+      <tspan x="65" dy="28">head dimension x bytes =</tspan>
+      <tspan x="65" dy="28">524,288 bytes = 0.5 MB</tspan>
+      <tspan x="65" dy="28">for Llama-2-7b;</tspan>
+      <tspan x="65" dy="40">tenant A prompt about</tspan>
+      <tspan x="65" dy="28">28,000 tokens x 0.5 MB is</tspan>
+      <tspan x="65" dy="28">about 14 GB for one request;</tspan>
+      <tspan x="65" dy="40">other tenants send about</tspan>
+      <tspan x="65" dy="28">1,000 tokens;</tspan>
+      <tspan x="65" dy="40">the book's L40S example</tspan>
+      <tspan x="65" dy="28">fits 16 requests of</tspan>
+      <tspan x="65" dy="28">4,096 tokens in 34 GB</tspan>
+    </text>
+  </g>
+
+  
+  <g id="evidence">
+    <rect x="560" y="160" width="480" height="560" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="585" y="178" width="40" height="28" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <line x1="605" y1="206" x2="605" y2="216" stroke="#207448" stroke-width="3.5"/>
+    <line x1="595" y1="216" x2="615" y2="216" stroke="#207448" stroke-width="3.5"/>
+    <polyline points="590,192 597,192 602,184 606,200 611,192 619,192" stroke="#207448" stroke-width="2.5" fill="none"/>
+    
+    <text x="645" y="206" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Evidence</text>
+    
+    <text x="585" y="254" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="585" dy="0">KV cache 98 to 100 percent</tspan>
+      <tspan x="585" dy="29">on all six replicas;</tspan>
+      <tspan x="585" dy="42">many preemptions, preempted</tspan>
+      <tspan x="585" dy="29">requests go back to the</tspan>
+      <tspan x="585" dy="29">waiting queue and prefill</tspan>
+      <tspan x="585" dy="29">again;</tspan>
+      <tspan x="585" dy="42">pool output tokens per</tspan>
+      <tspan x="585" dy="29">second down 40 percent while</tspan>
+      <tspan x="585" dy="29">requests rose 35 percent;</tspan>
+      <tspan x="585" dy="42">GPUs busy redoing work</tspan>
+    </text>
+  </g>
+
+  
+  <g id="limits">
+    <rect x="1080" y="160" width="480" height="320" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1105 212 A 20 20 0 1 1 1145 212" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <line x1="1125" y1="212" x2="1138" y2="198" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="1125" cy="212" r="3" fill="#207448"/>
+    
+    <text x="1160" y="206" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Limits</text>
+    
+    <text x="1105" y="246" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1105" dy="0">tenant A limit 600 requests</tspan>
+      <tspan x="1105" dy="27">per minute and 10,000,000</tspan>
+      <tspan x="1105" dy="27">tokens per minute; uses</tspan>
+      <tspan x="1105" dy="27">about 300 RPM and 8.4 million</tspan>
+      <tspan x="1105" dy="27">TPM, inside both;</tspan>
+      <tspan x="1105" dy="34">the 429s come from the router</tspan>
+      <tspan x="1105" dy="27">shedding when every worker</tspan>
+      <tspan x="1105" dy="27">queue is over its depth limit,</tspan>
+      <tspan x="1105" dy="27">not from the gateway limits</tspan>
+    </text>
+  </g>
+
+  
+  <g id="retry">
+    <rect x="1080" y="520" width="480" height="200" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1115 550 A 15 15 0 0 1 1138 546" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <polyline points="1133,540 1141,546 1135,553" stroke="#207448" stroke-width="3" fill="none"/>
+    <path d="M 1135 566 A 15 15 0 0 1 1112 570" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <polyline points="1117,576 1109,570 1115,563" stroke="#207448" stroke-width="3" fill="none"/>
+    
+    <text x="1160" y="565" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Retry</text>
+    
+    <text x="1105" y="605" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1105" dy="0">SDK clients retry a 429 up to</tspan>
+      <tspan x="1105" dy="30">three times and ignore</tspan>
+      <tspan x="1105" dy="30">Retry-After; retries are</tspan>
+      <tspan x="1105" dy="30">about 30 percent of arrivals</tspan>
+    </text>
+  </g>
+
+  
+  <g id="actions">
+    <rect x="40" y="760" width="1520" height="220" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="65" y="775" width="32" height="38" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <line x1="77" y1="786" x2="90" y2="786" stroke="#207448" stroke-width="2.5"/>
+    <line x1="77" y1="795" x2="90" y2="795" stroke="#207448" stroke-width="2.5"/>
+    <line x1="77" y1="804" x2="90" y2="804" stroke="#207448" stroke-width="2.5"/>
+    <circle cx="71" cy="786" r="2" fill="#207448"/>
+    <circle cx="71" cy="795" r="2" fill="#207448"/>
+    <circle cx="71" cy="804" r="2" fill="#207448"/>
+    
+    <text x="115" y="804" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Actions in order</text>
+
+    
+    <rect x="60" y="825" width="450" height="135" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="98" cy="892" r="24" fill="#207448"/>
+    <text x="98" y="900" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="136" y="864" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="136" dy="0">cap tenant A by tokens</tspan>
+      <tspan x="136" dy="32">per minute or concurrent</tspan>
+      <tspan x="136" dy="32">long requests</tspan>
+    </text>
+
+    
+    <rect x="530" y="825" width="450" height="135" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="568" cy="892" r="24" fill="#207448"/>
+    <text x="568" y="900" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="606" y="864" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="606" dy="0">scale out (max 10 replicas,</tspan>
+      <tspan x="606" dy="32">six running, 12 minutes</tspan>
+      <tspan x="606" dy="32">to ready)</tspan>
+    </text>
+
+    
+    <rect x="1000" y="825" width="310" height="135" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="1038" cy="892" r="24" fill="#207448"/>
+    <text x="1038" y="900" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="1076" y="878" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1076" dy="0">ask clients to</tspan>
+      <tspan x="1076" dy="32">honour Retry-After</tspan>
+    </text>
+
+    
+    <rect x="1330" y="825" width="210" height="135" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="1368" cy="892" r="24" fill="#207448"/>
+    <text x="1368" y="900" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="1406" y="898" font-family="sans-serif" font-size="24" fill="#303a36">tell tenant A</text>
+  </g>
+
+  
+  <g id="strong-note">
+    <rect x="40" y="1020" width="1520" height="140" rx="10" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    <path d="M 82 1032 L 64 1064 L 100 1064 Z" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+    <line x1="82" y1="1045" x2="82" y2="1053" stroke="#207448" stroke-width="3"/>
+    <circle cx="82" cy="1059" r="1.5" fill="#207448"/>
+    
+    <text x="115" y="1058" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Strong note</text>
+    
+    <text x="65" y="1098" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">a request-per-minute limit cannot see a long prompt; the pool works on memory,</tspan>
+      <tspan x="65" dy="34">so raising limits is wrong because the pool is full; do not remove the router's shedding</tspan>
+    </text>
+  </g>
+</svg>

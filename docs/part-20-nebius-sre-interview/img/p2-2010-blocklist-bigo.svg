@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Blocklist check: list scan versus set lookup</title>
+  <desc>Visual comparison showing O(m) sequential list scan versus O(1) average set hash lookup for blocklist checks.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Blocklist check: list scan versus set lookup</text>
+
+  
+  <rect x="220" y="95" width="1160" height="60" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="136" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Name the variables: n log lines, m blocked addresses</text>
+
+  
+  <rect x="50" y="180" width="590" height="515" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(317, 205)">
+    <rect x="0" y="4" width="56" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="18" y1="4" x2="18" y2="52" stroke="#207448" stroke-width="3" />
+    <line x1="37" y1="4" x2="37" y2="52" stroke="#207448" stroke-width="3" />
+    <circle cx="9" cy="28" r="3" fill="#207448" />
+    <circle cx="27.5" cy="28" r="3" fill="#207448" />
+    <circle cx="46.5" cy="28" r="3" fill="#207448" />
+  </g>
+
+  
+  <text x="345" y="295" text-anchor="middle" font-family="monospace, sans-serif" font-size="30" font-weight="bold" fill="#303a36">List: if ip in blocked</text>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="113" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="193" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="273" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="353" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="433" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="513" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    
+    <line x1="129" y1="392" x2="161" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <line x1="209" y1="392" x2="241" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <line x1="289" y1="392" x2="321" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <line x1="369" y1="392" x2="401" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <line x1="449" y1="392" x2="481" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <line x1="529" y1="392" x2="561" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <path d="M 145 440 L 145 470 L 535 470" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <line x1="225" y1="464" x2="225" y2="476" stroke="#207448" stroke-width="2.5" />
+  <line x1="305" y1="464" x2="305" y2="476" stroke="#207448" stroke-width="2.5" />
+  <line x1="385" y1="464" x2="385" y2="476" stroke="#207448" stroke-width="2.5" />
+  <line x1="465" y1="464" x2="465" y2="476" stroke="#207448" stroke-width="2.5" />
+
+  
+  <text x="345" y="525" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Compare each entry, O(m) per line</text>
+
+  
+  <rect x="660" y="315" width="280" height="255" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+
+  
+  <g transform="translate(784, 340)">
+    <path d="M 16 3 L 30 29 L 2 29 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <line x1="16" y1="12" x2="16" y2="19" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="16" cy="24" r="1.5" fill="#207448" />
+  </g>
+
+  
+  <text x="800" y="415" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="500" fill="#303a36">
+    <tspan x="800" dy="0">Say on average:</tspan>
+    <tspan x="800" dy="34">a hash table can</tspan>
+    <tspan x="800" dy="34">slow down on</tspan>
+    <tspan x="800" dy="34">collisions.</tspan>
+  </text>
+
+  
+  <rect x="960" y="180" width="590" height="515" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1227, 205)">
+    <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="4" y1="20" x2="52" y2="20" stroke="#207448" stroke-width="3" />
+    <line x1="4" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="3" />
+    <circle cx="16" cy="12" r="3" fill="#207448" />
+    <circle cx="16" cy="28" r="3" fill="#207448" />
+    <circle cx="16" cy="44" r="3" fill="#207448" />
+    <path d="M 28 28 L 44 28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="1255" y="295" text-anchor="middle" font-family="monospace, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Set: if ip in blocked_set</text>
+
+  
+  <g transform="translate(0, 0)">
+    <rect x="1023" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="1103" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="1183" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="1263" y="360" width="64" height="64" rx="8" fill="#cbe3d3" stroke="#207448" stroke-width="3" />
+    <rect x="1343" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="1423" y="360" width="64" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    
+    <line x1="1039" y1="392" x2="1071" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <line x1="1119" y1="392" x2="1151" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <line x1="1199" y1="392" x2="1231" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <circle cx="1295" cy="392" r="7" fill="#207448" />
+    <line x1="1359" y1="392" x2="1391" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+    <line x1="1439" y1="392" x2="1471" y2="392" stroke="#8fa89b" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <line x1="1295" y1="480" x2="1295" y2="436" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <text x="1255" y="525" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Hash to a slot, O(1) on average</text>
+
+  
+  <rect x="95" y="725" width="500" height="70" rx="35" fill="#dde5df" stroke="#8c9e95" stroke-width="2.5" />
+  <text x="345" y="769" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#4a5752">Loop cost: O(n times m)</text>
+
+  
+  <rect x="1005" y="725" width="500" height="70" rx="35" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+  <text x="1255" y="769" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Loop cost: O(n)</text>
+
+  
+  <rect x="120" y="835" width="1360" height="70" rx="14" fill="#207448" />
+  <text x="800" y="879" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Name the variables before you name a big-O.</text>
+</svg>

@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+  <title>Job patterns and restartPolicy</title>
+  <desc>Visual infographic explaining Kubernetes Job patterns, Indexed completionMode, and container crash restart policies.</desc>
+
+  
+  <rect width="1600" height="1170" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Job patterns and restartPolicy</text>
+
+  
+  
+  <g id="panel-oneshot">
+    <rect x="30" y="105" width="500" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="60" y="125" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M74 153 L84 163 L102 143" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="135" y="163" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">One-shot</text>
+    <text x="60" y="230" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0" font-family="ui-monospace, monospace" font-weight="bold">completions 1, parallelism 1:</tspan>
+      <tspan x="60" dy="45">migrations, smoke tests</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-parallel-fixed">
+    <rect x="550" y="105" width="500" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="584" y="131" width="36" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="592" y="141" width="36" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="600" y="151" width="32" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="655" y="163" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Parallel fixed</text>
+    <text x="580" y="225" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="580" dy="0" font-family="ui-monospace, monospace" font-weight="bold">completions 10, parallelism 5:</tspan>
+      <tspan x="580" dy="42">five pods at a time</tspan>
+      <tspan x="580" dy="36">until 10 succeed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-work-queue">
+    <rect x="1070" y="105" width="500" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="1104" y="133" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="1120" y1="133" x2="1120" y2="173" stroke="#207448" stroke-width="3"/>
+    <line x1="1136" y1="133" x2="1136" y2="173" stroke="#207448" stroke-width="3"/>
+    <text x="1175" y="163" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Work queue</text>
+    <text x="1100" y="225" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" dy="0" font-family="ui-monospace, monospace" font-weight="bold">completions unset, parallelism 5:</tspan>
+      <tspan x="1100" dy="42">workers pull from a queue</tspan>
+      <tspan x="1100" dy="36">service until empty and exit 0</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-indexed">
+    <rect x="30" y="410" width="1540" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="64" y="443" width="48" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="80" y1="443" x2="80" y2="483" stroke="#207448" stroke-width="3"/>
+    <line x1="96" y1="443" x2="96" y2="483" stroke="#207448" stroke-width="3"/>
+    <text x="135" y="473" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">completionMode Indexed:</text>
+    <text x="135" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">each pod gets <tspan font-family="ui-monospace, monospace" font-weight="bold">JOB_COMPLETION_INDEX</tspan> 0 to completions minus 1,</tspan>
+      <tspan x="135" dy="38">pod hostname <tspan font-family="ui-monospace, monospace" font-weight="bold">job-index</tspan>, maps to <tspan font-family="ui-monospace, monospace" font-weight="bold">RANK</tspan> or <tspan font-family="ui-monospace, monospace" font-weight="bold">NODE_RANK</tspan></tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="lane-onfailure">
+    <rect x="30" y="615" width="760" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 104 663 A 18 18 0 1 1 98 650" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="94 643 98 650 105 647" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="135" y="673" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">restartPolicy OnFailure:</text>
+    <text x="60" y="730" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">kubelet restarts the container in place</tspan>
+      <tspan x="60" dy="38">on the same node,</tspan>
+      <tspan x="60" dy="38"><tspan font-family="ui-monospace, monospace" font-weight="bold">RESTARTS</tspan> counter increments on the same Pod</tspan>
+    </text>
+  </g>
+
+  
+  <g id="lane-never">
+    <rect x="810" y="615" width="760" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="844" y="647" width="22" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="850" y1="658" x2="860" y2="668" stroke="#207448" stroke-width="3"/>
+    <line x1="860" y1="658" x2="850" y2="668" stroke="#207448" stroke-width="3"/>
+    <rect x="874" y="647" width="22" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="885" y1="656" x2="885" y2="670" stroke="#207448" stroke-width="3"/>
+    <line x1="878" y1="663" x2="892" y2="663" stroke="#207448" stroke-width="3"/>
+    <text x="915" y="673" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">restartPolicy Never:</text>
+    <text x="840" y="730" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="840" dy="0">failed Pod stays with Status Error for logs,</tspan>
+      <tspan x="840" dy="38">Job controller creates a brand-new</tspan>
+      <tspan x="840" dy="38">replacement pod, repeats until <tspan font-family="ui-monospace, monospace" font-weight="bold">backoffLimit</tspan></tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="note-always-prohibited">
+    <rect x="30" y="940" width="760" height="190" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="2"/>
+    
+    <circle cx="88" cy="993" r="22" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="72" y1="977" x2="104" y2="1009" stroke="#db8129" stroke-width="4"/>
+    <text x="135" y="1000" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold">
+      <tspan x="135" dy="0" font-family="ui-monospace, monospace" fill="#db8129">restartPolicy Always</tspan>
+      <tspan x="135" dy="40" fill="#303a36">is not allowed in a Job</tspan>
+    </text>
+  </g>
+
+  
+  <g id="note-podfailurepolicy">
+    <rect x="810" y="940" width="760" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M868 970 L886 978 V990 C886 1001 878 1009 868 1012 C858 1009 850 1001 850 990 V978 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <text x="915" y="1000" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">podFailurePolicy:</text>
+    <text x="915" y="1045" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="915" dy="0">exit code can <tspan font-family="ui-monospace, monospace" font-weight="bold">FailJob</tspan>,</tspan>
+      <tspan x="915" dy="38"><tspan font-family="ui-monospace, monospace" font-weight="bold">DisruptionTarget</tspan> maps to <tspan font-family="ui-monospace, monospace" font-weight="bold">Ignore</tspan></tspan>
+    </text>
+  </g>
+</svg>

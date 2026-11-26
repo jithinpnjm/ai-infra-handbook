@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>Take control in the first two minutes</title>
+  <desc>Flowchart depicting incident response in the first two minutes, tracing from alert and triage through assessment, safe mitigation check, hypothesis testing loop, verification, and status update.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Take control in the first two minutes</text>
+
+  
+  
+  <line x1="500" y1="210" x2="580" y2="210" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1020" y1="210" x2="1100" y2="210" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1320" y1="280" x2="1320" y2="370" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1100" y1="440" x2="1020" y2="440" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="800" y1="510" x2="800" y2="600" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1020" y1="670" x2="1100" y2="670" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <text x="1060" y="652" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <line x1="580" y1="670" x2="500" y2="670" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <text x="540" y="652" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">no</text>
+
+  
+  <path d="M 280 740 L 280 775 Q 280 785 290 785 L 790 785 Q 800 785 800 775 L 800 740" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1320" y1="740" x2="1320" y2="830" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1100" y1="900" x2="1020" y2="900" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <rect x="60" y="140" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(88, 184)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="8" r="4" />
+    <path d="M 11 38 C 11 22 17 14 26 14 C 35 14 41 22 41 38 L 47 43 L 5 43 Z" />
+    <path d="M 21 43 A 5 5 0 0 0 31 43" />
+    <path d="M 4 22 A 16 16 0 0 0 4 36" />
+    <path d="M 48 22 A 16 16 0 0 1 48 36" />
+  </g>
+  <text x="166" y="220" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Alert fires</text>
+
+  
+  <rect x="580" y="140" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(608, 184)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="22" />
+    <circle cx="26" cy="26" r="12" />
+    <circle cx="26" cy="26" r="3" fill="#207448" />
+    <line x1="26" y1="0" x2="26" y2="8" />
+    <line x1="26" y1="44" x2="26" y2="52" />
+    <line x1="0" y1="26" x2="8" y2="26" />
+    <line x1="44" y1="26" x2="52" y2="26" />
+  </g>
+  <text x="686" y="220" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Confirm impact</text>
+
+  
+  <rect x="1100" y="140" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1128, 184)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="44" height="34" rx="4" />
+    <line x1="4" y1="16" x2="48" y2="16" />
+    <line x1="14" y1="32" x2="14" y2="24" />
+    <line x1="22" y1="32" x2="22" y2="20" />
+    <line x1="30" y1="32" x2="30" y2="26" />
+    <line x1="38" y1="32" x2="38" y2="22" />
+    <line x1="26" y1="40" x2="26" y2="48" />
+    <line x1="18" y1="48" x2="34" y2="48" />
+  </g>
+  <text x="1206" y="220" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Open dashboard</text>
+
+  
+  
+  <rect x="580" y="370" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(608, 414)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="21" />
+    <polyline points="26,14 26,26 36,26" />
+    <path d="M 6 16 A 25 25 0 0 1 44 8" />
+    <polyline points="38,2 45,7 41,15" />
+  </g>
+  <text x="686" y="450" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ask what changed</text>
+
+  
+  <rect x="1100" y="370" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1128, 414)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 12 18 L 34 8 L 34 44 L 12 34 Z" />
+    <rect x="4" y="18" width="8" height="16" rx="2" />
+    <path d="M 18 34 L 15 48" />
+    <path d="M 40 18 A 12 12 0 0 1 40 34" />
+    <path d="M 46 12 A 20 20 0 0 1 46 40" />
+  </g>
+  <text x="1206" y="432" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1206" dy="0">Declare severity</tspan>
+    <tspan x="1206" dy="36">and roles</tspan>
+  </text>
+
+  
+  
+  <rect x="60" y="600" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(88, 644)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 18 6 L 34 6" />
+    <path d="M 21 6 L 21 18 L 6 44 A 4 4 0 0 0 10 48 L 42 48 A 4 4 0 0 0 46 44 L 31 18 L 31 6" />
+    <path d="M 12 36 Q 26 32 40 36" />
+    <circle cx="22" cy="26" r="2" fill="#207448" />
+    <circle cx="30" cy="22" r="2.5" fill="#207448" />
+  </g>
+  <text x="166" y="662" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="166" dy="0">Rank hypotheses,</tspan>
+    <tspan x="166" dy="36">test cheapest</tspan>
+  </text>
+
+  
+  <rect x="580" y="600" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(608, 644)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 26 4 L 46 12 C 46 32 26 46 26 48 C 26 46 6 32 6 12 Z" />
+    <path d="M 22 20 C 22 15 30 15 30 19 C 30 23 26 25 26 29" />
+    <circle cx="26" cy="35" r="1.5" fill="#207448" />
+  </g>
+  <text x="686" y="662" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="686" dy="0">Safe mitigation</tspan>
+    <tspan x="686" dy="36">known?</tspan>
+  </text>
+
+  
+  <rect x="1100" y="600" width="440" height="140" rx="12" fill="#fef6ed" stroke="#db8129" stroke-width="4" />
+  <g transform="translate(1128, 644)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 38 6 C 33 2 27 3 24 7 L 8 23 C 5 26 5 31 8 34 L 18 44 C 21 47 26 47 29 44 L 45 28 C 49 25 50 19 46 14 L 40 20 L 32 20 L 32 12 Z" />
+  </g>
+  <text x="1206" y="680" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Mitigate</text>
+
+  
+  
+  <rect x="580" y="830" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(608, 874)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="34" height="42" rx="4" />
+    <path d="M 18 8 L 18 4 L 32 4 L 32 8" />
+    <line x1="16" y1="20" x2="34" y2="20" />
+    <line x1="16" y1="28" x2="34" y2="28" />
+    <circle cx="36" cy="38" r="7" />
+    <line x1="41" y1="43" x2="48" y2="50" />
+  </g>
+  <text x="686" y="892" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="686" dy="0">Status update,</tspan>
+    <tspan x="686" dy="36">then root cause</tspan>
+  </text>
+
+  
+  <rect x="1100" y="830" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1128, 874)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="44" height="34" rx="4" />
+    <polyline points="15,22 23,30 37,16" stroke-width="4" />
+    <line x1="26" y1="40" x2="26" y2="48" />
+    <line x1="18" y1="48" x2="34" y2="48" />
+  </g>
+  <text x="1206" y="892" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1206" dy="0">Verify on</tspan>
+    <tspan x="1206" dy="36">the dashboard</tspan>
+  </text>
+</svg>

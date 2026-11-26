@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170" style="background:#f5f8f5; font-family:system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <title>One storage edition, converted on every read and write</title>
+  <desc>Infographic explaining Kubernetes API version conversions on read and write, etcd storage version, and deprecation checks.</desc>
+
+  <defs>
+    
+    <marker id="arrow-end" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2,2 L 10,7 L 2,12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-start" markerWidth="14" markerHeight="14" refX="2" refY="7" orient="auto">
+      <path d="M 10,2 L 2,7 L 10,12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <text x="800" y="75" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">One storage edition, converted on every read and write</text>
+
+  
+  <rect x="380" y="125" width="840" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <text font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">
+    <tspan x="800" y="158">Built-in types convert internally; CRDs use</tspan>
+    <tspan x="800" y="190">conversion: None or a conversion webhook</tspan>
+  </text>
+
+  
+  
+  <g>
+    <rect x="50" y="235" width="380" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(75, 268)">
+      <rect x="0" y="0" width="48" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="2.5"/>
+      <circle cx="9" cy="6" r="2" fill="#207448"/>
+      <circle cx="17" cy="6" r="2" fill="#207448"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" y="283">Client reads</tspan>
+      <tspan x="145" y="323">v1beta1 edition</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="375" width="380" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(75, 408)">
+      <rect x="0" y="0" width="48" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="2.5"/>
+      <circle cx="9" cy="6" r="2" fill="#207448"/>
+      <circle cx="17" cy="6" r="2" fill="#207448"/>
+      <line x1="12" y1="26" x2="36" y2="26" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" y="423">Client writes</tspan>
+      <tspan x="145" y="463">v1 edition</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="515" width="380" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(75, 548)">
+      <rect x="0" y="0" width="48" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="12" x2="48" y2="12" stroke="#207448" stroke-width="2.5"/>
+      <circle cx="9" cy="6" r="2" fill="#207448"/>
+      <circle cx="17" cy="6" r="2" fill="#207448"/>
+      <circle cx="24" cy="28" r="7" fill="none" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="145" y="563">Client reads</tspan>
+      <tspan x="145" y="603">another edition</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="430" y1="292" x2="540" y2="292" stroke="#207448" stroke-width="3.5" marker-start="url(#arrow-start)" marker-end="url(#arrow-end)"/>
+  <line x1="430" y1="432" x2="540" y2="432" stroke="#207448" stroke-width="3.5" marker-start="url(#arrow-start)" marker-end="url(#arrow-end)"/>
+  <line x1="430" y1="572" x2="540" y2="572" stroke="#207448" stroke-width="3.5" marker-start="url(#arrow-start)" marker-end="url(#arrow-end)"/>
+
+  
+  <g>
+    <rect x="540" y="235" width="390" height="395" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    
+    <g transform="translate(710, 275)">
+      <circle cx="25" cy="25" r="26" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8 5"/>
+      <path d="M 12,20 L 25,7 L 25,17 L 38,17" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 38,30 L 25,43 L 25,33 L 12,33" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <text font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="735" y="380">API server converts</tspan>
+      <tspan x="735" y="420">on read and write</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="930" y1="292" x2="1040" y2="292" stroke="#207448" stroke-width="3.5" marker-start="url(#arrow-start)" marker-end="url(#arrow-end)"/>
+  <line x1="930" y1="432" x2="1040" y2="432" stroke="#207448" stroke-width="3.5" marker-start="url(#arrow-start)" marker-end="url(#arrow-end)"/>
+  <line x1="930" y1="572" x2="1040" y2="572" stroke="#207448" stroke-width="3.5" marker-start="url(#arrow-start)" marker-end="url(#arrow-end)"/>
+
+  
+  <g>
+    <rect x="1040" y="235" width="500" height="395" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(1255, 275)">
+      <ellipse cx="35" cy="14" rx="35" ry="12" fill="#ffffff" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 0,14 v 44 a 35,12 0 0 0 70,0 v -44" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 0,36 a 35,12 0 0 0 70,0" fill="none" stroke="#207448" stroke-width="2.5"/>
+    </g>
+
+    <text font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1290" y="390">etcd: one storage version</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1040" y="660" width="500" height="145" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1290" y="698" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Editions of the same form</text>
+
+    
+    <rect x="1060" y="720" width="105" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1112" y="761" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Alpha</text>
+
+    
+    <line x1="1173" y1="750" x2="1217" y2="750" stroke="#207448" stroke-width="3" marker-end="url(#arrow-end)"/>
+
+    
+    <rect x="1225" y="720" width="105" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1277" y="761" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Beta</text>
+
+    
+    <line x1="1338" y1="750" x2="1382" y2="750" stroke="#207448" stroke-width="3" marker-end="url(#arrow-end)"/>
+
+    
+    <rect x="1390" y="720" width="135" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1457" y="761" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Stable v1</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="835" width="1500" height="195" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="80" y="878" font-size="30" font-weight="bold" fill="#303a36">Before every upgrade</text>
+
+    
+    <g>
+      <rect x="80" y="905" width="1065" height="68" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text x="100" y="948" font-family="monospace, ui-monospace, Menlo, Consolas" font-size="24" font-weight="bold" fill="#207448">&gt;</text>
+      <text x="128" y="948" font-family="monospace, ui-monospace, Menlo, Consolas" font-size="24" font-weight="600" fill="#303a36">kubectl get --raw /metrics | grep apiserver_requested_deprecated_apis</text>
+    </g>
+
+    
+    <g>
+      <rect x="1170" y="905" width="350" height="68" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text x="1345" y="948" font-family="monospace, ui-monospace, Menlo, Consolas" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">pluto or kubent</text>
+    </g>
+  </g>
+
+  
+  <rect x="50" y="1060" width="1500" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1102" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Scan for removed API usage before each upgrade.</text>
+</svg>

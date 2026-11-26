@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Reading an OOMKilled container, step by step</title>
+  <desc>Visual sequence explaining how an OOMKilled container is handled by the kernel and how to identify it using kubectl describe pod.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="60" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading an OOMKilled container, step by step</text>
+
+  
+  <rect x="60" y="130" width="840" height="170" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="180" r="24" fill="#207448" />
+  <text x="105" y="180" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">1</text>
+  
+  <g transform="translate(145, 152)">
+    <rect x="4" y="10" width="48" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="12" y1="46" x2="12" y2="52" stroke="#207448" stroke-width="3" />
+    <line x1="20" y1="46" x2="20" y2="52" stroke="#207448" stroke-width="3" />
+    <line x1="28" y1="46" x2="28" y2="52" stroke="#207448" stroke-width="3" />
+    <line x1="36" y1="46" x2="36" y2="52" stroke="#207448" stroke-width="3" />
+    <line x1="44" y1="46" x2="44" y2="52" stroke="#207448" stroke-width="3" />
+    <rect x="11" y="16" width="14" height="18" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="31" y="16" width="14" height="18" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <text x="225" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Memory limit reached:</text>
+  <text x="225" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">the kernel must stop the process</text>
+  <text x="225" y="265" font-family="sans-serif" font-size="24" fill="#303a36">Memory cannot be throttled the way CPU can</text>
+
+  
+  <line x1="480" y1="300" x2="480" y2="346" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="60" y="350" width="840" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="405" r="24" fill="#207448" />
+  <text x="105" y="405" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">2</text>
+  
+  <g transform="translate(145, 377)">
+    <path d="M 48 20 A 20 20 0 1 0 42 42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <polygon points="48,8 48,26 34,20" fill="#207448" />
+  </g>
+  
+  <text x="225" y="405" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kernel sends SIGKILL,</text>
+  <text x="225" y="445" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">the container restarts</text>
+  <text x="225" y="485" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">under its restart policy</text>
+
+  
+  <line x1="480" y1="530" x2="480" y2="576" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="60" y="580" width="840" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="630" r="24" fill="#207448" />
+  <text x="105" y="630" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">3</text>
+  
+  <g transform="translate(145, 602)">
+    <rect x="4" y="6" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="3" />
+    <path d="M 12 28 L 20 34 L 12 40" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="26" y1="40" x2="38" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  
+  <text x="225" y="635" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">kubectl describe pod,</text>
+  <text x="225" y="680" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Last State section</text>
+
+  
+  <line x1="480" y1="730" x2="480" y2="776" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="60" y="780" width="840" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="105" cy="835" r="24" fill="#207448" />
+  <text x="105" y="835" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">4</text>
+  
+  <g transform="translate(145, 807)">
+    <circle cx="22" cy="22" r="16" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="34" y1="34" x2="50" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  
+  <text x="225" y="835" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Read Reason: OOMKilled</text>
+  <text x="225" y="875" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">and the exit code 137</text>
+  <text x="225" y="915" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">(128 plus signal 9)</text>
+
+  
+  <rect x="960" y="130" width="580" height="450" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 960 146 A 16 16 0 0 1 976 130 L 1524 130 A 16 16 0 0 1 1540 146 L 1540 190 L 960 190 Z" fill="#207448" />
+  <circle cx="985" cy="160" r="6" fill="#ffffff" opacity="0.6" />
+  <circle cx="1005" cy="160" r="6" fill="#ffffff" opacity="0.6" />
+  <circle cx="1025" cy="160" r="6" fill="#ffffff" opacity="0.6" />
+  <text x="1050" y="169" font-family="monospace" font-size="26" font-weight="bold" fill="#ffffff">kubectl describe pod memory</text>
+
+  
+  <text x="990" y="235" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">Containers:</text>
+  <text x="1030" y="295" font-family="monospace" font-size="26" fill="#303a36">Reason: OOMKilled</text>
+
+  
+  <rect x="1015" y="323" width="500" height="48" rx="8" fill="none" stroke="#db8129" stroke-width="3" />
+  <text x="1030" y="356" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">Exit Code: 137</text>
+
+  <text x="1030" y="415" font-family="monospace" font-size="26" fill="#303a36">Restart Count: n</text>
+
+  
+  <line x1="990" y1="455" x2="1510" y2="455" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.4" />
+
+  
+  <text x="990" y="500" font-family="sans-serif" font-size="24" fill="#303a36">Container memory limit:</text>
+  <text x="990" y="538" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">100Mi in this example</text>
+
+  
+  <rect x="960" y="620" width="580" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1222, 660)">
+    <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="18" y="18" width="20" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="18" y1="2" x2="18" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="28" y1="2" x2="28" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="38" y1="2" x2="38" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="18" y1="48" x2="18" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="28" y1="48" x2="28" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="38" y1="48" x2="38" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="2" y1="18" x2="8" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="2" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="2" y1="38" x2="8" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="48" y1="18" x2="54" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="48" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="48" y1="38" x2="54" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  
+  <text x="1250" y="785" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">A process out of CPU time waits;</text>
+  <text x="1250" y="828" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">out of memory it must be stopped.</text>
+</svg>

@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Literal or folded: what the shell receives from a multi-line string</title>
+  <desc>Visual comparison between YAML literal (|) and folded (&gt;) block scalar indicators and chomping rules.</desc>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text id="title" x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Literal or folded: what the shell receives</tspan>
+    <tspan x="800" dy="56">from a multi-line string</tspan>
+  </text>
+
+  
+  <g id="panel-literal">
+    <rect x="40" y="180" width="740" height="380" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="65" y="205" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="77" y1="223" x2="109" y2="223" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="77" y1="233" x2="109" y2="233" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="77" y1="243" x2="97" y2="243" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+
+    
+    <text x="135" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448"><tspan font-family="ui-monospace, monospace">|</tspan> literal</text>
+
+    
+    <rect x="65" y="280" width="690" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="85" cy="298" r="4" fill="#207448"/>
+    <rect x="100" y="293" width="220" height="10" rx="4" fill="#207448" opacity="0.85"/>
+    <circle cx="85" cy="317" r="4" fill="#207448"/>
+    <rect x="100" y="312" width="310" height="10" rx="4" fill="#207448" opacity="0.85"/>
+    <circle cx="85" cy="336" r="4" fill="#207448"/>
+    <rect x="100" y="331" width="180" height="10" rx="4" fill="#207448" opacity="0.85"/>
+
+    
+    <text x="65" y="395" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">each command keeps its own line,</tspan>
+      <tspan x="65" dy="32">the script runs as written</tspan>
+    </text>
+
+    
+    <rect x="65" y="480" width="690" height="52" rx="8" fill="#d5e5d8" stroke="#207448" stroke-width="1.5"/>
+    <text x="410" y="515" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">suits config files and scripts</text>
+  </g>
+
+  
+  <g id="panel-folded">
+    <rect x="820" y="180" width="740" height="380" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+
+    
+    <rect x="845" y="205" width="56" height="56" rx="8" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M861 223 H885 C891 223 891 241 885 241 H865" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M871 236 L864 241 L871 246" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+    
+    <text x="915" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129"><tspan font-family="ui-monospace, monospace">&gt;</tspan> folded</text>
+
+    
+    <rect x="845" y="280" width="690" height="75" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <circle cx="865" cy="317" r="4" fill="#db8129"/>
+    <rect x="880" y="312" width="160" height="10" rx="4" fill="#db8129" opacity="0.85"/>
+    <circle cx="1052" cy="317" r="3" fill="#db8129" opacity="0.5"/>
+    <rect x="1066" y="312" width="220" height="10" rx="4" fill="#db8129" opacity="0.85"/>
+    <circle cx="1298" cy="317" r="3" fill="#db8129" opacity="0.5"/>
+    <rect x="1312" y="312" width="130" height="10" rx="4" fill="#db8129" opacity="0.85"/>
+
+    
+    <text x="845" y="385" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">lines are folded together with spaces,</tspan>
+      <tspan x="845" dy="30">the shell receives one long line that no longer</tspan>
+      <tspan x="845" dy="30">behaves like the script you wrote</tspan>
+    </text>
+
+    
+    <rect x="845" y="480" width="690" height="52" rx="8" fill="#faebd7" stroke="#db8129" stroke-width="1.5"/>
+    <text x="1190" y="515" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">suits long prose such as a description</text>
+  </g>
+
+  
+  <g id="table-container">
+    <rect x="40" y="600" width="1520" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="85" cy="716" r="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="85" cy="744" r="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="91" y1="720" x2="115" y2="746" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="91" y1="740" x2="115" y2="714" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+
+    
+    <rect x="140" y="615" width="1395" height="52" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1"/>
+    <text x="165" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">|-</tspan> strips the final newline
+    </text>
+
+    
+    <rect x="140" y="675" width="1395" height="52" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1"/>
+    <text x="165" y="710" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">|+</tspan> keeps all trailing newlines
+    </text>
+
+    
+    <rect x="140" y="735" width="1395" height="52" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1"/>
+    <text x="165" y="770" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">|2</tspan> indentation indicator for content that starts with spaces
+    </text>
+
+    
+    <rect x="140" y="795" width="1395" height="52" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1"/>
+    <text x="165" y="830" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">&gt;- and &gt;+</tspan> the same for folded
+    </text>
+  </g>
+
+  
+  <g id="lab-strip">
+    <rect x="40" y="900" width="1520" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <path d="M89 922 H99 M92 922 V933 L80 955 C78 959 81 963 86 963 H102 C107 963 110 959 108 955 L96 933 V922" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M84 950 Q94 954 104 950" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+
+    
+    <text x="145" y="949" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">the lab checks block chomping on |, |-, |+ and &gt;-</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1020" width="1520" height="80" rx="12" fill="#207448"/>
+
+    
+    <path d="M83 1042 C77 1042 72 1047 72 1054 C72 1059 75 1063 78 1066 L79 1071 H87 L88 1066 C91 1063 94 1059 94 1054 C94 1047 89 1042 83 1042 Z" fill="none" stroke="#ffffff" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="80" y1="1075" x2="86" y2="1075" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text x="800" y="1069" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Use | for scripts and config files, &gt; for prose</text>
+  </g>
+</svg>

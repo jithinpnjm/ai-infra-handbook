@@ -1,0 +1,345 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
+import os
+from playwright.sync_api import sync_playwright
+
+def build_svg():
+    return '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Case 8: the PFC storm</title>
+  <desc>Visual infographic explaining Case 8: the PFC storm, illustrating backward pause frame propagation across switches or ports, throughput collapse timeline, diagnostic facts, and four-part resolution.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <polygon points="0,2 14,8 0,14" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text id="main-title" x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Case 8: the PFC storm</text>
+
+  <!-- ==================== 1. CHAIN CONTAINER ==================== -->
+  <g id="chain-container">
+    <rect x="60" y="136" width="1480" height="184" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <!-- Subgraph Header Icon (Network switch / fabric) -->
+    <g transform="translate(90, 153)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="48" height="38" rx="6"/>
+      <line x1="4" y1="23" x2="52" y2="23" stroke-width="3"/>
+      <circle cx="15" cy="34" r="3" fill="#207448"/>
+      <circle cx="28" cy="34" r="3" fill="#207448"/>
+      <circle cx="41" cy="34" r="3" fill="#207448"/>
+    </g>
+    <text x="162" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">chain of four switches or ports</text>
+
+    <!-- Edge label beside the arrows -->
+    <text x="802" y="235" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pause frames</text>
+
+    <!-- Backwards pause frame arrows (right to left) -->
+    <line x1="1305" y1="250" x2="1112" y2="250" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <line x1="900" y1="250" x2="707" y2="250" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <line x1="495" y1="250" x2="302" y2="250" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    <!-- Switch 1 -->
+    <g id="node-1" transform="translate(90, 198)">
+      <rect width="210" height="104" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(77, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="52" height="42" rx="6"/>
+        <line x1="2" y1="22" x2="54" y2="22" stroke-width="3"/>
+        <circle cx="14" cy="35" r="3" fill="#207448"/>
+        <circle cx="28" cy="35" r="3" fill="#207448"/>
+        <circle cx="42" cy="35" r="3" fill="#207448"/>
+      </g>
+    </g>
+
+    <!-- Switch 2 -->
+    <g id="node-2" transform="translate(495, 198)">
+      <rect width="210" height="104" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(77, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="52" height="42" rx="6"/>
+        <line x1="2" y1="22" x2="54" y2="22" stroke-width="3"/>
+        <circle cx="14" cy="35" r="3" fill="#207448"/>
+        <circle cx="28" cy="35" r="3" fill="#207448"/>
+        <circle cx="42" cy="35" r="3" fill="#207448"/>
+      </g>
+    </g>
+
+    <!-- Switch 3 -->
+    <g id="node-3" transform="translate(900, 198)">
+      <rect width="210" height="104" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(77, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="52" height="42" rx="6"/>
+        <line x1="2" y1="22" x2="54" y2="22" stroke-width="3"/>
+        <circle cx="14" cy="35" r="3" fill="#207448"/>
+        <circle cx="28" cy="35" r="3" fill="#207448"/>
+        <circle cx="42" cy="35" r="3" fill="#207448"/>
+      </g>
+    </g>
+
+    <!-- Switch 4 -->
+    <g id="node-4" transform="translate(1305, 198)">
+      <rect width="210" height="104" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(77, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="52" height="42" rx="6"/>
+        <line x1="2" y1="22" x2="54" y2="22" stroke-width="3"/>
+        <circle cx="14" cy="35" r="3" fill="#207448"/>
+        <circle cx="28" cy="35" r="3" fill="#207448"/>
+        <circle cx="42" cy="35" r="3" fill="#207448"/>
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== 2. TIMELINE STRIP ==================== -->
+  <g id="timeline-container">
+    <rect x="60" y="362" width="1480" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <!-- Timer Icon -->
+    <g transform="translate(90, 379)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="28 14, 28 28, 40 28"/>
+    </g>
+    <text x="162" y="417" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Timeline strip</text>
+
+    <!-- Timeline text box -->
+    <rect x="420" y="372" width="1090" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="965" y="416" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">job runs fine for five minutes, then throughput falls to zero</text>
+  </g>
+
+  <!-- ==================== 3. FACTS ==================== -->
+  <g id="facts-container">
+    <rect x="60" y="494" width="1480" height="252" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <!-- Facts Document Icon -->
+    <g transform="translate(90, 509)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 4 L 34 4 L 48 18 L 48 52 L 8 52 Z"/>
+      <path d="M 34 4 L 34 18 L 48 18"/>
+      <line x1="16" y1="28" x2="36" y2="28" stroke-width="3"/>
+      <line x1="16" y1="38" x2="36" y2="38" stroke-width="3"/>
+    </g>
+    <text x="162" y="546" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Facts</text>
+
+    <!-- Fact 1: ib_write_bw passes when idle -->
+    <g id="fact-1" transform="translate(90, 563)">
+      <rect width="400" height="162" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="6" width="52" height="42" rx="6"/>
+        <polyline points="12 22, 20 27, 12 32"/>
+        <line x1="24" y1="32" x2="36" y2="32" stroke-width="3"/>
+      </g>
+      <text x="95" y="62" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="95" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ib_write_bw </tspan>
+        <tspan x="95" dy="34">passes when idle</tspan>
+      </text>
+    </g>
+
+    <!-- Fact 2: ethtool -S shows rx_pause rising by millions per second -->
+    <g id="fact-2" transform="translate(520, 563)">
+      <rect width="450" height="162" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="24"/>
+        <polyline points="28 28, 42 18"/>
+        <circle cx="28" cy="28" r="4" fill="#207448"/>
+      </g>
+      <text x="95" y="55" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="95" dy="0"><tspan font-family="monospace" font-size="24" font-weight="bold" fill="#207448">ethtool -S</tspan> shows </tspan>
+        <tspan x="95" dy="34"><tspan font-family="monospace" font-size="24" font-weight="bold" fill="#207448">rx_pause</tspan> rising </tspan>
+        <tspan x="95" dy="34">by millions per second</tspan>
+      </text>
+    </g>
+
+    <!-- Fact 3 (Orange highlight: root cause): ECN thresholds were set too high... -->
+    <g id="fact-3" transform="translate(1000, 563)">
+      <rect width="510" height="162" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+      <g transform="translate(24, 20)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 6 L 52 48 L 4 48 Z"/>
+        <line x1="28" y1="20" x2="28" y2="34"/>
+        <circle cx="28" cy="41" r="2.5" fill="#db8129"/>
+      </g>
+      <text x="92" y="44" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="92" dy="0" font-weight="bold" fill="#db8129">ECN thresholds were set </tspan>
+        <tspan x="92" dy="30">too high, so buffers filled </tspan>
+        <tspan x="92" dy="30">before ECN or CNP could </tspan>
+        <tspan x="92" dy="30">slow the sender</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== 4. RESOLUTION ==================== -->
+  <g id="resolution-container">
+    <rect x="60" y="788" width="1480" height="248" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <!-- Shield Icon -->
+    <g transform="translate(90, 804)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 14 V 30 C 50 42 39 50 28 54 C 17 50 6 42 6 30 V 14 Z"/>
+      <path d="M 18 28 L 25 35 L 38 22"/>
+    </g>
+    <text x="162" y="841" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Resolution</text>
+
+    <!-- Res 1 -->
+    <g id="res-1" transform="translate(90, 860)">
+      <rect width="690" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="20"/>
+        <polyline points="15 25, 21 31, 33 17"/>
+      </g>
+      <text x="80" y="46" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">lower ECN thresholds below the PFC threshold</text>
+    </g>
+
+    <!-- Res 2 -->
+    <g id="res-2" transform="translate(820, 860)">
+      <rect width="690" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="20"/>
+        <polyline points="15 25, 21 31, 33 17"/>
+      </g>
+      <text x="80" y="46" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">verify DCQCN on the NICs</text>
+    </g>
+
+    <!-- Res 3 -->
+    <g id="res-3" transform="translate(90, 946)">
+      <rect width="690" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="20"/>
+        <polyline points="15 25, 21 31, 33 17"/>
+      </g>
+      <text x="80" y="46" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">enable the PFC watchdog</text>
+    </g>
+
+    <!-- Res 4 -->
+    <g id="res-4" transform="translate(820, 946)">
+      <rect width="690" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <g transform="translate(20, 14)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="20"/>
+        <polyline points="15 25, 21 31, 33 17"/>
+      </g>
+      <text x="80" y="46" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">find any stuck endpoint</text>
+    </g>
+  </g>
+
+  <!-- ==================== 5. TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="60" y="1078" width="1480" height="72" rx="14" fill="#207448"/>
+    <g transform="translate(90, 1089)" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 26 6 L 46 14 V 28 C 46 38 36 46 26 50 C 16 46 6 38 6 28 V 14 Z"/>
+      <polyline points="17 26, 23 32, 35 18"/>
+    </g>
+    <text x="800" y="1123" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">ECN must act well before PFC</text>
+  </g>
+</svg>'''
+
+svg_code = build_svg()
+with open("test_pfc.svg", "w") as f:
+    f.write(svg_code)
+
+# Now audit the SVG
+root = ET.fromstring(svg_code)
+
+# 1. First children check: <title> and <desc>
+children = list(root)
+first_tag = children[0].tag.split('}')[-1]
+second_tag = children[1].tag.split('}')[-1]
+assert first_tag == 'title', f"First child must be title, got {first_tag}"
+assert second_tag == 'desc', f"Second child must be desc, got {second_tag}"
+print("1. <title> and <desc> as first children: PASS")
+
+# 2. Dimensions check
+width = root.get('width')
+height = root.get('height')
+viewBox = root.get('viewBox')
+assert width == "1600", f"width {width} != 1600"
+assert height == "1200", f"height {height} != 1200"
+assert viewBox == "0 0 1600 1200", f"viewBox {viewBox} != 0 0 1600 1200"
+print("2. Dimensions: PASS")
+
+# 3. Text font-size check
+text_elements = []
+for elem in root.iter('{http://www.w3.org/2000/svg}text'):
+    full_text = ' '.join(''.join(elem.itertext()).split())
+    fs = float(elem.attrib.get('font-size', 0))
+    assert fs >= 24, f"Text font-size {fs} < 24 in '{full_text}'"
+    for tsp in elem.iter('{http://www.w3.org/2000/svg}tspan'):
+        tfs = tsp.attrib.get('font-size')
+        if tfs:
+            assert float(tfs) >= 24, f"tspan font-size {tfs} < 24 in '{full_text}'"
+    text_elements.append((full_text, fs))
+
+print(f"3. Text font-sizes: PASS (all >= 24px, total {len(text_elements)} elements)")
+
+# 4. Expected labels
+expected_labels = [
+    "Case 8: the PFC storm",
+    "chain of four switches or ports",
+    "pause frames",
+    "Timeline strip",
+    "job runs fine for five minutes, then throughput falls to zero",
+    "Facts",
+    "ib_write_bw passes when idle",
+    "ethtool -S shows rx_pause rising by millions per second",
+    "ECN thresholds were set too high, so buffers filled before ECN or CNP could slow the sender",
+    "Resolution",
+    "lower ECN thresholds below the PFC threshold",
+    "verify DCQCN on the NICs",
+    "enable the PFC watchdog",
+    "find any stuck endpoint",
+    "ECN must act well before PFC"
+]
+
+found_texts = [t for t, fs in text_elements]
+print(f"4. Checking {len(expected_labels)} expected labels against {len(found_texts)} found:")
+for i, exp in enumerate(expected_labels, 1):
+    cnt = found_texts.count(exp)
+    print(f"   {i:2d}. [{'OK' if cnt == 1 else 'FAIL'}] ({cnt}) '{exp}'")
+    assert cnt == 1, f"Expected '{exp}' once, got {cnt}"
+
+assert len(found_texts) == len(expected_labels), f"Text count {len(found_texts)} != {len(expected_labels)}"
+print("4. Label matches: PASS")
+
+# 5. Check forbidden words
+forbidden = ['orange', 'green', 'grey', 'gray', 'bold', 'monospace', 'arrow', 'cylinder', 'folder', 'icon', 'callout', 'sub-line', 'subline', 'takeaway']
+for t in found_texts:
+    words = [w.strip("(),:;.'\"").lower() for w in t.split()]
+    for f in forbidden:
+        assert f not in words, f"Forbidden word '{f}' in '{t}'!"
+print("5. Forbidden words: PASS")
+
+# 6. Check orange count
+orange_matches = re.findall(r'#db8129', svg_code, re.IGNORECASE)
+print(f"6. Orange count: {len(orange_matches)}")
+assert 1 <= len(orange_matches) <= 6, f"Orange count {len(orange_matches)} outside 1..6"
+print("6. Single orange usage: PASS")
+
+# 7. Check Playwright bounding boxes and paddings
+with sync_playwright() as pw:
+    browser = pw.chromium.launch()
+    page = browser.new_page(viewport={'width': 1600, 'height': 1200})
+    file_path = os.path.abspath('test_pfc.svg')
+    page.goto('file://' + file_path)
+
+    # Check canvas margins
+    texts = page.locator('text').all()
+    for i, t in enumerate(texts):
+        box = t.bounding_box()
+        txt = t.text_content().replace('\n', ' ')
+        assert box['x'] >= 40, f"Text '{txt}' left {box['x']} < 40"
+        assert box['x'] + box['width'] <= 1560, f"Text '{txt}' right {box['x'] + box['width']} > 1560"
+        assert box['y'] >= 40, f"Text '{txt}' top {box['y']} < 40"
+        assert box['y'] + box['height'] <= 1160, f"Text '{txt}' bottom {box['y'] + box['height']} > 1160"
+
+    print("7. Playwright margins (>= 40px): PASS")
+
+    # Check box-to-box gaps
+    rect_ids = ['chain-container', 'timeline-container', 'facts-container', 'resolution-container', 'takeaway-bar']
+    prev_bottom = None
+    for r_id in rect_ids:
+        box = page.locator(f'#{r_id} > rect').first.bounding_box()
+        if prev_bottom is not None:
+            gap = box['y'] - prev_bottom
+            print(f"   Gap above #{r_id}: {gap:.1f}px")
+            assert gap >= 39.5, f"Gap {gap} < 40px above #{r_id}"
+        prev_bottom = box['y'] + box['height']
+
+    print("8. Box-to-box gaps (>= 40px): PASS")
+    print("\nALL AUDIT CHECKS PASSED PERFECTLY!")

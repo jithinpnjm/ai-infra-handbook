@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p2-0507-bare-pod",
+  "title": "A bare Pod stays dead with its node",
+  "spec": "Two side-by-side panels with green headings. Left panel 'Bare Pod': a node box labelled 'Node' with a red cross across it labelled 'Node fails', and inside it a single Pod box labelled 'Pod, scheduled to this node'. Below, a grey note 'Nothing reschedules the Pod'. Right panel 'Controller owns the Pod': a controller box labelled 'ReplicaSet controller' with an arrow to the same failed node (red cross), and a second node box labelled 'Healthy node' with a new Pod box labelled 'Replacement Pod'. An arrow from the controller to the replacement Pod labelled 'Re-creates the Pod'. Orange outline on the left panel's grey note as the risk. A small caption under the right panel: 'Controllers automate what you would otherwise name and create by hand.'",
+  "anchor": "### Why a bare Pod is not enough",
+  "alt": "A bare Pod stays on a failed node, while a controller re-creates the Pod on a healthy node.",
+  "cap": "A bare Pod is not rescheduled when its node fails, while a controller re-creates the Pod on a healthy node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p2-0507-units-trap",
+  "title": "Requests, limits and the m versus M trap",
+  "spec": "Top row: a request and limit card for the example Pod. Left card 'requests' with two chips: 'cpu: 500m, half a CPU' and 'memory: 128Mi'. Right card 'limits' with a note 'the most the container may use'. Below, a units comparison drawn as a two-column table with monospace values: 'Lowercase m = milli' with the example '400m' and the meaning 'a small fraction of one unit' (green); 'Uppercase M = mega' with the example '400M' and the meaning 'a thousand times larger than 400m' (orange outline). A bridge arrow between the two rows labelled 'Factor of a thousand'. Bottom note: 'Requests belong to each container. The Pod total is the sum of its containers.' A small icon of a container box with a request bar and a limit bar, showing that the request is the guaranteed minimum.",
+  "anchor": "### Resource requests and limits, with a worked example",
+  "alt": "A container request of half a CPU and 128 MiB of memory, and the trap where 400m and 400M differ by a factor of a thousand.",
+  "cap": "A container asks for 500m of CPU and 128Mi of memory, and 400m and 400M differ by a factor of a thousand, a common costly mistake."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p2-0507-phase-reasons",
+  "title": "Phase is coarse; the container reason says why",
+  "spec": "Left: a pod box at the top labelled 'Pod phase' with five chips in a row: 'Pending', 'Running', 'Succeeded', 'Failed', 'Unknown'. Pending chip has an orange outline with the note 'Accepted, but not all containers are running yet'. Below the pod box, three container state boxes: 'Waiting' with reason chips 'ContainerCreating', 'ImagePullBackOff', 'CrashLoopBackOff', 'CreateContainerConfigError'; 'Running'; 'Terminated' with reason chips 'Completed', 'Error'. Right side, a two-card comparison: card 1 'Pending: waiting for a GPU' and card 2 'Pending: waiting for an image download', with the note 'Same phase, different reasons: read the reason, not only the phase'. Bottom strip with a command chip in monospace 'kubectl describe' and the note 'Events usually point at the cause'. Caption: 'Phases are coarse summaries.'",
+  "anchor": "### Phases and states",
+  "alt": "A pod phase summarises the pod coarsely, while container waiting, running and terminated states carry the reason that explains the failure.",
+  "cap": "A pod phase is a coarse summary, and the container state reason, such as ImagePullBackOff or CrashLoopBackOff, explains the cause."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p2-0507-job-patterns",
+  "title": "completions and parallelism make three Job patterns",
+  "spec": "A 2 by 3 grid of job pattern cards with a header row 'Pattern', 'Use case', 'completions', 'parallelism'. Row 1: 'One shot' | 'Database migrations' | '1' | '1', drawn as a single pod icon with one tick. Row 2: 'Parallel fixed completions' | 'Work items processed side by side' | '1 or more' | '1 or more', drawn as several pod icons in a row with ticks. Row 3: 'Work queue: parallel jobs' | 'Workers pulling items from one shared queue' | '1' | '2 or more', drawn as several pod icons pulling from a queue box labelled 'Shared queue'. Two definitions at the top: 'completions: successful finishes needed', 'parallelism: Pods running at the same time'. Orange outline on the work queue row as the pattern that uses parallelism with one completion. Bottom note: 'A Job with neither setting changed runs one Pod once until it succeeds.'",
+  "anchor": "### Job patterns: completions and parallelism",
+  "alt": "Three Job patterns, one shot, parallel fixed completions and a work queue, set by the completions and parallelism values.",
+  "cap": "Three Job patterns set by completions and parallelism: one shot, parallel fixed completions, and a work queue with parallel workers."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p2-0507-controller-choice",
+  "title": "Three questions pick the workload controller",
+  "spec": "A decision tree drawn top to bottom. Top question box 'Does the program care which replica it is?'. Yes branch to 'Does it need its own disk that follows its name?' with yes to 'StatefulSet: stable names x-0 to n, per-pod PVC' and no to 'Should it run once to completion?'. No branch from the top question to 'Should it run once to completion?' With yes to 'Job, or CronJob on a schedule' and no to 'Deployment: interchangeable replicas, rolling updates'. A separate box on the far right, not connected to the tree, titled 'Different question: should exactly one copy live on every node?' with an arrow to 'DaemonSet: one Pod per node'. Orange outline on the 'Deployment' leaf as the common default for stateless services. Caption: 'The answers point to Deployment, StatefulSet or Job.'",
+  "anchor": "## 3. Workload controllers: choosing",
+  "alt": "A decision tree that chooses a Deployment, StatefulSet or Job from replica identity, storage and run-to-completion questions, with DaemonSet asked separately.",
+  "cap": "A decision tree that chooses between Deployment, StatefulSet and Job from three questions, with DaemonSet answering a separate per-node question."
+ }
+]

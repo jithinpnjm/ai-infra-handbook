@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "x14-cold-start",
+  "title": "Cold start runs three stages in sequence, and download dominates",
+  "spec": "A horizontal timeline bar from pod scheduled at the left end to ready at the right end, split into four adjacent blocks whose widths are proportional to their seconds, total 170 seconds. Block 1 labelled Download, 70 s, with a cloud or cylinder icon, drawn in orange as the largest block. Block 2 labelled Load, 10 s, with a disk cylinder icon. Block 3 labelled Compile, 60 s, with a gear icon. Block 4 labelled Warm-up, 30 s, with a clock icon. Numbered step circles 1 to 4 in time order above the blocks. Below the bar a formula line: total = weights / download rate + weights / load rate + compile + warm-up, with weights 140 GB, download 2 GB/s, load 14 GB/s, compile 60 s, warm-up 30 s. A small note beside block 1: pre-stage weights on node-local disk removes 70 of 170 seconds. Green takeaway bar: Split cold start into download, load and compile before you promise a rollout time.",
+  "anchor": "### 3. Cold start has three costs",
+  "alt": "Cold start for a 140 GB checkpoint runs download, load, compile and warm-up in sequence, and download takes 70 of the 170 seconds.",
+  "cap": "A new replica is ready only after download, load, compile and warm-up have run one after another, so the largest stage sets the rollout time."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "x14-surge-slot",
+  "title": "With one spare GPU, the surge slot is the only room for a new pod",
+  "spec": "A grid of eight GPU slot boxes in a row labelled Replicas 1 to 8, each box one GPU, all green and holding an old pod. To the right, one extra dashed box labelled Spare GPU, drawn with a dashed outline. Three numbered steps drawn top to bottom as three mini rows of the same slot grid. Step 1: a new pod loads into the spare slot, the box is shown with a hatched loading fill and the words loading, holds its slot while loading. Step 2: when the new pod is ready, one old pod drains and its slot is freed, with an arrow from the old box to the free slot. Step 3: the freed slot takes the next new pod, repeated until all eight are new. Orange highlight on the spare slot in step 1. A formula line at the bottom: pod cap = min(replicas + surge, replicas + spare GPU slots). Side note under the rows: surge 1 and unavailable 0 finishes with at least 8 available and a peak of 9 GPUs. Green takeaway bar: Surge above the spare GPU count buys nothing, because extra pods stay pending.",
+  "anchor": "### 7. Surge budgets when GPUs are scarce",
+  "alt": "With eight replicas and one spare GPU, a rolling update with surge one loads each new pod into the spare slot before draining an old one, and never goes below eight available.",
+  "cap": "The spare GPU is the only room for a new pod, so the surge you can afford is set by the spare GPU count, not by a percentage."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "x14-probe-windows",
+  "title": "Startup, readiness and liveness probes cover different windows of an engine's life",
+  "spec": "A horizontal time axis labelled Pod life in seconds from start, with three horizontal lanes stacked, one per probe, each lane a labelled bar. Lane 1 labelled Startup probe, a long bar from the start covering load and compile, annotated failureThreshold 60 times periodSeconds 10 equals 600 s, with a note that its length must be at least the measured cold start. Lane 2 labelled Readiness probe, a bar starting when the startup probe succeeds, annotated periodSeconds 5 and failureThreshold 2, with the check text can complete a real one-token request. Lane 3 labelled Liveness probe, a bar running from the same point onward, annotated periodSeconds 10, timeoutSeconds 5, failureThreshold 6, with the note cheap and local, generous tolerance. A small restart icon at the end of the liveness lane with the words restart is the costliest action. Orange highlight on the liveness lane restart icon. Icons: a clock icon for the timer, a shield icon for the liveness lane. Green takeaway bar: Make readiness mean can complete a real request, keep liveness local and tolerant, and size the startup probe to your measured cold start.",
+  "anchor": "### 5. Readiness versus liveness for an engine",
+  "alt": "A startup probe covers the load and compile window for 600 seconds, then readiness checks a real request and liveness stays cheap and tolerant.",
+  "cap": "Each probe answers a different question, and mixing them up can restart a healthy engine or send traffic to a broken one."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "x14-canary-ladder",
+  "title": "The canary ladder moves traffic up in steps, and each step must pass its gates",
+  "spec": "A left-to-right staircase of six steps rising from left to right, each step a box labelled with its traffic share: Shadow traffic, 1 percent, 5 percent, 25 percent, 50 percent, 100 percent. Between each pair of boxes a gate diamond labelled gates pass. Above the staircase a row of two gate groups: a box labelled Latency gates with the words canary TTFT p99 and ITL p99 against baseline, ratio limit, and a box labelled Quality gates with the words eval score, finish_reason length share, error rate. Below the gate diamonds three outcome boxes in a row: Promote in green (all gates passed, enough traffic), Hold in neutral grey (marginal results or too few requests), Rollback in orange (hard failure such as quality drop or zero tokens). A down arrow from the gate row to Rollback labelled hard failure, and an arrow from Hold back to the same step labelled wait for more evidence. Numbered step circles 1 to 6 on the staircase boxes. Green takeaway bar: Promote only on a clean pass with enough traffic, hold on thin data, roll back on a hard signal.",
+  "anchor": "### 8. Traffic shifting with a router, and the gates",
+  "alt": "The canary moves from shadow traffic to 1, 5, 25, 50 and then 100 percent, and each step is promoted, held or rolled back by latency and quality gates.",
+  "cap": "A staged traffic ladder with gates keeps a broken model from reaching all users, and a latency-only gate is not enough."
+ }
+]

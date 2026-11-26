@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A full conntrack table: new connections fail, old ones keep working</title>
+  <desc>A full conntrack table: new connections fail, old ones keep working</desc>
+
+  <defs>
+    <!-- Arrowhead green -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <!-- Arrowhead orange -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">A full conntrack table: </tspan><tspan x="800" dy="54">new connections fail, old ones keep working</tspan></text>
+
+  <!-- ==================== UPPER SECTION: FLOWS & TABLE ==================== -->
+
+  <!-- Left Container: Existing Flows (Green) -->
+  <rect x="40" y="136" width="340" height="384" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <!-- Stream / Active packet icon (56px, stroke 4, #207448) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 188 166 C 200 160, 220 160, 232 166" />
+    <path d="M 188 182 C 200 176, 220 176, 232 182" />
+    <path d="M 188 198 C 200 192, 220 192, 232 198" />
+    <circle cx="210" cy="182" r="6" fill="#207448" />
+  </g>
+  <!-- Card inside Left Container -->
+  <rect x="60" y="240" width="300" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="210" y="295" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="210" dy="0">established flow: </tspan><tspan x="210" dy="38">keeps its slot, </tspan><tspan x="210" dy="38">works</tspan></text>
+
+  <!-- Three green arrows from existing flows to center table -->
+  <line x1="380" y1="300" x2="440" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="380" y1="365" x2="440" y2="365" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="380" y1="430" x2="440" y2="430" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Center Container: Conntrack Table Box -->
+  <rect x="440" y="136" width="720" height="384" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  <!-- Table Icon (56px, stroke 4, #207448) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="472" y="156" width="48" height="44" rx="6" />
+    <line x1="472" y1="170" x2="520" y2="170" />
+    <line x1="472" y1="184" x2="520" y2="184" />
+    <line x1="488" y1="156" x2="488" y2="200" />
+  </g>
+
+  <!-- Center Box Title (30px bold) -->
+  <text x="825" y="185" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">conntrack table (hash table)</text>
+
+  <!-- Subtitle / State Badge: nf_conntrack_count = nf_conntrack_max -->
+  <rect x="490" y="214" width="620" height="58" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="251" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">nf_conntrack_count = nf_conntrack_max</text>
+
+  <!-- Slot Row 1 (Visual full slot representation) -->
+  <rect x="460" y="286" width="680" height="42" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <rect x="472" y="294" width="130" height="26" rx="4" fill="#207448" opacity="0.35" />
+  <rect x="615" y="294" width="80" height="26" rx="4" fill="#207448" opacity="0.25" />
+  <rect x="710" y="294" width="160" height="26" rx="4" fill="#207448" opacity="0.35" />
+  <rect x="885" y="294" width="80" height="26" rx="4" fill="#207448" opacity="0.25" />
+  <rect x="980" y="294" width="145" height="26" rx="4" fill="#207448" opacity="0.5" />
+
+  <!-- Slot Row 2: Tuple Label Card -->
+  <rect x="460" y="342" width="680" height="126" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">source address, source port, </tspan><tspan x="800" dy="34">destination address, destination port, </tspan><tspan x="800" dy="34">protocol</tspan></text>
+
+  <!-- Slot Row 3 (Visual full slot representation) -->
+  <rect x="460" y="474" width="680" height="34" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+  <rect x="472" y="478" width="140" height="26" rx="4" fill="#207448" opacity="0.35" />
+  <rect x="625" y="478" width="75" height="26" rx="4" fill="#207448" opacity="0.25" />
+  <rect x="715" y="478" width="150" height="26" rx="4" fill="#207448" opacity="0.35" />
+  <rect x="880" y="478" width="85" height="26" rx="4" fill="#207448" opacity="0.25" />
+  <rect x="980" y="478" width="145" height="26" rx="4" fill="#207448" opacity="0.5" />
+
+  <!-- Single Orange Container / Group for the Orange Highlight Elements -->
+  <g id="orange-highlight-group" stroke="#db8129">
+    <!-- Closed Door Barrier at x = 1160 -->
+    <rect x="1148" y="275" width="24" height="180" rx="4" fill="#fff9f3" stroke-width="3" />
+    <line x1="1152" y1="315" x2="1168" y2="315" stroke-width="3" />
+    <line x1="1152" y1="365" x2="1168" y2="365" stroke-width="3" />
+    <line x1="1152" y1="415" x2="1168" y2="415" stroke-width="3" />
+    <circle cx="1156" cy="365" r="3" fill="#db8129" />
+
+    <!-- Three orange arrows from new flows hitting the closed door -->
+    <line x1="1220" y1="300" x2="1176" y2="300" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <line x1="1220" y1="365" x2="1176" y2="365" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <line x1="1220" y1="430" x2="1176" y2="430" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    <!-- Right Container: New Connections (Orange Highlight) -->
+    <rect x="1220" y="136" width="340" height="384" rx="16" fill="#ffffff" stroke-width="2.5" />
+    <!-- Lock / Closed Gate Icon (56px, stroke 4) -->
+    <g stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1370" y="174" width="40" height="30" rx="4" />
+      <path d="M 1378 174 V 166 C 1378 160, 1402 160, 1402 166 V 174" />
+      <circle cx="1390" cy="189" r="3" fill="#db8129" />
+    </g>
+    <!-- Card inside Right Container -->
+    <rect x="1240" y="240" width="300" height="180" rx="12" fill="#fff9f3" stroke-width="2" />
+  </g>
+  <text x="1390" y="295" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="1390" dy="0">new connection: </tspan><tspan x="1390" dy="38">no space, </tspan><tspan x="1390" dy="38">cannot be made</tspan></text>
+
+  <!-- ==================== NUMBERED STRIP BELOW TABLE ==================== -->
+  <rect x="40" y="546" width="1520" height="252" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  <!-- Step 1 Card -->
+  <rect x="60" y="566" width="440" height="212" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <!-- Circle 1 badge behind the number -->
+  <circle cx="96" cy="600" r="22" fill="#207448" />
+  <text x="82" y="608" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="88" dy="0" fill="#ffffff" font-weight="bold">1 </tspan><tspan x="128" dy="0" font-weight="bold">Read the two numbers: </tspan><tspan x="84" dy="33" font-family="monospace">sysctl net.netfilter.</tspan><tspan x="84" dy="32" font-family="monospace" fill="#207448">nf_conntrack_count </tspan><tspan x="84" dy="32" font-family="monospace" fill="#207448">and nf_conntrack_max</tspan></text>
+
+  <!-- Step 2 Card -->
+  <rect x="520" y="566" width="480" height="98" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <!-- Circle 2 badge behind the number -->
+  <circle cx="560" cy="614" r="22" fill="#207448" />
+  <text x="548" y="622" text-anchor="start" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36"><tspan x="552" dy="0" fill="#ffffff">2 </tspan><tspan x="596" dy="0">Divide: count / max</tspan></text>
+
+  <!-- Established Timeout Card -->
+  <rect x="520" y="680" width="480" height="98" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="760" y="722" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="760" dy="0">Established timeout default: </tspan><tspan x="760" dy="34">432000 seconds, five days</tspan></text>
+
+  <!-- Step 3 Card -->
+  <rect x="1020" y="566" width="520" height="212" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <!-- Circle 3 badge behind the number -->
+  <circle cx="1056" cy="600" r="22" fill="#207448" />
+  <text x="1042" y="606" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="1048" dy="0" fill="#ffffff" font-weight="bold">3 </tspan><tspan x="1086" dy="0" font-weight="bold">Watch the trend: </tspan><tspan x="1042" dy="34">read twice; climbing and </tspan><tspan x="1042" dy="32" fill="#207448">staying = flows arrive </tspan><tspan x="1042" dy="32" fill="#207448">faster than they leave; </tspan><tspan x="1042" dy="32">rising then falling = a burst</tspan></text>
+
+  <!-- ==================== SIDE NOTE & FIX LIST ==================== -->
+
+  <!-- Side Note Box (Kube-proxy...) -->
+  <rect x="40" y="818" width="840" height="276" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <!-- Gear / Service Outline Icon (56px, stroke 4, #207448) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="96" cy="864" r="12" />
+    <path d="M 96 842 L 96 852 M 96 876 L 96 886 M 74 864 L 84 864 M 108 864 L 118 864 M 80 848 L 88 856 M 104 872 L 112 880 M 80 880 L 88 872 M 104 856 L 112 848" />
+  </g>
+  <!-- Text Card -->
+  <rect x="64" y="904" width="792" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="84" y="942" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="84" dy="0" font-weight="bold">Kube-proxy Service load balancing through iptables </tspan><tspan x="84" dy="36">depends on conntrack, so a full table looks like </tspan><tspan x="84" dy="36">Service flakiness; pods on one node share that </tspan><tspan x="84" dy="36">node's table.</tspan></text>
+
+  <!-- Fix List Box -->
+  <rect x="900" y="818" width="660" height="276" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <!-- Tool / Wrench Outline Icon (56px, stroke 4, #207448) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 968 846 C 963 841, 953 841, 948 846 L 938 856 C 933 861, 933 871, 938 876 L 946 884 C 950 888, 956 888, 960 884 L 976 868 C 980 864, 980 858, 976 854 Z" />
+    <circle cx="950" cy="858" r="4" fill="#207448" />
+  </g>
+  <!-- Text Card -->
+  <rect x="924" y="904" width="612" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="944" y="955" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan x="944" dy="0">raise the maximum if memory allows, </tspan><tspan x="944" dy="40">reuse connections, find the client </tspan><tspan x="944" dy="40">opening connections in a loop</tspan></text>
+
+  <!-- ==================== TAKEAWAY BAR ==================== -->
+  <rect x="40" y="1120" width="1520" height="56" rx="10" fill="#207448" />
+  <text x="800" y="1156" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">For any new connections fail, old ones work symptom, compare conntrack count to max first.</text>
+</svg>

@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Node lifecycle</title>
+  <desc>State diagram illustrating the complete node lifecycle from provisioning, configuration, and validation into the ready operational state, along with cordoning, draining, maintenance, quarantine repair, and decommissioning paths.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Node lifecycle</text>
+
+  
+
+   Provisioned -->
+  <path d="M 240 132 L 240 178" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   Configured -->
+  <path d="M 240 270 L 240 368" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   Validating -->
+  <path d="M 240 460 L 240 558" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   Ready -->
+  <path d="M 240 650 L 240 748" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   Cordoned -->
+  <path d="M 400 795 L 648 795" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   Draining -->
+  <path d="M 950 795 L 1178 795" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   Maintenance -->
+  <path d="M 1330 750 L 1330 605 L 952 605" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+
+   Validating -->
+  <path d="M 650 605 L 402 605" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   Quarantined -->
+  <path d="M 1480 795 L 1540 795 L 1540 225 L 1482 225" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+
+   Provisioned -->
+  <path d="M 1180 225 L 402 225" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   Decommissioned -->
+  <path d="M 240 840 L 240 938" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+   [*] -->
+  <path d="M 240 1030 L 240 1086" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+
+   Provisioned -->
+  <rect x="280" y="98" width="600" height="70" rx="8" fill="#f5f8f5"/>
+  <text x="290" y="126" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="290" dy="0">bare metal/VM created</tspan>
+    <tspan x="290" dy="30">(image, BMC/PXE or cloud API)</tspan>
+  </text>
+
+   Configured -->
+  <rect x="280" y="284" width="620" height="70" rx="8" fill="#f5f8f5"/>
+  <text x="290" y="312" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="290" dy="0">OS, kernel, drivers, runtime,</tspan>
+    <tspan x="290" dy="30">kubelet (Ansible/image)</tspan>
+  </text>
+
+   Validating -->
+  <rect x="280" y="474" width="460" height="70" rx="8" fill="#f5f8f5"/>
+  <text x="290" y="502" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="290" dy="0">join cluster tainted</tspan>
+    <tspan x="290" dy="30">"validating"</tspan>
+  </text>
+
+   Ready -->
+  <rect x="280" y="664" width="660" height="70" rx="8" fill="#f5f8f5"/>
+  <text x="290" y="692" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="290" dy="0">health gates pass</tspan>
+    <tspan x="290" dy="30">(GPU diag, NCCL, network, storage)</tspan>
+  </text>
+
+   Cordoned -->
+  <rect x="420" y="724" width="210" height="60" rx="8" fill="#f5f8f5"/>
+  <text x="525" y="748" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="525" dy="0">maintenance or</tspan>
+    <tspan x="525" dy="28">suspected fault</tspan>
+  </text>
+
+   Draining -->
+  <rect x="965" y="724" width="200" height="60" rx="8" fill="#f5f8f5"/>
+  <text x="1065" y="748" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="1065" dy="0">evict pods respecting</tspan>
+    <tspan x="1065" dy="28">PDBs/checkpoints</tspan>
+  </text>
+
+   Maintenance -->
+  <rect x="990" y="555" width="310" height="42" rx="8" fill="#f5f8f5"/>
+  <text x="1145" y="584" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">upgrade, repair, reboot</text>
+
+   Validating -->
+  <rect x="450" y="555" width="150" height="42" rx="8" fill="#f5f8f5"/>
+  <text x="525" y="584" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">re-validate</text>
+
+   Quarantined -->
+  <rect x="1190" y="450" width="330" height="70" rx="8" fill="#f5f8f5"/>
+  <text x="1355" y="478" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="1355" dy="0">validation failed →</tspan>
+    <tspan x="1355" dy="30">hardware repair queue</tspan>
+  </text>
+
+   Provisioned -->
+  <rect x="660" y="175" width="260" height="42" rx="8" fill="#f5f8f5"/>
+  <text x="790" y="204" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">repaired/reimaged</text>
+
+   Decommissioned -->
+  <rect x="280" y="865" width="320" height="42" rx="8" fill="#f5f8f5"/>
+  <text x="290" y="894" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">remove (RMA, scale-in)</text>
+
+  
+
+  
+  <circle cx="240" cy="110" r="18" fill="#207448"/>
+
+  
+  <g transform="translate(80, 180)">
+    <rect width="320" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="0" y="0" width="46" height="50" rx="4"/>
+      <line x1="0" y1="16" x2="46" y2="16"/>
+      <line x1="0" y1="33" x2="46" y2="33"/>
+      <circle cx="10" cy="8" r="2" fill="#207448"/>
+      <circle cx="10" cy="24" r="2" fill="#207448"/>
+      <circle cx="10" cy="41" r="2" fill="#207448"/>
+      <line x1="24" y1="8" x2="38" y2="8"/>
+      <line x1="24" y1="24" x2="38" y2="24"/>
+      <line x1="24" y1="41" x2="38" y2="41"/>
+    </g>
+    <text x="92" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Provisioned</text>
+  </g>
+
+  
+  <g transform="translate(80, 370)">
+    <rect width="320" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round">
+      <circle cx="24" cy="25" r="11"/>
+      <path d="M 24 4 L 24 10 M 24 40 L 24 46 M 3 25 L 9 25 M 39 25 L 45 25 M 9 10 L 14 14 M 34 35 L 39 39 M 9 40 L 14 36 M 34 14 L 39 10"/>
+    </g>
+    <text x="92" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Configured</text>
+  </g>
+
+  
+  <g transform="translate(80, 560)">
+    <rect width="320" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="3" y="8" width="42" height="46" rx="4"/>
+      <path d="M 16 8 V 3 H 32 V 8"/>
+      <path d="M 14 32 L 22 40 L 36 24"/>
+    </g>
+    <text x="92" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Validating</text>
+  </g>
+
+  
+  <g transform="translate(80, 750)">
+    <rect width="320" height="90" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(24, 18)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 C 38 4 45 12 45 27 C 45 42 24 52 24 52 C 24 52 3 42 3 27 C 3 12 10 4 24 4 Z"/>
+      <path d="M 14 26 L 21 33 L 34 18"/>
+    </g>
+    <text x="92" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Ready</text>
+  </g>
+
+  
+  <g transform="translate(650, 750)">
+    <rect width="300" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <rect x="5" y="20" width="38" height="32" rx="4"/>
+      <path d="M 13 20 V 12 C 13 5 35 5 35 12 V 20"/>
+      <circle cx="24" cy="34" r="3" fill="#207448"/>
+      <line x1="24" y1="37" x2="24" y2="44"/>
+    </g>
+    <text x="88" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Cordoned</text>
+  </g>
+
+  
+  <g transform="translate(1180, 750)">
+    <rect width="300" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(22, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="22" height="40" rx="3"/>
+      <line x1="9" y1="16" x2="21" y2="16"/>
+      <line x1="9" y1="26" x2="21" y2="26"/>
+      <line x1="9" y1="36" x2="21" y2="36"/>
+      <path d="M 26 26 H 48 M 40 18 L 48 26 L 40 34"/>
+    </g>
+    <text x="86" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Draining</text>
+  </g>
+
+  
+  <g transform="translate(650, 560)">
+    <rect width="300" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 6 C 34 2 28 4 25 8 L 8 27 C 6 29 6 33 8 35 L 17 44 C 19 46 23 46 25 44 L 43 25 C 47 22 49 16 45 12 Z"/>
+      <circle cx="13" cy="39" r="2" fill="#207448"/>
+      <path d="M 12 12 L 40 40"/>
+    </g>
+    <text x="88" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Maintenance</text>
+  </g>
+
+  
+  <g transform="translate(1180, 180)">
+    <rect width="300" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(22, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 C 38 4 45 12 45 27 C 45 42 24 52 24 52 C 24 52 3 42 3 27 C 3 12 10 4 24 4 Z"/>
+      <line x1="24" y1="16" x2="24" y2="30"/>
+      <circle cx="24" cy="38" r="2" fill="#207448"/>
+    </g>
+    <text x="86" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="32px" font-weight="bold" fill="#303a36">Quarantined</text>
+  </g>
+
+  
+  <g transform="translate(80, 940)">
+    <rect width="320" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <path d="M 12 18 A 18 18 0 1 0 36 18"/>
+      <line x1="24" y1="4" x2="24" y2="24"/>
+    </g>
+    <text x="86" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Decommissioned</text>
+  </g>
+
+  
+  <circle cx="240" cy="1110" r="22" fill="#f5f8f5" stroke="#207448" stroke-width="3"/>
+  <circle cx="240" cy="1110" r="13" fill="#207448"/>
+
+</svg>

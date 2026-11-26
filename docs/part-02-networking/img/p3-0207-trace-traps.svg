@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five ways a trace can mislead you</title>
+  <desc>Visual infographic explaining five ways network traces can mislead: asymmetric paths, ECMP and load balancing, MPLS and tunnels, NAT and cloud networks, and probe packet sizing.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="66" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Five ways a trace can mislead you</text>
+
+  
+
+  
+  <g id="card-asymmetric-paths">
+    <rect x="40" y="110" width="480" height="430" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(252, 126)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="25" r="5" fill="#207448" />
+      <path d="M 13 25 H 22" />
+      <path d="M 22 25 C 30 25 34 11 46 11" />
+      <polyline points="40,6 47,11 40,16" />
+      <path d="M 22 25 C 30 25 34 39 46 39" />
+      <polyline points="40,34 47,39 40,44" />
+    </g>
+    
+    <text x="280" y="214" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Asymmetric paths</text>
+    
+    <text x="280" y="264" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="280" dy="0"><tspan font-family="monospace">traceroute</tspan> shows only the </tspan>
+      <tspan x="280" dy="34">forward path; the return </tspan>
+      <tspan x="280" dy="34">path can differ and the round </tspan>
+      <tspan x="280" dy="34">trip includes it; run <tspan font-family="monospace">mtr</tspan> </tspan>
+      <tspan x="280" dy="34">from both ends</tspan>
+    </text>
+  </g>
+
+  
+  <g id="centre-path-drawing">
+    <rect x="560" y="110" width="480" height="430" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    
+    <text x="800" y="168" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">forward path (shown)</text>
+
+    
+    <g id="forward-diagram">
+      
+      <path d="M 648 224 H 952" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="616" y="204" width="32" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="622" y1="232" x2="642" y2="232" stroke="#207448" stroke-width="2" />
+
+      
+      <circle cx="725" cy="224" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="725" cy="224" r="4" fill="#207448" />
+
+      
+      <circle cx="835" cy="224" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="835" cy="224" r="4" fill="#207448" />
+
+      
+      <rect x="952" y="204" width="32" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="958" y1="232" x2="978" y2="232" stroke="#207448" stroke-width="2" />
+    </g>
+
+    
+    <line x1="600" y1="285" x2="1000" y2="285" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 6" opacity="0.3" />
+
+    
+    <g id="return-diagram">
+      
+      <path d="M 952 346 H 648" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+
+      
+      <rect x="616" y="326" width="32" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="622" y1="354" x2="642" y2="354" stroke="#207448" stroke-width="2" />
+
+      
+      <circle cx="855" cy="346" r="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <path d="M 849 346 H 861 M 855 340 V 352" stroke="#207448" stroke-width="2.5" />
+
+      
+      <circle cx="705" cy="346" r="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      <path d="M 699 346 H 711 M 705 340 V 352" stroke="#207448" stroke-width="2.5" />
+
+      
+      <rect x="952" y="326" width="32" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="958" y1="354" x2="978" y2="354" stroke="#207448" stroke-width="2" />
+    </g>
+
+    
+    <text x="800" y="422" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">return path (not shown)</text>
+  </g>
+
+  
+  <g id="card-mpls-and-tunnels">
+    <rect x="1080" y="110" width="480" height="430" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1292, 126)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="34" rx="6" />
+      <path d="M 16 8 V 42" />
+      <path d="M 40 8 V 42" />
+      <rect x="22" y="17" width="12" height="16" rx="2" fill="#207448" />
+    </g>
+    
+    <text x="1320" y="214" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">MPLS and tunnels</text>
+    
+    <text x="1320" y="284" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1320" dy="0">hops can be hidden when </tspan>
+      <tspan x="1320" dy="38">the TTL is not propagated, </tspan>
+      <tspan x="1320" dy="38">or label stacks shown</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="card-ecmp-and-load-balancers">
+    <rect x="40" y="580" width="480" height="470" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(252, 594)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="25" r="5" fill="#207448" />
+      <line x1="13" y1="25" x2="22" y2="25" />
+      <path d="M 22 25 C 30 25 34 8 46 8" />
+      <polyline points="40,4 47,8 40,12" />
+      <path d="M 22 25 H 46" />
+      <polyline points="40,21 47,25 40,29" />
+      <path d="M 22 25 C 30 25 34 42 46 42" />
+      <polyline points="40,38 47,42 40,46" />
+    </g>
+    
+    <text x="280" y="684" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">ECMP and load balancers</text>
+    
+    <text x="280" y="726" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="280" dy="0">different probes may take </tspan>
+      <tspan x="280" dy="31">different equal-cost paths, </tspan>
+      <tspan x="280" dy="31">so you see hops from several </tspan>
+      <tspan x="280" dy="31">routers or inconsistent </tspan>
+      <tspan x="280" dy="31">paths; flow-aware tools keep </tspan>
+      <tspan x="280" dy="31">the 5-tuple constant: </tspan>
+      <tspan x="280" dy="31" font-family="monospace">paris-traceroute, </tspan>
+      <tspan x="280" dy="31"><tspan font-family="monospace">dublin-traceroute</tspan>, or <tspan font-family="monospace">mtr</tspan> </tspan>
+      <tspan x="280" dy="31">with fixed ports</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-probes-are-small">
+    <rect x="560" y="580" width="480" height="470" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(772, 594)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="14" width="44" height="28" rx="4" />
+      <line x1="6" y1="23" x2="50" y2="23" stroke-width="2.5" stroke-dasharray="3 3" />
+      <line x1="12" y1="7" x2="44" y2="7" stroke-width="3" />
+      <polyline points="17,3 12,7 17,11" stroke-width="2.5" />
+      <polyline points="39,3 44,7 39,11" stroke-width="2.5" />
+    </g>
+    
+    <text x="800" y="680" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+      <tspan x="800" dy="0">Probes are small, </tspan>
+      <tspan x="800" dy="36">60 bytes each</tspan>
+    </text>
+    
+    <text x="800" y="766" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">problems that affect only </tspan>
+      <tspan x="800" dy="35">large packets, such as MTU </tspan>
+      <tspan x="800" dy="35">problems, will not show </tspan>
+      <tspan x="800" dy="35">up; use <tspan font-family="monospace">tracepath</tspan> or </tspan>
+      <tspan x="800" dy="35" font-family="monospace">ping -M do -s</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-nat-and-cloud-networks">
+    <rect x="1080" y="580" width="480" height="470" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1292, 594)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 34 A 10 10 0 0 1 20 18 A 14 14 0 0 1 42 18 A 10 10 0 0 1 44 34 Z" />
+      <line x1="6" y1="44" x2="50" y2="44" stroke-width="3" />
+      <line x1="16" y1="44" x2="28" y2="34" stroke-width="2.5" />
+      <line x1="40" y1="44" x2="28" y2="34" stroke-width="2.5" />
+    </g>
+    
+    <text x="1320" y="684" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">NAT and cloud networks</text>
+    
+    <text x="1320" y="736" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1320" dy="0">virtual routers do not </tspan>
+      <tspan x="1320" dy="35">decrement the TTL or </tspan>
+      <tspan x="1320" dy="35">respond, so a cloud VPC </tspan>
+      <tspan x="1320" dy="35">trace typically shows only </tspan>
+      <tspan x="1320" dy="35">the first and last hops</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1090" width="1520" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1134" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Use the right tool for the question: a trace shows hops, not the packet sizes that fit</text>
+  </g>
+</svg>

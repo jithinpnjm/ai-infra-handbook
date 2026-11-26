@@ -1,0 +1,169 @@
+import xml.etree.ElementTree as ET
+import re
+import os
+import subprocess
+
+# Let's write the complete SVG builder and validator script
+
+svg_code = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Slowness is a funnel: measure it, find the limit, find the segment, then split loss from delay</title>
+  <desc>A technical infographic showing network troubleshooting as a narrowing funnel in five steps from quantify to single-flow limits, alongside healthy-node comparison.</desc>
+
+  <!-- Background Canvas -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold, <= 2 lines, > 40px margin) -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448"><tspan x="800" dy="0">Slowness is a funnel: measure it, find the limit, </tspan><tspan x="800" dy="56">find the segment, then split loss from delay</tspan></text>
+
+  <!-- ==================== FUNNEL STEP 1 ==================== -->
+  <!-- Trapezoid 1: y=170..312, h=142. Top: 40..1140 (w=1100), Bottom: 80..1100 (w=1020) -->
+  <g id="step-1">
+    <polygon points="40,170 1140,170 1100,312 80,312" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <polygon points="40,170 1140,170 1125,224 55,224" fill="#e8f1ea" />
+    <line x1="55" y1="224" x2="1125" y2="224" stroke="#207448" stroke-width="1.5" />
+    <!-- Number Circle 1 (r=24, green, white text) -->
+    <circle cx="85" cy="241" r="24" fill="#207448" />
+    <text x="85" y="249" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <!-- Meter / Gauge Icon (56px) -->
+    <g transform="translate(125, 213)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 42 A 24 24 0 1 1 50 42" />
+      <line x1="28" y1="32" x2="40" y2="18" />
+      <circle cx="28" cy="32" r="3" fill="#207448" />
+      <line x1="12" y1="36" x2="16" y2="33" />
+      <line x1="28" y1="12" x2="28" y2="17" />
+      <line x1="44" y1="36" x2="40" y2="33" />
+    </g>
+    <!-- Step 1 Text -->
+    <text font-family="sans-serif" fill="#303a36"><tspan x="200" y="228" font-size="30" font-weight="bold" fill="#207448">Quantify: </tspan><tspan font-size="24">throughput, latency percentiles, </tspan><tspan x="200" y="272" font-size="24">retransmit rate, against baseline and line rate or BDP</tspan></text>
+  </g>
+
+  <!-- ==================== FUNNEL STEP 2 ==================== -->
+  <!-- Trapezoid 2: y=354..496, h=142. Top: 80..1100 (w=1020), Bottom: 120..1060 (w=940) -->
+  <g id="step-2">
+    <polygon points="80,354 1100,354 1060,496 120,496" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <polygon points="80,354 1100,354 1085,408 95,408" fill="#e8f1ea" />
+    <line x1="95" y1="408" x2="1085" y2="408" stroke="#207448" stroke-width="1.5" />
+    <!-- Number Circle 2 -->
+    <circle cx="125" cy="425" r="24" fill="#207448" />
+    <text x="125" y="433" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <!-- Chip / CPU Limits Icon (56px) -->
+    <g transform="translate(165, 397)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <rect x="20" y="20" width="16" height="16" />
+      <line x1="20" y1="6" x2="20" y2="12" />
+      <line x1="28" y1="6" x2="28" y2="12" />
+      <line x1="36" y1="6" x2="36" y2="12" />
+      <line x1="20" y1="44" x2="20" y2="50" />
+      <line x1="28" y1="44" x2="28" y2="50" />
+      <line x1="36" y1="44" x2="36" y2="50" />
+      <line x1="6" y1="20" x2="12" y2="20" />
+      <line x1="6" y1="28" x2="12" y2="28" />
+      <line x1="6" y1="36" x2="12" y2="36" />
+      <line x1="44" y1="20" x2="50" y2="20" />
+      <line x1="44" y1="28" x2="50" y2="28" />
+      <line x1="44" y1="36" x2="50" y2="36" />
+    </g>
+    <!-- Step 2 Text -->
+    <text font-family="sans-serif" fill="#303a36"><tspan x="240" y="412" font-size="30" font-weight="bold" fill="#207448">Find the limit: </tspan><tspan font-family="monospace" font-size="24">ss -ti</tspan><tspan font-size="24"> limiter flags, </tspan><tspan x="240" y="456" font-size="24">CPU and softirq, NIC drops, PFC, ECN, MTU</tspan></text>
+  </g>
+
+  <!-- ==================== FUNNEL STEP 3 ==================== -->
+  <!-- Trapezoid 3: y=538..680, h=142. Top: 120..1060 (w=940), Bottom: 160..1020 (w=860) -->
+  <g id="step-3">
+    <polygon points="120,538 1060,538 1020,680 160,680" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <polygon points="120,538 1060,538 1045,592 135,592" fill="#e8f1ea" />
+    <line x1="135" y1="592" x2="1045" y2="592" stroke="#207448" stroke-width="1.5" />
+    <!-- Number Circle 3 -->
+    <circle cx="165" cy="609" r="24" fill="#207448" />
+    <text x="165" y="617" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <!-- Network Halving / Split Segment Icon (56px) -->
+    <g transform="translate(205, 581)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="28" r="6" />
+      <circle cx="44" cy="28" r="6" />
+      <line x1="18" y1="28" x2="24" y2="28" />
+      <line x1="32" y1="28" x2="38" y2="28" />
+      <line x1="28" y1="14" x2="28" y2="42" stroke-dasharray="4 3" />
+    </g>
+    <!-- Step 3 Text -->
+    <text font-family="sans-serif" fill="#303a36"><tspan x="280" y="596" font-size="30" font-weight="bold" fill="#207448">Find the segment: </tspan><tspan font-family="monospace" font-size="24">iperf3</tspan><tspan font-size="24"> or </tspan><tspan font-family="monospace" font-size="24">ib_write_bw </tspan><tspan x="280" y="640" font-size="24">between pairs, halving the path</tspan></text>
+  </g>
+
+  <!-- ==================== FUNNEL STEP 4 ==================== -->
+  <!-- Trapezoid 4: y=722..864, h=142. Top: 160..1020 (w=860), Bottom: 200..980 (w=780) -->
+  <g id="step-4">
+    <polygon points="160,722 1020,722 980,864 200,864" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <polygon points="160,722 1020,722 1005,776 175,776" fill="#e8f1ea" />
+    <line x1="175" y1="776" x2="1005" y2="776" stroke="#207448" stroke-width="1.5" />
+    <!-- Number Circle 4 -->
+    <circle cx="205" cy="793" r="24" fill="#207448" />
+    <text x="205" y="801" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    <!-- Clock / Timer Icon (56px) -->
+    <g transform="translate(245, 765)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="30" r="20" />
+      <polyline points="28,18 28,30 38,30" />
+      <line x1="28" y1="6" x2="28" y2="10" />
+      <line x1="22" y1="6" x2="34" y2="6" />
+    </g>
+    <!-- Step 4 Text -->
+    <text font-family="sans-serif" fill="#303a36"><tspan x="320" y="780" font-size="30" font-weight="bold" fill="#207448">Loss or latency: </tspan><tspan font-family="monospace" font-size="24">nstat</tspan><tspan font-size="24"> and </tspan><tspan font-family="monospace" font-size="24">tcpretrans</tspan><tspan font-size="24"> for loss, </tspan><tspan x="320" y="824" font-size="24"><tspan font-family="monospace">ss -ti</tspan> and <tspan font-family="monospace">ping</tspan> for RTT</tspan></text>
+  </g>
+
+  <!-- ==================== FUNNEL STEP 5 (Orange Outline) ==================== -->
+  <!-- Trapezoid 5: y=906..1048, h=142. Top: 200..980 (w=780), Bottom: 240..940 (w=700) -->
+  <g id="step-5">
+    <polygon points="200,906 980,906 940,1048 240,1048" fill="#fffaf5" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+    <polygon points="200,906 980,906 965,960 215,960" fill="#fef0e3" />
+    <line x1="215" y1="960" x2="965" y2="960" stroke="#db8129" stroke-width="1.5" />
+    <!-- Number Circle 5 (Orange) -->
+    <circle cx="245" cy="977" r="24" fill="#db8129" />
+    <text x="245" y="985" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    <!-- Flow Fork / Multi-flow Icon (56px) -->
+    <g transform="translate(285, 949)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="10" cy="28" r="4" fill="#db8129" />
+      <path d="M 14 28 L 26 28 C 34 28 36 14 46 14" />
+      <path d="M 14 28 L 26 28 C 34 28 36 42 46 42" />
+      <polyline points="40,9 47,14 40,19" />
+      <polyline points="40,37 47,42 40,47" />
+    </g>
+    <!-- Step 5 Text -->
+    <text font-family="sans-serif" fill="#303a36"><tspan x="360" y="964" font-size="30" font-weight="bold" fill="#db8129">One flow or all flows: </tspan><tspan x="360" y="1008" font-size="24">ECMP hash collisions, elephant flows, single-core limits</tspan></text>
+  </g>
+
+  <!-- ==================== SIDE BOX: STEP 6 ==================== -->
+  <!-- Side box on the right: x=1180..1560 (w=380), y=170..1048 (h=878) -->
+  <g id="step-6-sidebox">
+    <rect x="1180" y="170" width="380" height="878" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="1180" y="170" width="380" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Healthy Server Node Icon (56px) -->
+    <g transform="translate(1342, 202)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="14" rx="3" />
+      <rect x="8" y="30" width="40" height="14" rx="3" />
+      <circle cx="16" cy="17" r="2" fill="#207448" />
+      <circle cx="16" cy="37" r="2" fill="#207448" />
+      <polyline points="32,24 37,29 46,18" stroke-width="3.5" />
+    </g>
+    <!-- Side Box Text -->
+    <text x="1370" y="340" text-anchor="middle" font-family="sans-serif" fill="#303a36"><tspan x="1370" dy="0" font-size="32" font-weight="bold" fill="#207448">Step 6: </tspan><tspan x="1370" dy="48" font-size="28" font-weight="bold">compare with a </tspan><tspan x="1370" dy="42" font-size="28" font-weight="bold">healthy node</tspan></text>
+
+    <!-- Visual Anchor / Node Comparison card inside sidebox -->
+    <g transform="translate(1208, 480)">
+      <rect x="0" y="0" width="324" height="520" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4" />
+      <!-- Subtle visual comparison indicator -->
+      <g transform="translate(134, 40)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 8 L 8 18 L 8 32 C 8 46 28 54 28 54 C 28 54 48 46 48 32 L 48 18 Z" />
+        <polyline points="20,31 25,36 36,23" />
+      </g>
+    </g>
+  </g>
+
+  <!-- ==================== TAKEAWAY CAPTION BAR ==================== -->
+  <!-- y=1100..1160, h=60, x=40..1560, w=1520 -->
+  <g id="takeaway-bar">
+    <rect x="40" y="1100" width="1520" height="60" rx="10" fill="#207448" />
+    <text x="800" y="1138" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Each step removes part of the search space before the next one starts.</text>
+  </g>
+</svg>'''
+
+with open("test_slowness_funnel.svg", "w") as f:
+    f.write(svg_code)
+print("Saved test_slowness_funnel.svg")

@@ -44,29 +44,19 @@ Work through the chapter in order, because later sections use terms that earlier
 
 ## 1. The scheduler's job and model
 
+![One scheduler hosts a default spreading profile and a gpu-binpack profile that pods select by name.](./img/p3-0518-profile-binpack.svg)
+
+*Figure 5.18.1. Profiles let one scheduler spread inference pods and bin-pack GPU jobs without a second scheduler.*
+
 The scheduler has one job. It finds a node for every pod that has no `spec.nodeName` yet, then writes that choice back as a binding. It reasons over the API server's view of the cluster. That view includes each Node's `allocatable` resources, the requests of pods already placed, labels, taints, volumes and policies. Think of the scheduler as a matchmaker with a clipboard. It looks at each pod that needs a home, checks which nodes have room and fit, picks one, and writes the match down.
 
 It does not see actual utilisation, unless a plugin adds that view. If you assume it does, the placements will surprise you. A useful way to remember this is that the scheduler works from paperwork, not from the floor. Requests and labels are the paperwork. Real GPU usage is on the floor, and the scheduler does not walk the floor unless a plugin sends it there. Its sight of network proximity stops at what labels say. Its sight of GPU health stops at what device plugins, labels and taints expose.
 
 The scheduler works on **one pod at a time**, using a snapshot of the cluster. It has no notion of a job made of many pods unless a plugin supplies one. Every placement decision is therefore made for a single pod, so the scheduler never sees the whole job at once. This is the same host problem as before. Each party is seated alone, so the host cannot notice that the group needs room for all of it together.
 
-```mermaid
-flowchart LR
-  subgraph Queues["Scheduling queue"]
-    AQ["activeQ (heap by priority/QueueSort)"]
-    BQ["backoffQ (recently failed, exponential backoff)"]
-    UQ["unschedulablePods (waiting for a cluster event that could help)"]
-  end
-  API["API server: new/updated Pods, Nodes, PVs, ..."] --> AQ
-  AQ --> SC["Scheduling cycle (serial per pod)"]
-  SC --> PF["PreFilter → Filter (nodes, parallel) → PostFilter (preemption if none fit)"]
-  PF --> PS["PreScore → Score (parallel) → NormalizeScore → select best"]
-  PS --> RS["Reserve → Permit (approve/deny/wait)"]
-  RS --> BC["Binding cycle (async): PreBind → Bind → PostBind"]
-  BC --> API2["Binding written (spec.nodeName)"]
-  SC -. "no node fits" .-> UQ
-  UQ -. "relevant event (node added, pod deleted, ...)" .-> AQ
-```
+![The scheduler's job and model](./img/m5-18-1.svg)
+
+*Figure 5.18.2. The scheduler's job and model, as a diagram.*
 
 Read the diagram from left to right, and follow one pod through it. The queue feeds the scheduling cycle, and each stage narrows the list of candidate nodes until one is chosen. As you read the details below, notice where each stage hands the pod on.
 
@@ -110,6 +100,14 @@ Pods pick a profile with `schedulerName: gpu-binpack`. Running several scheduler
 
 ## 2. Resource fit and accounting
 
+![A node is shown with allocatable minus requested resources as the scheduler sees it, next to what it cannot see.](./img/p3-0518-scheduler-paperwork.svg)
+
+*Figure 5.18.3. Fit is decided by requests and allocatable, never by what pods are actually using.*
+
+![Spreading one-GPU pods across four 8-GPU nodes strands free GPUs, while packing them onto one node leaves three whole nodes for 8-GPU jobs.](./img/k18-fragmentation.svg)
+
+*Figure 5.18.4. Spreading one-GPU pods across nodes strands free GPUs, while packing them onto one node keeps whole nodes free for 8-GPU jobs.*
+
 Most surprising placements start with resource fit. The scheduler does not look at what a pod is using right now. It adds up the `requests` of pods already assigned to a node, including pods that are still starting. Think of requests as seat reservations on a plane. The allocatable amount is the plane's capacity, and a reserved seat counts against capacity whether or not the passenger has boarded yet. It then compares that sum with the node's `allocatable` capacity, which Chapter 5.9 covers.
 
 Limits are ignored for fit, except when requests default to limits. A pod with no requests, a BestEffort pod, counts as 0 for fit, so it can overload a node. Think of it as a passenger with no ticket. The scheduler does not count that seat, so the flight can fill up around it. Use `LimitRange` defaults to avoid that.
@@ -125,6 +123,10 @@ Fragmentation is the subtle one. Take a cluster with 64 GPUs free, spread as 4 p
 A team wants its inference pods on H100 nodes in two zones only, and it does not want them on a special edge-GPU machine type. A single label check cannot express that, so the team needs the richer rules below. Placement rules tell the scheduler which nodes your pods may use. Start with the simplest tool. The comments in the YAML below tell you what each rule does. `nodeSelector` is a set of equality checks, and the pod must match all of them. Node affinity is more expressive, and it comes in a hard form and a soft form.
 
 ### nodeSelector and node affinity
+
+![An annotated node affinity block showing AND across expressions, OR across terms and hard versus soft rules.](./img/p3-0518-affinity-anatomy.svg)
+
+*Figure 5.18.5. Terms are alternatives, expressions inside a term all must hold, and preferred rules only add score.*
 
 ```yaml
 spec:
@@ -149,6 +151,10 @@ The operators are `In`, `NotIn`, `Exists`, `DoesNotExist`, `Gt` and `Lt`. `Ignor
 
 ### Pod affinity and anti-affinity
 
+![Two vLLM replicas on one node both disappear when the node fails, while pod anti-affinity places each replica on its own node.](./img/p2-0518-anti-affinity.svg)
+
+*Figure 5.18.6. Pod anti-affinity keeps replicas on separate nodes, so one node failure no longer removes both replicas at once.*
+
 Consider a vLLM replica that shares a node with another replica of the same service. If that node fails, both replicas disappear at once, and the service loses more capacity than it planned for. A pod anti-affinity rule expresses the opposite intent. Pod affinity attracts or repels pods relative to the topology domains of other pods. The `topologyKey` is a node label that defines the domain. `kubernetes.io/hostname` makes the domain a single node, `topology.kubernetes.io/zone` makes it a zone, and a rack label makes it a rack.
 
 ```yaml
@@ -169,6 +175,10 @@ Pod affinity is expensive. It costs O(pods × nodes) per cycle. Avoid cluster-wi
 
 ### Topology spread constraints
 
+![Three replicas in one zone are all lost in a zone outage, while a topology spread constraint with maxSkew 1 places one replica in each zone.](./img/p2-0518-zone-spread.svg)
+
+*Figure 5.18.7. Three replicas in one zone are all lost in a zone outage, while maxSkew 1 across zones keeps the counts within one of each other.*
+
 A zone goes down, and three replicas of an inference service all sat in that zone. The service is now completely offline, even though the other zones were healthy. Spread constraints are the tool that prevents this arrangement.
 
 ```yaml
@@ -184,6 +194,14 @@ topologySpreadConstraints:
 `maxSkew` bounds the difference in matching-pod counts between the most and least populated domains. Use it for HA spreading across zones, nodes or racks, and combine hostname and zone constraints. With `maxSkew: 1`, the counts in any two domains may differ by at most 1. Think of it as dealing cards around a table. No seat may hold more than one card more than any other seat, so each new card goes to the emptiest seat. The counts stay even as replicas are added. The fields `nodeAffinityPolicy` and `nodeTaintsPolicy` control whether non-matching nodes count as domains.
 
 ### Taints and tolerations
+
+![A table lists the three taint effects with example commands and the tolerationSeconds failover setting.](./img/p3-0518-taint-effects.svg)
+
+*Figure 5.18.8. NoExecute is the effect that evicts running pods and tolerationSeconds sets how long they may stay.*
+
+![A taint repels pods without a toleration, a toleration alone does not attract a pod, and a node selector sends it to the right GPU pool.](./img/k18-taint-toleration-selector.svg)
+
+*Figure 5.18.9. A taint keeps out pods without a toleration, but only a node selector steers a GPU pod to the right pool.*
 
 Think of a taint as a "staff only" sign on a door. A toleration is a staff badge. The sign keeps guests out, and the badge lets a staff member through. The badge does not make the staff member walk through that door, though. A node selector or affinity does that job.
 
@@ -219,6 +237,10 @@ Dedicated pools need both a taint and a node selector. For spreading, prefer `to
 
 ### Spreading replicas across failure domains
 
+![Replicas of one web server placed in a single zone are lost together, while spreading them across zones with anti-affinity keeps the service up.](./img/p2-0518-egg-carton.svg)
+
+*Figure 5.18.10. Several replicas help only when they do not share a failure, so anti-affinity spreads web server replicas across zones.*
+
 Running several replicas helps only when they do not share a failure. Say a web server has three replicas, and all three land in one zone. A zone outage takes every replica down together. Placement rules are how you keep replicas apart, so one bad zone cannot remove the whole service. Think of the replicas as eggs in a carton. Putting all of them in one compartment means dropping one box loses everything, so the rules spread the eggs across compartments.
 
 Pod anti-affinity is the first tool. It tells the scheduler to avoid nodes that already run a replica of the same workload. The rule below prefers to spread the `my-web-server` Pods across zones, using the `zone` label on each node:
@@ -253,7 +275,19 @@ With `whenUnsatisfiable: DoNotSchedule`, a Pod that would break the rule stays p
 
 ## 4. Priority, preemption and disruption
 
+![Preemption simulates removing lower-priority pods on candidate nodes, picks the node with the fewest victims, and evicts only when the new pod would then fit.](./img/p2-0518-preempt-steps.svg)
+
+*Figure 5.18.11. Preemption simulates removing lower-priority pods, picks the node with the fewest victims, and evicts only when the new pod would fit.*
+
 ### PriorityClass
+
+![Three diagrams show preemption cascading, wasting a multi-pod job and causing priority inversion, with mitigations.](./img/p3-0518-preemption-pitfalls.svg)
+
+*Figure 5.18.12. Preempting a single pod of a gang wastes the whole job, so protect training with queue-level control.*
+
+![Priority classes as floors in a tower, with inference-critical able to preempt low-priority training that waits in the queue.](./img/p2-0518-priority-floors.svg)
+
+*Figure 5.18.13. Priority classes act as floors in a tower, where inference-critical can preempt lower-priority training and training-low waits without evicting others.*
 
 During a busy week, an inference endpoint slows down because a batch training job grabbed the GPUs it needed. Priority is the tool that says which workload should win in that moment. Priority decides which pods matter most when the cluster is full. You set it with a `PriorityClass`, which gives a name to an integer. The two classes below show both extremes. One may preempt running pods, while the other waits in the queue and never evicts anyone. Read the two classes as opposites. The first can push out running pods, so it suits serving traffic that cannot wait. The second is low priority, so it waits behind others in the queue, and its policy says it never evicts a running pod. That makes it a polite class for batch work.
 
@@ -293,11 +327,23 @@ Think of the tier set as lanes on a highway. Infrastructure gets its own lane. I
 
 ## 5. Why default scheduling fails for distributed jobs
 
+![A bar shows 128 owned GPUs, up to 64 borrowable and 32 lendable inside a cohort.](./img/p3-0518-kueue-quota-numbers.svg)
+
+*Figure 5.18.14. Quota is owned, borrowable up to a limit and reclaimable through preemption.*
+
+![Default pod-by-pod placement leaves each of two 4-pod jobs half-placed and waiting, while Kueue admits one whole job at a time.](./img/k18-gang-deadlock.svg)
+
+*Figure 5.18.15. Pod-by-pod placement leaves two 4-pod jobs half-started and blocking each other, while Kueue admits one whole job at a time.*
+
 Think of two film crews that each need every actor on set before they can shoot. If each crew books actors one at a time, both can end up with half a cast, and neither can film. Suppose you run a distributed training job with N pods, and it needs all N running before it can make progress. The default scheduler places pods independently. If only N−1 fit, then N−1 pods start and hold their GPUs idle while they wait for the last one. Another job may do the same thing, and both stall in deadlock, a hold-and-wait on resources. Partial placement also ignores locality, so pods can end up spread across racks or IB leaf domains.
 
 A system that handles this needs several capabilities. It needs all-or-nothing admission, which is called gang scheduling. It needs queueing with fairness and quotas across teams, and preemption at job granularity. It needs topology awareness, so pods share a rack, an NVLink domain or a leaf. It needs backfilling, so small jobs fill the gaps. It also needs elasticity and checkpoint-aware disruption. Kubernetes provides building blocks, and add-ons supply the policy. Think of gang scheduling as a rule that says everyone gets a seat or nobody does. Queueing is the line at the door. Backfilling lets a small group use empty seats while the large group waits, on the condition that the small group leaves before the large group needs them.
 
 ### Kueue
+
+![A chain of Kueue objects from flavor and cluster queue to a suspended Job that is admitted as a whole.](./img/p3-0518-kueue-objects.svg)
+
+*Figure 5.18.16. Kueue admits the whole Workload against quota before the scheduler sees any pod.*
 
 Think of Kueue as the admissions office at a university. It decides which students may enroll this term and holds the rest in a queue. The scheduler is the registrar that assigns each enrolled student to a classroom. Kueue, from SIG Scheduling, is a job queueing and quota controller that sits in front of kube-scheduler. It controls when a workload's pods may be created and run. kube-scheduler still decides where each pod goes. You meet these objects in Kueue:
 
@@ -371,6 +417,10 @@ Pods set `schedulerName: volcano` and reference a PodGroup. Compared with Kueue,
 
 ### Other gang mechanisms
 
+![A table compares Kueue, Volcano, the coscheduling plugin and JobSet by how they add all-or-nothing admission.](./img/p3-0518-gang-tools-compare.svg)
+
+*Figure 5.18.17. Choose Kueue to add to the default scheduler or Volcano to replace it for batch pods.*
+
 The coscheduling plugin comes from the scheduler-plugins project. It adds a `PodGroup` CRD and a Permit plugin that holds pods until `minMember` can be placed. It runs in the same scheduler and brings more plugins with it. These include `CapacityScheduling` for elastic quotas, `NodeResourceTopologyMatch`, `Trimaran` for load-aware scoring, and `NetworkAware` scheduling.
 
 JobSet is an API from Kubernetes SIG Apps/Batch for groups of Jobs. It provides success and failure policies, startup order, and DNS through a headless Service. It is the base for multi-slice and multi-host training, and it integrates with Kueue.
@@ -384,6 +434,14 @@ Slurm can also run on Kubernetes. SchedMD/Slinky, SUNK on CoreWeave and Soperato
 Choose Kueue or Volcano for batch jobs depending on whether you want to add to the default scheduler or replace it.
 
 ## 6. Topology-aware and device-aware scheduling
+
+![A sequence shows the scheduler binding a pod and the kubelet later rejecting it with TopologyAffinityError.](./img/p3-0518-topology-reject.svg)
+
+*Figure 5.18.18. The scheduler does not know NUMA alignment, so make it visible or the kubelet rejects pods after binding.*
+
+![Two panels contrast a device plugin that counts GPUs with DRA claims that select GPUs by attributes.](./img/p3-0518-device-plugin-vs-dra.svg)
+
+*Figure 5.18.19. DRA lets a pod ask for four GPUs sharing one PCIe root instead of just four GPUs.*
 
 A job that spreads its GPUs across the wrong racks loses bandwidth on every all-reduce, and nothing in the logs shows an error. The fix is to tell the scheduler where things sit. GPU-to-GPU bandwidth depends on the NVLink domain. GPU-to-NIC bandwidth depends on PCIe and NUMA proximity. Node-to-node bandwidth depends on rail, leaf and spine hops. A mis-placed job therefore loses NCCL bandwidth substantially. See Part 12 for the details.
 
@@ -492,6 +550,10 @@ In the unlikely event that you cannot use the Kubernetes scheduler, even with po
 
 ## 8. Debugging scheduling
 
+![A FailedScheduling message is split into three reasons with counts and the next check for each.](./img/p3-0518-failedscheduling-anatomy.svg)
+
+*Figure 5.18.20. Each count in the event names a reason and points to one command to run next.*
+
 A pod has been Pending for ten minutes, and the first guess is that the cluster is out of GPUs. The events often say something more specific. When a pod sits in Pending, start with its events. The `FailedScheduling` message gives the count of nodes rejected for each reason. The commands below show the state behind those counts.
 
 ```bash
@@ -531,6 +593,10 @@ Match the event text against this table. In each row, you find the symptom, its 
 For a Kueue pod stuck in Pending, start with `kubectl describe workload`, because the admission state usually explains it. Think of the workload object as an admission letter. Until it says admitted, the pods do not exist yet, so checking the pods first wastes time.
 
 ## 9. Reference patterns for a GPU platform
+
+![A six-layer stack from node pools to governance describes a GPU platform scheduling design.](./img/p3-0518-gpu-platform-layers.svg)
+
+*Figure 5.18.21. Pools come first, since queues, quotas and placement rules all refer to them.*
 
 A platform team wants research teams to submit jobs without knowing node labels or taints. The patterns below show how to get there, one layer at a time.
 
@@ -589,6 +655,10 @@ Assuming the scheduler sees GPU utilisation or health is another trap. Leaving u
 A kubelet topology policy stricter than the scheduler's awareness leads to pods that are rejected after binding. Misreading `FailedScheduling` messages is the last trap, because the counts are per reason and may overlap.
 
 ## 12. Interview angles
+
+![A table maps eight pending-pod symptoms to likely causes and fixes.](./img/p3-0518-pending-symptom-table.svg)
+
+*Figure 5.18.22. Translate the scheduler's terse reason into one question and one check.*
 
 These are the questions an interviewer is likely to ask about this chapter. Each one tests whether you can explain the mechanism, not just name the feature. Give the mechanism first, then the example that shows it working or failing.
 

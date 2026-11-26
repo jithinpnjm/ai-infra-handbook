@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five steps from deletion request to object removal</title>
+  <desc>Visual infographic explaining the five steps from deletion request to object removal in Kubernetes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Five steps from deletion request to object removal</text>
+
+  
+  <rect x="120" y="95" width="1360" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <circle cx="175" cy="167" r="24" fill="#207448" />
+  <text x="175" y="176" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <g transform="translate(216, 139)">
+    <rect x="0" y="0" width="40" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="8" y1="14" x2="32" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="8" y1="26" x2="26" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="36" cy="44" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <line x1="29" y1="44" x2="43" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="290" y="145" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Deletion request sets deletionTimestamp and grace period (default 30 s)</text>
+
+  
+  <rect x="290" y="168" width="400" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="490" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Pod moves to Terminating</text>
+
+  
+  <line x1="800" y1="240" x2="800" y2="246" stroke="#207448" stroke-width="3" />
+  
+  
+  <circle cx="800" cy="270" r="24" fill="#207448" />
+  <text x="800" y="279" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <path d="M 776 270 H 350 V 313" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 824 270 H 1250 V 313" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  
+  
+  <rect x="80" y="315" width="540" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(322, 330)">
+    <circle cx="28" cy="14" r="9" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="8" cy="42" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="48" cy="42" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="22" y1="21" x2="14" y2="35" stroke="#207448" stroke-width="3" />
+    <line x1="34" y1="21" x2="42" y2="35" stroke="#207448" stroke-width="3" />
+    <line x1="42" y1="36" x2="54" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="350" y="424" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">EndpointSlice controller</text>
+  <text x="350" y="460" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">removes the pod from endpoints</text>
+
+  
+  <rect x="660" y="350" width="280" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4" />
+  <text x="800" y="386" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Connections can</text>
+  <text x="800" y="416" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">still arrive for</text>
+  <text x="800" y="446" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">a few seconds</text>
+
+  
+  <rect x="980" y="315" width="540" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1222, 330)">
+    <rect x="4" y="4" width="48" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="16" y1="18" x2="40" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="16" y1="28" x2="40" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="16" y1="38" x2="28" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="1250" y="424" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Kubelet starts</text>
+  <text x="1250" y="460" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">killing containers</text>
+
+  
+  <path d="M 350 495 V 528 H 798" stroke="#207448" stroke-width="3" fill="none" />
+  <path d="M 1250 495 V 528 H 802" stroke="#207448" stroke-width="3" fill="none" />
+  <path d="M 800 528 V 558" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  
+  
+  <rect x="120" y="560" width="1360" height="180" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+
+  
+  <circle cx="175" cy="615" r="24" fill="#207448" />
+  <text x="175" y="624" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <g transform="translate(216, 587)">
+    <circle cx="28" cy="31" r="23" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="28" y1="31" x2="28" y2="17" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="31" x2="40" y2="31" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="8" x2="28" y2="3" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="21" y1="3" x2="35" y2="3" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="290" y="624" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">preStop hook, then SIGTERM to PID 1, wait, then SIGKILL after the grace period</text>
+
+  
+  <rect x="290" y="660" width="1140" height="56" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="860" y="696" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">An app that ignores SIGTERM waits for SIGKILL: the 30 s symptom</text>
+
+  
+  <path d="M 800 740 V 783" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  
+  <rect x="120" y="785" width="1360" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <circle cx="175" cy="842" r="24" fill="#207448" />
+  <text x="175" y="851" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+
+  
+  <g transform="translate(216, 814)">
+    <ellipse cx="28" cy="14" rx="22" ry="7" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 6 14 V 38 C 6 42 16 46 28 46 C 40 46 50 42 50 38 V 14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 6 26 C 6 30 16 34 28 34 C 40 34 50 30 50 26" fill="none" stroke="#207448" stroke-width="4" />
+  </g>
+
+  
+  <text x="290" y="851" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Runtime stops containers, CNI DEL releases the IP, volumes unmount</text>
+
+  
+  <path d="M 800 900 V 943" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  
+  <rect x="120" y="945" width="1360" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <circle cx="175" cy="1002" r="24" fill="#207448" />
+  <text x="175" y="1011" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">5</text>
+
+  
+  <g transform="translate(216, 974)">
+    <ellipse cx="24" cy="14" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 4 14 V 40 C 4 44 13 47 24 47 C 35 47 44 44 44 40 V 14" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="38" y1="36" x2="54" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="54" y1="36" x2="38" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="290" y="1011" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Kubelet sends DELETE with grace 0, Pod object removed from etcd</text>
+
+  
+  <rect x="200" y="1095" width="1200" height="65" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  <text x="800" y="1137" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">A stall at one step holds back every step after it.</text>
+</svg>

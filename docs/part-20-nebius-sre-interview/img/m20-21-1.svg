@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Timeouts must nest: client above gateway above engine</title>
+  <desc>Flowchart demonstrating nested timeouts across client, gateway, retry attempts, engine abort, and idle gap limits.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="90" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Timeouts must nest: client above gateway above engine</text>
+
+  
+  <g>
+    <rect x="60" y="350" width="210" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="137" y="376" width="56" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="137" y1="392" x2="193" y2="392" stroke="#207448" stroke-width="3" />
+    <circle cx="147" cy="384" r="2.5" fill="#207448" />
+    <circle cx="155" cy="384" r="2.5" fill="#207448" />
+    <circle cx="163" cy="384" r="2.5" fill="#207448" />
+    <line x1="147" y1="406" x2="177" y2="406" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="147" y1="416" x2="167" y2="416" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="165" y="478" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Client</text>
+    <text x="165" y="522" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">total 60 s</text>
+  </g>
+
+  
+  <g>
+    <rect x="340" y="350" width="210" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="417" y="380" width="56" height="42" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="427" y1="401" x2="463" y2="401" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <polyline points="457,395 463,401 457,407" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="433" cy="391" r="2.5" fill="#207448" />
+    <circle cx="445" cy="391" r="2.5" fill="#207448" />
+    <circle cx="457" cy="391" r="2.5" fill="#207448" />
+    
+    <text x="445" y="478" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Gateway</text>
+    <text x="445" y="522" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">total 40 s</text>
+  </g>
+
+  
+  <g>
+    <rect x="620" y="200" width="270" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="755" cy="252" r="26" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="755,236 755,252 768,252" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="755" y1="222" x2="755" y2="226" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="755" y="328" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Try 1</text>
+    <text x="755" y="372" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">first token 18 s</text>
+  </g>
+
+  
+  <g>
+    <rect x="620" y="500" width="270" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="755" cy="552" r="26" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="755,536 755,552 768,560" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="755" y1="522" x2="755" y2="526" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="755" y="628" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Try 2</text>
+    <text x="755" y="672" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">first token 18 s</text>
+  </g>
+
+  
+  <g>
+    <rect x="960" y="350" width="220" height="220" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <rect x="1046" y="378" width="48" height="48" rx="6" fill="none" stroke="#db8129" stroke-width="4" />
+    <rect x="1056" y="388" width="28" height="28" rx="3" fill="none" stroke="#db8129" stroke-width="3" />
+    <line x1="1054" y1="370" x2="1054" y2="378" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1070" y1="370" x2="1070" y2="378" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1086" y1="370" x2="1086" y2="378" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1054" y1="426" x2="1054" y2="434" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1070" y1="426" x2="1070" y2="434" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1086" y1="426" x2="1086" y2="434" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1038" y1="386" x2="1046" y2="386" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1038" y1="402" x2="1046" y2="402" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1038" y1="418" x2="1046" y2="418" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1094" y1="386" x2="1102" y2="386" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1094" y1="402" x2="1102" y2="402" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1094" y1="418" x2="1102" y2="418" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1070" y="478" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Engine</text>
+    <text x="1070" y="522" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">abort at 15 s</text>
+  </g>
+
+  
+  <g>
+    <rect x="1250" y="350" width="290" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="1377" cy="402" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="1377,390 1377,402 1387,402" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 1408 390 C 1414 396, 1414 408, 1408 414" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 1417 384 C 1425 393, 1425 411, 1417 420" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    
+    <text x="1395" y="478" text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Idle gap 10 s,</text>
+    <text x="1395" y="522" text-anchor="middle" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">max stream 120 s</text>
+  </g>
+
+  
+  
+  <path d="M 270 460 L 340 460" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 550 410 C 585 410, 585 310, 620 310" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 550 510 C 585 510, 585 610, 620 610" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 890 310 C 925 310, 925 410, 960 410" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 890 610 C 925 610, 925 510, 960 510" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1180 460 L 1250 460" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+</svg>

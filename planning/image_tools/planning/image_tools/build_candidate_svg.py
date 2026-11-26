@@ -1,0 +1,373 @@
+import xml.etree.ElementTree as ET
+import re
+import pathlib
+
+svg_code = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>When a backend leaves: modulo hashing versus consistent hashing</title>
+  <desc>Visual comparison showing how modulo hashing remaps most keys when a backend leaves versus consistent hashing and Maglev hashing moving only about one in N keys, and why hash affinity matters in cache locality, L4 load balancing, and LLM prefix caching.</desc>
+
+  <defs>
+    <!-- Arrowhead Orange (18px) for the critical remapping arrow -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+    <!-- Arrowhead Green (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Infographic Title (48px bold) -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">When a backend leaves: </tspan>
+    <tspan x="800" dy="54">modulo hashing versus consistent hashing</tspan>
+  </text>
+
+  <!-- ==================== TOP ROW: THREE COMPARISON PANELS ==================== -->
+
+  <!-- PANEL 1: Hash(key) mod N (width 480) -->
+  <g id="panel-modulo">
+    <rect x="40" y="135" width="480" height="520" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="40" y="135" width="480" height="74" rx="16" fill="#e8f1ea" />
+    <line x1="40" y1="209" x2="520" y2="209" stroke="#207448" stroke-width="1.5" />
+
+    <!-- Modulo Icon (56px) -->
+    <g transform="translate(56, 144)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <rect x="6" y="6" width="44" height="44" rx="8" fill="#ffffff" />
+      <line x1="20" y1="14" x2="20" y2="42" />
+      <line x1="36" y1="14" x2="36" y2="42" />
+      <line x1="12" y1="22" x2="44" y2="22" />
+      <line x1="12" y1="34" x2="44" y2="34" />
+    </g>
+    <!-- Panel 1 Title -->
+    <text x="130" y="182" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hash(key) mod N</text>
+
+    <!-- State 1: N backends -->
+    <text x="65" y="244" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">N backends</text>
+    <text x="65" y="276" font-family="sans-serif" font-size="24" fill="#303a36">a row of keys assigned</text>
+
+    <!-- Visual: 4 backend slots with keys -->
+    <g id="modulo-initial-slots">
+      <rect x="65" y="292" width="92" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="95" cy="318" r="10" fill="#207448" />
+      <circle cx="127" cy="318" r="10" fill="#207448" />
+
+      <rect x="172" y="292" width="92" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="202" cy="318" r="10" fill="#207448" />
+      <circle cx="234" cy="318" r="10" fill="#207448" />
+
+      <rect x="279" y="292" width="92" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="309" cy="318" r="10" fill="#207448" />
+      <circle cx="341" cy="318" r="10" fill="#207448" />
+
+      <rect x="386" y="292" width="92" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="416" cy="318" r="10" fill="#207448" />
+      <circle cx="448" cy="318" r="10" fill="#207448" />
+    </g>
+
+    <!-- State 2: One backend removed -->
+    <text x="65" y="382" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="65" dy="0">one backend removed,</tspan>
+      <tspan x="65" dy="30">N becomes N minus 1</tspan>
+    </text>
+
+    <!-- Arrow showing most keys remapped -->
+    <line x1="280" y1="432" x2="280" y2="496" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <!-- Label on arrow -->
+    <rect x="65" y="444" width="195" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="162" y="473" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">most keys remapped</text>
+
+    <!-- Visual: Remaining 3 backend slots, 4th struck out, keys reshuffled -->
+    <g id="modulo-remapped-slots">
+      <rect x="65" y="514" width="122" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <circle cx="95" cy="540" r="9" fill="#207448" />
+      <circle cx="125" cy="540" r="9" fill="#207448" />
+      <circle cx="155" cy="540" r="9" fill="#207448" />
+
+      <rect x="202" y="514" width="122" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <circle cx="232" cy="540" r="9" fill="#207448" />
+      <circle cx="262" cy="540" r="9" fill="#207448" />
+      <circle cx="292" cy="540" r="9" fill="#207448" />
+
+      <rect x="339" y="514" width="122" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <circle cx="369" cy="540" r="9" fill="#207448" />
+      <circle cx="399" cy="540" r="9" fill="#207448" />
+      <line x1="435" y1="524" x2="455" y2="556" stroke="#303a36" stroke-width="3" />
+      <line x1="455" y1="524" x2="435" y2="556" stroke="#303a36" stroke-width="3" />
+    </g>
+
+    <!-- Indicator of reshuffled state -->
+    <rect x="65" y="582" width="413" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <!-- Graphical slots indicator (no extra text) -->
+    <circle cx="115" cy="606" r="8" fill="#207448" />
+    <line x1="135" y1="606" x2="185" y2="606" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" />
+    <circle cx="215" cy="606" r="8" fill="#207448" />
+    <line x1="235" y1="606" x2="285" y2="606" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" />
+    <circle cx="315" cy="606" r="8" fill="#207448" />
+    <line x1="335" y1="606" x2="385" y2="606" stroke="#207448" stroke-width="3" stroke-dasharray="4 4" />
+    <circle cx="415" cy="606" r="8" fill="#207448" />
+  </g>
+
+  <!-- PANEL 2: Consistent hashing (width 500) -->
+  <g id="panel-consistent">
+    <rect x="540" y="135" width="500" height="520" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="540" y="135" width="500" height="96" rx="16" fill="#e8f1ea" />
+    <line x1="540" y1="231" x2="1040" y2="231" stroke="#207448" stroke-width="1.5" />
+
+    <!-- Ring Icon (56px) -->
+    <g transform="translate(556, 150)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <circle cx="28" cy="28" r="22" stroke-dasharray="4 4" />
+      <circle cx="28" cy="6" r="5" fill="#207448" />
+      <circle cx="50" cy="28" r="5" fill="#207448" />
+      <circle cx="28" cy="50" r="5" fill="#207448" />
+      <circle cx="6" cy="28" r="5" fill="#207448" />
+    </g>
+    <!-- Panel 2 Title -->
+    <text x="630" y="165" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="630" dy="0">Consistent hashing</tspan>
+      <tspan x="630" dy="30">(ring, rendezvous,</tspan>
+      <tspan x="630" dy="30">jump hash)</tspan>
+    </text>
+
+    <!-- State 1: Ring mapping -->
+    <text x="565" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="565" dy="0">keys and backends mapped</tspan>
+      <tspan x="565" dy="30">on a ring or score space</tspan>
+    </text>
+
+    <!-- Visual Ring -->
+    <g id="consistent-ring" transform="translate(790, 390)">
+      <!-- Ring Circle -->
+      <circle cx="0" cy="0" r="68" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 6" />
+      <!-- Node Top (Active) -->
+      <circle cx="0" cy="-68" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="0" cy="-68" r="5" fill="#207448" />
+      <!-- Node Left (Active) -->
+      <circle cx="-68" cy="0" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="-68" cy="0" r="5" fill="#207448" />
+      <!-- Node Bottom (Active) -->
+      <circle cx="0" cy="68" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="0" cy="68" r="5" fill="#207448" />
+      <!-- Node Right (Removed with X) -->
+      <circle cx="68" cy="0" r="14" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="3 3" />
+      <line x1="60" y1="-8" x2="76" y2="8" stroke="#303a36" stroke-width="3" />
+      <line x1="76" y1="-8" x2="60" y2="8" stroke="#303a36" stroke-width="3" />
+
+      <!-- Keys mapped around ring -->
+      <circle cx="-48" cy="-48" r="6" fill="#207448" />
+      <circle cx="-48" cy="48" r="6" fill="#207448" />
+      <circle cx="48" cy="-48" r="6" fill="#207448" />
+
+      <!-- Curved arrow showing keys on removed node moving clockwise to bottom node -->
+      <path d="M 62 18 A 68 68 0 0 1 18 64" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    </g>
+
+    <!-- State 2: One backend removed -->
+    <text x="565" y="474" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">one backend removed</text>
+
+    <!-- State 3: Only keys on that backend move -->
+    <text x="565" y="528" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="565" dy="0">only the keys on that</tspan>
+      <tspan x="565" dy="30">backend move</tspan>
+    </text>
+
+    <!-- Badge: about 1/N of keys -->
+    <rect x="565" y="582" width="230" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="680" y="614" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">about 1/N of keys</text>
+  </g>
+
+  <!-- PANEL 3: Maglev hashing (width 500) -->
+  <g id="panel-maglev">
+    <rect x="1060" y="135" width="500" height="520" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="1060" y="135" width="500" height="74" rx="16" fill="#e8f1ea" />
+    <line x1="1060" y1="209" x2="1560" y2="209" stroke="#207448" stroke-width="1.5" />
+
+    <!-- Table Lookup Icon (56px) -->
+    <g transform="translate(1076, 144)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <rect x="6" y="6" width="44" height="44" rx="6" fill="#ffffff" />
+      <line x1="6" y1="20" x2="50" y2="20" />
+      <line x1="6" y1="34" x2="50" y2="34" />
+      <line x1="20" y1="6" x2="20" y2="50" />
+      <line x1="36" y1="6" x2="36" y2="50" />
+    </g>
+
+    <!-- Maglev Full Label (Single Text Element with tspans) -->
+    <text x="1085" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0" font-weight="bold" fill="#207448">Maglev hashing: a lookup table</tspan>
+      <tspan x="1085" dy="32">built from backend preference</tspan>
+      <tspan x="1085" dy="32">permutations; near-uniform load</tspan>
+      <tspan x="1085" dy="32">with minimal disruption; used</tspan>
+      <tspan x="1085" dy="32">by L4 LBs behind ECMP (Google</tspan>
+      <tspan x="1085" dy="32">Maglev, Meta Katran); table</tspan>
+      <tspan x="1085" dy="32">rebuild cost, small disruption</tspan>
+      <tspan x="1085" dy="32">on change</tspan>
+    </text>
+
+    <!-- Visual Maglev Lookup Table Graphic -->
+    <g id="maglev-table" transform="translate(1085, 508)">
+      <rect x="0" y="0" width="450" height="118" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      <!-- Lookup Table Slots Header -->
+      <rect x="0" y="0" width="450" height="34" rx="8" fill="#e8f1ea" />
+      <line x1="0" y1="34" x2="450" y2="34" stroke="#207448" stroke-width="1.5" />
+      <!-- Grid Columns -->
+      <line x1="75" y1="0" x2="75" y2="118" stroke="#207448" stroke-width="1.5" />
+      <line x1="150" y1="0" x2="150" y2="118" stroke="#207448" stroke-width="1.5" />
+      <line x1="225" y1="0" x2="225" y2="118" stroke="#207448" stroke-width="1.5" />
+      <line x1="300" y1="0" x2="300" y2="118" stroke="#207448" stroke-width="1.5" />
+      <line x1="375" y1="0" x2="375" y2="118" stroke="#207448" stroke-width="1.5" />
+      <line x1="0" y1="76" x2="450" y2="76" stroke="#207448" stroke-width="1.5" />
+
+      <!-- Preference Filling Cells Representation (shapes, no extra text) -->
+      <rect x="12" y="44" width="50" height="22" rx="4" fill="#207448" />
+      <rect x="87" y="44" width="50" height="22" rx="4" fill="#207448" />
+      <rect x="162" y="44" width="50" height="22" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <rect x="237" y="44" width="50" height="22" rx="4" fill="#207448" />
+      <rect x="312" y="44" width="50" height="22" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <rect x="387" y="44" width="50" height="22" rx="4" fill="#207448" />
+
+      <rect x="12" y="86" width="50" height="22" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <rect x="87" y="86" width="50" height="22" rx="4" fill="#207448" />
+      <rect x="162" y="86" width="50" height="22" rx="4" fill="#207448" />
+      <rect x="237" y="86" width="50" height="22" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <rect x="312" y="86" width="50" height="22" rx="4" fill="#207448" />
+      <rect x="387" y="86" width="50" height="22" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    </g>
+  </g>
+
+  <!-- ==================== BOTTOM ROW: THREE PLACES & LAB CHECK ==================== -->
+
+  <!-- Section Header -->
+  <text x="800" y="700" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Why it matters in three places</text>
+
+  <!-- CHIP 1: cache locality and sticky sessions (width 480) -->
+  <g id="chip-cache">
+    <rect x="40" y="724" width="480" height="252" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Storage Cylinder / Cache Icon (56px) -->
+    <g transform="translate(62, 742)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8" fill="#e8f1ea" />
+      <path d="M 6 14 V 38 C 6 44 50 44 50 38 V 14" />
+      <path d="M 6 26 C 6 32 50 32 50 26" />
+    </g>
+    <!-- Label -->
+    <text x="135" y="774" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">cache locality and</tspan>
+      <tspan x="135" dy="34">sticky sessions</tspan>
+    </text>
+
+    <!-- Visual Cache Block -->
+    <g id="cache-visual" transform="translate(62, 858)">
+      <rect x="0" y="0" width="436" height="98" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <rect x="16" y="16" width="124" height="66" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="50" cy="49" r="14" fill="#207448" />
+      <line x1="80" y1="49" x2="116" y2="49" stroke="#207448" stroke-width="3" />
+
+      <line x1="162" y1="49" x2="206" y2="49" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+      <rect x="228" y="16" width="192" height="66" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="260" cy="49" r="14" fill="#207448" />
+      <circle cx="296" cy="49" r="14" fill="#207448" />
+      <circle cx="332" cy="49" r="14" fill="#207448" />
+      <circle cx="368" cy="49" r="14" fill="#207448" />
+    </g>
+  </g>
+
+  <!-- CHIP 2: L4 tier behind ECMP (width 500) -->
+  <g id="chip-l4">
+    <rect x="540" y="724" width="500" height="252" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Network Router / Balancer Icon (56px) -->
+    <g transform="translate(562, 742)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <rect x="8" y="10" width="40" height="36" rx="6" fill="#e8f1ea" />
+      <line x1="14" y1="28" x2="42" y2="28" />
+      <polyline points="20,22 14,28 20,34" />
+      <polyline points="36,22 42,28 36,34" />
+    </g>
+    <!-- Label -->
+    <text x="635" y="768" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="635" dy="0" font-weight="bold" fill="#207448">L4 tier behind ECMP: any</tspan>
+      <tspan x="635" dy="32">node computes the same</tspan>
+      <tspan x="635" dy="32">backend for the same 5-tuple</tspan>
+      <tspan x="635" dy="32">without synchronised state</tspan>
+    </text>
+
+    <!-- Visual ECMP Router to L4 nodes diagram -->
+    <g id="l4-visual" transform="translate(562, 888)">
+      <rect x="0" y="0" width="456" height="68" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <!-- Left: Router icon -->
+      <circle cx="36" cy="34" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <!-- Diverging arrows -->
+      <line x1="60" y1="24" x2="160" y2="16" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+      <line x1="60" y1="44" x2="160" y2="52" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+      <!-- 2 LB Nodes -->
+      <rect x="175" y="6" width="90" height="24" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="175" y="38" width="90" height="24" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <!-- Converging arrows to same backend -->
+      <line x1="275" y1="18" x2="345" y2="30" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+      <line x1="275" y1="50" x2="345" y2="38" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+      <!-- Target Backend -->
+      <rect x="355" y="16" width="85" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <circle cx="397" cy="34" r="8" fill="#207448" />
+    </g>
+  </g>
+
+  <!-- CHIP 3: LLM prefix cache (width 500) -->
+  <g id="chip-llm">
+    <rect x="1060" y="724" width="500" height="252" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- AI / Chip Icon (56px) -->
+    <g transform="translate(1082, 738)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <rect x="10" y="10" width="36" height="36" rx="6" fill="#e8f1ea" />
+      <rect x="18" y="18" width="20" height="20" rx="3" />
+      <line x1="18" y1="4" x2="18" y2="10" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="38" y1="4" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="52" />
+      <line x1="28" y1="46" x2="28" y2="52" />
+      <line x1="38" y1="46" x2="38" y2="52" />
+      <line x1="4" y1="18" x2="10" y2="18" />
+      <line x1="4" y1="28" x2="10" y2="28" />
+      <line x1="4" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="52" y2="18" />
+      <line x1="46" y1="28" x2="52" y2="28" />
+      <line x1="46" y1="38" x2="52" y2="38" />
+    </g>
+    <!-- Label -->
+    <text x="1155" y="760" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1155" dy="0" font-weight="bold" fill="#207448">LLM prefix cache:</tspan>
+      <tspan x="1155" dy="30">consistent hashing on a</tspan>
+      <tspan x="1155" dy="30">session ID or prompt-prefix</tspan>
+      <tspan x="1155" dy="30">hash, with bounded loads</tspan>
+      <tspan x="1155" dy="30">that spill to the next</tspan>
+      <tspan x="1155" dy="30">replica when one exceeds</tspan>
+      <tspan x="1155" dy="30">its share</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== LAB CHECK BADGE ==================== -->
+  <g id="badge-lab">
+    <rect x="40" y="996" width="1520" height="66" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Lab / Beaker Icon (44px) -->
+    <g transform="translate(60, 1007)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 6 L 32 6 M 22 6 L 22 18 L 10 38 C 8 41 10 44 14 44 L 30 44 C 34 44 36 41 34 38 L 22 18" />
+      <line x1="14" y1="34" x2="30" y2="34" />
+    </g>
+    <text x="800" y="1038" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">lab check: rendezvous (HRW) hashing moves about 1/N of keys; bounded-load spillover</text>
+  </g>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR ==================== -->
+  <g id="bar-takeaway">
+    <rect x="40" y="1084" width="1520" height="72" rx="12" fill="#207448" />
+    <!-- Check / Target Icon in white -->
+    <g transform="translate(62, 1096)" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18" />
+      <polyline points="15 24 21 30 33 18" />
+    </g>
+    <text x="800" y="1130" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Hash affinity accepts uneven load, so plan for reshuffling</text>
+  </g>
+</svg>
+'''
+
+target_path = pathlib.Path("test_p3_0220_hash.svg")
+target_path.write_text(svg_code, encoding="utf-8")
+print("Wrote SVG to", target_path)

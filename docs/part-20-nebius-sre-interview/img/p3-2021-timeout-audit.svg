@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A timeout audit: three small bugs that interact</title>
+  <desc>Visual infographic auditing timeout interactions across client SDK, API gateway, and backend engine.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A timeout audit: three small bugs that interact</text>
+
+  
+  <rect x="40" y="110" width="450" height="800" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <circle cx="265" cy="165" r="28" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 265 149 L 265 165 L 277 165" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="265" y1="130" x2="265" y2="137" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  <text x="265" y="235" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">The original chain</text>
+
+  <rect x="64" y="270" width="402" height="610" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+  <text x="88" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="88" dy="0">SDK timeout 30 s;</tspan>
+    <tspan x="88" dy="48">gateway route timeout 40 s</tspan>
+    <tspan x="88" dy="48">with up to 3 tries</tspan>
+    <tspan x="88" dy="48">of 18 s each;</tspan>
+    <tspan x="88" dy="48">engine abort at 20 s;</tspan>
+    <tspan x="88" dy="64">symptoms: duplicated</tspan>
+    <tspan x="88" dy="48">billing lines and</tspan>
+    <tspan x="88" dy="48">slow answers</tspan>
+  </text>
+
+  
+  
+  <rect x="515" y="110" width="570" height="160" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  
+  
+  <rect x="545" y="128" width="46" height="36" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+  <path d="M 556 141 L 564 146 L 556 151 M 567 151 L 577 151" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="610" y="154" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Check function result</text>
+
+  <text x="545" y="206" font-family="monospace" font-size="24" fill="#303a36">check_timeouts(30, 40, 18, 3, 20)</text>
+  <text x="545" y="244" font-family="sans-serif" font-size="24" fill="#303a36">returns three problems</text>
+
+  
+  <rect x="515" y="288" width="570" height="195" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="550" cy="324" r="20" fill="#207448"/>
+  <text x="550" y="332" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="585" y="333" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Problem 1</text>
+
+  <text x="545" y="375" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="545" dy="0">engine abort 20 is not below</tspan>
+    <tspan x="545" dy="33">the per-try limit 18: the gateway</tspan>
+    <tspan x="545" dy="33">gives up on an attempt the</tspan>
+    <tspan x="545" dy="33">engine is still running</tspan>
+  </text>
+
+  
+  <rect x="515" y="501" width="570" height="195" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="550" cy="537" r="20" fill="#207448"/>
+  <text x="550" y="545" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="585" y="546" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Problem 2</text>
+
+  <text x="545" y="588" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="545" dy="0">three tries need up to</tspan>
+    <tspan x="545" dy="33">3 x 18 = 54 seconds inside a</tspan>
+    <tspan x="545" dy="33">40 second total: the third try</tspan>
+    <tspan x="545" dy="33">can never finish</tspan>
+  </text>
+
+  
+  <rect x="515" y="714" width="570" height="195" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="550" cy="750" r="20" fill="#207448"/>
+  <text x="550" y="758" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="585" y="759" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Problem 3</text>
+
+  <text x="545" y="801" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="545" dy="0">client quits at 30, before the</tspan>
+    <tspan x="545" dy="33">gateway finishes, so it retries a</tspan>
+    <tspan x="545" dy="33">call the gateway is still</tspan>
+    <tspan x="545" dy="33">working on</tspan>
+  </text>
+
+  
+  <rect x="1110" y="110" width="450" height="800" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <path d="M 1335 140 L 1362 152 C 1362 176 1335 194 1335 194 C 1335 194 1308 176 1308 152 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 1324 165 L 1332 173 L 1348 156" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="1335" y="235" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1335" dy="0">The fixed chain that</tspan>
+    <tspan x="1335" dy="38">passed the checker</tspan>
+  </text>
+
+  <rect x="1134" y="295" width="402" height="585" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+  <text x="1158" y="380" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1158" dy="0">client 60 s above gateway</tspan>
+    <tspan x="1158" dy="56">total 40 s, two tries</tspan>
+    <tspan x="1158" dy="56">of 18 s each,</tspan>
+    <tspan x="1158" dy="56">engine abort 15 s</tspan>
+  </text>
+
+  
+  <rect x="40" y="935" width="1520" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="68" y="955" width="38" height="46" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="78" y1="970" x2="96" y2="970" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="78" y1="980" x2="96" y2="980" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="78" y1="990" x2="90" y2="990" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  <text x="122" y="990" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Extra notes</text>
+
+  <text x="68" y="1042" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="68" dy="0">meter usage only for the attempt whose output was delivered;</tspan>
+    <tspan x="68" dy="38">Envoy default route timeout of 15 seconds would cut long streams,</tspan>
+    <tspan x="68" dy="38">so set an idle timeout for streaming routes;</tspan>
+    <tspan x="68" dy="38">re-run the checker after any change to any of the four numbers</tspan>
+  </text>
+</svg>

@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Control plane and data plane are separate, and traffic survives a control outage</title>
+  <desc>Visual infographic explaining how the control plane holds desired state while the data plane serves traffic from a signed cached snapshot, keeping requests flowing during a control plane outage.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#207448"/>
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Control plane and data plane are separate, </tspan>
+    <tspan x="800" dy="54">and traffic survives a control outage</tspan>
+  </text>
+
+  
+  <g id="control-plane-container">
+    
+    <rect x="50" y="140" width="1500" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="80" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="80" dy="0">Control plane, low traffic, </tspan>
+      <tspan x="80" dy="36">holding desired state</tspan>
+    </text>
+
+    
+    <g id="badge-consistency-audit">
+      <rect x="920" y="152" width="600" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(938, 162)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 13 V 9.5 C 8 5.5 12 3 18 3 C 24 3 28 5.5 28 9.5 V 13"/>
+        <rect x="4" y="13" width="28" height="20" rx="4"/>
+        <circle cx="18" cy="22" r="2.5" fill="#207448"/>
+        <line x1="18" y1="24.5" x2="18" y2="28.5"/>
+      </g>
+      <text x="988" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">strong consistency and audit log</text>
+    </g>
+
+    
+    
+    <g id="box-endpoints">
+      <rect x="80" y="232" width="420" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(104, 254)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="14" y="16" width="28" height="24" rx="4"/>
+        <line x1="22" y1="6" x2="22" y2="16"/>
+        <line x1="34" y1="6" x2="34" y2="16"/>
+        <path d="M 28 40 V 50"/>
+        <circle cx="28" cy="50" r="3" fill="#207448"/>
+      </g>
+      <text x="180" y="294" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Endpoints</text>
+    </g>
+
+    
+    <g id="box-model-and-replicas">
+      <rect x="540" y="232" width="520" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(564, 254)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="12" y="12" width="32" height="32" rx="6"/>
+        <rect x="20" y="20" width="16" height="16" rx="2" fill="#e8f1ea"/>
+        <line x1="20" y1="4" x2="20" y2="12"/><line x1="28" y1="4" x2="28" y2="12"/><line x1="36" y1="4" x2="36" y2="12"/>
+        <line x1="20" y1="44" x2="20" y2="52"/><line x1="28" y1="44" x2="28" y2="52"/><line x1="36" y1="44" x2="36" y2="52"/>
+        <line x1="4" y1="20" x2="12" y2="20"/><line x1="4" y1="28" x2="12" y2="28"/><line x1="4" y1="36" x2="12" y2="36"/>
+        <line x1="44" y1="20" x2="52" y2="20"/><line x1="44" y1="28" x2="52" y2="28"/><line x1="44" y1="36" x2="52" y2="36"/>
+      </g>
+      <text x="640" y="294" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Model and replicas</text>
+    </g>
+
+    
+    <g id="box-region">
+      <rect x="1100" y="232" width="420" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(1124, 254)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22"/>
+        <line x1="6" y1="28" x2="50" y2="28"/>
+        <path d="M 28 6 C 36 14, 40 22, 40 28 C 40 34, 36 42, 28 50"/>
+        <path d="M 28 6 C 20 14, 16 22, 16 28 C 16 34, 20 42, 28 50"/>
+      </g>
+      <text x="1200" y="294" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Region</text>
+    </g>
+
+    
+    <g id="control-plane-note">
+      <rect x="320" y="356" width="960" height="60" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+      <text x="800" y="394" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">if down, new endpoints blocked, traffic not dropped</text>
+    </g>
+  </g>
+
+  
+  
+  <line x1="270" y1="450" x2="270" y2="538" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="step-1">
+    <circle cx="350" cy="494" r="24" fill="#207448"/>
+    <text x="350" y="502" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="390" y="502" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">control plane publishes state</text>
+  </g>
+
+  
+  <g id="node-signed-snapshot">
+    <rect x="80" y="538" width="420" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(100, 558)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8"/>
+      <path d="M 6 14 V 42 C 6 46.4 15.8 50 28 50 C 40.2 50 50 46.4 50 42 V 14"/>
+      <path d="M 6 28 C 6 32.4 15.8 36 28 36 C 40.2 36 50 32.4 50 28"/>
+    </g>
+    <text x="175" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Signed snapshot</text>
+  </g>
+
+  
+  <g id="step-2">
+    <circle cx="560" cy="588" r="24" fill="#207448"/>
+    <text x="560" y="596" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="600" y="596" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">data plane caches signed snapshot</text>
+  </g>
+
+  
+  <line x1="270" y1="638" x2="270" y2="828" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+
+  
+  <g id="orange-arrow-label">
+    <rect x="330" y="700" width="670" height="50" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2"/>
+    <text x="350" y="733" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">keeps serving when the control plane is down</text>
+  </g>
+
+  
+  <g id="data-plane-container">
+    
+    <rect x="50" y="765" width="1500" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="540" y="806" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Data plane, high traffic</text>
+
+    
+    <g id="step-3">
+      <circle cx="1040" cy="798" r="24" fill="#207448"/>
+      <text x="1040" y="806" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+      <text x="1080" y="806" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">traffic keeps flowing</text>
+    </g>
+
+    
+    
+    <g id="box-gateway">
+      <rect x="80" y="830" width="420" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(105, 888)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 10 12 L 28 4 L 46 12 V 28 C 46 40 28 50 28 50 C 28 50 10 40 10 28 Z"/>
+        <path d="M 22 28 H 34 M 28 22 V 34"/>
+      </g>
+      <text x="180" y="927" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Gateway</text>
+    </g>
+
+    
+    <line x1="500" y1="917" x2="558" y2="917" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="box-router">
+      <rect x="560" y="830" width="420" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(585, 888)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="14" width="44" height="28" rx="6"/>
+        <circle cx="16" cy="28" r="3" fill="#207448"/>
+        <circle cx="28" cy="28" r="3" fill="#207448"/>
+        <circle cx="40" cy="28" r="3" fill="#207448"/>
+        <path d="M 18 14 V 6 M 38 14 V 6 M 28 42 V 50"/>
+      </g>
+      <text x="660" y="927" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Router</text>
+    </g>
+
+    
+    <line x1="980" y1="917" x2="1038" y2="917" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    
+    <g id="box-workers">
+      <rect x="1040" y="830" width="420" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(1065, 888)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="16" rx="4"/>
+        <rect x="6" y="32" width="44" height="16" rx="4"/>
+        <circle cx="14" cy="16" r="2.5" fill="#207448"/>
+        <circle cx="22" cy="16" r="2.5" fill="#207448"/>
+        <circle cx="14" cy="40" r="2.5" fill="#207448"/>
+        <circle cx="22" cy="40" r="2.5" fill="#207448"/>
+        <line x1="38" y1="16" x2="44" y2="16"/>
+        <line x1="38" y1="40" x2="44" y2="40"/>
+      </g>
+      <text x="1140" y="927" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Workers</text>
+    </g>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="1075" width="1500" height="65" rx="12" fill="#207448"/>
+    <text x="800" y="1116" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">The control plane may be down for an hour and customers must not notice.</text>
+  </g>
+</svg>

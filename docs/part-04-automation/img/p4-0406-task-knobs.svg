@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The task keywords grouped by the job each one does</title>
+  <desc>A grouped table for the DCGM exporter task showing Ansible task keywords organized by functional category.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">The task keywords grouped by the job each one does</text>
+  <text x="50" y="86" font-family="sans-serif" font-size="26" font-weight="bold" fill="#506259">A grouped table for the DCGM exporter task</text>
+
+  
+
+  
+  <g id="group-what-to-run">
+    <rect x="50" y="100" width="730" height="325" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="92" cy="138" r="16"/>
+      <path d="M92 116 v6 M92 154 v6 M70 138 h6 M108 138 h6 M76 122 l5 5 M103 149 l5 5 M76 154 l5-5 M103 127 l5-5"/>
+      <polygon points="89,132 98,138 89,144" fill="#207448" stroke="none"/>
+    </g>
+    <text x="126" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">What to run</text>
+    
+    <text x="74" y="186" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">name</text>
+    <text x="74" y="214" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">(always name tasks: it is the log and the</tspan>
+      <tspan x="74" dy="28">documentation; name as a desired state:</tspan>
+      <tspan x="74" dy="28">Ensure X is Y)</tspan>
+    </text>
+
+    <text x="74" y="322" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">the module by FQCN</tspan>
+      <tspan x="74" dy="28" font-family="monospace" font-weight="bold" fill="#207448">ansible.builtin.systemd_service</tspan>
+      <tspan x="74" dy="28">with name dcgm-exporter, state started,</tspan>
+      <tspan x="74" dy="28">enabled true, daemon_reload true</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-whether-to-run">
+    <rect x="50" y="440" width="730" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="92,458 110,476 92,494 74,476"/>
+      <path d="M92 494 v12 M110 476 h10"/>
+    </g>
+    <text x="126" y="488" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Whether to run</text>
+
+    <text x="74" y="528" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">when &quot;gpu in group_names&quot;</text>
+    <text x="74" y="562" font-family="sans-serif" font-size="24" fill="#303a36">(a Jinja expression, no braces)</text>
+    <text x="74" y="608" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">tags [monitoring, dcgm]</text>
+    <text x="74" y="654" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">check_mode false</tspan>
+      <tspan> forces run in check mode</tspan>
+    </text>
+    <text x="74" y="700" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">become true</text>
+  </g>
+
+  
+  <g id="group-environment">
+    <rect x="50" y="750" width="730" height="225" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <line x1="74" y1="772" x2="110" y2="772"/>
+      <line x1="74" y1="786" x2="110" y2="786"/>
+      <circle cx="84" cy="772" r="4" fill="#e8f1ea"/>
+      <circle cx="100" cy="786" r="4" fill="#e8f1ea"/>
+    </g>
+    <text x="126" y="798" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Environment</text>
+
+    <text x="74" y="838" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">environment</text>
+    <text x="74" y="876" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">vars</tspan>
+      <tspan> (task-scoped)</tspan>
+    </text>
+    <text x="74" y="914" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">no_log true</tspan>
+      <tspan> for secrets</tspan>
+    </text>
+    <text x="74" y="952" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">diff true</text>
+  </g>
+
+  
+
+  
+  <g id="group-judging">
+    <rect x="820" y="100" width="730" height="210" rx="12" fill="#fdf4ec" stroke="#db8129" stroke-width="3"/>
+    
+    <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="862" y1="120" x2="862" y2="154"/>
+      <line x1="846" y1="128" x2="878" y2="128"/>
+      <path d="M846 128 l-6 16 h12 z"/>
+      <path d="M878 128 l-6 16 h12 z"/>
+      <line x1="854" y1="154" x2="870" y2="154"/>
+    </g>
+    <text x="896" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">How the result is judged</text>
+
+    <text x="844" y="192" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">changed_when false</text>
+    <text x="844" y="234" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">failed_when dcgm_result.rc not in [0, 3]</text>
+    <text x="844" y="276" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">ignore_errors false</text>
+  </g>
+
+  
+  <g id="group-what-it-leaves-behind">
+    <rect x="820" y="325" width="730" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="846" y="344" width="26" height="34" rx="3"/>
+      <line x1="852" y1="355" x2="866" y2="355"/>
+      <line x1="852" y1="363" x2="866" y2="363"/>
+      <polyline points="868,368 878,368 878,358"/>
+    </g>
+    <text x="896" y="373" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">What it leaves behind</text>
+
+    <text x="844" y="416" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">register dcgm_result</tspan>
+      <tspan> saves the return dict</tspan>
+    </text>
+    <text x="844" y="462" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">notify Restart dcgm-exporter</tspan>
+      <tspan x="844" dy="28">triggers a handler if changed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-waiting-and-trying-again">
+    <rect x="820" y="540" width="730" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="862" cy="578" r="16"/>
+      <polyline points="862,568 862,578 870,582"/>
+      <path d="M876 568 a 18 18 0 0 1 4 10 l4 -4"/>
+    </g>
+    <text x="896" y="588" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Waiting and trying again</text>
+
+    <text x="844" y="626" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">retries 5</text>
+    <text x="844" y="658" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">delay 10</text>
+    <text x="844" y="690" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">until dcgm_result is succeeded</text>
+    <text x="844" y="722" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">timeout 120</tspan>
+      <tspan> per-task seconds</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-where-and-how-widely">
+    <rect x="820" y="765" width="730" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="862" cy="778" r="6"/>
+      <circle cx="848" cy="800" r="6"/>
+      <circle cx="876" cy="800" r="6"/>
+      <line x1="862" y1="784" x2="848" y2="794"/>
+      <line x1="862" y1="784" x2="876" y2="794"/>
+    </g>
+    <text x="896" y="813" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Where and how widely</text>
+
+    <text x="844" y="853" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">delegate_to localhost</text>
+    <text x="844" y="891" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">run_once false</text>
+    <text x="844" y="929" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">throttle 5</tspan>
+      <tspan> (at most 5 hosts concurrently on this task)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="rule-strip">
+    <rect x="50" y="995" width="1500" height="90" rx="10" fill="#e2eee5" stroke="#207448" stroke-width="2"/>
+    <text x="74" y="1033" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">most keywords can be set at play, block or task level and pass down: become, environment,</tspan>
+      <tspan x="74" dy="34">tags, when, vars, ignore_errors; ansible-doc -t keyword -l lists them</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1100" width="1500" height="65" rx="10" fill="#207448"/>
+    <text x="800" y="1142" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Most tasks use only two or three of these knobs</text>
+  </g>
+</svg>

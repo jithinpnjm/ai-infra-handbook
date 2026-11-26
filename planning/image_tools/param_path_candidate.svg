@@ -1,0 +1,215 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Cutting a path apart with parameter expansion, no external commands</title>
+  <desc>Visual infographic explaining Bash parameter expansion for path manipulation, prefix and suffix removal, and variable guards without external processes.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="50" y="60" font-size="48" font-weight="bold" font-family="sans-serif" fill="#303a36">
+    <tspan x="50" dy="0">Cutting a path apart with parameter expansion,</tspan>
+    <tspan x="50" dy="54">no external commands</tspan>
+  </text>
+
+  <!-- Top Segmented Bar: path=/data/run42/model.final.ckpt -->
+  <g id="top-bar">
+    <rect x="50" y="155" width="1000" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    <!-- Segment 1: /data/run42 -->
+    <rect x="55" y="160" width="315" height="75" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="212" y="208" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">/data/run42</text>
+
+    <!-- Segment 2: / -->
+    <rect x="375" y="160" width="55" height="75" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="402" y="209" font-size="32" font-weight="bold" font-family="monospace" fill="#303a36" text-anchor="middle">/</text>
+
+    <!-- Segment 3: model.final -->
+    <rect x="435" y="160" width="345" height="75" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="607" y="208" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">model.final</text>
+
+    <!-- Segment 4: . -->
+    <rect x="785" y="160" width="55" height="75" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="812" y="209" font-size="32" font-weight="bold" font-family="monospace" fill="#303a36" text-anchor="middle">.</text>
+
+    <!-- Segment 5: ckpt -->
+    <rect x="845" y="160" width="200" height="75" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="208" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">ckpt</text>
+  </g>
+
+  <!-- Row 1: ${path##*/} (Orange highlight) -->
+  <g id="row-1">
+    <rect x="50" y="280" width="1000" height="150" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+
+    <!-- Expression badge -->
+    <rect x="70" y="295" width="240" height="44" rx="6" fill="#fdf3e7" stroke="#db8129" stroke-width="2"/>
+    <text x="190" y="327" font-size="28" font-weight="bold" font-family="monospace" fill="#db8129" text-anchor="middle">${path##*/}</text>
+
+    <!-- 5 visual segment slots: Slot 1 & 2 greyed out, Slot 3, 4, 5 orange -->
+    <g transform="translate(0, 0)">
+      <!-- Slot 1: /data/run42 (removed) -->
+      <rect x="330" y="295" width="220" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 2: / (removed) -->
+      <rect x="555" y="295" width="40" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Kept slots 3..5 grouped in orange -->
+      <g stroke="#db8129" stroke-width="2.5" fill="#fdf3e7">
+        <rect x="600" y="295" width="240" height="26" rx="4"/>
+        <rect x="845" y="295" width="40" height="26" rx="4"/>
+        <rect x="890" y="295" width="140" height="26" rx="4"/>
+        <path d="M 600 327 L 600 334 L 815 334 L 815 339 L 815 334 L 1030 334 L 1030 327" fill="none" stroke-width="2"/>
+      </g>
+    </g>
+
+    <!-- Description -->
+    <text x="70" y="372" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="70" dy="0">removes the longest matching prefix up to the last slash:</tspan>
+      <tspan x="70" dy="34">result &apos;model.final.ckpt&apos; (same as basename)</tspan>
+    </text>
+  </g>
+
+  <!-- Row 2: ${path%/*} -->
+  <g id="row-2">
+    <rect x="50" y="445" width="1000" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Expression badge -->
+    <rect x="70" y="460" width="240" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="190" y="492" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">${path%/*}</text>
+
+    <!-- 5 visual segment slots: Slot 1 kept (green), Slots 2..5 removed (grey) -->
+    <g transform="translate(0, 0)">
+      <!-- Slot 1: /data/run42 (kept) -->
+      <rect x="330" y="460" width="220" height="26" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <!-- Slot 2: / (removed) -->
+      <rect x="555" y="460" width="40" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 3: model.final (removed) -->
+      <rect x="600" y="460" width="240" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 4: . (removed) -->
+      <rect x="845" y="460" width="40" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 5: ckpt (removed) -->
+      <rect x="890" y="460" width="140" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Bracket line under kept part -->
+      <path d="M 330 492 L 330 499 L 440 499 L 440 504 L 440 499 L 550 499 L 550 492" fill="none" stroke="#207448" stroke-width="2"/>
+    </g>
+
+    <!-- Description -->
+    <text x="70" y="537" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="70" dy="0">removes the shortest matching suffix starting at the last slash:</tspan>
+      <tspan x="70" dy="34">result &apos;/data/run42&apos; (same as dirname)</tspan>
+    </text>
+  </g>
+
+  <!-- Row 3: ${path%.*} -->
+  <g id="row-3">
+    <rect x="50" y="610" width="1000" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Expression badge -->
+    <rect x="70" y="625" width="240" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="190" y="657" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">${path%.*}</text>
+
+    <!-- 5 visual segment slots: Slots 1..3 kept (green), Slots 4..5 removed (grey) -->
+    <g transform="translate(0, 0)">
+      <!-- Slot 1: /data/run42 (kept) -->
+      <rect x="330" y="625" width="220" height="26" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <!-- Slot 2: / (kept) -->
+      <rect x="555" y="625" width="40" height="26" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <!-- Slot 3: model.final (kept) -->
+      <rect x="600" y="625" width="240" height="26" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <!-- Slot 4: . (removed) -->
+      <rect x="845" y="625" width="40" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 5: ckpt (removed) -->
+      <rect x="890" y="625" width="140" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Bracket line under kept part -->
+      <path d="M 330 657 L 330 664 L 585 664 L 585 669 L 585 664 L 840 664 L 840 657" fill="none" stroke="#207448" stroke-width="2"/>
+    </g>
+
+    <!-- Description -->
+    <text x="70" y="702" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="70" dy="0">removes the shortest suffix starting at the last dot:</tspan>
+      <tspan x="70" dy="34">result &apos;/data/run42/model.final&apos;</tspan>
+    </text>
+  </g>
+
+  <!-- Row 4: ${path##*.} -->
+  <g id="row-4">
+    <rect x="50" y="775" width="1000" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- Expression badge -->
+    <rect x="70" y="790" width="240" height="44" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="190" y="822" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">${path##*.}</text>
+
+    <!-- 5 visual segment slots: Slots 1..4 removed (grey), Slot 5 kept (green) -->
+    <g transform="translate(0, 0)">
+      <!-- Slot 1: /data/run42 (removed) -->
+      <rect x="330" y="790" width="220" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 2: / (removed) -->
+      <rect x="555" y="790" width="40" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 3: model.final (removed) -->
+      <rect x="600" y="790" width="240" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 4: . (removed) -->
+      <rect x="845" y="790" width="40" height="26" rx="4" fill="#e2e8e5" stroke="#94a39b" stroke-width="1.5" stroke-dasharray="4 3"/>
+      <!-- Slot 5: ckpt (kept) -->
+      <rect x="890" y="790" width="140" height="26" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <!-- Bracket line under kept part -->
+      <path d="M 890 822 L 890 829 L 960 829 L 960 834 L 960 829 L 1030 829 L 1030 822" fill="none" stroke="#207448" stroke-width="2"/>
+    </g>
+
+    <!-- Description -->
+    <text x="70" y="867" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="70" dy="0">removes the longest prefix up to the last dot:</tspan>
+      <tspan x="70" dy="34">result &apos;ckpt&apos;</tspan>
+    </text>
+  </g>
+
+  <!-- Side Key -->
+  <g id="side-key">
+    <rect x="1100" y="155" width="450" height="770" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    <!-- Outline Key Icon (56px, stroke 4, green #207448) -->
+    <g transform="translate(1297, 185)">
+      <!-- Key ring -->
+      <circle cx="20" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <!-- Key shaft -->
+      <path d="M34 20 L56 20 M46 20 L46 30 M53 20 L53 27" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <!-- Key Item 1 -->
+    <rect x="1125" y="280" width="400" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="360" font-size="24" font-weight="bold" font-family="sans-serif" fill="#303a36">
+      <tspan x="1150" dy="0"># / ## remove shortest /</tspan>
+      <tspan x="1150" dy="36">longest prefix</tspan>
+    </text>
+
+    <!-- Key Item 2 -->
+    <rect x="1125" y="490" width="400" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1150" y="570" font-size="24" font-weight="bold" font-family="sans-serif" fill="#303a36">
+      <tspan x="1150" dy="0">% / %% remove shortest /</tspan>
+      <tspan x="1150" dy="36">longest suffix</tspan>
+    </text>
+
+    <!-- Key Item 3 -->
+    <rect x="1125" y="700" width="400" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1325" y="800" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">${#path} length</text>
+  </g>
+
+  <!-- Bottom Strip with the guards -->
+  <g id="bottom-guards">
+    <rect x="50" y="965" width="1500" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    <!-- Guard 1 -->
+    <rect x="80" y="992" width="440" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <!-- Outline Shield Icon (56px, stroke 4, green) -->
+    <path d="M120 1020 Q138 1014 156 1020 Q156 1056 138 1070 Q120 1056 120 1020 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="340" y="1052" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">${var:-default}</text>
+
+    <!-- Guard 2 -->
+    <rect x="580" y="992" width="440" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <!-- Outline Shield Icon (56px, stroke 4, green) -->
+    <path d="M620 1020 Q638 1014 656 1020 Q656 1056 638 1070 Q620 1056 620 1020 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="840" y="1052" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">${var:=default}</text>
+
+    <!-- Guard 3 -->
+    <rect x="1080" y="992" width="440" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <!-- Outline Shield Icon (56px, stroke 4, green) -->
+    <path d="M1120 1020 Q1138 1014 1156 1020 Q1150 1056 1138 1070 Q1120 1056 1120 1020 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="1340" y="1052" font-size="28" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">${var:?message}</text>
+  </g>
+</svg>

@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 940" width="1600" height="940">
+  <title>Read an octet by its bit weights: 172 is 10101100</title>
+  <desc>Visual explanation of reading an octet by bit weights, showing the running subtraction process, binary register representation, sum reconstruction, and valid mask octets.</desc>
+
+  
+  <rect width="1600" height="940" fill="#f5f8f5"/>
+
+  
+  <g transform="translate(100, 36)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="40" height="40" rx="6" fill="#e8f1ea"/>
+    <rect x="18" y="18" width="20" height="20" rx="3"/>
+    <line x1="16" y1="0" x2="16" y2="8"/>
+    <line x1="28" y1="0" x2="28" y2="8"/>
+    <line x1="40" y1="0" x2="40" y2="8"/>
+    <line x1="16" y1="48" x2="16" y2="56"/>
+    <line x1="28" y1="48" x2="28" y2="56"/>
+    <line x1="40" y1="48" x2="40" y2="56"/>
+    <line x1="0" y1="16" x2="8" y2="16"/>
+    <line x1="0" y1="28" x2="8" y2="28"/>
+    <line x1="0" y1="40" x2="8" y2="40"/>
+    <line x1="48" y1="16" x2="56" y2="16"/>
+    <line x1="48" y1="28" x2="56" y2="28"/>
+    <line x1="48" y1="40" x2="56" y2="40"/>
+  </g>
+
+  
+  <text x="830" y="60" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Read an octet by its bit weights: 172 is 10101100</text>
+  <text x="830" y="102" font-family="sans-serif" font-size="26" font-weight="600" fill="#207448" text-anchor="middle">Take the biggest weight that fits, bit by bit.</text>
+
+  
+  
+  <rect x="40" y="145" width="242" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="161" cy="185" r="24" fill="#207448"/>
+  <text x="161" y="193" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="161" y="250" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="161" dy="0">172 - 128 = 44 </tspan>
+    <tspan x="161" dy="34">(bit 7 = 1)</tspan>
+  </text>
+
+  
+  <rect x="295.6" y="145" width="242" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="416.6" cy="185" r="24" fill="#207448"/>
+  <text x="416.6" y="193" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="416.6" y="250" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="416.6" dy="0">44 &lt; 64 </tspan>
+    <tspan x="416.6" dy="34">(bit 6 = 0)</tspan>
+  </text>
+
+  
+  <rect x="551.2" y="145" width="242" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="672.2" cy="185" r="24" fill="#207448"/>
+  <text x="672.2" y="193" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="672.2" y="250" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="672.2" dy="0">44 - 32 = 12 </tspan>
+    <tspan x="672.2" dy="34">(bit 5 = 1)</tspan>
+  </text>
+
+  
+  <rect x="806.8" y="145" width="242" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="927.8" cy="185" r="24" fill="#207448"/>
+  <text x="927.8" y="193" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="927.8" y="250" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="927.8" dy="0">12 &lt; 16 </tspan>
+    <tspan x="927.8" dy="34">(bit 4 = 0)</tspan>
+  </text>
+
+  
+  <rect x="1062.4" y="145" width="242" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1183.4" cy="185" r="24" fill="#207448"/>
+  <text x="1183.4" y="193" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  <text x="1183.4" y="250" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1183.4" dy="0">12 - 8 = 4 </tspan>
+    <tspan x="1183.4" dy="34">(bit 3 = 1)</tspan>
+  </text>
+
+  
+  <rect x="1318" y="145" width="242" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1439" cy="185" r="24" fill="#207448"/>
+  <text x="1439" y="193" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+  <text x="1439" y="250" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1439" dy="0">4 - 4 = 0 </tspan>
+    <tspan x="1439" dy="34">(bit 2 = 1)</tspan>
+  </text>
+
+  
+  
+  <rect x="170" y="360" width="140" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="240" y="442" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">128</text>
+
+  
+  <rect x="330" y="360" width="140" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="400" y="442" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">64</text>
+
+  
+  <rect x="490" y="360" width="140" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="560" y="442" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">32</text>
+
+  
+  <rect x="650" y="360" width="140" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="720" y="442" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">16</text>
+
+  
+  <rect x="810" y="360" width="140" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="880" y="442" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">8</text>
+
+  
+  <rect x="970" y="360" width="140" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="1040" y="442" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">4</text>
+
+  
+  <rect x="1130" y="360" width="140" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="1200" y="442" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">2</text>
+
+  
+  <rect x="1290" y="360" width="140" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="1360" y="442" font-family="sans-serif" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">1</text>
+
+  
+  
+  <rect x="170" y="515" width="140" height="105" rx="12" fill="#207448" stroke="#207448" stroke-width="3"/>
+  <text x="240" y="586" font-family="sans-serif" font-size="48" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <rect x="330" y="515" width="140" height="105" rx="12" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2"/>
+  <text x="400" y="586" font-family="sans-serif" font-size="48" font-weight="bold" fill="#708477" text-anchor="middle">0</text>
+
+  
+  <rect x="490" y="515" width="140" height="105" rx="12" fill="#207448" stroke="#207448" stroke-width="3"/>
+  <text x="560" y="586" font-family="sans-serif" font-size="48" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <rect x="650" y="515" width="140" height="105" rx="12" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2"/>
+  <text x="720" y="586" font-family="sans-serif" font-size="48" font-weight="bold" fill="#708477" text-anchor="middle">0</text>
+
+  
+  <rect x="810" y="515" width="140" height="105" rx="12" fill="#207448" stroke="#207448" stroke-width="3"/>
+  <text x="880" y="586" font-family="sans-serif" font-size="48" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <rect x="970" y="515" width="140" height="105" rx="12" fill="#207448" stroke="#207448" stroke-width="3"/>
+  <text x="1040" y="586" font-family="sans-serif" font-size="48" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <rect x="1130" y="515" width="140" height="105" rx="12" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2"/>
+  <text x="1200" y="586" font-family="sans-serif" font-size="48" font-weight="bold" fill="#708477" text-anchor="middle">0</text>
+
+  
+  <rect x="1290" y="515" width="140" height="105" rx="12" fill="#f5f8f5" stroke="#c2d6c6" stroke-width="2"/>
+  <text x="1360" y="586" font-family="sans-serif" font-size="48" font-weight="bold" fill="#708477" text-anchor="middle">0</text>
+
+  
+  <rect x="170" y="665" width="1260" height="95" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <text x="800" y="724" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">128 + 32 + 8 + 4 = 172, read back the other way</text>
+
+  
+  <rect x="170" y="805" width="1260" height="80" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="855" font-family="sans-serif" font-size="26" font-weight="600" fill="#303a36" text-anchor="middle">The only mask octets are 0, 128, 192, 224, 240, 248, 252, 254 and 255.</text>
+</svg>

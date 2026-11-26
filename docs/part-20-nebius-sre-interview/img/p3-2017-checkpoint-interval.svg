@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>How often to checkpoint a 512-GPU job: Young's rule worked</title>
+  <desc>A worked arithmetic chain calculating optimal checkpointing interval using Young's rule for a 512-GPU training job.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="60" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How often to checkpoint a 512-GPU job: Young's rule worked</text>
+  <text x="60" y="105" font-family="sans-serif" font-size="24" fill="#303a36">(all inputs assumed, not Nebius figures)</text>
+
+  
+
+  
+  <g id="step1">
+    <rect x="60" y="140" width="910" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="105" cy="195" r="24" fill="#207448" />
+    <text x="105" y="204" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g transform="translate(150, 167)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="46" height="16" rx="3" />
+      <rect x="0" y="22" width="46" height="16" rx="3" />
+      <circle cx="10" cy="8" r="2.5" fill="#207448" />
+      <circle cx="10" cy="30" r="2.5" fill="#207448" />
+      <line x1="22" y1="8" x2="38" y2="8" />
+      <line x1="22" y1="30" x2="38" y2="30" />
+    </g>
+    
+    <text x="220" y="203" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Cluster 4,096 GPUs in 8-GPU nodes = 512 nodes</text>
+  </g>
+
+  
+  <line x1="515" y1="250" x2="515" y2="280" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step2">
+    <rect x="60" y="280" width="910" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="105" cy="340" r="24" fill="#207448" />
+    <text x="105" y="349" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g transform="translate(150, 312)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="24" cy="24" r="22" />
+      <polyline points="24,10 24,24 35,24" />
+    </g>
+    
+    <text x="220" y="332" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="220" dy="0" font-weight="bold">Assume 50,000 h MTBF per GPU:</tspan>
+      <tspan x="220" dy="34">4,096 x 24 / 50,000 = 1.97 GPU failures per day</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="515" y1="400" x2="515" y2="430" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step3">
+    <rect x="60" y="430" width="910" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="105" cy="490" r="24" fill="#207448" />
+    <text x="105" y="499" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g transform="translate(150, 462)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="8" y="8" width="34" height="34" rx="4" />
+      <line x1="16" y1="2" x2="16" y2="8" />
+      <line x1="25" y1="2" x2="25" y2="8" />
+      <line x1="34" y1="2" x2="34" y2="8" />
+      <line x1="16" y1="42" x2="16" y2="48" />
+      <line x1="25" y1="42" x2="25" y2="48" />
+      <line x1="34" y1="42" x2="34" y2="48" />
+      <line x1="2" y1="16" x2="8" y2="16" />
+      <line x1="2" y1="25" x2="8" y2="25" />
+      <line x1="2" y1="34" x2="8" y2="34" />
+      <line x1="42" y1="16" x2="48" y2="16" />
+      <line x1="42" y1="25" x2="48" y2="25" />
+      <line x1="42" y1="34" x2="48" y2="34" />
+    </g>
+    
+    <text x="220" y="482" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="220" dy="0" font-weight="bold">One 512-GPU job is interrupted every</tspan>
+      <tspan x="220" dy="34">50,000 / 512 = 97.7 h (351,563 s)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="515" y1="550" x2="515" y2="580" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="step4">
+    <rect x="60" y="580" width="910" height="150" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="105" cy="655" r="24" fill="#db8129" />
+    <text x="105" y="664" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(150, 627)" stroke="#db8129" stroke-width="3" fill="none">
+      <ellipse cx="24" cy="10" rx="20" ry="7" />
+      <path d="M 4 10 v 14 c 0 3.86 8.95 7 20 7 s 20 -3.14 20 -7 v -14" />
+      <path d="M 4 24 v 14 c 0 3.86 8.95 7 20 7 s 20 -3.14 20 -7 v -14" />
+    </g>
+    
+    <text x="220" y="628" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="220" dy="0" font-weight="bold">Assume 120 s to write a checkpoint:</tspan>
+      <tspan x="220" dy="34" font-weight="bold" fill="#db8129">Young's rule interval = square root of (2 x 120 x 351,563 s)</tspan>
+      <tspan x="220" dy="34" font-weight="bold" fill="#db8129">= 153 min</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="515" y1="730" x2="515" y2="760" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step5">
+    <rect x="60" y="760" width="910" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="105" cy="820" r="24" fill="#207448" />
+    <text x="105" y="829" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <g transform="translate(150, 792)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 44 24 A 19 19 0 1 1 38 10" />
+      <polyline points="38,2 38,11 47,11" />
+    </g>
+    
+    <text x="220" y="812" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="220" dy="0" font-weight="bold">Lost work per failure, assuming a 10 min restart =</tspan>
+      <tspan x="220" dy="34">153 / 2 + 10 = 86.5 min</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="515" y1="880" x2="515" y2="910" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step6">
+    <rect x="60" y="910" width="910" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="105" cy="970" r="24" fill="#207448" />
+    <text x="105" y="979" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <g transform="translate(150, 942)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="14" cy="14" r="6" />
+      <circle cx="34" cy="34" r="6" />
+      <line x1="38" y1="10" x2="10" y2="38" />
+    </g>
+    
+    <text x="220" y="962" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="220" dy="0" font-weight="bold">Overhead =</tspan>
+      <tspan x="220" dy="34">120 / 9,186 + 5,193 / 351,563 = 2.8 percent</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="sidebox">
+    <rect x="1010" y="140" width="530" height="560" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1045, 175)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="24" cy="24" r="12" />
+      <path d="M 24 2 v 6 M 24 40 v 6 M 2 24 h 6 M 40 24 h 6 M 8.4 8.4 l 4.3 4.3 M 35.3 35.3 l 4.3 4.3 M 8.4 39.6 l 4.3 -4.3 M 35.3 12.7 l 4.3 -4.3" />
+    </g>
+    <text x="1115" y="210" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Sensitivity</text>
+    
+    
+    <text x="1045" y="280" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="1045" dy="0" font-weight="bold">which way answers move:</tspan>
+      <tspan x="1045" dy="48">cluster doubles, so interval</tspan>
+      <tspan x="1045" dy="36">shrinks (failures arrive faster);</tspan>
+      <tspan x="1045" dy="48">checkpoint write slower,</tspan>
+      <tspan x="1045" dy="36">so interval grows (each write</tspan>
+      <tspan x="1045" dy="36">costs more)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="notebox">
+    <rect x="1010" y="740" width="530" height="290" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+    
+    <g transform="translate(1045, 775)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="6" width="36" height="36" rx="4" />
+      <line x1="16" y1="18" x2="32" y2="18" />
+      <line x1="16" y1="27" x2="28" y2="27" />
+    </g>
+    <text x="1115" y="810" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Reference</text>
+
+    
+    <text x="1045" y="880" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="1045" dy="0">first-order approximation,</tspan>
+      <tspan x="1045" dy="42">from Young 1974 and</tspan>
+      <tspan x="1045" dy="42">confirmed in Aupy et al.</tspan>
+    </text>
+  </g>
+
+</svg>

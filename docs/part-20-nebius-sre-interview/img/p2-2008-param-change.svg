@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>When the parameters change, name the broken assumption</title>
+  <desc>Visual guide mapping parameter changes to the broken assumptions and standard engineering responses, followed by a distributed top-k pipeline example.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">When the parameters change, name the broken assumption</text>
+
+  
+  
+  <rect x="50" y="120" width="450" height="105" rx="10" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="84" y="146" width="36" height="44" rx="4" />
+    <line x1="76" y1="156" x2="84" y2="156" />
+    <line x1="76" y1="168" x2="84" y2="168" />
+    <line x1="76" y1="180" x2="84" y2="180" />
+    <line x1="120" y1="156" x2="128" y2="156" />
+    <line x1="120" y1="168" x2="128" y2="168" />
+    <line x1="120" y1="180" x2="128" y2="180" />
+    <line x1="94" y1="160" x2="110" y2="160" />
+    <line x1="94" y1="176" x2="110" y2="176" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="148" y="162">Data does not</tspan>
+    <tspan x="148" y="198">fit in memory</tspan>
+  </text>
+
+  
+  <line x1="500" y1="172.5" x2="576" y2="172.5" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="580" y="120" width="970" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 606 156 C 618 144, 626 168, 638 156 C 646 148, 652 152, 658 156" />
+    <path d="M 606 172 C 618 160, 626 184, 638 172 C 646 164, 652 168, 658 172" />
+    <path d="M 606 188 C 618 176, 626 200, 638 188 C 646 180, 652 184, 658 188" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="680" y="164">Process as a stream, keep only counters,</tspan>
+    <tspan x="680" y="198">or use a bounded heap of size k</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="265" width="450" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="82" y="311" width="40" height="30" rx="4" />
+    <path d="M 92 311 V 301 A 10 10 0 0 1 112 301 V 311" />
+    <circle cx="102" cy="323" r="3" fill="#207448" />
+    <line x1="102" y1="326" x2="102" y2="333" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="148" y="307">It must be</tspan>
+    <tspan x="148" y="343">thread-safe</tspan>
+  </text>
+
+  
+  <line x1="500" y1="317.5" x2="576" y2="317.5" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="580" y="265" width="970" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="620" cy="317" r="10" />
+    <line x1="630" y1="317" x2="654" y2="317" />
+    <line x1="644" y1="317" x2="644" y2="326" />
+    <line x1="650" y1="317" x2="650" y2="326" />
+  </g>
+  <text x="680" y="328" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Say which operations need a lock and where</text>
+
+  
+  
+  <rect x="50" y="410" width="450" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="82" y1="472" x2="82" y2="458" />
+    <line x1="94" y1="472" x2="94" y2="446" />
+    <line x1="106" y1="472" x2="106" y2="434" />
+    <line x1="118" y1="472" x2="118" y2="422" />
+    <line x1="76" y1="476" x2="124" y2="476" stroke-width="2" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="148" y="452">The input is</tspan>
+    <tspan x="148" y="488">already sorted</tspan>
+  </text>
+
+  
+  <line x1="500" y1="462.5" x2="576" y2="462.5" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="580" y="410" width="970" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 612 444 L 628 462 L 612 480" />
+    <path d="M 632 444 L 648 462 L 632 480" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="680" y="454">Say what you can now skip,</tspan>
+    <tspan x="680" y="488">such as the sort or the hash map</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="555" width="450" height="105" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="102" cy="611" r="20" />
+    <line x1="102" y1="585" x2="102" y2="591" />
+    <line x1="102" y1="611" x2="102" y2="601" />
+    <line x1="102" y1="611" x2="114" y2="611" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="148" y="597">The time limit</tspan>
+    <tspan x="148" y="633">is tight</tspan>
+  </text>
+
+  
+  <line x1="500" y1="607.5" x2="576" y2="607.5" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="580" y="555" width="970" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="632" y1="589" x2="632" y2="627" />
+    <line x1="620" y1="627" x2="644" y2="627" />
+    <line x1="612" y1="595" x2="652" y2="601" />
+    <path d="M 612 595 L 606 613 H 618 Z" stroke-width="2" />
+    <path d="M 652 601 L 646 619 H 658 Z" stroke-width="2" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="680" y="599">Say what you would trade,</tspan>
+    <tspan x="680" y="633">such as memory for speed</tspan>
+  </text>
+
+  
+  <rect x="50" y="700" width="1500" height="218" rx="12" fill="#e8ece9" stroke="#c2cebf" stroke-width="2" />
+
+  
+  <rect x="74" y="724" width="456" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="114" cy="762" r="22" fill="#207448" />
+  <text x="114" y="762" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="156" y="744" width="40" height="36" rx="4" />
+    <line x1="166" y1="754" x2="166" y2="770" />
+    <line x1="174" y1="754" x2="174" y2="770" />
+    <line x1="182" y1="754" x2="182" y2="770" />
+    <line x1="162" y1="768" x2="186" y2="756" />
+  </g>
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="100" y="824">Counter and</tspan>
+    <tspan x="100" y="858" font-family="monospace, monospace">most_common(k)</tspan>
+  </text>
+
+  
+  <rect x="572" y="724" width="456" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="612" cy="762" r="22" fill="#207448" />
+  <text x="612" y="762" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="678" cy="746" r="6" />
+    <circle cx="662" cy="774" r="6" />
+    <circle cx="694" cy="774" r="6" />
+    <line x1="673" y1="751" x2="667" y2="769" stroke-width="2" />
+    <line x1="683" y1="751" x2="689" y2="769" stroke-width="2" />
+  </g>
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="598" y="824">heap of size k</tspan>
+    <tspan x="598" y="858">over the counts</tspan>
+  </text>
+
+  
+  <rect x="1070" y="724" width="456" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1110" cy="762" r="22" fill="#207448" />
+  <text x="1110" y="762" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 1152 762 H 1164 L 1176 748 H 1192" />
+    <path d="M 1164 762 L 1176 776 H 1192" />
+    <circle cx="1195" cy="748" r="2" fill="#207448" />
+    <circle cx="1195" cy="776" r="2" fill="#207448" />
+  </g>
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1096" y="824">split by hash of endpoint,</tspan>
+    <tspan x="1096" y="858">merge the top-k lists</tspan>
+  </text>
+
+  
+  <rect x="50" y="958" width="1500" height="70" rx="8" fill="#207448" />
+  <text x="800" y="1002" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Say which assumption in your solution just broke.</text>
+</svg>

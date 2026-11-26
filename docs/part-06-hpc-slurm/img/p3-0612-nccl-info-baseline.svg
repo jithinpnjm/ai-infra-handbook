@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Reading NCCL_DEBUG=INFO against a healthy baseline</title>
+  <desc>Infographic comparing healthy and misconfigured NCCL runs, detailing the cause of socket fallback and practical fix cues.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="14" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 15 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading NCCL_DEBUG=INFO against a healthy baseline</text>
+
+  
+  <g id="node-healthy-run">
+    <rect x="50" y="110" width="720" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(75, 126)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 18 28 L 25 35 L 38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <text x="145" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Healthy run</text>
+
+    
+    <rect x="75" y="195" width="670" height="230" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <text x="100" y="270" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="100" dy="0">transports chosen NET/IB, P2P/CUMEM,</tspan>
+      <tspan x="100" dy="44">NVLS; the rings, the channels</tspan>
+      <tspan x="100" dy="44">and the HCAs in use</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-misconfigured-run">
+    <rect x="830" y="110" width="720" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(855, 126)">
+      <path d="M 28 4 L 54 48 L 2 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="2.5" fill="#207448"/>
+    </g>
+
+    <text x="925" y="165" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Misconfigured run</text>
+
+    
+    <rect x="855" y="195" width="670" height="230" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <text x="880" y="224" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="880" dy="0">NET/Socket on an IB cluster is the classic</tspan>
+      <tspan x="880" dy="28">misconfiguration; NET/Socket: using Ethernet</tspan>
+      <tspan x="880" dy="28">interface eth0 means the job used eth0 where</tspan>
+      <tspan x="880" dy="28">the fabric was expected; unable to enable P2P,</tspan>
+      <tspan x="880" dy="28">falling back to copy means GPUs sit</tspan>
+      <tspan x="880" dy="28">across PCIe root complexes that</tspan>
+      <tspan x="880" dy="28">cannot do peer access</tspan>
+    </text>
+  </g>
+
+  
+  <g id="cause-arrow-group">
+    <path d="M 880 450 L 880 626" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+    
+    <text x="920" y="514" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0">a container exposing the docker0 bridge</tspan>
+      <tspan x="920" dy="34">can make NCCL_SOCKET_IFNAME pick</tspan>
+      <tspan x="920" dy="34">docker0 instead of the fast network;</tspan>
+      <tspan x="920" dy="34">nothing crashes, training is just slow</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-habit">
+    <rect x="50" y="630" width="720" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(75, 646)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 28 8 L 35 28 L 28 48 L 21 28 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <circle cx="28" cy="28" r="3.5" fill="#207448"/>
+    </g>
+
+    <text x="145" y="685" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Habit</text>
+
+    
+    <rect x="75" y="715" width="670" height="230" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <text x="100" y="770" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="100" dy="0">record INFO output from a healthy run</tspan>
+      <tspan x="100" dy="42">as your baseline before changing any</tspan>
+      <tspan x="100" dy="42">variable; lower NCCL_DEBUG from INFO</tspan>
+      <tspan x="100" dy="42">to WARN after troubleshooting</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-fix-cues">
+    <rect x="830" y="630" width="720" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(855, 646)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 17 39 L 30 26 M 26 22 L 35 13 A 8 8 0 0 1 41 24 L 35 30 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <text x="925" y="685" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix cues</text>
+
+    
+    <rect x="855" y="715" width="670" height="230" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <text x="880" y="756" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="880" dy="0" font-family="monospace">NCCL_SOCKET_IFNAME=^lo,docker</tspan><tspan font-family="sans-serif"> or</tspan>
+      <tspan x="880" dy="36">an explicit fabric NIC; confirm</tspan>
+      <tspan x="880" dy="36" font-family="monospace">/dev/infiniband</tspan><tspan font-family="sans-serif"> is mounted in</tspan>
+      <tspan x="880" dy="36">containers, RoCE GID index, and</tspan>
+      <tspan x="880" dy="36" font-family="monospace">lsmod | grep nvidia_peermem</tspan>
+    </text>
+  </g>
+</svg>

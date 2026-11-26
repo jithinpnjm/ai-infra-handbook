@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>What the client sees when a connection fails, and where to look</title>
+  <desc>An infographic comparing connection refused, timed out, no route to host, and reset by peer, detailing wire events, triage locations, and a SYN retry timeline.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+  <text x="800" y="44" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">What the client sees when a connection fails, and</tspan>
+    <tspan x="800" dy="54">where to look</tspan>
+  </text>
+  <!-- Left Panel: SYN Timeline -->
+  <rect x="40" y="95" width="260" height="905" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(142.0, 111)">
+    <polyline points="4,28 14,28 20,12 26,44 32,20 38,36 44,28 52,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <rect x="54" y="195" width="232" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="170.0" y="239" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">SYN then RST</text>
+  <line x1="82" y1="265" x2="82" y2="355" stroke="#207448" stroke-width="2" stroke-dasharray="4 4"/>
+  <line x1="258" y1="265" x2="258" y2="355" stroke="#207448" stroke-width="2" stroke-dasharray="4 4"/>
+  <line x1="82" y1="310" x2="258" y2="310" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)"/>
+  <rect x="54" y="400" width="232" height="600" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="170.0" y="444" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">SYN retried</text>
+  <line x1="92" y1="470" x2="92" y2="960" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="260" y1="470" x2="260" y2="960" stroke="#207448" stroke-width="2" stroke-dasharray="4 4"/>
+  <line x1="84" y1="505" x2="100" y2="505" stroke="#207448" stroke-width="2.5"/>
+  <line x1="92" y1="505" x2="260" y2="505" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="84" y1="590" x2="100" y2="590" stroke="#207448" stroke-width="2.5"/>
+  <line x1="92" y1="590" x2="260" y2="590" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="84" y1="725" x2="100" y2="725" stroke="#207448" stroke-width="2.5"/>
+  <line x1="92" y1="725" x2="260" y2="725" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="84" y1="915" x2="100" y2="915" stroke="#207448" stroke-width="2.5"/>
+  <line x1="92" y1="915" x2="260" y2="915" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <!-- Column Headers -->
+  <rect x="330" y="95" width="360" height="90" rx="10" fill="#207448"/>
+  <text x="510.0" y="133" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="510.0" dy="0">Error the</tspan>
+    <tspan x="510.0" dy="28">client sees</tspan>
+  </text>
+  <rect x="705" y="95" width="480" height="90" rx="10" fill="#207448"/>
+  <text x="945.0" y="133" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="945.0" dy="0">What actually happened</tspan>
+    <tspan x="945.0" dy="28">on the wire</tspan>
+  </text>
+  <rect x="1200" y="95" width="360" height="90" rx="10" fill="#207448"/>
+  <text x="1380.0" y="147" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Where to look</text>
+  <!-- Row 1: Connection refused -->
+  <rect x="330" y="195" width="360" height="190" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(482.0, 209)">
+    <rect x="4" y="8" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="20" x2="28" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="38" cy="20" r="3" fill="#207448"/>
+    <circle cx="28" cy="31" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="23" y1="36" x2="33" y2="26" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="510.0" y="301" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="510.0" dy="0">Connection refused</tspan>
+    <tspan x="510.0" dy="34">(ECONNREFUSED)</tspan>
+  </text>
+  <rect x="705" y="195" width="480" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="729" y="246" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="729" dy="0">a RST came back: host</tspan>
+    <tspan x="729" dy="28">reachable, nobody listening</tspan>
+    <tspan x="729" dy="28">on that port, or a firewall</tspan>
+    <tspan x="729" dy="28">using reject --tcp-reset</tspan>
+  </text>
+  <rect x="1200" y="195" width="360" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1224" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1224" dy="0">the listener:</tspan>
+    <tspan x="1224" dy="28">somebody was home and</tspan>
+    <tspan x="1224" dy="28">said no</tspan>
+  </text>
+  <!-- Row 2: Connection timed out -->
+  <rect x="330" y="400" width="360" height="195" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(482.0, 414)">
+    <circle cx="28" cy="28" r="23" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="28,13 28,28 39,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="510.0" y="506" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="510.0" dy="0">Connection timed</tspan>
+    <tspan x="510.0" dy="34">out (ETIMEDOUT)</tspan>
+  </text>
+  <rect x="705" y="400" width="480" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="729" y="442" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="729" dy="0">no reply to the SYNs, retried</tspan>
+    <tspan x="729" dy="28">with exponential backoff 1,</tspan>
+    <tspan x="729" dy="28">2, 4 seconds and so on;</tspan>
+    <tspan x="729" dy="28">tcp_syn_retries=6 gives about</tspan>
+    <tspan x="729" dy="28">127 seconds</tspan>
+  </text>
+  <rect x="1200" y="400" width="360" height="195" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="1224" y="455" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1224" dy="0">route and firewall or</tspan>
+    <tspan x="1224" dy="28">security group, host</tspan>
+    <tspan x="1224" dy="28">down: nobody answered</tspan>
+    <tspan x="1224" dy="28">the door at all</tspan>
+  </text>
+  <!-- Row 3: No route to host -->
+  <rect x="330" y="610" width="360" height="185" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(482.0, 622)">
+    <polygon points="28,4 52,28 28,52 4,28" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="15" y1="28" x2="41" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="510.0" y="708" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="510.0" dy="0">No route to host or</tspan>
+    <tspan x="510.0" dy="28">Network is</tspan>
+    <tspan x="510.0" dy="28">unreachable</tspan>
+  </text>
+  <rect x="705" y="610" width="480" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="729" y="690" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="729" dy="0">ICMP unreachable from a</tspan>
+    <tspan x="729" dy="28">router, or no local route</tspan>
+  </text>
+  <rect x="1200" y="610" width="360" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1224" y="690" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1224" dy="0">the routing table</tspan>
+    <tspan x="1224" dy="28">(chapter 2.5)</tspan>
+  </text>
+  <!-- Row 4: Connection reset by peer -->
+  <rect x="330" y="810" width="360" height="190" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(482.0, 824)">
+    <rect x="4" y="14" width="20" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="32" y="14" width="20" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="24" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-dasharray="2 3"/>
+  </g>
+  <text x="510.0" y="916" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="510.0" dy="0">Connection reset by</tspan>
+    <tspan x="510.0" dy="34">peer</tspan>
+  </text>
+  <rect x="705" y="810" width="480" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="729" y="890" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="729" dy="0">a RST during an established</tspan>
+    <tspan x="729" dy="28">connection</tspan>
+  </text>
+  <rect x="1200" y="810" width="360" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1224" y="852" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1224" dy="0">peer crashed, app</tspan>
+    <tspan x="1224" dy="28">closed with unread</tspan>
+    <tspan x="1224" dy="28">data, firewall or NAT</tspan>
+    <tspan x="1224" dy="28">state expired, load</tspan>
+    <tspan x="1224" dy="28">balancer idle timeout</tspan>
+  </text>
+  <!-- Bottom Takeaway Bar -->
+  <rect x="40" y="1025" width="1520" height="95" rx="10" fill="#207448"/>
+  <text x="800" y="1065" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">A refusal means the host answered, so look at the listener; a timeout means the SYNs never got</tspan>
+    <tspan x="800" dy="30">a reply, so look at the route and firewall</tspan>
+  </text>
+</svg>

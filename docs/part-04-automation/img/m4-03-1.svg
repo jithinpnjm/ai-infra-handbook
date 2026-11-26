@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>How Ansible executes a task</title>
+  <desc>Sequence diagram illustrating how Ansible executes a task from control node to target host.</desc>
+
+  <defs>
+    <marker id="arrowhead-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448"/>
+    </marker>
+    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">How Ansible executes a task</text>
+
+  
+  <rect x="60" y="165" width="700" height="995" rx="14" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5"/>
+
+  
+  <rect x="840" y="165" width="700" height="995" rx="14" fill="#ffffff" stroke="#d5e3d7" stroke-width="1.5"/>
+
+  
+  <rect x="60" y="75" width="700" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(85, 87)">
+    <rect x="0" y="0" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="42" x2="28" y2="52" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="52" x2="40" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polyline points="12,16 20,21 12,26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="26" y1="26" x2="38" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="160" y="125" fill="#303a36">
+    <tspan font-family="sans-serif" font-size="30" font-weight="bold">Control node </tspan>
+    <tspan font-family="monospace" font-size="26" font-weight="bold">(ansible-playbook)</tspan>
+  </text>
+
+  
+  <rect x="840" y="75" width="700" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(865, 87)">
+    <rect x="0" y="2" width="56" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="27" x2="56" y2="27" stroke="#207448" stroke-width="3"/>
+    <circle cx="12" cy="14" r="3" fill="#207448"/>
+    <circle cx="22" cy="14" r="3" fill="#207448"/>
+    <line x1="34" y1="14" x2="46" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="12" cy="39" r="3" fill="#207448"/>
+    <circle cx="22" cy="39" r="3" fill="#207448"/>
+    <line x1="34" y1="39" x2="46" y2="39" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="945" y="125" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Target host</text>
+
+  
+  <line x1="200" y1="155" x2="200" y2="1160" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6"/>
+  <line x1="1400" y1="155" x2="1400" y2="1160" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6"/>
+
+  
+  <rect x="194" y="210" width="12" height="80" rx="3" fill="#207448"/>
+  <rect x="1394" y="700" width="12" height="80" rx="3" fill="#207448"/>
+  <rect x="194" y="1060" width="12" height="80" rx="3" fill="#207448"/>
+
+  
+  <path d="M 194 220 H 135 V 280 H 194" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)"/>
+  <rect x="210" y="195" width="550" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="242" cy="245" r="22" fill="#207448"/>
+  <text x="242" y="253" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="280" y="230" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="280" dy="0">Parse playbook, load inventory,</tspan>
+    <tspan x="280" dy="28">resolve variables,</tspan>
+    <tspan x="280" dy="28">template task args</tspan>
+  </text>
+
+  
+  <rect x="450" y="335" width="700" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="485" cy="365" r="22" fill="#207448"/>
+  <text x="485" y="373" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="525" y="373" font-family="sans-serif" font-size="24" fill="#303a36">SSH connect (multiplexed <tspan font-family="monospace" font-size="24">ControlPersist</tspan>)</text>
+  <line x1="206" y1="415" x2="1394" y2="415" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead-green)"/>
+
+  
+  <rect x="360" y="435" width="880" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="395" cy="477" r="22" fill="#207448"/>
+  <text x="395" y="485" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="435" y="470" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="435" dy="0">Copy temp module payload</tspan>
+    <tspan x="435" dy="28">(AnsiballZ zip of module + helpers) to <tspan font-family="monospace" font-size="24">~/.ansible/tmp</tspan></tspan>
+  </text>
+  <line x1="206" y1="540" x2="1394" y2="540" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead-green)"/>
+
+  
+  <rect x="450" y="560" width="700" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="485" cy="602" r="22" fill="#207448"/>
+  <text x="485" y="610" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="525" y="595" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0">Execute with remote Python</tspan>
+    <tspan x="525" dy="28">(possibly via <tspan font-family="monospace" font-size="24">sudo</tspan>/<tspan font-family="monospace" font-size="24">become</tspan>)</tspan>
+  </text>
+  <line x1="206" y1="665" x2="1394" y2="665" stroke="#db8129" stroke-width="4" marker-end="url(#arrowhead-orange)"/>
+
+  
+  <path d="M 1406 710 H 1465 V 770 H 1406" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)"/>
+  <rect x="840" y="685" width="550" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="875" cy="735" r="22" fill="#207448"/>
+  <text x="875" y="743" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  <text x="915" y="720" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="915" dy="0">Module inspects state,</tspan>
+    <tspan x="915" dy="28">changes if needed,</tspan>
+    <tspan x="915" dy="28">prints JSON</tspan>
+  </text>
+
+  > C -->
+  <rect x="450" y="825" width="700" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="485" cy="867" r="22" fill="#207448"/>
+  <text x="485" y="875" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+  <text x="525" y="860" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0">JSON result</tspan>
+    <tspan x="525" dy="28">(changed/failed, facts, return values)</tspan>
+  </text>
+  <line x1="1394" y1="930" x2="206" y2="930" stroke="#207448" stroke-width="3.5" stroke-dasharray="8 6" marker-end="url(#arrowhead-green)"/>
+
+  
+  <rect x="550" y="950" width="500" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="585" cy="980" r="22" fill="#207448"/>
+  <text x="585" y="988" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+  <text x="625" y="988" font-family="sans-serif" font-size="24" fill="#303a36">Remove temp files</text>
+  <line x1="206" y1="1030" x2="1394" y2="1030" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead-green)"/>
+
+  
+  <path d="M 194 1070 H 135 V 1130 H 194" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead-green)"/>
+  <rect x="210" y="1050" width="550" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="242" cy="1100" r="22" fill="#207448"/>
+  <text x="242" y="1108" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+  <text x="280" y="1085" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="280" dy="0">Register result, evaluate</tspan>
+    <tspan x="280" dy="28">handlers/conditionals,</tspan>
+    <tspan x="280" dy="28">next task</tspan>
+  </text>
+</svg>

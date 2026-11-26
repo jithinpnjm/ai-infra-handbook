@@ -36,6 +36,10 @@ This chapter walks through the ideas in the order a new operator meets them. It 
 
 ## 1. What "super" means: a single synchronized complex
 
+![Seven nodes wait at a barrier for one overheated slow node, showing the whole job runs at the pace of its slowest member.](./img/p3-0601-slow-node-sync.svg)
+
+*Figure 6.1.1. In a tightly coupled job the slowest node sets the pace for everyone.*
+
 Suppose you have just inherited a hundred Linux servers racked in a cold room. In an ordinary office, nobody panics if one server loses half its memory or a network switch fails. You swap in a spare switch, or you let people print their reports on another floor for a few days while you wait for parts. On a compute cluster, the same casual swap does real damage. Replace a broken InfiniBand switch with a slower Gigabit Ethernet one, or swap an 8 GB compute node for a 4 GB node, and every multi-node job that touches that rack slows to a crawl. Users flood your ticket queue, and they are right to. A tightly coupled parallel job runs at the speed of its slowest participant, the same way a group of students cannot finish a relay race faster than their slowest runner.
 
 Nobody has written an official definition of a supercomputer. Engineers use three working definitions, and the one they pick depends on their job:
@@ -55,6 +59,14 @@ Three technical properties appear in every real supercomputer:
 - Shared infrastructure: a parallel file system, a central batch scheduler, a uniform software stack, and a centralized management plane coordinate the whole fleet.
 
 ### Parallelism, pipelining, and the nine levels of cluster parallelism
+
+![A nine-level list of parallelism with seven hardware levels and two software levels and a debugging rule about the wrong network.](./img/p3-0601-nine-levels.svg)
+
+*Figure 6.1.2. A slow parallel job is often using the wrong fabric, so check which network carries the messages.*
+
+![Five-stage pipeline: 100 elements take 104 cycles pipelined versus 500 without a pipeline.](./img/h01-pipeline-conveyor.svg)
+
+*Figure 6.1.3. A pipeline overlaps the stages of successive elements, so 100 elements finish in 104 cycles instead of 500.*
 
 Every modern supercomputer gets its speed from doing many things at once. Parallel processing has been the main route to high performance since the early days of computing, and your laptop uses the same idea. Simultaneous multithreading, such as Intel HyperThreading or AMD SMT, lets two or more threads of one program run at the same time. Phones and cameras are multicore too. The rule underneath is simple. If two operations are independent, meaning neither one needs the other's result, the hardware can run them at the same time.
 
@@ -96,6 +108,14 @@ When a parallel program is slow, but the MPI environment starts without errors, 
 
 ## 2. Measuring speed: FLOPS, precision, peak and achieved
 
+![A prefix ladder from giga to exa beside a precision table and the three questions to ask of any FLOPS figure.](./img/p3-0601-flops-ladders.svg)
+
+*Figure 6.1.4. Always ask for precision, sparsity and whether a figure is peak or measured.*
+
+![Rpeak is the theoretical ceiling, Rmax is the measured HPL rate, and the gap is the cost of real work.](./img/h01-rpeak-rmax.svg)
+
+*Figure 6.1.5. Rmax is the measured HPL rate, always below the theoretical Rpeak ceiling, and the gap is the cost of waiting.*
+
 Picture an executive briefing on a new GPU cluster. Someone announces that the system delivers "an exaflop of compute." It sounds impressive, and it is almost meaningless until you ask what kind of arithmetic that number counts. An exaflop of 64-bit scientific simulation and an "AI exaflop" of 8-bit tensor arithmetic describe very different hardware. If you accept the headline without asking, you can get your job runtimes and capacity plans wrong by more than a factor of ten. Think of it as a car's top speed. A car that reaches its best speed downhill, with a tailwind, on a special track is not the same as a car you can drive all day on your daily commute. A good planner reads the briefing the way a buyer reads a car review. The first question is always under what conditions the number was earned.
 
 FLOPS stands for floating-point operations per second. A floating-point operation is one arithmetic step on a number with a decimal point, such as adding two decimal numbers together. The prefixes scale the count. Giga means 10^9, tera means 10^12, peta means 10^15, and exa means 10^18. Modern processors and GPUs pack far more low-precision arithmetic units onto the silicon than double-precision units. Because the answer depends so much on precision, every FLOPS rating must come with its precision. The table pairs each precision with the work it usually serves.
@@ -131,6 +151,10 @@ For an accelerator cluster, you multiply the number of GPUs by the vendor's per-
 Think of the gap between Rpeak and Rmax as the cost of doing real work. A highway has a theoretical lane capacity, but the traffic that actually moves is lower. Trucks wait at merges, brake for curves, and sometimes stop for a breakdown. A cluster loses speed in the same way, at its merges, its curves, and its breakdowns.
 
 ### A calculator you can run
+
+![Four example numbers for one illustrative cluster: CPU Rpeak, GPU FP64 Rpeak, HPL efficiency and BF16 peak with MFU.](./img/p3-0601-flops-worked-numbers.svg)
+
+*Figure 6.1.6. The same hardware gives very different headline numbers depending on precision and efficiency.*
 
 Reading numbers in a table is one thing. Running them is better, because you can change one input and watch the output move. Running `code/part06/flops.py` shows how precision and efficiency change the numbers. The core is two small functions and one example:
 
@@ -168,6 +192,10 @@ One way to check MFU by hand is to count the useful FLOPs in one training step, 
 
 ## 3. The lists and benchmarks
 
+![A table of eight benchmarks showing what each measures and what it leaves out, with burn-in use.](./img/p3-0601-benchmark-map.svg)
+
+*Figure 6.1.7. Use benchmarks as acceptance tests and remember the workload each one does not test.*
+
 Picture a newly built cluster being handed over from the hardware integrator to your operations team. How do you prove that all thousand nodes, cables, power supplies, and cooling loops really work together under full load? Running `nvidia-smi` on each node only shows that the GPUs turned on. It says nothing about whether the fabric carries full traffic, or whether the cooling keeps up once every node is busy. So the community uses standard benchmark suites. They rank the world's largest machines, and they burn in new clusters before users arrive.
 
 Think of acceptance as a test drive before you sign for a fleet of delivery vans. You do not only check that the engine starts. You load the van, drive it up the hill, and run the heater and the air conditioner at the same time. A cluster needs the same kind of test. Power, fabric, cooling, and storage all have to hold up together under load, because a fault in one of them often shows up only when the others are busy.
@@ -204,6 +232,10 @@ Each caveat changes how you read a rank. The first means a missing entry says no
 **Use HPL, HPCG, IO500, and MLPerf as burn-in acceptance tests, so that fabric, thermal, and storage flaws show up before you hand a cluster to users.**
 
 ## 4. Traditional HPC versus the AI factory
+
+![Two columns compare traditional HPC and AI factories across workloads, precision, traffic, jobs, failure and rack power.](./img/p3-0601-hpc-vs-ai-factory.svg)
+
+*Figure 6.1.8. The skills carry over but failures are larger and faster in an AI factory.*
 
 Suppose an experienced HPC systems administrator moves onto an LLM training platform team. On day one, the room looks familiar. There are liquid-cooled racks, InfiniBand switches, a Lustre or WEKA parallel file system, and Slurm running batch jobs. By Friday, the differences are obvious. In a traditional center, two hundred scientists run two hundred different Fortran and C++ programs, each on a few dozen nodes. On the AI platform, one foundation-model pre-training job may hold four thousand GPUs for six weeks straight. That job floods the fabric with huge collective operations, and it writes multi-terabyte checkpoints every few hours.
 
@@ -243,6 +275,10 @@ Someone in a war room says, "The cluster is down." What that means depends on th
 
 ### The three classic cluster types: HA, high-productivity, and HPC
 
+![Three cluster types compared by goal, coupling and the effect of a single node failure.](./img/p3-0601-cluster-types.svg)
+
+*Figure 6.1.9. Match the fault-tolerance design to how tightly the workload is coupled.*
+
 There are three classic types, and each one answers that question differently.
 
 1. High-availability and load-balanced service clusters. Their job is to keep a resource available, such as a website, a database, or an inference API, with as little latency as possible. Think of a restaurant with two chefs. If one chef goes home sick, customers still get fed, because the other chef takes the orders. These clusters are usually paired with load balancing, A/B or canary tests, and continuous deployment. If one node fails, clients reconnect and reach the service on another node. Cloud computing works on a similar principle. You do not know which physical server will run your image, because the platform picks free capacity for you.
@@ -275,6 +311,10 @@ Day to day, the difference shows up in your tools. An administrator on a custom 
 
 ## 6. What "super" means to the administrator
 
+![Eight tiles list the invariants every node must keep, with examples of clock drift and driver mismatch.](./img/p3-0601-eight-invariants.svg)
+
+*Figure 6.1.10. Small differences between nodes cause failures that look like application bugs.*
+
 A user who submits a job script sees one giant virtual computer with a huge memory and tens of thousands of cores. You, the administrator on call, know the illusion holds together only because eight strict rules apply to every node in the fleet. Think of a choir. The audience hears one voice, but only because every singer holds the same pitch and keeps the same tempo. When one singer drifts, the sound changes in a way that is hard to trace from the audience. The table lists the eight rules. Each one maps to a chapter, so you can read the detail when you need it.
 
 Here is what that illusion costs you. Every time a user submits a job, you are the one who makes sure the nodes it lands on match the others. The user never sees the work that keeps those nodes identical, and that is exactly the goal.
@@ -296,6 +336,10 @@ Take invariant 1 as a second example. Suppose one node runs an older GPU driver 
 
 ### Why office IT habits fail in a supercomputer data center
 
+![Four rows contrast office IT habits on density, utilization, I/O storms and failure detection with cluster reality.](./img/p3-0601-office-vs-cluster.svg)
+
+*Figure 6.1.11. A good monitor tells you about a fault before the user does.*
+
 At first glance, a large cluster looks like many office computers joined by a local network and a few storage servers. In practice, four differences separate a supercomputer from office IT. Each one breaks a habit that works fine in an office.
 
 The first difference is density. Office PCs are spread across a building. A cluster is packed into a few square meters, or at most a few dozen. You cannot cool it by opening a window, and you cannot run it from ordinary wall sockets or a household UPS. In modern clusters, **the computing part can occupy less than a quarter of the total installation area**. The rest goes to power and climate equipment, covered in Chapter 6.30.
@@ -316,6 +360,10 @@ A good monitor tells you about a fault before the user does. Watch the job failu
 
 ### Power-on surge hazards and startup sequencing
 
+![Three hazards of powering on a cluster lead to a startup order: storage first, then compute nodes in staggered groups.](./img/h01-power-on-order.svg)
+
+*Figure 6.1.12. Powering on storage first and then compute nodes in staggered groups keeps the electrical load, the request load, and the heat within limits.*
+
 Powering on is itself a peak load. In an office, people arrive at different times and turn their computers on one by one. Powering on a supercomputer all at once creates three serious hazards. Think of a street where every household switches on every kettle, oven, and heater at 7 a.m. The fuse blows, and the whole street goes dark.
 
 Write the startup order down before you begin, and keep it on a card at the rack. The storage items go ahead of the compute items, and the compute items go in groups. The three hazards below explain why each part of that order exists.
@@ -327,6 +375,10 @@ Write the startup order down before you begin, and keep it on a card at the rack
 Put the three hazards together and the plan is clear. Stagger the boot in groups, so the electrical load and the request load stay manageable. Bring the storage up in the order its controllers expect. Space the racks out in time, so the servers that are already running can keep their hot corridor under control.
 
 ### Command-line fleet management and the "panacea" console trap
+
+![A pipeline from one node test to a fleet-wide memory check that flags a node with 448 GB instead of 512 GB.](./img/p3-0601-fleet-ram-audit.svg)
+
+*Figure 6.1.13. A one-line fleet check finds the node that lost a memory module in seconds.*
 
 Many complicated cluster jobs come down to a few standard commands chained together. Most of the time, you do not need a special tool at all. The real effort is in learning each command well, and that takes time. After that, the command line becomes a toolbox that you can combine in many ways.
 
@@ -353,24 +405,17 @@ Imagine a console that looks perfect in a demo. You install it and point it at t
 
 ## 7. The stack at a glance
 
+![A layered stack from users to facility with a highlighted trace from scheduler to fabric to storage for a slow job.](./img/p3-0601-slow-job-trace.svg)
+
+*Figure 6.1.14. A slow job with busy GPUs usually points to the fabric or storage layer.*
+
 Picture a Monday morning when a user writes that the job is slow and the GPUs look busy. Where do you look first? The diagram answers that question. The diagram shows how the pieces of a supercomputer connect, from the users at the top to the facility at the bottom. Read it from the top down. A request enters through a login node, passes to the scheduler, and lands on compute nodes. Those nodes depend on the fabric, the storage, the management plane, and the facility beneath them. The table after the diagram maps each layer to the chapters that cover it.
 
 If you have never drawn a cluster, the diagram is the easiest place to start. Put your finger on the users at the top and follow the arrows down. Each arrow is a request or a dependency, and each box is a team's responsibility.
 
-```mermaid
-flowchart TB
-  U[Users and workflows]
-  U --> L[Login nodes: SSH, Open OnDemand]
-  L --> S[Scheduler: Slurm or K8s queues]
-  S --> C[Compute nodes with GPUs]
-  C --> A[Apps: MPI, NCCL, PyTorch]
-  C --- F[Compute fabric: IB or RoCE]
-  C --- P[Parallel storage: Lustre, WEKA]
-  M[Management: PXE, BCM, BMC] --> C
-  M --> S
-  M --> P
-  FAC[Facility: power, liquid cooling] --> C
-```
+![The stack at a glance](./img/m6-01-1.svg)
+
+*Figure 6.1.15. The stack at a glance, as a diagram.*
 
 | Layer in diagram | Role in the supercomputer complex | Covered in |
 |---|---|---|
@@ -387,6 +432,10 @@ When you trace a failure, start by finding its layer, and then use the table to 
 Here is a worked trace. A user says their job is slow, and their GPUs look busy. You start at the top and check the scheduler, so you know where the job landed. Then you check the fabric counters for the nodes in that job, and after that the storage latency. The GPU looked fine all along, because the fault was never in the GPU.
 
 ## 8. Common misconceptions
+
+![Five common beliefs about supercomputers each paired with what is actually true.](./img/p3-0601-misconceptions.svg)
+
+*Figure 6.1.16. Each belief reads one number or one picture as the whole story.*
 
 Picture a planning meeting where someone says the new cluster will make training faster, and someone else quotes a TOP500 rank as proof. Here are five beliefs you will hear often. Each one sounds reasonable until a real job proves it wrong.
 

@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The first minute: ten commands, each asks one question</title>
+  <desc>Checklist ladder of ten Linux commands and questions in time order.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="60" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The first 60 seconds, command by command</text>
+  <g id="clock-badge">
+    <circle cx="1265" cy="58" r="20" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <line x1="1265" y1="58" x2="1265" y2="45" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="1265" y1="58" x2="1277" y2="58" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="1265" cy="58" r="3" fill="#207448"/>
+    <text x="1298" y="66" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">1 second interval</text>
+  </g>
+  <g id="down-arrow">
+    <line x1="82" y1="90" x2="82" y2="1080" stroke="#207448" stroke-width="2.5"/>
+    <polygon points="75,1080 82,1098 89,1080" fill="#207448"/>
+    <text x="58" y="594" transform="rotate(-90 58 594)" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">read top to bottom</text>
+  </g>
+  <g id="bracket-cpu">
+    <path d="M 248 90 H 236 V 588 H 248" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="165" y="347" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">CPU</text>
+  </g>
+  <g id="bracket-memory-disk">
+    <path d="M 248 600 H 236 V 792 H 248" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="165" y="690" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle"><tspan x="165" dy="0">Memory </tspan><tspan x="165" dy="28">and disk</tspan></text>
+  </g>
+  <g id="bracket-network">
+    <path d="M 248 804 H 236 V 996 H 248" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="165" y="908" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">Network</text>
+  </g>
+  <g id="label-sanity-check">
+    <text x="165" y="1047" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle"><tspan x="165" dy="0">sanity </tspan><tspan x="165" dy="28">check</tspan></text>
+  </g>
+  <g id="row-1">
+    <rect x="260" y="90" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="135" r="24" fill="#207448"/>
+    <text x="300" y="135" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(338, 109)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="21"/>
+      <line x1="26" y1="26" x2="26" y2="13"/>
+      <line x1="26" y1="26" x2="35" y2="26"/>
+      <circle cx="26" cy="26" r="3" fill="#207448"/>
+    </g>
+    <rect x="410" y="107" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="135" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">uptime</text>
+    <text x="725" y="125" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="725" dy="0">Is demand rising or falling? </tspan><tspan x="725" dy="26">Compare the 1, 5 and 15 minute numbers.</tspan></text>
+  </g>
+  <g id="row-2">
+    <rect x="260" y="192" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="237" r="24" fill="#207448"/>
+    <text x="300" y="237" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(338, 211)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="7" width="42" height="38" rx="5"/>
+      <line x1="5" y1="16" x2="47" y2="16" stroke-width="2"/>
+      <path d="M 12 24 L 18 29 L 12 34" stroke-width="2.5"/>
+      <line x1="23" y1="34" x2="36" y2="34" stroke-width="2.5"/>
+    </g>
+    <rect x="410" y="209" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="237" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">dmesg -T | tail</text>
+    <text x="725" y="237" dominant-baseline="central" font-family="sans-serif" font-size="24" fill="#303a36">Did the kernel log errors, including OOM kills?</text>
+  </g>
+  <g id="row-3">
+    <rect x="260" y="294" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="339" r="24" fill="#207448"/>
+    <text x="300" y="339" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(338, 313)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="40" height="36" rx="4"/>
+      <line x1="14" y1="36" x2="14" y2="26" stroke-width="4"/>
+      <line x1="26" y1="36" x2="26" y2="16" stroke-width="4"/>
+      <line x1="38" y1="36" x2="38" y2="22" stroke-width="4"/>
+    </g>
+    <rect x="410" y="311" width="220" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="520" y="339" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">vmstat -SM 1</text>
+    <rect x="645" y="311" width="355" height="56" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="2.5"/>
+    <text x="822" y="339" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">first row is since boot</text>
+    <text x="1025" y="329" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="1025" dy="0">Run queue, swapping and overall </tspan><tspan x="1025" dy="26">CPU split, one second at a time.</tspan></text>
+  </g>
+  <g id="row-4">
+    <rect x="260" y="396" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="441" r="24" fill="#207448"/>
+    <text x="300" y="441" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(338, 415)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="32" height="32" rx="4"/>
+      <line x1="26" y1="10" x2="26" y2="42" stroke-width="2"/>
+      <line x1="10" y1="26" x2="42" y2="26" stroke-width="2"/>
+      <line x1="18" y1="4" x2="18" y2="10" stroke-width="2.5"/>
+      <line x1="34" y1="4" x2="34" y2="10" stroke-width="2.5"/>
+      <line x1="18" y1="42" x2="18" y2="48" stroke-width="2.5"/>
+      <line x1="34" y1="42" x2="34" y2="48" stroke-width="2.5"/>
+      <line x1="4" y1="18" x2="10" y2="18" stroke-width="2.5"/>
+      <line x1="4" y1="34" x2="10" y2="34" stroke-width="2.5"/>
+      <line x1="42" y1="18" x2="48" y2="18" stroke-width="2.5"/>
+      <line x1="42" y1="34" x2="48" y2="34" stroke-width="2.5"/>
+    </g>
+    <rect x="410" y="413" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="441" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">mpstat -P ALL 1</text>
+    <text x="725" y="441" dominant-baseline="central" font-family="sans-serif" font-size="24" fill="#303a36">Is one CPU busy while the others idle?</text>
+  </g>
+  <g id="row-5">
+    <rect x="260" y="498" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="543" r="24" fill="#207448"/>
+    <text x="300" y="543" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <g transform="translate(338, 517)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="7" y="7" width="38" height="38" rx="5"/>
+      <circle cx="16" cy="17" r="2.5" fill="#207448"/>
+      <line x1="23" y1="17" x2="38" y2="17" stroke-width="2.5"/>
+      <circle cx="16" cy="26" r="2.5" fill="#207448"/>
+      <line x1="23" y1="26" x2="35" y2="26" stroke-width="2.5"/>
+      <circle cx="16" cy="35" r="2.5" fill="#207448"/>
+      <line x1="23" y1="35" x2="37" y2="35" stroke-width="2.5"/>
+    </g>
+    <rect x="410" y="515" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="543" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">pidstat 1</text>
+    <text x="725" y="533" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="725" dy="0">Which processes use the CPU, </tspan><tspan x="725" dy="26">and user or kernel time?</tspan></text>
+  </g>
+  <g id="row-6">
+    <rect x="260" y="600" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="645" r="24" fill="#207448"/>
+    <text x="300" y="645" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    <g transform="translate(338, 619)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="26" cy="13" rx="19" ry="6"/>
+      <path d="M 7 13 V 26 C 7 29.5 15.5 32 26 32 C 36.5 32 45 29.5 45 26 V 13"/>
+      <path d="M 7 26 V 39 C 7 42.5 15.5 45 26 45 C 36.5 45 45 42.5 45 39 V 26"/>
+      <circle cx="36" cy="39" r="2" fill="#207448"/>
+    </g>
+    <rect x="410" y="617" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="645" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">iostat -sxz 1</text>
+    <text x="725" y="645" dominant-baseline="central" font-family="sans-serif" font-size="24" fill="#303a36">Disk IOPS, throughput, wait time and percent busy.</text>
+  </g>
+  <g id="row-7">
+    <rect x="260" y="702" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="747" r="24" fill="#207448"/>
+    <text x="300" y="747" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+    <g transform="translate(338, 721)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="7" y="15" width="38" height="22" rx="3"/>
+      <rect x="12" y="19" width="6" height="9" stroke-width="1.8"/>
+      <rect x="23" y="19" width="6" height="9" stroke-width="1.8"/>
+      <rect x="34" y="19" width="6" height="9" stroke-width="1.8"/>
+      <line x1="12" y1="37" x2="12" y2="41" stroke-width="2"/>
+      <line x1="19" y1="37" x2="19" y2="41" stroke-width="2"/>
+      <line x1="26" y1="37" x2="26" y2="41" stroke-width="2"/>
+      <line x1="33" y1="37" x2="33" y2="41" stroke-width="2"/>
+      <line x1="40" y1="37" x2="40" y2="41" stroke-width="2"/>
+    </g>
+    <rect x="410" y="719" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="747" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">free -m</text>
+    <text x="725" y="747" dominant-baseline="central" font-family="sans-serif" font-size="24" fill="#303a36">Memory in use, including the page cache.</text>
+  </g>
+  <g id="row-8">
+    <rect x="260" y="804" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="849" r="24" fill="#207448"/>
+    <text x="300" y="849" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">8</text>
+    <g transform="translate(338, 823)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="9" y="9" width="34" height="32" rx="4"/>
+      <path d="M 16 41 V 35 H 36 V 41" stroke-width="2"/>
+      <line x1="19" y1="15" x2="19" y2="23" stroke-width="2"/>
+      <line x1="23" y1="15" x2="23" y2="23" stroke-width="2"/>
+      <line x1="27" y1="15" x2="27" y2="23" stroke-width="2"/>
+      <line x1="31" y1="15" x2="31" y2="23" stroke-width="2"/>
+      <circle cx="15" cy="28" r="2" fill="#207448"/>
+      <circle cx="37" cy="28" r="2" fill="#207448"/>
+    </g>
+    <rect x="410" y="821" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="849" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">sar -n DEV 1</text>
+    <text x="725" y="849" dominant-baseline="central" font-family="sans-serif" font-size="24" fill="#303a36">Network interface throughput and packets.</text>
+  </g>
+  <g id="row-9">
+    <rect x="260" y="906" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="951" r="24" fill="#207448"/>
+    <text x="300" y="951" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">9</text>
+    <g transform="translate(338, 925)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="15" cy="26" r="7"/>
+      <circle cx="37" cy="26" r="7"/>
+      <path d="M 22 22 H 30" stroke-width="2.5"/>
+      <path d="M 22 30 H 30" stroke-width="2.5"/>
+      <path d="M 6 21 A 7 7 0 0 0 6 31" stroke-width="2"/>
+      <path d="M 46 21 A 7 7 0 0 1 46 31" stroke-width="2"/>
+    </g>
+    <rect x="410" y="923" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="951" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">sar -n TCP,ETCP 1</text>
+    <text x="725" y="951" dominant-baseline="central" font-family="sans-serif" font-size="24" fill="#303a36">TCP connection rates and retransmits.</text>
+  </g>
+  <g id="row-10">
+    <rect x="260" y="1008" width="1300" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    <circle cx="300" cy="1053" r="24" fill="#207448"/>
+    <text x="300" y="1053" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">10</text>
+    <g transform="translate(338, 1027)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="7" width="42" height="38" rx="4"/>
+      <line x1="5" y1="16" x2="47" y2="16" stroke-width="1.8"/>
+      <path d="M 13 32 A 7 7 0 1 1 23 32" stroke-width="2.2"/>
+      <line x1="18" y1="27" x2="21" y2="22" stroke-width="2"/>
+      <line x1="28" y1="22" x2="41" y2="22" stroke-width="2.2"/>
+      <line x1="28" y1="29" x2="37" y2="29" stroke-width="2.2"/>
+      <line x1="28" y1="36" x2="39" y2="36" stroke-width="2.2"/>
+    </g>
+    <rect x="410" y="1025" width="290" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="555" y="1053" text-anchor="middle" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">top</text>
+    <text x="725" y="1053" dominant-baseline="central" font-family="sans-serif" font-size="24" fill="#303a36">A sanity overview of everything above.</text>
+  </g>
+  <g id="takeaway-bar">
+    <rect x="40" y="1110" width="1520" height="50" rx="10" fill="#207448"/>
+    <text x="800" y="1143" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Run the checklist top to bottom without stopping to theorise, then say what each line told you.</text>
+  </g>
+</svg>

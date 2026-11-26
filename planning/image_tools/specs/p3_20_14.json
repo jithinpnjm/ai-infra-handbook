@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p3-2014-endpoint-lifecycle",
+  "title": "Dedicated endpoint lifecycle as a state machine",
+  "spec": "Two states drawn as boxes: 'disabled' and 'enabled', plus 'deleted' end state. Arrows: 'create (from nothing) leads to disabled: validate the spec before any GPU is reserved'; 'enable: disabled to enabled: data plane starts replicas'; 'disable: enabled to disabled: traffic stops, replicas scale to zero, spec kept'; 'update: allowed in either state, state unchanged, may start a rollout'; 'delete: only from disabled: forces a deliberate two-step removal'. Validator box: 'rejects a GPU type outside the four public choices, a region outside EU and US, fewer than one GPU per replica, and a maximum below the minimum; a bad request costs only a rejected call'. Reconcile loop note: 'control plane keeps reading desired state, looking at what is running and taking the smallest step that closes the gap'. Architecture strip: 'control plane holds spec and lifecycle and sends desired state to the EU and US regional data planes; replicas pull weights from the weights hub; client traffic goes through the router to replicas'. Text at least 24px.",
+  "anchor": "### 1. The endpoint as a spec, owned by a control plane",
+  "alt": "A state machine with disabled, enabled and deleted states showing which actions are allowed from each.",
+  "cap": "Delete is allowed only from disabled, which forces a deliberate two-step removal."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p3-2014-endpoint-sizing",
+  "title": "Sizing a dedicated endpoint: memory first, then one extra replica",
+  "spec": "Worked example for a 70 billion parameter model. Step 1 'weights = parameters x bytes per parameter: 70 x 2 bytes at FP16 = 140 GB'. Step 2 'one H100 SXM has 80 GB (NVL has 94 GB), so 140 GB cannot fit on one GPU; at least two GPUs for weights alone'. Step 3 'add KV cache and activation headroom: the honest answer is four GPUs per replica, or fewer if you quantise (fewer bits per number, some accuracy cost)'. Step 4 'GPUs per replica is a memory question first and a latency question second: tensor parallelism cuts latency but costs interconnect traffic and makes each replica a bigger unit to lose and reload'. Step 5 'replica count: minimum is the SLA floor, maximum is the cost ceiling and the rollout budget'. Step 6 'GPUs the data plane must be able to reserve = (maximum replicas + 1 surge replica) x GPUs per replica; example 3 maximum replicas at 4 GPUs each gives 16 GPUs, not 12'. Text at least 24px.",
+  "anchor": "### 2. Sizing the endpoint: GPU type, GPUs per replica, min and max",
+  "alt": "A six-step sizing worked example from 140 GB of weights to a reservation of 16 GPUs including one surge replica.",
+  "cap": "Always budget one extra replica of GPUs so a rolling update has somewhere to start the new pod."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p3-2014-decision-order",
+  "title": "Promote, hold or roll back: the order of the rules",
+  "spec": "Decision flow in the order the code checks. Gates two groups: 'latency: canary TTFT p99 and ITL p99 against baseline with a ratio limit'; 'quality: eval score on a fixed prompt set, share of finish_reason equal to length, error rate'. Rules top to bottom: '1 hard failures roll back immediately even with little traffic: zero tokens while receiving traffic, error rate above the hard limit, quality down beyond the drop limit on the eval, finish_reason length share shifted beyond the limit, latency ratio far above the limit (limit plus a hold band)'. '2 if requests are below the minimum: hold (need more evidence)'. '3 soft signals only (marginal results such as error rate up over baseline, latency ratio above the limit but inside the band): hold'. '4 otherwise: promote, all gates passed'. Reasons 'the cheapest way to be wrong is to wait, the most expensive is to promote a broken model; a 6 point quality drop on a fixed eval does not need 200 requests to be real'. Rule 'compare the canary replica against the baseline over the same prompt mix after warming its empty prefix cache, not against the whole fleet'; 'router weights not replica count set the share: 5 percent of 8 replicas still needs one whole replica'. Text at least 24px.",
+  "anchor": "### 8. Traffic shifting with a router, and the gates",
+  "alt": "A decision flow where hard failures roll back at once, thin data holds, marginal results hold and only a clean pass promotes.",
+  "cap": "Only a clean pass with enough traffic promotes, and hard signals roll back without waiting."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p3-2014-quality-regression",
+  "title": "Latency is green but quality regressed",
+  "spec": "Side-by-side metric table for a fine-tuned checkpoint canary at 5 percent. Rows: 'TTFT and inter-token latency: match baseline'; 'error rate: same'; 'token rate: same'; 'eval quality: 0.90 baseline versus 0.84 canary, down 0.060'; 'finish_reason length share: 0.05 versus 0.22, shift 0.17'. Verdict: 'decision returned rollback with two reasons, quality down 0.060 and a length-share shift of 0.17; a latency-only gate would have promoted; support reported cut-off answers a day after rollout'. Actions: 'roll back by pointing the endpoint at the previous version id; compare outputs on the fixed prompt set; check the tokenizer and generation config bound to the new version; add the eval and finish_reason gates to the pipeline'. Text at least 24px.",
+  "anchor": "### Scenario B. Latency is green, quality is not",
+  "alt": "A metrics table where latency and errors match but quality and finish_reason length share regress, triggering a rollback.",
+  "cap": "A latency-only gate would have promoted a model that cut answers short."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p3-2014-custom-checkpoint-timeline",
+  "title": "Shipping a 70B checkpoint to a live endpoint within the hour",
+  "spec": "Timeline for a 70 billion parameter FP16 checkpoint on an endpoint with 4 replicas of 4 GPUs. Steps: 'upload to the versioned weights hub with immutable version id and content hash'; 'hash and architecture check take minutes'; 'scratch eval on one borrowed replica slot'; 'pre-stage the 140 GB weights onto local disk of the nodes'; 'cold start is 170 s under the chapter inputs of which 70 s is download; after staging each replica takes about 100 s'; 'rolling update with surge 1 replaces 4 replicas one at a time; the surge slot is 4 GPUs together, which must exist on one node'; 'canary at 1 percent with the eval gate, step up'; 'keep old replicas until peak traffic has passed on the new version'. Footer 'measure real load time on the first replica before promising the rest; tell the customer the time budget from the numbers'. Text at least 24px.",
+  "anchor": "### Scenario C. Shipping a custom checkpoint to a live endpoint",
+  "alt": "A timeline from upload and validation through staged weights and a surge-one rolling update to a gated canary.",
+  "cap": "Pre-stage weights so each replica skips the download and the surge slot has four GPUs together."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p3-2014-version-skew",
+  "title": "Version skew during a rollout",
+  "spec": "Four skew cases, each with the fix. 'Request accepted by the old version and rejected by the new in the same minute: two versions run at once during a rollout'. 'Prefix cache: different weights produce different KV values; reusing a block from old weights would feed the new model numbers it never computed, wrong answers with no error; key the prefix cache and cache-aware routing by model version so no hit crosses a version boundary'. 'Tokenizer against weights: a checkpoint with the wrong tokenizer fails quietly, garbage output and green infrastructure; the registry record makes weights, tokenizer and config one object with one version'. 'Engine version against router'. 'Client-facing: a user who sees both versions in one conversation may see style change midway; sticky routing by tenant or session during the canary sends one user back to the same version every time; this is the difference between a canary and an A/B test'. Rule 'pin tokenizer, weights and config as one version, key caches by version, keep a session on one version during a canary'. Text at least 24px.",
+  "anchor": "### 10. Version skew",
+  "alt": "Four version skew cases during a rollout with the fix for each, including cache keyed by model version.",
+  "cap": "Pin weights, tokenizer and config as one version and key the cache by version."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "14",
+  "name": "p3-2014-surge-contiguity",
+  "title": "A surge slot for a multi-GPU replica needs GPUs together",
+  "spec": "Two cluster diagrams with four nodes of eight GPUs. Left 'free GPUs scattered: one free GPU on each of four nodes, count looks like 4 free but a 4-GPU replica pod will not schedule; pending'. Right 'spare pool holds whole nodes: four free GPUs together on one node (possibly in the same NVLink domain), the new replica schedules'. Rules: 'surge you can afford is set by spare GPUs, not by a percentage: pod cap = the smaller of replicas plus surge and replicas plus spare GPU slots; surge above the spare count buys nothing because extra pods stay pending'; 'three levers: schedule rollouts in a quiet hour for larger headroom; roll in small batches, surge one at a time; if no spare exists run with surge zero and unavailable one only when the forecast shows N minus 1 capacity is enough'; 'Cluster Autoscaler reacts to pending pods so the cluster is already full when it acts; node provisioning takes time'. Text at least 24px.",
+  "anchor": "### 7. Surge budgets when GPUs are scarce",
+  "alt": "Scattered free GPUs fail to schedule a four-GPU replica while a spare whole node lets the surge pod start.",
+  "cap": "State surge in GPUs, not percent, and keep spare capacity in whole nodes."
+ }
+]

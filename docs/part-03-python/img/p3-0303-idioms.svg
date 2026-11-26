@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Idioms table: the Pythonic habit and what it replaces</title>
+  <desc>Idioms table: the Pythonic habit and what it replaces</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="64" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Idioms table: the Pythonic habit and what it replaces</text>
+
+  
+  <g>
+    
+    <rect x="50" y="94" width="570" height="50" rx="8" fill="#207448"/>
+    <circle cx="85" cy="119" r="14" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <line x1="75" y1="109" x2="95" y2="129" stroke="#ffffff" stroke-width="3"/>
+    <text x="335" y="129" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Instead of</text>
+
+    
+    <rect x="650" y="94" width="900" height="50" rx="8" fill="#207448"/>
+    <polyline points="680,111 670,119 680,127" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <polyline points="700,111 710,119 700,127" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="693" y1="109" x2="687" y2="129" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+    <text x="1100" y="129" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Write</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="50" y="152" width="570" height="72" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="195" font-family="monospace" font-size="24" fill="#303a36">if key in d: value = d[key]</text>
+
+    <rect x="650" y="152" width="900" height="72" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="181" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="670" font-family="monospace">EAFP: try: value = d[key] except KeyError</tspan>
+      <tspan x="670" dy="28">(LBYL only when the check is cheap and failure is rare)</tspan>
+    </text>
+
+    
+    <rect x="50" y="232" width="570" height="72" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="275" font-family="monospace" font-size="24" fill="#303a36">if os.path.exists(path): open(path)</text>
+
+    <rect x="650" y="232" width="900" height="72" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="261" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="670">try: open(...), which is race-free;</tspan>
+      <tspan x="670" dy="28">the file may vanish after the check</tspan>
+    </text>
+
+    
+    <rect x="50" y="312" width="570" height="72" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="355" font-family="monospace" font-size="24" fill="#303a36">if len(items) == 0</text>
+
+    <rect x="650" y="312" width="900" height="72" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="341" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="670">if items: ; use is None</tspan>
+      <tspan x="670" dy="28">when None must be told apart from other empty values</tspan>
+    </text>
+
+    
+    <rect x="50" y="392" width="570" height="56" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="428" font-family="sans-serif" font-size="24" fill="#303a36">range(len(xs)) index loops</text>
+
+    <rect x="650" y="392" width="900" height="56" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="428" font-family="monospace" font-size="24" fill="#303a36">for i, x in enumerate(xs, 1), zip, reversed, sorted</text>
+
+    
+    <rect x="50" y="456" width="570" height="56" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="492" font-family="sans-serif" font-size="24" fill="#303a36">temp variable swaps and slices</text>
+
+    <rect x="650" y="456" width="900" height="56" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="492" font-family="monospace" font-size="24" fill="#303a36">a, b = b, a ; head, *tail = xs ; _ for ignored values</text>
+
+    
+    <rect x="50" y="520" width="570" height="56" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="556" font-family="sans-serif" font-size="24" fill="#303a36">manual duplicate removal</text>
+
+    <rect x="650" y="520" width="900" height="56" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="556" font-family="monospace" font-size="24" fill="#303a36">sorted(set(xs)) or dict.fromkeys (keeps order)</text>
+
+    
+    <rect x="50" y="584" width="570" height="56" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="620" font-family="sans-serif" font-size="24" fill="#303a36">manual key checks</text>
+
+    <rect x="650" y="584" width="900" height="56" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="620" font-family="monospace" font-size="24" fill="#303a36">dict.get, setdefault, defaultdict, Counter</text>
+
+    
+    <rect x="50" y="648" width="570" height="72" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="692" font-family="sans-serif" font-size="24" fill="#303a36">string concatenation and manual close</text>
+
+    <rect x="650" y="648" width="900" height="72" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="677" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="670">str.join, f-strings, pathlib,</tspan>
+      <tspan x="670" dy="28">with for resources, !r in log messages</tspan>
+    </text>
+
+    
+    <rect x="50" y="728" width="570" height="98" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="784" font-family="sans-serif" font-size="24" fill="#303a36">exact type checks</text>
+
+    <rect x="650" y="728" width="900" height="98" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="756" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="670">isinstance with abstract bases such as collections.abc.Mapping;</tspan>
+      <tspan x="670" dy="28">accept the most general useful type (Sequence, Iterable)</tspan>
+      <tspan x="670" dy="28">and return a concrete one</tspan>
+    </text>
+
+    
+    <rect x="50" y="834" width="570" height="72" rx="6" fill="#e8f1ea"/>
+    <text x="70" y="878" font-family="sans-serif" font-size="24" fill="#303a36">any/all on a list</text>
+
+    <rect x="650" y="834" width="900" height="72" rx="6" fill="#ffffff" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="670" y="863" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="670">any() and all() on a generator expression</tspan>
+      <tspan x="670" dy="28">stop as soon as the answer is known</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="924" width="1500" height="136" rx="8" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <polygon points="98,958 126,958 146,978 146,1006 126,1026 98,1026 78,1006 78,978" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="112" y1="973" x2="112" y2="999" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="112" cy="1011" r="2.5" fill="#db8129"/>
+
+    
+    <text x="170" y="962" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="170">bare except:, mutable defaults, from x import *,</tspan>
+      <tspan x="170" dy="30">eval or exec on external input, SQL or shell commands built by formatting strings,</tspan>
+      <tspan x="170" dy="30">shadowing built-ins, overusing lambdas, premature optimisation</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="1080" width="1500" height="66" rx="8" fill="#207448"/>
+    <text x="800" y="1122" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Errors should never pass silently, and flat is better than nested</text>
+  </g>
+</svg>

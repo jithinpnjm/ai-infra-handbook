@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Which pods the kubelet evicts first under memory pressure</title>
+  <desc>Visual explanation of kubelet eviction hierarchy under memory pressure across two tiers down to protected system pods</desc>
+
+  <defs>
+    
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#db8129" />
+    </marker>
+
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#207448" />
+    </marker>
+
+    
+    <marker id="arrow-down" markerWidth="14" markerHeight="14" refX="7" refY="10" orient="auto">
+      <path d="M 2 2 L 7 12 L 12 2 Z" fill="#303a36" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Which pods the kubelet evicts first under memory pressure</text>
+
+  
+  
+  <circle cx="95" cy="138" r="24" fill="#207448" />
+  <text x="95" y="146" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+  
+  <circle cx="95" cy="305" r="24" fill="#207448" />
+  <text x="95" y="313" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+  
+  <circle cx="95" cy="545" r="24" fill="#207448" />
+  <text x="95" y="553" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+  
+  <circle cx="95" cy="765" r="24" fill="#207448" />
+  <text x="95" y="773" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+
+  
+  <line x1="205" y1="230" x2="205" y2="835" stroke="#303a36" stroke-width="4" marker-end="url(#arrow-down)" />
+  <text x="165" y="535" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" transform="rotate(90 165 535)">evicted first to evicted last</text>
+
+  
+  <g id="top-banner">
+    <rect x="270" y="98" width="1260" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <path d="M 305 152 A 22 22 0 1 1 345 152" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="325" y1="152" x2="341" y2="136" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <circle cx="325" cy="152" r="4" fill="#207448" />
+
+    
+    <text x="370" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MemoryPressure: node signal below threshold</text>
+  </g>
+
+  
+  <g id="tier-1-band">
+    <rect x="270" y="200" width="1260" height="210" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    
+    
+    <rect x="302" y="220" width="46" height="46" rx="8" fill="#fdf3eb" stroke="#db8129" stroke-width="3" />
+    <path d="M 325 233 V 249 M 325 255 V 257" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+
+    
+    <text x="365" y="244" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pods using more than their request,</text>
+    <text x="365" y="278" font-family="sans-serif" font-size="25" fill="#303a36">including BestEffort (request 0) and Burstable pods over their request</text>
+
+    
+    <rect x="302" y="306" width="1196" height="84" rx="8" fill="#fdf3eb" stroke="#db8129" stroke-width="1.5" stroke-dasharray="6 4" />
+    <text x="895" y="340" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">1 lowest PriorityClass first, then 2 largest usage over request</text>
+    <line x1="340" y1="364" x2="1450" y2="364" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  </g>
+
+  
+  <g id="tier-2-band">
+    <rect x="330" y="435" width="1140" height="210" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="362" y="455" width="46" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <path d="M 374 478 L 382 486 L 396 470" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="425" y="479" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pods within their request,</text>
+    <text x="425" y="513" font-family="sans-serif" font-size="25" fill="#303a36">Burstable pods within request</text>
+
+    
+    <rect x="362" y="541" width="1076" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="895" y="575" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">lowest PriorityClass first, then lowest usage</text>
+    <line x1="400" y1="599" x2="1390" y2="599" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="protected-box">
+    
+    <path d="M 870 670 V 654 A 30 30 0 0 1 930 654 V 670" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+
+    
+    <rect x="390" y="670" width="1020" height="185" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+
+    
+    <path d="M 445 696 L 472 696 Q 472 730 445 748 Q 418 730 418 696 Z" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    <rect x="438" y="718" width="14" height="12" rx="2" fill="#207448" />
+    <path d="M 441 718 V 712 A 4 4 0 0 1 449 712 V 718" fill="none" stroke="#207448" stroke-width="2.5" />
+
+    
+    <text x="490" y="715" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Guaranteed pods and critical pods</text>
+    <text x="490" y="749" font-family="sans-serif" font-size="24" fill="#303a36">(system-node-critical, system-cluster-critical, static pods)</text>
+
+    
+    <rect x="425" y="782" width="950" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="900" y="816" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">evicted last, only if system daemons are the problem</text>
+  </g>
+
+  
+  <g id="output-box">
+    <rect x="390" y="878" width="1020" height="88" rx="10" fill="#ffffff" stroke="#7a8b84" stroke-width="2.5" stroke-dasharray="8 6" />
+
+    
+    <circle cx="435" cy="922" r="18" fill="none" stroke="#7a8b84" stroke-width="3" />
+    <path d="M 435 911 A 11 11 0 1 1 424 922" fill="none" stroke="#7a8b84" stroke-width="3" stroke-linecap="round" />
+    <polygon points="435,906 435,916 442,911" fill="#7a8b84" />
+
+    
+    <text x="475" y="915" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Phase Failed, Reason Evicted,</text>
+    <text x="475" y="948" font-family="sans-serif" font-size="24" fill="#303a36">then the owning controller recreates the pod elsewhere</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="995" width="1480" height="100" rx="12" fill="#207448" />
+    <text x="800" y="1038" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">the kubelet frees memory from pods that borrowed past their requests</text>
+    <text x="800" y="1074" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">before touching pods the node promised memory to.</text>
+  </g>
+</svg>

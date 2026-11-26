@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A bad rollout, from first failed request to the rollback</title>
+  <desc>Visual infographic explaining the sequence of a bad rollout, multiwindow error budget burn rate alerting, page firing, rollback, and budget spent.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A bad rollout, </tspan>
+    <tspan x="800" dy="54">from first failed request to the rollback</tspan>
+  </text>
+
+  
+  <g id="step-1">
+    <rect x="40" y="145" width="1090" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="80" cy="175" r="24" fill="#207448" />
+    <text x="80" y="184" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(120, 155)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 20 2 C 20 2 31 7 33 20 L 25 28 L 12 15 L 20 2 Z" />
+      <circle cx="22" cy="12" r="2.5" fill="#207448" />
+      <path d="M 12 15 L 5 19 L 9 24 L 14 24" />
+      <path d="M 25 28 L 21 35 L 16 31 L 16 26" />
+      <path d="M 9 31 L 4 36" />
+    </g>
+    
+    <text x="175" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Rollout starts</text>
+    
+    <text x="60" y="219" font-family="sans-serif" font-size="24" fill="#303a36">A rollout breaks the model for 12 minutes and all requests fail.</text>
+  </g>
+
+  
+  <line x1="80" y1="241" x2="80" y2="281" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-2">
+    <rect x="40" y="281" width="1090" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="80" cy="311" r="24" fill="#207448" />
+    <text x="80" y="320" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(120, 291)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="32" height="28" rx="5" />
+      <line x1="4" y1="16" x2="36" y2="16" />
+      <circle cx="11" cy="11" r="2" fill="#207448" />
+      <circle cx="17" cy="11" r="2" fill="#207448" />
+      <line x1="12" y1="25" x2="28" y2="25" />
+      <polyline points="22,21 28,25 22,29" />
+    </g>
+    
+    <text x="175" y="316" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">First failing requests reach the gateway</text>
+    
+    <text x="60" y="355" font-family="sans-serif" font-size="24" fill="#303a36">The error ratio is 100 percent.</text>
+  </g>
+
+  
+  <line x1="80" y1="377" x2="80" y2="417" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-3">
+    <rect x="40" y="417" width="1090" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="80" cy="447" r="24" fill="#207448" />
+    <text x="80" y="456" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(120, 427)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="4,34 4,6 36,6" />
+      <polyline points="6,28 14,26 24,16 34,9" />
+      <line x1="10" y1="18" x2="34" y2="18" stroke-width="2" />
+    </g>
+    
+    <text x="175" y="452" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fast burn short window goes above the threshold</text>
+    
+    <text x="60" y="491" font-family="sans-serif" font-size="24" fill="#303a36">The 5 minute window has enough data and is above 1.44 percent.</text>
+  </g>
+
+  
+  <line x1="80" y1="513" x2="80" y2="553" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-4">
+    <rect x="40" y="553" width="1090" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="80" cy="583" r="24" fill="#207448" />
+    <text x="80" y="592" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(120, 563)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="20" height="26" rx="4" />
+      <rect x="16" y="4" width="20" height="26" rx="4" />
+      <line x1="22" y1="13" x2="30" y2="13" />
+    </g>
+    
+    <text x="175" y="588" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Long window is still catching up</text>
+    
+    <text x="60" y="627" font-family="sans-serif" font-size="24" fill="#303a36">The page waits until both windows agree.</text>
+  </g>
+
+  
+  <line x1="80" y1="649" x2="80" y2="689" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-5">
+    <rect x="40" y="689" width="1090" height="96" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="80" cy="719" r="24" fill="#db8129" />
+    <text x="80" y="728" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(120, 699)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 20 4 C 13 4 9 9 9 15 C 9 22 5 26 5 26 L 35 26 C 35 26 31 22 31 15 C 31 9 27 4 20 4 Z" />
+      <path d="M 16 31 C 16 33.2 17.8 35 20 35 C 22.2 35 24 33.2 24 31" />
+      <line x1="20" y1="2" x2="20" y2="4" />
+    </g>
+    
+    <text x="175" y="724" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Page fires in about 52 seconds</text>
+    
+    <text x="60" y="763" font-family="sans-serif" font-size="24" fill="#303a36">Both windows are above the threshold, so the on-call engineer is paged.</text>
+  </g>
+
+  
+  <line x1="80" y1="785" x2="80" y2="825" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-6">
+    <rect x="40" y="825" width="1090" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="80" cy="855" r="24" fill="#207448" />
+    <text x="80" y="864" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(120, 835)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 13 14 L 6 21 L 13 28" />
+      <path d="M 6 21 H 24 C 30 21 34 17 34 11 C 34 6 30 4 24 4" />
+    </g>
+    
+    <text x="175" y="860" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">On-call engineer rolls back</text>
+    
+    <text x="60" y="899" font-family="sans-serif" font-size="24" fill="#303a36">The error ratio drops once the bad release is removed.</text>
+  </g>
+
+  
+  <line x1="80" y1="921" x2="80" y2="961" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-7">
+    <rect x="40" y="961" width="1090" height="96" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="80" cy="991" r="24" fill="#207448" />
+    <text x="80" y="1000" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+    
+    <g transform="translate(120, 971)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="16" />
+      <polyline points="11,20 16,25 29,12" />
+    </g>
+    
+    <text x="175" y="996" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Short window clears first</text>
+    
+    <text x="60" y="1035" font-family="sans-serif" font-size="24" fill="#303a36">The alert clears within minutes of the rollback, before the long window.</text>
+  </g>
+
+  
+  
+  <line x1="1130" y1="737" x2="1240" y2="737" stroke="#207448" stroke-width="2.5" stroke-dasharray="6,4" />
+
+  
+  <g id="timer-clock">
+    
+    <g transform="translate(1167, 652)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="18" r="15" fill="#e8f1ea" />
+      <polyline points="18,8 18,18 24,18" />
+      <line x1="18" y1="1" x2="18" y2="3" />
+    </g>
+    
+    <text x="1185" y="716" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">clock</text>
+  </g>
+
+  
+  <g id="budget-box">
+    <rect x="1240" y="622" width="320" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="1400" y="666" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Budget spent</text>
+    
+    <rect x="1250" y="690" width="300" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1400" y="725" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">12 / 43.2 = 27.8%</text>
+    
+    <text x="1400" y="784" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1400" dy="0">of a 30 day </tspan>
+      <tspan x="1400" dy="32">99.9 percent budget</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1097" width="1520" height="56" rx="12" fill="#207448" />
+    <text x="800" y="1133" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Tie the freeze decision to the written error budget policy and do not improvise it.</text>
+  </g>
+</svg>

@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Checkpoint before the time limit: SIGUSR1 reaches the batch shell, then the trainer</title>
+  <desc>Slurm job checkpointing architecture showing SIGUSR1 propagation to batch shell and background python trainer</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+  <!-- Title -->
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Checkpoint before the time limit: <tspan x="800" dy="52" font-size="48" fill="#303a36">SIGUSR1 reaches the batch shell, then the trainer</tspan></text>
+  <!-- Timeline Section -->
+  <rect x="60" y="130" width="1480" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="100" y1="245" x2="1500" y2="245" stroke="#207448" stroke-width="6" stroke-linecap="round" />
+  <circle cx="100" cy="245" r="10" fill="#207448" />
+  <rect x="80" y="145" width="220" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="190" y="187" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Job starts</text>
+  <circle cx="760" cy="245" r="12" fill="#db8129" />
+  <line x1="760" y1="217" x2="760" y2="245" stroke="#db8129" stroke-width="4" />
+  <rect x="410" y="145" width="700" height="72" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="760" y="174" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">#SBATCH --signal=B:USR1@180: <tspan x="760" dy="28" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Slurm sends SIGUSR1 to the batch shell</tspan></text>
+  <circle cx="1500" cy="245" r="10" fill="#207448" />
+  <rect x="1140" y="138" width="380" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1330" y="166" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1330" dy="0">Time limit: SIGTERM,</tspan>
+    <tspan x="1330" dy="28">then SIGKILL after</tspan>
+    <tspan x="1330" dy="28">KillWait (default 30 s)</tspan>
+  </text>
+  <!-- Arrow 1: Slurm sends SIGUSR1 to the batch shell -->
+  <path d="M 760 257 V 290 H 450 V 355" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <circle cx="450" cy="305" r="24" fill="#db8129" />
+  <text x="450" y="313" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="490" y="313" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Slurm sends SIGUSR1 to the batch shell</text>
+  <!-- Box 1: Batch shell (script) -->
+  <rect x="60" y="355" width="900" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(90, 375)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="52" height="42" rx="6" />
+    <line x1="2" y1="16" x2="54" y2="16" />
+    <polyline points="10,26 18,34 10,42" />
+    <line x1="24" y1="42" x2="38" y2="42" />
+  </g>
+  <text x="165" y="410" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Batch shell (script)</text>
+  <rect x="90" y="443" width="840" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="110" y="483" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">trap kill -USR1 $pid; wait $pid USR1</text>
+  <!-- Arrow 2: trap fires at once -->
+  <path d="M 960 410 H 1005 V 480 H 960" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <circle cx="1005" cy="445" r="24" fill="#207448" />
+  <text x="1005" y="453" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="1045" y="423" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1045" dy="0">trap fires at once because</tspan>
+    <tspan x="1045" dy="30">the shell is in wait, not in</tspan>
+    <tspan x="1045" dy="30">a foreground command</tspan>
+  </text>
+  <!-- Arrow 3: kill -USR1 forwards the signal to the training process -->
+  <line x1="350" y1="530" x2="350" y2="600" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <circle cx="350" cy="565" r="24" fill="#207448" />
+  <text x="350" y="573" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="390" y="563" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="390" dy="0">kill -USR1 forwards the signal</tspan>
+    <tspan x="390" dy="28">to the training process</tspan>
+  </text>
+  <!-- Box 2: python train.py running in the background -->
+  <rect x="60" y="600" width="900" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(90, 630)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="6" />
+    <circle cx="28" cy="28" r="8" />
+    <line x1="18" y1="2" x2="18" y2="10" /><line x1="28" y1="2" x2="28" y2="10" /><line x1="38" y1="2" x2="38" y2="10" />
+    <line x1="18" y1="46" x2="18" y2="54" /><line x1="28" y1="46" x2="28" y2="54" /><line x1="38" y1="46" x2="38" y2="54" />
+    <line x1="2" y1="18" x2="10" y2="18" /><line x1="2" y1="28" x2="10" y2="28" /><line x1="2" y1="38" x2="10" y2="38" />
+    <line x1="46" y1="18" x2="54" y2="18" /><line x1="46" y1="28" x2="54" y2="28" /><line x1="46" y1="38" x2="54" y2="38" />
+  </g>
+  <text x="165" y="668" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="165" dy="0">python train.py</tspan>
+    <tspan x="165" dy="45" font-family="sans-serif" font-size="24" font-weight="normal">running in the background (&amp;), pid saved in $pid</tspan>
+  </text>
+  <!-- Arrow 4: training writes the checkpoint -->
+  <path d="M 960 655 H 1005 V 725 H 960" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <circle cx="1005" cy="690" r="24" fill="#207448" />
+  <text x="1005" y="698" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1045" y="698" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">training writes the checkpoint</text>
+  <!-- Arrow 5: wait returns, job ends cleanly -->
+  <line x1="350" y1="775" x2="350" y2="840" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <circle cx="350" cy="807" r="24" fill="#207448" />
+  <text x="350" y="815" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <text x="390" y="805" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="390" dy="0">wait returns,</tspan>
+    <tspan x="390" dy="28">job ends cleanly</tspan>
+  </text>
+  <!-- Box 3: wait $pid -->
+  <rect x="60" y="840" width="900" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(90, 878)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22" />
+    <polyline points="28,14 28,28 38,28" />
+    <line x1="24" y1="2" x2="32" y2="2" />
+  </g>
+  <text x="165" y="918" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">wait $pid</text>
+  <!-- Contrast Box -->
+  <rect x="1010" y="745" width="530" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6" />
+  <g transform="translate(1247, 763)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 50 48 L 6 48 Z" />
+    <line x1="28" y1="20" x2="28" y2="34" />
+    <circle cx="28" cy="42" r="2" fill="#207448" />
+  </g>
+  <text x="1275" y="847" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1275" dy="0">If python train.py ran in the</tspan>
+    <tspan x="1275" dy="30">foreground, the shell would</tspan>
+    <tspan x="1275" dy="30">defer the trap until it</tspan>
+    <tspan x="1275" dy="30">finished</tspan>
+  </text>
+  <!-- Bottom Takeaway Bar -->
+  <rect x="60" y="1035" width="1480" height="90" rx="12" fill="#207448" />
+  <text x="800" y="1091" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Start long-running children in the background and wait for them</text>
+</svg>

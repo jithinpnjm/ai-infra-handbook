@@ -204,14 +204,9 @@ Every file system keeps two kinds of state. Metadata covers names, directories, 
 
 Picture how the pieces fit together, and where your own client sits:
 
-```mermaid
-flowchart LR
-  C1[Client 1] & C2[Client 2] & C3[Client N] --> MDS[Metadata service<br/>names, permissions, layouts]
-  C1 & C2 & C3 --> D1[Data server 1]
-  C1 & C2 & C3 --> D2[Data server 2]
-  C1 & C2 & C3 --> D3[Data server M]
-  MDS --- D1
-```
+![Metadata, data and the parallel file system idea](./img/m6-18-1.svg)
+
+*Figure 6.18.1. Metadata, data and the parallel file system idea, as a diagram.*
 
 A client first asks the metadata service where a file's data lives. That answer is the layout. The client then talks directly to many data servers in parallel, so bandwidth grows with the number of data servers and clients. The metadata service is consulted once for the layout, and the bulk of the traffic goes around it. That design is the reason parallel file systems can reach speeds that a single NFS server cannot.
 

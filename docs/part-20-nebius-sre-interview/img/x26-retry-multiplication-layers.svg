@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1040" viewBox="0 0 1600 1040">
+  <title>Three retry layers multiply one user request into 64 attempts</title>
+  <desc>An infographic illustrating how three retry layers multiply one user request into 64 attempts, and policies to limit the multiplication.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="800" dy="0">Three retry layers multiply</tspan>
+    <tspan x="800" dy="56">one user request into 64 attempts</tspan>
+  </text>
+
+  
+
+  
+  <rect x="40" y="170" width="210" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="145" cy="235" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 119 280 C 119 260 130 256 145 256 C 160 256 171 260 171 280" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="145" y="325" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">User request</text>
+
+  
+  <line x1="250" y1="305" x2="330" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="330" y="170" width="280" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="444" y="190" width="52" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="444" y1="204" x2="496" y2="204" stroke="#207448" stroke-width="3"/>
+  <path d="M 462 214 L 456 219 L 462 224 M 478 214 L 484 219 L 478 224" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <text x="470" y="270" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">SDK client</text>
+  
+  <text x="470" y="320" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="470" dy="0">First try plus</tspan>
+    <tspan x="470" dy="36">up to three retries,</tspan>
+    <tspan x="470" dy="36">4 attempts</tspan>
+  </text>
+
+  
+  <rect x="622" y="258" width="56" height="32" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="650" y="282" font-size="24" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">x 4</text>
+  <line x1="610" y1="305" x2="690" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="690" y="170" width="280" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <path d="M 808 232 L 808 206 C 808 194 818 186 830 186 C 842 186 852 194 852 206 L 852 232" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="830" y1="194" x2="830" y2="232" stroke="#207448" stroke-width="3" stroke-dasharray="4 4"/>
+  <line x1="800" y1="232" x2="860" y2="232" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="830" y="270" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">Gateway</text>
+  
+  <text x="830" y="320" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="830" dy="0">Retries failed</tspan>
+    <tspan x="830" dy="36">upstream calls,</tspan>
+    <tspan x="830" dy="36">4 attempts</tspan>
+  </text>
+
+  
+  <rect x="982" y="258" width="56" height="32" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="1010" y="282" font-size="24" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">x 4</text>
+  <line x1="970" y1="305" x2="1050" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1050" y="170" width="280" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="1166" y="204" width="48" height="28" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="1178" y1="204" x2="1172" y2="190" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="1202" y1="204" x2="1208" y2="190" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="1180" cy="218" r="3" fill="#207448"/>
+  <circle cx="1190" cy="218" r="3" fill="#207448"/>
+  <circle cx="1200" cy="218" r="3" fill="#207448"/>
+  
+  <text x="1190" y="270" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">Router</text>
+  
+  <text x="1190" y="320" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="1190" dy="0">Retries on</tspan>
+    <tspan x="1190" dy="36">another worker,</tspan>
+    <tspan x="1190" dy="36">4 attempts</tspan>
+  </text>
+
+  
+  <rect x="1342" y="258" width="56" height="32" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="1370" y="282" font-size="24" font-weight="bold" font-family="monospace" fill="#207448" text-anchor="middle">x 4</text>
+  <line x1="1330" y1="305" x2="1410" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1410" y="170" width="150" height="270" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="1485" cy="235" r="9" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="1485" cy="235" r="17" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 1485 211 L 1485 217 M 1485 253 L 1485 259 M 1461 235 L 1467 235 M 1503 235 L 1509 235 M 1468 218 L 1472 222 M 1498 248 L 1502 252 M 1468 252 L 1472 248 M 1498 222 L 1502 218" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  
+  <text x="1485" y="325" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">Worker</text>
+
+  
+  <rect x="440" y="480" width="720" height="80" rx="14" fill="#db8129"/>
+  <text x="800" y="531" font-size="32" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="sans-serif">
+    <tspan>Up to </tspan><tspan font-family="monospace" font-size="36">64</tspan><tspan> attempts per request</tspan>
+  </text>
+
+  
+  <rect x="40" y="600" width="1520" height="390" rx="16" fill="#e8f1ea" stroke="#c4dcce" stroke-width="2"/>
+  <text x="800" y="650" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle" font-family="sans-serif">Limit the multiplication</text>
+
+  
+  <rect x="70" y="680" width="1460" height="80" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+  <circle cx="120" cy="720" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <polyline points="120,708 120,720 129,720" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="175" y="729" font-size="26" font-weight="bold" fill="#303a36" font-family="sans-serif">Retry budget, for example 60 retries per minute</text>
+
+  
+  <rect x="70" y="780" width="1460" height="80" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+  <path d="M 106 806 L 106 834 L 134 834" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <path d="M 108 832 Q 124 830 132 810" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <text x="175" y="829" font-size="26" font-weight="bold" fill="#303a36" font-family="sans-serif">Randomized exponential backoff, not a fixed 100 ms</text>
+
+  
+  <rect x="70" y="880" width="1460" height="80" rx="12" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+  <path d="M 120 904 L 134 910 L 134 924 C 134 933 120 938 120 938 C 120 938 106 933 106 924 L 106 910 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="175" y="929" font-size="26" font-weight="bold" fill="#303a36" font-family="sans-serif">Load shedding when zones saturate</text>
+</svg>

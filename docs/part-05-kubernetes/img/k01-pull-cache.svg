@@ -1,0 +1,89 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1150" viewBox="0 0 1600 1150" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <title>A pull-through cache takes the load off the registry</title>
+  <desc>Two panels. Left, without a cache: many nodes pull one large image straight from the central registry. Right, with a pull-through cache inside the cluster network: the nodes hit the cache, and one fetch reaches the central registry.</desc>
+  <defs>
+    <marker id="ah" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0.8 1.2 L10.8 6 L0.8 10.8" fill="none" stroke="#207448" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>
+    </marker>
+    <g id="ico-node" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="48" height="40" rx="5"/>
+      <line x1="4" y1="22" x2="52" y2="22"/>
+      <line x1="4" y1="36" x2="52" y2="36"/>
+      <circle cx="12" cy="15" r="2.6" fill="#207448" stroke="none"/>
+      <circle cx="12" cy="29" r="2.6" fill="#207448" stroke="none"/>
+    </g>
+    <g id="ico-db" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8"/>
+      <path d="M6 14 V42 A22 8 0 0 0 50 42 V14"/>
+      <path d="M6 28 A22 8 0 0 0 50 28"/>
+    </g>
+    <g id="ico-chip" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="14" y="14" width="28" height="28" rx="3"/>
+      <line x1="22" y1="6" x2="22" y2="14"/>
+      <line x1="34" y1="6" x2="34" y2="14"/>
+      <line x1="22" y1="42" x2="22" y2="50"/>
+      <line x1="34" y1="42" x2="34" y2="50"/>
+      <line x1="6" y1="22" x2="14" y2="22"/>
+      <line x1="6" y1="34" x2="14" y2="34"/>
+      <line x1="42" y1="22" x2="50" y2="22"/>
+      <line x1="42" y1="34" x2="50" y2="34"/>
+    </g>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1150" fill="#f5f8f5"/>
+
+  <text x="800" y="82" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">A pull-through cache takes the load off the registry</text>
+
+  <rect x="50" y="125" width="730" height="850" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="820" y="125" width="730" height="850" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  <text x="415" y="190" text-anchor="middle" font-size="32" font-weight="700" fill="#303a36">without a cache</text>
+  <text x="415" y="240" text-anchor="middle" font-size="26" fill="#46524c">500 nodes pull a 20 GB image at once</text>
+  <text x="415" y="320" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">nodes</text>
+
+  <use href="#ico-node" transform="translate(192,352)"/>
+  <use href="#ico-node" transform="translate(322,352)"/>
+  <use href="#ico-node" transform="translate(452,352)"/>
+  <use href="#ico-node" transform="translate(582,352)"/>
+
+  <line x1="220" y1="408" x2="220" y2="659" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <line x1="350" y1="408" x2="350" y2="659" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <line x1="480" y1="408" x2="480" y2="659" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <line x1="610" y1="408" x2="610" y2="659" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+
+  <rect x="170" y="660" width="490" height="220" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-db" transform="translate(231,742)"/>
+  <text x="311" y="780" font-size="30" font-weight="700" fill="#303a36">central registry</text>
+
+  <text x="1160" y="190" text-anchor="middle" font-size="32" font-weight="700" fill="#303a36">with a pull-through cache</text>
+
+  <use href="#ico-node" transform="translate(937,352)"/>
+  <use href="#ico-node" transform="translate(1067,352)"/>
+  <use href="#ico-node" transform="translate(1197,352)"/>
+  <use href="#ico-node" transform="translate(1327,352)"/>
+
+  <line x1="965" y1="408" x2="965" y2="499" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <line x1="1095" y1="408" x2="1095" y2="499" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <line x1="1225" y1="408" x2="1225" y2="499" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <line x1="1355" y1="408" x2="1355" y2="499" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+
+  <rect x="915" y="500" width="490" height="160" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-chip" transform="translate(949,552)"/>
+  <text x="1029" y="565" font-size="30" font-weight="700" fill="#303a36">cache inside</text>
+  <text x="1029" y="605" font-size="30" font-weight="700" fill="#303a36">the cluster network</text>
+
+  <line x1="1160" y1="660" x2="1160" y2="809" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <text x="1190" y="700" font-size="24" fill="#303a36">first node that asks</text>
+  <text x="1190" y="730" font-size="24" fill="#303a36">makes the cache fetch</text>
+  <text x="1190" y="760" font-size="24" fill="#303a36">the image</text>
+  <text x="1125" y="700" text-anchor="end" font-size="24" font-weight="600" fill="#db8129">the rest are</text>
+  <text x="1125" y="730" text-anchor="end" font-size="24" font-weight="600" fill="#db8129">served from</text>
+  <text x="1125" y="760" text-anchor="end" font-size="24" font-weight="600" fill="#db8129">the warehouse</text>
+
+  <rect x="945" y="810" width="430" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-db" transform="translate(976,857)"/>
+  <text x="1056" y="895" font-size="30" font-weight="700" fill="#303a36">central registry</text>
+
+  <rect x="50" y="1010" width="1500" height="95" rx="14" fill="#207448"/>
+  <text x="800" y="1068" text-anchor="middle" font-size="32" font-weight="700" fill="#ffffff">a local cache restocks from the central registry once</text>
+</svg>

@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which trust store does this program use? And the missing intermediate trap</title>
+  <desc>Visual infographic explaining trust stores across operating systems, language runtimes, container engines, and the missing intermediate certificate trap.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <g id="header">
+    <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">Which trust store does this program use?</tspan>
+      <tspan x="800" dy="56">And the missing intermediate trap</tspan>
+    </text>
+  </g>
+
+  
+  <g id="left-table">
+    <rect x="40" y="145" width="840" height="780" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="56" y="160" width="808" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 168)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="4" width="28" height="28" rx="4" />
+      <line x1="4" y1="18" x2="32" y2="18" />
+      <circle cx="10" cy="11" r="2" fill="#207448" />
+      <circle cx="10" cy="25" r="2" fill="#207448" />
+    </g>
+    <text x="120" y="194" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">OS bundle: </tspan>
+      <tspan font-family="ui-monospace, monospace">/etc/ssl/certs/ca-certificates.crt</tspan>
+    </text>
+
+    
+    <rect x="56" y="222" width="808" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 230)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M8 12 h16 v12 a6 6 0 0 1 -6 6 h-4 a6 6 0 0 1 -6 -6 z" />
+      <path d="M24 14 h4 a4 4 0 0 1 0 8 h-4" />
+      <path d="M6 32 h24" />
+    </g>
+    <text x="120" y="256" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Java: </tspan>
+      <tspan font-family="ui-monospace, monospace">cacerts</tspan>
+    </text>
+
+    
+    <rect x="56" y="284" width="808" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 292)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M18 4 h-6 a6 6 0 0 0 -6 6 v4 h12 v4 h-12 a6 6 0 0 0 -6 6 v2" />
+      <path d="M18 32 h6 a6 6 0 0 0 6 -6 v-4 h-12 v-4 h12 a6 6 0 0 0 6 -6 v-2" />
+      <circle cx="10" cy="9" r="1.5" fill="#207448" />
+      <circle cx="26" cy="27" r="1.5" fill="#207448" />
+    </g>
+    <text x="120" y="318" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Python: </tspan>
+      <tspan font-family="ui-monospace, monospace">certifi</tspan>
+    </text>
+
+    
+    <rect x="56" y="346" width="808" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 354)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M6 10 l12 -6 l12 6 v16 l-12 6 l-12 -6 z" />
+      <line x1="18" y1="4" x2="18" y2="32" />
+      <line x1="6" y1="10" x2="18" y2="16" />
+      <line x1="30" y1="10" x2="18" y2="16" />
+    </g>
+    <text x="120" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">other language-specific bundles</text>
+
+    
+    <rect x="56" y="408" width="808" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 416)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="18" cy="18" r="14" />
+      <circle cx="18" cy="18" r="5" />
+      <line x1="18" y1="4" x2="18" y2="13" />
+      <line x1="18" y1="23" x2="18" y2="32" />
+      <line x1="4" y1="18" x2="13" y2="18" />
+      <line x1="23" y1="18" x2="32" y2="18" />
+    </g>
+    <text x="120" y="442" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">the Kubernetes service-account CA</text>
+
+    
+    <rect x="56" y="470" width="808" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 478)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="8" width="24" height="20" rx="3" />
+      <path d="M12 8 v-3 h12 v3" />
+      <line x1="12" y1="18" x2="24" y2="18" />
+    </g>
+    <text x="120" y="504" font-size="24" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">container images: </tspan>
+      <tspan font-family="ui-monospace, monospace">update-ca-certificates</tspan>
+    </text>
+
+    
+    <rect x="56" y="532" width="808" height="78" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 552)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="6" width="24" height="24" rx="4" />
+      <circle cx="18" cy="18" r="5" />
+    </g>
+    <text x="120" y="562" font-size="24" fill="#303a36">
+      <tspan x="120" dy="0" font-family="system-ui, -apple-system, sans-serif" font-weight="bold">containerd registry CA: </tspan>
+      <tspan x="120" dy="30" font-family="ui-monospace, monospace">/etc/containerd/certs.d/&lt;registry&gt;/hosts.toml</tspan>
+    </text>
+
+    
+    <rect x="56" y="620" width="808" height="78" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 640)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="14" width="8" height="6" />
+      <rect x="14" y="14" width="8" height="6" />
+      <rect x="24" y="14" width="8" height="6" />
+      <rect x="14" y="6" width="8" height="6" />
+      <path d="M4 22 h28 c-2 8 -8 10 -14 10 s-12 -2 -14 -10 z" />
+    </g>
+    <text x="120" y="650" font-size="24" fill="#303a36">
+      <tspan x="120" dy="0" font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Docker registry CA: </tspan>
+      <tspan x="120" dy="30" font-family="ui-monospace, monospace">/etc/docker/certs.d/&lt;registry&gt;/ca.crt</tspan>
+    </text>
+
+    
+    <rect x="56" y="708" width="808" height="78" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 728)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M18 4 l12 5 v10 c0 8 -6 14 -12 17 c-6 -3 -12 -9 -12 -17 v-10 z" />
+      <line x1="18" y1="12" x2="18" y2="24" />
+      <circle cx="18" cy="18" r="3" />
+    </g>
+    <text x="120" y="738" font-size="24" fill="#303a36">
+      <tspan x="120" dy="0"><tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">RHEL family: </tspan><tspan font-family="ui-monospace, monospace">/etc/pki/ca-trust/source/anchors/</tspan></tspan>
+      <tspan x="120" dy="30"><tspan font-family="system-ui, -apple-system, sans-serif">and </tspan><tspan font-family="ui-monospace, monospace">update-ca-trust</tspan></tspan>
+    </text>
+
+    
+    <rect x="56" y="796" width="808" height="112" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(68, 832)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="6" y="14" width="24" height="18" rx="3" />
+      <path d="M12 14 v-6 a6 6 0 0 1 12 0 v6" />
+      <circle cx="18" cy="23" r="2" fill="#207448" />
+    </g>
+    <text x="120" y="826" font-size="24" fill="#303a36">
+      <tspan x="120" dy="0"><tspan font-family="system-ui, -apple-system, sans-serif" font-weight="bold">Debian and Ubuntu: </tspan><tspan font-family="system-ui, -apple-system, sans-serif">copy </tspan><tspan font-family="ui-monospace, monospace">ca.pem</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> to</tspan></tspan>
+      <tspan x="120" dy="30" font-family="ui-monospace, monospace">/usr/local/share/ca-certificates/lab-root.crt</tspan>
+      <tspan x="120" dy="30"><tspan font-family="system-ui, -apple-system, sans-serif">and run </tspan><tspan font-family="ui-monospace, monospace">update-ca-certificates</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-lanes">
+    
+    <rect x="910" y="145" width="650" height="370" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(934, 168)" stroke="#db8129" stroke-width="4" fill="none">
+      <path d="M28 6 l24 42 h-48 z" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="41" r="2" fill="#db8129" />
+    </g>
+    <text x="1006" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">server sends leaf only</text>
+
+    
+    <rect x="934" y="240" width="602" height="250" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <g transform="translate(956, 260)" stroke="#db8129" stroke-width="3" fill="none">
+      <circle cx="16" cy="16" r="14" />
+      <line x1="8" y1="8" x2="24" y2="24" />
+      <line x1="24" y1="8" x2="8" y2="24" />
+    </g>
+    <text x="960" y="325" font-size="24" fill="#303a36">
+      <tspan x="960" dy="0" font-family="system-ui, -apple-system, sans-serif">browsers fetch the missing intermediate through</tspan>
+      <tspan x="960" dy="38" font-family="system-ui, -apple-system, sans-serif">Authority Information Access (AIA) and work;</tspan>
+      <tspan x="960" dy="48" font-family="system-ui, -apple-system, sans-serif" font-weight="bold" fill="#db8129">curl, Java and Go fail</tspan>
+    </text>
+
+    
+    <rect x="910" y="535" width="650" height="390" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(934, 555)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M28 6 l22 8 v18 c0 14 -10 22 -22 26 c-12 -4 -22 -12 -22 -26 v-18 z" />
+      <path d="M18 28 l8 8 l14 -14" />
+    </g>
+    <text x="1006" y="578" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1006" dy="0">server sends leaf plus intermediate</tspan>
+      <tspan x="1006" dy="38">(everything except the root)</tspan>
+    </text>
+
+    
+    <rect x="934" y="660" width="602" height="240" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(1207, 695)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="26" />
+      <path d="M16 28 l8 8 l16 -16" />
+    </g>
+    <text x="1235" y="810" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">all clients work</text>
+  </g>
+
+  
+  <g id="error-line">
+    <rect x="40" y="940" width="1520" height="82" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="2" />
+    <g transform="translate(60, 955)" stroke="#dc2626" stroke-width="3" fill="none">
+      <polygon points="16,4 34,4 46,16 46,34 34,46 16,46 4,34 4,16" />
+      <line x1="25" y1="14" x2="25" y2="28" />
+      <circle cx="25" cy="36" r="2" fill="#dc2626" />
+    </g>
+    <text x="124" y="975" font-size="24" fill="#303a36">
+      <tspan x="124" dy="0"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#991b1b">x509: certificate signed by unknown authority</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> appears in </tspan><tspan font-family="ui-monospace, monospace">ctr</tspan><tspan font-family="system-ui, -apple-system, sans-serif">, </tspan><tspan font-family="ui-monospace, monospace">crictl</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> and </tspan><tspan font-family="ui-monospace, monospace">kubelet</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> events</tspan></tspan>
+      <tspan x="124" dy="32" font-family="system-ui, -apple-system, sans-serif">when a private CA is missing from the runtime</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer">
+    <rect x="40" y="1034" width="1520" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(60, 1045)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="24" cy="24" r="20" />
+      <line x1="24" y1="20" x2="24" y2="34" />
+      <circle cx="24" cy="14" r="2" fill="#207448" />
+    </g>
+    <text x="124" y="1063" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="124" dy="0">unknown authority usually means a private CA is missing from the relevant store,</tspan>
+      <tspan x="124" dy="28">or the server left out its intermediate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1116" width="1520" height="62" rx="8" fill="#207448" />
+    <g transform="translate(60, 1123)" stroke="#ffffff" stroke-width="3" fill="none">
+      <circle cx="24" cy="24" r="18" />
+      <path d="M16 24 l6 6 l12 -12" />
+    </g>
+    <text x="820" y="1155" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Who is trusted depends on the trust store a given program has decided to believe</text>
+  </g>
+</svg>

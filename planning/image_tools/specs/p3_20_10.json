@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p3-2010-md1-curve",
+  "title": "Queueing: response time climbs steeply as utilisation rises",
+  "spec": "A line chart. X axis 'utilisation u (percent busy)' with marks 50, 60, 80, 90, 95. Y axis 'mean response time as a multiple of service time s'. Plot points joined by a rising curve: 'at 50 percent busy: 1.5 x service time', 'at 80 percent: 3 x', 'at 90 percent: 5.5 x', 'at 95 percent: 10.5 x'. A vertical dashed marker at 60 percent labelled 'beyond 60 percent utilisation the average response time doubles (Systems Performance)'. Formula box at top in monospace 'r = s (2 - u) / (2 (1 - u))' with caption 'M/D/1: random arrivals, fixed service times; s is service time, u is utilisation'. Orange outline on the 90 percent point 5.5 x. Bottom note 'a simplified model, treat it as a shape; p95 latency can rise steeply as load nears a limit (AI Systems Performance Engineering, chapter 16)'. Side mini-box: 'Same idea in requests: 99.9 percent allows 1,000 failures per million and 86.4 seconds of failure in a 24-hour day.'",
+  "anchor": "### 5. Arithmetic that makes the numbers useful",
+  "alt": "A curve of M/D/1 mean response time as a multiple of service time, 1.5 at 50 percent busy, 3 at 80 percent, 5.5 at 90 percent and 10.5 at 95 percent.",
+  "cap": "Beyond about 60 percent utilisation the average response time doubles, and it keeps climbing as the server nears full."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p3-2010-cprofile-anatomy",
+  "title": "Reading a cProfile report: which function is hot, and what it cannot show",
+  "spec": "Top: the report in monospace: '4002 function calls in 0.133 seconds' then header 'ncalls tottime percall cumtime percall filename:lineno(function)' then row '1 0.133 0.133 0.133 0.133 c10_profile_demo.py:7(dedupe_slow)' then row '4000 0.000 0.000 0.000 0.000 {method append of list objects}'. Arrows from the header cells to explanations: 'ncalls: how many times the function ran', 'tottime: time inside the function itself', 'cumtime: adds the functions it calls; much larger than tottime means the time goes into its callees'. A highlight on the dedupe_slow row in orange with callout 'all 0.133 s sits in the function itself'. Second callout: 'The in operator is not a function call, so the profiler cannot point at the line: you read the code, and the section 2 table says what to suspect (x in list)'. Right panel 'The fix': 'dedupe_fast with a set: 0.001 s'. Bottom row of three tools as chips: 'timeit: snippets, report the minimum of repeats', 'cProfile: test environment, 1,000,000 calls took 0.045 s without it and 0.110 s with it, a factor of 2.4', 'metrics: production'. Takeaway bar: 'Measure the whole, find where the time goes, change one thing, measure again.'",
+  "anchor": "### 8. Measuring your own code with timeit and cProfile",
+  "alt": "A cProfile report for dedupe_slow with columns ncalls, tottime and cumtime, showing all 0.133 seconds inside the function itself because the in operator is not a function call.",
+  "cap": "cProfile tells you which function is hot, not which line, and it slows the program, so use timeit for snippets and metrics in production."
+ }
+]

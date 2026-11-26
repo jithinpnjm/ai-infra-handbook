@@ -1,0 +1,222 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-data-not-copies",
+  "title": "Variables, facts and templates: three jobs, like the recipe card, the plate and the plating",
+  "spec": "Three boxes joined by arrows. 'Variables: what you intend (the recipe card)'. 'Facts: what each host actually is (the cook's check of what is on the plate)'. 'Templates: combine both into the finished config (the plating template)'. Output files 'Slurm, NCCL, chrony, netplan, Prometheus configuration'. Left story panel (orange) 'a second batch of servers arrives from a different purchase order; copying the playbook and editing three lines works for one batch; by the fourth batch there are four playbooks that drift apart and a fix lands in one and misses the others'. Right panel 'a playbook that reads its differences from data stays one playbook, and the differences live in one place'. Differences strip 'some nodes have 8 GPUs and others 4; H100 and A100; ConnectX-7 and BlueField NICs; each rack with its own management subnet'. Short glossary strip 'Slurm: the job scheduler; NCCL: NVIDIA's library for moving data between GPUs; chrony: keeps clocks in step; netplan: Ubuntu's network configuration tool; Prometheus: a metrics collector'. Bottom bar: 'When a plate comes out wrong you can ask which part gave the wrong answer'.",
+  "anchor": "## Why this matters for AI infrastructure",
+  "alt": "Variables as the intent, facts as what each host really is and templates combining both into Slurm, NCCL, chrony, netplan and Prometheus config, versus four drifting copied playbooks.",
+  "cap": "Variables say what you intend, facts say what each host is, and templates combine them so one playbook serves every batch."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-where-defined",
+  "title": "Where a variable can be defined, from the desk note to the front door",
+  "spec": "A reach ladder, narrow to wide. 'task vars: only that one task, gone when it ends (extra: 1)'. 'play vars: vars block, belongs to the play, stops when the play ends'. 'vars_files: loads files at the start of the play; the file name can itself be a template, vars/{{ ansible_facts[os_family] | lower }}.yml, so Debian and RedHat hosts load different files with no if statement'. 'vars_prompt: asks a person at run time: avoid in automation, it stops the run and waits (private: false, name reason, prompt Maintenance reason)' (orange). 'inventory, group_vars, host_vars (4.5) and role defaults/ and vars/ (4.11)'. 'extra vars -e: key=value, a JSON-style string such as {\"k\": [1,2]}, or @file.yml'. 'set_fact and register: created by tasks'. 'include_vars: loads a file or directory into host variables during the run'. 'lookup results and lookup(env, ...)'. Placement rule panel 'put a value where the people who own it will look: a cluster-wide default in group_vars/all, a rack's special case in the group for that rack, a one-off test on the command line where it vanishes when the run ends; which one wins when two disagree is in 4.5'. Story strip 'late Tuesday: raising the NCCL debug level for the second cluster also turned on verbose logging on the first, filling its disk: the setting was written in a place that reached further than you thought'. Bottom bar: 'The place you choose decides how far the value reaches'.",
+  "anchor": "### Where and how",
+  "alt": "A ladder of variable definition places from task vars and play vars through vars_files and vars_prompt to inventory, role, extra vars, set_fact, include_vars and lookups, with the placement rule and the NCCL debug story.",
+  "cap": "A variable reaches as far as the place it is defined, so put each value where its owners will look."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-names-and-brackets",
+  "title": "Naming and reading variables: reserved words, prefixes and bracket access",
+  "spec": "Left naming rules: 'letters, digits and underscores; cannot start with a digit'; 'avoid Python keywords and reserved names: environment, name, hosts, tasks, connection, port'; 'variable names are not scoped by role, so start each name with the owner, such as slurm_ or nvidia_: the prefix keeps two roles from overwriting each other's port or version'. Types strip 'nvidia_driver_branch: 550 is an int; \"550.90.07\" must be quoted to stay a string: a version with two dots is not a number; quoting decides the type; when unsure, quote'. Right 'Reading a value': '{{ nccl_env.debug }}', '{{ nccl_env[ib_hca] }}', '{{ list[0] }}'. Trap panel (orange) 'my_dict has a key named values: my_dict.values returns Python's bound method <built-in method values of dict object>, while my_dict[values] looks up the key; a key named items gives a method under dot notation; a key named eth0.100 is a syntax error under dot notation; brackets handle both'. Use brackets 'when a key contains hyphens, spaces or dots, or collides with items, keys, values, copy, get, update'. Four equal forms 'result[stat][mode], result[stat].mode, result.stat[mode], result.stat.mode: pick one form per playbook'. Tilde strip 'join strings inside one expression: msg: {{ The URL is https://  ~ server_name ~ /index.html }}'. Source label 'Ansible: Up and Running chapter 5'. Bottom bar: 'Brackets always look up the key'.",
+  "anchor": "### Naming and types",
+  "alt": "Variable naming rules with reserved names and role prefixes, typing by quoting a version string, and the dot versus bracket trap where my_dict.values returns a Python method instead of the key.",
+  "cap": "Prefix names by owner, quote versions to keep them strings, and use brackets when a key collides with a dictionary method."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-default-mandatory-assert",
+  "title": "Fail early or fall back: default, mandatory, assert and argument specs",
+  "spec": "A decision flow for an optional or required value. 'optional with a sensible fallback: {{ optional_var | default(x) }} supplies the spare part only when the primary is missing'. 'required: {{ must_exist | mandatory }} stops the job before any node is touched, much cheaper than discovering halfway through a fleet run that a rack variable was empty' (orange). 'required set of checks: assert at the top of a play or role: that: [ rack is defined, gpu_count | int > 0 ]: fails early with a clear message'. 'roles: validate inputs with an argument spec in meta/argument_specs.yml (4.11)'. Type conversion panel 'filters int, float, bool, string, list; a boolean written as a string such as \"yes\" or \"True\" needs | bool before you test it; never compare a boolean with a string: the string no is not empty so a plain if on it is true; | bool turns the word into a real boolean first'. Bottom bar: 'Give every optional value a default, or check it with an assertion'.",
+  "anchor": "### Naming and types",
+  "alt": "A flow choosing between default for optional values, mandatory and assert for required values and argument specs for roles, with type conversion filters and the string no that tests as true.",
+  "cap": "Use default for optional values, mandatory and assert to fail before any node is touched, and bool to convert string booleans."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-set-fact-and-lazy",
+  "title": "How long a variable lives, and why driver_pkg follows the host's branch",
+  "spec": "Left lifetime table 'Source', 'Scope and lifetime'. 'play and task vars' / 'the place where they are defined'. 'inventory, group and host vars' / 'each host for the whole run'. 'set_fact and register' / 'host-scoped, stay for the rest of the play run; with cacheable: true and fact caching enabled they carry into later runs'. 'run_once task' / 'sets the variable only on the host that ran it, unless you distribute it with delegate_facts or by iterating over hostvars' (orange). 'include_vars' / 'loads at runtime, precedence above play vars'. 'vars_files' / 'loads at the start of the play'. 'role variables' / 'not scoped by default: visible to later roles and tasks, hence prefixes'. Right lazy rendering panel: 'lazy means evaluated when used, not when defined'; example 'group_vars/all.yml: driver_pkg: \"nvidia-driver-{{ nvidia_driver_branch }}\"'; steps 'a host-level override of nvidia_driver_branch to another value' to 'the branch is filled in only when a task reads driver_pkg' to 'that host installs the package name built from its own branch'; recursion warning 'x: \"{{ x }}\" produces an error because the value keeps asking for itself; b: \"{{ a }}-x\" is templated at the point of use'. Scenario strip 'a set_fact stores a driver value on each GPU host and the next task in the same play reads it; a task on a different host sees its own value; one answer shared by every host needs delegation or hostvars, run_once alone is not enough'. Bottom bar: 'Check the precedence order in 4.5 before you rely on a value'.",
+  "anchor": "### Scope and lifetime",
+  "alt": "A lifetime table for play vars, inventory vars, set_fact and register, run_once, include_vars, vars_files and role variables, beside lazy rendering where driver_pkg is built from each host's own nvidia_driver_branch.",
+  "cap": "set_fact and register are per-host for the rest of the play, and lazily rendered variables use each host's own values when read."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-register-anatomy",
+  "title": "What register keeps, the skipped trap and loop results",
+  "spec": "Left a dictionary box for 'register: drv' after 'nvidia-smi --query-gpu=driver_version --format=csv,noheader' with fields 'rc (return code, zero usually success)', 'stdout', 'stdout_lines (output split into one list item per line)' (orange), 'stderr', 'changed', 'failed', 'start', 'end', 'delta', 'cmd'. Flow 'register drv keeps the whole raw output' to 'set_fact current_driver: {{ drv.stdout_lines[0] | trim }}' to 'debug var: drv shows the whole structure'. Middle panel 'Skipped trap': 'a registered variable exists even when its task was skipped: it carries skipped: true and has no stdout_lines; a driver check running only on GPU nodes is skipped on a CPU-only node, and the next task reading drv.stdout_lines[0] fails with a missing value error; test first: drv is not skipped, or drv is defined and drv.rc == 0'. Right panel 'loop and register': 'a task with loop registers a results list, one entry per item, each a full result dictionary: drv.results[0].stdout for the first item'. Rules strip 'put logic in failed_when and changed_when instead of post-processing by hand; a read-only command such as nvidia-smi --query-gpu carries changed_when: false; keep the raw output in register and the cleaned value in set_fact so each variable does one job; cacheable: true on an expensive computed fact; set_fact is a label on a jar, not a programming loop'. Bottom bar: 'When the cleaned value looks wrong, you still have the raw output to compare'.",
+  "anchor": "## 2. Registered results and set_fact",
+  "alt": "The fields of a registered command result including rc and stdout_lines, the flow from register to set_fact to debug, the skipped-task trap on CPU-only nodes and the results list from a loop.",
+  "cap": "register keeps the raw result, set_fact keeps one clean value, and a skipped task still defines the variable without output."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-facts-commands",
+  "title": "Reading facts: three setup commands and the facts list",
+  "spec": "Left three commands with what each shows. 'ansible gpu001 -m ansible.builtin.setup | less: every fact for one host, scroll the whole dictionary'. 'setup -a filter=ansible_default_ipv4: narrows to the default network route'. 'setup -a gather_subset=!all,!min,network,hardware: excludes all and min, gathers only network and hardware: the command to run when a node misbehaves'. Right 'What facts cover' tiles 'distribution, kernel, CPU count, memory, mounts, network interfaces and addresses, DMI info (the hardware identity the BIOS reports, such as vendor and model), environment, date and time, SELinux, user, Python'. Example line 'inventory_hostname: ansible_facts[distribution] ansible_facts[distribution_version], kernel ansible_facts[kernel], ansible_facts[processor_vcpus] vCPUs, (ansible_facts[memtotal_mb] / 1024) | round(1) GiB RAM, primary IP ansible_facts[default_ipv4][address]' with note 'GiB is binary: 1 GiB is 1024 MiB; the value is a plain number so the division needs no conversion'. Prefer strip (orange) 'ansible_facts[distribution] instead of the short injected names such as ansible_distribution: older names share one global space, so a host-reported value can sit next to your own variable of the same name; inject_facts_as_vars controls the short names'. Cost strip 'each fact is a probe on each host: seconds per host before your first real task, minutes on hundreds of nodes'. Bottom bar: 'Facts describe what the host actually is'.",
+  "anchor": "## 3. Facts",
+  "alt": "Three setup module commands for all facts, a filter and a gather_subset, the categories of facts, a summary line built from ansible_facts and the advice to use ansible_facts instead of short injected names.",
+  "cap": "Read facts with setup filters and subsets, and prefer ansible_facts[name] over the short injected variable names."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-fact-gathering-cost",
+  "title": "Gathering facts cheaply on a large fleet, and facts that need a probe",
+  "spec": "Two panels. Panel 'Speed levers': 'gather_subset values min, hardware, network, virtual, all; negate with !'; 'gather_timeout and the setup filter option'; 'gathering = smart with a cache: fact_caching = jsonfile, redis or memcached; smart gathering reuses cached facts instead of collecting on every run'; 'gather_facts: false and call setup with a small subset only where needed'; 'on demand: package_facts, service_facts, mount_facts, ansible.builtin.getent'. Panel 'Branching on facts': 'when: ansible_facts[os_family] == Debian reads as a plain sentence'; 'version check: ansible_facts[distribution_major_version] is version(9, >=) compares as versions so 10 is newer than 9'. GPU panel (orange) 'setup does not describe GPUs by default: probe with nvidia-smi -L, lspci -d 10de: (10de is NVIDIA's PCI vendor ID) or DCGM; wrap the probes in a role that publishes facts gpu_count, gpu_model, nvlink_present and ib_hcas; the probe runs once and everything after reads the answer as a fact'. Bottom bar: 'Pay for facts only in the plays that ask'.",
+  "anchor": "## 3. Facts",
+  "alt": "Fact gathering speed levers of subsets, timeouts, smart gathering with a cache and on-demand fact modules, with version-aware conditions and a role that publishes GPU facts from nvidia-smi, lspci or DCGM probes.",
+  "cap": "Gather only the subsets you need, cache facts on big fleets, and publish GPU facts from a probe role because setup does not describe GPUs."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-local-facts",
+  "title": "A node that labels itself: custom facts in /etc/ansible/facts.d",
+  "spec": "A flow. Two file types on the target 'site.fact (INI): [location] rack=r07, rail=3' and 'gpu.fact (executable, mode 0755): #!/bin/sh; n=$(nvidia-smi -L 2>/dev/null | wc -l); echo {\"count\": $n}' (prints JSON). Arrow 'placed in /etc/ansible/facts.d/ on the target; any .fact file, or any executable, is picked up during fact gathering; INI or JSON, or an executable printing JSON'. Arrow to 'ansible_local.<name>': 'ansible_local.location.rack', 'ansible_local.gpu.count'. Task strip 'copy writes gpu.fact; setup with filter ansible_local re-reads it; debug msg: {{ ansible_local.gpu.count }} GPUs on {{ inventory_hostname }}'. Callouts 'the script runs on the target, so it always counts the GPUs actually present, even if the inventory was written before a card was replaced' (orange); 'the node carries its own label, so the playbook does not need a separate spreadsheet that might be out of date'; 'attributes stay with the host and do not depend on the control node'. Bottom bar: 'The supported way for a host to declare its own attributes'.",
+  "anchor": "### Custom (local) facts",
+  "alt": "An INI site.fact and an executable gpu.fact on the target in facts.d feeding ansible_local during fact gathering, with the task that publishes and reads the GPU count.",
+  "cap": "Files and executables in facts.d appear under ansible_local, so a host can declare its own rack and GPU count."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-magic-table",
+  "title": "Magic variables you never define yourself",
+  "spec": "A grouped table 'Variable', 'Meaning'. 'inventory_hostname, inventory_hostname_short' / 'the host's name in inventory'. 'ansible_host, ansible_user and others' / 'connection variables'. 'groups' / 'dict of group name to host list: groups[gpu]'. 'group_names' / 'groups the current host belongs to'. 'hostvars' (orange) / 'dict of host to all of that host's variables and facts: hostvars[slurmctl01][ansible_default_ipv4][address]; fact values only for hosts whose facts were gathered earlier in the run'. 'play_hosts, ansible_play_hosts, ansible_play_batch' / 'hosts in the current play, current serial batch'. 'ansible_play_name, ansible_check_mode, ansible_diff_mode, ansible_run_tags, ansible_limit' / 'run metadata'. 'playbook_dir, role_path, inventory_dir' / 'paths'. 'omit' / 'special placeholder to drop a parameter'. 'ansible_version, ansible_python' / 'controller details'. Name-clash strip 'hostvars is a runtime dictionary that exists while the run is happening; host_vars/ is a directory on disk with files you edit by hand'. Example strip 'HAProxy (a load balancer that spreads traffic across servers) backend: for host in groups.web: server {{ host }} {{ hostvars[host].ansible_default_ipv4.address }}:80; read it like a seating chart: for each web server name, look up its address in hostvars; Ansible: Up and Running chapter 5; modelled in code/part04/ansible_variables_facts.py'. Bottom bar: 'hostvars is not host_vars'.",
+  "anchor": "### Magic variables",
+  "alt": "A table of Ansible magic variables including inventory_hostname, groups, group_names, hostvars, play batch variables, run metadata, paths and omit, with the hostvars versus host_vars distinction and an HAProxy backend loop.",
+  "cap": "Magic variables are set by Ansible, and hostvars is a runtime dictionary that is different from the host_vars directory."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-lookup-vs-query",
+  "title": "lookup returns a string, query returns a list: what a loop sees",
+  "spec": "Two lanes over three SSH keys. Lane 'lookup(...)': 'returns a string joined with commas by default'; the loop sees one long string with commas in it and runs once with the wrong shape of data (orange). Lane 'query(...) or q(...)': 'always returns a list'; the loop sees three items and runs three times. Rules strip 'prefer query when you feed the result into a loop'; 'a lookup runs every time it is evaluated, so keep expensive lookups out of loops: a url lookup inside a loop over a large group fetches the same page once for every host'; 'lookups run where Ansible runs, not on the targets: for data from a target use a module and register'; 'with_<lookup>: is the older way of writing loop: with a lookup; the loop: form does the same job more clearly'. Opening story 'a secret lives in a vault, a value lives in a file, a hostname comes from DNS: a lookup fetches it at run time instead of copying it into code where it goes stale; next month the secret is rotated, the copy is not, and the job fails at night'. Bottom bar: 'Use query when the loop needs items'.",
+  "anchor": "## 4. Lookups",
+  "alt": "Two lanes where lookup joins three SSH keys into one comma string that a loop runs once on, while query returns a list so the loop runs three times, with the cost and control-node rules for lookups.",
+  "cap": "lookup joins values into one string, query returns a list for loops, and both run on the control node each time they are evaluated."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-lookup-table",
+  "title": "The common lookups and what each is for",
+  "spec": "A table 'Lookup', 'Use'. 'env' / 'lookup(env, HOME): control-node environment'. 'file' / 'read a local file's content, for example an SSH public key'. 'template' / 'render a local template to a string'. 'pipe' (orange) / 'run a local command and return stdout: use sparingly, side effects on every evaluation'. 'url' / 'fetch a URL on the control node'. 'password' / 'generate and persist a random password in a local file: lookup(password, creds/db chars=ascii_letters,digits length=24)'. 'community.hashi_vault.hashi_vault' / 'read secrets from Vault'. 'ansible.builtin.vars, varnames' / 'look up variables by name'. 'dict, items, subelements, together, nested or product, cartesian' / 'build loops over structures'. 'first_found' / 'pick the first existing file from a list, for OS-specific vars'. 'ini, csvfile, community.general.dig (DNS), community.general.random_pet' / 'misc data sources'. Where-it-runs strip 'the control node is the machine where you type ansible-playbook, often a laptop or bastion; rendering fills the {{ }} parts just before a task uses them'. Bottom bar: 'Lookups fetch data from outside the playbook, on the control node'.",
+  "anchor": "## 4. Lookups",
+  "alt": "A table of lookups env, file, template, pipe, url, password, hashi_vault, vars, loop builders, first_found and misc sources with the use of each and a note that they run on the control node.",
+  "cap": "Lookups cover environment, files, secrets and loop builders, and all of them run on the control node at render time."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-loop-patterns",
+  "title": "Three loop patterns: list of dicts, dict, nested subelements",
+  "spec": "Three rows. Row 1 'list of dicts: user module name {{ item.name }}, uid {{ item.uid }}, groups {{ item.groups | default([]) }}; loop slurm uid 990 groups [] and munge uid 991': 'each item is one account; loop_control label {{ item.name }} shows slurm instead of the whole record, pause 0, index_var idx'. Row 2 'dict: sysctl name {{ item.key }}, value {{ item.value }}; loop: {{ sysctl_settings | dict2items }}': 'dict2items turns each key and value into a pair'. Row 3 'nested: debug msg {{ item.0.name }} -> {{ item.1 }}; loop: {{ users | subelements(keys) }}': 'each user holds a list of keys; the loop produces one pair per key; item.0.name is the user and item.1 one of that user's keys; runs once for every key of every user'. Right guide (orange) 'prefer loop with filters dict2items, subelements, product, zip, flatten, batch over hand-written logic'; 'until and retries for polling: keep checking until the answer is right and give up after a set number of tries, suits a service that takes a minute to start'; 'if a module accepts a list, pass the whole list: package name [a, b, c] runs as one transaction, much faster than a loop of three calls'. Analogy 'a checklist printed once and ticked off for each item'. Bottom bar: 'The steps stay the same, only the item in the box changes'.",
+  "anchor": "## 5. Loops over data",
+  "alt": "Three loop patterns over a list of dicts creating users with loop_control, over a dict with dict2items for sysctl and over nested data with subelements, plus until retries polling and passing a list to a module.",
+  "cap": "Loop over lists of dicts, dict2items pairs or subelements, and pass lists straight to modules that accept them."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-filter-needs",
+  "title": "Which filter for which need, with worked expressions",
+  "spec": "A table 'Need', 'Filter'. 'Dict merge (recursive)': base | combine(override, recursive=True). 'List and dict': dict2items, items2dict, zip, zip_longest, product, permutations. 'Set operations': union, intersect, difference, symmetric_difference, unique. 'Flatten and shape': flatten, community.general.json_query (JMESPath queries). 'Regex': regex_search, regex_findall, regex_replace. 'Paths': basename, dirname, splitext. 'Version': is version(2.0, >=), ansible.builtin.version. 'Hash and crypt': hash(sha256), password_hash(sha512, salt), b64encode. 'Serialise': to_json, to_nice_json, to_yaml, to_nice_yaml, from_json, from_yaml. 'IP and network': ansible.utils.ipaddr, ipsubnet, ipmath, next_nth_usable, cidr_merge, hwaddr (needs netaddr). 'Defaulting': default, default(omit), mandatory, ternary(a, b). 'Misc': random, shuffle, human_readable, human_to_bytes, quote, comment, expanduser. Worked expressions strip with results: 'gpu_nodes | map(extract, hostvars, ansible_host) | list gives a list of addresses (orange: extract pulls one hostvar from many hosts at once)'; 'groups[gpu] | map(extract, hostvars, rack) | unique | sort gives racks in use'; '(ansible_facts[memtotal_mb] * 0.9) | int gives Slurm RealMemory at about 90 percent'; '10.1.0.0/24 | ansible.utils.ipaddr(10) gives 10.1.0.10/24'; '(item.size | human_to_bytes) // (1024**3) gives GiB'; 'is_prod | ternary(warn, debug)'. Bottom bar: 'A filter for your problem probably exists before you write a loop by hand'.",
+  "anchor": "## 6. Filters for configuration generation",
+  "alt": "A table of Ansible filters grouped by need from dict merge and sets to regex, version, hashing, serialisation and network, with six worked expressions such as extract, unique sort, RealMemory and ipaddr.",
+  "cap": "Reach for a filter by need, and use map extract to pull one hostvar from many hosts at once."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-template-module-options",
+  "title": "The template task options, and what each protects",
+  "spec": "Annotated task 'Render slurm.conf'. 'src: slurm.conf.j2: .j2 marks a Jinja2 template, read from the role's templates/ directory or any path you give'. 'dest: /etc/slurm/slurm.conf; owner slurm, group slurm, mode 0644'. 'backup: true keeps a timestamped copy when the file changes, so a bad render can be undone by copying the old file back'. 'validate: slurmd -f %s -C (an example; check the tool's actual option support): checks the rendered file before it replaces the live one; if the checker fails the live file stays as it was, protecting a running scheduler from a broken config' (orange). 'notify: Reload slurmctld: the handler runs only when the rendered file changed, so the scheduler reloads only when there was something to apply'. Analogy strip 'a template is a form letter with blanks: the text is fixed and each blank is filled from the data for that host or that run'. Story strip 'a new GPU node joins and the Slurm configuration must list it: editing by hand risks missing a controller or a CPU count typed from memory; a template renders the file from data every time so the new node appears automatically'. Bottom bar: 'Render, validate, then replace'.",
+  "anchor": "## 7. Templates in practice",
+  "alt": "An annotated template task for slurm.conf with src, owner and mode, backup for undo, validate before replacing the live file and notify for a handler that runs only on change.",
+  "cap": "backup allows undo, validate protects the live file from a broken render, and notify reloads only when the file changed."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-hosts-template-trace",
+  "title": "Tracing one host through the /etc/hosts template",
+  "spec": "Left the template: '# {{ ansible_managed }}', '127.0.0.1 localhost', 'for h in groups[cluster] | sort', '{{ hostvars[h][ansible_host] }} {{ h }}.{{ cluster_domain }} {{ h }}', 'endfor'. Right a worked trace for host gpu001: input 'inventory entry gpu001 with its ansible_host value, and the cluster_domain variable' and output line 'the ansible_host value, then gpu001 followed by the cluster_domain value, then gpu001' (written as a pattern). Callouts: 'first line marks the file as generated so nobody edits it by hand'; 'second line keeps the loopback address'; 'the loop writes one line per host in sorted order: the sort keeps the output the same on every render' (orange); 'each line uses the host's ansible_host and its name, so the file follows the inventory: add a host to the inventory, run the playbook, and the new line appears without anyone touching the file'. Warning strip 'cross-host data needs facts for those hosts: see the --limit trap'. Bottom bar: 'Trace one value from the data to the output line'.",
+  "anchor": "### Example 1: /etc/hosts for the cluster",
+  "alt": "An /etc/hosts template looping over the sorted cluster group with each host's ansible_host, name and domain, showing how a new inventory host gets a new line automatically.",
+  "cap": "A sorted loop writes one line per host from the inventory, so a new host appears without touching the file."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-slurm-node-line",
+  "title": "One Slurm NodeName line, field by field, and where each value comes from",
+  "spec": "A table 'Field in the line', 'Source', 'Fallback'. 'NodeName={{ h }}' / 'the host name from groups[gpu] | sort' / '-'. 'NodeAddr={{ v.ansible_host }}' / 'hostvars' / '-'. 'CPUs={{ v.ansible_facts.processor_vcpus }}' / 'gathered fact' / '-'. 'Boards=1'. 'SocketsPerBoard={{ v.sockets | default(2) }}' / 'host variable' / '2'. 'CoresPerSocket={{ v.cores_per_socket | default(48) }}' / 'host variable' / '48'. 'ThreadsPerCore=1'. 'RealMemory={{ (v.ansible_facts.memtotal_mb * 0.95) | int }}' (orange) / 'gathered fact' / 'leave memory unused: the operating system and the Slurm daemon need room too, so the scheduler never promises every last byte to a job'. 'Gres=gpu:{{ v.gpu_model | default(h100) }}:{{ v.gpu_count | default(8) }}' / 'host variables' / 'h100 and 8'. 'State=UNKNOWN'. Header lines 'ClusterName={{ slurm_cluster_name }}', 'SlurmctldHost={{ groups[slurm_controller][0] }}'. Footer line 'PartitionName=gpu Nodes={{ groups[gpu] | sort | join(,) }} Default=YES MaxTime=INFINITE State=UP' with 'a partition is Slurm's name for a pool of nodes that a user submits jobs to'. Tip strip 'set v = hostvars[h] gives the long path a short name; for large clusters compress the node list into Slurm hostlist syntax such as gpu[001-032] with a custom filter or a precomputed variable'. Bottom bar: 'Defaults fill the gaps where data is missing'.",
+  "anchor": "### Example 2: Slurm node and GRES configuration derived from data",
+  "alt": "A table of each field in a Slurm NodeName line with its hostvars or fact source and default, including 95 percent RealMemory and Gres model and count, with header and partition lines.",
+  "cap": "Each NodeName field comes from hostvars or a fact with a default, and RealMemory leaves 5 percent of memory for the OS and daemon."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-file-sd-and-yaml",
+  "title": "Two rendered outputs: Prometheus file_sd targets and YAML from data",
+  "spec": "Two panels. Panel 'Prometheus file_sd targets' (rendered to /etc/prometheus/targets/gpu.json on the monitoring host): pipeline 'groups[gpu]' to 'map(extract, hostvars, ansible_host)' to 'map(regex_replace, $, :9400) appends port 9400, where the DCGM exporter listens for GPU metrics' to 'list' to wrap in 'targets' with 'labels: job dcgm, cluster {{ cluster_name }}' to 'to_nice_json'. Note 'file_sd means file-based service discovery: Prometheus re-reads the file on its own schedule, so a new node added to the file is scraped without a restart'. Panel 'YAML from data': '{{ k8s_values | to_nice_yaml(indent=2) | indent(4) }}' (orange): 'hand-indented YAML is fragile, one space in the wrong place changes the meaning of the whole file; to_nice_yaml builds the structure correctly every time and indent(4) moves the block to the right depth inside the surrounding template'; 'then validate with yamllint or kubeconform so a mistake is caught before it reaches a cluster'. Bottom bar: 'Let filters build the structure, validate the result'.",
+  "anchor": "### Example 3: Prometheus file_sd targets",
+  "alt": "A pipeline from the gpu group through extract, a regex_replace appending port 9400 and to_nice_json into a Prometheus file_sd file, beside to_nice_yaml with indent for YAML output validated with yamllint or kubeconform.",
+  "cap": "extract and regex_replace build the file_sd targets, and to_nice_yaml with indent builds YAML that is then validated."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-template-practice",
+  "title": "Good template practice: seven habits",
+  "spec": "Seven numbered cards. '1 Keep logic simple: precompute data with set_fact or filters, long expressions go into named variables'. '2 Render with --check --diff before running for real: read the change line by line like a pull request'. '3 validate: when the file has a checker: nginx -t -c %s, visudo -cf %s, named-checkconf %s; %s is the path of the rendered temporary file'. '4 Include {{ ansible_managed }}: tells people not to edit; a hand edit is lost the next time the playbook runs'. '5 Avoid volatile values such as timestamps: they make the file look changed when it is not'. '6 Sort lists and dict keys with | sort and dictsort: deterministic renders, so handlers do not flap' (orange). '7 Preserve ownership and modes; secrets: mode 0600 (only the owner reads or writes), no_log: true and diff: false'. Test strip 'render with fixture data in CI and compare with a golden file, a saved copy of reviewed output (3.9)'. Bottom bar: 'Sort every list the template reads, and render with --check --diff before you change the live file'.",
+  "anchor": "### Good template practice",
+  "alt": "Seven template habits of simple logic, check and diff first, validate with the target's checker, ansible_managed header, no timestamps, sorted output and safe modes for secrets, plus golden file tests.",
+  "cap": "Keep templates simple, sorted and validated, render with check and diff first, and protect secret files."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-detective-commands",
+  "title": "The four detective commands and the in-play checks",
+  "spec": "A four rung ladder with the question each answers. '1 ansible-inventory -i inventories/prod --host gpu001 --yaml: what does the inventory believe? merged inventory-level vars'. '2 ansible gpu001 -i inventories/prod -m ansible.builtin.debug -a var=nvidia_driver_branch: what would the live host see?'. '3 ansible-playbook site.yml -l gpu001 -e \"\" -vvv --tags never --list-tasks: what is loaded? -vvv shows vars files'. '4 grep -rn \"nvidia_driver_branch\" inventories roles playbooks: find every definition (search the name in quotes and with {{ around it, because some values are built from others)'. The first one to show the wrong value tells you which layer to inspect. Right 'From inside a play': 'debug: var=vars[nvidia_driver_branch] prints one value'; 'debug msg {{ hostvars[inventory_hostname] | dict2items | selectattr(key, match, ^nvidia_) | list }} lists every host variable whose name starts with nvidia_: useful when a neighbour variable is involved'. Common surprises strip 'a role's vars/ overriding inventory; -e overriding everything; set_fact persisting into later plays; a dictionary replaced instead of merged (fix: combine(recursive=True), which keeps both sets of keys); two sibling groups defining the same name' (orange). Bottom bar: 'Guessing is slow and risky, see every layer'.",
+  "anchor": "## 8. Variable precedence debugging toolkit",
+  "alt": "A four rung ladder of inventory view, live host, loaded files and grep search to find an unexpected variable value, with in-play debug checks and the most common precedence surprises.",
+  "cap": "Ask the inventory, then the live host, then the loaded files, then grep, and expect surprises from role vars, -e, set_fact and replaced dictionaries."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-secret-leak-paths",
+  "title": "Where a secret leaks, and the setting that closes each path",
+  "spec": "A table 'Leak path', 'Closed by'. 'task output and logs' / 'no_log: true on any task that handles secrets'. 'registered results and debug lines (printing a whole variable to see its shape)' / 'keep secrets out of places where output is shown or stored; assume any output may be copied elsewhere'. '-vvv output (very detailed, may include values you did not mean to show)' / 'keep in mind; avoid on secret tasks'. 'diff of a rendered secret file' / 'diff: false so the difference between old and new content is not printed'. 'files readable by everyone' / 'mode 0600'. 'storage' / 'Vault-encrypted files, or a secret manager queried at run time (4.12)'. 'shell injection' (orange) / 'lookup(pipe) and shell with interpolated variables are injection vectors: if a variable holds ; rm -rf /tmp/x the shell runs the extra command; quote with | quote so the shell treats it as one plain argument'. 'untrusted facts and registered output' / 'a compromised host can return anything; Ansible marks some values unsafe so they are not re-templated; never strip !unsafe: stopping text from outside becoming Jinja2 code that runs on the control node (template injection)'. Story strip 'once a password has been written into a log a whole team can read, you rotate it everywhere it was used, and that is the expensive part'. Bottom bar: 'Treat the target's answer like a stranger's form'.",
+  "anchor": "## 9. Security of variables and templates",
+  "alt": "A table of secret leak paths through logs, debug output, verbose mode, diffs, readable files, storage, shell injection and untrusted facts, with the setting that closes each one.",
+  "cap": "Close each leak path with no_log, diff false, mode 0600, Vault, the quote filter and the unsafe marking."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p4-0407-mistake-groups",
+  "title": "Common variable mistakes in two groups",
+  "spec": "Two lists. Group 'Defaults, facts and scope': 'variables without defaults or validation: missing values surface in the middle of a fleet run'; 'overridable settings in role vars/, or -e as the normal way to configure a role'; 'set_fact treated as global assignment: forgetting its host scope and run_once behaviour'; 'cross-host templates relying on hostvars facts that were never gathered'; 'gathering all facts everywhere on huge fleets, or disabling facts and then using ansible_* variables'. Group 'Formatting and types': 'mixing old injected names such as ansible_distribution with ansible_facts[...]'; 'non-deterministic output: unsorted dicts, sets or timestamps restart handlers for no reason' (orange); 'booleans kept as strings, or version strings parsed as floats'; 'complex Jinja inside YAML where a small module, filter plugin or precomputed variable would be clearer'; 'secrets printed in debug output, or in registered variables shown at -v'. Opening strip 'variable mistakes look like random behaviour: a value changes between runs or a task uses an old value you thought was gone; most come from a variable defined in two places, where nobody noticed the second definition'. Closing strip 'give every optional value a default and gather facts before you template across hosts; write down which layer owns each variable you add'. Bottom bar: 'The fix is rarely a clever trick, it is a habit'.",
+  "anchor": "## 11. Common mistakes",
+  "alt": "Two lists of variable mistakes, one on defaults, facts and scope and one on formatting and types, with the closing habits of giving optional values defaults and gathering facts before cross-host templating.",
+  "cap": "Most variable mistakes come from a variable defined twice, so give values defaults, gather facts first and record which layer owns each one."
+ }
+]

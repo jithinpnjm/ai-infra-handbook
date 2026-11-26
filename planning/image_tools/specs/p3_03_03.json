@@ -1,0 +1,172 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-protocol-free",
+  "title": "Two methods in, a whole sequence out: NodeInventory and Fleet",
+  "spec": "A left to right diagram. Left box 'You write only __len__ and __getitem__' (orange). Arrow to a column of behaviours 'you get for free'. For NodeInventory (13 slots in each of four racks, 52 nodes, Node(slot, rack)): 'len(inv) is 52', 'inv[0] == Node(slot=01, rack=r1)', 'inv[-1] == Node(slot=13, rack=r4)', 'choice(inv) random selection', 'inv[:3] first three nodes', 'inv[12::13] slot 13 of every rack: start at index 12, step 13', 'for node in inv and reversed(inv)', 'Node(07, r2) in inv is True, Node(07, r9) in inv is False (a sequential scan)', 'sorted(inv, key=drain_order): slot position times the number of racks plus rack priority from RACK_PRIORITY = r4:3, r3:2, r2:1, r1:0, so slot 01 of r1 ranks 0 and slot 13 of r4 ranks 51'. Not free 'random.shuffle(inv) needs __setitem__'. Second box Fleet(abc.Sequence): 'index, count, iteration, in, reversed come from the base class; __getitem__ returns Fleet for a slice'. Footnote 'for built-in list or str, len(x) reads a size field in the C structure directly in constant time; collections.abc: Iterable needs __iter__, Sized needs __len__, Container needs __contains__; Sequence, Mapping and Set specialise them'. Bottom bar: 'Anything with the right methods plugs in'.",
+  "anchor": "### A sequence by protocol: a node inventory",
+  "alt": "Two methods, __len__ and __getitem__, producing length, indexing, slicing, iteration, membership and sorting for a 52 node inventory, with Fleet gaining index and count from abc.Sequence.",
+  "cap": "Implementing __len__ and __getitem__ gives a class indexing, slicing, iteration, membership and sorting without more code."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-operator-dispatch",
+  "title": "How x + y finds an implementation: __add__, NotImplemented and the reflected method",
+  "spec": "A flow for 'v + other' and '3 * v'. Step 1 'Python calls type(v).__add__(v, other)'. Decision 'is other a Vector?' yes: 'returns Vector(self.x + other.x, self.y + other.y)'; no: 'returns NotImplemented, it does not raise' (orange). Step 2 'Python tries the reflected method on the other operand: __radd__'. Step 3 'if both return NotImplemented, TypeError'. Second row '3 * v': 'int.__mul__ does not know Vector and returns NotImplemented; Python tries v.__rmul__(3); __rmul__ = __mul__ so the result is Vector(self.x * k, self.y * k)'. In-place note '__iadd__ for +=, falling back to __add__'. Right panel 'Four design rules': 'return NotImplemented instead of raising for unsupported operand types', 'keep __eq__ and __hash__ consistent: equal objects must hash equal, mutable objects should not be hashable; defining __eq__ without __hash__ makes instances unhashable', 'make __repr__ always useful by including the fields that identify the object', 'prefer composition and abstract bases such as collections.abc.Sequence, Mapping and MutableMapping'. Footer 'repr is unambiguous for developers and logs, str is for humans; __slots__ = (x, y) gives smaller, faster objects with fixed attributes; __bool__ is bool(abs(self)); __iter__ lets x, y = v unpack'. Bottom bar: 'Return NotImplemented so Python can try the other operand before it gives up'.",
+  "anchor": "### Categories of special methods",
+  "alt": "A flow for v + other and 3 * v where __add__ returns NotImplemented for unsupported types so Python tries the reflected method, with four design rules for special methods.",
+  "cap": "Returning NotImplemented lets Python try the other operand's reflected method before it raises TypeError."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-sequence-axes",
+  "title": "Sequence types on two axes, and what a list really costs",
+  "spec": "A 2 by 2 grid. Rows 'container (holds references to objects stored elsewhere)' and 'flat (values of one type side by side in memory)'; columns 'mutable' and 'immutable'. Cells: container and mutable 'list, collections.deque'; container and immutable 'tuple'; flat and mutable 'bytearray, array.array'; flat and immutable 'str, bytes' ; memoryview marked as a flat view. Right panel 'Costs': 'a list stores 8 byte pointers on a 64-bit system to separate objects: a list of one million floats costs about 32 MB before you count the objects', 'array(\"f\") stores 4 bytes per float, a list stores a float object of about 32 bytes per value' (orange), 'memoryview(bytearray(1024))[100:200] is a zero-copy window for sockets, mmap and NumPy', 'list.insert(0, x) and list.pop(0) are O(n); deque has appendleft, popleft and maxlen=N ring buffer: deque(maxlen=1000) keeps the last 1000 samples', 'sort() sorts in place and returns None; sorted() returns a new list; Timsort is stable, O(n log n), O(n) best case on partly ordered data; use key= not a comparison function; tuple comparison is lexicographic', 'bisect.bisect_left and insort keep a list sorted; heapq.nlargest(5, items) gives top-k without a full sort', 'x in list is linear: convert to a set when testing membership many times', 'copy.copy, slicing and list() each make a shallow copy'. Bottom bar: 'The choice of sequence type affects both memory and speed'.",
+  "anchor": "### The sequence family",
+  "alt": "A grid of sequence types by container versus flat and mutable versus immutable, with costs for list, array, deque, memoryview, sorting and membership tests.",
+  "cap": "Container sequences hold references and flat sequences hold values, so a list of floats costs far more than an array of floats."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-tuple-puzzle",
+  "title": "The t[2] += [50, 60] puzzle: an error and a change at the same time",
+  "spec": "A step by step bytecode trace for 't = (1, 2, [30, 40]); t[2] += [50, 60]'. Step 1 'BINARY_SUBSCR pushes the list t[2] onto the stack'. Step 2 'INPLACE_ADD extends that list in place: it succeeds, the list is now [30, 40, 50, 60]' (orange). Step 3 'STORE_SUBSCR tries t[2] = result: fails because t is a tuple, TypeError: tuple object does not support item assignment'. Outcome strip 'error raised, and t is now (1, 2, [30, 40, 50, 60])'. Second example 't = ([1], 2); t[0] += [3]' same result. Contrast panel 'augmented assignment on mutable versus immutable': 'mutable: a += [1] calls __iadd__, acts like list.extend on the shared list, visible to every name pointing at it'; 'immutable tuple or string: falls back to __add__ and rebinds the name to a new object; repeated += copies the whole sequence each time'. Tool note 'dis.dis(\"s[a] += b\") shows it'. Check note 'recursively immutable test: hash(o) raises TypeError if any inner item is unhashable; fixed((10, alpha, (1, 2))) is True, fixed((10, alpha, [1, 2])) is False'. Bottom bar: 'Avoid mutable items inside tuples, and remember that += is not an atomic operation'.",
+  "anchor": "### The sequence family",
+  "alt": "A three step bytecode trace of t[2] += [50, 60] on a tuple: the list is fetched, extended in place, and the store back into the tuple fails, leaving an error and a changed list.",
+  "cap": "The in-place add succeeds on the inner list before the store into the tuple fails, so the code raises an error yet changes the data."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-missing-keys",
+  "title": "Three ways to handle a missing dict key, and the __missing__ hook",
+  "spec": "Left comparison of three versions of indexing word locations (line_no, column_no). 'index.get(word, []) then append then index[word] = occurrences: two hash lookups per word'. 'index.setdefault(word, []).append(location): one lookup'. 'index = collections.defaultdict(list); index[word].append(location): one lookup' (orange). Right flow for StrKeyDict0(dict) with d[2]: 'dict.__getitem__ misses and calls __missing__(self, key)'; decision 'is key a str?' yes 'raise KeyError(key); this guard stops infinite recursion when str(key) is also absent'; no 'return self[str(key)]'. Result 'd[2] == d[\"2\"] == two'. Notes 'the hook runs only for d[k], not for d.get(k) or k in d, unless you override those too; get and __contains__ = key in self.keys() or str(key) in self.keys()'; 'if you normalise keys in __setitem__, subclass collections.UserDict rather than dict: it stores the dict in self.data and extends MutableMapping, so built-in C methods cannot bypass your overrides'. Bottom strip 'Counter is a multiset: ct = Counter(\"abracadabra\"); ct.update(\"aaaaazzz\"); ct.most_common(3); + adds, - subtracts, & takes the minimum, | the maximum'. Bottom bar: 'Hash contract: if a == b then hash(a) == hash(b); 1 == 1.0 == True so {1, 1.0, True} has one element'.",
+  "anchor": "## 3. Mappings and sets",
+  "alt": "Three ways to handle missing keys, get then store, setdefault and defaultdict, beside the __missing__ flow of StrKeyDict0 that lets integer and string keys find each other.",
+  "cap": "setdefault and defaultdict halve the lookups, and __missing__ runs only for d[k] misses and needs an isinstance guard against recursion."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-chainmap",
+  "title": "ChainMap layering and read-only views for configuration",
+  "spec": "A stack of four layers top to bottom with lookup arrows: 'cli_args', 'os.environ (MYOPS_ prefixed, lowercased)', 'file_cfg (/etc/myops.json)', 'defaults {retries: 3, timeout: 30}'. A lookup 'cfg[\"timeout\"]' falls through top layers to the first mapping that has it; 'first mapping wins'. Small example 'ChainMap({retries: 5}, {retries: 3, timeout: 10}): cfg[retries] is 5, cfg[timeout] is 10'. Write rule (orange) 'a write such as chain[c] = -1 changes only the first mapping'. Note 'CLI values of None are dropped so they do not hide lower layers: {k: v for k, v in cli.items() if v is not None}'. Right panel 'Related views': 'types.MappingProxyType(d) is a read-only view that still reflects later updates to d, so callers cannot change a hardware pin map while the owner keeps it current', 'dict.keys() and dict.items() are live views with no copying and support & | - ^', 'Python scope lookup uses the same idea: ChainMap(locals(), globals(), vars(builtins))', 'merge: a | b, {**a, **b}, or ChainMap; a deep merge needs recursion', 'dicts compare equal regardless of key order, lists are order-sensitive'. Bottom bar: 'Use ChainMap when the first mapping should win, without copying'.",
+  "anchor": "### Merging layered configuration",
+  "alt": "A ChainMap of command line arguments, environment variables, a config file and defaults searched top to bottom, with write behaviour and read-only mapping proxy views.",
+  "cap": "ChainMap searches layers in order without copying, writes go to the first mapping, and MappingProxyType gives a read-only view."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-share-or-copy",
+  "title": "Rack aliasing bugs: shared default, stored argument and shallow copy",
+  "spec": "Three panels, each with a Rack holding hosts. Panel 'Mutable default hosts=[]': two racks created with Rack() share the one default list stored in Rack.__init__.__defaults__[0]; adding gpu09 to one rack makes it appear in the other; fix 'hosts=None, then self.hosts = [] when None'. Panel 'self.hosts = hosts' (orange): maintenance = [gpu01, gpu02, gpu03] passed to Rack(maintenance); rack.drain(gpu02) calls remove on the caller's own list so gpu02 vanishes from maintenance; fix 'defensive copy self.hosts = list(hosts), which also accepts any iterable such as a tuple or a set'. Panel 'copy.copy versus deepcopy': rack1 = Rack([gpu01..gpu04]), rack2 = copy.copy(rack1), rack3 = copy.deepcopy(rack1); rack1.drain(gpu02) also removes gpu02 from rack2.hosts because the shallow copy shares the inner list, while rack3.hosts keeps all four; deepcopy records each copied object in a memo dictionary so cycles such as a = [10, 20]; b = [a, 30]; a.append(b) do not loop forever. Top line 'functions receive arguments by object reference (call by sharing): the parameter is an alias of the caller's object, not a private copy'. Bottom bar: 'Functions should not change their arguments unless the documentation says so'.",
+  "anchor": "## 5. Object references, mutability and recycling",
+  "alt": "Three panels of Rack bugs: a shared mutable default list, a stored caller list that gets drained, and a shallow copy sharing the inner hosts list, each with its fix.",
+  "cap": "A shared default, a stored argument and a shallow copy all alias one list, and each is fixed by creating a new list."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-del-lifecycle",
+  "title": "del removes a name, not the object: a weakref.finalize timeline",
+  "spec": "A timeline with the object {1, 2, 3} at the top and name labels. Step 1 's1 = s2 = {1, 2, 3}' two names on one object; 'ender = weakref.finalize(s1, bye)' registered. Step 2 'del s1' removes only the name s1; 'ender.alive is still True'. Step 3 's2 = \"spam\"' rebinds the last reference; the object is reclaimed, 'bye() runs' (orange), 'ender.alive becomes False'. Right panel 'Cleanup tools': 'do not rely on __del__, it is unreliable', 'use a context manager, a try/finally block or weakref.finalize', 'weak references keep a cache or registry without keeping objects alive: weakref.ref(obj), WeakValueDictionary, WeakKeyDictionary, WeakSet', 'gc.collect() and gc.get_stats() show what the collector is doing', 'gc.freeze() before forking workers reduces copy-on-write memory growth in preforking servers, which matters for inference and data-loader workers'. Bottom bar: 'The object is garbage-collected only after its last reference goes away'.",
+  "anchor": "## 5. Object references, mutability and recycling",
+  "alt": "A timeline where del s1 leaves the finalizer alive and rebinding s2 to a string finally reclaims the set and runs bye(), with the recommended cleanup tools.",
+  "cap": "del removes one name, and the finalizer runs only when the last reference is rebound or removed."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-decorators-closures",
+  "title": "When decorators run, how they stack, and what a closure keeps",
+  "spec": "Left timeline 'import time versus call time': 'import: def statement executes, the decorator call happens and any print inside the decorator lands here', 'later: the decorated function runs only when you call it'. Stack rule '@alpha above @beta is alpha(beta(f))'. Middle panel 'Closures': 'make_averager keeps series = [] in avg.__closure__[0].cell_contents and avg.__code__.co_freevars == (series,)'; 'better version keeps count = 0 and total = 0 with nonlocal count, total: memory stays O(1) instead of growing with every value' (orange). Trap box 'def f2(a): print(a); print(b); b = 9 : CPython sees the assignment to b and treats it as local, compiles the read as LOAD_FAST instead of LOAD_GLOBAL, so print(b) raises UnboundLocalError; dis.dis shows it'. Right panel 'Decorator forms': 'functools.wraps(func) keeps __name__ and __doc__', 'parameterised @clock(fmt) needs three levels: clock(fmt), decorate(func), clocked(*_args); or a class with __call__', '@functools.cache and @lru_cache(maxsize=128, typed=False) turn exponential fibonacci(n) calls into O(n)', '@singledispatch picks a handler by the type of the first argument and prefers abstract bases such as abc.Sequence or numbers.Integral over list or int: htmlize(obj: object) with registered str, Sequence and Integral handlers'. Bottom bar: 'The decorator runs at import time, the function runs at call time'.",
+  "anchor": "### Closures (`make_averager`), decorators at import time, `@cache`, and `@singledispatch`",
+  "alt": "Decorator timing at import time versus call time, stack order, the closure cell that keeps free variables, the UnboundLocalError trap and the cache and singledispatch decorators.",
+  "cap": "A decorator runs when the def executes, a closure keeps its free variables alive, and a name assigned later in a function becomes local."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-strategy-funcs",
+  "title": "Strategy pattern: from three classes to three functions and a registry",
+  "spec": "Two panels. Left 'Classic version': abstract base class Promotion(ABC) with @abstractmethod discount(self, order) returning Decimal; subclasses 'FidelityPromo: 5% when order.customer.fidelity >= 1000', 'BulkItemPromo: 10% on each LineItem with item.quantity >= 20', 'LargeOrderPromo: 7% when len({item.product for item in order.cart}) >= 10'; no instance state, self is never used; usage 'Order(ann, cart, FidelityPromo())' is ceremony. Right 'Function version' (orange): fidelity_promo, bulk_item_promo, large_order_promo as plain functions; 'Order(ann, cart, fidelity_promo)'; meta-strategy 'best_promo(order) returns max(promo(order) for promo in promos)' used as 'Order(ann, cart, best_promo)'. Building the list: 'scan globals() or inspect.getmembers: both fragile'; 'better: @promotion decorator registers each strategy as soon as the module imports: promos.append(promo); return promo'. Lower strip 'Other patterns shrink too: Command is a plain function, closure or functools.partial(deploy, app=api, env=prod); MacroCommand __call__ runs each cmd(); Strategy as sort(key=...) or retry(fn) or ACTIONS = {start: start, stop: stop}; registry HANDLERS[event_type] = fn through a handler(event_type) decorator, dispatch HANDLERS[ev[type]](ev); callbacks and hooks such as signal handlers and atexit.register; __call__ class holds state such as a rate limiter'. Quote 'Peter Norvig, 1996: 16 of the 23 Gang-of-Four patterns become invisible or simpler with first-class functions'. Bottom bar: 'Pass a plain function when there is no state to keep'.",
+  "anchor": "### Refactoring the Strategy pattern with first-class functions",
+  "alt": "A class-based Promotion strategy with three subclasses beside three plain functions, a best_promo meta-strategy and a decorator registry, with other patterns that shrink the same way.",
+  "cap": "Stateless strategy classes become plain functions, and a decorator registry collects them as the module imports."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-comp-scope",
+  "title": "Comprehension scope: the loop variable stays inside, the walrus target leaks",
+  "spec": "Two code blocks with scope boxes. Block 1: 'X = 99; [X for X in range(5)] gives [0, 1, 2, 3, 4]; outer X is still 99' versus 'for X in range(5): pass changes outer X to 4'. Block 2 (orange): \"S = 'hack'; [(temp := S[i]) + temp.upper() for i in range(len(S))] gives ['hH', 'aA', 'cC', 'kK']; temp is 'k' in the enclosing scope, i raises NameError: name i is not defined\". Rules strip 'a for variable in a list, set, dict or generator comprehension lives in the comprehension's own scope; := binds its target in the enclosing scope; a yield inside a comprehension is forbidden'. Placement strip 'a filter if sits after the for; a conditional expression that picks a value sits before it: [\"even\" if n % 2 == 0 else \"odd\" for n in range(5)]; nested for clauses read left to right like nested for statements'. Walrus use '[y for x in data if (y := expensive(x)) is not None] calls expensive once per item'. Matrix examples 'M = [[1, 2, 3], [4, 5, 6], [7, 8, 9]]: column [row[1] for row in M] is [2, 5, 8]; diagonal [M[i][i] ...] is [1, 5, 9]; anti-diagonal is [3, 5, 7]; [col + 10 for row in M for col in row] is flat while [[col + 10 for col in row] for row in M] keeps rows'. Rules of thumb 'more than two for or if clauses, or side effects: use a loop; never [print(x) for x in xs]; you cannot catch exceptions inside a comprehension, wrap risky code in a function; use [[0]*c for _ in range(r)]; generator expressions for sum, any, all, max, sorted, join, set, tuple; comprehensions are usually 20 to 50% faster than the equivalent loops'. Bottom bar: 'If a comprehension needs a second look to understand, split it into a loop'.",
+  "anchor": "## 7. Comprehensions",
+  "alt": "Two code blocks showing a comprehension variable staying local while a regular for loop changes the outer X and a walrus target leaking out, with placement rules and matrix examples.",
+  "cap": "A comprehension's loop variable does not leak, but a walrus target does, and deeply nested comprehensions belong in loops."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-permute-explosion",
+  "title": "Why permute2 streams: the factorial explosion in numbers",
+  "spec": "Two lanes comparing permute1 (builds a list of all factorial(N) permutations before returning) and permute2 (recursive yield seq[i:i+1] + x, one at a time). A table by N: 'N = 4 (hack): 24 permutations, both give the same result, permute1(hack) == list(permute2(hack))'; 'N = 10: math.factorial(10) = 3,628,800; permute1 pauses about 17 seconds while it allocates 3.6 million lists; p2 = permute2(seq); next(p2) returns the first permutation almost immediately'; 'N = 20: 2,432,902,008,176,640,000; permute1 is physically impossible'; 'N = 50: math.factorial(50) = 30414093201713378043612608166064768844377641568960512000000000000; random.shuffle(seq); p = permute2(seq); next(p) still gives a randomised permutation at once, in O(N) memory' (orange). Side examples 'scramble1(hack) yields the four rotations hack, ackh, ckha, khac one at a time'. Rebuilt built-ins strip 'myzip stops at the shortest: list(myzip(abc, xyz123)) == [(a, x), (b, y), (c, z)]', 'mymapPad(abc, xyz123, pad=99) keeps going: ..., (99, 1), (99, 2), (99, 3)'. Bottom bar: 'A generator holds only its current state, so memory stays flat however many results exist'.",
+  "anchor": "### Generator functions, `scramble` vs `permute` (`factorial(N)` explosion), and `myzip` / `mymapPad`",
+  "alt": "A table of factorial sizes for N equal to 4, 10, 20 and 50, comparing a list-building permute1 with a streaming permute2, plus scramble, myzip and mymapPad outputs.",
+  "cap": "Building all permutations at once pauses for about 17 seconds at N equal to 10 and is impossible at 20, while the generator returns the first result at once."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-gen-coroutine",
+  "title": "Generator control: prime, send, yield from, close",
+  "spec": "A vertical timeline for a classic coroutine 'def gen(): for i in range(10): X = yield i' or averager_coro(). Step 1 'G = gen() creates the generator; the body does not run'. Step 2 'prime it: next(G) or G.send(None) runs to the first yield' (orange). Step 3 'G.send(77) makes the paused yield return 77 and runs to the next yield; a plain next(G) sends None'. Step 4 'G.throw(exc) raises inside the generator'. Step 5 'G.close() raises GeneratorExit inside it, so with blocks and try/finally clean up'. Step 6 'function returns: StopIteration; the return value rides on StopIteration.value'. Right panel 'yield from': 'hands iteration to a sub-iterable: def both(N): yield from range(N); yield from map(lambda x: x ** 2, range(N))', 'chains a to b to c pass items through each level', 'tree(cls, level) walks BaseException subclasses with depth', 'forwards send() and throw() into the sub-generator, and result = yield from averager_coro() captures the Result(count, average) return value'. Notes strip 'type is Generator[YieldType, SendType, ReturnType]', 'a StopIteration raised inside a generator becomes RuntimeError (PEP 479), use return to stop early', 'consume the generator fully or close it yourself when it holds a resource', 'a generator expression drops its parentheses when it is the only argument: sum(x ** 2 for x in range(3)); keep them when more arguments follow'. Bottom bar: 'Modern async I/O uses native async def and await instead (chapter 3.6)'.",
+  "anchor": "### Generator functions, `scramble` vs `permute` (`factorial(N)` explosion), and `myzip` / `mymapPad`",
+  "alt": "A timeline of a coroutine generator being created, primed with next, fed with send, thrown into, closed and finished with StopIteration value, with a panel on yield from delegation.",
+  "cap": "A generator must be primed to its first yield, send feeds values in, close triggers cleanup, and yield from forwards all of it to a sub-generator."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-api-batches",
+  "title": "Paginated API into batches of 100: two generators in a row",
+  "spec": "A flow of pages and batches. Left 'list_instances(client, project)': token = None; loop 'client.list(project=project, page_token=token, page_size=500)'; 'yield from resp[items]'; 'token = resp.get(nextPageToken)'; 'if not token: break'. Arrow 'items arrive one at a time, one page of 500 in memory' to filter 'running = (i for i in list_instances(c, p) if i[status] == RUNNING)' with no list built, to 'batched(iterable, n)': 'it = iter(iterable); while batch := list(islice(it, n)): yield batch' (orange), to 'for ids in batched(all_instance_ids, 100): client.bulk_delete(ids)' with the note 'matches the API limit of 100 per call'. Note 'Python 3.12 itertools.batched(iterable, n) yields tuples'. Right side the nginx pipeline strip 'files(root) to lines(paths) to parse(lines) to errors(records) to Counter(...).most_common(10)': 'one line in memory at any moment; each stage is its own function and can be tested alone'. Bottom bar: 'Each stage pulls one item from the stage before it'.",
+  "anchor": "### Pipelines",
+  "alt": "A paginated API generator yielding items from pages of 500 into a lazy filter and a batched helper that feeds bulk_delete in groups of 100, with the nginx log pipeline stages.",
+  "cap": "Generators fetch one page at a time, filter lazily and group items into batches that match the API's per-call limit."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-text-bytes-boundary",
+  "title": "Text and bytes only meet at the boundaries",
+  "spec": "A horizontal pipeline. Left 'bytes in: file in binary mode, socket reads, subprocess output' arrow 'data.decode(\"utf-8\") when input arrives' to middle 'str: Unicode text (code points); JSON, YAML and regular expressions work here' arrow 's.encode(\"utf-8\") when output leaves' to right 'bytes out'. Below the errors argument row 'strict, replace, ignore, surrogateescape, backslashreplace'. Traps panel (orange): 'locale.getpreferredencoding() changes with the environment; containers that set LANG=C surprise people; always pass encoding=\"utf-8\" to open()', 'the same visible text can have different code point sequences: é as one code point or e plus a combining accent; normalise both with unicodedata.normalize(\"NFC\", s) before comparing', 'str.casefold() for caseless matching', 'len() counts code points, not bytes or graphemes', 'sorting follows code point order; use locale.strxfrm or ICU for human order'. Bytes facts 'b\"abc\"[0] == 97 indexing bytes returns integers', 'bytes.hex(), bytes.fromhex, int.from_bytes, struct.pack and unpack for binary protocols, base64, hashlib'. Encodings 'UTF-8 default for new work, ASCII is a subset, Latin-1 maps bytes one to one onto code points 0 to 255 which carries arbitrary bytes through text APIs'. Bottom bar: 'Convert only at the boundaries of your program'.",
+  "anchor": "## 4. Text versus bytes",
+  "alt": "A pipeline where bytes are decoded to str on input and encoded to bytes on output, with the errors argument options, locale and Unicode normalisation traps and bytes helpers.",
+  "cap": "Decode when input arrives and encode when output leaves, always with an explicit UTF-8 encoding, and normalise before comparing."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-idioms",
+  "title": "Idioms table: the Pythonic habit and what it replaces",
+  "spec": "A two column table 'Instead of' and 'Write'. 'if key in d: value = d[key]' / 'EAFP: try: value = d[key] except KeyError (LBYL only when the check is cheap and failure is rare)'. 'if os.path.exists(path): open(path)' / 'try: open(...), which is race-free; the file may vanish after the check'. 'if len(items) == 0' / 'if items: ; use is None when None must be told apart from other empty values'. 'range(len(xs)) index loops' / 'for i, x in enumerate(xs, 1), zip, reversed, sorted'. 'temp variable swaps and slices' / 'a, b = b, a ; head, *tail = xs ; _ for ignored values'. 'manual duplicate removal' / 'sorted(set(xs)) or dict.fromkeys (keeps order)'. 'manual key checks' / 'dict.get, setdefault, defaultdict, Counter'. 'string concatenation and manual close' / 'str.join, f-strings, pathlib, with for resources, !r in log messages'. 'exact type checks' / 'isinstance with abstract bases such as collections.abc.Mapping; accept the most general useful type (Sequence, Iterable) and return a concrete one'. 'any/all on a list' / 'any() and all() on a generator expression stop as soon as the answer is known'. Avoid strip (orange) 'bare except:, mutable defaults, from x import *, eval or exec on external input, SQL or shell commands built by formatting strings, shadowing built-ins, overusing lambdas, premature optimisation'. Bottom bar: 'Errors should never pass silently, and flat is better than nested'.",
+  "anchor": "## 9. Idioms for clarity and correctness",
+  "alt": "A table pairing non-idiomatic Python such as key checks, index loops and manual duplicate removal with the idiomatic replacement, plus a list of habits to avoid.",
+  "cap": "Each idiom replaces a manual pattern with a built-in that is shorter and safer, from EAFP to enumerate, defaultdict and generator expressions."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "03",
+  "name": "p3-0303-mistakes",
+  "title": "Ten data-model and generator mistakes with their fixes",
+  "spec": "A two column table 'Mistake' and 'Fix'. 'range(len(x)) index loops' / 'enumerate, zip and other iteration helpers'. 'Consuming an iterator twice, or returning a generator where callers expect a list, or the reverse, without documenting it' / 'convert to a list or tuple for two passes, or return an iterable class whose __iter__ builds a fresh generator, like Countdown; itertools.tee buffers unhanded items in memory'. 'Modifying a collection while iterating, or changing arguments without meaning to' / 'iterate over a copy, build a new collection'. 'Defining __eq__ but not __hash__, or hashing mutable objects' / 'keep them consistent'. 'Treating str as bytes or the reverse, relying on the default locale encoding' / 'decode and encode at the boundary with encoding=\"utf-8\"'. 'Comprehensions for side effects, or nested so deeply that nobody can read them' / 'a loop'. 'A list as a queue with pop(0), or in on large lists' / 'deque, set'. 'Unbounded caches with lru_cache(maxsize=None) in long-running services' (orange) / 'set maxsize, use a TTL cache, watch memory and staleness; arguments must be hashable'. 'A file handle left open inside a generator stopped halfway' / 'consume fully or call close() so finally and with blocks run'. 'except Exception: pass inside a generator pipeline' / 'let failures show; it hides data loss'. Footer 'iter(callable, sentinel) pattern: for block in iter(lambda: f.read(65536), b\"\"): reads a file in 64 KiB chunks'. Bottom bar: 'Most of these are silent until the worst moment'.",
+  "anchor": "## 12. Common mistakes",
+  "alt": "A table of ten Python data-model and generator mistakes, such as double consumption of an iterator, unbounded lru_cache and swallowed exceptions in pipelines, each with its fix.",
+  "cap": "Most of these mistakes are silent until production, and each has a one-line fix such as a deque, a bounded cache or an iterable that builds a fresh generator."
+ }
+]

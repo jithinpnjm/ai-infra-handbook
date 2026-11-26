@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Pages are for symptoms; causes become tickets</title>
+  <desc>Visual infographic explaining that paging alerts should be reserved for user-impacting symptoms, while underlying system causes should route to tickets.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#303a36"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Pages are for symptoms; causes become tickets</text>
+
+  
+
+  
+  <rect x="70" y="140" width="680" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-dasharray="10 8"/>
+  
+  <g transform="translate(100, 177)">
+    <rect x="7" y="7" width="42" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="17" y="17" width="22" height="22" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="16" y1="0" x2="16" y2="7" stroke="#207448" stroke-width="2.5"/>
+    <line x1="28" y1="0" x2="28" y2="7" stroke="#207448" stroke-width="2.5"/>
+    <line x1="40" y1="0" x2="40" y2="7" stroke="#207448" stroke-width="2.5"/>
+    <line x1="16" y1="49" x2="16" y2="56" stroke="#207448" stroke-width="2.5"/>
+    <line x1="28" y1="49" x2="28" y2="56" stroke="#207448" stroke-width="2.5"/>
+    <line x1="40" y1="49" x2="40" y2="56" stroke="#207448" stroke-width="2.5"/>
+    <line x1="0" y1="16" x2="7" y2="16" stroke="#207448" stroke-width="2.5"/>
+    <line x1="0" y1="28" x2="7" y2="28" stroke="#207448" stroke-width="2.5"/>
+    <line x1="0" y1="40" x2="7" y2="40" stroke="#207448" stroke-width="2.5"/>
+    <line x1="49" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="2.5"/>
+    <line x1="49" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="2.5"/>
+    <line x1="49" y1="40" x2="56" y2="40" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="180" y="193" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU utilisation 98 percent</text>
+  <text x="180" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">High utilisation is the goal, not a fault</text>
+
+  
+  <line x1="410" y1="270" x2="410" y2="318" stroke="#303a36" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="200" y="320" width="420" height="90" rx="14" fill="#fdf2f2" stroke="#c53030" stroke-width="3"/>
+  
+  <g transform="translate(232, 337)">
+    <circle cx="28" cy="8" r="4" fill="none" stroke="#c53030" stroke-width="3"/>
+    <path d="M 14 38 C 14 26 18 16 28 16 C 38 16 42 26 42 38 C 42 42 46 44 48 45 L 8 45 C 10 44 14 42 14 38 Z" fill="none" stroke="#c53030" stroke-width="3.5" stroke-linejoin="round"/>
+    <circle cx="28" cy="50" r="4" fill="#c53030"/>
+    <path d="M 4 23 C 1 28 1 34 4 39" fill="none" stroke="#c53030" stroke-width="2.5" stroke-linecap="round"/>
+    <path d="M 52 23 C 55 28 55 34 52 39" fill="none" stroke="#c53030" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="312" y="377" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Alert at 3 a.m.</text>
+
+  
+  <rect x="70" y="440" width="680" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(100, 477)">
+    <path d="M 12 28 A 18 18 0 0 1 42 14" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 42 8 L 45 16 L 36 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 44 28 A 18 18 0 0 1 14 42" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 14 48 L 11 40 L 20 40" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="180" y="493" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Replica restarts: a cause</text>
+  <text x="180" y="535" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Restart count goes up</text>
+
+  
+
+  
+  <rect x="850" y="140" width="680" height="430" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(1155, 230)">
+    <circle cx="25" cy="18" r="14" fill="none" stroke="#db8129" stroke-width="3.5"/>
+    <path d="M 3 54 C 3 40 13 36 25 36 C 30 36 36 37 41 39" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 52 24 L 68 54 L 36 54 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="52" y1="34" x2="52" y2="43" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="52" cy="49" r="1.5" fill="#db8129"/>
+  </g>
+  <text x="1190" y="360" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">
+    <tspan x="1190" dy="0">Users see errors</tspan>
+    <tspan x="1190" dy="44">or slow responses</tspan>
+  </text>
+
+  
+
+  
+  <rect x="70" y="610" width="680" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(380, 642)">
+    <rect x="0" y="8" width="60" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 12 8 L 12 2 L 32 2 L 32 8" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="8" y="16" width="34" height="20" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="12" y1="26" x2="38" y2="26" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="49" cy="20" r="2.5" fill="#207448"/>
+    <circle cx="49" cy="29" r="2.5" fill="#207448"/>
+    <circle cx="49" cy="38" r="2.5" fill="#207448"/>
+  </g>
+  <text x="410" y="744" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="410" dy="0">Page: burn-rate alerts on</tspan>
+    <tspan x="410" dy="42">gateway availability and gateway TTFT</tspan>
+  </text>
+
+  
+  <rect x="850" y="610" width="680" height="250" rx="16" fill="#e8f1ea" stroke="#718096" stroke-width="3"/>
+  
+  <g transform="translate(1160, 642)">
+    <path d="M 0 6 L 60 6 L 60 21 A 6 6 0 0 0 60 33 L 60 48 L 0 48 L 0 33 A 6 6 0 0 0 0 21 Z" fill="none" stroke="#718096" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="22" y1="8" x2="22" y2="46" stroke="#718096" stroke-width="2.5" stroke-dasharray="4 3"/>
+    <line x1="32" y1="22" x2="50" y2="22" stroke="#718096" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="32" y1="32" x2="46" y2="32" stroke="#718096" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="1190" y="730" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1190" dy="0">Ticket: causes such as KV cache</tspan>
+    <tspan x="1190" dy="38">above 95 percent for 15 minutes,</tspan>
+    <tspan x="1190" dy="38">repeated preemptions</tspan>
+  </text>
+
+  
+  <rect x="70" y="890" width="1460" height="74" rx="14" fill="#207448"/>
+  <text x="800" y="937" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Ask whether a user sees it. If yes, it is a symptom and can page.</text>
+</svg>

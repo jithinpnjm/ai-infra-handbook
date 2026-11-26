@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>From CreateContainer to PID 1</title>
+  <desc>Four sequential steps from image pull to container creation, runtime start, and health probes: Pull, Create, Start, and Probes.</desc>
+  <defs>
+    <!-- Arrowhead Green (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">From CreateContainer to PID 1</text>
+
+  <!-- Flow Arrows between boxes -->
+  <line x1="393" y1="243" x2="427" y2="243" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="783" y1="243" x2="817" y2="243" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="1173" y1="243" x2="1207" y2="243" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== BOX 1: Pull ==================== -->
+  <g id="box-pull">
+    <rect x="37" y="120" width="356" height="910" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Step Number Circle (r=24) -->
+    <circle cx="215" cy="175" r="24" fill="#207448" />
+    <text x="215" y="184" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+    
+    <!-- Pull / Package Download Outline Icon (56px) -->
+    <g transform="translate(187, 215)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="18" width="44" height="34" rx="4" />
+      <path d="M 28 6 L 28 34 M 18 24 L 28 34 L 38 24" />
+    </g>
+
+    <!-- Inner Panel -->
+    <rect x="53" y="295" width="324" height="715" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+
+    <!-- Box 1 Label -->
+    <text x="215" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="215" dy="0" font-size="30" font-weight="bold" fill="#207448">Pull: </tspan>
+      <tspan x="215" dy="42">imagePullPolicy</tspan>
+      <tspan x="215" dy="34" font-family="monospace">IfNotPresent,</tspan>
+      <tspan x="215" dy="34"><tspan font-family="monospace">Always</tspan> or <tspan font-family="monospace">Never;</tspan> events</tspan>
+      <tspan x="215" dy="34">Pulling and Pulled</tspan>
+      <tspan x="215" dy="34">with duration</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOX 2: Create ==================== -->
+  <g id="box-create">
+    <rect x="427" y="120" width="356" height="910" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Step Number Circle (r=24) -->
+    <circle cx="605" cy="175" r="24" fill="#207448" />
+    <text x="605" y="184" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+    
+    <!-- Create / Spec Document Outline Icon (56px) -->
+    <g transform="translate(577, 215)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="6" width="40" height="44" rx="4" />
+      <line x1="16" y1="16" x2="32" y2="16" />
+      <line x1="16" y1="24" x2="40" y2="24" />
+      <line x1="16" y1="32" x2="36" y2="32" />
+      <line x1="16" y1="40" x2="28" y2="40" />
+    </g>
+
+    <!-- Inner Panel -->
+    <rect x="443" y="295" width="324" height="715" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+
+    <!-- Box 2 Label -->
+    <text x="605" y="342" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="605" dy="0" font-size="30" font-weight="bold" fill="#207448">Create: </tspan>
+      <tspan x="605" dy="38">CRI plugin builds</tspan>
+      <tspan x="605" dy="32">the OCI runtime spec</tspan>
+      <tspan x="605" dy="32"><tspan font-family="monospace">config.json</tspan> (args,</tspan>
+      <tspan x="605" dy="32">env, cwd, user;</tspan>
+      <tspan x="605" dy="32">mounts rootfs</tspan>
+      <tspan x="605" dy="32">overlay, <tspan font-family="monospace">/proc,</tspan></tspan>
+      <tspan x="605" dy="32"><tspan font-family="monospace">/sys,</tspan> <tspan font-family="monospace">/dev,</tspan> <tspan font-family="monospace">/dev/shm,</tspan></tspan>
+      <tspan x="605" dy="32">volume binds,</tspan>
+      <tspan x="605" dy="32" font-family="monospace">/etc/hosts,</tspan>
+      <tspan x="605" dy="32" font-family="monospace">/etc/resolv.conf,</tspan>
+      <tspan x="605" dy="32">termination log;</tspan>
+      <tspan x="605" dy="32">joins sandbox net,</tspan>
+      <tspan x="605" dy="32">IPC and UTS</tspan>
+      <tspan x="605" dy="32">namespaces, own</tspan>
+      <tspan x="605" dy="32">mnt and PID;</tspan>
+      <tspan x="605" dy="32">cgroup under the</tspan>
+      <tspan x="605" dy="32">pod cgroup;</tspan>
+      <tspan x="605" dy="32">capabilities,</tspan>
+      <tspan x="605" dy="32">seccomp, AppArmor,</tspan>
+      <tspan x="605" dy="32">SELinux; devices)</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOX 3: Start (Orange Highlighted) ==================== -->
+  <g id="box-start">
+    <rect x="817" y="120" width="356" height="910" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <!-- Step Number Circle (r=24, Orange Highlight) -->
+    <circle cx="995" cy="175" r="24" fill="#db8129" />
+    <text x="995" y="184" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+    
+    <!-- Start / CPU Chip Execution Outline Icon (56px, Orange Highlight) -->
+    <g transform="translate(967, 215)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <rect x="20" y="20" width="16" height="16" rx="2" fill="#e8f1ea" />
+      <line x1="18" y1="6" x2="18" y2="12" /><line x1="28" y1="6" x2="28" y2="12" /><line x1="38" y1="6" x2="38" y2="12" />
+      <line x1="18" y1="44" x2="18" y2="50" /><line x1="28" y1="44" x2="28" y2="50" /><line x1="38" y1="44" x2="38" y2="50" />
+      <line x1="6" y1="18" x2="12" y2="18" /><line x1="6" y1="28" x2="12" y2="28" /><line x1="6" y1="38" x2="12" y2="38" />
+      <line x1="44" y1="18" x2="50" y2="18" /><line x1="44" y1="28" x2="50" y2="28" /><line x1="44" y1="38" x2="50" y2="38" />
+    </g>
+
+    <!-- Inner Panel -->
+    <rect x="833" y="295" width="324" height="715" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="1.5" />
+
+    <!-- Box 3 Label -->
+    <text x="995" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="995" dy="0" font-size="30" font-weight="bold" fill="#db8129">Start: </tspan>
+      <tspan x="995" dy="42">containerd launches</tspan>
+      <tspan x="995" dy="34">the shim, shim calls</tspan>
+      <tspan x="995" dy="34" font-family="monospace">runc create</tspan>
+      <tspan x="995" dy="34">(namespaces,</tspan>
+      <tspan x="995" dy="34"><tspan font-family="monospace">pivot_root,</tspan> cgroups,</tspan>
+      <tspan x="995" dy="34">drop capabilities,</tspan>
+      <tspan x="995" dy="34">install seccomp),</tspan>
+      <tspan x="995" dy="34">then <tspan font-family="monospace">runc start</tspan></tspan>
+      <tspan x="995" dy="34">execs the entrypoint</tspan>
+      <tspan x="995" dy="34">as PID 1, child</tspan>
+      <tspan x="995" dy="34">of the shim</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOX 4: Probes ==================== -->
+  <g id="box-probes">
+    <rect x="1207" y="120" width="356" height="910" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Step Number Circle (r=24) -->
+    <circle cx="1385" cy="175" r="24" fill="#207448" />
+    <text x="1385" y="184" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+    
+    <!-- Probes / Health Pulse Outline Icon (56px) -->
+    <g transform="translate(1357, 215)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="12,28 20,28 24,18 30,38 34,26 38,30 44,28" />
+    </g>
+
+    <!-- Inner Panel -->
+    <rect x="1223" y="295" width="324" height="715" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+
+    <!-- Box 4 Label -->
+    <text x="1385" y="345" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1385" dy="0" font-size="30" font-weight="bold" fill="#207448">Probes: </tspan>
+      <tspan x="1385" dy="40">post-start hook,</tspan>
+      <tspan x="1385" dy="33">startup, readiness,</tspan>
+      <tspan x="1385" dy="33">liveness; exec</tspan>
+      <tspan x="1385" dy="33">probes via CRI</tspan>
+      <tspan x="1385" dy="33" font-family="monospace">ExecSync<tspan font-family="sans-serif"> inside</tspan></tspan>
+      <tspan x="1385" dy="33">the container;</tspan>
+      <tspan x="1385" dy="33">HTTP, TCP, gRPC</tspan>
+      <tspan x="1385" dy="33">probes from the</tspan>
+      <tspan x="1385" dy="33">node to the pod IP;</tspan>
+      <tspan x="1385" dy="33">readiness change</tspan>
+      <tspan x="1385" dy="33">updates Ready then</tspan>
+      <tspan x="1385" dy="33">EndpointSlice</tspan>
+      <tspan x="1385" dy="33">controller adds or</tspan>
+      <tspan x="1385" dy="33">removes the IP</tspan>
+    </text>
+  </g>
+</svg>

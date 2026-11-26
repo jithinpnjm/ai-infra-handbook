@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="950" viewBox="0 0 1600 950" font-family="sans-serif">
+  <title>A loopback MASTER_ADDR splits one job into isolated groups</title>
+  <desc>Two panels side by side compare a loopback MASTER_ADDR with a MASTER_ADDR taken from the first host in the nodelist.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-grey-end" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#788880" />
+    </marker>
+    <marker id="arrow-grey-start" viewBox="0 0 12 12" refX="2" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 11 2 L 1 6 L 11 10 Z" fill="#788880" />
+    </marker>
+
+    
+    <g id="node-icon" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="48" rx="6" fill="#f5f8f5" />
+      <line x1="10" y1="16" x2="34" y2="16" />
+      <circle cx="44" cy="16" r="3" fill="#207448" stroke="none" />
+      <line x1="10" y1="32" x2="34" y2="32" />
+      <circle cx="44" cy="32" r="3" fill="#207448" stroke="none" />
+    </g>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="950" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">
+    <tspan x="800" dy="0">A loopback <tspan font-family="monospace">MASTER_ADDR</tspan> splits one job </tspan>
+    <tspan x="800" dy="56">into isolated groups</tspan>
+  </text>
+
+  
+  <rect x="60" y="165" width="720" height="505" rx="16" fill="#e8f1ea" stroke="#cfe0d5" stroke-width="2" />
+
+  
+  <text x="420" y="212" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="420" dy="0"><tspan font-family="monospace">MASTER_ADDR</tspan> set to </tspan>
+    <tspan x="420" dy="38" font-family="monospace">127.0.0.1</tspan>
+  </text>
+
+  
+  <rect x="90" y="280" width="290" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <use href="#node-icon" x="110" y="296" />
+  <text x="185" y="332" font-size="30" font-weight="700" fill="#303a36">node A</text>
+
+  
+  <rect x="110" y="360" width="250" height="135" rx="10" fill="#fdf1e6" stroke="#db8129" stroke-width="4" />
+  <text x="235" y="420" text-anchor="middle" font-size="24" font-weight="700" fill="#303a36">
+    <tspan x="235" dy="0">1-node </tspan>
+    <tspan x="235" dy="34">process group</tspan>
+  </text>
+
+  
+  <rect x="460" y="280" width="290" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <use href="#node-icon" x="480" y="296" />
+  <text x="555" y="332" font-size="30" font-weight="700" fill="#303a36">node B</text>
+
+  
+  <rect x="480" y="360" width="250" height="135" rx="10" fill="#fdf1e6" stroke="#db8129" stroke-width="4" />
+  <text x="605" y="420" text-anchor="middle" font-size="24" font-weight="700" fill="#303a36">
+    <tspan x="605" dy="0">1-node </tspan>
+    <tspan x="605" dy="34">process group</tspan>
+  </text>
+
+  
+  <line x1="392" y1="427" x2="448" y2="427" stroke="#788880" stroke-width="3.5" stroke-dasharray="6 4" marker-start="url(#arrow-grey-start)" marker-end="url(#arrow-grey-end)" />
+  <path d="M 408 415 L 432 439 M 432 415 L 408 439" stroke="#303a36" stroke-width="4" stroke-linecap="round" />
+
+  
+  <rect x="90" y="540" width="660" height="105" rx="12" fill="#ffffff" stroke="#cfe0d5" stroke-width="2" />
+  <text x="420" y="582" text-anchor="middle" font-size="24" font-weight="600" fill="#303a36">
+    <tspan x="420" dy="0">gradients are never </tspan>
+    <tspan x="420" dy="34">synchronized across nodes</tspan>
+  </text>
+
+  
+  <rect x="90" y="710" width="660" height="60" rx="10" fill="#ffffff" stroke="#cfe0d5" stroke-width="2" />
+  <text x="420" y="748" text-anchor="middle" font-size="24" font-weight="600" fill="#303a36">training looks normal and does not crash</text>
+
+  
+  <rect x="820" y="165" width="720" height="505" rx="16" fill="#e8f1ea" stroke="#cfe0d5" stroke-width="2" />
+
+  
+  <text x="1180" y="212" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">
+    <tspan x="1180" dy="0"><tspan font-family="monospace">MASTER_ADDR</tspan> from the </tspan>
+    <tspan x="1180" dy="38">first host in the nodelist</tspan>
+  </text>
+
+  
+  <rect x="850" y="280" width="290" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <use href="#node-icon" x="870" y="316" />
+  <text x="945" y="352" font-size="30" font-weight="700" fill="#303a36">node A</text>
+
+  
+  <rect x="1220" y="280" width="290" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <use href="#node-icon" x="1240" y="316" />
+  <text x="1315" y="352" font-size="30" font-weight="700" fill="#303a36">node B</text>
+
+  
+  <line x1="995" y1="400" x2="995" y2="456" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="1365" y1="400" x2="1365" y2="456" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="850" y="460" width="660" height="185" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <text x="1180" y="528" text-anchor="middle" font-size="28" font-weight="700" fill="#207448">one process group across both nodes</text>
+  <text x="1180" y="586" text-anchor="middle" font-size="24" fill="#303a36">first host in the nodelist</text>
+
+  
+  <rect x="60" y="815" width="1480" height="85" rx="12" fill="#207448" />
+  <text x="800" y="867" text-anchor="middle" font-size="26" font-weight="700" fill="#ffffff">
+    <tspan x="800" dy="0">Derive <tspan font-family="monospace">MASTER_ADDR</tspan> from the nodelist, and never use <tspan font-family="monospace">127.0.0.1</tspan> on a multi-node job.</tspan>
+  </text>
+</svg>

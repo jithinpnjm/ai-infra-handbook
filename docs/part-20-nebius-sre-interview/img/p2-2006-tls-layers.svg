@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Split the TCP result from the TLS result</title>
+  <desc>Visual infographic distinguishing TCP connection success from TLS handshake failures with decision steps, error outcomes, and protocol layer states.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Split the TCP result from the TLS result</text>
+
+  
+
+  
+  <g id="step-1">
+    <rect x="50" y="130" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="95" cy="190" r="24" fill="#207448" />
+    <text x="95" y="198" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <text x="145" y="199" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">TCP connect succeeds</text>
+    
+    <g transform="translate(680, 162)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="18,28 25,35 39,20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  </g>
+
+  
+  <path d="M 415 250 L 415 298" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step-2">
+    <rect x="50" y="300" width="730" height="120" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="95" cy="360" r="24" fill="#207448" />
+    <text x="95" y="368" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <text x="145" y="369" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">TLS handshake fails</text>
+    
+    <g transform="translate(680, 332)">
+      <rect x="10" y="22" width="36" height="28" rx="6" fill="none" stroke="#db8129" stroke-width="4" />
+      <path d="M 18 22 L 18 14 A 10 10 0 0 1 38 14 L 38 22" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="32" x2="28" y2="40" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  <path d="M 415 420 L 415 468" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g id="step-3">
+    <rect x="50" y="470" width="730" height="480" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="95" cy="530" r="24" fill="#207448" />
+    <text x="95" y="538" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <text x="145" y="539" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Name the failing step</text>
+    
+    <g transform="translate(680, 502)">
+      <circle cx="24" cy="24" r="16" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="36" y1="36" x2="50" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <rect x="75" y="585" width="680" height="340" rx="8" fill="#ffffff" stroke="#c8d8cc" stroke-width="1.5" />
+
+    
+    <circle cx="102" cy="640" r="6" fill="#207448" />
+    <text x="122" y="635" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="122" dy="0">Verification error: hostname mismatch,</tspan>
+      <tspan x="122" dy="32">return code 62</tspan>
+    </text>
+
+    <line x1="95" y1="695" x2="735" y2="695" stroke="#e8f1ea" stroke-width="2" />
+
+    
+    <circle cx="102" cy="745" r="6" fill="#207448" />
+    <text x="122" y="735" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="122" dy="0">verify error:num=18:self-signed certificate,</tspan>
+      <tspan x="122" dy="32">return code 18</tspan>
+    </text>
+
+    <line x1="95" y1="795" x2="735" y2="795" stroke="#e8f1ea" stroke-width="2" />
+
+    
+    <circle cx="102" cy="845" r="6" fill="#207448" />
+    <text x="122" y="845" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="122" dy="0">connect:errno=111</tspan>
+      <tspan x="122" dy="32">(closed port, refused)</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="band-tls">
+    <rect x="820" y="130" width="730" height="400" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(850, 155)">
+      <path d="M 28 6 L 50 14 L 50 30 C 50 44 28 54 28 54 C 28 54 6 44 6 30 L 6 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 28 18 L 28 42" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="925" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="925" dy="0">TLS handshake:</tspan>
+      <tspan x="925" dy="38">encryption, certificates, names</tspan>
+    </text>
+
+    
+    <g id="note-sni">
+      <rect x="850" y="245" width="670" height="85" rx="8" fill="#ffffff" stroke="#c8d8cc" stroke-width="1.5" />
+      
+      <g transform="translate(870, 260)">
+        <path d="M 12 8 L 32 8 L 44 20 L 24 40 L 4 20 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+        <circle cx="18" cy="14" r="3" fill="#207448" />
+      </g>
+      <text x="930" y="297" font-family="sans-serif" font-size="24" fill="#303a36">Name checked with SNI</text>
+    </g>
+
+    
+    <g id="note-good-handshake">
+      <rect x="850" y="350" width="670" height="150" rx="8" fill="#ffffff" stroke="#c8d8cc" stroke-width="1.5" />
+      
+      <g transform="translate(870, 395)">
+        <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="4" />
+        <polyline points="14,22 20,28 30,16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+      <text x="930" y="415" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="930" dy="0">Good handshake:</tspan>
+        <tspan x="930" dy="34">New, TLSv1.3, Verification: OK</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="band-tcp">
+    <rect x="820" y="560" width="730" height="390" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(850, 585)">
+      <rect x="8" y="12" width="40" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="20" y1="24" x2="20" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="24" x2="28" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="36" y1="24" x2="36" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="925" y="610" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="925" dy="0">TCP handshake:</tspan>
+      <tspan x="925" dy="38">connect to host and port</tspan>
+    </text>
+
+    
+    <g id="note-healthy-socket">
+      <rect x="850" y="680" width="670" height="240" rx="8" fill="#ffffff" stroke="#c8d8cc" stroke-width="1.5" />
+      
+      <g transform="translate(870, 725)">
+        <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="3" />
+        <polyline points="10,22 17,22 20,14 24,30 27,22 34,22" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+      <text x="930" y="752" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Socket can look perfectly healthy</text>
+
+      
+      <path d="M 880 835 L 980 835 L 1000 805 L 1020 865 L 1040 835 L 1180 835 L 1200 805 L 1220 865 L 1240 835 L 1480 835" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  </g>
+
+  
+  <g id="caption-takeaway">
+    <rect x="50" y="985" width="1500" height="75" rx="10" fill="#207448" />
+    <text x="800" y="1032" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Separate the TCP result from the TLS result, then name the failing step.</text>
+  </g>
+</svg>

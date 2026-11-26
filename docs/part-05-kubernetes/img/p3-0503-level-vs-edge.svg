@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <title>Level-triggered reconciliation survives a missed event</title>
+  <desc>Visual comparison showing that an edge-triggered controller permanently misses a crash event while offline, whereas Kubernetes level-triggered reconciliation recovers via resync.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Level-triggered reconciliation survives a missed event</text>
+
+  
+  <rect x="60" y="120" width="1480" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="95" y="165" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Edge-triggered (not Kubernetes)</text>
+
+  
+  <rect x="95" y="205" width="430" height="240" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(310, 222)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-25" y="0" width="50" height="44" rx="6"/>
+    <line x1="-15" y1="12" x2="15" y2="12" stroke-width="3"/>
+    <path d="M-2 18 l6 8 l-4 4 l6 8" stroke="#c93b2b" stroke-width="3.5"/>
+  </g>
+  <text x="310" y="335" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="310" dy="0">Pod X</tspan>
+    <tspan x="310" dy="40">just crashed</tspan>
+  </text>
+
+  
+  <line x1="525" y1="325" x2="585" y2="325" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="585" y="205" width="430" height="240" rx="14" fill="#eef1ef" stroke="#7a8b85" stroke-width="3"/>
+  
+  <g transform="translate(800, 222)" fill="none" stroke="#7a8b85" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-26" y="2" width="52" height="40" rx="6"/>
+    <circle cx="-14" cy="22" r="3" fill="#7a8b85"/>
+    <line x1="-2" y1="22" x2="16" y2="22" stroke-width="3"/>
+    <line x1="-20" y1="-4" x2="20" y2="48" stroke="#c93b2b" stroke-width="3.5"/>
+  </g>
+  <text x="800" y="335" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">controller</tspan>
+    <tspan x="800" dy="40">down</tspan>
+  </text>
+
+  
+  <line x1="1015" y1="325" x2="1075" y2="325" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1075" y="205" width="430" height="240" rx="14" fill="#fbeae8" stroke="#c93b2b" stroke-width="3"/>
+  
+  <g transform="translate(1290, 222)" fill="none" stroke="#c93b2b" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="0" cy="22" r="20"/>
+    <line x1="-10" y1="12" x2="10" y2="32"/>
+    <line x1="10" y1="12" x2="-10" y2="32"/>
+  </g>
+  <text x="1290" y="335" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1290" dy="0">change missed</tspan>
+    <tspan x="1290" dy="40">for good</tspan>
+  </text>
+
+  
+  <rect x="60" y="510" width="1480" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="95" y="555" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Level-triggered (Kubernetes)</text>
+
+  
+  <rect x="95" y="595" width="430" height="240" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  
+  <g transform="translate(310, 612)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-18 12 A 18 18 0 1 1 -5 34"/>
+    <polyline points="-18 2 -18 12 -8 12"/>
+    <circle cx="0" cy="20" r="3" fill="#207448"/>
+    <polyline points="0 12 0 20 6 20" stroke-width="3"/>
+  </g>
+  <text x="310" y="710" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="310" dy="0">Next resync or relist</tspan>
+    <tspan x="310" dy="38">compares current</tspan>
+    <tspan x="310" dy="38">with desired</tspan>
+  </text>
+
+  
+  <line x1="525" y1="715" x2="585" y2="715" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="585" y="595" width="430" height="240" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(800, 612)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="-22" y1="12" x2="22" y2="12"/>
+    <line x1="0" y1="12" x2="0" y2="38"/>
+    <line x1="-12" y1="38" x2="12" y2="38"/>
+    <circle cx="-16" cy="24" r="6" fill="#e8f1ea"/>
+    <circle cx="16" cy="24" r="6" fill="#e8f1ea"/>
+  </g>
+  <text x="800" y="710" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">ReplicaSet</tspan>
+    <tspan x="800" dy="38">wants 4 Pods;</tspan>
+    <tspan x="800" dy="38">3 exist; create 1</tspan>
+  </text>
+
+  
+  <line x1="1015" y1="715" x2="1075" y2="715" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1075" y="595" width="430" height="240" rx="14" fill="#e1efe3" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(1290, 612)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="0" cy="22" r="20"/>
+    <polyline points="-10 22 -3 29 11 15"/>
+  </g>
+  <text x="1290" y="725" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1290" dy="0">converges to</tspan>
+    <tspan x="1290" dy="40">the right state</tspan>
+  </text>
+
+  
+  <rect x="60" y="900" width="1480" height="60" rx="12" fill="#207448"/>
+  <text x="800" y="941" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Resync is the safety net under every watch.</text>
+</svg>

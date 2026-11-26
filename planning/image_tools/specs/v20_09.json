@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "x09-sliding-window-eviction",
+  "title": "A sliding window: new events enter on the right, old ones leave on the left",
+  "spec": "A horizontal timeline drawn as a long arrow from left (old) to right (new), with tick marks labelled with timestamps in seconds. A shaded rectangle called the window spans the most recent part of the timeline, its right edge at the label now and its left edge at the label now minus W seconds. Inside the window, a row of small event dots: most drawn green for OK, two drawn orange-outlined for errors. To the left of the window, a faded grey group of dots labelled evicted, with a curved dashed arrow from the left edge of the window pointing left to show popleft drops them. On the right edge, a new dot entering labelled append with a small arrow pointing into the deque. A deque box drawn beneath the timeline as a row of cells, each cell labelled with an event, the oldest cell at left labelled popleft, and the newest cell at right labelled append. A running counter box labelled errors in window with a value, updated as events are evicted. A boundary callout at the left edge: an event exactly W seconds old is dropped, so the window is half-open. Monospace for popleft, append, deque, and the labels now and now minus W. Numbered steps 1 to 3 in green circles at the bottom: 1 append the new event, 2 evict from the left while too old, 3 divide errors by the length of the deque. Green takeaway bar: The window slides, so only the front is evicted and the work stays cheap.",
+  "anchor": "### 2. Sliding windows: rolling error rate and the maximum in a window",
+  "alt": "A rolling window keeps recent events in a deque, appending on the right and evicting old events from the left.",
+  "cap": "A sliding window appends new events on one end and evicts old events from the other end, so each event enters and leaves once."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "x09-fixed-window-boundary-burst",
+  "title": "Fixed window: 20 requests in 10 milliseconds across a boundary",
+  "spec": "A horizontal timeline in seconds from 0.9 to 1.1, with a vertical boundary line at 1.0 labelled window reset. Two fixed window blocks drawn as rectangles side by side: left block labelled window one, covering up to 1.0, with a limit line labelled limit 10; right block labelled window two, starting at 1.0, with a limit line labelled limit 10. Inside the left block near its right end, a cluster of ten small dots labelled 10 requests at 0.99, all green with check marks. Inside the right block near its left end, a cluster of ten small dots labelled 10 requests at 1.0, all green with check marks. A bracket spanning both clusters, marked within 10 milliseconds, orange outline. Below the timeline, a comparison strip with four small rows, each showing one algorithm and what it allows: sliding log, lets exactly 10 through in any window; sliding counter, lets at most 11 in the test; token bucket, allows a burst up to bucket size; fixed window, allows 20 across the boundary. Monospace for 0.99, 1.0, limit 10, 10 milliseconds. Numbered green circles 1 to 2 at bottom: 1 name the boundary burst, 2 offer a token bucket for APIs. Green takeaway bar: The fixed window lets a client send the full limit twice in a row across the boundary.",
+  "anchor": "### 6. Rate limiters: four algorithms and their trade-offs",
+  "alt": "A fixed window limit of 10 per second lets 20 requests through within 10 milliseconds when they straddle the window reset.",
+  "cap": "A fixed window resets its counter at the boundary, so a client can send the full limit just before and just after it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "x09-kahn-start-order",
+  "title": "Kahn's algorithm: start the services with no open dependencies first",
+  "spec": "Left panel: a directed graph of five service boxes with arrows pointing from each service to what it needs (arrows point to dependencies). Boxes: net at the bottom, cache and db above net, api above cache and db, web at top above api. Arrows: api to db, api to cache, cache to net, db to net, web to api. Each box shows a small in-degree counter in a green circle: net 0 (green highlighted as ready), cache 1, db 1, api 2, web 1. Right panel: a Kahn queue strip with steps numbered 1 to 5 in green circles, each step showing the queue contents and the output list: step 1 queue net, output net; step 2 queue cache and db after net finishes, output net, cache, db (db and cache each drop to zero); step 3 queue api; step 4 queue web; step 5 done, start order net, cache, db, api, web. Under the right panel, a small box: if any node is left after the queue is empty, it is on a cycle or blocked by one, and a tall orange warning box labelled stuck nodes show a loop. Monospace for net, cache, db, api, web, in-degree, and the output list. Title: Kahn's algorithm gives a start order, and leftovers mean a cycle. Green takeaway bar: Leftover nodes mean a cycle, so refuse to proceed and name the loop.",
+  "anchor": "### 10. Topological sort and cycle detection",
+  "alt": "Kahn's algorithm orders services so each starts after its dependencies, and leftover nodes reveal a cycle.",
+  "cap": "Kahn's algorithm starts services with no open dependencies and unlocks others as each one finishes, so any leftover node signals a cycle."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "x09-averaged-p99-trap",
+  "title": "Averaging two p99 values gives 55; the true fleet p99 is 12",
+  "spec": "Left side: two server boxes stacked. Top server box labelled quiet server, with a small bar chart showing 1,000 requests, and a tag p99 of 10 ms. Bottom server box labelled busy server, with a small bar chart showing 10 requests and a tag p99 of 100 ms. Both boxes have outline icons (server racks). Middle: two arrows from the boxes meeting at a centre box labelled average of the two p99s, with the result 55 in an orange outline, and a red cross stamp labelled wrong, gives a weight of one request to each server regardless of size. Right side: a single combined bar chart labelled all 1,010 requests merged, with a marker at the top one percent labelled true p99 at 12 ms, drawn in green with a check mark. Under the merged chart, a two-step strip with numbers 1 and 2 in green circles: 1 merge the histograms or the raw samples, 2 then take the percentile. Monospace for p99, histogram_quantile, sum by (le). Title: Averaging percentiles weights a ten-request server the same as a thousand-request server. Green takeaway bar: To combine servers, merge the histograms or the raw samples, then take the percentile.",
+  "anchor": "### 14. Streaming percentiles, and why you never average percentiles",
+  "alt": "Averaging the p99 of a quiet server and a busy server gives 55 ms, while merging their requests gives a true p99 of 12 ms.",
+  "cap": "Averaging per-server percentiles weights small servers as heavily as large ones, so the fleet percentile must come from merged samples or histograms."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "x09-retry-jitter-herd",
+  "title": "Without jitter, clients retry in lockstep; with full jitter, the retries spread out",
+  "spec": "Two panels side by side, each a small time axis from 0 to a capped wait with vertical tick marks for retry times. Left panel titled no jitter: a row of many small clients drawn as stick icons, all failing at time zero, then all retrying at the same instants, shown as tall spikes on the timeline, labelled herd, with an orange outline on the spikes labelled the dependency sees the same spike again. Right panel titled full jitter: the same clients each retry at a random time between zero and the current ceiling, drawn as a smooth scatter of dots spread across the window, labelled retries spread across the wait window, with a green outline. Under the panels, a formula strip in monospace: delay = random between 0 and min(cap, base times 2 to the attempt), with base 0.1 and cap 5.0 shown. A three-step numbered strip at the bottom in green circles: 1 exponential growth of the ceiling, 2 randomness spreads the herd, 3 a deadline bounds the total time. Monospace for delay, min, cap, base, 2 to the attempt. Green takeaway bar: Randomised waits turn one spike of retries into a smooth load, and a deadline keeps the total time bounded.",
+  "anchor": "### 9. Retry with exponential backoff and jitter",
+  "alt": "Clients that retry at the same instants create a spike, while full jitter spreads their retries across the wait window.",
+  "cap": "Full jitter chooses each retry delay at random up to the current ceiling, so clients that failed together do not all retry together."
+ }
+]

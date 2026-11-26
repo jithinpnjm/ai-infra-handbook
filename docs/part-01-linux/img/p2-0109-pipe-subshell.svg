@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>A variable set after a pipe disappears, but a redirect keeps it</title>
+  <desc>Visual comparison showing that a piped loop runs in a subshell losing variable changes, while redirection runs in the current shell preserving them.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A variable set after a pipe disappears,</tspan>
+    <tspan x="800" dy="58">but a redirect keeps it</tspan>
+  </text>
+
+  
+  <rect x="60" y="145" width="1480" height="345" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+
+  
+  <text x="90" y="195" font-family="monospace" font-size="30" font-weight="bold" fill="#db8129">Pipe: cat f | while read ...</text>
+
+  
+  <rect x="90" y="215" width="230" height="180" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="180" y="238" width="50" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="180" y1="248" x2="230" y2="248" stroke="#207448" stroke-width="2"/>
+  <path d="M 188 258 L 194 263 L 188 268" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="198" y1="268" x2="208" y2="268" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="205" y="345" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">cat input</text>
+
+  
+  <path d="M 320 305 L 380 305" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="380" y="215" width="590" height="180" rx="12" fill="#fffaf3" stroke="#db8129" stroke-width="2.5" stroke-dasharray="8 6"/>
+  <text x="675" y="252" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">subshell: the while loop runs here</text>
+
+  
+  <rect x="425" y="272" width="500" height="105" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  
+  <rect x="455" y="304" width="42" height="40" rx="6" fill="none" stroke="#db8129" stroke-width="3"/>
+  <path d="M 476 314 L 476 334 M 466 324 L 486 324" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+  <text x="690" y="333" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">count=count+n</text>
+
+  
+  <path d="M 970 305 L 1030 305" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1030" y="215" width="480" height="180" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  
+  <rect x="1246" y="234" width="48" height="38" rx="4" fill="none" stroke="#db8129" stroke-width="3"/>
+  <line x1="1246" y1="244" x2="1294" y2="244" stroke="#db8129" stroke-width="1.5"/>
+  <path d="M 1253 252 L 1258 256 L 1253 260" fill="none" stroke="#db8129" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <circle cx="1302" cy="266" r="16" fill="#db8129"/>
+  <path d="M 1295 259 L 1309 273 M 1309 259 L 1295 273" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <text x="1270" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1270" dy="0">parent shell:</tspan>
+    <tspan x="1270" dy="38">count is still 0</tspan>
+  </text>
+
+  
+  <text x="800" y="458" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-style="italic" fill="#445049">Each pipeline stage runs in its own subshell.</text>
+
+
+  
+  <rect x="60" y="520" width="1480" height="345" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <text x="90" y="570" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">Redirect: while read ... done &lt; input.txt</text>
+
+  
+  <rect x="90" y="590" width="230" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 193 613 L 213 613 L 223 623 L 223 651 L 193 651 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <path d="M 213 613 L 213 623 L 223 623" fill="none" stroke="#207448" stroke-width="2" stroke-linejoin="round"/>
+  <line x1="200" y1="633" x2="216" y2="633" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+  <line x1="200" y1="641" x2="212" y2="641" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+  <text x="205" y="720" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">input.txt</text>
+
+  
+  <path d="M 320 680 L 380 680" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="380" y="590" width="590" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <path d="M 660 622 A 16 16 0 0 1 688 620" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="686,614 695,621 687,627" fill="#207448"/>
+  <path d="M 690 638 A 16 16 0 0 1 662 640" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="664,646 655,639 663,633" fill="#207448"/>
+  <text x="675" y="698" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="675" dy="0">while loop in the</tspan>
+    <tspan x="675" dy="38">current shell</tspan>
+  </text>
+
+  
+  <path d="M 970 680 L 1030 680" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1030" y="590" width="480" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="1246" y="608" width="48" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1246" y1="618" x2="1294" y2="618" stroke="#207448" stroke-width="1.5"/>
+  <path d="M 1253 626 L 1258 630 L 1253 634" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <circle cx="1302" cy="640" r="16" fill="#207448"/>
+  <path d="M 1294 640 L 1299 646 L 1310 634" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1270" y="700" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1270" dy="0">parent shell:</tspan>
+    <tspan x="1270" dy="38">count holds the total</tspan>
+  </text>
+
+
+  
+  <rect x="60" y="895" width="1480" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 98 941 L 108 948 L 98 955" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="113" y1="955" x2="125" y2="955" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  
+  <text x="145" y="958" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">done &lt; &lt;(cmd)</text>
+
+  
+  <line x1="425" y1="915" x2="425" y2="980" stroke="#207448" stroke-width="2" stroke-dasharray="4 4"/>
+
+  
+  <text x="455" y="957" font-family="system-ui, -apple-system, sans-serif" font-size="27" font-weight="bold" fill="#303a36">Process substitution also keeps the loop in the current shell.</text>
+</svg>

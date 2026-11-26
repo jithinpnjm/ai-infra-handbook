@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1150" viewBox="0 0 1600 1150" role="img">
+  <title>A NotReady node: the timeline from missed heartbeat to rescheduled pods</title>
+  <desc>A five-step timeline showing what happens when a Kubernetes node stops sending heartbeats, from the Lease expiring to pods being rescheduled, with a side note about eviction rate limiting and a takeaway about protecting capacity.</desc>
+  <rect x="0" y="0" width="1600" height="1150" fill="#f5f8f5"/>
+
+  <text x="800" y="110" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A NotReady node: the timeline</text>
+  <text x="800" y="168" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">from missed heartbeat to rescheduled pods</text>
+
+  <rect x="43" y="250" width="270" height="470" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="354" y="250" width="270" height="470" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="665" y="250" width="270" height="470" rx="16" fill="#fdf2e3" stroke="#db8129" stroke-width="4"/>
+  <rect x="976" y="250" width="270" height="470" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="1287" y="250" width="270" height="470" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  <circle cx="87" cy="294" r="24" fill="#207448"/>
+  <circle cx="398" cy="294" r="24" fill="#207448"/>
+  <circle cx="709" cy="294" r="24" fill="#207448"/>
+  <circle cx="1020" cy="294" r="24" fill="#207448"/>
+  <circle cx="1331" cy="294" r="24" fill="#207448"/>
+  <text x="87" y="302" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">1</text>
+  <text x="398" y="302" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">2</text>
+  <text x="709" y="302" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">3</text>
+  <text x="1020" y="302" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1331" y="302" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">5</text>
+
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path transform="translate(178,320)" d="M -26 0 H -14 L -5 -18 L 7 18 L 15 -10 L 19 0 H 26"/>
+    <g transform="translate(489,320)">
+      <circle r="11"/>
+      <rect x="-3" y="-17" width="6" height="9" rx="2" transform="rotate(0)"/>
+      <rect x="-3" y="-17" width="6" height="9" rx="2" transform="rotate(60)"/>
+      <rect x="-3" y="-17" width="6" height="9" rx="2" transform="rotate(120)"/>
+      <rect x="-3" y="-17" width="6" height="9" rx="2" transform="rotate(180)"/>
+      <rect x="-3" y="-17" width="6" height="9" rx="2" transform="rotate(240)"/>
+      <rect x="-3" y="-17" width="6" height="9" rx="2" transform="rotate(300)"/>
+    </g>
+    <g transform="translate(800,320)">
+      <circle r="22"/>
+      <line x1="0" y1="0" x2="0" y2="-13"/>
+      <line x1="0" y1="0" x2="10" y2="8"/>
+    </g>
+    <g transform="translate(1111,320)">
+      <path d="M -22 0 A 22 22 0 0 1 22 0"/>
+      <line x1="0" y1="0" x2="13" y2="-11"/>
+    </g>
+    <g transform="translate(1422,320)">
+      <rect x="-26" y="-13" width="18" height="26" rx="4"/>
+      <line x1="-4" y1="0" x2="4" y2="0"/>
+      <polygon points="4,-5 11,0 4,5" fill="none"/>
+      <rect x="13" y="-13" width="16" height="26" rx="4"/>
+    </g>
+  </g>
+
+  <text x="178" y="410" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node stops</text>
+  <text x="178" y="454" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">sending</text>
+  <text x="178" y="498" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">heartbeats</text>
+  <text x="178" y="546" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Its Lease</text>
+  <text x="178" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">is not renewed</text>
+
+  <text x="489" y="410" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node</text>
+  <text x="489" y="454" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">controller</text>
+  <text x="489" y="498" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">sets <tspan font-family="monospace">Ready</tspan></text>
+  <text x="489" y="542" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">to <tspan font-family="monospace">Unknown</tspan></text>
+  <text x="489" y="584" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Unreachable</text>
+  <text x="489" y="620" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">taints are added</text>
+  <text x="489" y="656" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">node.kubernetes</text>
+  <text x="489" y="692" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">.io/unreachable</text>
+
+  <text x="800" y="410" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Waits 5</text>
+  <text x="800" y="454" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">minutes by</text>
+  <text x="800" y="498" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">default</text>
+  <text x="800" y="546" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Before the</text>
+  <text x="800" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">first eviction</text>
+
+  <text x="1111" y="410" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Evictions are</text>
+  <text x="1111" y="454" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">rate limited</text>
+  <text x="1111" y="500" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">--node-eviction</text>
+  <text x="1111" y="534" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">-rate</text>
+  <text x="1111" y="572" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Default <tspan font-family="monospace">0.1</tspan></text>
+  <text x="1111" y="606" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">per second</text>
+
+  <text x="1422" y="410" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pods</text>
+  <text x="1422" y="454" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">reschedule</text>
+  <text x="1422" y="498" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">elsewhere</text>
+  <text x="1422" y="546" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">If capacity</text>
+  <text x="1422" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">exists</text>
+
+  <line x1="313" y1="485" x2="338" y2="485" stroke="#207448" stroke-width="4"/>
+  <polygon points="354,485 338,477 338,493" fill="#207448"/>
+  <line x1="624" y1="485" x2="649" y2="485" stroke="#207448" stroke-width="4"/>
+  <polygon points="665,485 649,477 649,493" fill="#207448"/>
+  <line x1="935" y1="485" x2="960" y2="485" stroke="#207448" stroke-width="4"/>
+  <polygon points="976,485 960,477 960,493" fill="#207448"/>
+  <line x1="1246" y1="485" x2="1271" y2="485" stroke="#207448" stroke-width="4"/>
+  <polygon points="1287,485 1271,477 1271,493" fill="#207448"/>
+
+  <rect x="700" y="770" width="546" height="184" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="724" y="818" font-family="sans-serif" font-size="24" fill="#303a36">At least 55 percent of nodes in</text>
+  <text x="724" y="854" font-family="sans-serif" font-size="24" fill="#303a36">a zone unhealthy, so the rate drops</text>
+  <text x="724" y="890" font-family="sans-serif" font-size="24" fill="#303a36">On a cluster of 50 nodes or</text>
+  <text x="724" y="926" font-family="sans-serif" font-size="24" fill="#303a36">fewer, evictions stop</text>
+
+  <rect x="43" y="1030" width="1514" height="80" rx="14" fill="#207448"/>
+  <text x="800" y="1076" text-anchor="middle" font-family="sans-serif" font-size="34" font-weight="bold" fill="#ffffff">Protect capacity first, then fix the cause</text>
+</svg>

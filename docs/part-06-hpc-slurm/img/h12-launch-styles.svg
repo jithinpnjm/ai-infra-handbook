@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1600" height="1200" viewBox="0 0 1600 1200" font-family="sans-serif" role="img" aria-labelledby="ttl dsc">
+  <title id="ttl">Two launch styles: srun per GPU or torchrun per node</title>
+  <desc id="dsc">Two side-by-side panels. Style A: srun python train.py fans out to node 1 to node 4, each holding eight rank boxes. Style B: srun torchrun fans out to node 1 to node 4, each holding one wide torchrun box with eight rank boxes inside. Below, a two-row comparison strip and a green takeaway bar.</desc>
+
+  <defs>
+    <marker id="arw" viewBox="0 0 12 12" refX="11" refY="6" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#207448"/>
+    </marker>
+
+    <g id="term" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="4" width="40" height="30" rx="4"/>
+      <path d="M8 13 l7 6 l-7 6"/>
+      <line x1="21" y1="25" x2="31" y2="25"/>
+    </g>
+
+    <g id="srv" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round">
+      <rect x="0" y="0" width="40" height="36" rx="4"/>
+      <line x1="0" y1="18" x2="40" y2="18"/>
+      <circle cx="8" cy="9" r="2.5" fill="#207448" stroke="none"/>
+      <line x1="17" y1="9" x2="33" y2="9"/>
+      <circle cx="8" cy="27" r="2.5" fill="#207448" stroke="none"/>
+      <line x1="17" y1="27" x2="33" y2="27"/>
+    </g>
+
+    <g id="gear" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round">
+      <circle cx="0" cy="0" r="5.5"/>
+      <line x1="8.5" y1="0" x2="12.5" y2="0"/>
+      <line x1="6" y1="6" x2="8.8" y2="8.8"/>
+      <line x1="0" y1="8.5" x2="0" y2="12.5"/>
+      <line x1="-6" y1="6" x2="-8.8" y2="8.8"/>
+      <line x1="-8.5" y1="0" x2="-12.5" y2="0"/>
+      <line x1="-6" y1="-6" x2="-8.8" y2="-8.8"/>
+      <line x1="0" y1="-8.5" x2="0" y2="-12.5"/>
+      <line x1="6" y1="-6" x2="8.8" y2="-8.8"/>
+    </g>
+
+    <g id="rkL" fill="#eef6f0" stroke="#207448" stroke-width="2">
+      <rect x="0" y="0" width="66" height="44" rx="5"/>
+      <rect x="76" y="0" width="66" height="44" rx="5"/>
+      <rect x="152" y="0" width="66" height="44" rx="5"/>
+      <rect x="228" y="0" width="66" height="44" rx="5"/>
+      <rect x="304" y="0" width="66" height="44" rx="5"/>
+      <rect x="380" y="0" width="66" height="44" rx="5"/>
+      <rect x="456" y="0" width="66" height="44" rx="5"/>
+      <rect x="532" y="0" width="66" height="44" rx="5"/>
+    </g>
+
+    <g id="rkR" fill="#eef6f0" stroke="#207448" stroke-width="2">
+      <rect x="0" y="0" width="45" height="34" rx="4"/>
+      <rect x="51" y="0" width="45" height="34" rx="4"/>
+      <rect x="102" y="0" width="45" height="34" rx="4"/>
+      <rect x="153" y="0" width="45" height="34" rx="4"/>
+      <rect x="204" y="0" width="45" height="34" rx="4"/>
+      <rect x="255" y="0" width="45" height="34" rx="4"/>
+      <rect x="306" y="0" width="45" height="34" rx="4"/>
+      <rect x="357" y="0" width="45" height="34" rx="4"/>
+    </g>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="800" y="62" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">Two launch styles: srun per GPU or torchrun per node</text>
+
+  
+  <rect x="40" y="92" width="730" height="708" rx="18" fill="#e8f1ea"/>
+  <text x="405" y="136" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">Style A, srun with one task per GPU</text>
+
+  <rect x="170" y="152" width="470" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#term" href="#term" x="222" y="165"/>
+  <text x="276" y="192" font-size="24" font-family="monospace" fill="#303a36">srun python train.py</text>
+
+  <path d="M170 184 H80 V718" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M80 304 H112" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arw)"/>
+  <path d="M80 442 H112" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arw)"/>
+  <path d="M80 580 H112" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arw)"/>
+  <path d="M80 718 H112" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arw)"/>
+
+  <rect x="112" y="242" width="632" height="124" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#srv" href="#srv" x="128" y="248"/>
+  <text x="182" y="278" font-size="30" font-weight="700" fill="#303a36">node 1</text>
+  <use xlink:href="#rkL" href="#rkL" x="128" y="302"/>
+
+  <rect x="112" y="380" width="632" height="124" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#srv" href="#srv" x="128" y="386"/>
+  <text x="182" y="416" font-size="30" font-weight="700" fill="#303a36">node 2</text>
+  <use xlink:href="#rkL" href="#rkL" x="128" y="440"/>
+
+  <rect x="112" y="518" width="632" height="124" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#srv" href="#srv" x="128" y="524"/>
+  <text x="182" y="554" font-size="30" font-weight="700" fill="#303a36">node 3</text>
+  <use xlink:href="#rkL" href="#rkL" x="128" y="578"/>
+
+  <rect x="112" y="656" width="632" height="124" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#srv" href="#srv" x="128" y="662"/>
+  <text x="182" y="692" font-size="30" font-weight="700" fill="#303a36">node 4</text>
+  <use xlink:href="#rkL" href="#rkL" x="128" y="716"/>
+
+  <text x="405" y="852" text-anchor="middle" font-size="26" font-weight="700" fill="#207448">Slurm starts every rank</text>
+
+  
+  <rect x="830" y="92" width="730" height="708" rx="18" fill="#e8f1ea"/>
+  <text x="1195" y="136" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">Style B, one torchrun per node</text>
+
+  <rect x="960" y="152" width="470" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#term" href="#term" x="1072" y="165"/>
+  <text x="1126" y="192" font-size="24" font-family="monospace" fill="#303a36">srun torchrun</text>
+
+  <path d="M960 184 H870 V718" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M870 304 H902" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arw)"/>
+  <path d="M870 442 H902" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arw)"/>
+  <path d="M870 580 H902" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arw)"/>
+  <path d="M870 718 H902" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arw)"/>
+
+  <rect x="902" y="242" width="632" height="124" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#srv" href="#srv" x="918" y="248"/>
+  <text x="972" y="278" font-size="30" font-weight="700" fill="#303a36">node 1</text>
+  <rect x="918" y="288" width="600" height="68" rx="8" fill="#eef6f0" stroke="#207448" stroke-width="2"/>
+  <use xlink:href="#gear" href="#gear" x="938" y="322"/>
+  <text x="960" y="330" font-size="24" font-family="monospace" fill="#303a36">torchrun</text>
+  <use xlink:href="#rkR" href="#rkR" x="1094" y="305"/>
+
+  <rect x="902" y="380" width="632" height="124" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#srv" href="#srv" x="918" y="386"/>
+  <text x="972" y="416" font-size="30" font-weight="700" fill="#303a36">node 2</text>
+  <rect x="918" y="426" width="600" height="68" rx="8" fill="#eef6f0" stroke="#207448" stroke-width="2"/>
+  <use xlink:href="#gear" href="#gear" x="938" y="460"/>
+  <text x="960" y="468" font-size="24" font-family="monospace" fill="#303a36">torchrun</text>
+  <use xlink:href="#rkR" href="#rkR" x="1094" y="443"/>
+
+  <rect x="902" y="518" width="632" height="124" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#srv" href="#srv" x="918" y="524"/>
+  <text x="972" y="554" font-size="30" font-weight="700" fill="#303a36">node 3</text>
+  <rect x="918" y="564" width="600" height="68" rx="8" fill="#eef6f0" stroke="#207448" stroke-width="2"/>
+  <use xlink:href="#gear" href="#gear" x="938" y="598"/>
+  <text x="960" y="606" font-size="24" font-family="monospace" fill="#303a36">torchrun</text>
+  <use xlink:href="#rkR" href="#rkR" x="1094" y="581"/>
+
+  <rect x="902" y="656" width="632" height="124" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <use xlink:href="#srv" href="#srv" x="918" y="662"/>
+  <text x="972" y="692" font-size="30" font-weight="700" fill="#303a36">node 4</text>
+  <rect x="918" y="702" width="600" height="68" rx="8" fill="#eef6f0" stroke="#207448" stroke-width="2"/>
+  <use xlink:href="#gear" href="#gear" x="938" y="736"/>
+  <text x="960" y="744" font-size="24" font-family="monospace" fill="#303a36">torchrun</text>
+  <use xlink:href="#rkR" href="#rkR" x="1094" y="719"/>
+
+  <rect x="945" y="820" width="500" height="46" rx="23" fill="#db8129"/>
+  <text x="1195" y="852" text-anchor="middle" font-size="26" font-weight="700" fill="#ffffff">Slurm sees one task per node</text>
+
+  
+  <rect x="40" y="884" width="1520" height="176" rx="18" fill="#e8f1ea"/>
+  <line x1="64" y1="972" x2="1536" y2="972" stroke="#cfe0d4" stroke-width="2"/>
+
+  <rect x="64" y="900" width="6" height="56" rx="3" fill="#207448"/>
+  <text x="92" y="920" font-size="24" fill="#303a36">Slurm keeps control of binding, cgroups, accounting per step and signals;</text>
+  <text x="92" y="956" font-size="24" fill="#303a36"><tspan font-family="monospace">train.py</tspan> reads <tspan font-family="monospace">SLURM_PROCID</tspan>, <tspan font-family="monospace">SLURM_LOCALID</tspan> and <tspan font-family="monospace">SLURM_NTASKS</tspan>.</text>
+
+  <rect x="64" y="988" width="6" height="56" rx="3" fill="#207448"/>
+  <text x="92" y="1008" font-size="24" fill="#303a36"><tspan font-family="monospace">torchrun</tspan> adds elastic features and sets the rank variables for you;</text>
+  <text x="92" y="1044" font-size="24" fill="#303a36">the cost is coarser per-rank binding and GPU isolation.</text>
+
+  
+  <rect x="40" y="1080" width="1520" height="80" rx="16" fill="#207448"/>
+  <text x="800" y="1110" text-anchor="middle" font-size="24" fill="#ffffff">Pick the launch style before you write the batch script,</text>
+  <text x="800" y="1142" text-anchor="middle" font-size="24" fill="#ffffff">because the training code has to match it.</text>
+</svg>

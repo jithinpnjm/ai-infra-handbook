@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Keeping the GPU, its NIC and its CPUs on one NUMA node</title>
+  <desc>Visual infographic explaining NUMA topology alignment in Kubernetes GPU nodes, comparing aligned pod placement inside NUMA node 0 with misaligned placement crossing the socket interconnect, and configuring the Topology Manager.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Keeping the GPU, its NIC and its CPUs </tspan>
+    <tspan x="800" dy="54">on one NUMA node</tspan>
+  </text>
+
+  
+  
+  <g id="socket-0-header">
+    <rect x="40" y="140" width="445" height="74" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(56, 153)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="32" height="32" rx="6" fill="#ffffff"/>
+      <line x1="16" y1="2" x2="16" y2="8"/><line x1="24" y1="2" x2="24" y2="8"/><line x1="32" y1="2" x2="32" y2="8"/>
+      <line x1="16" y1="40" x2="16" y2="46"/><line x1="24" y1="40" x2="24" y2="46"/><line x1="32" y1="40" x2="32" y2="46"/>
+      <line x1="2" y1="16" x2="8" y2="16"/><line x1="2" y1="24" x2="8" y2="24"/><line x1="2" y1="32" x2="8" y2="32"/>
+      <line x1="40" y1="16" x2="46" y2="16"/><line x1="40" y1="24" x2="46" y2="24"/><line x1="40" y1="32" x2="46" y2="32"/>
+    </g>
+    <text x="125" y="187" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NUMA node 0</text>
+  </g>
+
+  
+  <g id="socket-1-header">
+    <rect x="535" y="140" width="445" height="74" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(551, 153)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="32" height="32" rx="6" fill="#ffffff"/>
+      <line x1="16" y1="2" x2="16" y2="8"/><line x1="24" y1="2" x2="24" y2="8"/><line x1="32" y1="2" x2="32" y2="8"/>
+      <line x1="16" y1="40" x2="16" y2="46"/><line x1="24" y1="40" x2="24" y2="46"/><line x1="32" y1="40" x2="32" y2="46"/>
+      <line x1="2" y1="16" x2="8" y2="16"/><line x1="2" y1="24" x2="8" y2="24"/><line x1="2" y1="32" x2="8" y2="32"/>
+      <line x1="40" y1="16" x2="46" y2="16"/><line x1="40" y1="24" x2="46" y2="24"/><line x1="40" y1="32" x2="46" y2="32"/>
+    </g>
+    <text x="620" y="187" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NUMA node 1</text>
+  </g>
+
+  
+  <g id="interconnect-link">
+    <rect x="485" y="165" width="50" height="24" rx="4" fill="#207448"/>
+    <line x1="488" y1="177" x2="532" y2="177" stroke="#ffffff" stroke-width="3" stroke-dasharray="4 3"/>
+  </g>
+
+  
+  <g id="panel-aligned">
+    <rect x="40" y="228" width="940" height="318" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <rect x="40" y="228" width="940" height="66" rx="16" fill="#e8f1ea"/>
+    <line x1="40" y1="294" x2="980" y2="294" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(56, 237)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="20" fill="#ffffff"/>
+      <polyline points="15,24 22,31 33,17"/>
+    </g>
+    <text x="125" y="274" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Aligned</text>
+
+    
+    <rect x="60" y="308" width="410" height="154" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="80" y="348" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">GPU, NIC VF or </tspan>
+      <tspan x="80" dy="30">RDMA device, and the </tspan>
+      <tspan x="80" dy="30">pod's CPUs all on </tspan>
+      <tspan x="80" dy="30">NUMA node 0</tspan>
+    </text>
+
+    
+    <rect x="60" y="472" width="410" height="62" rx="10" fill="#207448"/>
+    <text x="265" y="513" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="265" dy="-14">transfers stay inside </tspan>
+      <tspan x="265" dy="28">the node; fast</tspan>
+    </text>
+
+    
+    <rect x="550" y="308" width="410" height="226" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 6"/>
+    <g transform="translate(730, 401)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+      <circle cx="25" cy="25" r="20" stroke-dasharray="4 4"/>
+      <line x1="15" y1="25" x2="35" y2="25"/>
+    </g>
+  </g>
+
+  
+  <g id="panel-misaligned">
+    <rect x="40" y="560" width="940" height="310" rx="16" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    <rect x="40" y="560" width="940" height="70" rx="16" fill="#fbeede"/>
+    <line x1="40" y1="630" x2="980" y2="630" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(56, 571)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 6 L 42 38 L 6 38 Z" fill="#ffffff"/>
+      <line x1="24" y1="18" x2="24" y2="27"/><circle cx="24" cy="33" r="2" fill="#207448"/>
+    </g>
+    <text x="125" y="606" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Misaligned</text>
+
+    
+    <rect x="60" y="638" width="410" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="80" y="678" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">pod CPUs on node 0 </tspan>
+      <tspan x="80" dy="32">but the NIC on node 1</tspan>
+    </text>
+
+    
+    <rect x="60" y="750" width="900" height="106" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="510" y="794" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="510" dy="0">every transfer crosses the link between sockets </tspan>
+      <tspan x="510" dy="34">and takes the slower road</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-right">
+    <rect x="1020" y="140" width="540" height="730" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <rect x="1020" y="140" width="540" height="76" rx="16" fill="#ffffff"/>
+    <line x1="1020" y1="216" x2="1560" y2="216" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(1030, 160)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="18" r="8"/>
+      <path d="M 18 4 L 18 8 M 18 28 L 18 32 M 4 18 L 8 18 M 28 18 L 32 18 M 8 8 L 11 11 M 25 25 L 28 28 M 8 28 L 11 25 M 25 11 L 28 8"/>
+    </g>
+    <text x="1075" y="188" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">how to keep them together</text>
+
+    
+    <rect x="1045" y="232" width="490" height="194" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1065" y="272" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1065" dy="0">kubelet Topology Manager </tspan>
+      <tspan x="1065" dy="30">with the single-numa-node </tspan>
+      <tspan x="1065" dy="30">or best-effort policy, </tspan>
+      <tspan x="1065" dy="30">together with the CPU Manager </tspan>
+      <tspan x="1065" dy="30">and the device plugins</tspan>
+    </text>
+
+    
+    <rect x="1045" y="442" width="490" height="184" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1065" y="484" font-size="24" fill="#303a36">
+      <tspan x="1065" dy="0" font-family="sans-serif">Verify after the pod starts: </tspan>
+      <tspan x="1065" dy="42" font-family="monospace" font-weight="bold" fill="#207448">nvidia-smi topo -m, </tspan>
+      <tspan x="1065" dy="36" font-family="monospace" font-weight="bold" fill="#207448">ibdev2netdev</tspan>
+    </text>
+
+    
+    <rect x="1045" y="642" width="490" height="212" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1065" y="694" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1065" dy="0">same on the host: </tspan>
+      <tspan x="1065" dy="36">pin test CPUs to the </tspan>
+      <tspan x="1065" dy="36">NUMA node of the NIC</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="905" width="1520" height="135" rx="14" fill="#207448"/>
+    <text x="800" y="960" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">A scheduler can place CPUs on one node and the network card on the other, </tspan>
+      <tspan x="800" dy="36">so check the placement after the pod starts</tspan>
+    </text>
+  </g>
+</svg>

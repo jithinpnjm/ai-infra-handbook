@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Detecting a failing GPU: the numbers before the signals</title>
+  <desc>Visual infographic explaining the numbers and calculation ladder for detecting failing GPUs before customer impact.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Detecting a failing GPU: </tspan>
+    <tspan x="800" dy="56">the numbers before the signals</tspan>
+  </text>
+  <g id="interviewer-prompt">
+    <rect x="160" y="135" width="1280" height="70" rx="18" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <path d="M 230 205 L 212 220 L 250 205 Z" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <line x1="232" y1="205" x2="248" y2="205" stroke="#ffffff" stroke-width="4" />
+    <g transform="translate(180, 142)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="18" r="12" />
+      <path d="M 10 48 C 10 36 18 32 28 32 C 38 32 46 36 46 48" />
+    </g>
+    <text x="260" y="180" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">How would you find a failing GPU before a customer notices?</text>
+  </g>
+  <g id="ask-first-strip">
+    <rect x="40" y="265" width="1520" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(65, 280)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="42" rx="6" />
+      <path d="M 20 10 V 6 C 20 5 21 4 22 4 H 34 C 35 4 36 5 36 6 V 10" />
+      <line x1="16" y1="22" x2="40" y2="22" />
+      <line x1="16" y1="32" x2="40" y2="32" />
+      <line x1="16" y1="42" x2="30" y2="42" />
+    </g>
+    <text x="135" y="318" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Ask first</text>
+    <rect x="65" y="340" width="710" height="50" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="420" y="373" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Fleet: 2,000 nodes of 8 GPUs</text>
+    <rect x="815" y="340" width="720" height="50" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1175" y="373" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Failure rate: 5 percent of GPUs per year</text>
+    <rect x="65" y="400" width="710" height="50" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="420" y="433" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Idle or serving: both</text>
+    <rect x="815" y="398" width="720" height="54" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1175" y="421" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1175" dy="0">Customer notices: errors or slow tokens </tspan>
+      <tspan x="1175" dy="25">after about 15 minutes</tspan>
+    </text>
+  </g>
+  <g id="step-1">
+    <rect x="40" y="515" width="325" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="82" cy="555" r="24" fill="#207448" />
+    <text x="82" y="564" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(262, 527)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="6" />
+      <rect x="18" y="18" width="20" height="20" rx="3" fill="#e8f1ea" />
+      <line x1="16" y1="2" x2="16" y2="8" /><line x1="28" y1="2" x2="28" y2="8" /><line x1="40" y1="2" x2="40" y2="8" />
+      <line x1="16" y1="48" x2="16" y2="54" /><line x1="28" y1="48" x2="28" y2="54" /><line x1="40" y1="48" x2="40" y2="54" />
+      <line x1="2" y1="16" x2="8" y2="16" /><line x1="2" y1="28" x2="8" y2="28" /><line x1="2" y1="40" x2="8" y2="40" />
+      <line x1="48" y1="16" x2="54" y2="16" /><line x1="48" y1="28" x2="54" y2="28" /><line x1="48" y1="40" x2="54" y2="40" />
+    </g>
+    <text x="202" y="650" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="202" dy="0">GPUs: </tspan>
+      <tspan x="202" dy="36">2,000 x 8 = 16,000</tspan>
+    </text>
+  </g>
+  <line x1="365" y1="640" x2="438" y2="640" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <g id="step-2">
+    <rect x="438" y="515" width="325" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="480" cy="555" r="24" fill="#207448" />
+    <text x="480" y="564" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(660, 527)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="38" rx="6" />
+      <line x1="8" y1="22" x2="48" y2="22" />
+      <line x1="18" y1="4" x2="18" y2="10" /><line x1="38" y1="4" x2="38" y2="10" />
+      <path d="M 18 34 L 25 34 L 28 28 L 32 40 L 35 34 L 40 34" stroke-width="3" />
+    </g>
+    <text x="600" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="600" dy="0">Failures per day: </tspan>
+      <tspan x="600" dy="34">16,000 x 0.05 / 365</tspan>
+      <tspan x="600" dy="34">= 2.19</tspan>
+    </text>
+  </g>
+  <line x1="763" y1="640" x2="837" y2="640" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <g id="step-3">
+    <rect x="837" y="515" width="325" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="879" cy="555" r="24" fill="#207448" />
+    <text x="879" y="564" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(1059, 527)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 48 H 50" />
+      <path d="M 6 10 V 48" />
+      <polyline points="10,40 20,24 30,34 40,14 48,22" />
+    </g>
+    <text x="1000" y="615" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1000" dy="0">Series at 40 fields </tspan>
+      <tspan x="1000" dy="32">per GPU: </tspan>
+      <tspan x="1000" dy="32">16,000 x 40 </tspan>
+      <tspan x="1000" dy="32">= 640,000</tspan>
+    </text>
+  </g>
+  <line x1="1162" y1="640" x2="1235" y2="640" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <g id="step-4">
+    <rect x="1235" y="515" width="325" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="1277" cy="555" r="24" fill="#207448" />
+    <text x="1277" y="564" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(1457, 527)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="28,14 28,28 38,28" />
+      <line x1="28" y1="2" x2="28" y2="6" />
+    </g>
+    <text x="1397" y="615" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1397" dy="0">Samples per second </tspan>
+      <tspan x="1397" dy="32">at a 15 s scrape: </tspan>
+      <tspan x="1397" dy="32">640,000 / 15 </tspan>
+      <tspan x="1397" dy="32">= 42,667</tspan>
+    </text>
+  </g>
+  <line x1="1300" y1="765" x2="1300" y2="815" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <g id="final-result-card">
+    <rect x="200" y="815" width="1200" height="105" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    <g transform="translate(230, 839)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 C 48 34 28 48 28 48 C 28 48 8 34 8 14 Z" fill="#e8f1ea" />
+      <polyline points="20,26 26,32 36,20" />
+    </g>
+    <text x="820" y="862" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="820" dy="0">Requests spared per event: 2 x 60 x 13 = 1,560, </tspan>
+      <tspan x="820" dy="38">detect at 2 minutes against 15</tspan>
+    </text>
+  </g>
+  <text x="800" y="970" text-anchor="middle" font-family="sans-serif" font-size="26" font-style="italic" fill="#5c6e64">Every input is an assumption, not a measurement.</text>
+  <text x="800" y="1050" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">The detection time has to beat the moment the customer notices.</text>
+</svg>

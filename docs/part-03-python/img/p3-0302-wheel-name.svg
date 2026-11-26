@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Reading a wheel filename and deciding between wheel and sdist</title>
+  <desc>Visual explanation of Python wheel filename anatomy, common tag variants, pip wheel selection decision flow, and build tooling.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Reading a wheel filename and deciding between wheel and sdist</text>
+
+  
+  <g id="filename-decomposition">
+    <rect x="50" y="85" width="1500" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(75, 105)">
+      <path d="M 10 32 L 30 22 L 50 32 L 30 42 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <path d="M 10 32 L 10 52 L 30 62 L 30 42" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <path d="M 50 32 L 50 52 L 30 62" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <path d="M 20 27 L 40 37" fill="none" stroke="#207448" stroke-width="2" />
+    </g>
+
+    
+    <text x="800" y="125" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">numpy-1.26.4-cp311-cp311-manylinux_2_17_x86_64.whl</text>
+    <text x="800" y="162" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">name-version-pythontag-abitag-platformtag</text>
+
+    
+    
+    <rect x="70" y="185" width="170" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="155" y="242" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">numpy: name</text>
+
+    
+    <rect x="255" y="185" width="180" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="345" y="242" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">1.26.4: version</text>
+
+    
+    <rect x="450" y="185" width="370" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="635" y="242" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">cp311: Python tag (CPython 3.11)</text>
+
+    
+    <rect x="835" y="185" width="180" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="925" y="242" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">cp311: ABI tag</text>
+
+    
+    <rect x="1030" y="185" width="500" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1280" y="226" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1280" dy="0">manylinux_2_17_x86_64: platform tag</tspan>
+      <tspan x="1280" dy="32">(x86_64 Linux, glibc-compatible)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="variants-strip">
+    
+    <g transform="translate(50, 320)">
+      <rect width="735" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="367" y="44" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">py3-none-any: pure Python, installs anywhere</text>
+    </g>
+    <g transform="translate(815, 320)">
+      <rect width="735" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="367" y="32" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="367" dy="0">manylinux: runs on most Linux distributions</tspan>
+        <tspan x="367" dy="28">with a compatible glibc</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(50, 405)">
+      <rect width="735" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="367" y="44" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">musllinux: Alpine, which uses musl instead</text>
+    </g>
+    <g transform="translate(815, 405)">
+      <rect width="735" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="367" y="32" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="367" dy="0">+cu121: local version label (PEP 440)</tspan>
+        <tspan x="367" dy="28">marking a CUDA build, used by PyTorch index wheels</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(50, 490)">
+      <rect width="735" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="367" y="44" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">abi3: the stable ABI</text>
+    </g>
+    <g transform="translate(815, 490)">
+      <rect width="735" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      <text x="367" y="32" font-family="system-ui, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="367" dy="0">aarch64: Grace and other ARM hosts,</tspan>
+        <tspan x="367" dy="28">some packages have no wheels</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="decision-flow">
+    
+    <rect x="50" y="580" width="450" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(245, 610)">
+      <circle cx="30" cy="30" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 30 18 L 30 34 M 30 42 L 30 44" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text x="275" y="725" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">pip finds a compatible wheel?</text>
+
+    
+    <path d="M 500 635 L 618 635" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <rect x="525" y="612" width="68" height="42" rx="6" fill="#207448" />
+    <text x="559" y="642" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">yes</text>
+
+    <rect x="620" y="580" width="930" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(645, 600)">
+      <path d="M 30 10 L 15 32 L 28 32 L 22 50 L 45 25 L 32 25 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    </g>
+    <text x="710" y="638" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#207448">unzip, no build step, fast</text>
+
+    
+    <path d="M 500 755 L 618 755" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <rect x="525" y="734" width="68" height="42" rx="6" fill="#db8129" />
+    <text x="559" y="764" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">no</text>
+
+    <rect x="620" y="695" width="930" height="115" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(645, 725)">
+      <circle cx="25" cy="25" r="16" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <path d="M 25 5 L 25 11 M 25 39 L 25 45 M 5 25 L 11 25 M 39 25 L 45 25 M 11 11 L 15 15 M 35 35 L 39 39 M 11 39 L 15 35 M 35 11 L 39 15" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="710" y="742" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="710" dy="0" font-weight="bold">builds from the sdist: needs compilers and headers;</tspan>
+      <tspan x="710" dy="32">the usual reason an install takes 10 minutes or fails in a slim container</tspan>
+    </text>
+  </g>
+
+  
+  <g id="tools-and-checks">
+    
+    <rect x="50" y="830" width="1500" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(75, 848)">
+      <rect width="44" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 10 15 L 18 19 L 10 23 M 22 27 L 34 27" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="140" y="865" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0" font-family="monospace">python -m build makes dist/myops-0.3.1.tar.gz (sdist)</tspan>
+      <tspan x="140" dy="30" font-family="monospace">and dist/myops-0.3.1-py3-none-any.whl (wheel)</tspan>
+    </text>
+
+    
+    <rect x="50" y="935" width="735" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(75, 955)">
+      <rect width="44" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 10 15 L 18 19 L 10 23 M 22 27 L 34 27" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="140" y="972" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0" font-family="monospace">python -m pip debug --verbose</tspan>
+      <tspan x="140" dy="30">lists the supported tags</tspan>
+    </text>
+
+    
+    <rect x="815" y="935" width="735" height="90" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(840, 955)">
+      <path d="M 22 8 L 22 28 M 12 20 L 22 28 L 32 20 M 8 36 L 36 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="905" y="972" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="905" dy="0">pip download --only-binary=:all:</tspan>
+      <tspan x="905" dy="30">--platform manylinux2014_aarch64 ...</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="50" y="1050" width="1500" height="65" rx="8" fill="#207448" />
+    <g transform="translate(75, 1058)">
+      <path d="M 12 24 L 20 32 L 36 16" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="800" y="1092" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Check the tags of every wheel you plan to ship against the machines that will install it</text>
+  </g>
+</svg>

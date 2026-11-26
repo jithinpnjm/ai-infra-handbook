@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Anatomy of a Slurm batch script: comments for Slurm, shell for the node</title>
+  <desc>Visual breakdown of a Slurm batch script showing how comments serve as resource requests for Slurm while shell commands execute on allocated compute nodes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Anatomy of a Slurm batch script:</tspan>
+    <tspan x="800" dy="55">comments for Slurm, shell for the node</tspan>
+  </text>
+
+  
+  <rect x="50" y="150" width="720" height="840" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="65" y="175" width="690" height="60" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="213" font-family="monospace" font-size="24" fill="#303a36">#!/bin/bash</text>
+
+  
+  <rect x="65" y="275" width="690" height="180" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  <text x="85" y="320" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">#SBATCH --job-name=train --nodes=2</tspan>
+    <tspan x="115" dy="34">--ntasks-per-node=8 --gres=gpu:8 --time=04:00:00</tspan>
+    <tspan x="85" dy="48">#SBATCH --output=%x-%j.out</tspan>
+  </text>
+
+  
+  <rect x="65" y="495" width="690" height="60" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="533" font-family="monospace" font-size="24" fill="#303a36">set -euo pipefail</text>
+
+  
+  <rect x="65" y="590" width="690" height="110" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="628" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">module purge &amp;&amp;</tspan>
+    <tspan x="115" dy="32">module load cuda/12.4 nccl</tspan>
+    <tspan x="85" dy="36">export NCCL_DEBUG=INFO</tspan>
+  </text>
+
+  
+  <rect x="65" y="735" width="690" height="80" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="770" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">head_node=$(scontrol show hostnames</tspan>
+    <tspan x="115" dy="32">"$SLURM_JOB_NODELIST" | head -n1)</tspan>
+  </text>
+
+  
+  <rect x="65" y="850" width="690" height="120" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="85" y="888" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">srun --export=ALL bash -c ...</tspan>
+    <tspan x="85" dy="38">srun python train.py</tspan>
+    <tspan x="115" dy="32">--master-addr "$head_node" "$@"</tspan>
+  </text>
+
+  
+  <path d="M 755 205 L 838 205" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 755 365 L 838 365" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 755 525 L 838 525" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 755 645 L 838 645" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 755 775 L 838 775" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 755 910 L 838 910" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  
+
+  
+  <rect x="840" y="160" width="710" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="880" cy="205" r="24" fill="#207448"/>
+  <text x="880" y="213" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <rect x="918" y="185" width="44" height="40" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="918" y1="197" x2="962" y2="197" stroke="#207448" stroke-width="2"/>
+  <path d="M 926 205 L 932 210 L 926 215" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="936" y1="215" x2="946" y2="215" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <text x="980" y="200" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="980" dy="0">Shebang: bash, because the script</tspan>
+    <tspan x="980" dy="32">uses bash features</tspan>
+  </text>
+
+  
+  <rect x="840" y="275" width="710" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="880" cy="365" r="24" fill="#207448"/>
+  <text x="880" y="373" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <rect x="918" y="345" width="44" height="18" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+  <rect x="918" y="367" width="44" height="18" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+  <circle cx="926" cy="354" r="2.5" fill="#207448"/>
+  <circle cx="934" cy="354" r="2.5" fill="#207448"/>
+  <circle cx="926" cy="376" r="2.5" fill="#207448"/>
+  <circle cx="934" cy="376" r="2.5" fill="#207448"/>
+  
+  <text x="980" y="318" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="980" dy="0">#SBATCH lines look like comments to the</tspan>
+    <tspan x="980" dy="32">shell but Slurm reads them as resource</tspan>
+    <tspan x="980" dy="32">requests: 2 nodes, 8 tasks per node,</tspan>
+    <tspan x="980" dy="32">8 GPUs per node, 4 hours</tspan>
+  </text>
+
+  
+  <rect x="840" y="480" width="710" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="880" cy="525" r="24" fill="#207448"/>
+  <text x="880" y="533" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <path d="M 940 503 L 960 511 L 960 527 C 960 539 940 546 940 546 C 940 546 920 539 920 527 L 920 511 Z" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round"/>
+  <path d="M 932 524 L 938 530 L 948 519" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <text x="980" y="520" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="980" dy="0">strict mode: a failing step shows</tspan>
+    <tspan x="980" dy="32">in the job exit code</tspan>
+  </text>
+
+  
+  <rect x="840" y="595" width="710" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="880" cy="645" r="24" fill="#207448"/>
+  <text x="880" y="653" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <path d="M 940 623 L 960 633 L 960 655 L 940 665 L 920 655 L 920 633 Z" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round"/>
+  <line x1="940" y1="623" x2="940" y2="665" stroke="#207448" stroke-width="2"/>
+  <line x1="940" y1="644" x2="960" y2="633" stroke="#207448" stroke-width="2"/>
+  <line x1="940" y1="644" x2="920" y2="633" stroke="#207448" stroke-width="2"/>
+  
+  <text x="980" y="640" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="980" dy="0">environment modules set the</tspan>
+    <tspan x="980" dy="32">CUDA and NCCL environment</tspan>
+  </text>
+
+  
+  <rect x="840" y="720" width="710" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="880" cy="775" r="24" fill="#207448"/>
+  <text x="880" y="783" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <circle cx="940" cy="755" r="5" stroke="#207448" stroke-width="3" fill="none"/>
+  <circle cx="926" cy="785" r="5" stroke="#207448" stroke-width="3" fill="none"/>
+  <circle cx="954" cy="785" r="5" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="940" y1="760" x2="926" y2="780" stroke="#207448" stroke-width="2.5"/>
+  <line x1="940" y1="760" x2="954" y2="780" stroke="#207448" stroke-width="2.5"/>
+  
+  <text x="980" y="755" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="980" dy="0">scontrol show hostnames expands</tspan>
+    <tspan x="980" dy="32">the node list; head -n1 picks the</tspan>
+    <tspan x="980" dy="32">first node as the head node</tspan>
+  </text>
+
+  
+  <rect x="840" y="855" width="710" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="880" cy="910" r="24" fill="#207448"/>
+  <text x="880" y="918" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+  
+  <path d="M 940 888 C 946 898 953 908 953 920 L 946 917 L 940 926 L 934 917 L 927 920 C 927 908 934 898 940 888 Z" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round"/>
+  <circle cx="940" cy="906" r="2.5" fill="#207448"/>
+  
+  <text x="980" y="905" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="980" dy="0">srun launches one task per rank</tspan>
+    <tspan x="980" dy="32">on the allocated nodes</tspan>
+  </text>
+
+  
+  <rect x="50" y="1050" width="1500" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="1091" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">The flags and variable names are illustrative; check the documentation for your versions</text>
+</svg>

@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1070" width="1600" height="1070">
+  <title>A ClusterIP is a virtual address that the node rewrites to one real pod</title>
+  <desc>Diagram showing DNAT translation for Pod to ClusterIP service traffic and SNAT masquerading for outbound Pod traffic to the internet.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1070" fill="#f5f8f5" />
+
+  
+  <text x="60" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">A ClusterIP is a virtual address that</text>
+  <text x="60" y="124" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">the node rewrites to one real pod</text>
+
+  
+  <rect x="60" y="160" width="1480" height="430" rx="16" fill="#e8f1ea" stroke="#cbdad0" stroke-width="1.5" />
+  <text x="90" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Pod to a ClusterIP service</text>
+
+  
+  <rect x="90" y="235" width="380" height="325" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="252" y="260" width="56" height="56" rx="10" />
+    <circle cx="268" cy="288" r="6" fill="#207448" />
+    <circle cx="292" cy="288" r="6" fill="#207448" />
+    <path d="M 262 274 L 298 274" stroke-linecap="round" />
+    <path d="M 262 302 L 298 302" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="280" y="375" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="280" dy="0">Pod A calls service</tspan>
+    <tspan x="280" dy="42" font-family="ui-monospace, monospace" font-size="25" fill="#207448">VIP 10.96.0.10:80</tspan>
+  </text>
+
+  
+  <rect x="1050" y="235" width="460" height="325" rx="12" fill="#f5f8f5" stroke="#cbdad0" stroke-dasharray="6 6" stroke-width="1.5" />
+
+  
+  <rect x="1065" y="248" width="430" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="2.5" fill="none">
+    <rect x="1080" y="268" width="44" height="44" rx="8" />
+    <circle cx="1094" cy="290" r="4" fill="#207448" />
+    <circle cx="1110" cy="290" r="4" fill="#207448" />
+  </g>
+  <text x="1140" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">backend pod <tspan font-family="ui-monospace, monospace" font-weight="normal" fill="#207448">10.244.2.7</tspan></text>
+
+  
+  <rect x="1065" y="355" width="430" height="84" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+  <g stroke="#207448" stroke-width="2.5" fill="none">
+    <rect x="1080" y="375" width="44" height="44" rx="8" />
+    <circle cx="1094" cy="397" r="4" fill="#207448" />
+    <circle cx="1110" cy="397" r="4" fill="#207448" />
+  </g>
+  <text x="1140" y="407" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">backend pod <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#db8129">10.244.1.5</tspan></text>
+
+  
+  <rect x="1065" y="462" width="430" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="2.5" fill="none">
+    <rect x="1080" y="482" width="44" height="44" rx="8" />
+    <circle cx="1094" cy="504" r="4" fill="#207448" />
+    <circle cx="1110" cy="504" r="4" fill="#207448" />
+  </g>
+  <text x="1140" y="514" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">backend pod <tspan font-family="ui-monospace, monospace" font-weight="normal" fill="#207448">10.244.2.9</tspan></text>
+
+  
+  <path d="M 470 330 H 1000 V 385 H 1061" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="735" y="278" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="735" dy="0">kube-proxy (iptables, IPVS or eBPF)</tspan>
+    <tspan x="735" dy="30">DNAT</tspan>
+  </text>
+
+  
+  <path d="M 1065 410 H 1000 V 470 H 474" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="735" y="508" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="735" dy="0">reply rewritten back,</tspan>
+    <tspan x="735" dy="30">Pod A never sees the change</tspan>
+  </text>
+
+  
+  <rect x="60" y="615" width="1480" height="315" rx="16" fill="#e8f1ea" stroke="#cbdad0" stroke-width="1.5" />
+  <text x="90" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Pod to the outside</text>
+
+  
+  <rect x="90" y="685" width="450" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="115" y="717" width="56" height="56" rx="10" />
+    <circle cx="131" cy="745" r="6" fill="#207448" />
+    <circle cx="155" cy="745" r="6" fill="#207448" />
+    <path d="M 125 731 L 161 731" stroke-linecap="round" />
+    <path d="M 125 759 L 161 759" stroke-linecap="round" />
+  </g>
+  <text x="195" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="195" dy="0">Pod <tspan font-family="ui-monospace, monospace" fill="#207448">10.244.1.5</tspan></tspan>
+    <tspan x="195" dy="32">sends to the internet</tspan>
+  </text>
+
+  
+  <rect x="1060" y="685" width="450" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="1115" cy="745" r="26" />
+    <ellipse cx="1115" cy="745" rx="12" ry="26" />
+    <line x1="1089" y1="745" x2="1141" y2="745" />
+    <line x1="1095" y1="732" x2="1135" y2="732" />
+    <line x1="1095" y1="758" x2="1135" y2="758" />
+  </g>
+  <text x="1165" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1165" dy="0">Internet sees the</tspan>
+    <tspan x="1165" dy="32" fill="#207448">node IP</tspan>
+  </text>
+
+  
+  <path d="M 540 745 H 1056" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="800" y="700" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">SNAT (masquerade)</tspan>
+    <tspan x="800" dy="28">to the node IP</tspan>
+  </text>
+
+  
+  <rect x="430" y="835" width="740" height="48" rx="8" fill="#ffffff" stroke="#cbdad0" stroke-width="1.5" />
+  <text x="800" y="867" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Skipped when pod IPs are routable and ipMasq is off.</text>
+
+  
+  <rect x="60" y="960" width="1480" height="70" rx="12" fill="#207448" />
+  <text x="800" y="1004" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Pods call a stable name; the node decides which backend answers.</text>
+</svg>

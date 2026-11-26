@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1064" width="1600" height="1064">
+  <title>The embedded smoke test, line by line</title>
+  <desc>Visual infographic explaining the embedded Ansible smoke test task line by line, showing delegation, URI parameters, content registration, failure conditions, and tags.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1064" fill="#f5f8f5"/>
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The embedded smoke test, line by line</text>
+
+  <!-- Main Container: Annotated Task (x=40, y=92, w=1520, h=700) -->
+  <rect x="40" y="92" width="1520" height="700" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  <!-- Task Header Bar (x=60, y=110, w=1480, h=62) -->
+  <rect x="60" y="110" width="1480" height="62" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 119)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="44" rx="6"/>
+    <line x1="0" y1="14" x2="56" y2="14" stroke-width="2.5"/>
+    <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+    <circle cx="20" cy="7" r="2.5" fill="#207448"/>
+    <path d="M 12 24 L 20 29 L 12 34" stroke-width="3"/>
+    <line x1="26" y1="34" x2="42" y2="34" stroke-width="3"/>
+  </g>
+  <text x="160" y="152" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Test it! <tspan font-family="ui-monospace, monospace">https://localhost:8443/index.html</tspan></text>
+
+  <!-- Row 1: delegate_to (x=60, y=186, w=1480, h=86) -->
+  <rect x="60" y="186" width="1480" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 201)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="28" r="11"/>
+    <circle cx="44" cy="28" r="8"/>
+    <path d="M 27 28 L 36 28"/>
+    <path d="M 12 17 L 12 8 H 44 V 20" stroke-width="2.5" stroke-dasharray="3,3"/>
+  </g>
+  <text x="160" y="222" font-size="24" fill="#303a36"><tspan x="160" dy="0"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">delegate_to: localhost:</tspan> <tspan font-family="system-ui, sans-serif">the request leaves from the control node, not from </tspan></tspan><tspan x="160" dy="32" font-family="system-ui, sans-serif">the server under test, so the check sees the same network path a user would use</tspan></text>
+
+  <!-- Row 2: become: false (x=60, y=286, w=1480, h=56) -->
+  <rect x="60" y="286" width="1480" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 288)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 V 28 C 48 40 28 50 28 50 C 28 50 8 40 8 28 V 14 Z"/>
+    <line x1="18" y1="28" x2="38" y2="28" stroke-width="3"/>
+  </g>
+  <text x="160" y="323" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">become: false</text>
+
+  <!-- Row 3: uri: url (x=60, y=356, w=1480, h=56) -->
+  <rect x="60" y="356" width="1480" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 358)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="20"/>
+    <ellipse cx="28" cy="28" rx="10" ry="20" stroke-width="2.5"/>
+    <line x1="8" y1="28" x2="48" y2="28" stroke-width="2.5"/>
+  </g>
+  <text x="160" y="393" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36"><tspan fill="#207448">uri:</tspan> url https://localhost:8443/index.html</text>
+
+  <!-- Row 4: validate_certs (x=60, y=426, w=1480, h=56) -->
+  <rect x="60" y="426" width="1480" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 428)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="8" width="36" height="42" rx="4"/>
+    <circle cx="28" cy="24" r="8" stroke-width="2.5"/>
+    <path d="M 24 38 L 28 32 L 32 38" stroke-width="2.5"/>
+  </g>
+  <text x="160" y="463" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">validate_certs: false:</tspan> <tspan font-family="system-ui, sans-serif">accepts the self-signed certificate created earlier</tspan></text>
+
+  <!-- Row 5: return_content (x=60, y=496, w=1480, h=56) -->
+  <rect x="60" y="496" width="1480" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 498)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 12 6 H 34 L 46 18 V 48 H 12 Z"/>
+    <path d="M 34 6 V 18 H 46" stroke-width="3"/>
+    <line x1="20" y1="26" x2="38" y2="26" stroke-width="2.5"/>
+    <line x1="20" y1="34" x2="38" y2="34" stroke-width="2.5"/>
+  </g>
+  <text x="160" y="533" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">return_content: true:</tspan> <tspan font-family="system-ui, sans-serif">copies the page body into this.content</tspan></text>
+
+  <!-- Row 6: register: this (x=60, y=566, w=1480, h=56) -->
+  <rect x="60" y="566" width="1480" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 568)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="12" width="32" height="32" rx="4"/>
+    <line x1="20" y1="6" x2="20" y2="12" stroke-width="2.5"/>
+    <line x1="28" y1="6" x2="28" y2="12" stroke-width="2.5"/>
+    <line x1="36" y1="6" x2="36" y2="12" stroke-width="2.5"/>
+    <line x1="20" y1="44" x2="20" y2="50" stroke-width="2.5"/>
+    <line x1="28" y1="44" x2="28" y2="50" stroke-width="2.5"/>
+    <line x1="36" y1="44" x2="36" y2="50" stroke-width="2.5"/>
+  </g>
+  <text x="160" y="603" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">register: this</text>
+
+  <!-- Row 7: failed_when (ORANGE HIGHLIGHT) (x=60, y=636, w=1480, h=66) -->
+  <rect x="60" y="636" width="1480" height="66" rx="10" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(80, 641)" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 50 46 H 6 Z"/>
+    <line x1="28" y1="20" x2="28" y2="32" stroke-width="3"/>
+    <circle cx="28" cy="39" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="160" y="677" xml:space="preserve" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">failed_when: "Running on  not in this.content"</text>
+
+  <!-- Row 8: tags: test (x=60, y=716, w=1480, h=56) -->
+  <rect x="60" y="716" width="1480" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 718)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 24 L 26 8 H 46 V 28 L 30 44 Z"/>
+    <circle cx="36" cy="18" r="4" fill="#207448"/>
+  </g>
+  <text x="160" y="753" font-size="24" fill="#303a36"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">tags: test:</tspan> <tspan font-family="system-ui, sans-serif">run this check on its own</tspan></text>
+
+  <!-- Outcome Strip (x=40, y=832, w=1520, h=88) -->
+  <rect x="40" y="832" width="1520" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(64, 848)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <polyline points="18,28 25,35 38,20" stroke-width="3.5"/>
+  </g>
+  <text x="145" y="872" font-family="system-ui, sans-serif" font-size="24" fill="#303a36"><tspan x="145" dy="0">a page that returns a success code with an error message still fails, </tspan><tspan x="145" dy="32">because the expected words are missing: short, but a real test</tspan></text>
+
+  <!-- Bottom Bar (x=40, y=960, w=1520, h=64) -->
+  <rect x="40" y="960" width="1520" height="64" rx="12" fill="#207448"/>
+  <text x="800" y="1002" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Verify the content, not only the status code</text>
+</svg>

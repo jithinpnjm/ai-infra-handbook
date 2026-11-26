@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Each health endpoint proves a different slice of the engine</title>
+  <desc>Infographic showing health endpoint verification depth across LLM serving engines and Triton.</desc>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Each health endpoint proves a different slice of the engine</text>
+
+  
+
+  
+  <rect x="60" y="120" width="900" height="770" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <path d="M95 160 L115 152 L135 160 V180 C135 194 115 204 115 204 C115 204 95 194 95 180 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+
+  
+  <text x="150" y="186" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Not proved by any health endpoint</text>
+
+  
+  <rect x="95" y="230" width="830" height="500" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <rect x="125" y="258" width="38" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="125" y1="271" x2="163" y2="271" stroke="#207448" stroke-width="2"/>
+  <line x1="125" y1="283" x2="163" y2="283" stroke="#207448" stroke-width="2"/>
+  <line x1="144" y1="258" x2="144" y2="296" stroke="#207448" stroke-width="2"/>
+
+  
+  <text x="180" y="287" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">One-token generation</text>
+
+  
+  <text x="125" y="338" font-family="monospace" font-size="24" fill="#303a36">SGLang /health and TensorRT-LLM /health_generate</text>
+
+  
+  <rect x="130" y="375" width="760" height="325" rx="14" fill="#fffcf8" stroke="#db8129" stroke-width="3.5"/>
+
+  
+  <rect x="160" y="405" width="46" height="38" rx="5" fill="none" stroke="#db8129" stroke-width="3"/>
+  <line x1="160" y1="417" x2="206" y2="417" stroke="#db8129" stroke-width="2.5"/>
+  <circle cx="169" cy="411" r="2.5" fill="#db8129"/>
+  <circle cx="177" cy="411" r="2.5" fill="#db8129"/>
+  <circle cx="185" cy="411" r="2.5" fill="#db8129"/>
+
+  
+  <text x="222" y="434" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Engine client is alive</text>
+
+  
+  <text x="160" y="505" font-family="monospace" font-size="24" fill="#303a36">vLLM /health, returns 200 or 503</text>
+
+  
+  <text x="160" y="585" font-family="sans-serif" font-size="24" fill="#303a36">Use for startup and forgiving liveness</text>
+
+  
+  <rect x="105" y="770" width="220" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="215" y="816" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Good tokens</text>
+
+  <rect x="345" y="770" width="240" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="465" y="816" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">A short queue</text>
+
+  <rect x="605" y="770" width="320" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="765" y="816" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">Room in the KV cache</text>
+
+  
+  <line x1="1030" y1="390" x2="960" y2="390" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6"/>
+
+  
+
+  
+  <rect x="1030" y="120" width="510" height="770" rx="20" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="1065" y="150" width="46" height="12" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="1075" cy="156" r="2" fill="#207448"/>
+  <rect x="1065" y="166" width="46" height="12" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="1075" cy="172" r="2" fill="#207448"/>
+  <rect x="1065" y="182" width="46" height="12" rx="3" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="1075" cy="188" r="2" fill="#207448"/>
+
+  
+  <text x="1130" y="184" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Triton</text>
+
+  
+  <rect x="1065" y="230" width="440" height="85" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <text x="1285" y="282" font-family="monospace" font-size="26" fill="#303a36" text-anchor="middle">v2/health/live</text>
+
+  
+  <rect x="1065" y="340" width="440" height="85" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <text x="1285" y="392" font-family="monospace" font-size="26" fill="#303a36" text-anchor="middle">v2/health/ready</text>
+
+  
+  <rect x="1065" y="450" width="440" height="85" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <text x="1285" y="502" font-family="monospace" font-size="26" fill="#303a36" text-anchor="middle">v2/models/name/ready</text>
+
+  
+  <rect x="1065" y="570" width="440" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="1285" y="665" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1285" dy="0">Process up, server ready</tspan>
+    <tspan x="1285" dy="45">and each model ready</tspan>
+    <tspan x="1285" dy="45">are separate.</tspan>
+  </text>
+
+  
+
+  <rect x="60" y="925" width="1480" height="80" rx="14" fill="#207448"/>
+  <text x="800" y="974" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Decide what each probe may kill, and make sure only a truly dead process can cause a restart.</text>
+</svg>

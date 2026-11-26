@@ -1,0 +1,82 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p3-2020-signal-ramp-test",
+  "title": "Which signal wins on a ramp: queue depth or in-flight",
+  "spec": "Setup strip 'simulated ramp from 1.2 to 7.2 requests per second against a 5-second queue-time SLO'. Two bars. 'Policy on waiting-queue depth alone: 57 percent of requests violated the SLO'. 'Policy on in-flight requests (running plus waiting): 8 percent violated'. Reason line 'queue depth only moves after slots are full, and then the cold start delays the answer'. Below, the metric table reduced to leads or lags: 'vllm:num_requests_waiting: lags, zero until slots are full'; 'vllm:num_requests_running: leads, rises before any queue forms (KServe example: target 2 per pod, 6 concurrent requests gives 3 replicas)'; 'running plus waiting: leads, then sizes (author's choice)'; 'vllm:kv_cache_usage_perc: leads for long contexts, catches few very large requests'; 'vllm:request_queue_time_seconds: lags, a guardrail not a controller'. Footer 'the signal must lead saturation and stay proportional to demand; the trace and numbers are simulator output, not measurements'. Text at least 24px.",
+  "anchor": "### 2. Signals that work, and the difference between leading and lagging",
+  "alt": "Two bars show queue depth violating the SLO for 57 percent of requests versus 8 percent for in-flight scaling.",
+  "cap": "Pick a signal that leads saturation and stays proportional to demand."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p3-2020-hpa-guard-rules",
+  "title": "The rules around the HPA ratio that stop wrong decisions",
+  "spec": "Center formula 'desiredReplicas = ceil(currentReplicas x currentMetricValue / desiredMetricValue)' evaluated every 15 s sync. Around it five guard boxes. 'Tolerance: ratio close to 1.0 is skipped; default 0.1 cluster-wide via a kube-controller-manager flag; per-HPA behavior.scaleUp.tolerance and scaleDown.tolerance fields on by default from Kubernetes 1.37; example average 11.9 against target 11 is ratio 1.08, nothing happens'. 'Not-ready pods on scale-up are assumed to use 0 percent of the target: 88 in flight over 8 pods (4 not ready) is 11, ratio 1.0, no runaway'. 'Several metrics: compute a count for each and take the largest'. 'A metric cannot be fetched: if the others suggest scale-down, scaling is skipped; scale-up still works'. 'KEDA ScaledObject creates and owns an HPA; its own cooldown applies only to scaling to zero; Prometheus trigger takes query and threshold, metricType defaults to AverageValue so the threshold is per replica'. Footer 'metric source: Prometheus Adapter (Production Kubernetes) or KEDA (LLMs in Production recommends KEDA)'. Text at least 24px.",
+  "anchor": "### 3. The HPA formula, with a worked example",
+  "alt": "The HPA ratio formula surrounded by five guard rules for tolerance, not-ready pods, several metrics, missing metrics and KEDA.",
+  "cap": "Each rule answers a case where the bare ratio would decide wrongly."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p3-2020-window-defaults",
+  "title": "HPA defaults are wrong for an engine that takes minutes to start",
+  "spec": "Two-column table. Column 'Kubernetes defaults': 'scale up: no stabilization window; may add 100 percent of replicas or 4 pods every 15 s, whichever is larger'; 'scale down: 300 s window; one policy removing up to 100 percent per 15 s; the window is a rolling maximum, the controller takes the highest recommendation from the last window, so a short dip changes nothing'. Column 'Starting point for a slow-starting engine (author's choice, tune it)': 'scale down: one pod per three minutes with a 900 s window; window at least as long as a deployment takes plus a margin; selectPolicy Min on scale-down picks the slowest allowed policy; scale-up window stays 0 as long as the metric includes the not-ready pods rule'. Reasoning strip 'terminating a pod takes seconds while booting one takes minutes, so scale-down is a nearly irreversible decision; do not raise the scale-up window to calm the graph, that delays capacity when the burst arrives'. Flap definition 'booting a service only to terminate it before it served anything'. Text at least 24px.",
+  "anchor": "### 4. Stabilization windows and flapping",
+  "alt": "A comparison of default scale-up and scale-down windows with a slower starting point for engines that take minutes to boot.",
+  "cap": "Scale up fast, scale down slowly and keep the window longer than the cold start."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p3-2020-floor-tradeoff",
+  "title": "The replica floor: GPU-hours against queue misses",
+  "spec": "Table from one simulated burst hour (baseline 1.2 requests per second jumping to 6 for 15 minutes, in-flight policy, same assumed cold start; the hour and trace are invented so the shape is the lesson). Rows: 'Floor of 3: 7.2 GPU-hours, 51.5 percent of requests over the 5 s queue SLO'; 'Floor of 3 plus 2 spare nodes: 8.9, 46.6 percent'; 'Floor of 3 plus 6 spare nodes: 12.3, 35.6 percent'; 'Floor of 6: 8.9, 38.0 percent'; 'Floor of 9: 10.8, 0 percent'. Highlight 'floor of 9 costs 3.6 GPU-hours more than a floor of 3 and removes the whole burst'. Notes 'spare nodes cost more than standing replicas and help less because 150 s of weight load and warm-up remain'; 'X+1 floor: baseline 1.2 requests per second at 0.8 per replica needs 2 replicas, so the floor is 3'; 'a five-times burst with an eight-minute cold start cannot be reacted to, only absorbed'; 'the SLO decides: a burst that burns a month's budget in 15 minutes justifies the floor of 9'. Text at least 24px.",
+  "anchor": "### 6. Minimum replicas, X+1, and cost against latency",
+  "alt": "A table of five replica floor setups with GPU-hours and the share of requests missing the queue SLO.",
+  "cap": "The extra 3.6 GPU-hours of a floor of 9 buy the whole burst."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p3-2020-ramp-headroom",
+  "title": "Headroom needed for a ramp: demand growth during one cold start",
+  "spec": "Worked example with inputs 'demand grows 0.4 requests per second every minute; one replica serves 0.8 requests per second'. Two columns. Column 'Fresh node, cold start 480 s (8 min)': 'demand grows 0.4 x 8 = 3.2 requests per second during one cold start; 3.2 / 0.8 = 4 replicas of headroom'. Column 'Spare node waiting, cold start 150 s': 'demand grows about 1.0 requests per second in that time; 1.0 / 0.8, so 2 replicas'. Stage sums behind the two cold starts: 'fresh node: decision plus node provision 240 s plus image pull 90 s plus weight load 120 s plus warm-up 30 s, about 480 s'; 'warm node free: weight load and warm-up, about 150 s'. Answer 'hold 4 standing replicas, or hold spare nodes and 2 standing replicas; then say which costs less per hour at your GPU price'. Trade-off 'standing replicas answer the ramp fastest and cost money in every quiet hour; spare nodes cost less while idle and leave the weight load exposed'. Stage values are the author's assumptions, not measurements. Text at least 24px.",
+  "anchor": "### Scenario B. The ramp that no reaction can catch",
+  "alt": "Headroom arithmetic showing 4 replicas needed with an eight-minute cold start versus 2 with a 150-second cold start.",
+  "cap": "Headroom equals demand growth during one cold start divided by per-replica capacity."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p3-2020-who-dies-scaledown",
+  "title": "Which pod dies on scale-down, and how to protect open streams",
+  "spec": "Left ordered list titled 'ReplicaSet scale-down picks, in order': '1 pending pods go first'; '2 lower controller.kubernetes.io/pod-deletion-cost goes first (annotation, beta since v1.22; docs suggest updating it once before a scale-down)'; '3 pods on nodes with more replicas'; '4 newer pods'; '5 if all ties, random'. Callout 'nothing in that order looks at how many streams a pod holds; newer pods can hold long streams too'. Right the four protective layers: 'terminationGracePeriodSeconds longer than the longest stream (default 30 s)'; 'preStop hook pause (native sleep action; author uses 15 s, tune it) so load balancers stop sending new requests'; 'engine drain: vLLM v0.32.0 --shutdown-timeout defaults to 0 meaning abort every in-flight request at once; above 0 it stops taking new requests and lets running ones finish before the parent force-kills'; 'PodDisruptionBudget maxUnavailable 1, respected by node drains and cluster autoscaler evictions'. Simulator numbers strip 'waiting-queue policy, no drain: 168 streams cut; with a drain: 0; in-flight policy, no drain: 16 cut'. Text at least 24px.",
+  "anchor": "### 7. Scale-down safety and connection draining",
+  "alt": "The Kubernetes scale-down pod selection order next to four layers that keep streams from being cut.",
+  "cap": "Kubernetes does not pick the idle pod, so you must make any pod safe to remove."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p3-2020-ca-pending-to-node",
+  "title": "Cluster autoscaler: pending pods, node groups and the settings that matter",
+  "spec": "Flow of five boxes. 'HPA asks for more replicas'; 'pods sit Pending: no node has a free GPU'; 'cluster autoscaler notices pending pods that a node group could fit'; 'asks the cloud for a node; provisioning clock starts'; 'node registers, image pull, weight load, ready'. Dashboard note 'replica count rose at once while serving count stayed flat; that gap is what to explain'. Settings table: 'expander chooses which node group to grow: random, most-pods, least-waste, price, priority (rank GPU types)'; '--max-node-provision-time default 15 minutes: if a node has not registered by then the autoscaler stops counting it, which is why you keep warm capacity'; 'scale-down: node considered when pod CPU and memory requests sum below 50 percent of allocatable; must stay unneeded 10 minutes; held 10 minutes after a scale-up; evicts through the eviction API for up to 2 minutes; accelerator flag scale-down-gpu-utilization-threshold default 0.5'. Nebius node group notes 'autoscaling min and max node count flags; page gives no defaults or timings; keep a CPU node group of at least two nodes (or autoscaling) so CoreDNS and networking add-ons run there; known issue with GPU Operator and Network Operator creating extra nodes, not reproduced'. Text at least 24px.",
+  "anchor": "### 8. Cluster autoscaler and GPU node pools",
+  "alt": "A five-step flow from HPA request to a ready node, with a table of cluster autoscaler settings and Nebius node group notes.",
+  "cap": "By the time the cluster autoscaler acts the cluster is already full, so keep a warm floor."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p3-2020-sawtooth-two-fixes",
+  "title": "The sawtooth and the cut streams need two separate fixes",
+  "spec": "Setup strip 'short burst every six minutes; autoscaler removes replicas after each burst and adds them back a few minutes later; users report streams that stop halfway'. Two problem boxes. Problem 1 'flapping wastes cold starts: in-flight policy with no window starts 130 replicas in an hour and reverses direction 19 times; with a 300 s window it starts 13 and reverses once'. Problem 2 'scale-down without a drain cuts streams: waiting-queue policy with no drain cut 168 streams'. Fix column 'lengthen the window beyond the cold start and slow the scale-down (removes most cold starts); then add the drain stack from section 7: grace period, preStop pause, engine drain, PodDisruptionBudget'. Footer 'fixing only flapping leaves users on a removed pod unprotected; fixing only the drain keeps the waste; all counts are simulator output'. Text at least 24px.",
+  "anchor": "### Scenario C. The sawtooth and the cut streams",
+  "alt": "Two overlapping problems, flapping and undrained scale-down, with simulator counts of 130 versus 13 starts and 168 cut streams.",
+  "cap": "Name both problems and fix the window first, then add the drain."
+ }
+]

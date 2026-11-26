@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The node bring-up dependency graph</title>
+  <desc>Visual dependency graph showing the sequential and parallel stages of GPU node bring-up from firmware and OS to validation and workload release.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The node bring-up dependency graph</text>
+  <!-- Node F -->
+  <g id="node-F">
+    <rect x="50" y="95" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <rect x="82" y="123" width="32" height="32" rx="4" fill="#e8f1ea"/>
+            <circle cx="98" cy="139" r="7"/>
+            <path d="M98 117 v6 M90 117 v6 M106 117 v6"/>
+            <path d="M98 155 v6 M90 155 v6 M106 155 v6"/>
+            <path d="M76 139 h6 M76 131 h6 M76 147 h6"/>
+            <path d="M114 139 h6 M114 131 h6 M114 147 h6"/>
+        </g>
+    <text x="138" y="147" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Firmware &amp; BIOS</text>
+    <text x="74" y="189" font-family="sans-serif" font-size="24" fill="#43584e">(virtualisation/IOMMU,</text>
+    <text x="74" y="217" font-family="sans-serif" font-size="24" fill="#43584e">SR-IOV, NPS, power profile,</text>
+    <text x="74" y="245" font-family="sans-serif" font-size="24" fill="#43584e">PCIe settings)</text>
+  </g>
+  <!-- Node OS -->
+  <g id="node-OS">
+    <rect x="570" y="95" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <ellipse cx="618" cy="127" rx="20" ry="7" fill="#e8f1ea"/>
+            <path d="M598 127 v12 c0 3.87 8.95 7 20 7 s20 -3.13 20 -7 v-12"/>
+            <path d="M598 139 v12 c0 3.87 8.95 7 20 7 s20 -3.13 20 -7 v-12"/>
+            <line x1="604" y1="133" x2="608" y2="133"/>
+            <line x1="604" y1="145" x2="608" y2="145"/>
+            <line x1="604" y1="157" x2="608" y2="157"/>
+        </g>
+    <text x="658" y="147" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OS install / image</text>
+    <text x="594" y="189" font-family="sans-serif" font-size="24" fill="#43584e">(kernel, headers,</text>
+    <text x="594" y="217" font-family="sans-serif" font-size="24" fill="#43584e">base packages, time sync,</text>
+    <text x="594" y="245" font-family="sans-serif" font-size="24" fill="#43584e">users)</text>
+  </g>
+  <!-- Node K -->
+  <g id="node-K">
+    <rect x="1090" y="95" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <line x1="1126" y1="121" x2="1126" y2="157"/>
+            <line x1="1138" y1="121" x2="1138" y2="157"/>
+            <line x1="1150" y1="121" x2="1150" y2="157"/>
+            <circle cx="1126" cy="131" r="5" fill="#e8f1ea"/>
+            <circle cx="1138" cy="147" r="5" fill="#e8f1ea"/>
+            <circle cx="1150" cy="135" r="5" fill="#e8f1ea"/>
+        </g>
+    <text x="1178" y="135" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kernel params</text>
+    <text x="1178" y="167" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">&amp; tuning</text>
+    <text x="1114" y="207" font-family="sans-serif" font-size="24" fill="#43584e">(hugepages, IOMMU,</text>
+    <text x="1114" y="237" font-family="sans-serif" font-size="24" fill="#43584e">isolcpus, sysctl, limits)</text>
+  </g>
+  <!-- Node DRV -->
+  <g id="node-DRV">
+    <rect x="50" y="325" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <rect x="80" y="357" width="36" height="24" rx="3" fill="#e8f1ea"/>
+            <circle cx="98" cy="369" r="7"/>
+            <path d="M84 381 v6 M90 381 v6 M96 381 v6 M102 381 v6 M108 381 v6"/>
+            <line x1="112" y1="361" x2="112" y2="365"/>
+        </g>
+    <text x="138" y="377" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NVIDIA driver</text>
+    <text x="74" y="431" font-family="sans-serif" font-size="24" fill="#43584e">(open or proprietary;</text>
+    <text x="74" y="463" font-family="sans-serif" font-size="24" fill="#43584e">DKMS or precompiled)</text>
+  </g>
+  <!-- Node R1 -->
+  <g id="node-R1">
+    <rect x="570" y="325" width="460" height="165" rx="36" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+
+        <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path d="M634 403.5 A18 18 0 1 0 631 416.5"/>
+            <polyline points="626 391.5 636 395.5 636 405.5"/>
+        </g>
+    <text x="658" y="401.5" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">reboot /</text>
+    <text x="658" y="435.5" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">module reload</text>
+  </g>
+  <!-- Node OFED -->
+  <g id="node-OFED">
+    <rect x="1090" y="325" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <rect x="1120" y="355" width="36" height="28" rx="4" fill="#e8f1ea"/>
+            <path d="M1128 369 h20 M1132 362 l-4 7 l4 7 M1144 362 l4 7 l-4 7"/>
+            <path d="M1138 383 v6 M1128 389 h20"/>
+        </g>
+    <text x="1178" y="377" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">MLNX_OFED / DOCA</text>
+    <text x="1114" y="431" font-family="sans-serif" font-size="24" fill="#43584e">(RDMA, ConnectX/BlueField</text>
+    <text x="1114" y="463" font-family="sans-serif" font-size="24" fill="#43584e">drivers)</text>
+  </g>
+  <!-- Node R2 -->
+  <g id="node-R2">
+    <rect x="50" y="555" width="460" height="165" rx="36" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+
+        <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path d="M114 633.5 A18 18 0 1 0 111 646.5"/>
+            <polyline points="106 621.5 116 625.5 116 635.5"/>
+        </g>
+    <text x="138" y="647.5" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">reboot / reload</text>
+  </g>
+  <!-- Node PM -->
+  <g id="node-PM">
+    <rect x="570" y="555" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <circle cx="618" cy="599" r="14" fill="#e8f1ea"/>
+            <path d="M618 579 v4 M618 615 v4 M598 599 h4 M634 599 h4 M604 585 l3 3 M629 610 l3 3 M604 613 l3 -3 M629 588 l3 -3"/>
+            <circle cx="618" cy="599" r="6"/>
+        </g>
+    <text x="658" y="607" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">nvidia-persistenced</text>
+    <text x="594" y="661" font-family="sans-serif" font-size="24" fill="#43584e">persistence mode, clocks,</text>
+    <text x="594" y="693" font-family="sans-serif" font-size="24" fill="#43584e">power cap, MIG</text>
+  </g>
+  <!-- Node PEER -->
+  <g id="node-PEER">
+    <rect x="1090" y="555" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <rect x="1118" y="587" width="16" height="24" rx="2" fill="#e8f1ea"/>
+            <rect x="1142" y="587" width="16" height="24" rx="2" fill="#e8f1ea"/>
+            <path d="M1128 595 h12 M1136 591 l4 4 l-4 4"/>
+            <path d="M1140 603 h-12 M1132 599 l-4 4 l4 4"/>
+        </g>
+    <text x="1178" y="595" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">nvidia-peermem /</text>
+    <text x="1178" y="627" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GDRCopy</text>
+    <text x="1114" y="680" font-family="sans-serif" font-size="24" fill="#43584e">(GPUDirect RDMA)</text>
+  </g>
+  <!-- Node FM -->
+  <g id="node-FM">
+    <rect x="50" y="785" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <rect x="80" y="813" width="36" height="32" rx="4" fill="#e8f1ea"/>
+            <line x1="92" y1="813" x2="92" y2="845"/>
+            <line x1="104" y1="813" x2="104" y2="845"/>
+            <line x1="80" y1="825" x2="116" y2="825"/>
+            <line x1="80" y1="837" x2="116" y2="837"/>
+            <circle cx="92" cy="825" r="2.5" fill="#207448"/>
+            <circle cx="104" cy="837" r="2.5" fill="#207448"/>
+        </g>
+    <text x="138" y="837" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fabric Manager</text>
+    <text x="74" y="900" font-family="sans-serif" font-size="24" fill="#43584e">(NVSwitch systems)</text>
+  </g>
+  <!-- Node DCGM -->
+  <g id="node-DCGM">
+    <rect x="570" y="785" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <rect x="600" y="813" width="36" height="28" rx="4" fill="#e8f1ea"/>
+            <path d="M604 829 h6 l4 -8 l6 14 l5 -8 l4 2 h5"/>
+            <line x1="612" y1="841" x2="612" y2="847"/>
+            <line x1="624" y1="841" x2="624" y2="847"/>
+            <line x1="606" y1="847" x2="630" y2="847"/>
+        </g>
+    <text x="658" y="837" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">DCGM + exporter</text>
+    <text x="594" y="900" font-family="sans-serif" font-size="24" fill="#43584e">(telemetry, health)</text>
+  </g>
+  <!-- Node CT -->
+  <g id="node-CT">
+    <rect x="1090" y="785" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path d="M1138 811 L1156 821 L1156 841 L1138 849 L1120 841 L1120 821 Z" fill="#e8f1ea"/>
+            <path d="M1138 811 L1138 849"/>
+            <path d="M1120 821 L1138 831 L1156 821"/>
+        </g>
+    <text x="1178" y="837" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Container toolkit</text>
+    <text x="1114" y="900" font-family="sans-serif" font-size="24" fill="#43584e">(runtime config)</text>
+  </g>
+  <!-- Node OK -->
+  <g id="node-OK">
+    <rect x="50" y="1015" width="460" height="165" rx="12" fill="#fdf0e2" stroke="#db8129" stroke-width="4"/>
+
+        <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <circle cx="98" cy="1097.5" r="18" fill="#fdf0e2"/>
+            <path d="M89 1097.5 l6 6 l12 -12"/>
+        </g>
+    <text x="138" y="1091.5" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node released</text>
+    <text x="138" y="1125.5" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">to workloads</text>
+  </g>
+  <!-- Node SCH -->
+  <g id="node-SCH">
+    <rect x="570" y="1015" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <circle cx="618" cy="1059" r="12" fill="#e8f1ea"/>
+            <circle cx="618" cy="1059" r="5"/>
+            <path d="M618 1039 v8 M618 1071 v8 M598 1059 h8 M630 1059 h8"/>
+            <path d="M604 1045 l6 6 M626 1067 l6 6 M604 1073 l6 -6 M626 1051 l6 -6"/>
+        </g>
+    <text x="658" y="1055" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Scheduler /</text>
+    <text x="658" y="1087" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kubernetes agent</text>
+    <text x="594" y="1127" font-family="sans-serif" font-size="24" fill="#43584e">(slurmd, kubelet,</text>
+    <text x="594" y="1157" font-family="sans-serif" font-size="24" fill="#43584e">GPU Operator parts)</text>
+  </g>
+  <!-- Node VAL -->
+  <g id="node-VAL">
+    <rect x="1090" y="1015" width="460" height="165" rx="12" fill="#e8f1ea" stroke="#8cb89a" stroke-width="2.5"/>
+
+        <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+            <path d="M1126 1041 h24 a4 4 0 0 1 4 4 v30 a4 4 0 0 1 -4 4 h-24 a4 4 0 0 1 -4 -4 v-30 a4 4 0 0 1 4 -4 Z" fill="#e8f1ea"/>
+            <path d="M1128 1057 l6 6 l14 -14"/>
+            <line x1="1130" y1="1069" x2="1146" y2="1069"/>
+        </g>
+    <text x="1178" y="1067" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Validation &amp; burn-in</text>
+    <text x="1114" y="1130" font-family="sans-serif" font-size="24" fill="#43584e">(DCGM diag, NCCL tests)</text>
+  </g>
+  <!-- Dependency Connections -->
+  <g fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arr)">
+    <path d="M 510 177.5 L 570 177.5"/> <!-- F -> OS -->
+    <path d="M 1030 177.5 L 1090 177.5"/> <!-- OS -> K -->
+    <path d="M 1320 260 L 1320 325"/> <!-- K -> OFED -->
+    <path d="M 1090 407.5 L 1030 407.5"/> <!-- OFED -> R1 -->
+    <path d="M 570 407.5 L 510 407.5"/> <!-- R1 -> DRV -->
+    <path d="M 180 490 L 180 555"/> <!-- DRV -> R2 -->
+    <path d="M 280 490 V 530 H 800 V 555"/> <!-- DRV -> PM -->
+    <path d="M 400 490 V 512 H 1320 V 555"/> <!-- DRV -> PEER -->
+    <path d="M 180 720 L 180 785"/> <!-- R2 -> FM -->
+    <path d="M 510 867.5 L 570 867.5"/> <!-- FM -> DCGM -->
+    <path d="M 800 720 L 800 785"/> <!-- PM -> DCGM -->
+    <path d="M 1320 720 L 1320 785"/> <!-- PEER -> CT -->
+    <path d="M 900 950 V 982 H 1240 V 1015"/> <!-- DCGM -> VAL -->
+    <path d="M 1380 950 L 1380 1015"/> <!-- CT -> VAL -->
+    <path d="M 1090 1097.5 L 1030 1097.5"/> <!-- VAL -> SCH -->
+    <path d="M 570 1097.5 L 510 1097.5"/> <!-- SCH -> OK -->
+  </g>
+</svg>

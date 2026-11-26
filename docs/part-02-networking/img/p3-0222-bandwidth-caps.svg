@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Which cap is in force: limits that look like a slow network</title>
+  <desc>Visual infographic explaining how various network and system bandwidth caps produce symptoms that mimic a slow network.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which cap is in force: limits that look like a slow network</text>
+
+  
+  <g id="card-kubernetes">
+    <rect x="50" y="110" width="360" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="95" cy="150" r="18" />
+      <circle cx="95" cy="150" r="6" />
+      <line x1="95" y1="126" x2="95" y2="132" />
+      <line x1="95" y1="168" x2="95" y2="174" />
+      <line x1="71" y1="150" x2="77" y2="150" />
+      <line x1="113" y1="150" x2="119" y2="150" />
+      <line x1="78" y1="133" x2="83" y2="138" />
+      <line x1="107" y1="162" x2="112" y2="167" />
+      <line x1="78" y1="167" x2="83" y2="162" />
+      <line x1="107" y1="138" x2="112" y2="133" />
+    </g>
+    <text x="75" y="208" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="75" dy="0">Kubernetes bandwidth</tspan>
+      <tspan x="75" dy="32">annotations:</tspan>
+      <tspan x="75" dy="32" font-family="monospace" font-weight="normal">kubernetes.io/</tspan>
+      <tspan x="75" dy="30" font-family="monospace" font-weight="normal">ingress-bandwidth</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-cgroup">
+    <rect x="50" y="470" width="360" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 75 510 L 95 500 L 115 510 C 115 530 95 545 95 545 C 95 545 75 530 75 510 Z" />
+      <path d="M 87 522 L 95 530 L 105 516" />
+    </g>
+    <text x="75" y="585" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0" font-weight="bold">cgroup v2 with eBPF</tspan>
+      <tspan x="75" dy="36">(net_cls and net_prio</tspan>
+      <tspan x="75" dy="36">in the legacy setup,</tspan>
+      <tspan x="75" dy="36">bpf rate limiting)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-tc">
+    <rect x="450" y="110" width="420" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 475 160 A 20 20 0 1 1 515 160" />
+      <line x1="495" y1="160" x2="507" y2="148" />
+      <circle cx="495" cy="160" r="3" fill="#207448" />
+    </g>
+    <text x="475" y="205" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="475" dy="0" font-weight="bold">tc: qdiscs and classes,</tspan>
+      <tspan x="475" dy="34">htb, tbf, and fq with</tspan>
+      <tspan x="475" dy="34" font-family="monospace">SO_MAX_PACING_RATE</tspan>
+    </text>
+  </g>
+
+  
+  <g id="pod-box-center">
+    <rect x="450" y="340" width="420" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="475" y="362" width="46" height="38" rx="4" />
+      <line x1="475" y1="374" x2="521" y2="374" />
+      <line x1="498" y1="380" x2="498" y2="394" />
+      <polyline points="493,389 498,394 503,389" />
+    </g>
+    <text x="475" y="430" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="475" dy="0">pod downloading model</tspan>
+      <tspan x="475" dy="30">weights takes the whole</tspan>
+      <tspan x="475" dy="30">node's bandwidth; other</tspan>
+      <tspan x="475" dy="30">pods slow down and their</tspan>
+      <tspan x="475" dy="30">health checks fail</tspan>
+    </text>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="450" y="620" width="420" height="190" rx="12" fill="#fef3e9" stroke="#db8129" stroke-width="3" stroke-dasharray="6 4" />
+    
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="495" cy="648" r="16" />
+      <line x1="495" y1="640" x2="495" y2="648" />
+      <circle cx="495" cy="656" r="1.5" fill="#db8129" />
+    </g>
+    <text x="475" y="694" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="475" dy="0">Each looks like a slow</tspan>
+      <tspan x="475" dy="28">network from inside the</tspan>
+      <tspan x="475" dy="28">pod, so ask which limit</tspan>
+      <tspan x="475" dy="28">applies before you</tspan>
+      <tspan x="475" dy="28">blame the network</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-cloud">
+    <rect x="910" y="110" width="340" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 940 165 a 14 14 0 0 1 24 -7 a 18 18 0 0 1 32 5 a 15 15 0 0 1 10 20 l -60 0 a 12 12 0 0 1 -6 -18 z" />
+    </g>
+    <text x="935" y="225" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="935" dy="0">cloud instance</tspan>
+      <tspan x="935" dy="36">caps</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-nic">
+    <rect x="910" y="470" width="340" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="935" y="500" width="50" height="32" rx="4" />
+      <line x1="945" y1="514" x2="955" y2="514" />
+      <line x1="965" y1="514" x2="975" y2="514" />
+      <line x1="960" y1="532" x2="960" y2="546" />
+      <line x1="945" y1="546" x2="975" y2="546" />
+    </g>
+    <text x="935" y="585" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="935" dy="0" font-weight="bold">NIC SR-IOV VF rate</tspan>
+      <tspan x="935" dy="36">limits and switch</tspan>
+      <tspan x="935" dy="36">policing</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-strip">
+    <rect x="1290" y="110" width="260" height="700" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="1395" y1="160" x2="1445" y2="160" />
+      <circle cx="1415" cy="160" r="5" fill="#207448" />
+      <line x1="1395" y1="180" x2="1445" y2="180" />
+      <circle cx="1435" cy="180" r="5" fill="#207448" />
+      <line x1="1395" y1="200" x2="1445" y2="200" />
+      <circle cx="1410" cy="200" r="5" fill="#207448" />
+    </g>
+    <text x="1420" y="270" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1420" dy="0">Fix: give the</tspan>
+      <tspan x="1420" dy="36">download pod</tspan>
+      <tspan x="1420" dy="36">a cap, so the</tspan>
+      <tspan x="1420" dy="36">others keep</tspan>
+      <tspan x="1420" dy="36">their share</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 450 380 L 330 380 L 330 348" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 450 540 L 418 540" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 660 340 L 660 308" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 870 380 L 990 380 L 990 308" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 870 540 L 902 540" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <g id="footer">
+    <rect x="50" y="840" width="1500" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="878" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">limits can be per cgroup, per process or per interface</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="925" width="1500" height="75" rx="10" fill="#207448" />
+    <text x="800" y="972" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Know which limit is active before you blame the network</text>
+  </g>
+</svg>

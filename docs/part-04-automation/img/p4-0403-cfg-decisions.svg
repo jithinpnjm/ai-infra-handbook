@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The ansible.cfg example read as decisions</title>
+  <desc>A grouped annotation table of each setting.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The ansible.cfg example read as decisions</text>
+
+  
+  <g>
+    
+    <rect x="40" y="90" width="1520" height="595" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(60, 105)">
+      <rect x="24" y="4" width="8" height="48" rx="2" fill="#207448"/>
+      <rect x="4" y="24" width="48" height="8" rx="2" fill="#207448"/>
+      <rect x="24" y="4" width="8" height="48" rx="2" fill="#207448" transform="rotate(45 28 28)"/>
+      <rect x="4" y="24" width="48" height="8" rx="2" fill="#207448" transform="rotate(45 28 28)"/>
+      <circle cx="28" cy="28" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="7" fill="#207448"/>
+    </g>
+
+    
+    <text x="132" y="144" font-family="monospace, sans-serif" font-size="30" font-weight="bold" fill="#207448">[defaults]</text>
+
+    
+    
+    <rect x="60" y="175" width="715" height="80" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="80" y="208" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">inventory = inventories/lab/hosts.yml: </tspan>
+      <tspan x="80" dy="30">which fleet</tspan>
+    </text>
+
+    
+    <rect x="60" y="265" width="715" height="56" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="80" y="301" font-family="sans-serif" font-size="24" fill="#303a36">remote_user = automation: which login</text>
+
+    
+    <rect x="60" y="331" width="715" height="56" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="80" y="367" font-family="sans-serif" font-size="24" fill="#303a36">forks = 20: parallel hosts</text>
+
+    
+    <rect x="60" y="397" width="715" height="56" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="80" y="433" font-family="sans-serif" font-size="24" fill="#303a36">host_key_checking = True</text>
+
+    
+    <rect x="60" y="463" width="715" height="80" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="80" y="496" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">interpreter_python = auto_silent: </tspan>
+      <tspan x="80" dy="30">no discovery warnings</tspan>
+    </text>
+
+    
+    
+    <rect x="825" y="175" width="715" height="80" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="845" y="208" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">roles_path = roles, </tspan>
+      <tspan x="845" dy="30">collections_path = collections</tspan>
+    </text>
+
+    
+    <rect x="825" y="265" width="715" height="80" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="845" y="298" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">retry_files_enabled = False: </tspan>
+      <tspan x="845" dy="30">no .retry file beside every failed playbook</tspan>
+    </text>
+
+    
+    <rect x="825" y="355" width="715" height="56" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="845" y="391" font-family="sans-serif" font-size="24" fill="#303a36">stdout_callback = yaml: readable output</text>
+
+    
+    <rect x="825" y="421" width="715" height="80" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="845" y="454" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">callbacks_enabled = timer, profile_tasks: </tspan>
+      <tspan x="845" dy="30">timing per task</tspan>
+    </text>
+
+    
+    <rect x="825" y="511" width="715" height="56" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="845" y="547" font-family="sans-serif" font-size="24" fill="#303a36">timeout = 30</text>
+
+    
+    <rect x="60" y="580" width="1480" height="86" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="80" y="615" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">gathering = smart with fact_caching = jsonfile, fact_caching_connection = .ansible_facts, </tspan>
+      <tspan x="80" dy="32">fact_caching_timeout = 3600: reuse cached facts for an hour</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="705" width="740" height="305" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(60, 715)">
+      <path d="M 8 6 H 48 V 26 C 48 42 28 52 28 52 C 28 52 8 42 8 26 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="28" cy="24" r="5" fill="#207448"/>
+      <path d="M 28 29 V 38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="132" y="754" font-family="monospace, sans-serif" font-size="30" font-weight="bold" fill="#207448">[privilege_escalation]</text>
+
+    
+    <rect x="60" y="785" width="700" height="56" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+    <text x="80" y="821" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">become = False: enable per play or task</text>
+
+    
+    <rect x="60" y="851" width="700" height="56" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="80" y="887" font-family="sans-serif" font-size="24" fill="#303a36">become_method = sudo</text>
+
+    
+    <rect x="60" y="917" width="700" height="56" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="80" y="953" font-family="sans-serif" font-size="24" fill="#303a36">become_ask_pass = False</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="820" y="705" width="740" height="305" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(840, 715)">
+      <rect x="4" y="6" width="48" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 14 20 L 22 28 L 14 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="26" y1="36" x2="42" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="912" y="754" font-family="monospace, sans-serif" font-size="30" font-weight="bold" fill="#207448">[ssh_connection]</text>
+
+    
+    <rect x="840" y="785" width="700" height="56" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="860" y="821" font-family="sans-serif" font-size="24" fill="#303a36">pipelining = True</text>
+
+    
+    <rect x="840" y="851" width="700" height="80" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="860" y="884" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="860" dy="0">ssh_args = -o ControlMaster=auto </tspan>
+      <tspan x="860" dy="30">-o ControlPersist=60s -o ServerAliveInterval=30</tspan>
+    </text>
+
+    
+    <rect x="840" y="941" width="700" height="52" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="860" y="975" font-family="sans-serif" font-size="24" fill="#303a36">control_path_dir = ~/.ansible/cp</text>
+  </g>
+
+  
+  <rect x="40" y="1025" width="1520" height="50" rx="8" fill="#e8f1ea" stroke="#b0c8b6" stroke-width="1.5"/>
+  <text x="800" y="1058" text-anchor="middle" font-family="sans-serif" font-size="24" font-style="italic" fill="#303a36">each line answers a question you will otherwise ask during a slow or confusing run</text>
+
+  
+  <rect x="40" y="1090" width="1520" height="65" rx="8" fill="#207448"/>
+  <text x="800" y="1132" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Settings the team shares belong in the repo's ansible.cfg</text>
+</svg>

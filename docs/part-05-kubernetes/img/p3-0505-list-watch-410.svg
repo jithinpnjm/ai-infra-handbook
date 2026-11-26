@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>List, watch, 410 Gone and bookmarks</title>
+  <desc>Visual infographic explaining Kubernetes LIST by resourceVersion, watch compaction window, 410 Gone errors, and watch bookmarks.</desc>
+
+  <defs>
+    <marker id="orange-arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#db8129"/>
+    </marker>
+    <marker id="green-arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">List, watch, 410 Gone and bookmarks</text>
+
+  
+  <g id="left-panel">
+    <rect x="40" y="110" width="520" height="900" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="65" y="136" width="48" height="48" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="65" y1="152" x2="113" y2="152" stroke="#207448" stroke-width="3"/>
+    <line x1="65" y1="168" x2="113" y2="168" stroke="#207448" stroke-width="3"/>
+    <text x="128" y="171" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">LIST by resourceVersion</text>
+
+    
+    <g id="row-unset">
+      <rect x="60" y="205" width="480" height="215" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <ellipse cx="95" cy="236" rx="20" ry="7" stroke="#207448" stroke-width="4" fill="none"/>
+      <path d="M 75 236 v 24 c 0 4.4 9 7 20 7 s 20 -2.6 20 -7 v -24" stroke="#207448" stroke-width="4" fill="none"/>
+      <path d="M 75 248 c 0 4.4 9 7 20 7 s 20 -2.6 20 -7" stroke="#207448" stroke-width="3" fill="none"/>
+      
+      <text x="85" y="306" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="85" dy="0" font-family="monospace" font-weight="bold">unset:</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> quorum read from</tspan>
+        <tspan x="85" dy="34">etcd, most recent state,</tspan>
+        <tspan x="85" dy="34">expensive</tspan>
+      </text>
+    </g>
+
+    
+    <g id="row-rv0">
+      <rect x="60" y="445" width="480" height="230" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <rect x="75" y="470" width="40" height="40" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+      <line x1="85" y1="462" x2="85" y2="470" stroke="#207448" stroke-width="3"/>
+      <line x1="105" y1="462" x2="105" y2="470" stroke="#207448" stroke-width="3"/>
+      <line x1="85" y1="510" x2="85" y2="518" stroke="#207448" stroke-width="3"/>
+      <line x1="105" y1="510" x2="105" y2="518" stroke="#207448" stroke-width="3"/>
+      <line x1="67" y1="480" x2="75" y2="480" stroke="#207448" stroke-width="3"/>
+      <line x1="67" y1="500" x2="75" y2="500" stroke="#207448" stroke-width="3"/>
+      <line x1="115" y1="480" x2="123" y2="480" stroke="#207448" stroke-width="3"/>
+      <line x1="115" y1="500" x2="123" y2="500" stroke="#207448" stroke-width="3"/>
+      
+      <text x="85" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="85" dy="0" font-family="monospace" font-weight="bold">resourceVersion=0:</tspan>
+        <tspan x="85" dy="34">served from the watch cache,</tspan>
+        <tspan x="85" dy="34">cheap, may be stale</tspan>
+      </text>
+    </g>
+
+    
+    <g id="row-rvN">
+      <rect x="60" y="700" width="480" height="210" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <circle cx="95" cy="745" r="20" stroke="#207448" stroke-width="4" fill="none"/>
+      <circle cx="95" cy="745" r="10" stroke="#207448" stroke-width="3" fill="none"/>
+      <line x1="95" y1="720" x2="95" y2="770" stroke="#207448" stroke-width="2"/>
+      <line x1="70" y1="745" x2="120" y2="745" stroke="#207448" stroke-width="2"/>
+      
+      <text x="85" y="810" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="85" dy="0" font-family="monospace" font-weight="bold">resourceVersion=N with</tspan>
+        <tspan x="85" dy="34" font-family="system-ui, -apple-system, sans-serif">NotOlderThan or Exact</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="580" y="110" width="980" height="900" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g id="timeline-top">
+      <rect x="600" y="130" width="940" height="405" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+      
+      <g id="node-watch-1000">
+        <rect x="620" y="165" width="430" height="100" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+        
+        <ellipse cx="655" cy="215" rx="20" ry="12" stroke="#207448" stroke-width="4" fill="none"/>
+        <circle cx="655" cy="215" r="6" fill="#207448"/>
+        
+        <text x="695" y="205" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+          <tspan x="695" dy="0">client watches from</tspan>
+          <tspan x="695" dy="30" font-family="monospace">resourceVersion 1000</tspan>
+        </text>
+      </g>
+
+      
+      <g id="bar-compaction">
+        <rect x="1080" y="165" width="440" height="100" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+        
+        <circle cx="1115" cy="215" r="18" stroke="#207448" stroke-width="4" fill="none"/>
+        <polyline points="1115,203 1115,215 1126,215" stroke="#207448" stroke-width="3" fill="none"/>
+        
+        <text x="1150" y="205" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+          <tspan x="1150" dy="0">compaction window</tspan>
+          <tspan x="1150" dy="30">about 5 minutes</tspan>
+        </text>
+      </g>
+
+      
+      <g id="node-outside">
+        <rect x="620" y="285" width="430" height="85" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        
+        <circle cx="655" cy="327" r="18" stroke="#207448" stroke-width="4" fill="none"/>
+        <line x1="655" y1="316" x2="655" y2="330" stroke="#207448" stroke-width="3"/>
+        <circle cx="655" cy="337" r="2.5" fill="#207448"/>
+        
+        <text x="695" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+          <tspan x="695" dy="0">revision 1000</tspan>
+          <tspan x="695" dy="30">falls outside it</tspan>
+        </text>
+      </g>
+
+      
+      <g id="arrow-410">
+        <text x="1070" y="405" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+          server returns 410 Gone, too old resource version
+        </text>
+        <line x1="1450" y1="425" x2="620" y2="425" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)"/>
+      </g>
+
+      
+      <g id="arrow-relist">
+        <text x="1000" y="480" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+          client must relist (informers do this)
+        </text>
+        <line x1="1350" y1="495" x2="562" y2="495" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+      </g>
+    </g>
+
+    
+    <g id="timeline-bottom">
+      <rect x="600" y="555" width="940" height="435" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+      
+      <g id="node-bookmarks">
+        <rect x="620" y="575" width="900" height="230" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+        
+        <path d="M 650 600 h 36 v 50 l -18 -15 l -18 15 z" stroke="#207448" stroke-width="4" fill="none"/>
+        
+        <text x="705" y="625" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+          <tspan x="705" dy="0" font-family="monospace" font-weight="bold" fill="#207448">allowWatchBookmarks=true:</tspan>
+          <tspan x="705" dy="34">periodic BOOKMARK events carry only</tspan>
+          <tspan x="705" dy="34">the current head resourceVersion</tspan>
+        </text>
+
+        
+        <rect x="650" y="735" width="840" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+        
+        <circle cx="780" cy="753" r="6" fill="#207448"/>
+        <circle cx="940" cy="753" r="6" fill="#207448"/>
+        <circle cx="1100" cy="753" r="6" fill="#207448"/>
+        <circle cx="1260" cy="753" r="6" fill="#207448"/>
+        <circle cx="1420" cy="753" r="8" fill="#207448"/>
+        <line x1="1020" y1="735" x2="1020" y2="771" stroke="#207448" stroke-width="3" stroke-dasharray="4 2"/>
+      </g>
+
+      
+      <g id="node-result">
+        <rect x="620" y="830" width="900" height="135" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+        
+        <path d="M 650 862 c 0 -12 18 -15 18 -15 c 0 0 18 3 18 15 c 0 25 -18 35 -18 35 c 0 0 -18 -10 -18 -35 z" stroke="#207448" stroke-width="4" fill="none"/>
+        <polyline points="660,873 666,880 676,868" stroke="#207448" stroke-width="4" fill="none"/>
+        
+        <text x="715" y="907" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+          reconnect stays inside the window, no 410
+        </text>
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="footer">
+    <rect x="40" y="1040" width="1520" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="65" y="1062" width="36" height="46" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="75" y1="1075" x2="91" y2="1075" stroke="#207448" stroke-width="3"/>
+    <line x1="75" y1="1085" x2="91" y2="1085" stroke="#207448" stroke-width="3"/>
+    <line x1="75" y1="1095" x2="85" y2="1095" stroke="#207448" stroke-width="3"/>
+    
+    <text x="120" y="1095" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif">Pagination: </tspan><tspan font-family="monospace">limit=500</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> returns a continue token valid for about 5 minutes</tspan>
+    </text>
+  </g>
+</svg>

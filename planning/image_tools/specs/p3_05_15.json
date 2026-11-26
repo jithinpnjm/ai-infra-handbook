@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p3-0515-isolation-union",
+  "title": "Isolated or not: how policies add up for one pod",
+  "spec": "Three-state diagram for pod vllm. State A 'no policy selects the pod for a direction: non-isolated, all traffic in that direction allowed'. State B 'at least one policy selects it and lists that direction in policyTypes: isolated, only traffic allowed by the union of all matching rules gets in'. Beside it two guest lists: 'Policy 1 names gateway' and 'Policy 2 names the monitoring pod'; result 'anyone on at least one list is admitted; nothing on a list ever removes a name from another list; no deny rules and no ordering'. Syntax strip: 'ingress: [] or no rules with policyTypes [Ingress] denies all ingress', 'ingress: [{}] allows all', 'omitted ports means any port', 'policyTypes defaults to Ingress always and to Egress only when the policy has egress rules, so set it explicitly', 'stateful: reply traffic of an allowed connection passes via conntrack', 'a CNI without policy support (plain Flannel) accepts the object and silently ignores it'. Text at least 24px.",
+  "anchor": "## 1. The NetworkPolicy API",
+  "alt": "A pod is open until a policy selects it, then it admits only the union of all matching allow rules.",
+  "cap": "Policies only add allowances, so a pod is open until selected and then admits the union of every rule."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p3-0515-gateway-walkthrough",
+  "title": "Walking requests through the allow-gateway-to-model policy",
+  "spec": "Worked example on the policy for pods app vllm in namespace serving. Ingress element 1 'namespace kubernetes.io/metadata.name edge AND pod app gateway' with ports TCP 8000 and TCP 9000 to 9010 (endPort, eleven ports in the range). Ingress element 2 (separate element, OR) 'ipBlock 10.20.0.0/16 except 10.20.5.0/24'. Four request rows with results: 'gateway pod in edge calls port 8000: matches both selectors, ALLOWED'; 'pod app debug in edge: fails app gateway, not in the ipBlock, DENIED'; 'gateway-labelled pod in another namespace: namespace selector fails, DENIED'; 'source 10.20.5.7: inside the except range, DENIED; source 10.20.9.1: ALLOWED'. Egress half: 'DNS to kube-dns in kube-system on UDP and TCP 53' and 'object storage VIPs 10.30.0.0/16 on TCP 443'; anything else denied. Text at least 24px.",
+  "anchor": "## 1. The NetworkPolicy API",
+  "alt": "Four example requests are checked against the selectors and ipBlock of one ingress policy with allow or deny results.",
+  "cap": "Check each element as an OR and each field inside it as an AND to predict the result."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p3-0515-uncovered-paths",
+  "title": "Paths a NetworkPolicy does not cover",
+  "spec": "Map of a node with pods and the paths around it. Highlight six traps, each with its mitigation. 'Probes: kubelet probes originate from the node, generally allowed by CNIs; with host firewalls allow node to pod; test after default deny'. 'hostNetwork pods: share the node identity, not subject to pod policy; restrict with Pod Security, use host firewall policies (Calico HostEndpoints, Cilium host policy)'. 'API server and webhooks: egress to kubernetes.default is a control-plane IP, allow ipBlock or Cilium toEntities kube-apiserver; the API server must reach webhook pod ports'. 'Multus and RDMA secondary interfaces: policy applies to the primary CNI interface only; treat RDMA fabrics as separate trust domains (VLAN or PKey isolation)'. 'Service IPs: policies see pods post-DNAT, match backend pods by labels, not ClusterIP'. 'External traffic: source IP may be SNATed by load balancers, breaking ipBlock; use externalTrafficPolicy Local, PROXY protocol or L7 auth'. Also: 'no cluster-wide policy, no explicit deny, no L7, no FQDN egress, no logging in the standard API'. Text at least 24px.",
+  "anchor": "## 2. Things NetworkPolicy does not do (and traps)",
+  "alt": "A node diagram marks six paths that standard NetworkPolicy misses with a mitigation for each.",
+  "cap": "Probes, host networking, the API server, secondary networks, Service IPs and external sources need separate handling."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p3-0515-calico-ipset-chains",
+  "title": "How Calico compiles a policy into iptables and ipsets",
+  "spec": "Flow of chains. 'cali-FORWARD' branches to 'cali-from-wl-dispatch' and 'cali-to-wl-dispatch'. 'cali-from-wl-dispatch -> cali-fw-iface (traffic from workload, applies the pod's egress policies)'. 'cali-to-wl-dispatch -> cali-tw-iface (traffic to workload, applies ingress policies)'. Per-policy chains 'cali-pi-policy (ingress rules) and cali-po-policy (egress rules)'. Rule form: '-m set --match-set cali40s:hash src -p tcp --dport 8000 -j MARK --set-xmark 0x10000/0x10000 (allow mark), drop at the end of the profile chain'. Side panel 'ipset update': 'Felix agent compiles policy; each selector becomes an ipset of pod IPs; a new labelled pod is just ipset add, a deleted pod is ipset del; rules stay unchanged; rule count grows with policies times ports, not with pod count'. Footer: 'ipset lookup O(1) per set, but evaluation of rules is O(number of rules) per new connection; Calico eBPF dataplane replaces the chains with BPF programs and maps; churn (one policy per job) triggers recompiles and CNI agent CPU'. Text at least 24px.",
+  "anchor": "### Calico (iptables dataplane)",
+  "alt": "Calico chains dispatch to per-workload and per-policy chains that match source addresses in ipsets.",
+  "cap": "Selectors become ipsets so label changes only add or remove set members instead of rewriting rules."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p3-0515-calico-order-checklist",
+  "title": "An ordered Calico policy read as a checklist",
+  "spec": "Worked example GlobalNetworkPolicy deny-metadata-and-private-egress with order 100. Three rule boxes top to bottom: 'rule 1 Deny: destination the cloud metadata address', 'rule 2 Allow: object gateway', 'rule 3 Allow: DNS over UDP port 53'. Three packets: 'packet to the metadata address matches rule 1, DENIED, later allow rules never see it'; 'packet to the object gateway skips rule 1, matches rule 2, ALLOWED'; 'DNS on UDP 53 reaches rule 3, ALLOWED'. Right side comparison 'standard NetworkPolicy: namespaced, additive, no deny, no ordering' versus 'Calico GlobalNetworkPolicy: cluster-wide, order for priority, actions Allow, Deny, Log, Pass, selectors like app == x && has(team)' versus 'Cilium: ingressDeny and egressDeny take precedence over allows'. Text at least 24px.",
+  "anchor": "### Calico",
+  "alt": "Three ordered rules with example packets showing a deny matching first and later allows matching otherwise.",
+  "cap": "Ordered policies are read top to bottom and the first matching rule decides."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p3-0515-cilium-fqdn-flow",
+  "title": "How Cilium learns an FQDN rule from DNS answers",
+  "spec": "Sequence for pod app trainer in namespace training under CiliumNetworkPolicy trainer-egress. Step 1 'egress rule allows the pod to reach kube-dns pods on port 53 ANY, which also gives Cilium visibility into the DNS answers'. Step 2 'pod asks for storage.googleapis.com or a name matching *.huggingface.co; Cilium sees the answer addresses'. Step 3 'toFQDNs rule matchName storage.googleapis.com and matchPattern *.huggingface.co on TCP 443 now allows those learned addresses'. Step 4 'toEntities kube-apiserver allows API server access'. Anything else denied. Contrast box: 'standard NetworkPolicy has no FQDN egress: ipBlock needs static IPs but SaaS endpoints change'. Text at least 24px.",
+  "anchor": "### Cilium",
+  "alt": "Cilium sees DNS answers for allowed lookups and then permits traffic to those addresses on port 443.",
+  "cap": "The DNS rule gives Cilium the addresses behind each name so the FQDN rule can allow them."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p3-0515-rollout-staging",
+  "title": "Rolling out policy without an outage",
+  "spec": "Staircase of four steps with a safety check at each. Step 1 'default-deny ingress everywhere (lowest risk)'. Step 2 'baseline allowances: DNS egress to kube-dns and 169.254.20.10 NodeLocal DNSCache on UDP and TCP 53, probes, system components, same-namespace'. Step 3 'default-deny egress plus explicit allowances for DNS, API server, storage, registries, monitoring'. Step 4 'per-app allow rules and controlled egress'. Safety strip: 'Calico staged policies, Cilium audit mode and Hubble show what would be blocked before enforcement'. Review questions for every pull request: 'which pods does it select, which new flow does it allow, does it leave the default deny in place'. Warning: 'DNS is the most common surprise after default deny; without it nothing resolves'. Proof order from the kuard test: 'open test shows the baseline, deny test shows a timeout (packet dropped, not refused), allow test shows one rule opens exactly one door'. Text at least 24px.",
+  "anchor": "### Default-deny and baseline patterns",
+  "alt": "A four-step staircase from default-deny ingress to per-app rules with audit-mode checks.",
+  "cap": "Add default deny in stages and preview what it would block before enforcing."
+ }
+]

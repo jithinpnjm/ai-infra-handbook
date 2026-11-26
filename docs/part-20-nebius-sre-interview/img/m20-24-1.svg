@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>State splitting and blast radius</title>
+  <desc>Architecture diagram illustrating Terraform state splitting across remote state bucket, networking, cloud stage, and regional platform stages to minimize blast radius.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">State splitting and blast radius</text>
+
+  
+   N -->
+  <path d="M 800 240 V 300" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+   C -->
+  <path d="M 520 205 H 400 V 605 H 520" stroke="#207448" stroke-width="3" stroke-linejoin="round" fill="none" marker-end="url(#arrow)" />
+
+   P1 -->
+  <path d="M 520 175 H 80 V 850 H 200" stroke="#207448" stroke-width="3" stroke-linejoin="round" fill="none" marker-end="url(#arrow)" />
+
+   P2 -->
+  <path d="M 1080 175 H 1520 V 850 H 1400" stroke="#207448" stroke-width="3" stroke-linejoin="round" fill="none" marker-end="url(#arrow)" />
+
+  |"outputs"| C -->
+  <path d="M 800 430 V 540" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  |"cluster_id"| P1 -->
+  <path d="M 640 670 V 725 H 460 V 780" stroke="#207448" stroke-width="3" stroke-linejoin="round" fill="none" marker-end="url(#arrow)" />
+
+  |"cluster_id"| P2 -->
+  <path d="M 960 670 V 725 H 1140 V 780" stroke="#207448" stroke-width="3" stroke-linejoin="round" fill="none" marker-end="url(#arrow)" />
+
+  
+  
+  <rect x="730" y="467" width="140" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="485" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle" dominant-baseline="central">outputs</text>
+
+  
+  <rect x="460" y="707" width="180" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="550" y="725" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle" dominant-baseline="central">cluster_id</text>
+
+  
+  <rect x="960" y="707" width="180" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1050" y="725" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle" dominant-baseline="central">cluster_id</text>
+
+  
+  <rect x="520" y="110" width="560" height="130" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="578" cy="155" rx="24" ry="9" />
+    <path d="M 554 155 v 32 c 0 6 11 11 24 11 s 24 -5 24 -11 v -32" />
+    <path d="M 554 171 c 0 6 11 11 24 11 s 24 -5 24 -11" />
+    <path d="M 554 155 c 0 -14 11 -22 24 -22 s 24 8 24 22" stroke-width="3" stroke-dasharray="4 3" />
+  </g>
+  <text x="630" y="160" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">State bucket</text>
+  <text x="630" y="205" font-family="sans-serif" font-size="24" fill="#303a36">(made outside Terraform)</text>
+
+  
+  <rect x="520" y="300" width="560" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="578" cy="342" r="8" />
+    <circle cx="556" cy="384" r="8" />
+    <circle cx="600" cy="384" r="8" />
+    <line x1="573" y1="349" x2="561" y2="376" />
+    <line x1="583" y1="349" x2="595" y2="376" />
+    <line x1="564" y1="384" x2="592" y2="384" stroke-dasharray="4 3" />
+  </g>
+  <text x="630" y="350" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">net / project</text>
+  <text x="630" y="395" font-family="sans-serif" font-size="24" fill="#303a36">changes rarely</text>
+
+  
+  <rect x="520" y="540" width="560" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 556 615 a 14 14 0 0 1 5 -27 a 20 20 0 0 1 34 -4 a 15 15 0 0 1 19 16 a 14 14 0 0 1 -6 15 z" />
+  </g>
+  <text x="630" y="590" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">cloud stage</text>
+  <text x="630" y="635" font-family="sans-serif" font-size="24" fill="#303a36">cluster + node pools</text>
+
+  
+  <rect x="200" y="780" width="520" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="230" y="825" width="54" height="46" rx="6" stroke-width="3.5" />
+    <line x1="230" y1="840" x2="284" y2="840" stroke-width="3" />
+    <circle cx="242" cy="833" r="2.5" fill="#207448" stroke="none" />
+    <circle cx="251" cy="833" r="2.5" fill="#207448" stroke="none" />
+    <rect x="242" y="849" width="13" height="14" rx="2" stroke-width="2.5" />
+    <rect x="261" y="849" width="13" height="14" rx="2" stroke-width="2.5" />
+  </g>
+  <text x="310" y="835" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">platform: region A</text>
+  <text x="310" y="880" font-family="sans-serif" font-size="24" fill="#303a36">helm, tenants</text>
+
+  
+  <rect x="880" y="780" width="520" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="910" y="825" width="54" height="46" rx="6" stroke-width="3.5" />
+    <line x1="910" y1="840" x2="964" y2="840" stroke-width="3" />
+    <circle cx="922" cy="833" r="2.5" fill="#207448" stroke="none" />
+    <circle cx="931" cy="833" r="2.5" fill="#207448" stroke="none" />
+    <rect x="922" y="849" width="13" height="14" rx="2" stroke-width="2.5" />
+    <rect x="941" y="849" width="13" height="14" rx="2" stroke-width="2.5" />
+  </g>
+  <text x="990" y="835" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">platform: region B</text>
+  <text x="990" y="880" font-family="sans-serif" font-size="24" fill="#303a36">helm, tenants</text>
+</svg>

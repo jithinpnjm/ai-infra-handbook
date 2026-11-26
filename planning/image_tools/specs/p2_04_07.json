@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p2-0407-precedence-detective",
+  "title": "Find an unexpected variable value with four questions, in a fixed order",
+  "anchor": "## 8. Variable precedence debugging toolkit",
+  "spec": "A top-down flow with four numbered question boxes connected by arrows. Top label, grey: 'Variable has an unexpected value on gpu001'. Step 1 box: 'What does the inventory believe? ansible-inventory --host gpu001 --yaml'. Step 2 box: 'What does the live host see? ansible gpu001 -m debug, var=nvidia_driver_branch'. Step 3 box: 'Which files loaded? ansible-playbook with -vvv and --list-tasks'. Step 4 box, orange outline: 'Where is it defined? grep -rn for the variable name across inventories, roles and playbooks'. A side box with the usual surprises, in a grey panel: 'role vars overriding inventory, -e overriding everything, set_fact persisting into later plays, a dictionary replaced instead of merged, two sibling groups defining the same name'. A note at the bottom: 'Use combine with recursive=True to merge dictionaries, instead of replacing them.' Caption: 'The first answer that shows the wrong value points to the layer to inspect.'",
+  "alt": "Four questions, asked in order, trace an unexpected variable from the inventory view to the live host, the loaded files and finally a search of the repository.",
+  "cap": "An unexpected variable is traced in four steps, from the inventory view and the live host to the loaded files and a repository search."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "p2-0407-scope-lifetime",
+  "title": "Where a variable is visible depends on where it was set",
+  "anchor": "### Scope and lifetime",
+  "spec": "A nested set of concentric labelled regions, drawn from the innermost to the outermost. Innermost, orange outline: 'task vars: only this task'. Next ring: 'play vars and vars_files: only this play'. Next ring: 'set_fact and register: this host, for the rest of the play run'. Next ring: 'inventory, group and host variables: each host, for the whole run'. Outermost, grey dashed: 'role variables: not scoped by default, visible to later roles and tasks, so prefix them'. Right-side note boxed in green: 'Lazy evaluation: group_vars can set driver_pkg from nvidia_driver_branch, and the branch is filled in only when a task reads driver_pkg.' A small warning note: 'x: {{ x }} recurses and fails, because the value keeps asking for itself.' Caption: 'Scope answers where a value can be read, lifetime answers how long it lasts.'",
+  "alt": "Variables have nested scopes, from a single task and a single play through host-scoped facts and registered values to whole-run inventory variables and unscoped role variables.",
+  "cap": "A variable's scope ranges from one task or play, through per-host facts, to whole-run inventory variables and unscoped role variables."
+ }
+]

@@ -1,0 +1,92 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-workqueue-sets",
+  "title": "Work queue: dirty and processing keep one worker per key",
+  "spec": "Step diagram with a FIFO 'queue' and two sets 'dirty' and 'processing' drawn as boxes. Steps numbered: 1 'Add default/web: key goes into dirty and is appended to queue; adding it again while in dirty does nothing (deduplication)'. 2 'Worker 1 Get: key leaves dirty, moves into processing'. 3 'Another watch event for default/web arrives while Worker 1 runs Reconcile: key goes back into dirty but is not appended to queue, because it is in processing'. 4 'Worker 1 calls Done: queue sees the key in dirty and re-appends it for one more sequential pass'. 5 'Result: Forget on success, AddRateLimited on error (exponential backoff)'. Note: 'Reconcile gets only the namespace/name key, then reads the latest object from the lister cache'. Text at least 24px.",
+  "anchor": "## 2. The machinery: informers and work queues",
+  "alt": "Four steps show how dirty and processing sets deduplicate keys and keep one worker per key.",
+  "cap": "The queue collapses repeat events into one key and never lets two workers reconcile the same key at once."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-scale-down-order",
+  "title": "Which pods a ReplicaSet deletes first when scaling down",
+  "spec": "Ranked list drawn as five stacked bars, top is deleted first, with a worked example 'scale from 5 replicas to 3, delete 2'. Bars: 1 'Unscheduled pods (spec.nodeName empty, Pending) before scheduled pods', 2 'Pods with annotation controller.kubernetes.io/pod-deletion-cost, lowest integer first', 3 'Pods on nodes with more replicas of this ReplicaSet, keeps survivors spread across nodes', 4 'Not-Ready pods before Ready pods', 5 'Pods Ready for the shortest time last: newest pods or higher restart counts'. Caption inside figure: 'The controller does not pick at random'. Text at least 24px.",
+  "anchor": "### Deployment → ReplicaSet → Pod",
+  "alt": "A five-step ranking shows the order a ReplicaSet uses to choose pods to delete.",
+  "cap": "On scale-down the ReplicaSet deletes the least valuable pods first, starting with unscheduled and not-ready ones."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-statefulset-identity",
+  "title": "StatefulSet identity: name, DNS, disk and order",
+  "spec": "Three pod boxes web-0, web-1, web-2 in a row. Under each a DNS label '<pod-name>.<service-name>.<ns>.svc.cluster.local' via a headless Service (clusterIP None, no virtual IP, DNS returns each pod address) and a disk label 'PVC data-web-0', 'data-web-1', 'data-web-2' from volumeClaimTemplates. Arrows: 'pod deleted, rescheduled onto another node: same name, same PVC reattached'. Order strip: 'OrderedReady scale up 0 then 1 then 2, waits for Ready; scale down and update in reverse 2 then 1 then 0'; 'Parallel starts without waiting'. Canary: 'partition K: only ordinals at or above K get the new version'. Footer: 'never two pods with the same ordinal; PVCs are not deleted automatically'. Text at least 24px.",
+  "anchor": "### StatefulSet",
+  "alt": "Three StatefulSet pods each keep a stable name, DNS address and PVC across rescheduling.",
+  "cap": "A StatefulSet ties each ordinal to a stable name, DNS name and its own disk."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-statefulset-split-brain",
+  "title": "Dead node: why web-0 is not replaced until the node is fenced",
+  "spec": "Numbered flow. 1 'Node crashes or loses network; kubelet is silent'. 2 'After 40 s Ready becomes Unknown, unreachable taint added; after 300 s tolerationSeconds pods are deleted'. 3 'web-0 stays Terminating: nobody confirms the container stopped'. 4 'StatefulSet guarantees at most one pod per ordinal, so it creates no replacement web-0 (two writers on one volume would be split-brain)'. 5 'Admin or fencing automation confirms the host is powered off (IPMI, Redfish or cloud API) and applies taint node.kubernetes.io/out-of-service=nodeshutdown:NoExecute'. 6 'Control plane force-completes pod termination and detaches volumes; web-0 reschedules cleanly'. Side box: 'Other ways out: kubelet returns, node object deleted, force delete only if sure the node is down'. Text at least 24px.",
+  "anchor": "### Node lifecycle and eviction",
+  "alt": "A six-step flow shows a StatefulSet pod stuck Terminating until an out-of-service taint fences the node.",
+  "cap": "A StatefulSet waits for proof the old pod stopped, and the out-of-service taint supplies that proof for a dead node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-job-patterns",
+  "title": "Job patterns and restartPolicy",
+  "spec": "Top: three small panels. 'One-shot completions 1, parallelism 1: migrations, smoke tests'. 'Parallel fixed completions 10, parallelism 5: five pods at a time until 10 succeed'. 'Work queue completions unset, parallelism 5: workers pull from a queue service until empty and exit 0'. Middle: 'completionMode Indexed: each pod gets JOB_COMPLETION_INDEX 0 to completions minus 1, pod hostname job-index, maps to RANK or NODE_RANK'. Bottom: two lanes for a crashing container. 'restartPolicy OnFailure: kubelet restarts the container in place on the same node, RESTARTS counter increments on the same Pod'. 'restartPolicy Never: failed Pod stays with Status Error for logs, Job controller creates a brand-new replacement pod, repeats until backoffLimit'. Note: 'restartPolicy Always is not allowed in a Job'; 'podFailurePolicy: exit code can FailJob, DisruptionTarget maps to Ignore'. Text at least 24px.",
+  "anchor": "### Job and CronJob",
+  "alt": "Three Job concurrency patterns and the difference between OnFailure and Never restart policies.",
+  "cap": "Pick a Job pattern by completions and parallelism, and choose OnFailure to retry in place or Never to keep each failure."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-kueue-suspend",
+  "title": "Gang admission with Job suspend and Kueue",
+  "spec": "Left-to-right flow with numbered boxes. 1 'User submits a Job'. 2 'Mutating admission sets spec.suspend true at creation'. 3 'Job controller creates zero Pods while suspended, so unqueued jobs do not flood kube-scheduler or partly claim GPUs'. 4 'Kueue checks ClusterQueue GPU quota for the whole job (gang admission)'. 5 'Kueue patches spec.suspend false and injects nodeSelector and flavor labels'. 6 'Job controller creates all Pods at once'. Footer note: 'A distributed run with half its workers is useless: all start together or not at all'. Text at least 24px.",
+  "anchor": "### Job and CronJob",
+  "alt": "A Job is created suspended and Kueue unsuspends it only when quota exists for all its pods.",
+  "cap": "Suspend keeps a Job from creating pods until Kueue admits the whole gang."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-hot-loop",
+  "title": "Reconcile hot loop and how to break it",
+  "spec": "Cycle diagram: 'Reconcile(key)' -> 'writes object or status even though nothing meaningful changed (for example status.lastChecked = time.Now(), or unsorted slice elements)' -> 'resourceVersion increments' -> 'OnUpdate watch event returns to the informer' -> 'key re-enqueued' back to Reconcile, labelled 'endless tight loop'. Right side green box 'Two fixes': '1 Write only when state differs; update lastTransitionTime only when a condition status flips between True, False and Unknown', '2 GenerationChangedPredicate or ignore status-only updates: /status writes do not increment metadata.generation'. Footer: 'Detect with write rate in audit, resourceVersion churn and controller_runtime_reconcile_total'. Text at least 24px.",
+  "anchor": "## 6. Failure modes and diagnostics",
+  "alt": "A controller that writes on every pass re-triggers itself until change detection breaks the cycle.",
+  "cap": "A hot loop happens when a reconcile's own write triggers the next reconcile, and change detection stops it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-gpu-remediation-flow",
+  "title": "Safe GPU fault controller: the gpu7 walk-through",
+  "spec": "Decision tree for node gpu7. Start 'Node gpu7 reports Xid errors for several minutes in a row (sustained, not one blip)'. Decision 1 'Global budget free? (max_concurrent_cordons)'. No branch: 'Record a condition on gpu7: waiting for budget, stop'. Yes branch: 'Cordon node, annotate the reason, create drain request'. Decision 2 'Drain blocked by a PodDisruptionBudget?' Yes: 'wait and report, do not force eviction'. No: 'drain proceeds'. Then 'Uncordon only after a health-check Job passes'. Side callouts: 'Every pass starts from the cluster as it is now; if the cordon exists do nothing new', 'Restart halfway is safe, no memory of earlier actions', 'Blast radius: if 80 percent of 500 nodes alert at once (400 nodes) the budget stops a total outage', 'Keep a flag or label that switches automation off'. Text at least 24px.",
+  "anchor": "## 7. Designing safe automation with the controller mindset",
+  "alt": "A decision tree shows a GPU fault controller checking a budget and PodDisruptionBudget before draining gpu7.",
+  "cap": "A safe remediation controller checks a global budget, records intent and waits rather than forcing a drain."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "p3-0506-namespace-terminating",
+  "title": "Namespace stuck in Terminating: two causes",
+  "spec": "Decision tree. Start 'kubectl delete ns x leaves it Terminating; the namespace controller must delete every resource before removing the kubernetes finalizer'. First look: 'kubectl get ns x -o json | jq .status.conditions shows the exact blocker'. Branch A 'A resource inside has an unfulfilled finalizer (CRD instance whose operator was uninstalled, PVC still mounted)': check 'kubectl api-resources --verbs=list --namespaced -o name | xargs -n 1 kubectl get --show-kind --ignore-not-found -n ns'; fix 'restore the controller that should remove the finalizer; hand-removing it skips cleanup and can leak cloud disks, IPs and load balancers'. Branch B 'An unavailable APIService (broken metrics-server or custom adapter) stops the controller listing that API group': check 'kubectl get apiservices shows AVAILABLE False'; fix 'repair or delete the APIService and the namespace finishes deleting'. Text at least 24px.",
+  "anchor": "### Finalizers",
+  "alt": "A two-branch tree for diagnosing a namespace stuck in Terminating.",
+  "cap": "A stuck namespace is blocked either by a resource finalizer or by an unavailable aggregated API."
+ }
+]

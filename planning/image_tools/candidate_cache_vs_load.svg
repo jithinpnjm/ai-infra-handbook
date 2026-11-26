@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Cache affinity is an optimisation that health and load may override</title>
+  <desc>Cache affinity is an optimisation that health and load may override</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Cache affinity is an optimisation</tspan>
+    <tspan x="800" dy="54">that health and load may override</tspan>
+  </text>
+
+  <!-- ==================== TWO ROUTERS SIDE BY SIDE ==================== -->
+
+  <!-- Left Router Panel -->
+  <g id="router-left">
+    <rect x="50" y="150" width="730" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Router Icon (56px, green stroke 4) -->
+    <g transform="translate(75, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="14" width="48" height="28" rx="6"/>
+      <circle cx="16" cy="28" r="3" fill="#207448"/>
+      <circle cx="28" cy="28" r="3" fill="#207448"/>
+      <circle cx="40" cy="28" r="3" fill="#207448"/>
+      <line x1="16" y1="6" x2="16" y2="14"/>
+      <line x1="40" y1="6" x2="40" y2="14"/>
+      <line x1="28" y1="42" x2="28" y2="50"/>
+    </g>
+    <!-- Left Router Text (24px) -->
+    <text x="155" y="195" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="155" dy="0" font-weight="bold" fill="#207448">greedy for cache hits:</tspan>
+      <tspan x="155" dy="34">highest hit rate but 3.8 times</tspan>
+      <tspan x="155" dy="34">the mean load on one replica</tspan>
+      <tspan x="155" dy="34">(chapter 20.13 simulation)</tspan>
+    </text>
+  </g>
+
+  <!-- Right Router Panel (single orange highlight on key bounded rule) -->
+  <g id="router-right">
+    <rect x="820" y="150" width="730" height="210" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <!-- Router Icon (56px, green stroke 4) -->
+    <g transform="translate(845, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="14" width="48" height="28" rx="6"/>
+      <circle cx="16" cy="28" r="3" fill="#207448"/>
+      <circle cx="28" cy="28" r="3" fill="#207448"/>
+      <circle cx="40" cy="28" r="3" fill="#207448"/>
+      <line x1="16" y1="6" x2="16" y2="14"/>
+      <line x1="40" y1="6" x2="40" y2="14"/>
+      <line x1="28" y1="42" x2="28" y2="50"/>
+    </g>
+    <!-- Right Router Text (24px) -->
+    <text x="925" y="195" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="925" dy="0" font-weight="bold" fill="#207448">bounded rule: follow the cache</tspan>
+      <tspan x="925" dy="34">unless that replica is much</tspan>
+      <tspan x="925" dy="34">busier than the idlest:</tspan>
+      <tspan x="925" dy="34" font-weight="bold">lowest p99</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== THREE OVERRIDE RULES ==================== -->
+
+  <!-- Override Rule 1 -->
+  <g id="override-rule-1">
+    <rect x="50" y="395" width="1500" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Retry Icon (56px, green stroke 4) -->
+    <g transform="translate(75, 415)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 46 22 A 18 18 0 1 0 44 36"/>
+      <polyline points="46,12 46,22 36,22"/>
+    </g>
+    <!-- Override 1 Text (24px) -->
+    <text x="155" y="435" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="155" dy="0" font-weight="bold">A retry does not follow the cache: the first replica is probably the sick one,</tspan>
+      <tspan x="155" dy="34">so retry on the best healthy replica and accept a cache miss</tspan>
+      <tspan x="155" dy="34">(Envoy has a retry host predicate for the same reason)</tspan>
+    </text>
+  </g>
+
+  <!-- Override Rule 2 -->
+  <g id="override-rule-2">
+    <rect x="50" y="550" width="1500" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Eject Icon (56px, green stroke 4) -->
+    <g transform="translate(75, 575)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,12 12,32 44,32"/>
+      <line x1="12" y1="42" x2="44" y2="42"/>
+    </g>
+    <!-- Override 2 Text (24px) -->
+    <text x="155" y="593" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="155" dy="0" font-weight="bold">A cache holder that is ejected, draining</tspan>
+      <tspan x="155" dy="34">or over its bound loses its affinity at once</tspan>
+    </text>
+  </g>
+
+  <!-- Override Rule 3 -->
+  <g id="override-rule-3">
+    <rect x="50" y="675" width="1500" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Guess / Compass Icon (56px, green stroke 4) -->
+    <g transform="translate(75, 700)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="20"/>
+      <polygon points="28,14 34,28 28,42 22,28" fill="#e8f1ea"/>
+      <circle cx="28" cy="28" r="3" fill="#207448"/>
+    </g>
+    <!-- Override 3 Text (24px) -->
+    <text x="155" y="718" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="155" dy="0" font-weight="bold">The router's cache map is a guess; a wrong guess</tspan>
+      <tspan x="155" dy="34">costs a miss, so never make correctness depend on it</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== TEST QUESTION & VENDOR NOTE ==================== -->
+
+  <!-- Test Question Panel -->
+  <g id="test-question-panel">
+    <rect x="50" y="815" width="980" height="245" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Question Icon (56px, green stroke 4) -->
+    <g transform="translate(75, 840)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <path d="M 22 20 A 7 7 0 0 1 34 24 C 34 29 28 30 28 35"/>
+      <circle cx="28" cy="43" r="1.5" fill="#207448"/>
+    </g>
+    <!-- Test Question Text (24px) -->
+    <text x="155" y="858" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="155" dy="0" font-weight="bold">what does the router do when its favourite replica</tspan>
+      <tspan x="155" dy="34">is sick at the exact moment a popular prefix</tspan>
+      <tspan x="155" dy="34">arrives? still sends there means the cache rule</tspan>
+      <tspan x="155" dy="34">overruled health; sends to a healthy replica and</tspan>
+      <tspan x="155" dy="34">accepts the miss is the right priority</tspan>
+    </text>
+  </g>
+
+  <!-- Vendor Note Panel -->
+  <g id="vendor-note-panel">
+    <rect x="1070" y="815" width="480" height="245" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Chart / Note Icon (56px, green stroke 4) -->
+    <g transform="translate(1095, 840)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="42" rx="4"/>
+      <line x1="16" y1="40" x2="16" y2="30"/>
+      <line x1="28" y1="40" x2="28" y2="22"/>
+      <line x1="40" y1="40" x2="40" y2="14"/>
+    </g>
+    <!-- Vendor Note Text (24px) -->
+    <text x="1175" y="872" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1175" dy="0" font-weight="bold">case study reports hit</tspan>
+      <tspan x="1175" dy="34">rate rising from about 5</tspan>
+      <tspan x="1175" dy="34">to 30 and then 50 or 60</tspan>
+      <tspan x="1175" dy="34">percent [vendor]</tspan>
+    </text>
+  </g>
+
+</svg>

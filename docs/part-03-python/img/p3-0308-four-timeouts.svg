@@ -1,0 +1,155 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Four timeouts, four different waits</title>
+  <desc>Visual breakdown of HTTP client timeouts across pool, connect, write, and read stages with operational rules and failure modes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 8 L 0 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="72" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four timeouts, four different waits</text>
+
+  
+  <rect x="40" y="100" width="1520" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(64, 128)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M14 20 L24 28 L14 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="28" y1="36" x2="42" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="144" y="132" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="144" dy="0">A timeline of one request through</tspan>
+    <tspan x="144" dy="34" font-family="monospace">httpx.Client(base_url, timeout=httpx.Timeout(connect=3, read=15, write=15, pool=5),</tspan>
+    <tspan x="144" dy="32" font-family="monospace">limits=httpx.Limits(max_connections=20), verify=/etc/ssl/corp-ca.pem)</tspan>
+  </text>
+
+  
+  <rect x="40" y="235" width="340" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="78" cy="272" r="22" fill="#207448"/>
+  <text x="78" y="280" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(290, 248)">
+    <circle cx="12" cy="12" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="32" cy="12" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="22" cy="32" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M12 19 L22 25 M32 19 L22 25" fill="none" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="210" y="328" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">pool: 5 s</text>
+  <text x="210" y="368" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="210" dy="0">to get a free</tspan>
+    <tspan x="210" dy="32">connection from the</tspan>
+    <tspan x="210" dy="32">pool of at most 20</tspan>
+  </text>
+
+  
+  <line x1="380" y1="357" x2="430" y2="357" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="433" y="235" width="340" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="471" cy="272" r="22" fill="#207448"/>
+  <text x="471" y="280" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(685, 252)">
+    <path d="M8 20 L20 20 M32 20 L44 20" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="20" cy="20" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="32" cy="20" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="4" y="6" width="44" height="28" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="603" y="328" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">connect: 3 s</text>
+  <text x="603" y="384" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">for the handshake</text>
+
+  
+  <line x1="773" y1="357" x2="824" y2="357" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="827" y="235" width="340" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="865" cy="272" r="22" fill="#207448"/>
+  <text x="865" y="280" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(1080, 252)">
+    <rect x="4" y="6" width="44" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M14 20 L36 20 M28 14 L36 20 L28 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="997" y="328" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">write: 15 s</text>
+  <text x="997" y="384" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">to send the payload</text>
+
+  
+  <line x1="1167" y1="357" x2="1217" y2="357" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1220" y="235" width="340" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1258" cy="272" r="22" fill="#207448"/>
+  <text x="1258" y="280" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(1480, 252)">
+    <circle cx="20" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="20,10 20,20 28,20" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="1390" y="328" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">read: 15 s</text>
+  <text x="1390" y="372" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1390" dy="0">waiting for the</tspan>
+    <tspan x="1390" dy="32">response</tspan>
+  </text>
+
+  
+  <rect x="40" y="500" width="1520" height="66" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="2"/>
+  
+  <g transform="translate(68, 513)">
+    <polygon points="20,3 2,37 38,37" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="20" y1="15" x2="20" y2="25" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="20" cy="31" r="2" fill="#db8129"/>
+  </g>
+  <text x="144" y="542" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">a bare requests.get(url) has no timeout and can hang forever</text>
+
+  
+  <rect x="40" y="586" width="1520" height="184" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(64, 608)">
+    <path d="M28 4 C28 4 50 2 50 20 C50 40 28 52 28 52 C28 52 6 40 6 20 C6 2 28 4 28 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <polyline points="18,24 25,31 38,18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="144" y="626" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="144" dy="0">create one client and reuse it so connections are pooled and kept alive;</tspan>
+    <tspan x="144" dy="36">always set all four timeouts;</tspan>
+    <tspan x="144" dy="36">pin the CA bundle when your organisation runs private PKI;</tspan>
+    <tspan x="144" dy="36">put a version in User-Agent, for example fleetctl/1.4, so the server team can debug requests</tspan>
+  </text>
+
+  
+  <rect x="40" y="790" width="1520" height="116" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(64, 820)">
+    <rect x="3" y="2" width="50" height="13" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="3" y="21" width="50" height="13" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="3" y="40" width="50" height="13" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+  </g>
+  <text x="144" y="838" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="144" dy="0">requests: everywhere, fine for synchronous scripts; httpx: sync and async APIs, HTTP/2;</tspan>
+    <tspan x="144" dy="38">aiohttp: high-concurrency async clients</tspan>
+  </text>
+
+  
+  <rect x="40" y="926" width="1520" height="134" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(64, 962)">
+    <polygon points="16,3 40,3 53,16 53,40 40,53 16,53 3,40 3,16" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M30 14 L20 30 L32 30 L26 44" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="144" y="966" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="144" dy="0">DNS can break, connection refused, TLS handshake can fail,</tspan>
+    <tspan x="144" dy="36">server times out or answers 429 or 503, a response can arrive partly,</tspan>
+    <tspan x="144" dy="36">pagination can stop early</tspan>
+  </text>
+
+  
+  <rect x="40" y="1080" width="1520" height="60" rx="10" fill="#207448"/>
+  <text x="800" y="1119" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Handle these once in the client library so every tool inherits the protection</text>
+</svg>

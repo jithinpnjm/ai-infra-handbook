@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+  <title>End-to-end latency depends on how much the user asked for</title>
+  <desc>Visual breakdown showing how generation length impacts end-to-end latency, comparing 500-token and 20-token responses, the flaw of a static 10-second SLA, recommended fixes, and the vLLM metrics trap.</desc>
+
+  
+  <rect width="1600" height="1170" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">End-to-end latency depends on how much the user asked for</text>
+
+  
+  <g transform="translate(50, 105)">
+    <rect width="1500" height="115" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 28)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8"/>
+      <path d="M14 20 h28 M14 36 h28 M28 12 v8 M28 36 v8"/>
+    </g>
+    <text x="105" y="48" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">end-to-end latency = TTFT + inter-token latency x (N - 1), N = tokens generated;</text>
+    <text x="105" y="86" font-family="sans-serif" font-size="24" fill="#303a36">TTFT maps to prefill, inter-token latency maps to decode</text>
+  </g>
+
+  
+  <g transform="translate(50, 245)">
+    <rect width="1500" height="235" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="26"/>
+      <polyline points="28,12 28,28 40,28"/>
+    </g>
+    <text x="105" y="46" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Two worked rows with TTFT 0.4 s and inter-token latency 0.04 s</text>
+
+    
+    <g transform="translate(24, 75)">
+      <rect width="1452" height="65" rx="8" fill="#e8f1ea"/>
+      <text x="24" y="42" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Row A</text>
+      <text x="140" y="42" font-family="monospace" font-size="26" fill="#303a36">500-token reply: 0.4 + 0.04 x 499 = 20.36 s</text>
+    </g>
+
+    
+    <g transform="translate(24, 150)">
+      <rect width="1452" height="65" rx="8" fill="#e8f1ea"/>
+      <text x="24" y="42" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Row B</text>
+      <text x="140" y="42" font-family="monospace" font-size="26" fill="#303a36">20-token reply: 0.4 + 0.04 x 19 = 1.16 s</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 505)">
+    <rect width="1500" height="135" rx="14" fill="#fdf8f3" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(24, 38)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 4 L52 14 v20 c0 16 -12 26 -24 30 C16 60 4 50 4 34 V14 Z"/>
+      <line x1="28" y1="20" x2="28" y2="34"/>
+      <circle cx="28" cy="44" r="2" fill="#db8129"/>
+    </g>
+    <text x="105" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Verdict</text>
+    <text x="105" y="84" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">a single end-to-end limit of 10 s would call row A bad although the system is healthy;</tspan>
+      <tspan x="105" dy="32">the reply is long because the customer asked for a long reply</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 665)">
+    
+    <g transform="translate(0, 0)">
+      <rect width="735" height="175" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(24, 30)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="8" y1="14" x2="48" y2="14"/>
+        <circle cx="20" cy="14" r="6" fill="#e8f1ea"/>
+        <line x1="8" y1="42" x2="48" y2="42"/>
+        <circle cx="36" cy="42" r="6" fill="#e8f1ea"/>
+      </g>
+      <text x="100" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix 1</text>
+      <text x="100" y="98" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="100" dy="0">judge TTFT and per-token speed</tspan>
+        <tspan x="100" dy="34">separately</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(765, 0)">
+      <rect width="735" height="175" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(24, 30)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="10" rx="3"/>
+        <rect x="6" y="24" width="44" height="10" rx="3"/>
+        <rect x="6" y="40" width="44" height="10" rx="3"/>
+      </g>
+      <text x="100" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fix 2</text>
+      <text x="100" y="98" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="100" dy="0">bucket end-to-end latency by output length</tspan>
+        <tspan x="100" dy="34">class with a different limit per class</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 865)">
+    <rect width="1500" height="260" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 30)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,6 52,50 4,50"/>
+      <line x1="28" y1="22" x2="28" y2="34"/>
+      <circle cx="28" cy="42" r="2" fill="#207448"/>
+    </g>
+    <text x="105" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Trap</text>
+    
+    <text x="105" y="100" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      vLLM time per output token = (end-to-end - TTFT) / (output tokens - 1),
+    </text>
+    <text x="105" y="142" font-family="sans-serif" font-size="24" fill="#303a36">
+      recorded as zero when a request makes one token or fewer;
+    </text>
+    <text x="105" y="184" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="105" dy="0">short replies look fast on the chart because they are recorded as zero,</tspan>
+      <tspan x="105" dy="34">not because they are fast</tspan>
+    </text>
+  </g>
+</svg>

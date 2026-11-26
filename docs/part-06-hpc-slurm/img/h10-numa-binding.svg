@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="970" viewBox="0 0 1600 970" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <title>GPU and CPU binding on a two-socket node</title>
+  <desc>One wide two-socket node with Socket 0, NUMA 0 holding Cores=0-31 and GPU 0 to GPU 3, and Socket 1, NUMA 1 holding Cores=32-63 and GPU 4 to GPU 7. Below it, three binding option cards, a note, and a takeaway bar.</desc>
+
+  <defs>
+    <g id="cpuIcon" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="13" y="13" width="30" height="30" rx="4"/>
+      <rect x="23" y="23" width="10" height="10" rx="2"/>
+      <path d="M21 13V6M28 13V6M35 13V6M21 43v7M28 43v7M35 43v7M13 21H6M13 28H6M13 35H6M43 21h7M43 28h7M43 35h7"/>
+    </g>
+    <g id="gpuIcon" fill="none" stroke="#207448" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="16" width="48" height="26" rx="4"/>
+      <circle cx="20" cy="29" r="7"/>
+      <path d="M35 24h10M35 29h10M35 34h10"/>
+    </g>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="970" fill="#f5f8f5"/>
+
+  <text x="800" y="78" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">GPU and CPU binding on a two-socket node</text>
+
+  <rect x="60" y="110" width="1480" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  <rect x="90" y="145" width="690" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#cpuIcon" transform="translate(115,168)"/>
+  <text x="190" y="201" font-size="30" font-weight="700" fill="#303a36">Socket 0, NUMA 0</text>
+  <text x="190" y="241" font-size="26" fill="#207448" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace">Cores=0-31</text>
+
+  <rect x="115" y="255" width="148" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <use href="#gpuIcon" transform="translate(170,274) scale(0.68)"/>
+  <text x="189" y="339" text-anchor="middle" font-size="26" font-weight="700" fill="#303a36">GPU 0</text>
+
+  <rect x="279" y="255" width="148" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <use href="#gpuIcon" transform="translate(334,274) scale(0.68)"/>
+  <text x="353" y="339" text-anchor="middle" font-size="26" font-weight="700" fill="#303a36">GPU 1</text>
+
+  <rect x="443" y="255" width="148" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <use href="#gpuIcon" transform="translate(498,274) scale(0.68)"/>
+  <text x="517" y="339" text-anchor="middle" font-size="26" font-weight="700" fill="#303a36">GPU 2</text>
+
+  <rect x="607" y="255" width="148" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <use href="#gpuIcon" transform="translate(662,274) scale(0.68)"/>
+  <text x="681" y="339" text-anchor="middle" font-size="26" font-weight="700" fill="#303a36">GPU 3</text>
+
+  <rect x="820" y="145" width="690" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#cpuIcon" transform="translate(845,168)"/>
+  <text x="920" y="201" font-size="30" font-weight="700" fill="#303a36">Socket 1, NUMA 1</text>
+  <text x="920" y="241" font-size="26" fill="#207448" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace">Cores=32-63</text>
+
+  <rect x="845" y="255" width="148" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <use href="#gpuIcon" transform="translate(900,274) scale(0.68)"/>
+  <text x="919" y="339" text-anchor="middle" font-size="26" font-weight="700" fill="#303a36">GPU 4</text>
+
+  <rect x="1009" y="255" width="148" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <use href="#gpuIcon" transform="translate(1064,274) scale(0.68)"/>
+  <text x="1083" y="339" text-anchor="middle" font-size="26" font-weight="700" fill="#303a36">GPU 5</text>
+
+  <rect x="1173" y="255" width="148" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <use href="#gpuIcon" transform="translate(1228,274) scale(0.68)"/>
+  <text x="1247" y="339" text-anchor="middle" font-size="26" font-weight="700" fill="#303a36">GPU 6</text>
+
+  <rect x="1337" y="255" width="148" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <use href="#gpuIcon" transform="translate(1392,274) scale(0.68)"/>
+  <text x="1411" y="339" text-anchor="middle" font-size="26" font-weight="700" fill="#303a36">GPU 7</text>
+
+  <path d="M296 466V402" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="7 5"/>
+  <polygon points="296,390 289,403 303,403" fill="#207448"/>
+
+  <rect x="64" y="470" width="464" height="300" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <circle cx="112" cy="514" r="17"/>
+    <circle cx="112" cy="514" r="7"/>
+    <path d="M112 497v-6M112 531v6M95 514h-6M129 514h6"/>
+  </g>
+  <text x="88" y="570" font-size="30" font-weight="700" fill="#207448" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace">--gpu-bind=closest</text>
+  <text x="88" y="646" font-size="24" fill="#303a36">
+    <tspan x="88" dy="0">each task is bound to the</tspan>
+    <tspan x="88" dy="32">nearest GPU, with CPUs from</tspan>
+    <tspan x="88" dy="32">the same NUMA node.</tspan>
+  </text>
+
+  <rect x="568" y="470" width="464" height="300" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="602" y="510" width="28" height="22" rx="4"/>
+    <path d="M607 510v-7a9 9 0 0 1 18 0v7"/>
+    <circle cx="616" cy="521" r="2.5" fill="#207448"/>
+  </g>
+  <text x="592" y="570" font-size="30" font-weight="700" fill="#207448" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace">
+    <tspan x="592" dy="0">--gres-flags=</tspan>
+    <tspan x="592" dy="36">enforce-binding</tspan>
+  </text>
+  <text x="592" y="646" font-size="24" fill="#303a36">
+    <tspan x="592" dy="0">CPUs come only from the</tspan>
+    <tspan x="592" dy="32">cores bound to the job's</tspan>
+    <tspan x="592" dy="32">GPUs, and the job may</tspan>
+    <tspan x="592" dy="32">wait longer.</tspan>
+  </text>
+
+  <rect x="1072" y="470" width="464" height="300" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1106" y="512" width="28" height="24" rx="4"/>
+    <path d="M1111 512v-8a9 9 0 0 1 18 0v8"/>
+    <circle cx="1120" cy="524" r="2.5" fill="#207448"/>
+    <path d="M1101 542 1139 498"/>
+  </g>
+  <text x="1096" y="570" font-size="30" font-weight="700" fill="#207448" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace">
+    <tspan x="1096" dy="0">--gres-flags=</tspan>
+    <tspan x="1096" dy="36">disable-binding</tspan>
+  </text>
+  <text x="1096" y="646" font-size="24" fill="#303a36">
+    <tspan x="1096" dy="0">any core on the node can be</tspan>
+    <tspan x="1096" dy="32">used, for a job that wants</tspan>
+    <tspan x="1096" dy="32">more CPUs than its GPUs</tspan>
+    <tspan x="1096" dy="32">have bound to them.</tspan>
+  </text>
+
+  <text x="800" y="816" text-anchor="middle" font-size="26" fill="#303a36"><tspan>check the layout with </tspan><tspan fill="#207448" font-family="DejaVu Sans Mono, Menlo, Consolas, monospace">nvidia-smi topo -m</tspan></text>
+
+  <rect x="60" y="850" width="1480" height="80" rx="12" fill="#207448"/>
+  <text x="800" y="899" text-anchor="middle" font-size="28" font-weight="600" fill="#ffffff">Bind when ranks need their GPUs close to their CPUs, and confirm the layout first.</text>
+</svg>

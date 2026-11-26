@@ -1,185 +1,202 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
   <title>Multipath: one LUN, several paths</title>
-  <desc>SVG infographic explaining SAN multipath I/O architecture with one LUN, four component paths, multipathd, LVM, and filesystem layers.</desc>
+  <desc>Infographic explaining multipath storage with one SAN LUN, four component paths sdb, sdc, sdd, sde, and one multipath device with LVM and filesystem on top.</desc>
 
   <defs>
-    <marker id="green-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
     </marker>
-    <marker id="orange-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="16" markerHeight="16" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129"/>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
     </marker>
   </defs>
 
   
-  <rect width="1600" height="1060" fill="#f5f8f5"/>
+  <rect width="1600" height="1100" fill="#f5f8f5" />
 
   
-  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Multipath: one LUN, several paths</text>
+  <text x="70" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Multipath: one LUN, several paths</text>
 
   
-  <rect x="60" y="120" width="370" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
   
-  <rect x="85" y="150" width="320" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="70" y="140" width="420" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
   
-  <g transform="translate(217, 175)" stroke="#207448" stroke-width="4" fill="none">
-    <ellipse cx="28" cy="14" rx="26" ry="10"/>
-    <path d="M 2 14 V 46 C 2 52, 54 52, 54 46 V 14"/>
-    <path d="M 2 30 C 2 36, 54 36, 54 30"/>
+  
+  <g transform="translate(115, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+    <ellipse cx="28" cy="14" rx="26" ry="10" />
+    <path d="M 2 14 v 24 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10 v -24" />
+    <path d="M 2 38 v 24 c 0 5.5 11.6 10 26 10 s 26 -4.5 26 -10 v -24" />
   </g>
-  <text x="245" y="295" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">a SAN LUN</text>
+  <text x="315" y="226" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">a SAN LUN</text>
 
   
-  <line x1="245" y1="350" x2="245" y2="400" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+  <path d="M 280 290 L 280 326" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
 
   
-  <rect x="85" y="405" width="320" height="265" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <rect x="70" y="330" width="420" height="360" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
   
-  <g transform="translate(217, 430)" stroke="#207448" stroke-width="4" fill="none">
-    <rect x="2" y="8" width="52" height="40" rx="6"/>
-    <line x1="14" y1="20" x2="42" y2="36"/>
-    <line x1="14" y1="36" x2="42" y2="20"/>
-    <circle cx="14" cy="20" r="3" fill="#207448"/>
-    <circle cx="42" cy="20" r="3" fill="#207448"/>
-    <circle cx="14" cy="36" r="3" fill="#207448"/>
-    <circle cx="42" cy="36" r="3" fill="#207448"/>
+  
+  <g transform="translate(252, 360)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="8" width="56" height="40" rx="6" />
+    <line x1="14" y1="28" x2="42" y2="28" />
+    <line x1="28" y1="18" x2="28" y2="38" />
+    <circle cx="14" cy="28" r="3" fill="#207448" />
+    <circle cx="42" cy="28" r="3" fill="#207448" />
+    <circle cx="28" cy="18" r="3" fill="#207448" />
+    <circle cx="28" cy="38" r="3" fill="#207448" />
   </g>
-  <text x="245" y="535" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
-    <tspan x="245" dy="0">Two HBAs and</tspan>
-    <tspan x="245" dy="34">two switches giving</tspan>
-    <tspan x="245" dy="34">four paths</tspan>
+
+  <text x="280" y="465" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="280" dy="0">Two HBAs and two switches</tspan>
+    <tspan x="280" dy="36">giving four paths</tspan>
   </text>
 
   
-  <line x1="405" y1="540" x2="480" y2="540" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
+  <circle cx="490" cy="345" r="5" fill="#207448" />
+  <circle cx="490" cy="435" r="5" fill="#207448" />
+  <circle cx="490" cy="525" r="5" fill="#207448" />
+  <circle cx="490" cy="615" r="5" fill="#207448" />
 
   
-  <rect x="490" y="120" width="480" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-  <text x="730" y="165" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OS sees four block devices</text>
+  
+  <rect x="550" y="140" width="460" height="550" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  
+  <g transform="translate(585, 168)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="48" height="38" rx="6" />
+    <line x1="10" y1="12" x2="20" y2="12" />
+    <line x1="10" y1="22" x2="16" y2="22" />
+    <circle cx="38" cy="12" r="2.5" fill="#207448" />
+    <circle cx="38" cy="22" r="2.5" fill="#207448" />
+  </g>
+
+  <text x="790" y="186" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="790" dy="0">OS sees four</tspan>
+    <tspan x="790" dy="36">block devices</tspan>
+  </text>
 
   
-  <rect x="515" y="195" width="430" height="480" rx="12" fill="#eceeed" stroke="#8a9590" stroke-width="3"/>
-  <text x="730" y="235" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#55605b">component paths</text>
+  <text x="780" y="278" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#64748b">component paths</text>
 
   
-  <g transform="translate(540, 255)">
-    <rect x="0" y="0" width="380" height="85" rx="8" fill="#ffffff" stroke="#8a9590" stroke-width="2"/>
-    <g transform="translate(30, 20)" stroke="#737e79" stroke-width="3" fill="none">
-      <ellipse cx="20" cy="10" rx="18" ry="7"/>
-      <path d="M 2 10 V 34 C 2 39, 38 39, 38 34 V 10"/>
-      <path d="M 2 22 C 2 27, 38 27, 38 22"/>
-    </g>
-    <text x="140" y="54" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">sdb</text>
+  <rect x="590" y="315" width="380" height="62" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="3" />
+  <g transform="translate(615, 328)" stroke="#94a3b8" stroke-width="3" fill="none">
+    <ellipse cx="14" cy="9" rx="12" ry="5" />
+    <path d="M 2 9 v 16 c 0 3 5.4 5 12 5 s 12 -2 12 -5 v -16" />
+  </g>
+  <text x="780" y="356" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">sdb</text>
+
+  
+  <rect x="590" y="405" width="380" height="62" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="3" />
+  <g transform="translate(615, 418)" stroke="#94a3b8" stroke-width="3" fill="none">
+    <ellipse cx="14" cy="9" rx="12" ry="5" />
+    <path d="M 2 9 v 16 c 0 3 5.4 5 12 5 s 12 -2 12 -5 v -16" />
+  </g>
+  <text x="780" y="446" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">sdc</text>
+
+  
+  <rect x="590" y="495" width="380" height="62" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="3" />
+  <g transform="translate(615, 508)" stroke="#94a3b8" stroke-width="3" fill="none">
+    <ellipse cx="14" cy="9" rx="12" ry="5" />
+    <path d="M 2 9 v 16 c 0 3 5.4 5 12 5 s 12 -2 12 -5 v -16" />
+  </g>
+  <text x="780" y="536" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">sdd</text>
+
+  
+  <rect x="590" y="585" width="380" height="62" rx="10" fill="#ffffff" stroke="#94a3b8" stroke-width="3" />
+  <g transform="translate(615, 598)" stroke="#94a3b8" stroke-width="3" fill="none">
+    <ellipse cx="14" cy="9" rx="12" ry="5" />
+    <path d="M 2 9 v 16 c 0 3 5.4 5 12 5 s 12 -2 12 -5 v -16" />
+  </g>
+  <text x="780" y="626" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">sde</text>
+
+  
+  <path d="M 490 345 L 586 345" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 490 435 L 586 435" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 490 525 L 586 525" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 490 615 L 586 615" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="1070" y="140" width="460" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(1115, 168)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 4 8 L 20 8 L 26 16 L 48 16 A 4 4 0 0 1 52 20 L 52 42 A 4 4 0 0 1 48 46 L 4 46 A 4 4 0 0 1 0 42 L 0 12 A 4 4 0 0 1 4 8 Z" />
+  </g>
+  <text x="1330" y="202" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">filesystem</text>
+
+  
+  <rect x="1070" y="285" width="460" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(1115, 312)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="6" width="48" height="12" rx="3" />
+    <rect x="2" y="22" width="48" height="12" rx="3" />
+    <rect x="2" y="38" width="48" height="12" rx="3" />
+  </g>
+  <text x="1330" y="347" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">LVM</text>
+
+  
+  <rect x="1070" y="430" width="460" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+  
+  
+  <g transform="translate(1272, 455)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 50 14 L 50 32 C 50 44 28 54 28 54 C 28 54 6 44 6 32 L 6 14 Z" />
+    <line x1="28" y1="18" x2="28" y2="40" />
+    <line x1="17" y1="29" x2="39" y2="29" />
+  </g>
+
+  <text x="1300" y="565" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan x="1300" dy="0">one device</tspan>
+    <tspan x="1300" dy="38">built by multipathd</tspan>
+  </text>
+
+  
+  <path d="M 1300 430 L 1300 395" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <path d="M 1300 285 L 1300 250" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  
+  <path d="M 970 345 L 1025 345" fill="none" stroke="#94a3b8" stroke-width="3" />
+  <path d="M 970 435 L 1025 435" fill="none" stroke="#94a3b8" stroke-width="3" />
+  <path d="M 970 525 L 1025 525" fill="none" stroke="#94a3b8" stroke-width="3" />
+  <path d="M 970 615 L 1025 615" fill="none" stroke="#94a3b8" stroke-width="3" />
+
+  
+  <path d="M 1025 345 L 1025 615" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+
+  
+  <path d="M 1025 560 L 1064 560" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  
+  <rect x="70" y="730" width="420" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  
+  <g transform="translate(254, 765)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="52" height="40" rx="6" />
+    <path d="M 12 14 L 22 20 L 12 26" />
+    <line x1="26" y1="26" x2="38" y2="26" />
   </g>
 
   
-  <g transform="translate(540, 355)">
-    <rect x="0" y="0" width="380" height="85" rx="8" fill="#ffffff" stroke="#8a9590" stroke-width="2"/>
-    <g transform="translate(30, 20)" stroke="#737e79" stroke-width="3" fill="none">
-      <ellipse cx="20" cy="10" rx="18" ry="7"/>
-      <path d="M 2 10 V 34 C 2 39, 38 39, 38 34 V 10"/>
-      <path d="M 2 22 C 2 27, 38 27, 38 22"/>
-    </g>
-    <text x="140" y="54" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">sdc</text>
-  </g>
+  <rect x="105" y="855" width="350" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="280" y="899" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#207448">multipath -ll</text>
 
   
-  <g transform="translate(540, 455)">
-    <rect x="0" y="0" width="380" height="85" rx="8" fill="#ffffff" stroke="#8a9590" stroke-width="2"/>
-    <g transform="translate(30, 20)" stroke="#737e79" stroke-width="3" fill="none">
-      <ellipse cx="20" cy="10" rx="18" ry="7"/>
-      <path d="M 2 10 V 34 C 2 39, 38 39, 38 34 V 10"/>
-      <path d="M 2 22 C 2 27, 38 27, 38 22"/>
-    </g>
-    <text x="140" y="54" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">sdd</text>
-  </g>
+  <rect x="520" y="730" width="1010" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
 
   
-  <g transform="translate(540, 555)">
-    <rect x="0" y="0" width="380" height="85" rx="8" fill="#ffffff" stroke="#8a9590" stroke-width="2"/>
-    <g transform="translate(30, 20)" stroke="#737e79" stroke-width="3" fill="none">
-      <ellipse cx="20" cy="10" rx="18" ry="7"/>
-      <path d="M 2 10 V 34 C 2 39, 38 39, 38 34 V 10"/>
-      <path d="M 2 22 C 2 27, 38 27, 38 22"/>
-    </g>
-    <text x="140" y="54" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">sde</text>
-  </g>
+  <circle cx="560" cy="778" r="7" fill="#207448" />
+  <text x="585" y="785" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="585" dy="0">build filesystems and LVM on the multipath device,</tspan>
+    <tspan x="585" dy="32">never on a component path</tspan>
+  </text>
 
   
-  <line x1="945" y1="550" x2="1025" y2="550" stroke="#db8129" stroke-width="6" marker-end="url(#orange-arrow)"/>
+  <circle cx="560" cy="876" r="7" fill="#207448" />
+  <text x="585" y="883" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">exclude paths in the LVM filter</text>
 
   
-  <rect x="1040" y="120" width="500" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
-
-  
-  <g transform="translate(1070, 150)">
-    <rect x="0" y="0" width="440" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    
-    <g transform="translate(30, 27)" stroke="#207448" stroke-width="4" fill="none">
-      <path d="M 4 12 L 20 12 L 28 20 L 52 20 A 4 4 0 0 1 56 24 L 56 46 A 4 4 0 0 1 52 50 L 4 50 A 4 4 0 0 1 0 46 L 0 16 A 4 4 0 0 1 4 12 Z"/>
-      <line x1="14" y1="35" x2="42" y2="35"/>
-    </g>
-    <text x="110" y="67" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">filesystem</text>
-  </g>
-
-  
-  <line x1="1290" y1="300" x2="1290" y2="265" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
-
-  
-  <g transform="translate(1070, 305)">
-    <rect x="0" y="0" width="440" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
-    
-    <g transform="translate(30, 27)" stroke="#207448" stroke-width="4" fill="none">
-      <rect x="2" y="6" width="52" height="12" rx="3"/>
-      <rect x="2" y="22" width="52" height="12" rx="3"/>
-      <rect x="2" y="38" width="52" height="12" rx="3"/>
-    </g>
-    <text x="110" y="67" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">LVM</text>
-  </g>
-
-  
-  <line x1="1290" y1="445" x2="1290" y2="420" stroke="#207448" stroke-width="4" marker-end="url(#green-arrow)"/>
-
-  
-  <g transform="translate(1070, 450)">
-    <rect x="0" y="0" width="440" height="225" rx="12" fill="#d8eadc" stroke="#207448" stroke-width="4"/>
-    
-    <g transform="translate(25, 30)" stroke="#207448" stroke-width="4" fill="none">
-      <circle cx="28" cy="28" r="16"/>
-      <path d="M 28 4 V 12 M 28 44 V 52 M 4 28 H 12 M 44 28 H 52 M 11 11 L 17 17 M 39 39 L 45 45 M 11 45 L 17 39 M 39 17 L 45 11"/>
-    </g>
-    <text x="95" y="55" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
-      <tspan x="95" dy="0">one device built</tspan>
-      <tspan x="95" dy="34">by multipathd</tspan>
-    </text>
-
-    
-    <rect x="25" y="140" width="390" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
-    <text x="220" y="182" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">multipath -ll</text>
-  </g>
-
-  
-  <rect x="60" y="740" width="1480" height="270" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
-
-  
-  <g transform="translate(100, 795)">
-    <circle cx="15" cy="0" r="14" fill="#207448"/>
-    <path d="M 9 -1 L 13 4 L 21 -4" stroke="#ffffff" stroke-width="3" fill="none"/>
-    <text x="45" y="9" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">build filesystems and LVM on the multipath device, never on a component path</text>
-  </g>
-
-  
-  <g transform="translate(100, 870)">
-    <circle cx="15" cy="0" r="14" fill="#207448"/>
-    <path d="M 9 -1 L 13 4 L 21 -4" stroke="#ffffff" stroke-width="3" fill="none"/>
-    <text x="45" y="9" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">exclude paths in the LVM filter</text>
-  </g>
-
-  
-  <g transform="translate(100, 945)">
-    <circle cx="15" cy="0" r="14" fill="#207448"/>
-    <path d="M 9 -1 L 13 4 L 21 -4" stroke="#ffffff" stroke-width="3" fill="none"/>
-    <text x="45" y="9" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">blacklist local disks and virtio disks</text>
-  </g>
+  <circle cx="560" cy="948" r="7" fill="#207448" />
+  <text x="585" y="955" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">blacklist local disks and virtio disks</text>
 </svg>

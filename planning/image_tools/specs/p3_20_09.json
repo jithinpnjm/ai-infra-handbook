@@ -1,0 +1,82 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p3-2009-heap-topk",
+  "title": "Top k with a min-heap of size k: the root is the weakest member",
+  "spec": "Left: a stream of samples drawn as a row of small boxes 'endpoint, ms' flowing right on a belt into a decision diamond 'Is the new sample slower than the root?'. Centre: a small tree drawn as a min-heap labelled 'min-heap of size k (k = 10)' with the root box highlighted orange and labelled 'root = the fastest of the current top k, the weakest member'. Two outgoing arrows from the diamond: 'yes: heapreplace, the root leaves and the new sample enters' pointing into the heap, and 'no: ignored at once' pointing to a bin. Before the diamond a short note 'first k samples: heappush until the heap has k items'. Right: result box 'At the end the heap holds the k slowest, sort those k and print slowest first'. Bottom comparison strip: 'Cost: O(n log k) time, O(k) memory' versus 'sort everything: O(n log n) and holds everything'; footnote 'Measured, k = 10: heap 0.0045 s for 100,000 samples and 0.0185 s for 400,000; sort and slice 0.0154 s and 0.0735 s. Honest claim: the memory, not a dramatic speedup.' Item tuple note: 'tuples are (ms, endpoint) so the root is the smallest ms'.",
+  "anchor": "### 4. Heaps and top-k",
+  "alt": "A min-heap of size k holds the current top k slowest samples with the fastest of them at the root, and each new sample either replaces the root or is dropped.",
+  "cap": "The heap never holds more than k items however long the stream runs, so memory stays at O(k)."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p3-2009-monotonic-deque",
+  "title": "Sliding maximum: the deque keeps indexes of decreasing values",
+  "spec": "A horizontal strip of value boxes 'values' with a bracket 'window of k values' sliding over the last k. Under it a double-ended queue drawn as a long box labelled 'deque of indexes, values decreasing from front to back'. Three numbered operations as arrows around the deque: '1 New value arrives at the back: pop every smaller value from the back, they can never be a maximum again', '2 Append the new index at the back', '3 If the front index is at or beyond i minus k, popleft: it fell out of the window'. Output arrow from the front labelled 'the front index points at the maximum of the window; output it once i is at least k minus 1'. An orange outline on the front of the deque. Side box 'Why O(n): each index enters once and leaves once, the inner loop only removes' and 'timing, window 1,000: deque 0.0012, 0.0028, 0.0052 s for n = 10,000, 20,000, 40,000; naive 0.0567, 0.1184, 0.2495 s, about k times more'. Small people-in-a-lift-queue analogy label: 'a shorter person behind a taller newcomer is never the tallest while the newcomer stays'.",
+  "anchor": "### 2. Sliding windows: rolling error rate and the maximum in a window",
+  "alt": "A deque of indexes in decreasing value order where a new value pops all smaller values from the back, the front index leaves when it falls out of the window, and the front is the maximum.",
+  "cap": "Each index is appended once and removed once, so the work is O(n) even though there is a loop inside a loop."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p3-2009-token-bucket",
+  "title": "Token bucket: a savings account for requests",
+  "spec": "Centre: a bucket drawn with a level line, labelled 'bucket: level, capped at burst'. Top-left arrow into the bucket labelled 'refill: rate tokens per second, up to burst, computed from the elapsed time on each call'. Right arrow out of the bucket labelled 'allow(now): if level is at least cost, subtract cost and return True, else False'. Below, a small timeline in three phases: 'idle: bucket fills up to burst' then 'burst: spends the saved tokens at once, all allowed' then 'empty: only as fast as the refill rate'. A test callout: 'rate 5, burst 10, offered 100 requests a second for 60 seconds: between 300 and 310 pass'. Memory callout 'two numbers per key: level and last time'. Compare strip at bottom with the other three in one line each: 'Fixed window: one counter, up to 2x the limit across a boundary', 'Sliding log: one timestamp per accepted request, exact', 'Sliding window counter: two counters, approximate', 'Leaky bucket: a queue that drains at a fixed rate, output smooth, rejects short bursts a backend could take'. Orange outline on the token bucket. Takeaway bar: 'Say token bucket for APIs and name the fixed window boundary burst as the reason not to use it.'",
+  "anchor": "### 6. Rate limiters: four algorithms and their trade-offs",
+  "alt": "A token bucket refills at a steady rate up to a cap, a burst can spend the saved tokens at once, and after that the client can only send as fast as the bucket refills.",
+  "cap": "The token bucket enforces the long-run rate and permits a burst up to the bucket size, and refill is computed lazily so no background thread is needed."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p3-2009-gpu-sweep",
+  "title": "How many GPU nodes? Sweep the reservations and reuse a node when one ends",
+  "spec": "A horizontal timeline axis from hour 0 to hour 10 with tick marks. Three bars: bar A '(0, 4)' on a Node 1 lane, bar B '(2, 6)' on a Node 2 lane, bar C '(8, 10)' on the Node 1 lane. A shaded overlap band from hour 2 to hour 4 labelled 'A and B overlap, they need separate nodes' in orange. Below, a numbered walk through the algorithm: '1 Sort by start: (0, 4), (2, 6), (8, 10)', '2 (0, 4): no node in use, open node, heap of end times = 4', '3 (2, 6): earliest end 4 is after start 2, open a second node, heap = 4, 6', '4 (8, 10): earliest end 4 is at or before start 8, reuse that node, heap = 6, 10', '5 Answer: the heap holds 2 end times, so 2 nodes'. Side note 'Half-open [start, end): a job ending at 10 frees its node for one starting at 10'. Alternate method box 'Event sweep: +1 at each start, -1 at each end, at equal times the end sorts before the start, the maximum running total is the answer'. Takeaway bar: 'First ask whether reservations are per node or pooled, because that changes the whole model.'",
+  "anchor": "### Scenario 2. Fitting a maintenance job into GPU reservations",
+  "alt": "Three reservations from 0 to 4, 2 to 6 and 8 to 10 hours on a timeline need two nodes because the first two overlap during hours 2 to 4, and the third reuses a node.",
+  "cap": "Sort by start and keep a min-heap of end times; if the earliest end is at or before the next start, reuse that node, otherwise open a new one."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p3-2009-binary-search-answer",
+  "title": "Binary search on the answer: find where no turns into yes",
+  "spec": "A horizontal row of six cells labelled with the check result 'no', 'no', 'no', 'yes', 'yes', 'yes' under an axis labelled 'timeout, small to large', with the question above 'at this timeout, do at least 99 percent of requests succeed?'. A bracket marks the flip between the third and fourth cells labelled 'smallest x with ok(x) True'. Below, the loop from first_true drawn as a numbered cycle: '1 mid = (lo + hi) // 2', '2 ok(mid)? yes: hi = mid - 1', '3 no: lo = mid + 1', '4 repeat while lo <= hi, the answer is lo'. Pointers lo and hi shown above the row with arrows closing in; each check halves the range. Warning box orange: 'Returns hi + 1 when nothing passes, so the caller must test for that'. Side list of SRE forms: 'min_replicas: fewest replicas covering peak traffic', 'min_timeout_ms: smallest timeout letting the target fraction finish', 'min_window_hours: shortest maintenance window for a fixed job order on a given number of nodes', 'float_search: fixed 60 iterations, never loop until equal'. Takeaway bar: 'Bigger never hurts: that phrase tells you the pattern applies. Cost is O(log range) checks times the cost of one check.'",
+  "anchor": "### 13. Binary search on the answer",
+  "alt": "A row of timeout values that go no, no, no, yes, yes, yes with the search halving the range until it finds the first yes, and returning hi plus 1 if nothing passes.",
+  "cap": "When a bigger value never makes the check worse, the answers flip once and binary search finds the flip in a handful of checks."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p3-2009-histogram-tradeoff",
+  "title": "Percentile sketches: exact, reservoir sample and fixed buckets",
+  "spec": "Three columns. Column 1 'Exact: nearest rank' with 'rank = ceil(p / 100 x N), the smallest value with at least p percent at or below it' and 'needs every sample'. Column 2 'Reservoir sample (Algorithm R)': a small box of k slots, a stream arrow, rule 'after the first k, item number n replaces a random slot with probability k over n', result 'every item seen so far has the same chance of being in the sample'. Column 3 'Fixed-bucket histogram (like Prometheus)': a row of bars with geometric boundaries labelled 'bucket ratio', rule 'memory depends on the number of buckets, not on traffic; histograms from many servers add bucket by bucket'. Bottom measured table on 200,000 lognormal samples: 'exact p99 = 551.79', 'ratio 1.1, 123 buckets: 593.35', 'ratio 1.02, 584 buckets: 553.93' with an arrow 'finer buckets, smaller error, more memory'. Orange outline on 'add bucket by bucket'. Footnote: 'Prometheus: histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) works only while bucket boundaries match across instances.'",
+  "anchor": "### 14. Streaming percentiles, and why you never average percentiles",
+  "alt": "Three ways to keep a p99 for a stream, exact, a reservoir sample, and a bucket histogram, with measured bucket counts and errors against an exact p99 of 551.79.",
+  "cap": "A finer bucket ratio costs more memory and gives a smaller error, and histograms from many servers add bucket by bucket."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p3-2009-lost-update",
+  "title": "Why counter += 1 can lose an update without a lock",
+  "spec": "Two lanes 'Thread A' and 'Thread B' with a shared box 'self.n' in the middle. Left panel red-bordered 'Without a lock': numbered steps 1 'A reads n' 2 'B reads n (the same value)' 3 'A adds one and writes n' 4 'B adds one and writes n (the same result)' with result 'two increments, the count is one lower than it should be'. Right panel green-bordered 'With a lock': 'A takes the lock: read, add, write as one unit' then 'B waits off the CPU, then takes the lock and does the same', result 'both increments count'. Footer note: 'The Python 3.12 FAQ says i = i + 1 is not atomic and to use a mutex when in doubt. 8 threads of 200,000 increments reported exactly 1,600,000 here, so the race did not appear, which proves nothing. Never offer it worked when I ran it.' Small label 'CPU-bound work: use processes because of the global interpreter lock. I/O-bound fan-out: threads or asyncio.'",
+  "anchor": "### 16. Basic concurrency: queues, counters and asyncio",
+  "alt": "Two threads each read the same counter value, add one and write back the same result, so two increments leave the count one lower, while a lock makes read, add and write one unit.",
+  "cap": "The increment is three steps, read, add and write, so without the lock two threads can overwrite each other."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p3-2009-asyncio-two-timeouts",
+  "title": "Fan-out to five backends with a per-call and an overall timeout",
+  "spec": "Left: a box 'fetch_all(fns, per_call_timeout, overall_timeout)' fanning out five arrows to five call boxes 'call 1' to 'call 5'. Each call is wrapped in a rounded box labelled 'one(fn): wait_for(fn(), per_call_timeout)' returning one of three outcomes drawn as small chips: '(ok, value)' for a fast call, '(err, timeout)' for a slow call, '(err, ExceptionName)' for a failing call. An outer rounded box around all five labelled 'asyncio.wait_for(asyncio.gather(...), overall_timeout)' with a clock icon; an orange arrow out of it 'overall budget spent: cancels whatever is still running, every result becomes (err, overall_timeout)'. Side note: 'gather returns results in the order submitted. If one raises and return_exceptions is false, the exception propagates immediately and the other awaitables keep running, so each call is wrapped.' Restaurant analogy line: 'per-call timeout clears a slow table alone, the overall timeout closes the room at a fixed time.' Note 'Python 3.11 added asyncio.timeout and asyncio.TaskGroup.'",
+  "anchor": "### 16. Basic concurrency: queues, counters and asyncio",
+  "alt": "A fetch_all coroutine runs several calls concurrently, each with its own timeout so a slow call fails alone, and an overall timeout that cancels whatever is still running.",
+  "cap": "Wrap each call so it never raises, give it its own timeout, and put an overall timeout around the whole gather."
+ }
+]

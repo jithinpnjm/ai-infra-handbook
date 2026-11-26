@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>GPU job scheduling [report]</title>
+  <desc>GPU job scheduling [report]</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">GPU job scheduling [report]</text>
+
+  
+  
+  <rect x="60" y="140" width="420" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="270" cy="172" r="11"/>
+    <path d="M250 208 c0 -13 9 -20 20 -20 s20 7 20 20"/>
+    <circle cx="244" cy="177" r="9"/>
+    <path d="M230 208 c0 -10 6 -15 15 -15"/>
+    <circle cx="296" cy="177" r="9"/>
+    <path d="M310 208 c0 -10 -6 -15 -15 -15"/>
+  </g>
+  <text x="270" y="254" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Teams</text>
+
+  
+  <rect x="590" y="140" width="420" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="774" y="158" width="52" height="36" rx="5"/>
+    <path d="M781 176 h8 l5 -11 l7 20 l6 -14 l4 5 h8"/>
+    <path d="M794 194 v7 h12 v-7"/>
+  </g>
+  <text x="800" y="252" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node health feed</text>
+
+  
+  
+  <rect x="60" y="380" width="420" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M270 400 v36 M254 436 h32"/>
+    <path d="M244 410 h52"/>
+    <path d="M244 410 l-8 15 M244 410 l8 15"/>
+    <path d="M234 425 q10 7 20 0"/>
+    <path d="M296 410 l-8 15 M296 410 l8 15"/>
+    <path d="M286 425 q10 7 20 0"/>
+    <circle cx="270" cy="410" r="3" fill="#207448"/>
+  </g>
+  <text x="270" y="484" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="270" dy="0">Queue and</tspan>
+    <tspan x="270" dy="36">fair share</tspan>
+  </text>
+
+  
+  <rect x="590" y="380" width="420" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="791" y="400" width="18" height="12" rx="2"/>
+    <path d="M800 412 v8 M778 420 h44"/>
+    <path d="M778 420 v6 M822 420 v6"/>
+    <circle cx="778" cy="430" r="4"/>
+    <circle cx="822" cy="430" r="4"/>
+    <path d="M778 434 v6 M822 434 v6"/>
+    <path d="M770 440 h16 M814 440 h16"/>
+  </g>
+  <text x="800" y="484" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Topology-aware</tspan>
+    <tspan x="800" dy="36">placer</tspan>
+  </text>
+
+  
+  <rect x="1120" y="380" width="420" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1306" y="400" width="48" height="15" rx="3"/>
+    <line x1="1315" y1="407.5" x2="1325" y2="407.5"/>
+    <line x1="1329" y1="407.5" x2="1339" y2="407.5"/>
+    <circle cx="1346" cy="407.5" r="2" fill="#207448"/>
+    <rect x="1306" y="426" width="48" height="15" rx="3"/>
+    <line x1="1315" y1="433.5" x2="1325" y2="433.5"/>
+    <line x1="1329" y1="433.5" x2="1339" y2="433.5"/>
+    <circle cx="1346" cy="433.5" r="2" fill="#207448"/>
+    <line x1="1318" y1="415" x2="1318" y2="426"/>
+    <line x1="1342" y1="415" x2="1342" y2="426"/>
+    <line x1="1318" y1="415" x2="1342" y2="426"/>
+  </g>
+  <text x="1330" y="484" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1330" dy="0">Nodes in</tspan>
+    <tspan x="1330" dy="36">fabric blocks</tspan>
+  </text>
+
+  
+  
+  <rect x="1120" y="650" width="420" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="1330" cy="672" rx="24" ry="8"/>
+    <path d="M1306 672 v26 c0 9 48 9 48 0 v-26"/>
+    <path d="M1306 685 c0 9 48 9 48 0"/>
+    <path d="M1306 698 c0 9 48 9 48 0"/>
+  </g>
+  <text x="1330" y="756" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Checkpoint store</text>
+
+  
+  
+  <path d="M 270 290 V 380" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 800 290 V 380" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 480 470 H 590" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1010 470 H 1120" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1330 560 V 650" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1120 725 H 294 A 24 24 0 0 1 270 701 V 560" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+</svg>

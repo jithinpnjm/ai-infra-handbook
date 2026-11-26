@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Configless mode: edit once on the controller</title>
+  <desc>Visual comparison of Slurm configuration drift versus configless distribution, update cycle, and related configuration files.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">Configless mode: edit once on the controller</text>
+
+  
+  <g id="before-and-after">
+    
+    <rect x="40" y="115" width="1520" height="520" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="155" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Before and after</text>
+
+    
+    <rect x="65" y="175" width="715" height="435" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <g transform="translate(90, 190)">
+      <path d="M 6,0 L 28,0 L 42,14 L 42,46 L 6,46 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 28,0 L 28,14 L 42,14" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="24" y1="20" x2="24" y2="30" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="24" cy="38" r="2" fill="#207448"/>
+    </g>
+    <text x="145" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Before</text>
+
+    
+    <g id="before-cards">
+      <rect x="85" y="245" width="675" height="64" rx="8" fill="#ffffff" stroke="#ccdcd0" stroke-width="1"/>
+      <text x="105" y="285" font-family="sans-serif" font-size="24" fill="#303a36">slurm.conf must be identical on every node</text>
+
+      <rect x="85" y="320" width="675" height="64" rx="8" fill="#ffffff" stroke="#ccdcd0" stroke-width="1"/>
+      <text x="105" y="360" font-family="sans-serif" font-size="24" fill="#303a36">the controller compares a hash of the file</text>
+
+      <rect x="85" y="395" width="675" height="74" rx="8" fill="#ffffff" stroke="#ccdcd0" stroke-width="1"/>
+      <text x="105" y="427" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="105" dy="0">a node whose copy differs </tspan><tspan x="105" dy="30">refuses to join or misbehaves</tspan></text>
+
+      <rect x="85" y="480" width="675" height="64" rx="8" fill="#ffffff" stroke="#ccdcd0" stroke-width="1"/>
+      <text x="105" y="520" font-family="sans-serif" font-size="24" fill="#303a36">keeping 1,000 copies in sync leads to drift</text>
+    </g>
+
+    
+    <rect x="820" y="175" width="715" height="435" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <g transform="translate(845, 190)">
+      <rect x="4" y="2" width="40" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="24" y1="22" x2="24" y2="34" stroke="#207448" stroke-width="3.5"/>
+      <line x1="10" y1="34" x2="38" y2="34" stroke="#207448" stroke-width="3.5"/>
+      <circle cx="10" cy="42" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="24" cy="42" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="38" cy="42" r="4" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="900" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">After</text>
+
+    
+    <g id="after-cards">
+      <rect x="840" y="245" width="675" height="74" rx="8" fill="#ffffff" stroke="#ccdcd0" stroke-width="1"/>
+      <text x="860" y="277" font-family="monospace" font-size="24" fill="#303a36"><tspan x="860" dy="0">controller slurm.conf has </tspan><tspan x="860" dy="30">SlurmctldParameters=enable_configless</tspan></text>
+
+      <rect x="840" y="328" width="675" height="112" rx="8" fill="#ffffff" stroke="#ccdcd0" stroke-width="1"/>
+      <text x="860" y="356" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="860" dy="0">compute node starts slurmd --conf-server </tspan><tspan x="860" dy="28">ctl1:6817, or a DNS SRV record </tspan><tspan x="860" dy="28">_slurmctld._tcp is published </tspan><tspan x="860" dy="28">so that no flag is needed</tspan></text>
+
+      <rect x="840" y="449" width="675" height="56" rx="8" fill="#ffffff" stroke="#ccdcd0" stroke-width="1"/>
+      <text x="860" y="485" font-family="sans-serif" font-size="24" fill="#303a36">login nodes use sackd the same way</text>
+
+      
+      <rect x="840" y="514" width="675" height="74" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+      <text x="860" y="545" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129"><tspan x="860" dy="0">nodes fetch the configuration </tspan><tspan x="860" dy="30">from the controller</tspan></text>
+    </g>
+  </g>
+
+  
+  <g id="update-loop">
+    <rect x="40" y="660" width="730" height="380" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(65, 680)">
+      <path d="M 24,6 A 18,18 0 1,1 10,16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <polyline points="4,16 10,16 10,10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 24,42 A 18,18 0 1,1 38,32" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <polyline points="44,32 38,32 38,38" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="125" y="715" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Update loop</text>
+
+    
+    <rect x="65" y="745" width="680" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="85" y="788" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="85" dy="0">edit only on the controller, </tspan><tspan x="85" dy="34">run scontrol reconfigure, </tspan><tspan x="85" dy="34">nodes pick up the change</tspan></text>
+
+    <rect x="65" y="895" width="680" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="85" y="946" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="85" dy="0">a handful of settings </tspan><tspan x="85" dy="34">still need a daemon restart</tspan></text>
+  </g>
+
+  
+  <g id="family-of-files">
+    <rect x="830" y="660" width="730" height="380" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(855, 680)">
+      <rect x="14" y="6" width="30" height="38" rx="2" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 6,14 L 6,48 L 36,48" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="22" y1="16" x2="36" y2="16" stroke="#207448" stroke-width="3"/>
+      <line x1="22" y1="24" x2="36" y2="24" stroke="#207448" stroke-width="3"/>
+      <line x1="22" y1="32" x2="30" y2="32" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="915" y="715" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Family of files around slurm.conf</text>
+
+    
+    <rect x="855" y="745" width="680" height="270" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="875" y="796" font-family="monospace" font-size="24" fill="#303a36"><tspan x="875" dy="0">cgroup.conf, gres.conf (autodetect), </tspan><tspan x="875" dy="42">topology.conf (switch tree), </tspan><tspan x="875" dy="42">slurmdbd.conf (database, mode 600), </tspan><tspan x="875" dy="42">plugstack.conf (SPANK), job_submit.lua</tspan></text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1065" width="1520" height="90" rx="12" fill="#207448"/>
+    <text x="800" y="1120" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">used by BCM, Slinky and many cloud images</text>
+  </g>
+</svg>

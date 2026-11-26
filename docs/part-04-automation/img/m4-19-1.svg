@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Local state and its limits</title>
+  <desc>Infographic showing Terraform state locking, state reading and verification, cloud resource mutation, and state serial increment with lock release.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="80" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Local state and its limits</text>
+
+  
+
+  
+  <line x1="600" y1="245" x2="996" y2="245" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <circle cx="644" cy="188" r="24" fill="#207448" />
+  <text x="644" y="197" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="682" y="178" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">1. Acquire Lock</text>
+  <text x="682" y="210" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">(LockID / .tflock)</text>
+
+  
+  <path d="M 460,370 V 490 Q 460,510 480,510 H 1100 Q 1120,510 1120,530 V 706" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <circle cx="560" cy="465" r="24" fill="#207448" />
+  <text x="560" y="474" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="598" y="473" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">2. Read &amp; Verify lineage + serial</text>
+
+  
+  <line x1="220" y1="370" x2="220" y2="726" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <circle cx="275" cy="535" r="24" fill="#207448" />
+  <text x="275" y="544" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="312" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">3. Mutate Cloud</text>
+  <text x="312" y="557" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Resources</text>
+
+  
+  <line x1="600" y1="850" x2="996" y2="850" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <circle cx="644" cy="790" r="24" fill="#db8129" />
+  <text x="644" y="799" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="682" y="778" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">4. Write serial + 1</text>
+  <text x="682" y="810" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">&amp; Release Lock</text>
+
+  
+
+  
+  <g id="node-runner">
+    <rect x="80" y="140" width="520" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="110" y="165" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="110" y1="180" x2="166" y2="180" stroke="#207448" stroke-width="2" />
+    <path d="M 122,192 L 128,197 L 122,202" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="134" y1="202" x2="146" y2="202" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="185" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">CI Runner / Engineer</text>
+    
+    <text x="110" y="275" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="110" dy="0">(terraform plan</tspan>
+      <tspan x="110" dy="36">-out=tfplan / apply)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-lock">
+    <rect x="1000" y="140" width="520" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <path d="M 1038,182 V 174 A 14,14 0 0 1 1066,174 V 182" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <rect x="1030" y="182" width="44" height="34" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="1052" cy="196" r="3" fill="#207448" />
+    <line x1="1052" y1="199" x2="1052" y2="206" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1100" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">State Lock</text>
+    
+    <text x="1030" y="275" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1030" dy="0">(S3 .tflock / DynamoDB LockID /</tspan>
+      <tspan x="1030" dy="36">GCS object lock / Azure lease)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-cloud">
+    <rect x="80" y="730" width="520" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <path d="M 120,794 A 12,12 0 0 1 132,782 A 16,16 0 0 1 160,776 A 14,14 0 0 1 174,790 A 12,12 0 0 1 170,808 H 124 A 10,10 0 0 1 120,794 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    
+    <text x="190" y="792" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Cloud APIs</text>
+    
+    <text x="110" y="865" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(VPC, GKE/EKS, GPU Pools)</text>
+  </g>
+
+  
+  <g id="node-bucket">
+    <rect x="1000" y="710" width="520" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <ellipse cx="1054" cy="746" rx="24" ry="9" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1030,746 V 780 A 24,9 0 0 0 1078,780 V 746" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1030,763 A 24,9 0 0 0 1078,763" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="1096" y="772" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Remote State Bucket</text>
+    
+    <text x="1030" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1030" dy="0">(S3 / GCS / Azure Blob)</tspan>
+      <tspan x="1030" dy="34">KMS Encrypted + Versioned +</tspan>
+      <tspan x="1030" dy="34">Public Access Blocked</tspan>
+    </text>
+  </g>
+</svg>

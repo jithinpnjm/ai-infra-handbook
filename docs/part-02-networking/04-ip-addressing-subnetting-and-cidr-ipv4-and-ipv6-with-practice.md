@@ -45,6 +45,10 @@ Use this list as a self-check once you have worked through the chapter. Each lin
 
 ## 1. Number systems you need
 
+![Eight bit weights from 128 down to 1 show that 172 converts to 10101100 by subtracting the largest weight that fits at each step.](./img/p2-0204-bit-weights.svg)
+
+*Figure 2.4.1. Converting 172 uses the largest bit weight that fits at each step, which gives 10101100.*
+
 Look at an address such as 172.16.1.5. To a person it is four small numbers. To a router it is 32 bits, and the router makes decisions by comparing bits, not by reading decimals. So the first skill is to see through the decimals. Every IPv4 address is four octets, and an octet is one byte. Before you can subnet, you have to read those bytes in binary. A byte, or octet, is 8 bits, with a value from 0 to 255. Each bit position has a fixed weight, as the table shows.
 
 | Bit position | 7 | 6 | 5 | 4 | 3 | 2 | 1 | 0 |
@@ -65,7 +69,7 @@ Suppose a node reports the address 10.23.2.37, and you need to know which other 
 
 ![Reading a CIDR block](./img/n04-fig1-cidr-v2.jpg)
 
-*Figure 2.4.1. A /22 has 22 fixed network bits and 10 host bits: 1024 addresses, 1022 usable.*
+*Figure 2.4.2. A /22 has 22 fixed network bits and 10 host bits: 1024 addresses, 1022 usable.*
 
 ```text
 Address     10.23.2.37    = 00001010.00010111.00000010.00100101
@@ -81,11 +85,19 @@ CIDR, or Classless Inter-Domain Routing, dates from 1993. It writes the mask as 
 
 ### The reserved host addresses
 
+![A /24 subnet has 256 addresses where the first is the network address and the last is the broadcast address, leaving 254 usable hosts.](./img/p2-0204-host-count.svg)
+
+*Figure 2.4.3. A /24 subnet has 256 addresses, of which the network and broadcast addresses are reserved, leaving 254 usable hosts.*
+
 Why can a subnet not hand out every address in it? In a normal subnet, two host numbers cannot go to a host. The all-zeros host part is the network address, which is the name of the subnet. The all-ones host part is the directed broadcast address, which means "everyone in this subnet". So a subnet with *h* host bits has 2^h − 2 usable addresses. For a /24, the host part has 8 bits, so 256 addresses minus those two leaves 254.
 
 There are two exceptions to keep in mind. A /31 is a point-to-point link under RFC 3021. It has 2 usable addresses and no network or broadcast address. A /32 is a single host route, which you use for loopbacks and service addresses. Clouds add their own reservations. For example, a cloud may take the first address as the gateway, a second for DNS, and the last as broadcast. GCP reserves the first two and the last two addresses of each primary range. Check your provider's rules before you size a subnet.
 
 ### Fast subnetting: the block-size method
+
+![For 192.168.10.77 with a /27 mask, the block size is 32, so the network is 192.168.10.64 and the broadcast is 192.168.10.95.](./img/p2-0204-block-size.svg)
+
+*Figure 2.4.4. With a block size of 32, the host 77 sits in the 64 block, so the network is 192.168.10.64 and the broadcast is 192.168.10.95.*
 
 You can do subnet arithmetic in your head with one trick, and it pays off every day. The block-size method works for a prefix between /24 and /30, where the split falls inside the last octet. The block size equals 256 minus the mask octet, which is also 2^(32 − p). Subnets start at multiples of the block size, like parking bays numbered in steps. The network address is the largest multiple of the block size that is at or below the host octet. The broadcast address is the next network minus 1.
 
@@ -120,6 +132,10 @@ The wildcard mask is the inverse of the subnet mask. You meet it in OSPF `networ
 
 ### Same subnet or not?
 
+![A host checks whether an address AND the mask equals the subnet network, so 10.20.37.130 is inside 10.20.36.0/22 while 10.20.40.1 is not.](./img/p2-0204-same-subnet.svg)
+
+*Figure 2.4.5. Two addresses share a subnet when they give the same network after the mask is applied, so 10.20.37.130 is in 10.20.36.0/22 and 10.20.40.1 is not.*
+
 Two addresses share a subnet when `(A AND mask) == (B AND mask)`. In everyday terms, they live on the same street. Here is a check you can run in your head. Take `10.20.37.130` and the prefix `10.20.36.0/22`. The mask's third octet is 252, so the block size is 4. The network covers third-octet values 36 to 39, which means 10.20.36.0 to 10.20.39.255. The third octet 37 falls inside that range, so the address is in the subnet. The address `10.20.40.1` has third octet 40, which is outside it.
 
 Every host runs this check for every packet it sends. It decides whether to send the packet directly, using ARP, or to the gateway. Chapter 2.3/2.5 covers the details. Use this test whenever you are unsure whether two hosts can talk directly. If they are on different subnets and no router sits between them, they cannot.
@@ -132,7 +148,7 @@ The diagram shows how each split leaves a remainder for the next subnet.
 
 ![VLSM, supernetting and summarisation](./img/m2-04-1.svg)
 
-*Figure 2.4.2. VLSM, supernetting and summarisation, as a diagram.*
+*Figure 2.4.6. VLSM, supernetting and summarisation, as a diagram.*
 
 Now divide `10.50.0.0/22`, which holds 1,024 addresses from 10.50.0.0 to 10.50.3.255. You need subnets for five needs: A with 400 hosts, B with 200, C with 100, D with 50, and E with two point-to-point links. For each group, find the smallest block that holds its hosts. The smallest block is always a power of two that is at least as big as the need.
 
@@ -167,6 +183,10 @@ EOF
 When you design a plan, number the racks and pods so that each level can be summarised with one prefix.
 
 ## 4. Special-purpose IPv4 ranges
+
+![A grid of cards for the special IPv4 ranges 0.0.0.0/8, RFC 1918 private, 100.64/10, loopback, link-local, documentation, benchmarking, multicast and reserved, with the overlap traps.](./img/p3-0204-special-ranges.svg)
+
+*Figure 2.4.7. Special IPv4 ranges have fixed meanings, such as 169.254.x.x meaning a failed DHCP, and overlaps between them cause the biggest planning problems.*
 
 Some IPv4 ranges have fixed meanings, and you should recognise them on sight. When you see 169.254.x.x in a log, for example, you should immediately think "this host failed to get an address". The table lists each range with its meaning and the notes you need to use it correctly.
 
@@ -204,6 +224,10 @@ Most deployments run dual-stack, with IPv4 and IPv6 side by side, because nobody
 
 ### Notation
 
+![An IPv6 address shortened in two steps, dropping leading zeros and replacing the longest zero run with a double colon used once, with URL and scope notation.](./img/p3-0204-v6-compress.svg)
+
+*Figure 2.4.8. Drop leading zeros in each group, then replace one longest run of zero groups with a double colon, which may appear only once.*
+
 An IPv6 address looks intimidating at first sight, and the compression rules are what make it readable. Write an IPv6 address as eight groups of 16 bits, called hextets. Each group is written as four hex digits, and the groups are separated by colons: `2001:0db8:0a0b:12f0:0000:0000:0000:8b6e`. Two compression rules make it shorter. First, drop the leading zeros in each group, so `0db8` becomes `db8`. Second, replace one longest run of all-zero groups with `::`. You can use `::` only once per address, because otherwise nobody could tell how many zero groups each one stood for. The example becomes `2001:db8:a0b:12f0::8b6e`.
 
 Prefixes use CIDR style, as in `2001:db8:a0b:12f0::/64`. In a URL, wrap a literal address in brackets, as in `http://[2001:db8::10]:8080/`. Colons would otherwise be read as the port separator, and the browser could not tell where the address ends. A link-local address needs an interface scope, written as `fe80::1%eth0`. To see the full form of an address, run `python3 -c "import ipaddress as i; print(i.ip_address('2001:db8::1').exploded)"`.
@@ -212,7 +236,7 @@ Prefixes use CIDR style, as in `2001:db8:a0b:12f0::/64`. In a URL, wrap a litera
 
 ![IPv6 address types](./img/n04-ipv6types.svg)
 
-*Figure 2.4.3. The first digits of an IPv6 address tell you its type, and multicast replaces broadcast.*
+*Figure 2.4.9. The first digits of an IPv6 address tell you its type, and multicast replaces broadcast.*
 
 The table lists the prefixes you will meet most often. The first few digits tell you the address type, so learn to read them. It is like recognising a country from the first digits of a phone number.
 
@@ -240,9 +264,13 @@ When `ip -6 address show` labels an address `scope link`, it is link-local. A la
 
 ### Structure and the /64 convention
 
+![A ladder from a provider /32 to a site /48 holding 65,536 /64 subnets, with a worked cluster plan of management, 16 rail subnets and per-rack /64s inside one /48.](./img/p3-0204-v6-delegation.svg)
+
+*Figure 2.4.10. A /48 holds 65,536 /64 subnets, and a cluster plan can carve management, rails and racks from it on nibble boundaries.*
+
 ![Structure of an IPv6 address](./img/n04-ipv6struct.svg)
 
-*Figure 2.4.4. A global IPv6 address is a site prefix, a subnet ID and a 64-bit interface ID, and subnets are almost always /64.*
+*Figure 2.4.11. A global IPv6 address is a site prefix, a subnet ID and a 64-bit interface ID, and subnets are almost always /64.*
 
 A global unicast address usually has three parts: a routing prefix, a subnet ID and a 64-bit interface ID. The first part says which organisation, the second says which network inside it, and the third says which interface. The block below shows that split for one example.
 
@@ -293,7 +321,7 @@ Every packet starts with a header, and the header fields tell the routers what t
 
 ![IPv4 header fields](./img/n04-ipv4hdr.svg)
 
-*Figure 2.4.5. The IPv4 header is 20 bytes minimum, with fragmentation fields, TTL and a protocol field.*
+*Figure 2.4.12. The IPv4 header is 20 bytes minimum, with fragmentation fields, TTL and a protocol field.*
 
 ```text
  0                   1                   2                   3
@@ -318,6 +346,10 @@ Identification, Flags and Fragment Offset handle fragmentation. The Flags hold D
 
 ### IPv6 header (40 bytes, fixed)
 
+![A side by side of IPv4 and IPv6 header fields, mapping TTL to hop limit and protocol to next header, with the checksum and fragmentation fields removed in IPv6.](./img/p3-0204-v4-v6-header.svg)
+
+*Figure 2.4.13. IPv6 keeps the TTL as hop limit and the protocol as next header, and drops the header checksum and the router fragmentation fields.*
+
 ```text
  Version(4) | Traffic Class(8 = DSCP6 + ECN2) | Flow Label(20)
  Payload Length(16) | Next Header(8) | Hop Limit(8)
@@ -329,6 +361,14 @@ Identification, Flags and Fragment Offset handle fragmentation. The Flags hold D
 The IPv6 header is a fixed 40 bytes. It is a tidier envelope than the IPv4 one. It has no checksum, because the link and transport layers cover errors. Its base header has no fragmentation fields. Fragmentation uses an extension header, and only the source host may do it. The Traffic Class byte holds DSCP and ECN, as the IPv4 byte does. The 20-bit flow label helps routers keep a flow on one path when ECMP spreads traffic. A fixed header keeps hardware parsing simple, and extension headers keep the design flexible. The hop limit plays the role of the TTL.
 
 ### Fragmentation and path MTU
+
+![Four fixes for a PMTU black hole, and the ping size arithmetic of 1472 plus 8 plus 20 and 1452 plus 8 plus 40 giving 1500, with the TCP MSS of 1460 for IPv4 and 1440 for IPv6.](./img/p3-0204-blackhole-fixes.svg)
+
+*Figure 2.4.14. A PMTU black hole is fixed by allowing ICMP, clamping the MSS, a consistent MTU or PLPMTUD, and ping sizes of 1472 and 1452 test a 1500 byte path.*
+
+![A sender sets DF on a large packet, a router with a smaller MTU drops it and sends ICMP Fragmentation Needed, and the sender lowers its path MTU.](./img/p2-0204-pmtud.svg)
+
+*Figure 2.4.15. With DF set, a router that cannot forward a large packet drops it and returns ICMP Fragmentation Needed, so the sender lowers its path MTU.*
 
 Imagine moving a large sofa through a series of doors. If one door is narrower than the rest, you have to cut the sofa up or stop. A packet faces the same problem. Every link has a maximum transmission unit, or MTU, which is the largest packet it can carry. If a packet is larger than the next link's MTU, an IPv4 router may fragment it, unless DF is set. Fragments are reassembled only at the destination. Each fragment carries an ID, an offset in 8-byte units and the MF flag. Fragmentation is expensive and fragile. Lose one fragment and you lose the whole packet. Firewalls and middleboxes often drop fragments, and some hardware paths send fragments to the CPU.
 
@@ -348,6 +388,10 @@ ip route get target ; ip link show | grep mtu ; ss -ti dst target | grep -o 'mss
 The IPv4 test sends 1472 bytes of payload. Add 8 for the ICMP header and 20 for the IPv4 header, and you reach 1500. The IPv6 test sends 1452 bytes, which plus 8 for ICMP and 40 for the IPv6 header also gives 1500. Run `tracepath` when you need the path MTU discovered hop by hop. If the largest working size is smaller than you expected, you have found a narrow door.
 
 ## 8. Configuring addresses on Linux
+
+![Runtime ip commands lost on reboot beside a persistent Netplan or nmcli configuration, and the three checks of overlap, mask match and a single DHCP server.](./img/p3-0204-address-persist.svg)
+
+*Figure 2.4.16. Runtime ip changes vanish on reboot while Netplan or nmcli changes persist, and after either one check overlap, mask and DHCP.*
 
 Linux address changes come in two kinds, and mixing them up causes surprising outages. Runtime changes apply now, but they are lost on reboot. Persistent changes live in configuration files.
 
@@ -396,9 +440,17 @@ Check three things after any change, because each of them fails quietly. The sub
 
 ## 9. Address planning for AI clusters and clouds
 
+![A worked calculation of 500 nodes times 256 addresses per node giving 128,000 and a /15, with the GKE secondary range rules and the 1,024 node /14 result.](./img/p3-0204-pod-cidr.svg)
+
+*Figure 2.4.17. 500 nodes at a /24 each need 128,000 addresses, so the pod range must be a /15, and it cannot be shrunk later.*
+
 A 1,024-GPU cluster needs its address plan settled before the first cable goes in, because renumbering a live cluster is painful. Every plan should be hierarchical, aligned and summarisable. It should not overlap with anything you may connect to. It needs room to grow ×4, it should be documented in IPAM, and each range should serve one purpose.
 
 ### A worked cluster plan (illustrative)
+
+![A table of address ranges for a 1,024 GPU cluster covering out-of-band, front end, storage, eight rail subnets, Kubernetes pod and service ranges, loopbacks and point-to-point links.](./img/p3-0204-cluster-plan.svg)
+
+*Figure 2.4.18. Each address range in a 1,024 GPU plan serves one purpose, with one subnet per rail and a numbering scheme that names the rail and node.*
 
 Take a 1,024-GPU cluster. It has 128 nodes with 8 GPUs each, so 128 × 8 = 1,024 GPUs. Each node has 8 back-end NICs, one per GPU, plus 2 front-end NICs and 1 BMC. Lay out the ranges in the `10.0.0.0/8` space.
 

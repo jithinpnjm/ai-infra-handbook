@@ -45,16 +45,9 @@ Picture a cluster that someone changed by hand on a Friday night. Nobody wrote t
 
 The diagram below shows the whole loop. Read it from left to right. A human proposes a change, the change is reviewed and merged, and then a controller inside the cluster does the work and reports back.
 
-```mermaid
-flowchart LR
-  Dev["Engineer"] -- "PR + review" --> Config["Git: config repo\n(desired state)"]
-  CI["CI (build, test, scan)"] -- "build image, push registry\nopen PR bumping tag/digest" --> Config
-  Config -- "poll / webhook" --> Ctl["GitOps controller in cluster\n(Argo CD / Flux)"]
-  Ctl -- "render (Helm/Kustomize/plain)\ncompare to live" --> API["Kubernetes API"]
-  API -- "actual state" --> Ctl
-  Ctl -- "apply / prune / self-heal" --> API
-  Ctl -- "status, events, notifications" --> Obs["Dashboards / Slack / alerts"]
-```
+![GitOps principles and architecture](./img/m4-26-1.svg)
+
+*Figure 4.26.1. GitOps principles and architecture, as a diagram.*
 
 Read the diagram from left to right. An engineer opens a pull request against the config repo, and CI builds, tests and scans the image. The GitOps controller inside the cluster watches that repo, renders the manifests, and compares them with the live API. It then applies, prunes or self-heals the difference, and reports status.
 
@@ -485,14 +478,9 @@ Keep the parameters file small, so the differences between environments are easy
 
 Picture a fresh GPU cluster with nothing on it yet. If you install an operator before the CRDs it depends on exist, the sync fails with a missing-kind error. The diagram gives the order to bring things up in, one wave at a time. Each wave should be healthy before the next one begins, so a failure stops the line early.
 
-```mermaid
-flowchart TB
-  W0["Wave 0: namespaces, PSA labels, priority classes, CRDs for operators"] --> W1["Wave 1: cert-manager, CSI drivers, storage classes, monitoring CRDs (Prometheus Operator)"]
-  W1 --> W2["Wave 2: NVIDIA GPU Operator (NFD, device plugin, DCGM), Network Operator (Multus, RDMA plugin)"]
-  W2 --> W3["Wave 3: schedulers & batch: Kueue, JobSet, Volcano, KubeRay, Training Operator"]
-  W3 --> W4["Wave 4: policies (Kyverno/Gatekeeper), tenancy (namespaces, quotas, LocalQueues)"]
-  W4 --> W5["Wave 5: apps: inference gateways, pipelines, dashboards"]
-```
+![Bootstrapping a GPU platform: ordering](./img/m4-26-2.svg)
+
+*Figure 4.26.2. Bootstrapping a GPU platform: ordering, as a diagram.*
 
 Read the waves as a building schedule. You pour the foundation before the walls, and you install the wiring before the fixtures. Each wave depends on the one before it, and skipping ahead almost always produces an error that looks unrelated to the real cause.
 

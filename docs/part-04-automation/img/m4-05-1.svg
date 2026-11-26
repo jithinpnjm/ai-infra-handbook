@@ -1,0 +1,166 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Variable precedence (summary)</title>
+  <desc>Variable precedence summary flowchart ordered from lowest to highest precedence</desc>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="74" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Variable precedence (summary)</text>
+
+  
+  <g id="node-L7">
+    <rect x="80" y="130" width="1440" height="100" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(116, 152)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8"/>
+      <line x1="0" y1="16" x2="56" y2="16" stroke-width="2.5"/>
+      <circle cx="10" cy="8" r="2" fill="#db8129" stroke="none"/>
+      <circle cx="18" cy="8" r="2" fill="#db8129" stroke="none"/>
+      <path d="M12,28 L22,36 L12,44"/>
+      <line x1="28" y1="44" x2="44" y2="44" stroke-width="4"/>
+    </g>
+    
+    <text x="205" y="191" font-size="30" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">7. Extra vars (</tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">-e key=val / -e @file.yml</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">) — </tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold" fill="#db8129">ALWAYS WINS</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-L6-L7">
+    <line x1="800" y1="282" x2="800" y2="246" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="791,248 800,230 809,248" fill="#207448"/>
+  </g>
+
+  
+  <g id="node-L6">
+    <rect x="80" y="282" width="1440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(116, 304)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="2" width="34" height="28" rx="6"/>
+      <line x1="10" y1="16" x2="26" y2="16" stroke-width="3"/>
+      <rect x="20" y="26" width="34" height="28" rx="6" fill="#e8f1ea"/>
+      <line x1="28" y1="40" x2="44" y2="40" stroke-width="3"/>
+    </g>
+    
+    <text x="205" y="343" font-size="30" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">6. Block &amp; Task vars / </tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">include_vars</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold"> / role params</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-L5-L6">
+    <line x1="800" y1="434" x2="800" y2="398" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="791,400 800,382 809,400" fill="#207448"/>
+  </g>
+
+  
+  <g id="node-L5">
+    <rect x="80" y="434" width="1440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(116, 456)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4,6 C14,2 24,2 28,5 C32,2 42,2 52,6 V48 C42,44 32,44 28,47 C24,44 14,44 4,48 Z"/>
+      <line x1="28" y1="5" x2="28" y2="47" stroke-width="3"/>
+      <line x1="10" y1="18" x2="22" y2="17" stroke-width="3"/>
+      <line x1="10" y1="28" x2="22" y2="27" stroke-width="3"/>
+      <line x1="34" y1="17" x2="46" y2="18" stroke-width="3"/>
+      <line x1="34" y1="27" x2="46" y2="28" stroke-width="3"/>
+    </g>
+    
+    <text x="205" y="495" font-size="30" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">5. Play vars / </tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">vars_files</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold"> &amp; Role vars (</tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">roles/x/vars/main.yml</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-L4-L5">
+    <line x1="800" y1="586" x2="800" y2="550" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="791,552 800,534 809,552" fill="#207448"/>
+  </g>
+
+  
+  <g id="node-L4">
+    <rect x="80" y="586" width="1440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(116, 608)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="46" rx="6"/>
+      <path d="M18,8 V3 H38 V8" stroke-width="4"/>
+      <path d="M14,24 L20,30 L32,18" stroke-width="3.5"/>
+      <line x1="36" y1="24" x2="42" y2="24" stroke-width="3.5"/>
+      <path d="M14,38 L20,44 L32,32" stroke-width="3.5"/>
+      <line x1="36" y1="38" x2="42" y2="38" stroke-width="3.5"/>
+    </g>
+    
+    <text x="205" y="647" font-size="30" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">4. Host facts (</tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">setup</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">) &amp; registered / </tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">set_fact</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold"> vars</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-L3-L4">
+    <line x1="800" y1="738" x2="800" y2="702" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="791,704 800,686 809,704" fill="#207448"/>
+  </g>
+
+  
+  <g id="node-L3">
+    <rect x="80" y="738" width="1440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(116, 760)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="8"/>
+      <line x1="12" y1="18" x2="34" y2="18" stroke-width="4"/>
+      <line x1="12" y1="30" x2="34" y2="30" stroke-width="4"/>
+      <circle cx="41" cy="18" r="2.5" fill="#207448" stroke="none"/>
+      <circle cx="41" cy="30" r="2.5" fill="#207448" stroke="none"/>
+      <line x1="12" y1="42" x2="44" y2="42" stroke-width="3" stroke-dasharray="3 4"/>
+    </g>
+    
+    <text x="205" y="799" font-size="30" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">3. Inventory </tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">host_vars/</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold"> (host-specific exceptions)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-L2-L3">
+    <line x1="800" y1="890" x2="800" y2="854" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="791,856 800,838 809,856" fill="#207448"/>
+  </g>
+
+  
+  <g id="node-L2">
+    <rect x="80" y="890" width="1440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(116, 912)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="10" r="7"/>
+      <circle cx="10" cy="44" r="7"/>
+      <circle cx="46" cy="44" r="7"/>
+      <path d="M28,17 L28,28 M28,28 L10,28 L10,37 M28,28 L46,28 L46,37"/>
+    </g>
+    
+    <text x="205" y="951" font-size="30" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">2. Inventory </tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">group_vars/all -&gt; parent group_vars -&gt; child group_vars</tspan>
+    </text>
+  </g>
+
+  
+  <g id="arrow-L1-L2">
+    <line x1="800" y1="1042" x2="800" y2="1006" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="791,1008 800,990 809,1008" fill="#207448"/>
+  </g>
+
+  
+  <g id="node-L1">
+    <rect x="80" y="1042" width="1440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(116, 1064)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="5" y="4" width="46" height="48" rx="6"/>
+      <line x1="14" y1="18" x2="38" y2="18" stroke-width="4"/>
+      <line x1="14" y1="28" x2="42" y2="28" stroke-width="4"/>
+      <line x1="14" y1="38" x2="30" y2="38" stroke-width="4"/>
+    </g>
+    
+    <text x="205" y="1103" font-size="30" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">1. Role defaults (</tspan><tspan font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace" font-size="28">roles/x/defaults/main.yml</tspan><tspan font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-weight="bold">) — lowest</tspan>
+    </text>
+  </g>
+</svg>

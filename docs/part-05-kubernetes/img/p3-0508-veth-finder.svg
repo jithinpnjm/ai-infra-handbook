@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060" role="img">
+  <title>Find the host side of a pod's eth0</title>
+  <desc>Visual guide to locating the host veth peer of a pod network interface: 1 'PID=$(crictl inspect $CTR | jq -r .info.pid)' gives the pod network namespace. 2 'nsenter -t $PID -n ip link show eth0' prints '2: eth0@if47: BROADCAST,MULTICAST,UP,LOWER_UP' and the number after @if is the peer index 47. 3 On the host: 'ip link | grep ^47:' prints '47: cali8a9b1c2d@if2' (or a veth or lxc name). Pod namespace with eth0@if47 connects via veth pair to host namespace with cali8a9b1c2d@if2. Result: 'tcpdump -i cali8a9b1c2d -nn captures only that pod's traffic'. Also shows 'crictl pods --name trainer-0 -q' then 'crictl inspectp' for the netns path.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Find the host side of a pod's eth0</text>
+
+  
+  <rect x="40" y="110" width="1520" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 40 124 A 14 14 0 0 1 54 110 L 62 110 L 62 300 L 54 300 A 14 14 0 0 1 40 286 Z" fill="#207448"/>
+
+  
+  <circle cx="95" cy="205" r="24" fill="#207448"/>
+  <text x="95" y="205" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <g transform="translate(135, 177)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="48" rx="6" stroke-width="4"/>
+    <line x1="0" y1="14" x2="56" y2="14" stroke-width="3"/>
+    <circle cx="10" cy="7" r="2" fill="#207448"/>
+    <circle cx="18" cy="7" r="2" fill="#207448"/>
+    <polyline points="10,24 18,30 10,36" stroke-width="3.5"/>
+    <line x1="24" y1="36" x2="38" y2="36" stroke-width="3.5"/>
+  </g>
+
+  
+  <rect x="205" y="125" width="715" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="228" y="178" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">PID=$(crictl inspect $CTR | jq -r .info.pid)</text>
+  <text x="228" y="242" font-family="sans-serif" font-size="25" fill="#303a36">gives the pod network namespace</text>
+
+  
+  <rect x="940" y="125" width="600" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="965" y="168" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">crictl pods --name trainer-0 -q</text>
+  <line x1="975" y1="180" x2="975" y2="208" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="995" y="198" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">then</text>
+  <text x="965" y="246" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">crictl inspectp</text>
+  <text x="1220" y="246" font-family="sans-serif" font-size="24" fill="#303a36">for the netns path</text>
+
+  
+  <rect x="40" y="325" width="690" height="570" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 40 339 A 14 14 0 0 1 54 325 L 62 325 L 62 895 L 54 895 A 14 14 0 0 1 40 881 Z" fill="#207448"/>
+
+  
+  <g transform="translate(80, 345)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="8" stroke-width="4"/>
+    <circle cx="28" cy="28" r="10" stroke-width="3.5"/>
+    <line x1="28" y1="6" x2="28" y2="18" stroke-width="3.5"/>
+    <line x1="28" y1="38" x2="28" y2="50" stroke-width="3.5"/>
+  </g>
+  <text x="160" y="385" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">pod namespace</text>
+
+  
+  <circle cx="685" cy="375" r="24" fill="#207448"/>
+  <text x="685" y="375" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <rect x="65" y="420" width="640" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="473" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">nsenter -t $PID -n ip link show eth0</text>
+
+  
+  <rect x="65" y="525" width="640" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="570" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="85" dy="0">2: eth0@if47:</tspan>
+    <tspan x="85" dy="40">BROADCAST,MULTICAST,UP,LOWER_UP</tspan>
+  </text>
+
+  
+  <rect x="65" y="670" width="640" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="722" font-family="sans-serif" font-size="24" fill="#303a36">the number after @if is the peer index 47</text>
+
+  
+  <rect x="420" y="785" width="285" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(435, 800)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="40" height="34" rx="4" stroke-width="3"/>
+    <line x1="12" y1="20" x2="12" y2="34" stroke-width="3"/>
+    <line x1="24" y1="20" x2="24" y2="34" stroke-width="3"/>
+    <line x1="36" y1="20" x2="36" y2="34" stroke-width="3"/>
+  </g>
+  <text x="590" y="838" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">eth0@if47</text>
+
+  
+  <rect x="870" y="325" width="690" height="570" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 870 339 A 14 14 0 0 1 884 325 L 892 325 L 892 895 L 884 895 A 14 14 0 0 1 870 881 Z" fill="#207448"/>
+
+  
+  <g transform="translate(905, 345)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="4" stroke-width="4"/>
+    <line x1="4" y1="20" x2="52" y2="20" stroke-width="3"/>
+    <line x1="4" y1="34" x2="52" y2="34" stroke-width="3"/>
+    <circle cx="12" cy="13" r="2" fill="#207448"/>
+    <circle cx="12" cy="27" r="2" fill="#207448"/>
+    <circle cx="12" cy="41" r="2" fill="#207448"/>
+    <line x1="22" y1="13" x2="44" y2="13" stroke-width="3"/>
+    <line x1="22" y1="27" x2="44" y2="27" stroke-width="3"/>
+    <line x1="22" y1="41" x2="44" y2="41" stroke-width="3"/>
+  </g>
+  <text x="985" y="385" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">host namespace</text>
+
+  
+  <circle cx="1515" cy="375" r="24" fill="#207448"/>
+  <text x="1515" y="375" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <text x="895" y="445" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">On the host:</text>
+
+  
+  <rect x="895" y="470" width="640" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="920" y="517" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">ip link | grep ^47:</text>
+
+  
+  <rect x="895" y="565" width="640" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="920" y="612" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">47: cali8a9b1c2d@if2</text>
+
+  
+  <rect x="895" y="660" width="640" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="920" y="707" font-family="sans-serif" font-size="25" fill="#303a36">(or a veth or lxc name)</text>
+
+  
+  <rect x="895" y="785" width="370" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(910, 800)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="40" height="34" rx="4" stroke-width="3"/>
+    <line x1="12" y1="20" x2="12" y2="34" stroke-width="3"/>
+    <line x1="24" y1="20" x2="24" y2="34" stroke-width="3"/>
+    <line x1="36" y1="20" x2="36" y2="34" stroke-width="3"/>
+  </g>
+  <text x="1090" y="838" text-anchor="middle" font-family="monospace" font-size="27" font-weight="bold" fill="#207448">cali8a9b1c2d@if2</text>
+
+  
+  <line x1="705" y1="827" x2="728" y2="827" stroke="#db8129" stroke-width="5"/>
+  <rect x="728" y="802" width="134" height="50" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="795" y="836" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">veth pair</text>
+  <line x1="862" y1="827" x2="895" y2="827" stroke="#db8129" stroke-width="5"/>
+
+  
+  <rect x="40" y="925" width="1520" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <path d="M 40 939 A 14 14 0 0 1 54 925 L 62 925 L 62 1025 L 54 1025 A 14 14 0 0 1 40 1011 Z" fill="#207448"/>
+
+  
+  <g transform="translate(85, 947)" stroke="#207448" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22" stroke-width="3.5"/>
+    <circle cx="28" cy="28" r="14" stroke-width="3"/>
+    <circle cx="28" cy="28" r="6" stroke-width="3"/>
+    <line x1="28" y1="6" x2="28" y2="50" stroke-width="2"/>
+    <line x1="6" y1="28" x2="50" y2="28" stroke-width="2"/>
+  </g>
+  <text x="165" y="985" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Result:</text>
+  <text x="300" y="985" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">tcpdump -i cali8a9b1c2d -nn captures only that pod's traffic</text>
+</svg>

@@ -1,0 +1,232 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-nine-principles",
+  "title": "Nine principles for tools that run against a fleet",
+  "spec": "A numbered grid of nine cards, each with a headline and one concrete example. '1 Safe by default: read-only needs no confirmation; mutating commands have --dry-run and need --yes for destructive scope; refuse wildcard targets without an explicit flag'. '2 Idempotent: running twice gives the same end state as once; set the value, do not toggle; already in desired state is success'. '3 Explicit exit codes: 0 success, 1 generic failure, 2 usage error (argparse and Click default); own codes for partial failure and nothing to do'. '4 Human and machine output: table by default, --output json|yaml|tsv; data to stdout, logs and progress to stderr'. '5 Timeout on everything: every network call and subprocess'. '6 Isolate each target: one bad host must not abort the batch; summarise and set the exit code to match'. '7 Log who ran what, against which targets, under which run id; mutating actions at INFO with state before and after'. '8 Layer configuration: flags beat environment variables, which beat the config file, which beats defaults; never a secret on the command line (ps and shell history)'. '9 Keep the core small and testable: separate parsing, decision logic and I/O (chapter 3.9)'. Highlight card 6 in orange as the one the opening 3 a.m. story breaks. Opening story strip 'a script hangs on a down host, prints a wall of mixed output and leaves nodes half-drained'. Bottom bar: 'Every later section in this chapter applies one of these principles'.",
+  "anchor": "## 1. Principles for operational tooling",
+  "alt": "Nine numbered cards covering safe defaults, idempotency, exit codes, separate output streams, timeouts, per-target isolation, audit logging, layered configuration and a small testable core.",
+  "cap": "The nine habits that keep an operational tool safe when it runs against a whole fleet."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-framework-choice",
+  "title": "argparse, Click or Typer: which to start with",
+  "spec": "A decision flow with three outcomes. Question 'Must it have zero dependencies, and is it a tiny script?' yes to 'argparse: subcommands, types, choices, mutually exclusive groups, automatic --help; cost is verbosity and it composes less cleanly in large trees'. Question 'Large command tree or plug-in ecosystem?' to 'Click: decorated functions, nested groups, prompts, colour, shell completion, CliRunner, context object for shared config, client and output format'. Question 'Want a fast tool driven by type hints?' to 'Typer: built on Click, from the author of FastAPI; each parameter becomes an argument or option; shell completion for free; Annotated[int, typer.Option(min=1)]'. Side strip 'Rich adds tables, progress bars, tracebacks, live displays; check sys.stdout.isatty() and fall back to plain text when piped; textual for full terminal UIs'. Side strip 'fire and cyclopts exist but are less common'. Convention strip 'borrow Go CLI conventions from kubectl and helm: noun verb, -o json, --dry-run=client, --context'. Bottom bar: 'Start with the standard library, and move up when the command tree grows'.",
+  "anchor": "### 2.3 Typer and Rich",
+  "alt": "A decision flow choosing argparse for tiny dependency-free scripts, Click for large command trees and Typer for type-hint driven tools, with Rich and kubectl-style conventions.",
+  "cap": "argparse for tiny zero-dependency scripts, Click for large command trees, and Typer when type hints should drive the interface."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-argparse-anatomy",
+  "title": "Reading the gpuctl parser top down",
+  "spec": "Annotated code of build_parser with callouts. 'ArgumentParser(prog=gpuctl, description=GPU fleet helper)'. '-v, --verbose action=count default=0: repeat for more logging'. 'add_subparsers(dest=cmd, required=True): creates the two subcommands'. 'status: hosts nargs=+ means one or more hosts; --output choices table or json, default table'. 'drain: host; --timeout type=int default=600; --dry-run action=store_true'. 'main(argv=None) -> int: parse_args(argv) so tests can call main([...]) directly without starting a process (orange)' and 'if __name__ == __main__: sys.exit(main())'. Right panel 'Click version of the same tool': 'group callback runs first: sets up logging to stderr, loads config, stores both on ctx.obj'; 'subcommands read shared state through @click.pass_obj'; 'drain asks click.confirm(Drain host?, abort=True) unless --yes or --dry-run'; 'test with CliRunner().invoke(cli, [status, h1])'; 'ClickException or UsageError for clean exit codes; ctx.exit(code); echo(err=True) to stderr'. Bottom bar: 'Take argv as a parameter and return an int from main'.",
+  "anchor": "### 2.1 argparse: the standard library baseline",
+  "alt": "An annotated gpuctl argparse parser with verbose count, status and drain subcommands, nargs plus, timeout default 600 and an injectable argv, beside how the Click version shares context.",
+  "cap": "An injectable argv and an int return value let tests call main directly, and the Click group stores shared state on ctx.obj."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-csv-linter-case",
+  "title": "Case study: three silent data bugs and two small Click tools",
+  "spec": "Left 'csv-linter': start 'inspect the 32,770-row wine.csv with df.describe()' to three findings. 'grape column count 0.0: 100 percent NaN, found by zero_count_columns(df) where df[key].count() == 0'. 'Unnamed: 0 column added on every round-trip because df.to_csv(wine.csv) had no index=False, found by unnamed_columns(df)'. 'Windows carriage returns \\r\\n (^M in vim) inside notes fields, found by carriage_returns(df), which returns the first (index, column, field) truncated to field[:50]'. Packaging chain: 'csv_linter/checks.py small testable functions' to '@click.command, @click.argument(filename, type=click.Path(exists=True)) def main(filename)' to 'entry_points: csv-linter=csv_linter.main:main, which is [project.scripts] in pyproject.toml' to 'pip install -e .' (orange: 'rerun after renaming or moving the file, because it regenerates the entry-point wrapper'). Right 'cloud-translate': CLI 'cloud-translate=trigger:main' calls 'HTTP Cloud Function with google-cloud-translate==3.0.2, TranslationServiceClient() in us-central1, target_language_code=fr'. Auth steps 'subprocess.Popen([gcloud, auth, print-identity-token], stdout=PIPE)' then 'out.decode(utf-8).strip()' then 'requests.post(url, json={message: text}, headers={Authorization: bearer token})'. Takeaway 'heavy ML weights do not belong inside every CLI; a 20-line Click CLI is a secure client for a cloud microservice'. Source label 'Practical MLOps chapter 11, modelled in code/part03/python_clis_agents_exporters.py'. Bottom bar: 'A packaged single-purpose CLI beats a notebook or a shell snippet'.",
+  "anchor": "### Case study from *Practical MLOps* Chapter 11: `csv-linter` and `cloud-translate` CLIs",
+  "alt": "The csv-linter tool finding three silent data bugs with small check functions packaged as a console script, beside cloud-translate calling a Cloud Function with an identity token.",
+  "cap": "csv-linter turns three silent data bugs into small testable checks, and cloud-translate shows a thin CLI acting as a client for a cloud function."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-config-precedence",
+  "title": "Configuration layers: who wins when four sources disagree",
+  "spec": "A stack of four layers, highest wins at top. 1 'command-line flags' (orange as top winner), 2 'environment variables: FLEET_ prefix through pydantic-settings, for example FLEET_TOKEN', 3 'config file: YAML or TOML (tomllib from 3.11; yaml.safe_load, never yaml.load); XDG path ~/.config/fleet/config.toml; --config override', 4 'defaults: api_url https://fleet.example.com, timeout 10.0'. Arrow 'validate what you load with pydantic'. Right side 'Secrets': 'token: str | None = None from env FLEET_TOKEN, never a CLI flag, because it appears in ps output and shell history; read from environment, files or a secret store'. Strip 'config show prints the effective configuration with secrets redacted'. Strip 'model_config = SettingsConfigDict(env_prefix=FLEET_, env_file=.env, extra=ignore)'. Bottom bar: 'Settings come from one place that validates them'.",
+  "anchor": "### 2.4 Configuration and secrets",
+  "alt": "A four-layer precedence stack from flags to environment variables, config file and defaults, with the FLEET_ prefix, the rule that secrets never go on the command line and a config show command.",
+  "cap": "Flags beat environment variables, which beat the config file, which beats defaults, and secrets never travel as flags."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-long-running-ux",
+  "title": "A long loop must look alive: the four UX tools and Ctrl+C",
+  "spec": "A table 'Need' to 'Feature'. 'Long loop with no progress looks like a hang' / 'progress bar'. 'Waiting on something' / 'spinner'. 'Watch a changing state' / '--watch polls and redraws the screen'. 'Stream new output' / '--follow'. 'Operation that finishes asynchronously' / '--wait and --timeout flags; poll the status endpoint with backoff like kubectl rollout status'. 'User presses Ctrl+C' / 'catch KeyboardInterrupt, clean up, return exit code 130' (orange). Flow strip for the waiting flag: 'start operation' to 'poll status with backoff' to 'done, or --timeout reached' to 'exit code'. Rule strip 'progress and spinners go to stderr and only on a terminal'. Bottom bar: 'Think of the person running your tool at 3 a.m.'.",
+  "anchor": "### 2.5 Interactive and long-running UX",
+  "alt": "A table mapping progress bars, spinners, watch, follow, wait with timeout and Ctrl+C handling with exit code 130 to the situation each one solves.",
+  "cap": "Show progress for long loops, poll with backoff behind --wait, and return exit code 130 after cleaning up on Ctrl+C."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-four-timeouts",
+  "title": "Four timeouts, four different waits",
+  "spec": "A timeline of one request through httpx.Client(base_url, timeout=httpx.Timeout(connect=3, read=15, write=15, pool=5), limits=httpx.Limits(max_connections=20), verify=/etc/ssl/corp-ca.pem). Four stages left to right: 'pool: 5 s to get a free connection from the pool of at most 20', 'connect: 3 s for the handshake', 'write: 15 s to send the payload', 'read: 15 s waiting for the response'. Warning (orange) 'a bare requests.get(url) has no timeout and can hang forever'. Rules strip 'create one client and reuse it so connections are pooled and kept alive; always set all four timeouts; pin the CA bundle when your organisation runs private PKI; put a version in User-Agent, for example fleetctl/1.4, so the server team can debug requests'. Library strip 'requests: everywhere, fine for synchronous scripts; httpx: sync and async APIs, HTTP/2; aiohttp: high-concurrency async clients'. Failure list strip 'DNS can break, connection refused, TLS handshake can fail, server times out or answers 429 or 503, a response can arrive partly, pagination can stop early'. Bottom bar: 'Handle these once in the client library so every tool inherits the protection'.",
+  "anchor": "### 3.1 Sessions, timeouts and connection reuse",
+  "alt": "A request timeline through four httpx timeouts of pool 5, connect 3, write 15 and read 15 seconds, with the rules to reuse one client, pin the CA and set a User-Agent.",
+  "cap": "The four httpx timeouts cover getting a pooled connection, the handshake, sending and waiting for the reply, and a bare requests.get has none."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-retry-classify",
+  "title": "Which failures to retry: methods, status codes and exceptions",
+  "spec": "Three columns. Column 'Retry' (green): 'methods: GET, PUT, DELETE, or a POST with an idempotency key'; 'status codes: 429, 502, 503, 504'; 'exceptions: httpx.ConnectError, ReadTimeout, ConnectTimeout, RemoteProtocolError'. Column 'Never retry' (orange): 'status 400, 401, 403, 404, 409: the answer will not change between attempts, retrying is a bug'; 'POST without an idempotency key'. Column 'Policy' from the tenacity decorator: 'retry_if_exception(transient)', 'wait_exponential_jitter(initial=0.5, max=20): 0.5, 1, 2, 4 and so on, capped, with jitter', 'stop_after_attempt(6) | stop_after_delay(60)', 'before_sleep_log(log, WARNING)', 'reraise=True'. Rule strip 'honour Retry-After; cap both attempts and total time'. Without a library 'delay = min(cap, base * 2**attempt); sleep(random.uniform(0, delay))' is called full jitter. Definitions 'backoff: each retry waits longer than the last; jitter: each client adds randomness so many clients that fail together do not retry in lockstep'. Bottom bar: 'The only 4xx worth retrying is 429'.",
+  "anchor": "### 3.2 Retries, backoff and jitter",
+  "alt": "Three columns of what to retry, namely idempotent methods, 429 and 5xx codes and connection exceptions, what never to retry such as 400, 401, 403, 404 and 409, and the tenacity policy settings.",
+  "cap": "Retry only idempotent calls and transient failures, never 4xx other than 429, and cap attempts and total time."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-resilience-layers",
+  "title": "Layering timeout, retry, breaker and bulkhead",
+  "spec": "Nested boxes from outside to inside in the order the chapter gives: 'timeout' then 'retry' then 'circuit breaker' then 'bulkhead' around a call to the dependency. Breaker state strip: 'closed: calls pass; counts consecutive failures' to 'open after a threshold: calls fail fast without reaching the dependency' to 'after a cool-down, half-open: one probe call passes' to 'probe succeeds: closed again' (probe fails: open again). Orange on 'open'. Bulkhead description 'limits how many calls run at once against one dependency, using a semaphore (a counter that caps simultaneous work), so one slow service cannot consume every thread'. Message example 'fleet API unavailable, breaker open for 30 s' so the operator knows what happened. Analogy 'a fuse in a wall'. Libraries 'pybreaker, circuitbreaker, or a class of about 30 lines'. Reason 'when a dependency is down, retries make it worse because every caller keeps adding load'. Bottom bar: 'Fail fast with a clear message while the dependency recovers'.",
+  "anchor": "### 3.3 Circuit breakers and bulkheads",
+  "alt": "Nested layers of timeout, retry, circuit breaker and bulkhead around a dependency call, with the closed, open and half-open breaker states and the operator-facing error message.",
+  "cap": "Combine the layers in the order timeout, retry, breaker, bulkhead, and make an open breaker say so clearly."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-paginate-150",
+  "title": "150 items at 100 per page: the naive client and the completeness check",
+  "spec": "Two lanes. Lane 'naive client': 'page 1 returns 100 items' to 'handles them and exits 0' to 'the other 50 hosts were never read and nobody notices' (orange, 'silent truncation'). Lane 'paginate() generator': 'params limit=page_size and page_token when set' to 'get_json(path, **params)' to 'for item in body[items]: seen += 1; yield item' to 'token = body.get(next_page_token)' to 'if not token: break' ; page 1 gives 100 plus a token, page 2 gives 50 and no token, loop ends having seen 150. Check strip 'if the API reports a total count, compare it with what you fetched, and log how many items you received'. Comparison panel 'offset pagination asks by position: positions shift when items are added, so a page can skip or repeat items; cursor or token pagination asks for the batch after the one you just read, so a changing list cannot shift it'. Bottom bar: 'Hide paging in a generator and make it fail loudly'.",
+  "anchor": "### 3.4 Pagination and completeness",
+  "alt": "A naive client reading only the first 100 of 150 items and exiting 0, beside a paginate generator following next_page_token for two pages and checking the total, with offset versus cursor paging.",
+  "cap": "A naive client misses 50 of 150 hosts silently, while a token-following generator with a count check reads all of them."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-polling-staleness",
+  "title": "Background polling versus a scrape-time collector",
+  "spec": "Two timelines. Top 'poll_forever with Gauge.set': a polling thread writes TEMP.labels(h, gpu).set(t) every interval=15 and ERRORS.labels(h).inc() on failure; Prometheus scrapes at its own rate; if polling stalls in the night 'the metrics keep showing the last values, dashboards stay calm on hours-old numbers' (orange, staleness is where an exporter lies); 'series for removed hosts linger until .remove(...)'. Bottom 'FleetCollector registered with REGISTRY.register': 'Prometheus scrapes' to 'collect() runs now' to 'for each host: read_temps(h, timeout=5)' to 'temp.add_metric([h, str(gpu)], t); up.add_metric([h], 1)' or on failure 'up.add_metric([h], 0) so failure is data, not an exception' to 'yield temp, up and fleet_scrape_duration_seconds' ; 'each scrape is a fresh, consistent snapshot, so no stale series survive'. Rules strip 'collection must finish well inside the scrape timeout; parallelise with a thread pool and a per-host timeout, or cache results for a few seconds (a TTL cache keeps each result for a short lifetime); never let one failing target raise out of collect(); do not block on slow hardware, BMC queries can take seconds; protect the endpoint: internal interface, TLS and basic auth through proxies, or a sidecar'. Both serve on port 9101 with start_http_server(9101). Bottom bar: 'Let the scrape drive the collection'.",
+  "anchor": "### 4.2 The simple way: instrument and serve",
+  "alt": "A background polling exporter that keeps serving stale values when polling stalls, compared with a custom collector that gathers fresh values at scrape time and reports failures as an up metric of 0.",
+  "cap": "Background polling can serve hours-old values, while a scrape-time collector gives a fresh snapshot and turns failure into an up metric of 0."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-probe-relabel",
+  "title": "A multi-target exporter: how /probe?target= gets filled in",
+  "spec": "A flow with three relabel steps. Prometheus job 'bmc' with metrics_path /probe and static targets 'bmc01.mgmt, bmc02.mgmt'. Step 1 'source_labels __address__ goes to target_label __param_target': the target becomes the URL query parameter target. Step 2 'source_labels __param_target goes to target_label instance': keeps the BMC name as the instance label. Step 3 'target_label __address__ with replacement bmc-exporter:9102': the scrape goes to the exporter (orange). Result request 'GET bmc-exporter:9102/probe?target=bmc01.mgmt'. Side panel 'why': 'blackbox_exporter and snmp_exporter work this way; the exporter keeps no host list of its own because Prometheus relabelling (rewriting the target address into the query parameter before it scrapes) supplies the targets from service discovery'. Contrast 'the FleetCollector keeps its own list of hosts'. Bottom bar: 'The exporter takes the target as a URL parameter'.",
+  "anchor": "### 4.3 The recommended way: a custom collector",
+  "alt": "Three Prometheus relabel steps that move the address into the target query parameter, keep it as the instance label and redirect the scrape to bmc-exporter port 9102, producing a probe request per BMC.",
+  "cap": "Relabelling turns each static target into a probe target parameter and sends the scrape to the exporter, so the exporter needs no host list."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-exporter-gaps",
+  "title": "Reuse an existing exporter first, write only the site-specific gaps",
+  "spec": "Two columns. Left 'Already exists': 'DCGM exporter: utilisation, memory, temperature, power, clocks, XID errors, NVLink counters, ECC data'; 'node_exporter: the host itself'; 'NVIDIA GPU Operator deploys DCGM exporter in Kubernetes with a ServiceMonitor'; 'IPMI or Redfish exporters: BMC sensors'. Right 'Write only for your gaps' (orange): 'scheduler state: Slurm queue depth and node states from sinfo and squeue --json'; 'fabric health from UFM or ibdiagnet summaries'; 'storage tenant quotas'; 'license counts'; 'job-level GPU accounting joined to Kubernetes or Slurm metadata'. Test ladder at the bottom: 'curl -s localhost:9101/metrics | head: does it look right' then 'promtool check metrics: lint' then 'count({__name__=~\"gpu_.*\"}) in Prometheus: series count'. Bottom bar: 'Look first for an exporter that already covers the gap'.",
+  "anchor": "### 4.4 Real-world GPU and hardware exporters",
+  "alt": "Existing exporters such as DCGM, node_exporter and Redfish on the left and site-specific gaps like Slurm state, fabric health and licence counts on the right, with a three-step exporter test ladder.",
+  "cap": "Use DCGM exporter, node_exporter and BMC exporters where they exist, and write custom code only for site-specific gaps."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-redfish-session-flow",
+  "title": "A Redfish session from login to logout, and why logout matters",
+  "spec": "A sequence between client and BMC. 1 'POST /redfish/v1/SessionService/Sessions with UserName and Password, once'. 2 'response gives X-Auth-Token header and Location header (the session URI, needed to log out)'. 3 'every later call sends X-Auth-Token, so the password does not travel with each request'. 4 'GET /redfish/v1/Systems then follow Members @odata.id: do not hard-code ids'. 5 'power(reset_type): read Actions #ComputerSystem.Reset target and ResetType@Redfish.AllowableValues; if reset_type not in allowed raise ValueError locally, before anything reaches the BMC; else POST ResetType'. 6 'DELETE session_uri on close()' (orange: 'BMCs allow only a few concurrent sessions; a leaked session can lock you out until it times out'). Habits strip 'wrap in a context manager (with Redfish(host, USER, PASS) as rf) or put cleanup in finally; verify=False only in labs, BMC certs are often self-signed, pin or manage the CA in production'. Task strip 'long actions answer 202 Accepted with a Location pointing to a task monitor; poll until TaskState is Completed or Exception, with a timeout; a firmware update can take many minutes and reboot the BMC, so expect connection errors partway through'. Bottom bar: 'Always log out'.",
+  "anchor": "### 5.2 A small client",
+  "alt": "A sequence of Redfish login, token header, discovery by odata id, a validated power reset and a session delete, with the task monitor polling for 202 Accepted and the session limit warning.",
+  "cap": "Log in once for a token, discover resources by link, validate reset types locally, and always delete the session because BMCs allow few."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-redfish-vendor-security",
+  "title": "Redfish across vendors, and treating BMC credentials as root",
+  "spec": "Two panels. Panel 'Vendors differ' with examples: 'the same host appears as /Systems/1, /Systems/System.Embedded.1 or /Systems/Self'; 'Thermal and Power are deprecated in favour of ThermalSubsystem, PowerSubsystem and EnvironmentMetrics, and the code comments that newer schemas use ThermalSubsystem/Sensors'; 'OEM extensions sit under Oem'; 'some BMCs are slow, rate-sensitive or return 500 under concurrent load'. Plan list 'serialise requests to each BMC, retry carefully, cap concurrency across the fleet, test against every platform you run; DMTF mockup server; the redfish Python library (python-redfish-library) handles sessions and OData; nvfwupd on the DGX BMC builds on the same standard'. Panel 'BMC credentials are effectively root over the machine' (orange): 'keep BMC networks isolated; rotate secrets; one account per user with a suitable role; validate TLS against an internal CA; audit every action; never log passwords or tokens; power and boot actions: dry-run first, print the target and action without sending anything, require --yes'. Bottom bar: 'Plan for differences between vendors and guard the keys'.",
+  "anchor": "### 5.1 Resource model",
+  "alt": "Two panels on how Redfish differs across vendors, with three spellings of the same Systems path and deprecated Thermal schemas, and on treating BMC credentials as root with isolation, roles, TLS and dry-run.",
+  "cap": "Vendors differ in paths, schemas and load tolerance, and BMC credentials are root over the machine so isolate, audit and dry-run first."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-fleet-fanout-summary",
+  "title": "Fleet fan-out: per-host isolation and the summary line",
+  "spec": "A flow for run(hosts, workers=16). 'ThreadPoolExecutor(max_workers=16): bounded concurrency protects the management network' to each host 'check(host): with Redfish(host, USER, PASS) as rf: s = rf.system(); return host, {power: PowerState, health: Status.Health, model: Model}, None' with 'except Exception as e: return host, None, type(e).__name__: e' (isolate per host) to 'as_completed(...)' collects into two dictionaries 'ok' and 'bad' (orange) to 'CLI exits non-zero if bad is non-empty'. Example summary strip '412 ok, 3 failed (bmc17: timeout, ...)'. Habits strip 'report progress as you go; write results incrementally so an interrupted run can resume; for thousands of hosts move to asyncio with a semaphore (chapter 3.6)'. Bottom bar: 'One failing BMC lands in bad and does not stop the others'.",
+  "anchor": "### 5.3 Fleet fan-out",
+  "alt": "A thread pool of 16 workers running a per-host Redfish check that returns either a result or an error string, collected into ok and bad dictionaries, ending in a summary line and a non-zero exit.",
+  "cap": "Each host gets its own try block, failures land in bad without stopping the rest, and the run ends with a summary and an exit code."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-gpu-sources",
+  "title": "Where facts about a GPU host come from, and how to read each safely",
+  "spec": "A table 'Source', 'How to read', 'Care'. 'nvidia-smi' / 'nvidia-smi --query-gpu=index,name,temperature.gpu,utilization.gpu,memory.used,memory.total,power.draw,ecc.errors.uncorrected.volatile.total --format=csv,noheader,nounits: one CSV line per GPU; nvidia-smi -q -x for XML' / 'parse with csv module; treat [N/A] and [Not Supported] as missing; each call initialises NVML and can take a second on a busy host'. 'NVML bindings' / 'pynvml and nvidia-ml-py: nvmlDeviceGetTemperature, nvmlDeviceGetUtilizationRates, nvmlDeviceGetMemoryInfo, nvmlDeviceGetPowerUsage; throttling reasons and XID events' / 'continuous monitoring'. 'DCGM' / 'Python bindings for health checks and diagnostics; dcgmi diag -r 1|2|3 as a subprocess' / '-'. '/proc and /sys' / '/proc/meminfo, /proc/pressure/*, /sys/class/infiniband/*/ports/*/counters/*, /sys/class/net/*/statistics/*' / 'dependency-free; files can vanish between listing and reading'. Subprocess rules strip 'argument list, timeout=, check=False so you handle the return code, capture stderr, never shell=True with uncontrolled input; subprocess.run timeout kills the child but not its descendants: start_new_session=True then os.killpg; in long-running agents call wait() to avoid zombies'. Design strip (orange) 'wrap each source in a function returning a typed result such as a dataclass, so the CLI, exporter and agent share one collection layer and tests feed canned output'. Bottom bar: 'Read in a way that survives odd output, slow tools and vanishing files'.",
+  "anchor": "## 6. Collecting from GPU hosts",
+  "alt": "A table of nvidia-smi CSV queries, NVML bindings, DCGM and proc and sys files with the care each needs, plus subprocess rules and the shared typed collection layer.",
+  "cap": "Ask nvidia-smi for CSV, use NVML or DCGM for continuous data, read proc and sys carefully, and return typed results from one shared layer."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-agent-lifecycle",
+  "title": "A node agent's main loop, signals and failure containment",
+  "spec": "Left a loop diagram 'while not stop.is_set(): do_cycle(); stop.wait(interval + jitter)' with note 'jitter stops every agent firing at the same instant and spiking the fleet'; 'measure each cycle, log and emit a metric when it overruns'. Signals panel: 'SIGTERM: finish the current cycle, flush state, exit within the grace period'; 'SIGHUP: reload config'; 'ignore SIGPIPE issues'; 'fatal error: exit non-zero so systemd restarts it'; 'asyncio: loop.add_signal_handler; threaded: a threading.Event the loop checks'. Containment panel (orange): 'each check has its own try block and its own timeout, so a broken GPU query never stops the network checks; export a success metric per check'. State panel 'small state under /var/lib/agent with atomic writes; on startup reconcile desired state against actual state, the broker or hardware is the source of truth'. Self-description panel 'expose /metrics and /healthz; report version, build info, timestamp of the last successful cycle, queue depths; alert when last-success goes stale'. Bottom bar: 'A small mistake in the agent multiplies across the fleet'.",
+  "anchor": "## 7. Node agents and daemons",
+  "alt": "A node agent loop with jittered waits, signal handling for SIGTERM and SIGHUP, per-check timeouts and success metrics, small reconciled state and self-reporting endpoints.",
+  "cap": "Agents run a jittered loop, stop gracefully on SIGTERM, isolate each check and report their own last-success time."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-systemd-unit-annotated",
+  "title": "The node agent systemd unit, line by line",
+  "spec": "Annotated unit file, grouped. '[Unit] After=network-online.target and Wants=network-online.target: start once the network is up'. '[Service] User=nodeagent: dedicated unprivileged user'. 'ExecStart=/opt/nodeagent/venv/bin/nodeagent --config /etc/nodeagent.toml'. 'Restart=on-failure, RestartSec=5: restart on non-zero exit'. 'TimeoutStopSec=30: the SIGTERM grace period'. 'MemoryMax=300M and CPUQuota=20%: the agent never competes with a training job for memory or CPU' (orange). 'NoNewPrivileges=yes, ProtectSystem=strict, ReadWritePaths=/var/lib/nodeagent: only its state directory is writable'. 'Environment=PYTHONUNBUFFERED=1: logs appear immediately'. '[Install] WantedBy=multi-user.target'. Side panel 'Kubernetes instead: DaemonSet (one copy on every node); hostPID or hostNetwork only when truly needed; tolerations for every node including tainted GPU nodes; mount /sys and /dev read-only where possible; Downward API for the node name'. Security strip 'dedicated unprivileged user, only needed capabilities, narrow sudo rule or small helper for privileged actions, per-node credentials such as mTLS or short-lived tokens, validate every command received: an agent that runs arbitrary remote commands is a route to fleet-wide compromise'. Also 'CPUQuota, MemoryMax and Nice; pin or limit threads'. Bottom bar: 'If it goes wrong on every host, who notices and how?'.",
+  "anchor": "## 7. Node agents and daemons",
+  "alt": "A systemd unit for a node agent annotated line by line for network ordering, unprivileged user, restart policy, stop timeout, memory and CPU limits and read-only filesystem, with the DaemonSet alternative.",
+  "cap": "The unit gives the agent its own user, a restart policy, memory and CPU caps and a writable state directory, and a DaemonSet does the same on Kubernetes."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-distribution-choice",
+  "title": "How to get the tool onto the host: six channels compared",
+  "spec": "A table 'Approach', 'Good for', 'Trade-off'. 'Wheel on an internal index plus pipx install fleetctl' / 'operator laptops, jump hosts' / 'isolated environment per tool, easy upgrades; pin the Python version'. 'uv tool install or uvx' / 'fast installs, reproducible' / 'lockfile support'. 'Zipapp (shiv, pex, python -m zipapp)' / 'single-file deployment to hosts with matching Python' / 'needs a compatible interpreter and wheels for the platform'. 'Container image' / 'CI, Kubernetes jobs, consistent runtime' / 'larger; mount kubeconfig and credentials explicitly'. 'PyInstaller or Nuitka single binary' / 'hosts without Python, air-gapped' / 'platform-specific builds, larger, slower startup'. 'OS packages (deb or rpm via fpm)' / 'fleet-wide config-managed rollout' / 'fits Ansible and Foreman; versioned and auditable'. Release strip (orange) 'semantic versioning and a changelog; --version prints the git SHA; hashed lock files via uv lock or pip-compile --generate-hashes; pip-audit, an SBOM, signed artefacts, trusted publishing from CI; shell completions; man pages or --help documenting exit codes; an upgrade check that warns when older than the server's minimum version'. Metadata strip 'pyproject.toml: [project] name fleetctl, version 1.4.0, requires-python >=3.10, dependencies click, httpx, tenacity, rich; [project.scripts] fleetctl = fleetctl.cli:cli creates the executable on install; build-backend hatchling.build'. Bottom bar: 'The right channel depends on where the tool will run'.",
+  "anchor": "## 8. Packaging and distribution of tools",
+  "alt": "A table of six distribution channels from pipx wheels and uv to zipapps, containers, single binaries and OS packages, with release discipline and the pyproject entry point metadata.",
+  "cap": "Pick wheels, zipapps, containers, binaries or OS packages by where the tool runs, and release with versions, hashes and signed artefacts."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-profiling-tools",
+  "title": "A slow tool: which profiler answers which question",
+  "spec": "A table 'Symptom' to 'Tool' to 'How'. 'CPU busy' / 'cProfile, pstats, snakeviz' / 'python -m cProfile -o out.prof script.py, then python -m pstats out.prof sorted by cumulative time; snakeviz for a graphical view'. 'Running process' / 'py-spy' / 'py-spy top -p PID, py-spy record -o flame.svg -p PID; no code change but needs ptrace permission'. 'Line-level and wall-clock' / 'scalene, pyinstrument'. 'Memory keeps growing' / 'tracemalloc first; memray and objgraph for reference chains' / 'take snapshots, compare, print top allocation sites; usual leaks: unbounded dicts and lists, caches without eviction, retained exceptions and tracebacks, ever-growing metric label sets'. 'I/O slow' / 'chain of serial network calls' / 'bounded concurrency, reuse connections, batch; measure first by logging the time of each phase'. 'Slow startup' / 'python -X importtime' / 'lazy-import heavy modules such as pandas inside the function; avoid work at import time'. Investigation ladder (orange) 'confirm the symptom with timings' then 'is the API slow or your tool?' then 'profile with py-spy on the live process' then 'check resource limits: CPU throttling in a container shows up as latency' then 'fix the specific bottleneck and verify with the same measurement'. Bottom bar: 'Each tool answers one question'.",
+  "anchor": "## 9. Profiling and performance of tools",
+  "alt": "A table pairing CPU, running process, memory, I/O and startup symptoms with cProfile, py-spy, tracemalloc, concurrency fixes and importtime, followed by a five-step latency investigation ladder.",
+  "cap": "Match each slow-tool symptom to its profiler, and investigate by confirming, profiling, checking limits, fixing and re-measuring."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-capstone-layers",
+  "title": "The GPU diagnostics CLI in four layers, with exit codes",
+  "spec": "A layered pipeline. 'cli.py: Click group, output formatting and exit codes' to 'collect.py: per-host executor over SSH, an agent or Redfish, with timeout and bounded concurrency' to 'parsers.py: pure functions turning nvidia-smi CSV and dcgmi output into frozen dataclasses (a pure function answers from its inputs alone: no network, no clock, no randomness)' to 'rules.py: evaluate(gpus, expected=8, max_temp=85)' (orange for the pure layers). 'models.py: dataclasses or pydantic models' at the side. Parser detail 'Gpu(index, name, temp_c, util_pct, mem_used_mib, mem_total_mib, ecc_uncorrected); _int maps empty, [N/A] and [Not Supported] to None; a line without exactly 7 columns raises ValueError unexpected nvidia-smi columns'. Rules detail 'problems for: expected 8 GPUs but found a different count; temp above 85; uncorrected ECC non-zero; plus XID in a set of known codes'. Exit code table '0 all GPUs healthy', '1 usage or runtime failure', '3 any GPU unhealthy', '4 partial collection failure'. Test strip 'canned CSV into parse_smi_csv and evaluate: [N/A] values, wrong column count, empty output, missing GPU; then CliRunner with a stubbed executor asserting exit codes and JSON shape'. Bottom bar: 'Parser, rules, executor and CLI stay separate'.",
+  "anchor": "## 10. Worked capstone: a GPU fleet diagnostics CLI",
+  "alt": "Four layers of cli, collect, parsers and rules with a Gpu dataclass, the None mapping for N/A values, health rule checks and exit codes 0, 1, 3 and 4, with the canned-input test strategy.",
+  "cap": "Pure parser and rule layers are easy to test, and the CLI maps outcomes to exit codes 0, 1, 3 and 4."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "08",
+  "name": "p3-0308-mistakes-checklist",
+  "title": "Review checklist: the failures that page someone at night",
+  "spec": "A grouped checklist of nine rows, each with mistake and effect. 'HTTP call or subprocess with no timeout' / 'hangs a script in cron or CI'. 'Retrying a non-idempotent call or a permanent error; no jitter; unbounded retry loops' / 'repeats the damage, thundering herds, never ends'. 'Secrets in arguments, logs or exception messages' / 'leak'. 'Logs and data on the same stream' / 'breaks every pipeline that reads the data'. 'Silent pagination truncation, offset paging over changing data' / 'hides part of the fleet'. 'One host aborts the whole run, or swallowing every error and exiting 0' / 'both are wrong'. 'Exporter: slow work in the scrape path, no timeouts, unbounded label values, stale values forever, raising from collect()' (orange) / 'trouble in Prometheus'. 'Redfish: leaked BMC sessions, hard-coded paths, assuming identical schemas, self-signed TLS ignored without a plan (disable verification only in labs)' / 'failures'. 'Zombie subprocesses and orphaned children after timeouts; agent that executes unauthenticated remote commands; agent with no memory or CPU limits; shipping scripts by copying files with no versioning' / 'disturbs training jobs or opens a security hole'. Bottom bar: 'Treat the list as a review checklist before you ship a tool'.",
+  "anchor": "## 12. Common mistakes",
+  "alt": "A checklist of common tool mistakes including missing timeouts, bad retries, leaked secrets, mixed output streams, silent truncation, exporter pitfalls, Redfish session leaks, zombies and unsafe agents.",
+  "cap": "Use the list as a pre-ship review: timeouts, retries, secrets, output streams, pagination, isolation, exporters, Redfish, zombies and agents."
+ }
+]

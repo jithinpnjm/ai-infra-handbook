@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Case 2: why small queries pass and large ones hang</title>
+  <desc>Visual explanation of Path MTU Discovery failure where small packets succeed but large packets hang due to dropped ICMP fragmentation needed messages.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-2%" y="-4%" width="104%" height="108%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.04" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Case 2: why small queries pass and large ones hang</text>
+
+  
+  
+  <g transform="translate(50, 105)">
+    <rect width="450" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#shadow)" />
+    
+    <g transform="translate(25, 27)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="6" />
+      <line x1="10" y1="18" x2="46" y2="18" stroke-linecap="round" />
+      <line x1="10" y1="38" x2="46" y2="38" stroke-linecap="round" />
+      <circle cx="38" cy="10" r="2.5" fill="#207448" />
+      <circle cx="38" cy="28" r="2.5" fill="#207448" />
+    </g>
+    <text x="105" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">server (MTU 9000)</text>
+  </g>
+
+  
+  <line x1="500" y1="160" x2="556" y2="160" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(560, 105)">
+    <rect width="500" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#shadow)" />
+    
+    <g transform="translate(25, 27)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="26" />
+      <path d="M 14 28 L 42 28 M 28 14 L 28 42" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+    <text x="105" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="105" dy="0">router in the middle</tspan>
+      <tspan x="105" dy="36">(MTU 1500)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1060" y1="160" x2="1116" y2="160" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(1120, 105)">
+    <rect width="430" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#shadow)" />
+    
+    <g transform="translate(25, 27)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="5" y="4" width="46" height="34" rx="4" />
+      <line x1="0" y1="48" x2="56" y2="48" stroke-linecap="round" />
+      <line x1="28" y1="38" x2="28" y2="48" stroke-linecap="round" />
+    </g>
+    <text x="105" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">client</text>
+  </g>
+
+  
+  <g transform="translate(50, 235)">
+    <rect width="1500" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)" />
+    
+    <circle cx="45" cy="47" r="24" fill="#207448" />
+    <text x="45" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="95" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">Small packets fit everywhere, nothing needs to change: ping works, telnet to the port works,</tspan>
+      <tspan x="95" dy="32">the handshake succeeds</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 350)">
+    <rect width="1500" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)" />
+    
+    <circle cx="45" cy="47" r="24" fill="#207448" />
+    <text x="45" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="95" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">A full-sized server packet with the do-not-fragment flag cannot fit the 1500 link</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(50, 465)">
+    <rect width="680" height="115" rx="10" fill="#fdf5ec" stroke="#db8129" stroke-width="3" filter="url(#shadow)" />
+    
+    <circle cx="45" cy="57" r="24" fill="#db8129" />
+    <text x="45" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(90, 29)" stroke="#db8129" stroke-width="4" fill="none">
+      <path d="M 28 4 L 50 14 L 50 32 C 50 44 28 54 28 54 C 28 54 6 44 6 32 L 6 14 Z" />
+      <line x1="20" y1="28" x2="36" y2="28" stroke-linecap="round" />
+    </g>
+    <text x="165" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">The firewall drops all ICMP</text>
+  </g>
+
+  
+  <line x1="755" y1="522" x2="736" y2="522" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <g transform="translate(760, 465)">
+    <rect width="790" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)" />
+    
+    <circle cx="45" cy="57" r="24" fill="#207448" />
+    <text x="45" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="95" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">The router sends an ICMP fragmentation</tspan>
+      <tspan x="95" dy="34">needed message back</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 600)">
+    <rect width="1500" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)" />
+    
+    <circle cx="45" cy="52" r="24" fill="#207448" />
+    <text x="45" y="60" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="95" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">The server never learns the size, so it keeps retransmitting the same large packet</tspan>
+      <tspan x="95" dy="32">into the same hole; the capture shows no ICMP</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 725)">
+    <rect width="1500" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    
+    <g transform="translate(25, 25)">
+      <rect width="695" height="72" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <circle cx="36" cy="36" r="18" fill="#207448" />
+      <path d="M 27 36 L 33 42 L 45 28" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="72" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">align the MTUs</text>
+    </g>
+
+    
+    <g transform="translate(745, 25)">
+      <rect width="730" height="72" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <circle cx="36" cy="36" r="18" fill="#207448" />
+      <path d="M 27 36 L 33 42 L 45 28" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="72" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">allow ICMP type 3 code 4 (and ICMPv6 type 2)</text>
+    </g>
+
+    
+    <g transform="translate(25, 118)">
+      <rect width="695" height="72" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <circle cx="36" cy="36" r="18" fill="#207448" />
+      <path d="M 27 36 L 33 42 L 45 28" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="72" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">clamp the MSS at the edge</text>
+    </g>
+
+    
+    <g transform="translate(745, 118)">
+      <rect width="730" height="72" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <circle cx="36" cy="36" r="18" fill="#207448" />
+      <path d="M 27 36 L 33 42 L 45 28" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="72" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">set <tspan font-family="monospace, monospace">tcp_mtu_probing=1</tspan></text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 960)">
+    <rect width="1500" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <g transform="translate(25, 22)" stroke="#207448" stroke-width="3.5" fill="none">
+      <path d="M 10 12 L 22 22 L 10 32" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="26" y1="32" x2="40" y2="32" stroke-linecap="round" />
+    </g>
+    <text x="85" y="51" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace, monospace" font-weight="bold" fill="#207448">ping -M do -s N</tspan>, and look for the ICMP in the capture (chapter 2.7)
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 1065)">
+    <rect width="1500" height="85" rx="10" fill="#207448" filter="url(#shadow)" />
+    <text x="750" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Two facts already say a lot: the path is up, and the failure depends on packet size</text>
+  </g>
+</svg>

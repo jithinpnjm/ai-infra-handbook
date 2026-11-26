@@ -1,0 +1,122 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-slow-node-sync",
+  "title": "One slow node holds the whole job",
+  "spec": "Row of eight node boxes in one training job with a synchronization bar at the end of each step. Seven nodes finish early and show 'waiting at the barrier'. One node has a failing fan: 'fan fails, node runs hot, its GPUs slow down a little'. Arrow from the slow node to the bar labelled 'every other node waits for it at each synchronization point'. Result strip 'the job runs at the speed of its slowest member; no error is printed'. Analogy 'symphony orchestra: each musician plays well alone, but the music works only when every section keeps time'. Three properties list: 'scale-out parallelism', 'fast low-latency interconnect with microsecond messages', 'shared infrastructure: parallel file system, central batch scheduler, uniform software stack, centralized management plane'. Text at least 24px.",
+  "anchor": "## 1. What \"super\" means: a single synchronized complex",
+  "alt": "Seven nodes wait at a barrier for one overheated slow node, showing the whole job runs at the pace of its slowest member.",
+  "cap": "In a tightly coupled job the slowest node sets the pace for everyone."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-nine-levels",
+  "title": "Nine levels of parallelism from memory banks to many servers",
+  "spec": "Stacked list with two groups. Hardware group tagged HW: '1 multiple memory banks working independently across channels', '2 multiline CPU cache hierarchies', '3 multiple CPUs on a motherboard', '4 multiple CPU cores inside one chip', '5 multiple functional execution devices inside one core', '6 accelerators such as GPUs and FPGAs', '7 network devices with DMA and protocol offloading'. Software group tagged SW: '8 multiple UNIX processes and threads on one server, such as OpenMP threads in one process', '9 multiple servers running one parallel program using MPI for message passing, plus CUDA or OpenACC on accelerators'. Side examples: 'four memory slots of 8 GB, one per bank, beat a single module'; 'pipelining cuts an operation into stages with hardware per stage: a car factory welds, paints, fits seats; total cycles = K times (N minus 1) plus S'. Debug rule: 'parallel job slow but MPI starts without errors: walk down the list; classic culprit near the bottom is MPI configured to send messages over the slow Ethernet management network instead of the fast fabric'. Warning 'parallel is not always faster: threads can fight over the same memory and defeat the cache'. Text at least 24px.",
+  "anchor": "### Parallelism, pipelining, and the nine levels of cluster parallelism",
+  "alt": "A nine-level list of parallelism with seven hardware levels and two software levels and a debugging rule about the wrong network.",
+  "cap": "A slow parallel job is often using the wrong fabric, so check which network carries the messages."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-flops-ladders",
+  "title": "FLOPS prefixes and precision: read a headline number carefully",
+  "spec": "Left ladder of prefixes, each step a factor of one thousand: giga 10^9, tera 10^12, peta 10^15, exa 10^18; an exaflop is one thousand petaflops; a missed prefix hides a thousand times. Right table of precision to workload: 'FP64 double: physics simulation and TOP500 Linpack, highest silicon cost per operation, many AI GPUs run FP64 at a small fraction of their tensor rate'; 'FP32: graphics, CAD, legacy simulation, older ML'; 'TF32, BF16, FP16: mixed-precision deep-learning training, Tensor Core paths deliver an order of magnitude more throughput than scalar FP64'; 'FP8, FP4: frontier LLM training and high-throughput inference, highest floating-point rates'; 'INT8, INT4: quantized inference'. Scales analogy: 'FP64 is the jeweler's scale, low precision is the warehouse scale'. Three questions box to ask of any FLOPS figure: 'What precision? Dense or sparse (sparse assumes many zeros the hardware can skip, so it looks larger)? Theoretical peak Rpeak or measured Rmax?'. Text at least 24px.",
+  "anchor": "## 2. Measuring speed: FLOPS, precision, peak and achieved",
+  "alt": "A prefix ladder from giga to exa beside a precision table and the three questions to ask of any FLOPS figure.",
+  "cap": "Always ask for precision, sparsity and whether a figure is peak or measured."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-flops-worked-numbers",
+  "title": "Same cluster, four different numbers",
+  "spec": "Worked example from code/part06/flops.py with the printed values. Bar 1 'CPU cluster Rpeak: 100 nodes times 2 sockets times 64 cores times 2.4 GHz times 32 FLOPs per cycle (dual AVX-512 FMA) = 983.0 TFLOP/s; with 16 FLOPs per cycle 491.5 TFLOP/s'. Bar 2 'illustrative 800-GPU cluster FP64 Rpeak: 48.0 PFLOP/s'. Bar 3 'HPL efficiency if Rmax is 38 PF: 38 divided by 48 = 79 percent'. Bar 4 'AI peak BF16 dense, illustrative: 800 PFLOP/s; at 40 percent MFU: 320 PFLOP/s'. Footer 'the same 800 GPUs are 48 PF in FP64 and 800 PF in BF16; the number you can use is smaller again after real efficiency; MFU is HPL efficiency for AI: how much of the accelerator peak the training step turns into useful math; count useful FLOPs per step, divide by step time, compare to peak at the training precision'. Pipeline line: 'vector N=1000: 1004 cycles pipelined versus 5000 unpipelined, 4.98 times'. Formula 'Rpeak GFLOP/s = nodes times sockets times cores times GHz times FP64 FLOPs per cycle per core'. Text at least 24px.",
+  "anchor": "### A calculator you can run",
+  "alt": "Four example numbers for one illustrative cluster: CPU Rpeak, GPU FP64 Rpeak, HPL efficiency and BF16 peak with MFU.",
+  "cap": "The same hardware gives very different headline numbers depending on precision and efficiency."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-benchmark-map",
+  "title": "Which benchmark tells you what",
+  "spec": "Table with three columns benchmark, what it stresses, what it leaves out. 'TOP500 (June at ISC, November at SC): ranks by Rmax on HPL in FP64; leaves out low-precision AI speed, storage I/O, multi-job mixes'. 'HPL: dense linear system Ax = b by LU factorization in FP64; stresses compute, power, cooling and regular collectives; leaves out memory-bound sparse kernels, irregular communication, file systems'. 'HPCG: sparse system with irregular memory access and global reductions; typically a few percent of Rpeak'. 'HPL-MxP: Linpack with mixed-precision tensor arithmetic and FP64 iterative refinement'. 'Green500: TOP500 re-ranked by GFLOP/s per watt'. 'Graph500: graph traversal in traversed edges per second'. 'IO500: parallel storage via IOR bandwidth and mdtest metadata'. 'MLPerf Training and Inference: time to train reference models to a target accuracy, or inference throughput and latency under quality limits'. Habit strip 'write down the workload a score does not test; if that is your workload, the score does not answer your question'. Burn-in use: 'run HPL, watch power and temperature per node, compare efficiency with the vendor expectation; a node that draws less power or runs hotter than peers points to a bad transceiver or throttling cooling loop'. Caveats: 'many large AI clusters never submit to TOP500', 'TOP500 rewards FP64', 'exascale means 10^18 sustained FP64 operations per second on HPL'. Text at least 24px.",
+  "anchor": "## 3. The lists and benchmarks",
+  "alt": "A table of eight benchmarks showing what each measures and what it leaves out, with burn-in use.",
+  "cap": "Use benchmarks as acceptance tests and remember the workload each one does not test."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-cluster-types",
+  "title": "Three cluster types and what one node failure costs",
+  "spec": "Three columns each with an analogy and a failure outcome. 'HA or load-balanced: goal continuous service uptime and low latency; loose or replicated state; node failure: traffic fails over to surviving nodes (restaurant with two chefs); examples web tiers, HA database pairs, stateless LLM inference replicas; upgrade: take one node out of rotation, update, return'. 'High-productivity HTC or Grid: goal finish a massive batch of independent tasks; no coupling between workers; node failure: only that node's task slice is retried elsewhere (every sock washed on its own); examples SETI@home, Folding@home, genomics sweeps, data preprocessing'. 'HPC or AI training: goal run one tightly coupled program as fast as possible; microsecond message passing; node failure: the entire multi-node job aborts and restarts from a checkpoint (relay race, a fallen runner stops the team); examples weather forecasting, CFD, multi-node LLM pre-training'. Bottom rule 'use gang scheduling and fast checkpoints for tightly coupled jobs; stateless failover or task retries for HA and HTC pools'. Text at least 24px.",
+  "anchor": "### The three classic cluster types: HA, high-productivity, and HPC",
+  "alt": "Three cluster types compared by goal, coupling and the effect of a single node failure.",
+  "cap": "Match the fault-tolerance design to how tightly the workload is coupled."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-hpc-vs-ai-factory",
+  "title": "Traditional HPC center versus AI factory",
+  "spec": "Two-column comparison of rows. Workloads: 'physical simulation in C, C++ and Fortran with MPI and OpenMP' versus 'neural-network pre-training, fine-tuning, data curation and inference in Python with PyTorch or JAX and NCCL'. Precision: 'heavy FP64' versus 'BF16, FP16, FP8, FP4; FP64 rarely used'. Traffic: 'domain decomposition with halo exchanges and small global reductions' versus 'data, tensor, pipeline, expert and context parallelism; AllReduce, AllGather, ReduceScatter, AllToAll elephant flows'. Jobs: 'wide mix of small and medium jobs plus occasional hero runs' versus 'bimodal: a few thousand-GPU jobs for weeks plus fine-tuning and 24/7 inference'. Storage: 'scratch, home and simulation dumps with heavy POSIX metadata' versus 'streaming dataloader reads and periodic multi-terabyte synchronous checkpoint bursts'. Packaging: 'environment modules, Spack, EasyBuild' versus 'OCI containers from NGC base images'. Failure: 'periodic checkpoint and restart' versus 'at thousands of GPUs faults every few hours or days; automated health checks and sub-minute checkpointing'. North star: 'high node utilization and fair queue turnaround' versus 'high MFU, minimum time-to-train, lowest cost per token or tokens per watt'. Rack power: '15 to 40 kW' versus '40 to 130 kW or more with direct-to-chip liquid cooling'. Analogy 'public library versus manufacturing plant'. Bottom: 'Slurm, fabric and storage skills carry over; what changes is the size of each failure and how quickly you must respond'. Text at least 24px.",
+  "anchor": "## 4. Traditional HPC versus the AI factory",
+  "alt": "Two columns compare traditional HPC and AI factories across workloads, precision, traffic, jobs, failure and rack power.",
+  "cap": "The skills carry over but failures are larger and faster in an AI factory."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-eight-invariants",
+  "title": "Eight rules that keep many servers acting as one",
+  "spec": "Eight numbered tiles around a central label 'one illusion of a giant computer'. '1 Identical software state: same OS image, kernel patch level, GPU driver, NIC firmware'. '2 Synchronized time and identity: chrony or NTP; same numeric UID and GID everywhere'. '3 Predictable naming and networking: DNS, hosts, DHCP and PXE, out-of-band management network, compute fabric'. '4 Uniform shared storage: same mount paths, enforced quotas'. '5 Centralized scheduling and accounting: users never start work on compute nodes directly; scheduler places jobs, isolates them in cgroups, logs usage'. '6 Comprehensive observability: node health, temperatures, power supplies, air conditioning, UPS, fabric symbol errors, GPU faults'. '7 Repeatable provisioning: a replacement server boots into an identical state within minutes'. '8 Spares and SLA discipline: on-site stock of key spares, vendor replacement SLAs'. Two failure examples: 'clock drift of a few seconds makes ranks disagree and looks like an application bug'; 'one node with an older GPU driver runs slightly slower or different and nothing in the job log points to it; compare driver versions'; 'a different UID makes a user unable to read their own checkpoint'. Text at least 24px.",
+  "anchor": "## 6. What \"super\" means to the administrator",
+  "alt": "Eight tiles list the invariants every node must keep, with examples of clock drift and driver mismatch.",
+  "cap": "Small differences between nodes cause failures that look like application bugs."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-office-vs-cluster",
+  "title": "Four habits from office IT that fail in a cluster",
+  "spec": "Four rows, office habit versus cluster reality. 'Density: office PCs are spread across a building; a cluster is packed into a few square meters; cannot cool by opening a window or run from wall sockets or a household UPS; a slightly weak cooling loop leaves the rack too hot to hold clocks and the job slows without any alarm; computing racks often take under a quarter of the floor area'. 'Utilization: an office PC idles most of the day; in a cluster normal is 80 to 100 percent on every node; an idle node while the queue is full means something is blocking it'. 'I/O storm: in an office a hundredfold traffic jump looks like a virus; in a cluster all nodes writing checkpoints at once is the plan working; monitoring must tell the two apart'. 'Learning of failures: in an office someone runs in shouting; in a cluster you may hear from users whose parallel job stopped or fails two times out of three; watch job failure rate, fabric error counters and temperature trend together to get a lead before a ticket'. Text at least 24px.",
+  "anchor": "### Why office IT habits fail in a supercomputer data center",
+  "alt": "Four rows contrast office IT habits on density, utilization, I/O storms and failure detection with cluster reality.",
+  "cap": "A good monitor tells you about a fault before the user does."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-fleet-ram-audit",
+  "title": "Finding nodes that lost memory after a power-on",
+  "spec": "Pipeline. 'Run on one node first: grep MemTotal /proc/meminfo | awk print $2, read the output, then run across the fleet with pdsh or clush'. 'Collect one value per node'. 'Compare each value with the expected benchmark 528,482,304 kB within a 2 percent tolerance (filter_nodes_missing_ram in code/part06/flops.py)'. 'Print only the nodes that fall outside'. Worked example: 10 nodes, nine healthy at 512 GB, one lost one of eight 64 GB DIMMs on boot and reports 448 GB; the 2 percent threshold flags it at once. Result: 'one node reports less than its peers and becomes the first lead; seconds not hours, versus opening a graphical monitor on a hundred nodes'. Contrast panel 'panacea console trap: enterprise suites such as HP OpenView or Zenoss solve only parts of the problem; adapters for missing fabric counters break when a new fabric arrives; scripts written in the first week outlive the console'. Rule 'a command safe on one node can still do damage on a hundred'. Text at least 24px.",
+  "anchor": "### Command-line fleet management and the \"panacea\" console trap",
+  "alt": "A pipeline from one node test to a fleet-wide memory check that flags a node with 448 GB instead of 512 GB.",
+  "cap": "A one-line fleet check finds the node that lost a memory module in seconds."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-slow-job-trace",
+  "title": "Tracing a slow job down the stack",
+  "spec": "Vertical stack with chapter pointers and a trace arrow. Layers top to bottom: 'Users and workflows' then 'Login nodes: SSH, Open OnDemand (6.2, 6.25)' then 'Scheduler: Slurm or Kueue; allocates nodes and GPUs exclusively, fair-share, QoS (6.7 to 6.17)' then 'Compute nodes and apps: MPI, OpenMP, NCCL, PyTorch, Enroot (6.3 to 6.6, 6.12, 6.13, 6.29)' beside 'Compute fabric: InfiniBand or RoCEv2 (6.12, Part 12)' and 'Parallel storage: Lustre, GPFS, BeeGFS, WEKA, VAST (6.18 to 6.21, Part 13)'; side 'Management plane: BMC Redfish, PXE provisioning xCAT Warewulf BCM, LDAP, monitoring (6.22 to 6.27)'; bottom 'Facility: power distribution, UPS, chillers, direct-to-chip liquid cooling (6.30, Part 9)'. Trace path highlighted: 'user says the job is slow and GPUs look busy: 1 scheduler, where did the job land; 2 fabric counters on the nodes of that job; 3 storage latency; the GPU looked fine all along because the wait was elsewhere'. Rule 'find the layer first, then use the table to find the chapter'. Text at least 24px.",
+  "anchor": "## 7. The stack at a glance",
+  "alt": "A layered stack from users to facility with a highlighted trace from scheduler to fabric to storage for a slow job.",
+  "cap": "A slow job with busy GPUs usually points to the fabric or storage layer."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "p3-0601-misconceptions",
+  "title": "Five beliefs and what is actually true",
+  "spec": "Five rows belief versus reality. 'A supercomputer is one giant computer: physically hundreds or thousands of separate Linux servers; the fabric, parallel file system and scheduler make them behave as one; a job on two nodes passes messages through the fabric and every message costs time'. 'More FLOPS means my job runs faster: only if your code uses the precision the headline assumes and is not held back by memory bandwidth, network latency or storage I/O'. 'A TOP500 rank proves AI capability: TOP500 measures FP64 dense LU factorization on HPL; evaluate AI clusters with MLPerf, NCCL tests and your real workload'. 'Cloud VMs are identical to a supercomputer: only bare-metal or passthrough GPU instances in a compact placement group with RDMA fabrics; ordinary unplaced VMs on a shared TCP network suffer severe latency penalties'. 'A slightly slower spare is fine for now: in a tightly coupled cluster one node with less RAM or a slower link drags down every multi-node job that lands on it'. Text at least 24px.",
+  "anchor": "## 8. Common misconceptions",
+  "alt": "Five common beliefs about supercomputers each paired with what is actually true.",
+  "cap": "Each belief reads one number or one picture as the whole story."
+ }
+]

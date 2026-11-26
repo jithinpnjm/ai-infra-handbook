@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Choosing a dependency type</title>
+  <desc>Infographic explaining Slurm job dependency types, combining rules, job chaining, and dependency failure traps.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Choosing a dependency type</text>
+
+  
+  <g id="chooser-table">
+    <rect x="40" y="80" width="1520" height="475" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="65" y="96" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="65" y1="109" x2="105" y2="109" stroke="#207448" stroke-width="2.5" />
+    <line x1="65" y1="122" x2="105" y2="122" stroke="#207448" stroke-width="2.5" />
+    <line x1="82" y1="96" x2="82" y2="136" stroke="#207448" stroke-width="2.5" />
+
+    
+    <text x="120" y="127" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Chooser table with the wish and the type</text>
+
+    
+    <rect x="65" y="145" width="1470" height="50" rx="8" fill="#ffffff" stroke="#cfe0d4" />
+    <text x="85" y="178" font-family="sans-serif" font-size="24" fill="#303a36">start when listed jobs have started or been cancelled: <tspan font-family="monospace">after:ID[+minutes]</tspan></text>
+
+    
+    <rect x="65" y="203" width="1470" height="64" rx="8" fill="#ffffff" stroke="#cfe0d4" />
+    <text x="85" y="230" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">start when they have terminated for any reason (default type): <tspan font-family="monospace">afterany:ID;</tspan> </tspan>
+      <tspan x="85" dy="28">use between training segments because a timeout counts as a failure</tspan>
+    </text>
+
+    
+    <rect x="65" y="275" width="1470" height="64" rx="8" fill="#ffffff" stroke="#cfe0d4" />
+    <text x="85" y="302" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">start only if they completed with exit code 0: <tspan font-family="monospace">afterok:ID;</tspan> </tspan>
+      <tspan x="85" dy="28">use for evaluation after the last segment</tspan>
+    </text>
+
+    
+    <rect x="65" y="347" width="1470" height="64" rx="8" fill="#ffffff" stroke="#cfe0d4" />
+    <text x="85" y="374" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">start only if they failed (non-zero, cancelled, timeout, node failure): <tspan font-family="monospace">afternotok:ID;</tspan> </tspan>
+      <tspan x="85" dy="28">for cleanup or notification jobs</tspan>
+    </text>
+
+    
+    <rect x="65" y="419" width="1470" height="50" rx="8" fill="#ffffff" stroke="#cfe0d4" />
+    <text x="85" y="452" font-family="sans-serif" font-size="24" fill="#303a36">matching array task completed successfully: <tspan font-family="monospace">aftercorr:ID</tspan></text>
+
+    
+    <rect x="65" y="477" width="1470" height="64" rx="8" fill="#ffffff" stroke="#cfe0d4" />
+    <text x="85" y="504" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">only one job of the same name and user at a time: <tspan font-family="monospace">singleton;</tspan> </tspan>
+      <tspan x="85" dy="28"><tspan font-family="monospace">afterburstbuffer:ID</tspan> for burst-buffer stage-out</tspan>
+    </text>
+  </g>
+
+  
+  <g id="combining">
+    <rect x="40" y="570" width="1520" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="80" cy="596" r="13" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="95" cy="596" r="13" fill="none" stroke="#207448" stroke-width="3" />
+
+    
+    <text x="120" y="605" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Combining</text>
+
+    
+    <rect x="65" y="626" width="1470" height="76" rx="8" fill="#ffffff" stroke="#cfe0d4" />
+    <text x="85" y="656" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">comma means all must hold, question mark means any one is enough, </tspan>
+      <tspan x="85" dy="30">one separator type per expression: <tspan font-family="monospace">afterok:20:21,afterany:23</tspan> and <tspan font-family="monospace">afterok:20:21?afterany:23</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="chain">
+    <rect x="40" y="735" width="1520" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <rect x="70" y="756" width="22" height="14" rx="7" fill="none" stroke="#207448" stroke-width="3" transform="rotate(-30 81 763)" />
+    <rect x="85" y="765" width="22" height="14" rx="7" fill="none" stroke="#207448" stroke-width="3" transform="rotate(-30 96 772)" />
+
+    
+    <text x="120" y="770" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Chain</text>
+
+    
+    <rect x="65" y="792" width="1470" height="102" rx="8" fill="#ffffff" stroke="#cfe0d4" />
+    <text x="85" y="822" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">J1=$(sbatch --parsable train.sh); </tspan>
+      <tspan x="85" dy="28">J2=$(sbatch --parsable --dependency=afterany:$J1 train.sh); </tspan>
+      <tspan x="85" dy="28">J3=$(sbatch --parsable --dependency=afterok:$J2 evaluate.sh)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="trap">
+    <rect x="40" y="925" width="1520" height="245" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="2.5" />
+    
+    
+    <path d="M 88 940 L 108 974 L 68 974 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+    <line x1="88" y1="952" x2="88" y2="962" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <circle cx="88" cy="969" r="1.5" fill="#db8129" />
+
+    
+    <text x="120" y="963" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Trap</text>
+
+    
+    <rect x="65" y="986" width="1470" height="166" rx="8" fill="#ffffff" stroke="#f3d2b5" />
+    <text x="85" y="1020" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">once a dependency fails because of a predecessor termination state the dependent job never runs, </tspan>
+      <tspan x="85" dy="32">even if the predecessor is requeued; the job pends with <tspan font-family="monospace">DependencyNeverSatisfied;</tspan> </tspan>
+      <tspan x="85" dy="32">add <tspan font-family="monospace">--kill-on-invalid-dep=yes</tspan> to cancel it; </tspan>
+      <tspan x="85" dy="32">afterok after a segment that hit its time limit leaves the next one waiting forever</tspan>
+    </text>
+  </g>
+</svg>

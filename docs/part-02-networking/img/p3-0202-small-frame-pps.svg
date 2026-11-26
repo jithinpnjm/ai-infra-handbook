@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Small messages run out of packets before bits: the 64-byte frame arithmetic</title>
+  <desc>Visual explanation of 64-byte Ethernet frame arithmetic, wire overhead, frame rates at 100 Gbps and 400 Gbps, and goodput comparison with MTU 1500 and jumbo frames.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="sans-serif">
+    <tspan x="800" dy="0">Small messages run out of packets before bits:</tspan>
+    <tspan x="800" dy="58">the 64-byte frame arithmetic</tspan>
+  </text>
+
+  
+  <rect x="40" y="190" width="840" height="495" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(67, 212)">
+    <rect x="0" y="3" width="56" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="21" x2="56" y2="21" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="3" x2="18" y2="21" stroke="#207448" stroke-width="3"/>
+    <circle cx="15" cy="36" r="4" fill="#207448"/>
+    <circle cx="28" cy="36" r="4" fill="#207448"/>
+    <circle cx="41" cy="36" r="4" fill="#207448"/>
+  </g>
+
+  
+  
+  <rect x="60" y="285" width="150" height="175" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="135" y="360" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="135" dy="0">Preamble</tspan>
+    <tspan x="135" dy="32">+ SFD 8</tspan>
+  </text>
+
+  
+  <rect x="210" y="285" width="150" height="175" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="285" y="344" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="285" dy="0">Ethernet</tspan>
+    <tspan x="285" dy="32">header</tspan>
+    <tspan x="285" dy="32">14</tspan>
+  </text>
+
+  
+  <rect x="360" y="285" width="225" height="175" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="472" y="330" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="472" dy="0">payload and</tspan>
+    <tspan x="472" dy="30">headers up</tspan>
+    <tspan x="472" dy="30">to a 64-byte</tspan>
+    <tspan x="472" dy="30">frame</tspan>
+  </text>
+
+  
+  <rect x="585" y="285" width="80" height="175" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="625" y="360" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="625" dy="0">FCS</tspan>
+    <tspan x="625" dy="32">4</tspan>
+  </text>
+
+  
+  <rect x="665" y="285" width="195" height="175" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="762" y="344" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="762" dy="0">Inter-frame</tspan>
+    <tspan x="762" dy="32">gap</tspan>
+    <tspan x="762" dy="32">12</tspan>
+  </text>
+
+  
+  <rect x="60" y="480" width="800" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="460" y="520" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="460" dy="0">Frame 64 bytes + preamble 8 + gap 12 =</tspan>
+    <tspan x="460" dy="32">84 byte times on the wire</tspan>
+  </text>
+
+  
+  <rect x="60" y="585" width="800" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="460" y="633" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    as little as 18 bytes of application data over UDP
+  </text>
+
+  
+  <rect x="920" y="190" width="300" height="495" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1042, 212)">
+    <rect x="0" y="3" width="56" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="10" y1="18" x2="22" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="16" y1="12" x2="16" y2="24" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="18" x2="46" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="11" y1="36" x2="21" y2="46" stroke="#207448" stroke-width="3"/>
+    <line x1="21" y1="36" x2="11" y2="46" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="38" x2="46" y2="38" stroke="#207448" stroke-width="3"/>
+    <line x1="34" y1="44" x2="46" y2="44" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <rect x="940" y="285" width="260" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1070" y="334" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1070" dy="0">bits per frame</tspan>
+    <tspan x="1070" dy="32">= 84 x 8</tspan>
+  </text>
+
+  
+  <rect x="940" y="415" width="260" height="250" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1070" y="468" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1070" dy="0">100e9 /</tspan>
+    <tspan x="1070" dy="32">(84 x 8) =</tspan>
+    <tspan x="1070" dy="32">148.8 million</tspan>
+    <tspan x="1070" dy="32">frames per</tspan>
+    <tspan x="1070" dy="32">second</tspan>
+  </text>
+
+  
+  <rect x="1260" y="190" width="300" height="495" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1382, 212)">
+    <path d="M 3 46 A 25 25 0 1 1 53 46" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="46" x2="44" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="46" r="4" fill="#207448"/>
+  </g>
+
+  
+  <rect x="1280" y="285" width="260" height="155" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <rect x="1300" y="305" width="220" height="22" rx="4" fill="#e8f1ea"/>
+  <rect x="1300" y="305" width="55" height="22" rx="4" fill="#207448"/>
+  <text x="1410" y="370" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1410" dy="0">Link 100 Gb/s:</tspan>
+    <tspan x="1410" dy="32">148.8 Mpps</tspan>
+  </text>
+
+  
+  <rect x="1280" y="460" width="260" height="205" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <rect x="1300" y="480" width="220" height="22" rx="4" fill="#faece0"/>
+  <rect x="1300" y="480" width="220" height="22" rx="4" fill="#db8129"/>
+  <text x="1410" y="555" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1410" dy="0">Link 400 Gb/s:</tspan>
+    <tspan x="1410" dy="32">595.2 Mpps</tspan>
+  </text>
+
+  
+  <rect x="40" y="725" width="1520" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="70" y="745" width="940" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="540" y="798" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="540" dy="0">Full segment, MTU 1500:</tspan>
+    <tspan x="540" dy="32">1460 + 20 + 20 + 14 + 4 + 20 = 1538 byte times,</tspan>
+    <tspan x="540" dy="32">goodput 94.9 percent</tspan>
+  </text>
+
+  
+  <rect x="1040" y="745" width="490" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1285" y="814" text-anchor="middle" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1285" dy="0">Jumbo, MTU 9000:</tspan>
+    <tspan x="1285" dy="32">8960 / 9038 = 99.1 percent</tspan>
+  </text>
+
+  
+  <rect x="40" y="965" width="1520" height="90" rx="12" fill="#207448"/>
+  <g transform="translate(65, 982)">
+    <circle cx="28" cy="28" r="16" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <line x1="28" y1="20" x2="28" y2="30" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="28" cy="36" r="2" fill="#ffffff"/>
+  </g>
+  <text x="820" y="1020" text-anchor="middle" font-size="28" font-weight="bold" fill="#ffffff" font-family="sans-serif">
+    A link can be nowhere near full in bits and still be out of packets per second
+  </text>
+</svg>

@@ -1,0 +1,92 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-checkpoint-interval",
+  "title": "How often to checkpoint a 512-GPU job: Young's rule worked",
+  "spec": "Vertical chain of worked arithmetic (all inputs assumed, not Nebius figures). 'Cluster 4,096 GPUs in 8-GPU nodes = 512 nodes'. 'Assume 50,000 h MTBF per GPU: 4,096 x 24 / 50,000 = 1.97 GPU failures per day'. 'One 512-GPU job is interrupted every 50,000 / 512 = 97.7 h (351,563 s)'. 'Assume 120 s to write a checkpoint: Young's rule interval = square root of (2 x 120 x 351,563 s) = 153 min'. 'Lost work per failure, assuming a 10 min restart = 153 / 2 + 10 = 86.5 min'. 'Overhead = 120 / 9,186 + 5,193 / 351,563 = 2.8 percent'. Side box 'which way answers move: cluster doubles, so interval shrinks (failures arrive faster); checkpoint write slower, so interval grows (each write costs more)'. Note 'first-order approximation, from Young 1974 and confirmed in Aupy et al.'. Text at least 24px.",
+  "anchor": "### 1. GPU job scheduling [report]",
+  "alt": "A step-by-step calculation from GPU failure rate to a 153 minute checkpoint interval and 2.8 percent overhead.",
+  "cap": "Memorise the shape of the calculation, because the interviewer will change an input."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-storage-burst",
+  "title": "Training storage: the checkpoint write is a burst, not an average",
+  "spec": "Left worked numbers with assumed inputs. 'Aggregate read: 4,096 GPUs x 50 MB/s = 204.8 GB/s'. 'Checkpoint size: 70 billion parameters x 14 bytes = 980 GB'. 'Write rate if it must finish in 60 s: 980 / 60 = 16.3 GB/s'. 'Average write rate over a 1,800 s interval: 980 / 1,800 = 0.54 GB/s'. 'Retained checkpoints: 980 GB x 5 = 4.9 TB'. Lesson box 'the average is tiny but the write must finish fast, or the GPUs stall (expensive hardware waits idle)'. Right cost comparison with placeholder prices: 'dataset 2 PB all hot at 0.10 dollars per GB-month = 200,000 dollars'; 'tiered: 10 percent hot at 0.10 plus rest at 0.02 = 56,000 dollars'. Tier strip 'object store (cold) to parallel file system (hot) to node NVMe cache to GPU data loaders; async checkpoint copies to host memory then writes in the background'. Text at least 24px.",
+  "anchor": "### 3. Training data storage for thousands of GPUs [report]",
+  "alt": "Storage arithmetic showing a 16.3 GB per second checkpoint burst against a 0.54 GB per second average, and tiered cost.",
+  "cap": "Size the checkpoint burst, not the average, and tier storage to cut cost."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-order-gpus-lead-time",
+  "title": "Ordering GPUs against a three-month lead time",
+  "spec": "Worked chain with assumed inputs. 'Fleet 400 GPUs, 320 in use, demand growing 8 percent a month, GPU lead time 3 months, headroom policy 20 percent'. 'Demand after the lead time: 320 x 1.08 cubed = 403.1'. 'GPUs needed with headroom: 403.1 x 1.2, rounded up = 484'. 'Order today: 484 - 400 = 84'. Contrast box 'plan against lead time, not today's load: today's load tells you what is busy now, lead time tells you what you must order now'. Curveball box 'vendor delays 200 GPUs: redo the same chain'. Text at least 24px.",
+  "anchor": "### 5. The SRE variant: incidents, capacity and rollout safety [report]",
+  "alt": "A capacity chain from 320 GPUs in use to an order of 84 GPUs after growth, lead time and headroom.",
+  "cap": "Plan against what demand will be when the GPUs arrive."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-burn-equivalence",
+  "title": "Fast burn and slow burn can use the same share of the budget",
+  "spec": "Header 'Error budget for a 99.9 percent SLO over 30 days: 0.001 x 30 x 24 x 60 = 43.2 min (720 hours)'. Three horizontal bars each filled to a share, with the formula: '14.4x burn for 1 h: 14.4 x 1 / 720 = 2 percent of the budget'; '6x for 6 h: 6 x 6 / 720 = 5 percent'; '1x for 72 h: 72 / 720 = 10 percent'. Caption line 'read each row as how fast the budget disappears; a fast burn for a short time and a slow burn for a long time can use up the same share, which is why the alert policy has three pairs'. Second box 'error budget is the control knob for rollout speed: budget left means a rollout can move faster, budget spent means it slows or stops'. Text at least 24px.",
+  "anchor": "### 5. The SRE variant: incidents, capacity and rollout safety [report]",
+  "alt": "Three bars showing a 43.2 minute budget consumed 2, 5 and 10 percent by different burn rates and durations.",
+  "cap": "Burn rate times duration over the window gives the share of budget spent."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-duplicate-vs-loss",
+  "title": "Billing: a duplicate costs twenty times a tolerated loss",
+  "spec": "Left worked numbers with placeholder prices. 'Events per day: 1,000 requests per second x 86,400 = 86.4 million'. 'Storage per day at 200 B per event = 17.3 GB'. 'Dedupe keys at 16 B for one day = 1.38 GB'. 'Revenue per day: 86.4M x (800 x 0.10 + 300 x 0.40) / 1M = 17,280 dollars' (prices 0.10 and 0.40 dollars per million tokens in and out). Right two bars. 'Loss at the tolerated 0.1 percent: 17.28 dollars per day'. 'Overbilling if 2 percent of events duplicate: 345.60 dollars per day'. Verdict 'duplicates are 20 times worse than the tolerated loss, so dedupe is the key design point; charging a customer twice breaks trust'. Rule strip 'at-least-once delivery plus idempotent consumption equals effectively once; unique request id written at request end; a cancelled stream still bills the tokens already sent'. Failure line 'a consumer replay after a bug fix, without dedupe, bills customers twice'. Text at least 24px.",
+  "anchor": "### 7. Usage metering and billing correctness [my addition]",
+  "alt": "Billing arithmetic comparing 17.28 dollars of tolerated daily loss with 345.60 dollars from two percent duplicates.",
+  "cap": "Pick idempotency keys first because double charging costs far more than a small undercount."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-kv-tier-capacity",
+  "title": "How many 2,000-token prefixes fit in each cache tier",
+  "spec": "Header 'One prefix = 2,000 tokens x 147,456 B per token = 0.295 GB; the hot set of 5,000 prefixes = 1.475 TB (assumed)'. Nested boxes from fast to large. 'GPU KV budget 50.6 GB: 50.6 / 0.295 = 171 prefixes'. 'Host RAM 512 GB: 512 / 0.295 = 1,736 prefixes'. 'NVMe 8 TB: 8,000 / 0.295 = 27,126 prefixes'. Footer 'only the NVMe tier holds the whole 5,000 prefix set; each tier needs a load-versus-recompute number to justify it (see the crossover figure: recompute 82 ms, RAM 4.6 ms, NVMe 42 ms)'. Isolation note 'keys by prefix hash, per tenant, never shared across tenants because a shared cache can leak timing information'. Failure note 'a cache node restarts, every hit becomes a miss, prefill load jumps and TTFT breaks, so cold-cache load must be a tested capacity case'. Text at least 24px.",
+  "anchor": "### 8. A prompt-cache or KV-cache tier [my addition]",
+  "alt": "Three cache tiers with the number of 0.295 GB prefixes each holds: 171, 1,736 and 27,126.",
+  "cap": "Only the NVMe tier can hold the whole hot set of 5,000 prefixes."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-reserve-refund",
+  "title": "Token limiter: reserve up front, refund after",
+  "spec": "Timeline for one request against a bucket of 100,000 tokens per minute per tenant per model (assumed). Step 1 'admission: output length unknown, so reserve prompt 800 + max_tokens 1,024 = 1,824 tokens'. Step 2 'request runs; actual use is 1,100'. Step 3 'refund 1,824 - 1,100 = 724 tokens'. Comparison: 'requests per full bucket if reserved and never refunded: 100,000 / 1,824 = 54'; 'with refund, actual use 1,100: 100,000 / 1,100 = 90'; 'without the refund the tenant gets 54 requests where the limit should allow 90'. Side numbers 'refill rate 100,000 / 60 = 1,667 tokens per second'; 'state: 5,000 tenants x 50 models x 64 B = 16 MB'; 'store operations: 2 x 2,000 requests per second = 4,000 per second'. Design strip 'central store against local buckets with leases of 5,000 tokens per gateway; error bounded by lease size times gateway count; store down: fail open with a local safety limit, stated as a choice'. Text at least 24px.",
+  "anchor": "### 10. An inference gateway rate limiter [my addition]",
+  "alt": "A reserve then refund timeline showing 54 requests without refund versus 90 with it per full bucket.",
+  "cap": "Reserve the worst case at admission and refund the difference so the tenant gets the allowance."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-noisy-neighbour-kv",
+  "title": "Eleven long requests leave room for five normal ones",
+  "spec": "Left KV arithmetic with 147,456 B per token and a 50.6 GB KV budget (assumed). 'One long request: 30,000 tokens = 4.42 GB'. 'One normal request: 2,500 tokens = 0.37 GB'. Bar A 'normal requests alone: 50.6 / 0.369 = 137 fit'. Bar B 'long requests that fill the GPU: 50.6 / 4.42 = 11'. Bar C 'left for others when 11 long run: 50.6 - 48.7 = 1.94 GB = 5 requests'. Headline 'eleven long requests take capacity from 137 down to 5 for everyone else: the case for charging by cost (tokens x context), not request count'. Right: 'cap at 25 percent of KV: 12.65 / 4.42 = 2 long requests'. Failure line 'cap is per replica but the router sends all of the tenant's long requests to one replica: the cap must hold across the pool'. Isolation tiers 'shared pool, long-context pool, dedicated endpoint'. Text at least 24px.",
+  "anchor": "### 11. Multi-tenant noisy-neighbour control [my addition]",
+  "alt": "KV memory arithmetic showing one tenant's 11 long requests cut capacity for others from 137 to 5 requests.",
+  "cap": "Charge by tokens times context and cap each tenant's share of KV memory."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "p3-2017-slo-platform-scale",
+  "title": "SLO platform for 1,000 endpoints: the numbers",
+  "spec": "Chain of assumed inputs. 'Per replica: 30 plain series + 4 histograms of 12 buckets = 30 + 48 = 78 series'. 'Raw series: 1,000 endpoints x 6 replicas x 78 = 468,000'. 'SLOs: 1,000 x 4 SLIs (availability, TTFT, inter-token latency, quality) = 4,000'. 'Recorded series with 5 windows: 4,000 x 5 = 20,000'. 'Alert rules with 3 burn-rate pairs: 4,000 x 3 = 12,000'. 'Evaluations per second at a 60 s interval: 12,000 / 60 = 200'. Design strip 'teams declare SLOs in a file; a rule generator writes recording and alert rules, never hand-written 12,000 times; a generator bug ships a wrong threshold to every endpoint at once, so roll out in stages with a diff against current alert volume'. Footer 'page on symptoms and burn rate, ticket on slow burn; alert on missing data so a dead metrics store cannot stay silent'. Text at least 24px.",
+  "anchor": "### 12. An SLO and alerting platform for 1,000 endpoints [my addition]",
+  "alt": "A chain of counts from 468,000 raw series to 12,000 generated alert rules and 200 evaluations per second.",
+  "cap": "Generate rules from one spec and stage every rule change."
+ }
+]

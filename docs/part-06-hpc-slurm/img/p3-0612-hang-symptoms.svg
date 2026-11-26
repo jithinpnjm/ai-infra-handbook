@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Hang, slow or lost rank: symptom to first checks</title>
+  <desc>Visual troubleshooting guide mapping distributed training symptoms to likely causes and first diagnostic checks.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">Hang, slow or lost rank: symptom to first checks</text>
+
+  
+  <rect x="40" y="86" width="1520" height="46" rx="6" fill="#207448"/>
+  <text x="60" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">symptom</text>
+  <text x="432" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">likely causes</text>
+  <text x="994" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">first checks</text>
+
+  
+  <g>
+    <rect x="40" y="140" width="360" height="98" rx="6" fill="#e8f1ea"/>
+    
+    <circle cx="76" cy="189" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M76 173 v-10 M76 205 v10 M60 189 h-10 M92 189 h10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="114" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      Hangs at
+      <tspan x="114" dy="30" font-family="monospace">init_process_group</tspan>
+    </text>
+
+    <rect x="412" y="140" width="550" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="430" y="170" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      wrong <tspan font-family="monospace">MASTER_ADDR</tspan> or port, firewall,
+      <tspan x="430" dy="30">a rank failed to start, version mismatch,</tspan>
+      <tspan x="430" dy="30">slow image pull on one node</tspan>
+    </text>
+
+    <rect x="974" y="140" width="586" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="992" y="170" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      per-rank logs, <tspan font-family="monospace">ss -ltnp</tspan> on master,
+      <tspan x="992" dy="30" font-family="monospace">srun -l hostname</tspan>,
+      <tspan x="992" dy="30">compare environment per node</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="246" width="360" height="98" rx="6" fill="#e8f1ea"/>
+    
+    <circle cx="76" cy="295" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="76" cy="283" r="4" fill="#207448"/>
+    <circle cx="86" cy="301" r="4" fill="#207448"/>
+    <circle cx="66" cy="301" r="4" fill="#207448"/>
+    <text x="114" y="286" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      Hangs at
+      <tspan x="114" dy="30">first collective</tspan>
+    </text>
+
+    <rect x="412" y="246" width="550" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="430" y="276" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      NCCL cannot connect, IB link down,
+      <tspan x="430" dy="30"><tspan font-family="monospace">NCCL_SOCKET_IFNAME</tspan> picked <tspan font-family="monospace">docker0</tspan>,</tspan>
+      <tspan x="430" dy="30">GID or RoCE misconfiguration</tspan>
+    </text>
+
+    <rect x="974" y="246" width="586" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="992" y="291" font-family="monospace" font-size="24" fill="#303a36">
+      NCCL_DEBUG=INFO, ibstat,
+      <tspan x="992" dy="30">NCCL_IB_HCA, show_gids</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="352" width="360" height="106" rx="6" fill="#e8f1ea"/>
+    
+    <path d="M58 415 A20 20 0 1 1 94 415" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M76 405 L84 395" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="114" y="412" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      Runs but slow
+    </text>
+
+    <rect x="412" y="352" width="550" height="106" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="430" y="382" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      fell back to sockets, no GDR, wrong NIC mapping,
+      <tspan x="430" dy="30">cross-NIC on a rail fabric, throttled GPU,</tspan>
+      <tspan x="430" dy="30">CPU-bound data loader, oversubscribed threads</tspan>
+    </text>
+
+    <rect x="974" y="352" width="586" height="106" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="992" y="382" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      INFO transports, <tspan font-family="monospace">top</tspan>,
+      <tspan x="992" dy="30" font-family="monospace">nccl-tests all_reduce_perf</tspan>,
+      <tspan x="992" dy="30" font-family="monospace">nvidia-smi dmon</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="466" width="360" height="98" rx="6" fill="#e8f1ea"/>
+    
+    <rect x="60" y="499" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M68 507 L84 523 M84 507 L68 523" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="114" y="506" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      One rank dies, others
+      <tspan x="114" dy="30">hang until time limit</tspan>
+    </text>
+
+    <rect x="412" y="466" width="550" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="430" y="511" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      no <tspan font-family="monospace">-K</tspan> and no NCCL async error
+      <tspan x="430" dy="30">handling or timeout</tspan>
+    </text>
+
+    <rect x="974" y="466" width="586" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="992" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">srun -K</tspan>, timeouts, flight recorder
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="572" width="360" height="98" rx="6" fill="#e8f1ea"/>
+    
+    <path d="M58 631 L68 611 L78 631 L86 617 L94 623" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="114" y="612" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      Sporadic hangs
+      <tspan x="114" dy="30">at scale</tspan>
+    </text>
+
+    <rect x="412" y="572" width="550" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="430" y="617" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      flapping link or sick node,
+      <tspan x="430" dy="30">congestion, rank desync</tspan>
+    </text>
+
+    <rect x="974" y="572" width="586" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="992" y="602" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      fabric error counters,
+      <tspan x="992" dy="30">per-node GPU XID errors,</tspan>
+      <tspan x="992" dy="30">rerun with <tspan font-family="monospace">--exclude</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="678" width="360" height="98" rx="6" fill="#e8f1ea"/>
+    
+    <path d="M76 706 L95 740 H57 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="76" y1="718" x2="76" y2="728" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="76" cy="734" r="2" fill="#207448"/>
+    <text x="114" y="718" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      NCCL WARN
+      <tspan x="114" dy="30">unhandled system error</tspan>
+    </text>
+
+    <rect x="412" y="678" width="550" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="430" y="723" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      verbs errors, memlock limits,
+      <tspan x="430" dy="30">missing devices in container</tspan>
+    </text>
+
+    <rect x="974" y="678" width="586" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="992" y="723" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">ulimit -l unlimited</tspan>,
+      <tspan x="992" dy="30">device nodes, <tspan font-family="monospace">dmesg</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="784" width="360" height="98" rx="6" fill="#e8f1ea"/>
+    
+    <rect x="60" y="817" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M60 827 H92 M60 837 H92 M70 817 V849 M80 817 V849" stroke="#207448" stroke-width="2"/>
+    <text x="114" y="824" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      OOM only at
+      <tspan x="114" dy="30">larger scale</tspan>
+    </text>
+
+    <rect x="412" y="784" width="550" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="430" y="829" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      memory per rank, NCCL buffers,
+      <tspan x="430" dy="30">allocator fragmentation</tspan>
+    </text>
+
+    <rect x="974" y="784" width="586" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="890" width="360" height="98" rx="6" fill="#e8f1ea"/>
+    
+    <path d="M58 923 H94 M58 939 H82 M58 955 H90" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="114" y="930" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      Different speed
+      <tspan x="114" dy="30">per rerun</tspan>
+    </text>
+
+    <rect x="412" y="890" width="550" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="430" y="935" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      placement and topology variance,
+      <tspan x="430" dy="30">noisy neighbours</tspan>
+    </text>
+
+    <rect x="974" y="890" width="586" height="98" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5"/>
+    <text x="992" y="935" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="monospace">--switches</tspan>, exclusive nodes,
+      <tspan x="992" dy="30">topology config</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1008" width="1520" height="152" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="64" y="1028" width="140" height="42" rx="6" fill="#db8129"/>
+    <text x="134" y="1057" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Strategy</text>
+
+    
+    <text x="224" y="1057" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      work from small to large: reproduce on 1 node then 2;
+    </text>
+    <text x="64" y="1120" font-family="monospace" font-size="24" fill="#303a36">
+      run all_reduce_perf -b 8 -e 8G -f 2 -g 1 under srun on the same allocation
+    </text>
+  </g>
+</svg>

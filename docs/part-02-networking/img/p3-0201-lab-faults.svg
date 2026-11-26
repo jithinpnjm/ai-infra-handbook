@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Break it on purpose: four faults and the symptom each one produces</title>
+  <desc>A four-row diagnostic table showing injected network faults, observed symptoms, affected layers, and companion inspection checks.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="40" dy="0">Break it on purpose: four faults</tspan>
+    <tspan x="40" dy="56" fill="#303a36">and the symptom each one produces</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="160" width="440" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="260" y="186" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="260" dy="0">Fault to inject</tspan>
+    <tspan x="260" dy="30">(undo it afterwards)</tspan>
+  </text>
+
+  
+  <rect x="480" y="160" width="440" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="700" y="202" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">What you should observe</text>
+
+  
+  <rect x="920" y="160" width="210" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1025" y="186" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan x="1025" dy="0">Layer it</tspan>
+    <tspan x="1025" dy="30">points to</tspan>
+  </text>
+
+  
+  <rect x="1155" y="160" width="405" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1185" cy="190" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="1195" y1="200" x2="1207" y2="212" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  <path d="M 1179 190 L 1183 194 L 1191 186" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="1225" y="201" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Companion checks</text>
+
+  
+  
+  <rect x="40" y="235" width="440" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="60" y="280" font-family="monospace" font-size="24" fill="#207448">Point /etc/resolv.conf</text>
+  <text x="60" y="318" font-family="sans-serif" font-size="24" fill="#303a36">at an unused IP (use a copy</text>
+  <text x="60" y="356" font-family="sans-serif" font-size="24" fill="#303a36">and restore the original)</text>
+
+  
+  <rect x="480" y="235" width="440" height="180" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="500" y="280" font-family="sans-serif" font-size="24" fill="#303a36">a delay, then the resolve</text>
+  <text x="500" y="318" font-family="sans-serif" font-size="24" fill="#303a36">error (curl exit code 6);</text>
+  <text x="500" y="356" font-family="monospace" font-size="24" fill="#207448">large time_namelookup</text>
+
+  
+  <rect x="920" y="235" width="210" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1025" cy="275" r="24" fill="none" stroke="#207448" stroke-width="3.5" />
+  <ellipse cx="1025" cy="275" rx="24" ry="9" fill="none" stroke="#207448" stroke-width="3" />
+  <ellipse cx="1025" cy="275" rx="10" ry="24" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="1025" y1="251" x2="1025" y2="299" stroke="#207448" stroke-width="3" />
+  <text x="1025" y="340" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1025" dy="0">name</tspan>
+    <tspan x="1025" dy="28">resolution</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="425" width="440" height="195" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="60" y="468" font-family="monospace" font-size="24" fill="#207448">sudo ip route del default</text>
+  <text x="60" y="504" font-family="sans-serif" font-size="24" fill="#303a36">(VM with console access only;</text>
+  <text x="60" y="540" font-family="sans-serif" font-size="24" fill="#303a36">restore with the original</text>
+  <text x="60" y="576" font-family="monospace" font-size="24" fill="#207448">ip route add default via ...)</text>
+
+  
+  <rect x="480" y="425" width="440" height="195" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="500" y="510" font-family="sans-serif" font-size="24" fill="#303a36">Network is unreachable</text>
+  <text x="500" y="550" font-family="sans-serif" font-size="24" fill="#303a36">(ENETUNREACH), exit code 7</text>
+
+  
+  <rect x="920" y="425" width="210" height="195" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1005" cy="485" r="9" fill="none" stroke="#207448" stroke-width="3.5" />
+  <circle cx="1045" cy="465" r="7" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="1045" cy="505" r="7" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="985" cy="510" r="7" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 985 510 L 1005 485 L 1045 465 M 1005 485 L 1045 505" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1025" y="565" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">routing</text>
+
+  
+  
+  <rect x="40" y="630" width="440" height="245" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="60" y="670" font-family="monospace" font-size="24" fill="#207448">curl http://&lt;server IP&gt;:81/</text>
+  <text x="60" y="706" font-family="sans-serif" font-size="24" fill="#303a36">against a closed port versus</text>
+  <text x="60" y="742" font-family="sans-serif" font-size="24" fill="#303a36">a port blocked by</text>
+  <text x="60" y="778" font-family="monospace" font-size="24" fill="#207448">iptables -A OUTPUT -p tcp</text>
+  <text x="60" y="814" font-family="monospace" font-size="24" fill="#207448">--dport 81 -j DROP</text>
+
+  
+  <rect x="480" y="630" width="440" height="245" rx="8" fill="#fff8f2" stroke="#db8129" stroke-width="2.5" />
+  <text x="500" y="665" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">closed port gives</text>
+  <text x="500" y="699" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Connection refused at once</text>
+  <text x="500" y="733" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">(RST); the DROP rule gives</text>
+  <text x="500" y="767" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">silence then Connection</text>
+  <text x="500" y="801" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">timed out (retries after</text>
+  <text x="500" y="835" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">1 s, 2 s, 4 s)</text>
+
+  
+  <rect x="920" y="630" width="210" height="245" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1025" cy="710" r="24" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 1025 694 L 1025 710 L 1039 710" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <rect x="1021" y="680" width="8" height="4" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="1025" y="795" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">transport</text>
+
+  
+  
+  <rect x="40" y="885" width="440" height="175" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="60" y="922" font-family="monospace" font-size="24" fill="#207448">curl https://example.com</text>
+  <text x="60" y="956" font-family="sans-serif" font-size="24" fill="#303a36">--cacert /dev/null, or an</text>
+  <text x="60" y="990" font-family="sans-serif" font-size="24" fill="#303a36">expired-cert test host such as</text>
+  <text x="60" y="1024" font-family="monospace" font-size="24" fill="#207448">https://expired.badssl.com/</text>
+
+  
+  <rect x="480" y="885" width="440" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="500" y="960" font-family="sans-serif" font-size="24" fill="#303a36">certificate verify failed,</text>
+  <text x="500" y="998" font-family="sans-serif" font-size="24" fill="#303a36">exit code 60</text>
+
+  
+  <rect x="920" y="885" width="210" height="175" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="1012" y="930" width="26" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+  <circle cx="1025" cy="938" r="3" fill="#207448" />
+  <line x1="1025" y1="941" x2="1025" y2="946" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <path d="M 1017 930 V 921 C 1017 915 1033 915 1033 921 V 930" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <text x="1025" y="995" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1025" dy="0">TLS and</tspan>
+    <tspan x="1025" dy="28">PKI</tspan>
+  </text>
+
+  
+  
+  <rect x="1155" y="235" width="405" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1175" y="285" font-family="sans-serif" font-size="24" fill="#303a36">strace the request and list</text>
+  <text x="1175" y="321" font-family="sans-serif" font-size="24" fill="#303a36">files, sockets, addresses</text>
+
+  
+  <rect x="1155" y="375" width="405" height="285" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1175" y="414" font-family="sans-serif" font-size="24" fill="#303a36">capture with</text>
+  <text x="1175" y="448" font-family="monospace" font-size="24" fill="#207448">sudo tcpdump -nn -i any</text>
+  <text x="1175" y="482" font-family="monospace" font-size="24" fill="#207448">-w curl.pcap <tspan font-family="sans-serif" fill="#303a36">and label</tspan></text>
+  <text x="1175" y="516" font-family="sans-serif" font-size="24" fill="#303a36">DNS, SYN, SYN-ACK, ACK,</text>
+  <text x="1175" y="550" font-family="sans-serif" font-size="24" fill="#303a36">ClientHello, ServerHello</text>
+  <text x="1175" y="584" font-family="sans-serif" font-size="24" fill="#303a36">and Certificate,</text>
+  <text x="1175" y="618" font-family="sans-serif" font-size="24" fill="#303a36">application data, FIN</text>
+
+  
+  <rect x="1155" y="675" width="405" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1175" y="718" font-family="monospace" font-size="24" fill="#207448">ip route get &lt;server IP&gt;</text>
+  <text x="1175" y="754" font-family="sans-serif" font-size="24" fill="#303a36">and flush the neighbour</text>
+  <text x="1175" y="790" font-family="sans-serif" font-size="24" fill="#303a36">to see ARP</text>
+
+  
+  <rect x="1155" y="825" width="405" height="235" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1175" y="870" font-family="sans-serif" font-size="24" fill="#303a36">run curl -w five times;</text>
+  <text x="1175" y="906" font-family="monospace" font-size="24" fill="#207448">--resolve <tspan font-family="sans-serif" fill="#303a36">skips DNS;</tspan></text>
+  <text x="1175" y="942" font-family="sans-serif" font-size="24" fill="#303a36">compare --http1.1 and</text>
+  <text x="1175" y="978" font-family="sans-serif" font-size="24" fill="#303a36">--http2; a plain HTTP URL</text>
+  <text x="1175" y="1014" font-family="sans-serif" font-size="24" fill="#303a36">removes the TLS time</text>
+
+  
+  <rect x="40" y="1080" width="1520" height="85" rx="10" fill="#207448" />
+  <text x="800" y="1132" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Write down which phase of your own run was the largest, and which layer it points to</text>
+</svg>

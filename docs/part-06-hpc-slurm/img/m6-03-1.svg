@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>Parallel programming models and technologies (Supercomputers for Linux)</title>
+  <desc>Infographic showing shared memory, distributed memory, and accelerator programming models feeding into a hybrid MPI plus X architecture.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Parallel programming models and technologies</text>
+  <text x="800" y="116" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">(Supercomputers for Linux)</text>
+
+  
+  <rect x="50" y="150" width="440" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="270" y="196" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Shared memory</text>
+  <text x="270" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(single node)</text>
+
+  
+  <rect x="75" y="290" width="390" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(242, 320)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="10" y="10" width="14" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="32" y="10" width="14" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="10" y="32" width="14" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="32" y="32" width="14" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="18" y1="-5" x2="18" y2="0" stroke="#207448" stroke-width="3" />
+    <line x1="38" y1="-5" x2="38" y2="0" stroke="#207448" stroke-width="3" />
+    <line x1="18" y1="56" x2="18" y2="61" stroke="#207448" stroke-width="3" />
+    <line x1="38" y1="56" x2="38" y2="61" stroke="#207448" stroke-width="3" />
+    <line x1="-5" y1="18" x2="0" y2="18" stroke="#207448" stroke-width="3" />
+    <line x1="-5" y1="38" x2="0" y2="38" stroke="#207448" stroke-width="3" />
+    <line x1="56" y1="18" x2="61" y2="18" stroke="#207448" stroke-width="3" />
+    <line x1="56" y1="38" x2="61" y2="38" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="270" y="440" text-anchor="middle" font-family="sans-serif">
+    <tspan x="270" dy="0" font-size="30" font-weight="bold" fill="#303a36">OpenMP directives</tspan>
+    <tspan x="270" dy="42" font-size="26" font-weight="bold" fill="#303a36">&amp; Intel TBB tasks</tspan>
+  </text>
+
+  
+  <rect x="550" y="150" width="470" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="785" y="196" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Distributed memory</text>
+  <text x="785" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">(multi-node)</text>
+
+  
+  <rect x="615" y="250" width="385" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(779, 268)">
+    <rect x="0" y="4" width="22" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <rect x="34" y="4" width="22" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="22" y1="13" x2="34" y2="13" stroke="#207448" stroke-width="3" />
+    <polygon points="31,10 34,13 31,16" fill="#207448" />
+    <line x1="34" y1="23" x2="22" y2="23" stroke="#207448" stroke-width="3" />
+    <polygon points="25,20 22,23 25,26" fill="#207448" />
+    <circle cx="11" cy="24" r="2" fill="#207448" />
+    <circle cx="45" cy="24" r="2" fill="#207448" />
+  </g>
+  <text x="807" y="358" text-anchor="middle" font-family="sans-serif">
+    <tspan x="807" dy="0" font-size="30" font-weight="bold" fill="#303a36">MPI message passing:</tspan>
+    <tspan x="807" dy="40" font-size="24" font-weight="bold" fill="#303a36">OpenMPI, MPICH, MVAPICH2</tspan>
+  </text>
+
+  
+  <rect x="615" y="450" width="385" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(779, 468)">
+    <rect x="0" y="2" width="22" height="34" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="4" y1="10" x2="18" y2="10" stroke="#207448" stroke-width="2.5" />
+    <line x1="4" y1="18" x2="18" y2="18" stroke="#207448" stroke-width="2.5" />
+    <rect x="34" y="2" width="22" height="34" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="38" y1="10" x2="52" y2="10" stroke="#207448" stroke-width="2.5" />
+    <line x1="38" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="2.5" />
+    <path d="M 18 10 C 26 0, 30 0, 36 10" fill="none" stroke="#207448" stroke-width="3" />
+    <polygon points="36,6 38,12 32,10" fill="#207448" />
+  </g>
+  <text x="807" y="558" text-anchor="middle" font-family="sans-serif">
+    <tspan x="807" dy="0" font-size="30" font-weight="bold" fill="#303a36">PGAS one-sided:</tspan>
+    <tspan x="807" dy="40" font-size="24" font-weight="bold" fill="#303a36">SHMEM, OpenSHMEM, NVSHMEM</tspan>
+  </text>
+
+  
+  <rect x="1080" y="150" width="470" height="500" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1315" y="196" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Accelerators &amp;</text>
+  <text x="1315" y="232" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">GPU collectives</text>
+
+  
+  <rect x="1145" y="250" width="385" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(1309, 266)">
+    <rect x="0" y="0" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="14" cy="14" r="4" fill="#207448" />
+    <circle cx="28" cy="14" r="4" fill="#207448" />
+    <circle cx="42" cy="14" r="4" fill="#207448" />
+    <circle cx="14" cy="28" r="4" fill="#207448" />
+    <circle cx="28" cy="28" r="4" fill="#207448" />
+    <circle cx="42" cy="28" r="4" fill="#207448" />
+    <line x1="10" y1="42" x2="10" y2="47" stroke="#207448" stroke-width="3" />
+    <line x1="20" y1="42" x2="20" y2="47" stroke="#207448" stroke-width="3" />
+    <line x1="30" y1="42" x2="30" y2="47" stroke="#207448" stroke-width="3" />
+    <line x1="40" y1="42" x2="40" y2="47" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="1337" y="358" text-anchor="middle" font-family="sans-serif">
+    <tspan x="1337" dy="0" font-size="30" font-weight="bold" fill="#303a36">CUDA, OpenCL,</tspan>
+    <tspan x="1337" dy="40" font-size="30" font-weight="bold" fill="#303a36">OpenACC kernels</tspan>
+  </text>
+
+  
+  <rect x="1145" y="450" width="385" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g transform="translate(1309, 466)">
+    <circle cx="28" cy="21" r="18" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,4" />
+    <circle cx="28" cy="3" r="5" fill="#207448" />
+    <circle cx="46" cy="21" r="5" fill="#207448" />
+    <circle cx="28" cy="39" r="5" fill="#207448" />
+    <circle cx="10" cy="21" r="5" fill="#207448" />
+  </g>
+  <text x="1337" y="558" text-anchor="middle" font-family="sans-serif">
+    <tspan x="1337" dy="0" font-size="30" font-weight="bold" fill="#303a36">UCX transports &amp;</tspan>
+    <tspan x="1337" dy="40" font-size="26" font-weight="bold" fill="#303a36">NCCL GPU collectives</tspan>
+  </text>
+
+  
+  
+  <rect x="160" y="740" width="1280" height="180" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  <rect x="160" y="740" width="1280" height="180" rx="16" fill="#db8129" fill-opacity="0.04" />
+
+  
+  <g transform="translate(200, 796)">
+    <rect x="0" y="0" width="38" height="52" rx="6" fill="none" stroke="#db8129" stroke-width="4" />
+    <text x="19" y="34" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#db8129">CPU</text>
+    <line x1="38" y1="26" x2="52" y2="26" stroke="#db8129" stroke-width="5" />
+    <rect x="52" y="0" width="38" height="52" rx="6" fill="none" stroke="#db8129" stroke-width="4" />
+    <text x="71" y="34" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#db8129">GPU</text>
+  </g>
+  <line x1="320" y1="765" x2="320" y2="895" stroke="#db8129" stroke-width="2" stroke-opacity="0.3" />
+
+  <text x="350" y="818" font-family="sans-serif">
+    <tspan x="350" dy="0" font-size="36" font-weight="bold" fill="#db8129">Hybrid MPI + X:</tspan>
+    <tspan x="350" dy="52" font-size="30" font-weight="bold" fill="#303a36">1 MPI rank per GPU or socket</tspan>
+  </text>
+
+  
+  
+  <path d="M 270 530 L 270 740" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 615 337 L 595 337 Q 585 337 585 347 L 585 740" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 800 625 L 800 740" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1145 337 L 1125 337 Q 1115 337 1115 347 L 1115 740" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1330 625 L 1330 740" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+</svg>

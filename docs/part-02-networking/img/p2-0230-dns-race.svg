@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>An exact five-second delay is a timer: A and AAAA queries race on one socket</title>
+  <desc>Timeline illustrating DNS query race in conntrack and NAT causing a five-second timeout delay.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">An exact five-second delay is a timer:</text>
+  <text x="800" y="124" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A and AAAA queries race on one socket</text>
+
+  
+  <g id="lane-pod">
+    <rect x="50" y="165" width="1500" height="325" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="50" y="165" width="270" height="48" rx="12" fill="#207448" />
+    <text x="185" y="199" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Pod resolver</text>
+
+    
+    <rect x="75" y="225" width="400" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="112" cy="258" r="24" fill="#207448" />
+    <text x="112" y="267" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(150, 236)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="4" width="44" height="34" rx="6" />
+      <path d="M 12 16 L 12 26 M 22 16 L 22 26 M 32 16 L 32 26" />
+    </g>
+    
+    <text x="92" y="302" font-family="sans-serif" font-size="24" fill="#303a36">A and AAAA queries</text>
+    <text x="92" y="327" font-family="sans-serif" font-size="24" fill="#303a36">sent in parallel from</text>
+    <text x="92" y="351" font-family="sans-serif" font-size="24" fill="#303a36">one source port</text>
+
+    
+    <rect x="75" y="375" width="400" height="100" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+    
+    <text x="92" y="407" font-family="monospace" font-size="24" fill="#303a36">ndots:5 multiplies</text>
+    <text x="92" y="434" font-family="sans-serif" font-size="24" fill="#303a36">the number of queries</text>
+    <text x="92" y="461" font-family="sans-serif" font-size="24" fill="#303a36">for short names.</text>
+
+    
+    <g id="step-4-bracket">
+      
+      <path d="M 505 280 L 505 255 L 850 255 L 850 238 L 850 255 L 1215 255 L 1215 280" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      
+      
+      <circle cx="850" cy="205" r="24" fill="#207448" />
+      <text x="850" y="214" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+      
+      
+      <g transform="translate(885, 185)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+        <circle cx="20" cy="20" r="18" />
+        <polyline points="20,10 20,20 28,24" />
+      </g>
+
+      
+      <text x="850" y="308" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Resolver waits out its</text>
+      <text x="850" y="348" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">5-second default timeout</text>
+
+      
+      <line x1="525" y1="410" x2="1195" y2="410" stroke="#207448" stroke-width="3" stroke-dasharray="10,8" />
+      <line x1="525" y1="398" x2="525" y2="422" stroke="#207448" stroke-width="3" />
+      <line x1="1195" y1="398" x2="1195" y2="422" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <rect x="1235" y="225" width="295" height="250" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1382" cy="265" r="24" fill="#207448" />
+    <text x="1382" y="274" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(1360, 305)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="20" />
+      <path d="M 12 22 L 18 29 L 32 15" />
+    </g>
+    
+    <text x="1382" y="375" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Lookup finally</text>
+    <text x="1382" y="405" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">succeeds after</text>
+    <text x="1382" y="435" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">5 s</text>
+  </g>
+
+  
+  <g id="lane-conntrack">
+    <rect x="50" y="510" width="1500" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="50" y="510" width="340" height="48" rx="12" fill="#207448" />
+    <text x="220" y="544" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">conntrack and NAT</text>
+
+    
+    <rect x="300" y="530" width="570" height="142" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="340" cy="601" r="24" fill="#207448" />
+    <text x="340" y="610" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(380, 578)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 8 L 22 24 L 4 40" />
+      <path d="M 40 8 L 22 24 L 40 40" />
+      <circle cx="22" cy="24" r="5" fill="#207448" />
+    </g>
+    
+    <text x="440" y="582" font-family="sans-serif" font-size="24" fill="#303a36">Both queries race for</text>
+    <text x="440" y="612" font-family="sans-serif" font-size="24" fill="#303a36">one NAT entry, and</text>
+    <text x="440" y="642" font-family="sans-serif" font-size="24" fill="#303a36">one reply is lost</text>
+  </g>
+
+  
+  <g id="lane-coredns">
+    <rect x="50" y="710" width="1500" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="50" y="710" width="220" height="48" rx="12" fill="#207448" />
+    <text x="160" y="744" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">CoreDNS</text>
+
+    
+    <rect x="520" y="730" width="560" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="560" cy="797" r="24" fill="#207448" />
+    <text x="560" y="806" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(600, 775)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="4" width="44" height="18" rx="4" />
+      <rect x="0" y="24" width="44" height="18" rx="4" />
+      <circle cx="10" cy="13" r="2" fill="#207448" />
+      <circle cx="10" cy="33" r="2" fill="#207448" />
+    </g>
+    
+    <text x="665" y="788" font-family="sans-serif" font-size="24" fill="#303a36">Replies come back, one is</text>
+    <text x="665" y="822" font-family="sans-serif" font-size="24" fill="#303a36">dropped in the race</text>
+  </g>
+
+  
+  
+  <path d="M 475 292 L 490 292 L 490 530" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 700 672 L 700 730" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 850 730 L 850 675" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6,4" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1215 345 L 1235 345" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <g id="mitigation">
+    <rect x="50" y="905" width="1500" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(75, 920)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 4 L 40 10 L 40 24 C 40 34 22 42 22 42 C 22 42 4 34 4 24 L 4 10 Z" />
+      <path d="M 16 22 L 20 26 L 28 18" />
+    </g>
+    <text x="135" y="952" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">single-request-reopen, NodeLocal DNSCache, lower ndots, or a newer kernel</text>
+  </g>
+
+  
+  <g id="caption-bar">
+    <rect x="50" y="1000" width="1500" height="65" rx="10" fill="#207448" />
+    <text x="800" y="1042" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">An exact N-second delay points to a timer, so match it to a default.</text>
+  </g>
+</svg>

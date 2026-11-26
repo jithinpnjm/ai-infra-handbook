@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading the default Corefile and the three customisation recipes</title>
+  <desc>Visual breakdown of the Kubernetes default CoreDNS Corefile server block annotated line by line alongside three customisation recipe cards.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Reading the default Corefile and the three customisation recipes</text>
+
+  
+  <rect x="40" y="130" width="740" height="795" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="62" y="152" width="48" height="40" rx="6" stroke="#207448" stroke-width="4" fill="none" />
+  <line x1="62" y1="172" x2="110" y2="172" stroke="#207448" stroke-width="3" />
+  <circle cx="74" cy="162" r="3" fill="#207448" />
+  <circle cx="84" cy="162" r="3" fill="#207448" />
+  <circle cx="74" cy="182" r="3" fill="#207448" />
+  <circle cx="84" cy="182" r="3" fill="#207448" />
+
+  <text x="126" y="182" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">.:53 <tspan font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#303a36">answer every zone on port 53</tspan></text>
+  <line x1="60" y1="208" x2="760" y2="208" stroke="#c8dcd0" stroke-width="1.5" />
+
+  
+  <rect x="60" y="222" width="700" height="40" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="250" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">errors</text>
+
+  
+  <rect x="60" y="270" width="700" height="64" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="296" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">health { lameduck 5s }:</tspan>
+    <tspan x="76" dy="26" font-family="system-ui, sans-serif" font-weight="normal" fill="#303a36">:8080/health, drains</tspan>
+  </text>
+
+  
+  <rect x="60" y="342" width="700" height="40" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="370" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">ready:</tspan>
+    <tspan font-family="system-ui, sans-serif" font-weight="normal" fill="#303a36"> :8181/ready</tspan>
+  </text>
+
+  
+  <rect x="60" y="390" width="700" height="154" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="416" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">kubernetes cluster.local in-addr.arpa</tspan>
+    <tspan x="76" dy="27" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">  ip6.arpa { pods insecure; fallthrough</tspan>
+    <tspan x="76" dy="27" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">  in-addr.arpa ip6.arpa; ttl 30 }:</tspan>
+    <tspan x="76" dy="27" font-family="system-ui, sans-serif" font-weight="normal" fill="#303a36">answers cluster names from Services and</tspan>
+    <tspan x="76" dy="26" font-family="system-ui, sans-serif" font-weight="normal" fill="#303a36">EndpointSlices</tspan>
+  </text>
+
+  
+  <rect x="60" y="552" width="700" height="40" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="580" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">prometheus :9153</text>
+
+  
+  <rect x="60" y="600" width="700" height="98" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="626" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">forward . /etc/resolv.conf {</tspan>
+    <tspan x="76" dy="28" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">  max_concurrent 1000; prefer_udp }:</tspan>
+    <tspan x="76" dy="28" font-family="system-ui, sans-serif" font-weight="normal" fill="#303a36">non-cluster names go upstream</tspan>
+  </text>
+
+  
+  <rect x="60" y="706" width="700" height="40" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="734" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">cache 30</text>
+
+  
+  <rect x="60" y="754" width="700" height="40" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="782" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">loop:</tspan>
+    <tspan font-family="system-ui, sans-serif" font-weight="normal" fill="#303a36"> detects forwarding loops</tspan>
+  </text>
+
+  
+  <rect x="60" y="802" width="700" height="40" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="830" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">reload:</tspan>
+    <tspan font-family="system-ui, sans-serif" font-weight="normal" fill="#303a36"> picks up edits in about 30 s</tspan>
+  </text>
+
+  
+  <rect x="60" y="850" width="700" height="40" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="76" y="878" font-size="24">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">loadbalance:</tspan>
+    <tspan font-family="system-ui, sans-serif" font-weight="normal" fill="#303a36"> shuffles A records</tspan>
+  </text>
+
+  
+  <rect x="40" y="942" width="740" height="116" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+  
+  <path d="M84,972 L108,1014 L60,1014 Z" stroke="#db8129" stroke-width="4" stroke-linejoin="round" fill="none" />
+  <line x1="84" y1="986" x2="84" y2="998" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="84" cy="1006" r="2" fill="#db8129" />
+
+  <text x="126" y="992" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="126" dy="0">plugins run in the fixed order set at</tspan>
+    <tspan x="126" dy="32">compile time, not the order written</tspan>
+  </text>
+
+  
+  <rect x="820" y="130" width="740" height="290" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="870" cy="162" r="8" stroke="#207448" stroke-width="4" fill="none" />
+  <circle cx="852" cy="192" r="8" stroke="#207448" stroke-width="4" fill="none" />
+  <circle cx="888" cy="192" r="8" stroke="#207448" stroke-width="4" fill="none" />
+  <path d="M870,170 L870,178 M870,178 L852,184 M870,178 L888,184" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="914" y="182" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Stub domain:</text>
+
+  <rect x="844" y="218" width="692" height="182" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="864" y="256" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">corp.example.com:53 {</tspan>
+    <tspan x="864" dy="32">  errors;</tspan>
+    <tspan x="864" dy="32">  cache 30;</tspan>
+    <tspan x="864" dy="32">  forward . 10.1.0.53 10.1.0.54</tspan>
+    <tspan x="864" dy="32">}</tspan>
+  </text>
+
+  
+  <rect x="820" y="445" width="740" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="846" y="468" width="48" height="40" rx="6" stroke="#207448" stroke-width="4" fill="none" />
+  <line x1="846" y1="480" x2="894" y2="480" stroke="#207448" stroke-width="3" />
+  <path d="M856,494 L884,494 M878,489 L884,494 L878,499" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="914" y="497" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Rewrite and hosts:</text>
+
+  <rect x="844" y="530" width="692" height="195" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="864" y="562" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">rewrite name huggingface.mirror.local</tspan>
+    <tspan x="864" dy="29">  huggingface-proxy.registry.svc.</tspan>
+    <tspan x="864" dy="29">  cluster.local;</tspan>
+    <tspan x="864" dy="29">hosts {</tspan>
+    <tspan x="864" dy="29">  10.20.0.15 storage.lab.internal;</tspan>
+    <tspan x="864" dy="29">  fallthrough }</tspan>
+  </text>
+
+  
+  <rect x="820" y="770" width="740" height="288" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <path d="M870,792 L892,800 C892,818 870,832 870,832 C870,832 848,818 848,800 Z" stroke="#207448" stroke-width="4" fill="none" />
+  <circle cx="870" cy="808" r="4" stroke="#207448" stroke-width="2.5" fill="none" />
+  <line x1="870" y1="812" x2="870" y2="819" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <text x="914" y="822" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">DoT upstream:</text>
+
+  <rect x="844" y="855" width="692" height="183" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5" />
+  <text x="864" y="896" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">forward . tls://1.1.1.1 {</tspan>
+    <tspan x="864" dy="32">  tls_servername cloudflare-dns.com;</tspan>
+    <tspan x="864" dy="32">  health_check 5s</tspan>
+    <tspan x="864" dy="32">}</tspan>
+  </text>
+
+  
+  <rect x="40" y="1080" width="1520" height="90" rx="14" fill="#207448" />
+  <text x="800" y="1120" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    <tspan x="800" dy="0">Corefile is ConfigMap kube-system/coredns: keep it in GitOps, test in staging;</tspan>
+    <tspan x="800" dy="30">managed clusters use coredns-custom or stubDomains</tspan>
+  </text>
+</svg>

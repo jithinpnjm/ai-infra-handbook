@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Worked example: masking numbers to rank distinct errors</title>
+  <desc>Five-stage pipeline demonstrating how masking numbers with sed allows sorting and uniq to aggregate distinct error messages across cluster nodes.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Worked example: masking numbers to rank distinct errors</text>
+  <line x1="312" y1="145" x2="352" y2="145" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="624" y1="145" x2="664" y2="145" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="936" y1="145" x2="976" y2="145" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <line x1="1248" y1="145" x2="1288" y2="145" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <!-- ==================== STAGE 1: grep -i error train.log ==================== -->
+  <g id="stage-1">
+    <rect x="40" y="110" width="272" height="860" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="80" cy="145" r="24" fill="#207448" />
+    <text x="80" y="154" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(220, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="14" />
+      <line x1="32" y1="32" x2="48" y2="48" stroke-width="5" />
+      <line x1="14" y1="22" x2="30" y2="22" />
+    </g>
+    <text x="176" y="206" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="176" dy="0">grep -i</tspan>
+      <tspan x="176" dy="34">error</tspan>
+      <tspan x="176" dy="34">train.log</tspan>
+    </text>
+    <rect x="54" y="295" width="244" height="655" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="62" y="307" width="228" height="144" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="80" y="343" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">10:20:01</tspan>
+      <tspan x="80" dy="28">ERROR NCCL</tspan>
+      <tspan x="80" dy="28">timeout on</tspan>
+      <tspan x="80" dy="28">rank 3</tspan>
+    </text>
+    <rect x="62" y="463" width="228" height="144" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="80" y="499" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">10:31:09</tspan>
+      <tspan x="80" dy="28">ERROR NCCL</tspan>
+      <tspan x="80" dy="28">timeout on</tspan>
+      <tspan x="80" dy="28">rank 5</tspan>
+    </text>
+    <rect x="62" y="619" width="228" height="172" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="80" y="655" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">10:40:00</tspan>
+      <tspan x="80" dy="28">ERROR CUDA</tspan>
+      <tspan x="80" dy="28">out of memory</tspan>
+      <tspan x="80" dy="28">on gpu=2</tspan>
+    </text>
+    <rect x="62" y="803" width="228" height="135" rx="8" fill="#f0f3f1" stroke="#a0aec0" stroke-width="1.5" stroke-dasharray="4,4" />
+    <text x="80" y="860" font-family="monospace" font-size="24" fill="#718096">
+      <tspan x="80" dy="0">WARN loss</tspan>
+      <tspan x="80" dy="32">spike</tspan>
+    </text>
+    <line x1="70" y1="883" x2="282" y2="855" stroke="#c53030" stroke-width="3" />
+    <line x1="70" y1="855" x2="282" y2="883" stroke="#c53030" stroke-width="3" />
+  </g>
+  <!-- ==================== STAGE 2: sed -E s/[0-9]+/N/g ==================== -->
+  <g id="stage-2">
+    <rect x="352" y="110" width="272" height="860" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="392" cy="145" r="24" fill="#207448" />
+    <text x="392" y="154" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(532, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="6" />
+      <path d="M 16 28 h 10 M 21 18 v 20" />
+      <path d="M 32 34 l 8 -12" />
+    </g>
+    <text x="488" y="222" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="488" dy="0">sed -E</tspan>
+      <tspan x="488" dy="36">s/[0-9]+/N/g</tspan>
+    </text>
+    <rect x="366" y="295" width="244" height="655" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="374" y="307" width="228" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="392" y="349" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="392" dy="0">N:N:N ERROR</tspan>
+      <tspan x="392" dy="32">NCCL timeout</tspan>
+      <tspan x="392" dy="32">on rank N</tspan>
+    </text>
+    <rect x="374" y="467" width="228" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="392" y="509" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="392" dy="0">N:N:N ERROR</tspan>
+      <tspan x="392" dy="32">NCCL timeout</tspan>
+      <tspan x="392" dy="32">on rank N</tspan>
+    </text>
+    <rect x="374" y="627" width="228" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="392" y="669" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="392" dy="0">N:N:N ERROR</tspan>
+      <tspan x="392" dy="32">CUDA out of</tspan>
+      <tspan x="392" dy="32">memory on</tspan>
+      <tspan x="392" dy="32">gpu=N</tspan>
+    </text>
+  </g>
+  <!-- ==================== STAGE 3: sort ==================== -->
+  <g id="stage-3">
+    <rect x="664" y="110" width="272" height="860" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="704" cy="145" r="24" fill="#207448" />
+    <text x="704" y="154" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(844, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="12" x2="48" y2="12" stroke-width="4" />
+      <line x1="8" y1="24" x2="38" y2="24" stroke-width="4" />
+      <line x1="8" y1="36" x2="28" y2="36" stroke-width="4" />
+      <line x1="8" y1="48" x2="18" y2="48" stroke-width="4" />
+    </g>
+    <text x="800" y="240" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">sort</text>
+    <rect x="678" y="295" width="244" height="655" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="684" y="305" width="232" height="305" rx="8" fill="#d2e5d7" stroke="#207448" stroke-width="2" />
+    <rect x="690" y="313" width="220" height="135" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="706" y="349" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="706" dy="0">N:N:N ERROR</tspan>
+      <tspan x="706" dy="30">NCCL timeout</tspan>
+      <tspan x="706" dy="30">on rank N</tspan>
+    </text>
+    <rect x="690" y="460" width="220" height="135" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="706" y="496" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="706" dy="0">N:N:N ERROR</tspan>
+      <tspan x="706" dy="30">NCCL timeout</tspan>
+      <tspan x="706" dy="30">on rank N</tspan>
+    </text>
+    <text x="800" y="650" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">groups the two</tspan>
+      <tspan x="800" dy="30">identical NCCL</tspan>
+      <tspan x="800" dy="30">lines next to</tspan>
+      <tspan x="800" dy="30">each other</tspan>
+    </text>
+    <rect x="686" y="785" width="228" height="155" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="704" y="821" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="704" dy="0">N:N:N ERROR</tspan>
+      <tspan x="704" dy="30">CUDA out of</tspan>
+      <tspan x="704" dy="30">memory on</tspan>
+      <tspan x="704" dy="30">gpu=N</tspan>
+    </text>
+  </g>
+  <!-- ==================== STAGE 4: uniq -c ==================== -->
+  <g id="stage-4">
+    <rect x="976" y="110" width="272" height="860" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="1016" cy="145" r="24" fill="#207448" />
+    <text x="1016" y="154" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(1156, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="38" height="14" rx="3" />
+      <rect x="8" y="30" width="38" height="14" rx="3" />
+      <line x1="16" y1="17" x2="22" y2="17" stroke-width="3" />
+      <line x1="16" y1="37" x2="22" y2="37" stroke-width="3" />
+    </g>
+    <text x="1112" y="240" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">uniq -c</text>
+    <rect x="990" y="295" width="244" height="655" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="998" y="405" width="228" height="160" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1016" y="450" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1016" dy="0" font-weight="bold" fill="#207448">2 </tspan><tspan>N:N:N ERROR</tspan>
+      <tspan x="1016" dy="32">NCCL timeout</tspan>
+      <tspan x="1016" dy="32">on rank N</tspan>
+    </text>
+    <rect x="998" y="645" width="228" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1016" y="690" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1016" dy="0" font-weight="bold" fill="#207448">1 </tspan><tspan>N:N:N ERROR</tspan>
+      <tspan x="1016" dy="32">CUDA out of</tspan>
+      <tspan x="1016" dy="32">memory on</tspan>
+      <tspan x="1016" dy="32">gpu=N</tspan>
+    </text>
+  </g>
+  <!-- ==================== STAGE 5: sort -rn | head ==================== -->
+  <g id="stage-5">
+    <rect x="1288" y="110" width="272" height="860" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="1328" cy="145" r="24" fill="#207448" />
+    <text x="1328" y="154" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">5</text>
+    <g transform="translate(1468, 117)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12,10 44,10 32,28 32,46 24,46 24,28" />
+      <line x1="16" y1="18" x2="40" y2="18" stroke-width="3" />
+    </g>
+    <text x="1424" y="222" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1424" dy="0">sort -rn |</tspan>
+      <tspan x="1424" dy="36">head</tspan>
+    </text>
+    <rect x="1302" y="295" width="244" height="655" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1424" y="340" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1424" dy="0">ranks them</tspan>
+      <tspan x="1424" dy="30">with the count</tspan>
+      <tspan x="1424" dy="30">2 line first</tspan>
+    </text>
+    <rect x="1310" y="455" width="228" height="165" rx="8" fill="#fff5ea" stroke="#db8129" stroke-width="3.5" />
+    <text x="1328" y="500" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1328" dy="0" font-weight="bold">2 </tspan><tspan>N:N:N ERROR</tspan>
+      <tspan x="1328" dy="32">NCCL timeout</tspan>
+      <tspan x="1328" dy="32">on rank N</tspan>
+    </text>
+    <rect x="1310" y="685" width="228" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1328" y="730" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1328" dy="0" font-weight="bold">1 </tspan><tspan>N:N:N ERROR</tspan>
+      <tspan x="1328" dy="32">CUDA out of</tspan>
+      <tspan x="1328" dy="32">memory on</tspan>
+      <tspan x="1328" dy="32">gpu=N</tspan>
+    </text>
+  </g>
+  <!-- ==================== TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="40" y="1010" width="1520" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="800" y="1054" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Masking the numbers makes different ranks the same message, so uniq can count them</text>
+  </g>
+</svg>

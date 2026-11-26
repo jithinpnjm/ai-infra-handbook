@@ -40,72 +40,17 @@ Section 3 walks through the ten pipeline stages one by one.
 
 Picture a team that receives its first GPU rack on a Monday and has to show a working cluster by Friday. The hardware spreadsheet is the first thing they open. A six-node lab rack and a 2,048-GPU DGX SuperPOD are built from the same pieces. Both have six stacked technical planes and a four-phase lifecycle of plan, build, prove, and run. The figure shows the loop that turns a hardware spreadsheet into a cluster that monitors itself.
 
-```mermaid
-flowchart TB
-    subgraph PLAN["1. Plan (Out-of-Band & Facility)"]
-        INV["Hardware & BMC Inventory<br/>nodes.csv, hardware.csv"]
-        FAC["Facility Power & Cooling<br/>10.2 kW/node, CDU budget (6.30)"]
-    end
-    subgraph BUILD["2. Build (Provisioning to Scheduler)"]
-        PROV["Provisioning Plane<br/>DHCP, iPXE, OS image (6.22, 6.23)"]
-        ID["Identity & Accounting<br/>LDAP/SSSD, sacctmgr QOS (6.24)"]
-        STO["Parallel Storage & Fabrics<br/>IB compute/storage, Lustre (6.19-6.21)"]
-        SCH["Workload Orchestration<br/>slurm.conf, gres, cgroup v2 (6.8-6.13)"]
-    end
-    subgraph PROVE["3. Prove (Acceptance & Burn-In)"]
-        TEST["Acceptance Gate<br/>NHC, HPL, IOR, nccl-tests (6.14, 6.28)"]
-    end
-    subgraph RUN["4. Run (Day-2 Operations)"]
-        MON["Telemetry & Alerting<br/>Exporter, DCGM, SEL (6.26)"]
-        OPS["Upgrades, Backups & Drains<br/>Restic, imageupdate, HA (6.15, 6.27)"]
-    end
-    INV --> PROV
-    FAC --> PROV
-    PROV --> ID
-    ID --> STO
-    STO --> SCH
-    SCH --> TEST
-    TEST --> MON
-    MON --> OPS
-    OPS -. "RMA replacement, new SU, or user onboarding" .-> INV
-```
+![The whole cluster from bare metal to job](./img/m6-31-1.svg)
+
+*Figure 6.31.1. The whole cluster from bare metal to job, as a diagram.*
 
 Read Figure 1 from top to bottom. You start by sizing the physical envelope and recording every MAC address and BMC IP in one inventory. A MAC address is the hardware address of a network port, and a BMC IP is the address of the server's out-of-band management controller. Then you build the software stack strictly bottom-up. Before any production job reaches the queue, you prove the hardware under synthetic stress. Telemetry and backup keep running after that, as continuous loops. The dashed line shows Day-2 reality. Every RMA motherboard swap, new rack expansion or user onboarding feeds back into the same inventory files and triggers the same automated pipeline. RMA means a return to the vendor for repair or replacement.
 
 Now look inside the cluster itself. The runtime architecture spans six distinct planes, from the rack PDU up to the PyTorch communication collective. A plane is a group of layers that share one job, and the arrows show which plane depends on which.
 
-```mermaid
-flowchart TD
-    subgraph L1["Plane 1: Physical, Power & Out-of-Band"]
-        HW["Compute & GPU Chassis<br/>DGX H100 (10.2 kW max, 6x 3.3 kW PSUs)"]
-        BMC["BMC & Redfish API<br/>/redfish/v1/Systems/DGX, SEL"]
-        OOB["OOB Management Ethernet<br/>SN2201 1 GbE switches"]
-    end
-    subgraph L2["Plane 2: Bare-Metal Lifecycle & Provisioning"]
-        MGR["Cluster Manager / BCM 11<br/>HA head pair (cmha-setup), software images"]
-        ROLES["Boot Role (TFTP/PXE) &<br/>Provisioning Role (node-installer)"]
-    end
-    subgraph L3["Plane 3: Host OS, Drivers & Kernel Modules"]
-        OS["Linux Kernel, cgroups v2, ulimit -l unlimited"]
-        DRV["DOCA-Host / MLNX_OFED, NVIDIA Driver,<br/>nvidia-peermem, nvidia-fs (GDS)"]
-    end
-    subgraph L4["Plane 4: Fabrics & Parallel Storage"]
-        COMP["Compute IB Fabric<br/>Rail-aligned 32-node SUs"]
-        STOR["Storage IB Fabric<br/>MQM9700-NS2F, >40 GB/s per node"]
-        INB["In-Band Mgmt Ethernet<br/>SN4600C switches"]
-    end
-    subgraph L5["Plane 5: Workload Orchestration"]
-        SLURM["Slurm (slurmctld, slurmdbd, slurmd)"]
-        K8S["Kubernetes (Inference & Services)"]
-        SCALE["BCM Auto Scaler (cm-scale) / Slinky"]
-    end
-    subgraph L6["Plane 6: Collectives & Frameworks"]
-        NCCL["NCCL (PMIx/Torchrun, ncclras RAS)"]
-        APP["Distributed Training & Atomic Checkpoints"]
-    end
-    L1 --> L2 --> L3 --> L5 --> L6
-    L3 --> L4 --> L6
-```
+![The whole cluster from bare metal to job](./img/m6-31-2.svg)
+
+*Figure 6.31.2. The whole cluster from bare metal to job, as a diagram.*
 
 Plan the inventory first, because every later step reads from it. If you skip the inventory, every later file is a guess, and the guesses will not agree with each other. Treat the inventory as the one place where a human types facts, and let the rest of the pipeline do the copying.
 
@@ -321,20 +266,9 @@ Picture the on-call phone ringing at night. The training job has been running fo
 
 **Interviewer prompt:** *"A 64-node (512-GPU) training job has been running for 14 hours. `squeue` still shows `RUNNING`, no processes have exited, GPU utilization across the job is 0%, and the step timer hasn't advanced in 10 minutes. Walk me through how you triage it."*
 
-```mermaid
-flowchart TD
-    A["64-node (512-GPU) job frozen<br/>squeue=RUNNING, GPU util=0%"] --> B["1. Preserve evidence first<br/>Do NOT scancel before capturing state"]
-    B --> C{"2. Check Slurm & process liveness<br/>squeue, scontrol, srun ps, ulimit -l"}
-    C -->|"Node DOWN/DRAIN or rank exited"| C1["Identify dead node/rank.<br/>Check slurmd.log & OOM killer"]
-    C -->|"All 512 ranks alive"| D["3. Query NCCL 2.24+ RAS twice (5s apart)<br/>ncclras client on active job"]
-    D -->|"MISMATCH row static"| D1["Ranks with lower op count are behind.<br/>Inspect those specific hosts"]
-    D -->|"INCOMPLETE row"| D2["Named rank process is wedged<br/>in kernel/driver call (stack trace)"]
-    B --> E["4. Parallel hardware & fabric sweep<br/>across all 64 nodes"]
-    E --> E1["GPU & PCIe: dmesg NVRM: Xid / SXid,<br/>nvidia-smi ECC & thermal slowdown"]
-    E --> E2["RDMA Fabric: ibstat port state/rate,<br/>sminfo SM alive, perfquery delta (2 reads)"]
-    E --> E3["Storage: df/mount hang on /scratch,<br/>stuck rank-0 checkpoint write"]
-    C1 & D1 & D2 & E1 & E2 & E3 --> F["5. Remediate & recover<br/>Drain bad node with ticket, resume from<br/>last verified atomic checkpoint"]
-```
+![Scenario B: "A 64-node training job is frozen at a step"](./img/m6-31-3.svg)
+
+*Figure 6.31.3. Scenario B: "A 64-node training job is frozen at a step", as a diagram.*
 
 Read the diagram as a decision tree. The first move is always to preserve the evidence. Then you ask whether the job's processes are alive. If a node or a rank has died, you follow the left branch. If every rank is alive, the problem is inside the communication, and you follow the NCCL branch and the parallel sweep. Both branches end at the same place: drain the bad part and resume from the last good checkpoint.
 

@@ -42,13 +42,9 @@ Before you write any provider block, you need chapters 4.18 to 4.24 and some Kub
 
 Picture a cluster built in five layers. The cloud network sits at the bottom, and workloads sit at the top. Each layer sits on the one below it, so a problem in a lower layer shows up as strange behaviour in every layer above. Think of it as a building. Nobody decorates the top floor before the foundation is poured.
 
-```mermaid
-flowchart TB
-  A["Layer 1: cloud foundation\nnetwork, IAM, KMS, buckets (Terraform)"] --> B["Layer 2: cluster\nGKE/EKS/AKS or kubeadm VMs; node pools (Terraform)"]
-  B --> C["Layer 3: cluster platform\nGPU Operator, cert-manager, CSI, ingress, monitoring, Argo CD\n(Terraform helm_release or bootstrap)"]
-  C --> D["Layer 4: tenancy & policy\nnamespaces, quotas, RBAC, network policies, Kueue queues (Terraform or GitOps)"]
-  D --> E["Layer 5: workloads\ntraining jobs, inference services, pipelines (GitOps/Helm/CI, NOT Terraform)"]
-```
+![Where Terraform fits in the Kubernetes lifecycle](./img/m4-25-1.svg)
+
+*Figure 4.25.1. Where Terraform fits in the Kubernetes lifecycle, as a diagram.*
 
 Terraform owns layers 1 to 3. It also owns the **bootstrap** of GitOps: installing Argo CD or Flux, and the root Application that points at Git. Bootstrap means the one-time setup that starts a system running, after which the system takes over its own care. Layers 4 and 5 are better expressed as Git-managed manifests that a controller reconciles (4.26). A controller is a program inside the cluster that keeps the live state matching the desired state. One exception exists. Some organisations prefer Terraform for tenancy objects, because those objects come from the same inputs as cloud IAM, such as teams and quotas. Whichever you choose, give each object one owner, and never let both Terraform and Argo CD manage the same resource.
 

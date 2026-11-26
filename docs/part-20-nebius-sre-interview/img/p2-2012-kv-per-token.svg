@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1090" width="1600" height="1090">
+  <title>KV bytes per token, worked for Qwen3-8B in BF16</title>
+  <desc>Visual breakdown of KV cache bytes per token and per request for Qwen3-8B in BF16 precision, highlighting grouped-query attention savings and comparative full multi-head attention sizing.</desc>
+
+  
+  <rect width="1600" height="1090" fill="#f5f8f5" />
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">KV bytes per token, worked for Qwen3-8B in BF16</text>
+
+  
+  <g id="formula-strip">
+    <rect x="40" y="115" width="1520" height="136" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="168" text-anchor="middle" font-family="monospace" font-size="25" fill="#303a36">KV bytes per token = 2 x layers x kv_heads x head_dim x bytes_per_element</text>
+    <text x="800" y="218" text-anchor="middle" font-family="monospace" font-size="25" fill="#303a36">KV bytes per request = KV bytes per token x (prompt tokens + output tokens)</text>
+  </g>
+
+  
+  
+  <g id="factor-1">
+    <rect x="40" y="285" width="205" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="132" cy="324" r="10" />
+      <path d="M142 324 h18 v6 m-7 -6 v6" />
+      <rect x="135" y="337" width="22" height="14" rx="3" />
+      <circle cx="140" cy="344" r="2" fill="#207448" />
+    </g>
+    <text x="142" y="388" text-anchor="middle" font-family="sans-serif">
+      <tspan x="142" font-size="32" font-weight="bold" fill="#207448">x2</tspan>
+      <tspan x="142" dy="36" font-size="24" fill="#303a36">(one key,</tspan>
+      <tspan x="142" dy="30" font-size="24" fill="#303a36">one value)</tspan>
+    </text>
+  </g>
+
+  
+  <text x="269" y="415" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">&#215;</text>
+
+  
+  <g id="factor-2">
+    <rect x="293" y="285" width="170" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M356 322 l22 -10 l22 10 l-22 10 z" />
+      <path d="M356 335 l22 10 l22 -10" />
+      <path d="M356 348 l22 10 l22 -10" />
+    </g>
+    <text x="378" y="398" text-anchor="middle" font-family="sans-serif">
+      <tspan x="378" font-size="32" font-weight="bold" fill="#207448">x36</tspan>
+      <tspan x="378" dy="42" font-size="24" fill="#303a36">layers</tspan>
+    </text>
+  </g>
+
+  
+  <text x="487" y="415" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">&#215;</text>
+
+  
+  <g id="factor-3">
+    <rect x="511" y="285" width="255" height="235" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <g stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="638" cy="316" r="6" fill="#db8129" />
+      <path d="M638 322 v8 m0 0 l-24 16 m24 -16 l-8 16 m8 -16 l8 16 m-8 -16 l24 16" />
+      <circle cx="614" cy="348" r="4" />
+      <circle cx="630" cy="348" r="4" />
+      <circle cx="646" cy="348" r="4" />
+      <circle cx="662" cy="348" r="4" />
+    </g>
+    <text x="638" y="388" text-anchor="middle" font-family="sans-serif">
+      <tspan x="638" font-size="30" font-weight="bold" fill="#db8129">x8 KV heads</tspan>
+      <tspan x="638" dy="36" font-size="24" fill="#303a36">(grouped-query</tspan>
+      <tspan x="638" dy="30" font-size="24" fill="#303a36">attention)</tspan>
+    </text>
+  </g>
+
+  
+  <text x="790" y="415" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">&#215;</text>
+
+  
+  <g id="factor-4">
+    <rect x="814" y="285" width="205" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="896" y="318" width="41" height="32" rx="4" />
+      <path d="M903 334 h27" />
+      <path d="M908 329 l-5 5 l5 5" />
+      <path d="M925 329 l5 5 l-5 5" />
+    </g>
+    <text x="916" y="388" text-anchor="middle" font-family="sans-serif">
+      <tspan x="916" font-size="32" font-weight="bold" fill="#207448">x128</tspan>
+      <tspan x="916" dy="36" font-size="24" fill="#303a36">head</tspan>
+      <tspan x="916" dy="30" font-size="24" fill="#303a36">dimension</tspan>
+    </text>
+  </g>
+
+  
+  <text x="1043" y="415" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">&#215;</text>
+
+  
+  <g id="factor-5">
+    <rect x="1067" y="285" width="175" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1136" y="318" width="16" height="32" rx="3" />
+      <rect x="1157" y="318" width="16" height="32" rx="3" />
+      <path d="M1144 326 v16" />
+      <path d="M1165 326 v16" />
+    </g>
+    <text x="1154" y="398" text-anchor="middle" font-family="sans-serif">
+      <tspan x="1154" font-size="30" font-weight="bold" fill="#207448">x2 bytes</tspan>
+      <tspan x="1154" dy="42" font-size="24" fill="#303a36">(BF16)</tspan>
+    </text>
+  </g>
+
+  
+  <text x="1266" y="415" text-anchor="middle" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">=</text>
+
+  
+  <g id="factor-result">
+    <rect x="1290" y="285" width="270" height="235" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1407" y="316" width="36" height="36" rx="6" />
+      <circle cx="1425" cy="334" r="8" />
+      <path d="M1407 325 h-5 m5 18 h-5 m41 -18 h5 m-5 18 h5 m-23 -23 v-5 m10 5 v-5 m-10 41 v5 m10 -5 v5" />
+    </g>
+    <text x="1425" y="398" text-anchor="middle" font-family="sans-serif">
+      <tspan x="1425" font-size="32" font-weight="bold" fill="#207448">147,456</tspan>
+      <tspan x="1425" dy="42" font-size="24" font-weight="bold" fill="#303a36">bytes per token</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="comparison-card">
+    <rect x="40" y="555" width="600" height="380" rx="14" fill="#f0f2f0" stroke="#8a9690" stroke-width="2.5" />
+    
+    <g stroke="#7a8680" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M340 610 v38 m-24 0 h48" />
+      <path d="M320 622 h40" />
+      <path d="M320 622 l-12 18 h24 z" />
+      <path d="M360 622 l-12 18 h24 z" />
+    </g>
+    <text x="340" y="705" text-anchor="middle" font-family="sans-serif">
+      <tspan x="340" font-size="28" font-weight="bold" fill="#303a36">Full multi-head attention</tspan>
+      <tspan x="340" dy="46" font-size="26" fill="#303a36">with 32 KV heads:</tspan>
+      <tspan x="340" dy="50" font-size="28" font-weight="bold" fill="#207448">four times larger per token</tspan>
+    </text>
+  </g>
+
+  
+  <g id="result-strip">
+    <rect x="680" y="555" width="880" height="380" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="704" y="575" width="832" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="750" cy="623" r="24" fill="#207448" />
+    <text x="750" y="631" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <text x="798" y="632" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Per token: 147,456 bytes</text>
+
+    
+    <rect x="704" y="687" width="832" height="116" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="750" cy="745" r="24" fill="#207448" />
+    <text x="750" y="753" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <text x="798" y="732" font-family="sans-serif">
+      <tspan x="798" font-size="24" fill="#303a36">Request of 2,000 + 500 tokens = 2,500 tokens:</tspan>
+      <tspan x="798" dy="38" font-size="28" font-weight="bold" fill="#207448">368,640,000 bytes</tspan>
+    </text>
+
+    
+    <rect x="704" y="819" width="832" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="750" cy="867" r="24" fill="#207448" />
+    <text x="750" y="875" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <text x="798" y="876" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">In gigabytes: 0.36864 GB</text>
+  </g>
+
+  
+  <g id="caption-bar">
+    <rect x="40" y="970" width="1520" height="76" rx="12" fill="#207448" />
+    <text x="800" y="1017" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Say each factor as you multiply, because the listener can follow the factors but not a bare result.</text>
+  </g>
+</svg>

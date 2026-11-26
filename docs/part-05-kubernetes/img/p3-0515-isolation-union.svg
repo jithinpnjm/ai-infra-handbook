@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Isolated or not: how policies add up for one pod</title>
+  <desc>Three-state pod isolation model, additive guest list union logic, and NetworkPolicy syntax strip for Kubernetes networking.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Isolated or not: how policies add up for one pod</text>
+
+  
+  
+  
+  <rect x="50" y="100" width="670" height="560" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 95 130 L 115 118 L 135 130 L 135 152 L 115 164 L 95 152 Z" />
+    <path d="M 115 118 L 115 141 M 95 130 L 115 141 M 135 130 L 115 141 M 115 141 L 115 164" />
+  </g>
+  <text x="155" y="150" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="32" font-weight="bold" fill="#207448">pod vllm</text>
+
+  
+  <rect x="75" y="185" width="620" height="195" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 98 215 L 118 207 L 138 215 L 138 237 Q 138 255 118 263 Q 98 255 98 237 Z" />
+    <path d="M 106 235 L 130 235 M 122 227 L 130 235 L 122 243" />
+  </g>
+  <text x="155" y="245" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">State A</text>
+  <text x="95" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">no policy selects the pod for a direction:</tspan>
+    <tspan x="95" dy="34">non-isolated, all traffic in that</tspan>
+    <tspan x="95" dy="34">direction allowed</tspan>
+  </text>
+
+  
+  <line x1="385" y1="380" x2="385" y2="422" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="75" y="430" width="620" height="210" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 98 458 L 118 450 L 138 458 L 138 480 Q 138 498 118 506 Q 98 498 98 480 Z" />
+    <rect x="110" y="475" width="16" height="13" rx="2" />
+    <path d="M 113 475 L 113 469 Q 113 464 118 464 Q 123 464 123 469 L 123 475" />
+  </g>
+  <text x="155" y="488" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">State B</text>
+  <text x="95" y="534" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">at least one policy selects it and lists</tspan>
+    <tspan x="95" dy="32">that direction in policyTypes: isolated,</tspan>
+    <tspan x="95" dy="32">only traffic allowed by the union of all</tspan>
+    <tspan x="95" dy="32">matching rules gets in</tspan>
+  </text>
+
+  
+  
+  
+
+  
+  <rect x="760" y="110" width="375" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 790 140 L 835 140 L 835 185 L 790 185 Z" />
+    <path d="M 802 185 L 802 155 Q 812 145 823 155 L 823 185" />
+    <path d="M 775 162 L 808 162 M 800 154 L 808 162 L 800 170" />
+  </g>
+  <text x="790" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="790" dy="0">Policy 1 names</tspan>
+    <tspan x="790" dy="36">gateway</tspan>
+  </text>
+
+  
+  <rect x="1175" y="110" width="375" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 1205 140 L 1255 140 L 1255 185 L 1205 185 Z" />
+    <path d="M 1210 162 L 1220 162 L 1226 148 L 1234 176 L 1240 155 L 1245 162 L 1250 162" />
+  </g>
+  <text x="1205" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1205" dy="0">Policy 2 names the</tspan>
+    <tspan x="1205" dy="36">monitoring pod</tspan>
+  </text>
+
+  
+  <line x1="947" y1="300" x2="947" y2="352" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <line x1="1362" y1="300" x2="1362" y2="352" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <line x1="695" y1="535" x2="752" y2="535" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="760" y="360" width="790" height="280" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="795" y="390" width="46" height="54" rx="4" />
+    <path d="M 806 408 L 814 416 L 828 402" />
+    <path d="M 806 428 L 814 436 L 828 422" />
+  </g>
+  <text x="795" y="485" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="795" dy="0">anyone on at least one list is admitted;</tspan>
+    <tspan x="795" dy="36">nothing on a list ever removes a name</tspan>
+    <tspan x="795" dy="36">from another list; no deny rules</tspan>
+    <tspan x="795" dy="36">and no ordering</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="50" y="680" width="1500" height="485" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="80" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Syntax strip</text>
+
+  
+  <rect x="80" y="745" width="695" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 105 778 L 125 770 L 145 778 L 145 800 Q 145 818 125 826 Q 105 818 105 800 Z" />
+    <line x1="113" y1="786" x2="137" y2="810" />
+  </g>
+  <text x="175" y="798" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">ingress: [] or no rules with</tspan>
+    <tspan x="175" dy="34">policyTypes [Ingress] denies all ingress</tspan>
+  </text>
+
+  
+  <rect x="825" y="745" width="695" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 850 778 L 870 770 L 890 778 L 890 800 Q 890 818 870 826 Q 850 818 850 800 Z" />
+    <path d="M 858 796 L 867 805 L 882 786" />
+  </g>
+  <text x="920" y="815" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">ingress: [{}] allows all</text>
+
+  
+  <rect x="80" y="880" width="695" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="105" y="915" width="40" height="42" rx="4" />
+    <line x1="115" y1="915" x2="115" y2="928" />
+    <line x1="125" y1="915" x2="125" y2="928" />
+    <line x1="135" y1="915" x2="135" y2="928" />
+    <circle cx="125" cy="944" r="3" fill="#207448" />
+  </g>
+  <text x="175" y="950" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">omitted ports means any port</text>
+
+  
+  <rect x="825" y="880" width="695" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="850" y1="920" x2="890" y2="920" />
+    <circle cx="862" cy="920" r="6" fill="#ffffff" />
+    <line x1="850" y1="945" x2="890" y2="945" />
+    <circle cx="878" cy="945" r="6" fill="#ffffff" />
+  </g>
+  <text x="920" y="920" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="920" dy="0">policyTypes defaults to Ingress always</tspan>
+    <tspan x="920" dy="32">and to Egress only when the policy has</tspan>
+    <tspan x="920" dy="32">egress rules, so set it explicitly</tspan>
+  </text>
+
+  
+  <rect x="80" y="1015" width="695" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 105 1055 Q 125 1040 145 1055" />
+    <path d="M 137 1048 L 145 1055 L 137 1062" />
+    <path d="M 145 1075 Q 125 1090 105 1075" />
+    <path d="M 113 1068 L 105 1075 L 113 1082" />
+  </g>
+  <text x="175" y="1065" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">stateful: reply traffic of an allowed</tspan>
+    <tspan x="175" dy="34">connection passes via conntrack</tspan>
+  </text>
+
+  
+  <rect x="825" y="1015" width="695" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 870 1045 L 895 1090 L 845 1090 Z" />
+    <line x1="870" y1="1060" x2="870" y2="1073" />
+    <circle cx="870" cy="1082" r="2" fill="#207448" />
+  </g>
+  <text x="920" y="1055" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="920" dy="0">a CNI without policy support</tspan>
+    <tspan x="920" dy="32">(plain Flannel) accepts the object</tspan>
+    <tspan x="920" dy="32">and silently ignores it</tspan>
+  </text>
+</svg>

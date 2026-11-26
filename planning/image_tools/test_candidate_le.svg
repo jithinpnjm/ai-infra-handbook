@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Histogram buckets: keep le, then take the quantile once</title>
+  <desc>Visual infographic explaining Prometheus histogram cumulative buckets, the role of the le label, why dropping le breaks histogram_quantile, and the correct aggregation order.</desc>
+
+  <defs>
+    <!-- Arrowhead Green (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold, >= 40px top margin) -->
+  <text x="800" y="88" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Histogram buckets: keep le,</tspan>
+    <tspan x="800" dy="54">then take the quantile once</tspan>
+  </text>
+
+  <!-- ==================== LEFT PANEL: CUMULATIVE HISTOGRAM ==================== -->
+  <rect x="50" y="195" width="500" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Chart Interior White Card -->
+  <rect x="75" y="215" width="450" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+  <!-- Histogram Outline Icon (56px) in top-left of chart -->
+  <g transform="translate(90, 227)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="4" y1="48" x2="48" y2="48" />
+    <line x1="4" y1="4" x2="4" y2="48" />
+    <rect x="10" y="32" width="6" height="16" fill="none" />
+    <rect x="19" y="22" width="6" height="26" fill="none" />
+    <rect x="28" y="14" width="6" height="34" fill="none" />
+    <rect x="37" y="6" width="6" height="42" fill="none" />
+  </g>
+
+  <!-- Baseline axis -->
+  <line x1="95" y1="430" x2="505" y2="430" stroke="#d5dfd8" stroke-width="2" />
+
+  <!-- Row of Cumulative Boxes (counts rising from left to right) -->
+  <!-- Box 1 -->
+  <rect x="110" y="370" width="60" height="60" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="110" y1="395" x2="170" y2="395" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+
+  <!-- Box 2 -->
+  <rect x="190" y="325" width="60" height="105" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="190" y1="360" x2="250" y2="360" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+
+  <!-- Box 3 -->
+  <rect x="270" y="280" width="60" height="150" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="270" y1="325" x2="330" y2="325" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+
+  <!-- Box 4: Orange outline on the box where the target quantile falls -->
+  <rect x="350" y="240" width="60" height="190" rx="6" fill="#fdf6ec" stroke="#db8129" stroke-width="4" />
+  <!-- Target quantile indicator line inside bucket 4 -->
+  <line x1="350" y1="275" x2="410" y2="275" stroke="#db8129" stroke-width="2.5" stroke-dasharray="4 3" />
+  <circle cx="380" cy="275" r="5" fill="#db8129" />
+
+  <!-- Box 5 -->
+  <rect x="430" y="230" width="60" height="200" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="430" y1="270" x2="490" y2="270" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+
+  <!-- Left Histogram Note (wrapped onto 3 lines with >55px padding) -->
+  <text x="300" y="500" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="300" dy="0">Each box counts</tspan>
+    <tspan x="300" dy="32">every request at or</tspan>
+    <tspan x="300" dy="32">under its bound: cumulative</tspan>
+  </text>
+
+
+  <!-- ==================== MIDDLE: ARROW & INTERPOLATION NOTE ==================== -->
+  <!-- Middle Card Container -->
+  <rect x="590" y="195" width="380" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Calculation / Function Outline Icon (56px) -->
+  <g transform="translate(752, 220)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24" />
+    <path d="M 18 20 C 24 16 32 16 38 20 C 38 26 18 30 18 36 C 24 40 32 40 38 36" />
+    <line x1="28" y1="12" x2="28" y2="16" />
+    <line x1="28" y1="40" x2="28" y2="44" />
+  </g>
+
+  <!-- Middle Arrow Label Text (wrapped onto 4 lines with generous padding) -->
+  <text x="780" y="320" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="780" dy="0">histogram_quantile</tspan>
+    <tspan x="780" dy="34">interpolates inside</tspan>
+    <tspan x="780" dy="34">the bucket that</tspan>
+    <tspan x="780" dy="34">holds the quantile</tspan>
+  </text>
+
+  <!-- Directed Arrow across middle, pointing from Left histogram to Right comparison -->
+  <line x1="620" y1="500" x2="940" y2="500" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+
+  <!-- ==================== RIGHT: TWO-ROW COMPARISON ==================== -->
+  <rect x="1010" y="195" width="540" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Row 1: Trap -->
+  <rect x="1035" y="215" width="490" height="180" rx="12" fill="#ffffff" stroke="#c53030" stroke-width="2" />
+
+  <!-- Red Cross Icon (48px) -->
+  <g transform="translate(1055, 231)" stroke="#c53030" stroke-width="4" fill="none" stroke-linecap="round">
+    <circle cx="24" cy="24" r="22" stroke="#c53030" stroke-width="3" fill="#fde8e8" />
+    <line x1="16" y1="16" x2="32" y2="32" />
+    <line x1="32" y1="16" x2="16" y2="32" />
+  </g>
+
+  <!-- Row 1 Title (wrapped onto 2 lines with generous padding) -->
+  <text x="1120" y="249" font-family="sans-serif" font-size="25" font-weight="bold" fill="#c53030">
+    <tspan x="1120" dy="0">Trap: sum by (model)</tspan>
+    <tspan x="1120" dy="32">drops le</tspan>
+  </text>
+
+  <!-- Row 1 Note -->
+  <text x="1280" y="360" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1280" dy="0">Breaks histogram_quantile</tspan>
+  </text>
+
+
+  <!-- Row 2: Right -->
+  <rect x="1035" y="415" width="490" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  <!-- Green Check Icon (48px) -->
+  <g transform="translate(1055, 431)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="22" stroke="#207448" stroke-width="3" fill="#e8f1ea" />
+    <polyline points="15,24 21,31 33,17" />
+  </g>
+
+  <!-- Row 2 Title -->
+  <text x="1120" y="463" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    <tspan x="1120" dy="0">Right: sum by (le, model)</tspan>
+  </text>
+
+  <!-- Row 2 Note (wrapped onto 2 lines) -->
+  <text x="1280" y="527" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1280" dy="0">Keep le in the by clause,</tspan>
+    <tspan x="1280" dy="32">then take the quantile once</tspan>
+  </text>
+
+
+  <!-- ==================== FLOW OF TWO PODS BUCKETS ==================== -->
+  <rect x="50" y="665" width="1500" height="305" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Node 1A: Pod A buckets -->
+  <rect x="80" y="695" width="250" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Pod Icon A (centered above text) -->
+  <g transform="translate(181, 705)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="40" height="28" rx="6" />
+    <line x1="14" y1="20" x2="34" y2="20" />
+  </g>
+  <text x="205" y="779" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="205" dy="0">Pod A buckets</tspan>
+  </text>
+
+  <!-- Node 1B: Pod B buckets -->
+  <rect x="80" y="835" width="250" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Pod Icon B (centered above text) -->
+  <g transform="translate(181, 845)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="40" height="28" rx="6" />
+    <line x1="14" y1="20" x2="34" y2="20" />
+  </g>
+  <text x="205" y="919" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="205" dy="0">Pod B buckets</tspan>
+  </text>
+
+  <!-- Connector from Pod A & Pod B joined to rate per series -->
+  <path d="M 330 750 L 360 750 L 360 817" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 330 890 L 360 890 L 360 817" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="360" y1="817" x2="388" y2="817" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Node 2: rate per series -->
+  <rect x="390" y="745" width="280" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Rate / Gauge Icon -->
+  <g transform="translate(506, 760)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="20" />
+    <polyline points="24,24 33,15" />
+    <line x1="10" y1="24" x2="14" y2="24" />
+    <line x1="34" y1="24" x2="38" y2="24" />
+  </g>
+  <text x="530" y="855" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="530" dy="0">rate per series</tspan>
+  </text>
+
+  <!-- Connector from rate per series to sum by (le, model) -->
+  <line x1="670" y1="817" x2="718" y2="817" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Node 3: sum by (le, model) -->
+  <rect x="720" y="745" width="340" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Sigma / Aggregation Icon -->
+  <g transform="translate(866, 760)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="20" />
+    <polyline points="15,15 33,15 22,24 33,33 15,33" />
+  </g>
+  <text x="890" y="855" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="890" dy="0">sum by (le, model)</tspan>
+  </text>
+
+  <!-- Connector from sum by (le, model) to histogram_quantile(0.99) -->
+  <line x1="1060" y1="817" x2="1108" y2="817" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Node 4: histogram_quantile(0.99) -->
+  <rect x="1110" y="745" width="410" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Target / Quantile Icon -->
+  <g transform="translate(1291, 760)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="20" />
+    <circle cx="24" cy="24" r="10" />
+    <circle cx="24" cy="24" r="3.5" fill="#207448" />
+  </g>
+  <text x="1315" y="855" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1315" dy="0">histogram_quantile(0.99)</tspan>
+  </text>
+
+
+  <!-- ==================== BOTTOM CAPTION BAR ==================== -->
+  <rect x="50" y="1015" width="1500" height="70" rx="14" fill="#207448" />
+  <text x="800" y="1059" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">le stands for less than or equal to.</tspan>
+  </text>
+</svg>

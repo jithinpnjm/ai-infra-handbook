@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" role="img" aria-labelledby="title desc">
+  <title id="title">The core ideas</title>
+  <desc id="desc">Flowchart of the core ideas.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M0 0 L18 9 L0 18 Z" fill="#207448"/>
+    </marker>
+    <style>
+      .panel{fill:#e8f1ea}
+      .node{fill:#ffffff;stroke:#207448;stroke-width:3}
+      .nodeOrange{fill:#ffffff;stroke:#db8129;stroke-width:4}
+      .edge{fill:none;stroke:#207448;stroke-width:3;stroke-linejoin:round}
+      .icon{fill:none;stroke:#207448;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+      .iconOrange{fill:none;stroke:#db8129;stroke-width:4;stroke-linecap:round;stroke-linejoin:round}
+      .t30{font-family:sans-serif;font-size:30px;font-weight:700;fill:#303a36}
+      .edgeLabel{font-family:sans-serif;font-size:24px;font-weight:600;fill:#303a36}
+      .mono{font-family:monospace;font-weight:700}
+      .title{font-family:sans-serif;font-size:48px;font-weight:700;fill:#303a36}
+    </style>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+  <text class="title" x="800" y="58" text-anchor="middle">The core ideas</text>
+
+  
+  <rect class="node" x="540" y="85" width="580" height="80" rx="14"/>
+  <g class="icon" transform="translate(558 97)">
+    <path d="M28 6 L52 48 H4 Z"/>
+    <path d="M28 22 V34"/>
+    <circle cx="28" cy="41" r="1.8" fill="#207448" stroke="none"/>
+  </g>
+  <text class="t30" x="630" y="135">Symptom: slow or failing</text>
+
+  
+  <rect class="nodeOrange" x="520" y="210" width="620" height="85" rx="14"/>
+  <g class="iconOrange" transform="translate(538 224)">
+    <path d="M8 44 A20 20 0 0 1 48 44"/>
+    <path d="M28 44 L40 26"/>
+    <circle cx="28" cy="44" r="3"/>
+    <path d="M8 44 H4 M48 44 H52"/>
+  </g>
+  <text class="t30" x="610" y="262">Read PSI: cpu, memory, io</text>
+
+  
+  <path class="edge" d="M830 165 V210" marker-end="url(#arrow)"/>
+  <path class="edge" d="M520 252.5 H300 V355" marker-end="url(#arrow)"/>
+  <path class="edge" d="M830 295 V355" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1140 252.5 H1330 V355" marker-end="url(#arrow)"/>
+
+  <text class="edgeLabel" x="302" y="237">cpu some high</text>
+  <text class="edgeLabel" x="848" y="331">memory some or full high</text>
+  <text class="edgeLabel" x="1150" y="237">io some high</text>
+
+  
+  <rect class="panel" x="40" y="355" width="520" height="610" rx="18"/>
+  <rect class="panel" x="600" y="355" width="460" height="445" rx="18"/>
+  <rect class="panel" x="1100" y="355" width="460" height="430" rx="18"/>
+
+  
+  <rect class="node" x="60" y="355" width="480" height="70" rx="12"/>
+  <g class="icon" transform="translate(78 362)">
+    <rect x="14" y="14" width="28" height="28" rx="3"/>
+    <rect x="22" y="22" width="12" height="12" rx="1"/>
+    <path d="M22 14 V6 M28 14 V6 M34 14 V6 M22 42 V50 M28 42 V50 M34 42 V50 M14 22 H6 M14 28 H6 M14 34 H6 M42 22 H50 M42 28 H50 M42 34 H50"/>
+  </g>
+  <text class="t30" x="150" y="400">CPU saturated</text>
+
+  
+  <rect class="node" x="620" y="355" width="420" height="70" rx="12"/>
+  <g class="icon" transform="translate(638 362)">
+    <rect x="6" y="18" width="44" height="20" rx="2"/>
+    <path d="M12 38 V46 M20 38 V46 M28 38 V46 M36 38 V46 M44 38 V46"/>
+    <path d="M16 22 V34 M24 22 V34 M32 22 V34 M40 22 V34"/>
+  </g>
+  <text class="t30" x="710" y="400">Memory short</text>
+
+  
+  <rect class="node" x="1120" y="355" width="420" height="70" rx="12"/>
+  <g class="icon" transform="translate(1138 362)">
+    <ellipse cx="28" cy="14" rx="20" ry="8"/>
+    <path d="M8 14 V42 C8 46.4 16.9 50 28 50 C39.1 50 48 46.4 48 42 V14"/>
+    <path d="M8 28 C8 32.4 16.9 36 28 36 C39.1 36 48 32.4 48 28"/>
+  </g>
+  <text class="t30" x="1210" y="400">Disk waiting</text>
+
+  
+  <path class="edge" d="M80 425 V440 H52 V872.5"/>
+  <path class="edge" d="M52 527.5 H88" marker-end="url(#arrow)"/>
+  <path class="edge" d="M52 700 H88" marker-end="url(#arrow)"/>
+  <path class="edge" d="M52 872.5 H88" marker-end="url(#arrow)"/>
+
+  
+  <rect class="node" x="88" y="465" width="452" height="125" rx="12"/>
+  <g class="icon" transform="translate(104 499)">
+    <path d="M28 6 L50 18 V38 L28 50 L6 38 V18 Z"/>
+    <path d="M6 18 L28 30 L50 18 M28 30 V50"/>
+  </g>
+  <text class="t30" x="176" y="518">VM? steal in<tspan x="176" dy="36" class="mono">vmstat st</tspan></text>
+
+  
+  <rect class="node" x="88" y="630" width="452" height="140" rx="12"/>
+  <g class="icon" transform="translate(104 672)">
+    <rect x="6" y="16" width="44" height="24" rx="2"/>
+    <path d="M14 16 V40 M22 16 V40 M30 16 V40 M38 16 V40"/>
+    <path d="M6 22 H2 M6 34 H2 M50 22 H54 M50 34 H54"/>
+  </g>
+  <text class="t30" x="176" y="672">Node idle but<tspan x="176" dy="36">container slow?</tspan><tspan x="176" dy="36" class="mono">cpu.stat throttled</tspan></text>
+
+  
+  <rect class="node" x="88" y="810" width="452" height="125" rx="12"/>
+  <g class="icon" transform="translate(104 845)">
+    <rect x="8" y="8" width="40" height="16" rx="2"/>
+    <rect x="8" y="32" width="40" height="16" rx="2"/>
+    <circle cx="16" cy="16" r="2" fill="#207448" stroke="none"/>
+    <circle cx="16" cy="40" r="2" fill="#207448" stroke="none"/>
+    <path d="M24 16 H42 M24 40 H42"/>
+  </g>
+  <text class="t30" x="176" y="863">Node busy?<tspan x="176" dy="36" class="mono">mpstat, vmstat r</tspan></text>
+
+  
+  <path class="edge" d="M630 425 V440 H606 V700"/>
+  <path class="edge" d="M606 527.5 H632" marker-end="url(#arrow)"/>
+  <path class="edge" d="M606 700 H632" marker-end="url(#arrow)"/>
+
+  
+  <rect class="node" x="632" y="465" width="416" height="125" rx="12"/>
+  <g class="icon" transform="translate(648 499)">
+    <path d="M8 20 H44"/>
+    <path d="M36 12 L44 20 L36 28"/>
+    <path d="M48 36 H12"/>
+    <path d="M20 28 L12 36 L20 44"/>
+  </g>
+  <text class="t30" x="720" y="518">Swap or reclaim?<tspan x="720" dy="36" class="mono">vmstat si so</tspan></text>
+
+  
+  <rect class="node" x="632" y="630" width="416" height="140" rx="12"/>
+  <g class="icon" transform="translate(648 672)">
+    <circle cx="28" cy="28" r="20"/>
+    <path d="M20 20 L36 36 M36 20 L20 36"/>
+  </g>
+  <text class="t30" x="720" y="672"><tspan>Killed? </tspan><tspan class="mono">dmesg,</tspan><tspan x="720" dy="36" class="mono">memory.events</tspan><tspan x="720" dy="36" class="mono">oom_kill</tspan></text>
+
+  
+  <path class="edge" d="M1130 425 V440 H1108 V692.5"/>
+  <path class="edge" d="M1108 527.5 H1132" marker-end="url(#arrow)"/>
+  <path class="edge" d="M1108 692.5 H1132" marker-end="url(#arrow)"/>
+
+  
+  <rect class="node" x="1132" y="465" width="416" height="125" rx="12"/>
+  <g class="icon" transform="translate(1148 499)">
+    <circle cx="28" cy="28" r="20"/>
+    <path d="M28 14 V28 L38 34"/>
+  </g>
+  <text class="t30" x="1220" y="518"><tspan class="mono">iostat</tspan> await,<tspan x="1220" dy="36" class="mono">aqu-sz</tspan></text>
+
+  
+  <rect class="node" x="1132" y="630" width="416" height="125" rx="12"/>
+  <g class="icon" transform="translate(1148 664)">
+    <circle cx="24" cy="24" r="14"/>
+    <path d="M34 34 L50 50"/>
+  </g>
+  <text class="t30" x="1220" y="683">Who? <tspan class="mono">pidstat -d,</tspan><tspan x="1220" dy="36" class="mono">biosnoop</tspan></text>
+
+  
+  <path class="edge" d="M314 935 V1005" marker-end="url(#arrow)"/>
+  <rect class="node" x="88" y="1005" width="452" height="115" rx="12"/>
+  <g class="icon" transform="translate(104 1034)">
+    <path d="M28 6 C34 16 44 20 42 32 C41 42 35 50 28 50 C21 50 15 44 15 36 C15 28 22 24 24 16 C26 22 30 24 31 28 C34 22 32 14 28 6 Z"/>
+    <path d="M28 30 C32 36 34 40 31 45 C29 48 24 47 23 43 C22 39 26 37 28 30 Z"/>
+  </g>
+  <text class="t30" x="176" y="1053"><tspan class="mono">perf record,</tspan><tspan x="176" dy="36">flame graph</tspan></text>
+
+  
+  <path class="edge" d="M840 770 V1005" marker-end="url(#arrow)"/>
+  <rect class="node" x="620" y="1005" width="440" height="115" rx="12"/>
+  <g class="icon" transform="translate(636 1034)">
+    <path d="M14 6 H38 L48 16 V50 H14 Z"/>
+    <path d="M38 6 V16 H48"/>
+    <path d="M22 26 H40 M22 34 H40 M22 42 H34"/>
+  </g>
+  <text class="t30" x="708" y="1068">Read the OOM log</text>
+</svg>

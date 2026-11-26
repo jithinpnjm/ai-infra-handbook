@@ -1,0 +1,892 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-push-pull",
+  "title": "Push sends work out, pull lets each machine ask for it",
+  "spec": "Two side-by-side panels, each with a green heading. Left panel, heading 'Push (Ansible)': one box 'Control node' at the top with a gear icon, and a row of three target boxes 'web1', 'web2', 'web3' beneath it (or GPU nodes). Solid arrows from the control node down to each target, labelled 'SSH: sends the task'. Note under the panel: 'No agent is installed on the targets. The control node decides when work happens.' Right panel, heading 'Pull (agent-based)': a server box 'Central server' at the top, and the same three target boxes beneath, each with a small 'agent' badge. Arrows point UP from each target to the server, labelled 'asks for work'. Note under the panel: 'Each machine decides when to ask. An agent runs on every machine.' Orange outline on the Push panel's control node, as the Ansible approach used in this chapter. Small caption at the bottom: 'Puppet, Chef and Salt pull. Ansible pushes.'",
+  "anchor": "## 1. What Ansible is",
+  "alt": "Ansible pushes tasks from the control node over SSH with no agent, while pull tools have each machine ask a server for work.",
+  "cap": "Ansible pushes tasks from a control node over SSH without an agent, while pull tools have each machine ask a server for work."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-split-tools",
+  "title": "Terraform builds the machines, Ansible configures them",
+  "spec": "A left-to-right chain of three boxes with arrows between them, each with a numbered circle. Box 1, cloud icon, title 'Terraform', text 'Builds a new pool of GPU VMs with the right network and disks'. Box 2, power-button icon, title 'cloud-init', text 'Handles the first boot, with a user and an SSH key'. Box 3, gear icon, title 'Ansible', text 'Installs the driver, sets the kernel parameters and starts the monitoring agent'. Arrow 1 to 2 labelled 'machines exist'. Arrow 2 to 3 labelled 'machines can be reached over SSH'. Above the chain, a grey banner: 'Each tool does one part of the job.' Under box 3, an orange note: 'Ansible decides what runs on the machines.' No other items.",
+  "anchor": "### Where it fits",
+  "alt": "Terraform creates the GPU VMs, cloud-init handles the first boot, and Ansible configures the driver, kernel and monitoring agent.",
+  "cap": "Terraform creates the machines, cloud-init handles the first boot, and Ansible decides what runs on them."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "a03-linear-wait",
+  "title": "The linear strategy makes every host wait at each task",
+  "spec": "A timeline with three horizontal lanes labelled 'gpu01', 'gpu02' and 'gpu03', and time running left to right. Each lane has task boxes in order. Task 1 box in all three lanes, green, labelled 'ok'. Task 2 box: in gpu01 and gpu03 green 'ok'; in gpu02 a red-outline box 'failed'. A dashed vertical barrier after task 2 across all lanes, labelled 'linear: wait until every host finishes this task'. After the barrier, gpu02's lane shows a grey box 'dropped from later tasks' with a number '1'-step number circle on the barrier. Task 3 boxes appear only in gpu01 and gpu03, green, labelled 'ok'. The recap label at the far right of gpu02 lane: 'failed in the recap'. Orange highlight on the 'failed' box in gpu02. Caption under the timeline: 'One slow or failing host can hold up the whole run.'",
+  "anchor": "## 2. How Ansible executes a task",
+  "alt": "Under the linear strategy, a host that fails one task is dropped from later tasks while the other hosts wait at the next barrier.",
+  "cap": "Under the linear strategy, a host that fails is dropped from later tasks while the other hosts wait at each barrier."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-yaml-coercion",
+  "title": "Unquoted values change type, quoted values stay text",
+  "spec": "A two-column table-style figure. Left column, heading 'You write (unquoted)', with monospace entries stacked vertically, each in a small box: 'NO', '1.10', '010', '22:30', '0644', '~'. Middle column, arrows labelled 'parser reads', each pointing right. Right column, heading 'The parser stores', with the matching results in boxes: 'NO' becomes 'false' (orange, the most important item, with the note 'the Norway problem'), '1.10' becomes '1.1', '010' becomes '8', '22:30' becomes a number, '0644' becomes '420', '~' becomes 'null'. Bottom band, green panel, heading 'Fix: quote it', with monospace examples 'country: \"NO\"' and 'mode: \"0644\"', and the note 'A quoted value is never reinterpreted.' Use a small outline icon of a magnifier or tag beside the heading. Keep text in the boxes short.",
+  "anchor": "### Rules that bite",
+  "alt": "Unquoted YAML values such as NO, 1.10, 010 and 0644 are converted to other types by the parser, while quoted values stay text.",
+  "cap": "Unquoted YAML values such as NO and 0644 are converted to other types, so quoting them keeps them as text."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-anchor-merge",
+  "title": "A merge key copies defaults, and a local key overrides them",
+  "spec": "Top, a box labelled 'defaults (anchor: node_defaults)' listing three entries: 'gpus: 8', 'os: ubuntu-22.04', 'tags: [h100]'. A dashed arrow from the box to two node boxes below it, arrows labelled '<<: *node_defaults' (merge key). Left node box 'gpu01' shows the copied values 'gpus: 8', 'os', 'tags' with a green check. Right node box 'gpu02' shows the copied 'os' and 'tags', and a local line 'gpus: 4' in orange highlight, labelled 'override wins, local key comes after the merge'. Small note under gpu02: 'The other keys still come from the defaults.' Number circles 1 and 2 on the two arrows to show the order the parser reads them: defaults first, then each node.",
+  "anchor": "### Anchors, aliases and merge keys",
+  "alt": "A YAML anchor holds shared defaults, a merge key copies them into each node, and a local key such as gpus 4 overrides the copied value.",
+  "cap": "A YAML merge key copies shared defaults into each node, and a local key overrides the copied value."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "04",
+  "name": "a04-validate-install",
+  "title": "Render on the control node, validate, then install",
+  "spec": "A left-to-right flow of four boxes with arrows, each with a numbered circle. Box 1, window icon, title 'Control node', text 'Renders the .j2 template with the variables'. Box 2, gear icon, title 'Validate', text 'visudo -cf %s runs against the rendered temporary file'. Box 3, shield or lock icon, title 'Install', text 'Copies the finished file to the target'. Arrow 1 to 2 labelled 'rendered copy'. Arrow 2 to 3 labelled 'check passes'. From box 2 a second arrow goes down to a grey box 'Fails: the task aborts and the old file stays in place', labelled 'check fails'. Orange outline on the Validate box. Under the chain, a green panel with the note 'Jinja2 runs on the control node, so the target only receives plain text.' Monospace label for the command 'visudo -cf %s'.",
+  "anchor": "## 3. Jinja2 in Ansible",
+  "alt": "Ansible renders a template on the control node, runs the validate command on the rendered copy, and installs it only if the check passes.",
+  "cap": "Ansible renders a template on the control node, validates the copy, and installs it only if the check passes."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-vagrant-collapse",
+  "title": "Three hosts on one address collapse into one entry",
+  "spec": "Two panels side by side with green headings. Left panel, heading 'Without aliases': three stacked input lines in monospace, '127.0.0.1:2222', '127.0.0.1:2200', '127.0.0.1:2201', each with an arrow pointing down into a single box labelled '127.0.0.1' (the inventory key). Below that box, one result box labelled 'one entry left' with an orange outline. A small note: 'Each line overwrites the same entry.' Right panel, heading 'With aliases': three boxes stacked, labelled 'vagrant1 ansible_port=2222', 'vagrant2 ansible_port=2200', 'vagrant3 ansible_port=2201', each with its own arrow to the same address label 'ansible_host=127.0.0.1' shown once in a group bracket labelled '[vagrant:vars]'. Result: three separate host boxes, labelled 'three hosts'. Green check mark on the result. Bottom caption: 'Give each machine its own logical name.'",
+  "anchor": "### Special groups, names and connection variables",
+  "alt": "Three Vagrant entries that share 127.0.0.1 collapse into one host, and aliases with their own ports keep all three.",
+  "cap": "Listing three Vagrant VMs by address alone collapses them into one host, so each machine needs its own alias."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-pattern-venn",
+  "title": "Host patterns: union, intersection and exclusion",
+  "spec": "Three overlapping circles drawn as a Venn diagram, labelled 'gpu' (large circle, left), 'login' (circle, right) and 'rack_r01' (circle, bottom). Use three light green fills with transparency. Below the diagram, a row of three example boxes, each with a monospace pattern and a one-line meaning: 'gpu:login' with the note 'Union: either group'; 'gpu:&rack_r01' with the note 'Intersection: both groups'; 'gpu:!gpu_a100' with the note 'Exclusion: the group without that one'. Highlight the overlap region of gpu and rack_r01 in orange with the label 'gpu:&rack_r01'. Icons: a small outline server icon beside 'gpu', a login-screen icon beside 'login', a rack icon beside 'rack_r01'. Caption: 'A host pattern is a filter on the inventory.'",
+  "anchor": "## 2. Host patterns",
+  "alt": "Venn diagram showing union, intersection and exclusion for host patterns over gpu, login and rack groups.",
+  "cap": "Host patterns combine groups with union, intersection and exclusion, so you can pick an exact slice of the fleet."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-dynamic-flow",
+  "title": "A plugin asks the cloud for the current hosts at run time",
+  "spec": "Left to right, a chain of four boxes with arrows, each with a numbered circle. Box 1, document icon, title 'Plugin config file', monospace text 'plugin: google.cloud.gcp_compute' with a note 'File name ends with the required suffix'. Box 2, cloud icon, title 'Cloud API', text 'filters: labels.env = prod and status = RUNNING, so only matching instances come back'. Box 3, gear icon, title 'Build the groups and variables', two sub-lines: 'keyed_groups: role_gpu, role_login' and 'compose: ansible_host from networkInterfaces'. Box 4, list icon, title 'Inventory', text 'Current hosts, every time the command runs'. Arrow 1 to 2 labelled 'query at run time'. Arrow 2 to 3 labelled 'returned attributes'. Arrow 3 to 4 labelled 'groups and hosts'. Under box 4, a small orange note: 'Static files go stale. This list is read fresh on each run.' Under box 2, a grey note: 'cache: true keeps responses on disk.'",
+  "anchor": "## 5. Dynamic inventory",
+  "alt": "A dynamic inventory plugin reads its config, queries the cloud API with filters, builds groups, and returns the current host list.",
+  "cap": "A dynamic inventory plugin asks the cloud for the current hosts on each run, so the list never goes stale."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "a05-hash-replace",
+  "title": "A host dictionary replaces the group dictionary, combine keeps both",
+  "spec": "Three columns, each with a heading. Column 1, 'Group dictionary (group_vars)': a box listing three keys 'key 1', 'key 2', 'key 3'. Column 2, 'Host override (host_vars)': a shorter box with only 'key 1' (note 'one key'). Column 3 splits into two rows. Top row, heading 'Default: replace', an arrow from the override box, result box showing only 'key 1', with keys 2 and 3 greyed out and crossed through, labelled 'keys 2 and 3 disappear'. Bottom row, heading 'combine(recursive=True)', result box showing 'key 1', 'key 2', 'key 3', with a green check, labelled 'keys are kept'. Orange outline on the 'replace' result. Monospace line under the bottom row: '{{ base_cfg | combine(env_cfg, recursive=True) }}'. Caption: 'Dictionaries replace across layers, so merge them on purpose.'",
+  "anchor": "### Variable precedence (summary)",
+  "alt": "A host dictionary replaces the whole group dictionary and drops its other keys, while the combine filter keeps all keys.",
+  "cap": "A host dictionary replaces the group dictionary by default, so the combine filter is needed to keep the other keys."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-serial-gate",
+  "title": "Serial batches grow, and a failure gate stops the rollout",
+  "spec": "A left-to-right chain of three batch boxes with arrows between them, each with a numbered circle. Batch 1, title 'Canary', text 'serial: 1, one host runs the whole play'. Batch 2, title 'Next batch', text '10% of the group'. Batch 3, title 'The rest', text '25% for the remaining hosts'. Between each pair of batches, a diamond decision shape with the label 'Failures within max_fail_percentage: 5?'. A 'yes' arrow continues to the next batch. A 'no' arrow drops down to an orange box 'Play aborted; no later batch starts'. Icons: a single-host icon for the canary, a stack icon for the 10% batch, a server rack icon for the rest. Small note under the chain: 'serial: [1, \"10%\", \"25%\"]'. Caption under the orange box: 'A bad canary stops the rollout before it reaches the fleet.'",
+  "anchor": "### Batching, strategies and failure semantics",
+  "alt": "Serial batches run a one-host canary, then 10 percent, then 25 percent, and a failure above the threshold aborts the play.",
+  "cap": "Serial batches start with one canary host, grow in steps, and stop the play when failures pass the threshold."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-idempotent-runs",
+  "title": "A second run must report changed=0",
+  "spec": "Two horizontal rows, each showing two run boxes side by side with arrows. Row 1, heading 'Idempotent task', icon of a light switch: Run 1 box, green, text 'changed=2 (the work is done)'. Arrow labelled 'run again'. Run 2 box, green, text 'changed=0 (already correct)'. Green check mark at the end. Row 2, heading 'Timestamp in the template', clock icon: Run 1 box, amber-grey, text 'changed=1 (new timestamp written)'. Arrow labelled 'run again'. Run 2 box, orange outline, text 'changed=1 again, and the handler restarts the service'. Under row 2, a note: 'The rendered file differs on every run.' Under row 1, a note: 'A second run that changes things again means something is not idempotent.' Caption at the bottom: 'Run the playbook twice and read the second recap.'",
+  "anchor": "## 2. Idempotency, the heart of playbooks",
+  "alt": "An idempotent task reports changed=0 on the second run, while a rendered timestamp makes every run report a change.",
+  "cap": "An idempotent playbook reports changed=0 on its second run, while a timestamp in a template changes every run."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "a06-check-scope",
+  "title": "What --check previews and what it skips",
+  "spec": "Two large panels side by side. Left panel, green heading 'Simulated by declarative modules': a list of five module boxes in monospace, 'package', 'file', 'template', 'service', 'sysctl', each with a small check-mark icon. Note under the list: '--check reports what would change, and --diff shows the content change.' Right panel, grey heading 'Skipped under --check': three module boxes in monospace, 'command', 'shell', 'raw', each with a dashed outline and a skip icon. Note under the list: 'Runs only with creates or removes, or with check_mode: false.' Below both panels, a full-width orange note: 'A later task that needs an earlier change judges a change that never happened.' A small green bar at the bottom: 'A clean check run is not proof that the change is safe.' Use an outline icon of a clipboard or magnifier beside the title.",
+  "anchor": "## 5. Check mode and diff",
+  "alt": "Check mode simulates declarative modules and skips command, shell and raw tasks unless they have a guard or check_mode false.",
+  "cap": "Check mode simulates declarative modules, but it skips command, shell and raw tasks unless they have a guard."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-register-set-fact",
+  "title": "register keeps the raw output, set_fact keeps the clean value",
+  "spec": "A left-to-right row of four boxes, each with a green number circle (1 to 4) above it, joined by orthogonal arrows. Box 1, titled Run the command, shows the monospace text nvidia-smi --query-gpu=driver_version --format=csv,noheader and the note Ansible runs it on the host. Arrow 1 is labelled register: drv. Box 2, titled Raw result in drv, lists the fields rc, stdout, stdout_lines, stderr, changed, failed, start, end, delta and cmd inside a light green panel, with the note the whole dictionary. Arrow 2 is labelled set_fact. Box 3, titled Clean value in current_driver, shows the monospace text drv.stdout_lines[0] | trim. Arrow 3 leads to Box 4, titled debug var: drv, which prints the whole structure so you can check each piece. Orange highlight on Box 3, the cleaned value that later tasks read. Green takeaway bar at the bottom: Keep the raw output in register and the cleaned value in set_fact, so each variable does one job.",
+  "anchor": "## 2. Registered results and set_fact",
+  "alt": "A command's output is registered as a raw dictionary, set_fact trims the first line into a clean value, and debug shows the whole structure.",
+  "cap": "The register step keeps the whole raw result, and set_fact turns one field of it into the clean value later tasks read."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-limit-hostvars",
+  "title": "Why --limit breaks cross-host templates",
+  "spec": "Two side-by-side panels with the same three-row picture each: a playbook box at the top, and below it a row of host boxes. Left panel titled Full run, with the note the play covers the whole cluster. Its host boxes are lb01, web1..3 and gpu001..032, all marked with a green tick labelled facts gathered. Below them a box labelled hostvars is complete, then an arrow down to a box labelled template writes every backend address. Right panel titled Run with --limit lb01, showing the command ansible-playbook site.yml --limit lb01 in monospace. Only the lb01 box is marked facts gathered; web1..3 and gpu001..032 are grey and marked not gathered. An arrow goes down to a box labelled hostvars for web1..3 or gpu001..032 is empty or undefined. From there an orange arrow leads to an outcome box labelled the template fails, or writes blank addresses. Below both panels, a green fix bar lists two boxes: first, a monospace play block with the lines - hosts: cluster, gather_facts: true, tasks: [], tags: [always]; second, the word cache, as in fact caching. Green takeaway bar at the bottom: Before a limited run that templates across hosts, gather facts for the whole group.",
+  "anchor": "### Magic variables",
+  "alt": "A limited run gathers facts only for one host, so hostvars for the other hosts is empty and the template fails or writes blank addresses.",
+  "cap": "Running with --limit gathers facts for only one host, so a template that reads other hosts gets empty values."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-lookup-control-node",
+  "title": "Lookups run on the control node, module results come from the target",
+  "spec": "Three vertical zones side by side with a central task box. Left zone, a container titled Control node, with the note where you type ansible-playbook. Inside it, four small stacked boxes in monospace labelled lookup('file'), lookup('url'), lookup('env') and community.hashi_vault.hashi_vault, with the note lookups run here, when the template is rendered. A lane arrow from the Control node container points right into the centre box labelled Task uses the value. Right zone, a container titled Target host, with the note the machine being configured. Inside it a box labelled Module such as ansible.builtin.setup, drawn with a gear icon. An arrow from the Target host to the centre box is labelled register. Orange highlight on the Control node container and its arrow, with the note lookups never run on the targets. Green takeaway bar at the bottom: For data from a target, use a module and register instead, because a module runs on the host it describes.",
+  "anchor": "## 4. Lookups",
+  "alt": "Lookups read data on the control node, while a module reads data on the target and returns it with register.",
+  "cap": "Lookups fetch values on the control node when a template is rendered, while data from a target comes back through a module and register."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "07",
+  "name": "a07-extract-pipeline",
+  "title": "map extract turns a group of hosts into a list of addresses",
+  "spec": "A left-to-right assembly line of boxes with orthogonal arrows. Box 1 at the far left is a list titled gpu_nodes, drawn as stacked rows showing gpu001, gpu002 and an ellipsis. A hostvars cylinder sits above the first station, labelled hostvars, with a small note per row reading ansible_host. Station 1 is a box labelled map('extract', hostvars, 'ansible_host') with a green number circle 1 above it, with the note for each name, look up that host's ansible_host inside hostvars. Arrow to Station 2, a box labelled list with a green number circle 2 above it. Arrow to the final box at the far right titled Result, a plain list of addresses, drawn as stacked rows labelled 10.1.10.1 and 10.1.10.2 with an ellipsis. The Result box is highlighted in orange as the value ready for the next filter. Green takeaway bar at the bottom: The extract filter does the most work here, because it pulls one hostvar from many hosts at once.",
+  "anchor": "## 6. Filters for configuration generation",
+  "alt": "The map extract filter looks up ansible_host for each host name in hostvars, and the list filter returns a plain list of addresses.",
+  "cap": "The map extract filter pulls one host variable for each name in a group, and the list filter turns the result into a plain list of addresses."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-handler-lost",
+  "title": "A handler lost after a failure, and why Run 2 does not restart",
+  "spec": "Two horizontal lanes stacked vertically, each with a bold lane title on the left. Top lane titled Run 1. Along it, three boxes left to right with green number circles 1, 2 and 3. Box 1: monospace template: dest=/etc/default/dcgm-exporter, with the note the file changes and the task reports changed. Arrow labelled notify to Box 2: queued handler Restart dcgm-exporter, with the note not yet run. Arrow labelled Task 2 to Box 3: a box labelled Task 2 fails on gpu01 with the note the handler is skipped and dcgm-exporter keeps the old config in memory. Box 3 is highlighted in orange. Bottom lane titled Run 2. Two boxes: Box A monospace template: dest=/etc/default/dcgm-exporter, with the note the file on disk already matches, so the task reports ok. Arrow labelled no notify to Box B, a box labelled no restart. Below both lanes, a light green panel titled Three fixes, with three stacked items: force_handlers: true on the play; meta: flush_handlers right after the critical config tasks; an idempotent task that checks the service uptime against the config file mtime. No takeaway bar.",
+  "anchor": "## 1. Handlers",
+  "alt": "A changed config task queues a restart, a later task fails and the handler is skipped, and the second run reports ok so no restart happens.",
+  "cap": "A handler can be lost when a later task fails in the same run, because the next run sees an unchanged file and never notifies it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-import-include",
+  "title": "import_tasks is read at parse time, include_tasks at run time",
+  "spec": "A horizontal timeline across the top with two marked points: left point labelled Parse time, the playbook is read; right point labelled Run time, each task is reached in order. Below the timeline two side-by-side panels. Left panel titled import_tasks / import_role / import_playbook, marked with a lock or fixed-structure icon, with a note Static, at parse time. Inside it three bullet rows: visible to --list-tasks, --tags and --start-at-task; when is applied to every imported task; loop is not supported. Right panel titled include_tasks / include_role, marked with a gear or dynamic icon, with a note Dynamic, at runtime when reached. Inside it three rows: included tasks are not listed by --list-tasks; loop is supported, one include per item; the filename can use facts, shown in monospace as ansible_facts['os_family'] .yml. Under the panels, a decision box with the question: Can the file name or its existence change based on something the run discovers? Arrow labelled yes to a box labelled include. Arrow labelled no to a box labelled import, drawn in orange as the default choice. Green takeaway bar at the bottom: Choose an import by default, and switch to an include only when runtime data forces your hand.",
+  "anchor": "## 5. Imports versus includes",
+  "alt": "Imports are read when the playbook is parsed and includes are read when the run reaches them, so a file name that depends on runtime facts needs an include.",
+  "cap": "An import is fixed when the playbook is read, while an include is decided when the run reaches it, so the choice depends on whether the file name can change at runtime."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "08",
+  "name": "a08-serial-batches",
+  "title": "serial batches grow from one canary node",
+  "spec": "A horizontal row of three batch columns, left to right, each with a bold title and a green number circle: Batch 1, Batch 2 and Batch 3. Above the columns a monospace line: serial: [1, \"10%\", \"25%\"]. Each batch column holds a grid of small square icons, one square per host, drawn as server or chip icons in green outline. Batch 1 holds one square labelled as the canary, a single node, with the note first node is a test. Batch 2 holds squares covering a slice labelled 10%. Batch 3 holds a larger slice labelled 25%. Arrows between the columns are orthogonal and labelled in order. Below the columns, a light green panel with two rows: max_fail_percentage: 5 with the note stops the line when failures pass the limit; any_errors_fatal: false with the note a failure stays with its own host. Orange highlight on Batch 1, the one-node canary. A small note: the serial list grows in steps. Green takeaway bar at the bottom: The first node is a test, and only after that does the play work through larger slices of the fleet.",
+  "anchor": "### Drain \u2192 change \u2192 validate \u2192 return",
+  "alt": "The serial list runs a one-node canary first, then 10 percent and 25 percent slices, with a failure limit of 5 percent.",
+  "cap": "The serial list starts with a single-node canary and then works through larger slices of the fleet, with a failure limit that stops the run."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-site-order",
+  "title": "site.yml imports the tiers in dependency order",
+  "spec": "A top-to-bottom or left-to-right chain of five boxes, joined by orthogonal arrows, each box with a green number circle (1 to 5) for the import order. Box 1: baseline.yml with a small tag label baseline and the note OS baseline on every host. Box 2: database.yml with tag label db and the note PostgreSQL on the db group. Box 3: app.yml with tag label app and the note application on the app group. Box 4: web.yml with tag label web and the note nginx reverse proxy. Box 5: verify.yml with tag label verify and the note end-to-end verification. Above the chain, a monospace file card titled playbooks/site.yml listing the five import_playbook lines in order. Beside the arrows, two small notes: --tags db runs only the tagged tier, and -l app limits the run to one host group, both in monospace. Box 3 and Box 4 are linked by a note the app must answer before the proxy sends it traffic. Orange highlight on the arrow from Box 2 to Box 3, labelled the database must exist before the app tries to connect. Green takeaway bar at the bottom: The database must exist before the app tries to connect, and the app must answer before the proxy sends it traffic.",
+  "anchor": "## 2. Project layout",
+  "alt": "The site playbook imports baseline, database, app, web and verify in that order so each tier is ready before the next one depends on it.",
+  "cap": "The site playbook imports five tier playbooks in dependency order, so each tier is ready before the next one depends on it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-release-switch",
+  "title": "Release directories and the atomic current symlink switch",
+  "spec": "Left panel: a folder tree drawn with folder icons, titled /opt/fleetapp/. Inside it: releases/ containing two sub-folders, v1.4.1 with the note previous, which holds src/ and venv/, and v1.4.2 with the note new; shared/ with the note persistent data and config shared across releases; and a link icon labelled current pointing to releases/v1.4.2. Middle: a large orthogonal arrow from the new release folder to the current link, labelled switch current in one step. Right panel: a rollback box with the monospace command ansible-playbook playbooks/app.yml -e app_version=v1.4.1, and an arrow from it back to current labelled point it back to releases/v1.4.1, then restart the service. Orange highlight on the current link, the one pointer the service reads. A small note: app_keep_releases: 5 keeps the newest five releases; the release pruning command is shown in monospace. Green takeaway bar at the bottom: Rolling back is the same flip in reverse, and the old folder is still there to go back to.",
+  "anchor": "## 5. The application play: release directories and an atomic switch",
+  "alt": "Each release lives in its own folder, a current symlink points at the live one, and rollback repoints it to the previous folder.",
+  "cap": "Each release gets its own folder and a current symlink points at the live one, so switching or rolling back is a single pointer change."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "09",
+  "name": "a09-verify-paths",
+  "title": "Verification checks the path a user takes, then each app node",
+  "spec": "A left-to-right flow of three numbered steps with green number circles 1, 2 and 3. A left column box titled verify.yml, drawn with a shield or check icon. Step 1 box: HTTPS endpoint answers, with the monospace line https://{{ nginx_server_name }}/readyz and the note the path a user takes, delegated to localhost. An arrow from Step 1 leads into a small nginx box, drawn with a router icon, labelled nginx, which leads to a Step 2 box. Step 2 box: Version served matches what we deployed, with the monospace check app_version and the note the assert compares the served version with the pinned one. Arrow from Step 2 to a Step 3 box: Every app node reports ready (direct), with the monospace line http://{{ hostvars[item]['ansible_host'] }}:{{ app_port }}/readyz, drawn as a fan-out to two app node boxes labelled app01 and app02, each with the note asked directly. Orange highlight on the Step 3 fan-out, labelled a single broken host is found even when nginx would have routed around it. Green takeaway bar at the bottom: Modules verify state, while uri and assert verify behaviour, and you need both.",
+  "anchor": "## 7. Verification play",
+  "alt": "The verification play calls the HTTPS readiness URL through nginx, checks the served version, then asks each app node directly.",
+  "cap": "The verification play tests the public HTTPS path first, checks the served version, and then asks each app node directly."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-module-by-hand",
+  "title": "Running a module by hand on the target",
+  "spec": "A left-to-right sequence of five boxes joined by orthogonal arrows, each with a green number circle (1 to 5). Box 1 on the left, drawn with a laptop icon and titled Control node: the monospace command ANSIBLE_KEEP_REMOTE_FILES=1 ansible gpu001 -m ansible.builtin.copy -vvv. Arrow to Box 2, drawn with a server icon and titled gpu001 target: a box holding AnsiballZ_copy.py, with the note the wrapper stays on disk, and the monospace remote path /home/automation/.ansible/tmp/ansible-tmp-.../AnsiballZ_copy.py shown in the output. Arrow labelled ssh gpu001 to Box 3: monospace cd /home/automation/.ansible/tmp/ansible-tmp-*/. Arrow to Box 4: monospace python3 AnsiballZ_copy.py explode, with the note unpacks the module and its arguments into ./debug_dir. Arrow to Box 5: monospace python3 AnsiballZ_copy.py execute, with the note runs the module, where you can add a print or start pdb. Orange highlight on Box 5, the moment to add a print or pdb. A small note near Box 5: the module sees the real files, PATH and permissions. Bottom warning note in plain text: the kept folder holds the arguments you passed, so delete it when you finish. Green takeaway bar at the bottom: Because you are on the target, the module sees the real files, the real PATH and the real permissions.",
+  "anchor": "## 6. Reproducing a module run by hand",
+  "alt": "A module wrapper is kept on the target, unpacked with explode, and run with execute so its failure can be inspected on the host.",
+  "cap": "Keeping the module wrapper on the target lets you unpack it and run it by hand, where you can see what the module actually saw."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-agent-forwarding",
+  "title": "Why become breaks SSH agent forwarding for git",
+  "spec": "A left-to-right chain with two lanes drawn as two rows. Top row, a path that works: a laptop box titled Your login session with a key icon labelled ssh-add -L, with the agent socket SSH_AUTH_SOCK inside it; an arrow labelled ForwardAgent=yes to a target box titled Target, running the git task with become: false; a tick and the note the clone works. Bottom row, the failing path: the same laptop box and the same forwarded agent arrow to a target box where the git task has become: true; an intermediate box titled sudo starts a clean environment with the note SSH_AUTH_SOCK is dropped unless env_keep keeps it; then a box with the note git has no agent to ask, leading to a result box labelled Permission denied (publickey). Orange highlight on the sudo box, the step that drops the variable. A small label at the bottom of the lower row: the key was fine, the environment was not. Monospace labels: SSH_AUTH_SOCK, ForwardAgent=yes, become: true, become: false, env_keep. Green takeaway bar at the bottom: Check 3 is about privilege, and it is the one that catches most people, so make sure the git task does not set become: true.",
+  "anchor": "### Connection layer (UNREACHABLE)",
+  "alt": "Agent forwarding works for a git task without become, but sudo drops the SSH_AUTH_SOCK variable when the task runs with become, so the clone fails.",
+  "cap": "The forwarded SSH agent works only without become, because sudo starts a clean environment that drops the SSH_AUTH_SOCK variable."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-debugger-paths",
+  "title": "Two ways to change a failed task in the debugger",
+  "spec": "A top-to-bottom flow. Start box at the top: A task fails, and the (debug) prompt opens, with the note the task stays in memory. Below it, a split into two branches side by side. Left branch titled Change the argument: monospace command task.args['name'] = 'fixed', then an arrow to a box labelled r (redo), with the note re-runs the task with the change. Right branch titled Change the variable: monospace command task_vars['x'] = 1, then an arrow to a box labelled u (update_task), with the note re-templates task.args from the original expression, then an arrow down to a box labelled r (redo). Both branches meet at a bottom box labelled Task runs again. Side notes: p task.args, p task_vars and p result._result are shown as print commands above the split. Orange highlight on the update_task step, the one the right branch needs before redo takes effect. Below the diagram, a small table-like list of exit commands: c (continue) keeps the task failed; q (quit) aborts. Green takeaway bar at the bottom: Use the debugger to experiment on one failing host, then write the fix into the playbook.",
+  "anchor": "### The interactive debugger",
+  "alt": "In the task debugger you either edit the rendered arguments and redo, or edit a variable, run update_task and then redo.",
+  "cap": "In the task debugger you can edit the rendered arguments and redo, or edit a variable, update the task, and then redo."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "a10-group-failures",
+  "title": "Grouping 200 failures into a short list of causes",
+  "spec": "A left-to-right pipeline of five stations, each a box with a green number circle (1 to 5) above it, joined by orthogonal arrows. At the far left, a stack of log lines titled ansible-playbook output, drawn as many thin rows with FAILED and UNREACHABLE labels among them. Station 1: box labelled grep -E fatal:|FAILED with the note keeps only the failure lines. Station 2: box labelled sed s/.*=> // with the note strips the front of each line, leaving the message. Station 3: box labelled sort with the note puts identical messages next to each other. Station 4: box labelled uniq -c with the note counts each message. Station 5: box labelled sort -rn with the note lists the most common message first. At the far right, a ranked list of count and message rows, with the top row highlighted in orange. Monospace labels for each command. Below the pipeline, a note: examine one representative from each group, then sort the failing hosts by group, rack or OS. Green takeaway bar at the bottom: Group the errors first, then examine a few representatives from each group.",
+  "anchor": "## 9. Debugging at scale and in CI",
+  "alt": "A grep, sed, sort, uniq and sort pipeline turns a long list of failure lines into a ranked count of distinct error messages.",
+  "cap": "A short shell pipeline groups many failure lines by message and ranks the most common message first."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "k01-whiteout-layers",
+  "title": "Deleting a file in a later layer hides it",
+  "spec": "Three stacked layer sheets, bottom to top. Layer 1 (bottom) holds config.yaml with one setting (old). Layer 2 holds config.yaml with the changed setting (new). Layer 3 (top) holds a whiteout marker that deletes config.yaml. Left side of the figure: the merged view. Step 1 shows config.yaml with the new setting because the top layer wins. Step 2 shows the file gone after the whiteout. Under the stack, a green note: layers 1 and 2 still hold their copies on disk and in the registry. Orange note on the bottom layer: deleting a file later does not make the image smaller.",
+  "anchor": "### Overlay filesystems: how layers stack",
+  "alt": "Three stacked layers where a later layer changes a file and a whiteout hides it, while the earlier copies stay in the image.",
+  "cap": "Each layer is additive, so a later delete only hides a file and the earlier bytes stay in the image."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "k01-pull-cache",
+  "title": "A pull-through cache takes the load off the registry",
+  "spec": "Two-panel comparison, left and right. Left panel titled without a cache: many nodes (labelled nodes) all send arrows directly to one box labelled central registry, under the heading 500 nodes pull a 20 GB image at once. Right panel titled with a pull-through cache: many nodes send arrows to one box labelled cache inside the cluster network. A single arrow from the cache to the central registry labelled first node that asks makes the cache fetch the image. Orange note on the cache arrow: the rest are served from the warehouse. Green takeaway bar at the bottom: a local cache restocks from the central registry once.",
+  "anchor": "## 4. Registries and distribution",
+  "alt": "Without a cache, every node pulls from the central registry; with a pull-through cache, only the cache pulls from it.",
+  "cap": "A pull-through cache inside the cluster fetches each image once, so the central registry is not overloaded by every node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "k01-multistage",
+  "title": "Multi-stage build keeps the compiler out of the image",
+  "spec": "Left to right: a box builder stage (golang toolchain, compilers, build tools) with a step box inside it labelled go build. An arrow labelled COPY --from=build carries only the compiled binary across. Right: a box deploy stage (slim distroless base, nonroot user) that receives only the binary. Above the builder box a grey crossed-out item list labelled toolchain and build tools, with an orange crossed-out arrow showing they do not reach the final image. Number circles 1 build stage, 2 copy only the binary, 3 deploy stage. Green takeaway bar: the final image holds only the program, not the build tools.",
+  "anchor": "### Build image versus runtime image",
+  "alt": "A builder stage compiles the program, and only the compiled binary is copied into a slim final stage.",
+  "cap": "A multi-stage build compiles in a large stage and copies only the finished binary into a slim runtime stage."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "k01-userns-map",
+  "title": "Root inside the container is an ordinary user outside",
+  "spec": "Left box: a container process labelled runs as UID 0 inside the container, shown with a root badge. Right box: the host, showing the same process as an unprivileged user ID from a subordinate range, labelled regular account range. Between them a mapping table with two rows: container UID 0 maps to host UID in the subordinate range. A central green box labelled kernel translates the ID on every check. Orange note: root inside the container has no power over files and processes outside it. Grey note under the host box: /etc/subuid and /etc/subgid define the range.",
+  "anchor": "## 5. Rootless containers and security basics",
+  "alt": "A process that is root inside a container maps to an unprivileged user ID on the host.",
+  "cap": "In rootless mode, the kernel maps root inside the container to an unprivileged user on the host."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "k03-allocatable",
+  "title": "Capacity minus reservations gives Allocatable",
+  "spec": "A horizontal stacked bar on the left labelled Capacity, the full hardware size. Three smaller grey blocks taken off its right end in order, each with an arrow pointing into the next: kube-reserved (kubelet and containerd), system-reserved (sshd, systemd, kernel daemons), eviction-threshold. The remaining green block on the right labelled Allocatable, the part the scheduler can hand to pods. A formula line under the bar: Allocatable = Capacity - kube-reserved - system-reserved - eviction-threshold. Orange note: without the reservations, pods can take all of the host CPU and memory, and the node agent starves. Green takeaway bar: Capacity is the dining room, Allocatable is the seats you sell.",
+  "anchor": "### Inspecting Nodes (`Capacity` vs. `Allocatable` and `Conditions`) and `kube-system` (*Kubernetes: Up and Running* Chapter 3)",
+  "alt": "Node Capacity minus kube-reserved, system-reserved and the eviction threshold leaves Allocatable.",
+  "cap": "A node's Allocatable is its Capacity minus the reservations kept back for the node agent and the system."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "k03-etcd-topology",
+  "title": "Stacked versus external etcd",
+  "spec": "Two side-by-side panels. Left panel titled Stacked etcd: three control-plane node boxes, each containing kube-apiserver, kube-controller-manager, kube-scheduler and an etcd member, drawn as stacked rows inside the node. A label under it: simpler, fewer machines, one node loss takes one API server and one etcd member together. Right panel titled External etcd: three control-plane node boxes with kube-apiserver, kube-controller-manager and kube-scheduler, and below them a separate row of three boxes labelled etcd member on dedicated nodes. A label under it: more isolation and independent scaling, more machines to operate. Both panels sit above one shared box labelled load balancer in front of the API servers, with an arrow into each control-plane group. Orange note on the stacked panel: the failure domains are coupled. Green takeaway bar: stacked uses fewer hosts, external isolates etcd.",
+  "anchor": "### Topologies",
+  "alt": "Stacked etcd runs on the control-plane nodes, while external etcd runs on its own dedicated nodes.",
+  "cap": "Stacked etcd uses fewer machines but couples failures, while external etcd isolates the database on its own nodes."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "k03-kubelet-timeline",
+  "title": "A kubelet that stops heartbeating: the timeline",
+  "spec": "A horizontal timeline from left to right with three marked points on an axis labelled time after heartbeats stop. Point at T plus 0 s labelled kubelet stops; a shaded span labelled Lease renewals every 10 s stops. Point at T plus 40 s, step 1, labelled node-monitor-grace-period (40 s): Ready becomes Unknown and the taint node.kubernetes.io/unreachable is added. Above this point, a green box labelled alert fires. Point at T plus 340 s, step 2, labelled 40 s + 300 s default toleration expires: pods are marked for eviction. Orange note at step 2: a pod that opts out of the toleration is evicted at once. Green takeaway bar: know the order, so you decide whether to wait for the node or act.",
+  "anchor": "### What fails and what happens",
+  "alt": "After the kubelet stops, the node goes Unknown after 40 seconds and pods are marked for eviction after 340 seconds.",
+  "cap": "A kubelet that stops heartbeating makes its node Unknown after 40 seconds and marks pods for eviction after 340 seconds."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "k03-quorum",
+  "title": "Odd etcd member counts give the best failure tolerance",
+  "spec": "Four columns, one each for 3, 4 and 5 etcd members, drawn as rows of small circle icons. 3 members: quorum 2, tolerates 1 failure. 4 members: quorum 3, tolerates 1 failure, an extra machine with no added tolerance, highlighted in orange. 5 members: quorum 3, tolerates 2 failures. Each column shows its quorum and tolerance as labelled numbers under the icons. A small note: quorum is the smallest majority of members that must agree before a write counts. Green takeaway bar: use an odd number of members on fast disks.",
+  "anchor": "### etcd",
+  "alt": "Three members tolerate one failure, four members still tolerate one, and five members tolerate two.",
+  "cap": "An etcd cluster needs a majority to write, so a fourth member adds a machine without adding failure tolerance."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "k05-conflict",
+  "title": "Two writers and a 409 Conflict",
+  "spec": "Swimlane diagram, time runs top to bottom. Three lanes with headers: Engineer A, API server (etcd), Engineer B. Both engineers first read the same ConfigMap at resourceVersion 5012 (two short arrows labelled read). Step 1: Engineer A saves; arrow from A to the API server labelled write at resourceVersion 5012, with a return arrow labelled stored, now 5013. Step 2: Engineer B saves; arrow from B to the API server labelled write at resourceVersion 5012. The API server box shows a red cross on the return arrow labelled 409 Conflict, the object has been modified. Step 3: Engineer B reads the new version, arrow labelled read latest, then reapplies the change and saves again, arrow labelled write at 5013, return labelled stored. Orange note on step 2: the server refuses to guess, so no edit is lost. Green takeaway bar: optimistic concurrency checks only at write time.",
+  "anchor": "## 3. resourceVersion, generation and concurrency",
+  "alt": "Two engineers read the same version, the second save is refused with 409 Conflict, and it retries on the latest version.",
+  "cap": "The API server refuses a write made against a stale resourceVersion, so a second save cannot silently erase the first."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "k05-raft-write",
+  "title": "How an etcd write reaches quorum",
+  "spec": "Left to right flow with numbered steps. Box 1: kube-apiserver sends a gRPC write (Put or Txn) to the etcd leader. Box 2: the leader appends the entry to its WAL with an fsync, then broadcasts AppendEntries to followers on port 2380. Box 3 (stacked, two follower boxes): each follower appends to its own WAL and calls fsync, then replies with an acknowledgment. Box 4: once a quorum has fsynced, the leader commits the entry and applies it to the bbolt B+tree. Box 5: success returns to kube-apiserver. Orange note on the fsync step: every write waits for a disk fsync on a majority, so a slow disk stalls the whole control plane. Green takeaway bar: the slowest disk on the majority sets the write latency.",
+  "anchor": "### Data model and Raft",
+  "alt": "A write goes to the etcd leader, is fsynced by a majority, then committed and applied.",
+  "cap": "Every etcd write waits for a disk fsync on a majority of members, so disk latency sets the speed of the whole control plane."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "k05-apf",
+  "title": "How API Priority and Fairness routes a request",
+  "spec": "Left to right flow. Box 1: a request, labelled from a client. Box 2: FlowSchema, labelled which requests belong here, matched by subject, verb and resource. Arrow to box 3: PriorityLevelConfiguration, labelled how much room and what happens with no room, with a share of concurrency and a queue count of 64. Box 4 below: a grid of 64 small queue cells, six highlighted and linked to a flow labelled one flow shuffle-sharded to 6 queues. The other 58 cells are grey and labelled clear for other tenants. An orange note on the full queue: when the queue is full the server rejects with 429, instead of making other callers wait. Number circles 1 match FlowSchema, 2 assign PriorityLevel, 3 queue or run. Green takeaway bar: a noisy tenant fills only its own queues.",
+  "anchor": "## 6. API Priority and Fairness (APF)",
+  "alt": "A request matches a FlowSchema, goes to a PriorityLevelConfiguration, and is queued in a few shuffle-sharded queues.",
+  "cap": "API Priority and Fairness routes each request to a priority level and shuffle-shards it into a few queues, so one noisy client cannot starve the rest."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "k05-compact-defrag",
+  "title": "Compaction frees space inside the file, defrag shrinks the file",
+  "spec": "Three stacked panels from top to bottom, each a bar representing the bbolt database file. Panel 1 labelled before: a full bar with old revisions shaded grey and current data in green. Step 1 arrow labelled etcdctl compact: the grey old revisions become free holes inside the bar, the file size is unchanged, and the label is the bar stays the same size. Step 2 arrow labelled etcdctl defrag, one member at a time: the bar is rewritten shorter, with no holes, labelled file on disk shrinks. Orange note on the middle panel: compaction alone does not shrink the file on disk. Green takeaway bar: compact, then defrag each member one at a time, then disarm the alarm if the quota was hit.",
+  "anchor": "### MVCC, revisions, compaction, defrag",
+  "alt": "Compaction frees old revisions inside the database file, and defragmentation rewrites the file smaller.",
+  "cap": "Compaction frees old revisions inside the etcd file, but only defragmentation shrinks the file on disk."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "k06-deploy-chain",
+  "title": "Deployment, ReplicaSets and Pods during a rollout",
+  "spec": "Three rows from top to bottom. Top row: one box labelled Deployment web, which decides which version should exist. Middle row: two ReplicaSet boxes side by side, labelled web-old-hash with the old pod template hash and web-new-hash with the new one. The old box has a shrinking count of replicas and the new box a growing count, with an arrow between them labelled shift replicas by maxSurge and maxUnavailable. Bottom row: pod boxes under each ReplicaSet, the old ones marked running on the old version and the new ones marked running on the new version. Under the middle row a small note: the old ReplicaSet is kept at zero replicas, which makes kubectl rollout undo work. Orange note: the ReplicaSet controller never talks to a node; it only writes Pod objects. Green takeaway bar: each link has one job.",
+  "anchor": "### Deployment \u2192 ReplicaSet \u2192 Pod",
+  "alt": "A Deployment owns one ReplicaSet per pod template hash, and replicas shift from the old ReplicaSet to the new one.",
+  "cap": "A Deployment shifts replicas from the old ReplicaSet to the new one, and keeps the old one so a rollback is fast."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "k06-quarantine",
+  "title": "Removing a label orphans a pod and triggers a replacement",
+  "spec": "Two-state figure, left to right with an arrow labelled kubectl label pod web-xxxx app- between them. Left state, labelled before: a ReplicaSet box with replicas 3 and an ownership line to three pod boxes, all labelled app=web, one of them marked misbehaving. Right state, labelled after: the ReplicaSet still shows replicas 3, with an ownership line to two pod boxes labelled app=web and a new pod box labelled replacement created. The misbehaving pod sits outside the ReplicaSet, with no ownership line, labelled orphaned, still running, ready for kubectl exec. Number circles 1 remove the label, 2 controller sees no match and releases the pod, 3 controller creates a new pod. Orange note on the orphaned pod: it is isolated for debugging, not deleted. Green takeaway bar: removing the label is a debugging trick that keeps the service at full capacity.",
+  "anchor": "### ownerReferences and adoption",
+  "alt": "Removing the app label from a misbehaving pod orphans it, and the ReplicaSet creates a replacement.",
+  "cap": "Removing a pod's matching label orphans it for debugging, and the ReplicaSet creates a replacement so capacity stays full."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "06",
+  "name": "k06-lease",
+  "title": "Lease timings for leader election",
+  "spec": "A horizontal timeline with three marked intervals along one axis. Interval 1 labelled retryPeriod 2 s: standby candidates try to acquire or renew the Lease, shown as small ticks. Interval 2 labelled renewDeadline 10 s: the active leader must renew by this point or it gives up. Interval 3 labelled leaseDuration 15 s: after this the Lease expires and a standby takes over. Above the timeline a green box labelled active leader holds the Lease, updating holderIdentity and renewTime. Below, an orange note: a leader that cannot renew exits on purpose, so two leaders never run at once. Green takeaway bar: failover takes roughly 15 to 30 seconds.",
+  "anchor": "## 5. Leader election and HA",
+  "alt": "A leader renews a Lease every few seconds, and a standby takes over after the lease duration expires.",
+  "cap": "Leader election uses a Lease with a 15 second duration, so a standby takes over shortly after the leader stops renewing."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "k07-rollout-shift",
+  "title": "A Deployment rollout shifts replicas from the old ReplicaSet to the new one",
+  "spec": "Left to right, a sequence of four snapshot columns labelled 1 to 4 with a step number circle on each. Above the columns one box labelled Deployment kuard, the desired version. Each column shows two ReplicaSet bars stacked: a bar labelled NewReplicaSet (green) and a bar labelled OldReplicaSets (grey). Column 1: NewReplicaSet has 0 pods, OldReplicaSets has 3 pods. Column 2: NewReplicaSet grows to 1 pod, with a note line waits for new pod to report ready; OldReplicaSets drops to 2 pods. Column 3: NewReplicaSet has 2 pods, OldReplicaSets has 1 pod. Column 4: NewReplicaSet has 3 pods, OldReplicaSets has 0 pods, shown as 0 kept at zero with its template saved. Between each pair of columns, an arrow labelled repeat until the new ReplicaSet holds every replica. Under column 4, a small note labelled revisionHistoryLimit defaults to 10, old ReplicaSets are kept at 0 so you can roll back. Orange highlight only on the step-2 wait box, labelled waits for new pod to report ready. Green takeaway bar at the bottom: each revision is a saved snapshot of the pod template, and undo only changes replica counts.",
+  "anchor": "### Controlling Deployment rollouts: `change-cause`, `pause`, `resume`, `history`, and `undo --to-revision`",
+  "alt": "A Deployment rollout moves replicas from the old ReplicaSet to the new one in steps, with the old ones kept at zero.",
+  "cap": "During a rollout the new ReplicaSet grows one step at a time while the old ReplicaSet shrinks, and the old one stays at zero for rollback."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "k07-statefulset-identity",
+  "title": "Deployment replicas are interchangeable, StatefulSet replicas keep a name and a disk",
+  "spec": "Two side-by-side panels with a vertical divider. Left panel titled Deployment: a box labelled Service in front, with arrows fanning to three identical pod boxes labelled web-7d9f-a, web-7d9f-b and web-7d9f-c with random suffixes. Each pod has a small grey disk-free icon, and a label under the group reads any replica can serve any request, a replacement is just another copy. Right panel titled StatefulSet: a headless Service box labelled qdrant at the top, and three ordered pod boxes labelled qdrant-0, qdrant-1 and qdrant-2 in a row. Each pod has a green arrow down to its own disk cylinder labelled storage-qdrant-0, storage-qdrant-1 and storage-qdrant-2. Under each pod, a DNS label reads qdrant-0.qdrant.data.svc.cluster.local for the first pod only, with a note that the name stays with the replica. Orange note on the right panel: a replacement with an empty disk would be treated as a new member with no history. Green takeaway bar at the bottom: a StatefulSet pairs a stable name with a stable disk, which is what lets a database trust the replica.",
+  "anchor": "### StatefulSet example (vector database)",
+  "alt": "A Deployment's replicas are interchangeable, while each StatefulSet replica keeps its own name and its own storage.",
+  "cap": "Deployment pods are interchangeable copies, whereas each StatefulSet pod keeps a stable name and its own volume claim."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "k07-daemonset-reconcile",
+  "title": "A DaemonSet adds one Pod to each new node",
+  "spec": "Top part: a control box labelled DaemonSet fluentd, with the note desired state is a Pod on every node. Below it a horizontal row of three node boxes labelled node 1, node 2 and node 3, each containing one green pod box labelled fluentd. One single arrow labelled controller reconciles runs from the DaemonSet box to the row of nodes (one arrow to the group, not one per node). Lower part, a numbered sequence with step circles 1 to 3 running left to right: step 1, a new node joins the cluster, shown as a dashed node box labelled node 4 with no pod inside; step 2, the DaemonSet controller notices the missing Pod; step 3, a fluentd pod is added to the new node, shown as the same green pod box now inside node 4. Note beside the sequence: you take no action for the new node. Side note: the pod is placed by nodeName set by the DaemonSet, so the scheduler is skipped. Green takeaway bar at the bottom: a DaemonSet keeps one copy of a Pod on every node, including nodes added later.",
+  "anchor": "### DaemonSet scheduling and reconciliation",
+  "alt": "A DaemonSet controller adds one fluentd Pod to every node, including a node that joins the cluster later.",
+  "cap": "A DaemonSet places one Pod on every node and adds a Pod automatically when a new node joins."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "k08-sandbox-network",
+  "title": "The pause sandbox holds the pod network, and CNI ADD wires it up",
+  "spec": "Left to right, two large panels joined by a dashed arrow. Left panel labelled Host node: a box labelled containerd (CRI) at the top with a numbered step 1 circle, a box labelled CNI plugin ADD below it with step 2, and a bridge or host side box labelled host side of veth with a dashed outline. Right panel labelled Pod sandbox netns cni-uuid, a large rounded rectangle. Inside it at the bottom, a grey box labelled pause container holds the namespace open, with the note net, IPC and UTS namespaces created here. Above it, two app container boxes labelled trainer and sidecar, each drawn as a room that joins the hallway, with arrows pointing down into the pause box and a note they keep this IP when they restart. Inside the panel, one interface box labelled eth0 with the pod IP address placeholder. A pipe-shaped veth pair connects the eth0 box in the right panel to the host side of veth box in the left panel, with the label veth pair. Step 3 circle near the eth0 box with the label IPAM returns IP, gateway and routes. Under the whole figure a row of three small labelled boxes: /etc/hosts, /etc/resolv.conf and podIP in status, each with a step 3 tag. Orange highlight on the arrow from CNI plugin ADD to eth0, labelled the one that wires the pod. Green takeaway bar at the bottom: the sandbox holds the network, and app containers join it.",
+  "anchor": "## 4. Sandbox creation and networking",
+  "alt": "The pause sandbox owns the pod network namespace, and the CNI ADD call creates the veth pair and the eth0 address.",
+  "cap": "The pause sandbox owns the pod network namespace, and the CNI plugin connects eth0 to the host side through a veth pair."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "k08-namespace-map",
+  "title": "Which Linux namespaces a pod's containers share",
+  "spec": "One large outer rounded box labelled Pod, containing a row of two inner boxes. Left inner box: pause sandbox container. Right inner box: trainer application container. Both boxes sit under one shared band labelled Pod cgroup slice. A table-like grid sits between or beneath the two boxes with four rows: net, ipc, uts, and mnt and pid. Each row has a green tick or a grey label. Row net: a single green band spanning both boxes labelled shared, same IP, ports and routing. Row ipc: a green band spanning both labelled shared, /dev/shm. Row uts: green band spanning both labelled shared, hostname. Row mnt: two separate grey blocks, one under each box, labelled own mount namespace, overlayfs root and volume binds. Row pid: two separate grey blocks labelled own PID namespace unless shareProcessNamespace is true. Below the grid, a small side label reads check with ls -l /proc/PID/ns and compare inode numbers. Under the trainer box a small block labelled cgroup files: memory.max, cpu.max, cpu.weight, pids.max. Orange note on the pid row: shared only when shareProcessNamespace is true. Green takeaway bar at the bottom: net, ipc and uts are shared across the pod, while mnt and pid stay separate by default.",
+  "anchor": "## 5. Images and containers",
+  "alt": "Containers in one pod share the network, IPC and UTS namespaces, while mount and PID namespaces stay separate by default.",
+  "cap": "Containers in one pod share the network, IPC and hostname namespaces, while their mount and PID namespaces stay separate by default."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "08",
+  "name": "k08-gpu-isolation",
+  "title": "How the device plugin hands one container its GPUs and the cgroup filter blocks the rest",
+  "spec": "Top to bottom with numbered step circles 1 to 4 on the left side. Step 1 box at the top labelled NVIDIA device plugin advertises nvidia.com/gpu: N per node, with a small chip icon. Arrow down labelled step 2: kubelet Allocate call returns GPU UUIDs or CDI names. Step 2 box: a kubelet Device Manager box. Arrow down to step 3 box labelled runtime injects devices, which is split into two sub-boxes side by side: left sub-box labelled /dev/nvidia0 and /dev/nvidia1 plus nvidiactl and nvidia-uvm, shown in a green container; right sub-box labelled /dev/nvidia2 to /dev/nvidia7, shown in grey with a dashed outline and the note not created in this container. Arrow down to step 4 box labelled cgroup v2 device filter (eBPF), with a shield or lock icon. Two arrows from step 4: one to a green container box labelled trainer, 2 GPUs, which opens its GPUs, and one to a grey blocked box labelled other pods on the same node, drawn with an orange blocked arrow with a cross. Side note on the step 4 box: isolation comes from what is visible and openable, not from separate hardware, unless MIG is used. Green takeaway bar at the bottom: a container cannot use a GPU it cannot see, and the device filter blocks any device it was not granted.",
+  "anchor": "### GPU specifics",
+  "alt": "The device plugin allocates GPUs, the runtime exposes only the granted device nodes, and the cgroup device filter blocks other devices.",
+  "cap": "A container sees only the GPU device nodes it was granted, and the cgroup device filter blocks it from opening any other device."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "k09-cgroup-tree",
+  "title": "Where a pod sits in the cgroup tree depends on its QoS class",
+  "spec": "A tree drawn top to bottom with folder-style boxes linked by lines. Root box at the top labelled /sys/fs/cgroup. Below it two branches: a box labelled system.slice with the note OS services, including kubelet.service and containerd.service, and a box labelled user.slice on the far right. The main branch is a large box labelled kubepods.slice with the note all pods; memory.max equals node allocatable for pods. Under kubepods.slice three columns, left to right. Column 1: a box labelled kubepods-pod uid slice with the note Guaranteed pods sit directly here, with a child box cri-containerd id scope labelled container. Column 2: a box labelled kubepods-burstable.slice with a child box kubepods-burstable-pod uid slice and a dotted child for container. Column 3: a box labelled kubepods-besteffort.slice with a child box kubepods-besteffort-pod uid slice and a dotted child for container. Use a green outline for the Guaranteed column and a grey outline for the other two. Orange highlight on the Guaranteed column label, with the note the path tells you the QoS class at a glance. Side note at the bottom: cgroupsPerQOS true builds these slices, and the kubelet sets cpu.weight from requests. Green takeaway bar at the bottom: the path to a pod's cgroup shows its QoS class immediately.",
+  "anchor": "### The hierarchy (cgroup v2, systemd driver)",
+  "alt": "The kubelet places Guaranteed, Burstable and BestEffort pods in separate cgroup slices under kubepods.slice.",
+  "cap": "The kubelet places each pod under kubepods.slice in a slice that matches its QoS class, so the path shows the class."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "k09-eviction-order",
+  "title": "Which pods the kubelet evicts first under memory pressure",
+  "spec": "A vertical funnel or staircase with two tiers, read top to bottom, with step numbers 1 to 4 on the left. Top banner box labelled MemoryPressure: node signal below threshold, with a small gauge icon. Tier 1 band (orange-bordered, the first to go): box labelled Pods using more than their request, including BestEffort (request 0) and Burstable pods over their request. Inside the band, a small arrow labelled 1 lowest PriorityClass first, then 2 largest usage over request. Tier 2 band (green-bordered): box labelled Pods within their request, Burstable pods within request. Inside, a small arrow labelled lowest PriorityClass first, then lowest usage. Bottom protected box, drawn with a shield icon and a lock style outline, labelled Guaranteed pods and critical pods (system-node-critical, system-cluster-critical, static pods), with the note evicted last, only if system daemons are the problem. Arrow on the left side running downward labelled evicted first to evicted last. A small output box at the bottom labelled Phase Failed, Reason Evicted, then the owning controller recreates the pod elsewhere. Green takeaway bar at the bottom: the kubelet frees memory from pods that borrowed past their requests before touching pods the node promised memory to.",
+  "anchor": "## 6. Node-pressure eviction",
+  "alt": "Under memory pressure the kubelet evicts pods above their requests first, and Guaranteed and critical pods last.",
+  "cap": "Under memory pressure the kubelet evicts pods that exceed their requests first, and Guaranteed and critical pods last."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "09",
+  "name": "k09-startup-gate",
+  "title": "A startup probe holds the other two probes back until the server is up",
+  "spec": "A horizontal timeline from left to right with an axis labelled time after container start. Starting at the left, a bar labelled startupProbe window spanning about 300 seconds, drawn as a shaded green block with step circles showing periodSeconds 10 and failureThreshold 30 as tick marks. Above the bar, a dashed note: liveness and readiness probes are not run during this window. At the right end of the startup bar, a checkpoint marker labelled startupProbe succeeds. After it, two lanes start: an upper lane labelled livenessProbe, checks every 10 seconds, with the note three failures restart the container, and a lower lane labelled readinessProbe, checks every 5 seconds, with the note failure removes the pod from Service endpoints. Orange highlight on a failure exit drawn at the end of the startup bar labelled startupProbe never succeeds, the kubelet kills the container and restartPolicy decides next. Small icons: a clock for timer, a window for application. Green takeaway bar at the bottom: the startup probe covers the slow start alone and then steps aside.",
+  "anchor": "### A startup probe sized for a model load",
+  "alt": "A startup probe gives a slow model server up to 300 seconds, while the liveness and readiness probes wait until it succeeds.",
+  "cap": "The startup probe gives a slow server a long window to start, and the liveness and readiness probes wait until it succeeds."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "k10-endpoint-slices",
+  "title": "One big Endpoints list versus EndpointSlice shards of 100",
+  "spec": "Two side-by-side panels, each with a row of node boxes on the right side labelled node A, node B and node C. Left panel titled Endpoints (legacy): one tall grey box labelled one Endpoints object for the Service, holding a long stacked list of pod IPs, with the note the whole list is rewritten and re-sent for every change. Three thick arrows from that box go to node A, node B and node C, each arrow labelled full list. Orange note on the left panel: one pod change reprints the whole list. Right panel titled EndpointSlice: the same pod IPs split into three small green boxes labelled slice 1, slice 2 and slice 3, each holding up to 100 endpoints, with the note maximum 100 endpoints per slice. Only one slice has a highlighted pod entry, with a small arrow labelled one change updates one slice. Thin arrows from the slices to the nodes, each labelled changed slice only. Under the right panel, a small chip labelled EndpointSlice is the default since 1.21. Green takeaway bar at the bottom: sharding means one pod change updates one small slice, not the whole list.",
+  "anchor": "## 2. EndpointSlices",
+  "alt": "A legacy Endpoints object resends the whole pod list on every change, while EndpointSlices split it into shards of up to 100 endpoints.",
+  "cap": "A legacy Endpoints object resends the whole pod list on every change, whereas an EndpointSlice shard updates only the slice that changed."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "k10-traffic-policy",
+  "title": "externalTrafficPolicy Cluster versus Local",
+  "spec": "Two horizontal lanes stacked vertically, one labelled Cluster (default) at the top and one labelled Local at the bottom. Each lane has the same three parts from left to right: an external client icon labelled client with a laptop icon; a node box labelled node 1 that receives the NodePort traffic; and a row of pod boxes on the right. Cluster lane: the node 1 box forwards the arrow to a pod box on node 2 across a dashed boundary, with an arrow labelled SNAT, source becomes node IP, drawn in orange, and a return arrow back through node 1 labelled reply returns through the node that took the request. A note under the lane reads client IP is lost and there is one extra hop. Local lane: node 1 box forwards only to a pod box on node 1, with a green arrow labelled no SNAT, client IP kept. A second node box labelled node 2 with no pod inside has a dashed grey box labelled no local endpoint, fails health check on healthCheckNodePort, and its arrow is crossed out. A note under the lane reads client IP is kept, no extra hop, and load can be uneven when pods are spread unevenly. Green takeaway bar at the bottom: Cluster spreads load but hides the client IP, while Local keeps the client IP and drops nodes that have no pod.",
+  "anchor": "### `externalTrafficPolicy`",
+  "alt": "With Cluster the node may forward to a pod elsewhere and rewrite the source, while with Local only pods on the receiving node answer.",
+  "cap": "With Cluster traffic may reach a pod on another node and the client IP is lost, while with Local only local pods answer and the client IP is kept."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "k10-grpc-pinning",
+  "title": "A gRPC client with one connection sends every request to one pod",
+  "spec": "Left to right in two panels divided by a vertical line. Left panel titled ClusterIP Service, layer 4: a client box labelled gRPC client at the far left with one thick connection line labelled one long-lived TCP connection, running to a box labelled ClusterIP Service in the middle, then one arrow labelled chosen once, at connect time to a single pod box labelled vllm pod 1 highlighted in orange. Other vllm pod boxes are drawn grey with no arrows and the note idle. Under the left panel, a counter labelled 1000 of 1000 requests to pod 1. Right panel titled headless Service with client-side round_robin: the same gRPC client with its request stream fanning out to the pod boxes with thin arrows, each labelled a share of the requests, with no pod taking all of them. Small note in the right panel: the client picks the pod, not one TCP connection. Green takeaway bar at the bottom: a Service balances connections, so a multiplexed gRPC stream stays on one pod unless the client or an L7 proxy spreads the requests.",
+  "anchor": "### Session affinity and long-lived connections",
+  "alt": "A ClusterIP Service pins one long-lived gRPC connection to a single pod, while a headless Service with client-side round robin spreads requests.",
+  "cap": "A ClusterIP Service pins one long-lived gRPC connection to a single pod, so spreading requests needs a headless Service or an L7 proxy."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "k11-ndots-walk",
+  "title": "Why one external hostname costs several DNS lookups with ndots 5",
+  "spec": "A vertical list of five lookup rows, top to bottom, each row a horizontal bar with a step number circle on the left (1 to 5) and a result tag on the right. Above the list, a banner box labelled Pod in namespace ml asks for api.example.com, with a small magnifier icon and the note this name has 2 dots, fewer than ndots 5, so search domains are tried first. Row 1: query box labelled api.example.com.ml.svc.cluster.local, result tag NXDOMAIN in grey. Row 2: query box labelled api.example.com.svc.cluster.local, result tag NXDOMAIN in grey. Row 3: query box labelled api.example.com.cluster.local, result tag NXDOMAIN in grey. Row 4: query box labelled api.example.com.<node-search>, with the note once for each node search domain, result tag NXDOMAIN in grey. Row 5: query box labelled api.example.com. with the trailing dot, result tag answer in green, the only row that gets an answer. A bracket to the right of rows 1 to 4 labelled wasted lookups, drawn in orange. Under the list, a counter box labelled 8 or more queries for one hostname, with a note that each query is sent as both A and AAAA. Green takeaway bar at the bottom: a trailing dot on an external name skips the search list.",
+  "anchor": "### The ndots:5 problem",
+  "alt": "A name with fewer than five dots is tried against each search domain first, so one external lookup costs several failed queries before the answer.",
+  "cap": "A name with fewer than five dots is tried against each search domain first, so one external lookup can cost several wasted queries."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "k11-conntrack-race",
+  "title": "How parallel A and AAAA queries race in conntrack and cause a 5-second stall",
+  "spec": "Left to right in a flow with numbered step circles 1 to 4. Left box: a pod with a glibc resolver box labelled one UDP socket, with two arrows leaving it at the same time labelled A query and AAAA query, both to the same source IP and port. Step 1 arrow to a netfilter box labelled conntrack with two side-by-side insertion slots. Step 2 box labelled kube-proxy DNAT to a CoreDNS pod chosen by KUBE-SVC, with the note the two packets may go to different CoreDNS pods. Step 3: the second insertion collides with the first, drawn as a red-orange X on one arrow labelled insert_failed, the packet is silently dropped. Step 4: a clock icon on the pod side labelled waits for default 5 s timeout, then retries. Below the flow, a second row with a green fix path: three small boxes labelled NodeLocal DNSCache removes the DNAT with a NOTRACK note, single-request-reopen separates the two queries, and TCP to DNS avoids the UDP path. Orange highlight only on the collision X. Green takeaway bar at the bottom: two parallel queries on one socket can collide in the kernel, and the lost packet costs a timeout.",
+  "anchor": "### The conntrack/UDP race and 5-second delays",
+  "alt": "Parallel A and AAAA queries from one socket race the conntrack DNAT insertion, so one packet is dropped and the client waits for its timeout.",
+  "cap": "Parallel A and AAAA queries from one socket can collide in conntrack, so one packet is dropped and the client waits five seconds."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "k11-rendezvous-deadlock",
+  "title": "How a headless Service without publishNotReadyAddresses deadlocks a training rendezvous",
+  "spec": "A circular loop diagram with four labelled boxes placed at the four corners of a square and arrows running clockwise between them, with the arrows numbered 1 to 4. Top-left box labelled trainer-0 not Ready, with a clock icon and the note it starts only after rendezvous. Top-right box labelled CoreDNS publishes no A record for trainer-0 while it is not ready. Bottom-right box labelled worker ranks get NXDOMAIN for trainer-0.trainer. Bottom-left box labelled trainer-0 never receives connections, so it never becomes Ready. Arrows: 1 from top-left to top-right, 2 from top-right to bottom-right, 3 from bottom-right to bottom-left, 4 from bottom-left back to top-left, all four drawn in grey except the closing arrow 4, drawn in orange and labelled the deadlock. Centre of the loop, a small box labelled deadlock, the job hangs. Beside the loop, a separate green fix box labelled publishNotReadyAddresses: true on the headless Service, with an arrow from it into the CoreDNS box labelled publishes the record while not ready, which breaks the loop. Small side note: rendezvous endpoint trainer-0.trainer:29500. Green takeaway bar at the bottom: DNS answers only for pods that are ready, so a worker that waits for its peers before it is ready can wait forever.",
+  "anchor": "## 5. DNS-based discovery for distributed AI workloads",
+  "alt": "Workers cannot resolve the rendezvous pod until it is ready, and it cannot become ready until they connect, which deadlocks the job.",
+  "cap": "Workers cannot resolve the rendezvous pod until it is ready, so the job deadlocks unless the headless Service publishes not-ready addresses."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "k15-selector-and-or",
+  "title": "One from element is AND, two elements are OR",
+  "spec": "Two side-by-side panels, each showing a YAML-style from block drawn as a box with a list of elements. Left panel titled One list element (AND): a single dash element holding two lines, namespaceSelector edge and podSelector app gateway. Below it a small truth table with four rows. Row 1: pod labelled app gateway in namespace edge, result ALLOWED with a green tick. Row 2: pod labelled app gateway in namespace serving, result REFUSED with a red cross. Row 3: pod labelled app debug in namespace edge, result REFUSED. Row 4: pod labelled app gateway in another namespace, result REFUSED. Right panel titled Two list elements (OR): two separate dash elements, the first holding namespaceSelector edge and the second holding podSelector app gateway. Below it the same four pods with results: edge namespace pod app debug ALLOWED, serving namespace pod app gateway ALLOWED, edge pod app gateway ALLOWED, other namespace pod REFUSED. Show each dash as a visible bracket or separator so the reader sees where one element ends. Orange highlight only on the second dash in the right panel, marked as the missing dash that widens the door. Step 1 circle on the left panel and step 2 circle on the right panel. Green takeaway bar at the bottom: a missing dash turns an AND into an OR, so check the dashes before you ship a policy.",
+  "anchor": "### Selector semantics (a common source of mistakes)",
+  "alt": "A single from element requires both the namespace and the pod label, while two separate elements admit either one.",
+  "cap": "One from element matches only pods that satisfy both selectors, while two separate elements let either selector through."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "k15-deny-proof",
+  "title": "Proving a default deny: open, deny, then one allowed door",
+  "spec": "A three-column left-to-right sequence with three numbered step circles (1, 2, 3) above three panels, each a small drawing of a kuard pod box in a namespace box kuard-networkpolicy with a test-source pod box on the left sending a request arrow to the kuard pod. Panel 1 titled Step 1 open, no policy: the arrow from test-source to kuard is solid green and labelled wget returns the page. Panel 2 titled Step 2 default deny ingress: a shield-like barrier drawn over the kuard pod labelled default-deny-ingress, and the arrow is dashed grey and ends at the barrier with the label wget times out. Panel 3 titled Step 3 allow test source: the barrier is still present but a single door labelled access-kuard allows the arrow from test-source, drawn solid green with the label run test-source allowed, and a faded second source box labelled any other pod with the arrow blocked. Orange highlight only on the barrier in panel 2. Icon of a window for each pod and a lock icon for the policy. Green takeaway bar at the bottom: the open test sets the baseline, the deny test proves the default works, and the allow test shows one rule opens exactly one door.",
+  "anchor": "### Proving a default deny with a test Pod",
+  "alt": "A test pod reaches kuard with no policy, times out under a default-deny ingress policy, and reaches it again once one allow rule is added.",
+  "cap": "A test pod reaches kuard before any policy, times out under default deny, and reaches it again through one allow rule."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "k16-config-doors",
+  "title": "Three ways into one ConfigMap, and which ones pick up a change",
+  "spec": "One ConfigMap box at the centre labelled trainer-config (ConfigMap) with keys LOG_LEVEL and hparams.yaml inside it. Three doors drawn as arrows fanning out to the right, one to each consumer box inside a single trainer container box. Door 1, top arrow labelled envFrom or env, leads to a box labelled environment variables with the note read at container start. Door 2, middle arrow labelled volumeMount, leads to a box labelled file at /etc/trainer/hparams.yaml read-only. Door 3, bottom arrow labelled subPath, leads to a box labelled single file bind mount. A small status tag on each door: Door 1 tagged no update while running in orange-free grey, Door 2 tagged updates in about 1 to 2 minutes via the ..data symlink swap in green, Door 3 tagged never updates in grey. Step 1 circle on the ConfigMap box, step 2 circle beside the volume door. Under the trainer box, a short note: to pick up an env change, start a new container. Orange highlight only on the subPath door's never updates tag, since it is the trap. Icon of a gear for the container box, a disk cylinder for the ConfigMap, a window for the trainer. Green takeaway bar at the bottom: env values are fixed at start, volumes refresh in place, and subPath never sees a change.",
+  "anchor": "## 1. ConfigMaps",
+  "alt": "A ConfigMap reaches a container through env vars, a directory volume, or a subPath mount, and only the directory volume picks up changes.",
+  "cap": "Environment variables and subPath mounts keep the old value, while a directory volume mount picks up a ConfigMap change."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "k16-tokenreview",
+  "title": "A receiving service checks a pod token with TokenReview",
+  "spec": "A left-to-right swimlane with three vertical lanes, each headed by the participant name: Pod (caller), Receiving service, Kubernetes API server. Message 1, arrow from Pod lane to Receiving service lane, labelled sends its ServiceAccount token. Message 2, arrow from Receiving service lane to Kubernetes API server lane, labelled POST TokenReview with the token in spec.token, drawn in monospace. Message 3, arrow back from API server lane to Receiving service lane, labelled status authenticated true and user system:serviceaccount:default:default. Each message is numbered with a green step circle. Below the last arrow, a note box in the receiving service lane: the username prefix shows a ServiceAccount, then namespace, then account name. Orange highlight only on message 2, the TokenReview call. Icon of a window on the Pod lane, a gear on the receiving service lane, and a lock on the API server lane. Green takeaway bar at the bottom: the receiver does not trust the token blindly, it asks the API server whether the token is genuine and whose account it belongs to.",
+  "anchor": "### Service Account tokens and TokenReview",
+  "alt": "A pod sends its ServiceAccount token to a receiving service, which posts a TokenReview to the API server and gets back the authenticated user.",
+  "cap": "A receiving service asks the API server through TokenReview whether a pod's ServiceAccount token is genuine and whose account it is."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "k16-two-phase-rotation",
+  "title": "Two-phase rotation: add the new credential before removing the old one",
+  "spec": "A horizontal sequence of four stages left to right, each a rounded box with a numbered step circle. Stage 1 box labelled old credential only, with a key icon and a note consumers use the old value. Stage 2 box labelled add new credential, both work, with two key icons side by side and a note old and new both valid for a while. Stage 3 box labelled switch consumers over, with an arrow fanning from the store to each consumer box (consumer A, consumer B, consumer C) and the note every consumer moves to the new value. Stage 4 box labelled remove old credential, with the old key icon crossed out and the new key icon remaining. Arrows between stages. Above stage 3, a small warning note in orange: if you remove the old credential first, any consumer you forgot to update fails at once. Under the sequence, a bar labelled reload: file mounts refresh through the kubelet but the app must re-read them, environment variables need a pod restart. Green takeaway bar at the bottom: add the new credential first, move every consumer, then remove the old one.",
+  "anchor": "### Rotation",
+  "alt": "Two-phase rotation adds the new credential, moves each consumer over, and only then removes the old credential.",
+  "cap": "Two-phase rotation adds the new credential first, moves every consumer, and removes the old one last."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "k16-impersonate-sudo",
+  "title": "A sudo-style impersonation rule keeps daily work read-only",
+  "spec": "A central layout with three bindings and an operator. Left side: an operator box labelled john, member of group ops-team, with a kubectl icon. Three binding cards in the middle column, each drawn as a link from the group or user to a role. Card 1 cluster-admin-view: ops-team group bound to the view ClusterRole. Card 2 cluster-admin-crb: synthetic user cluster-admin bound to the cluster-admin ClusterRole, with the note no human logs in as this user. Card 3 cluster-admin-impersonate: ops-team group bound to the cluster-admin-impersonator ClusterRole with verbs impersonate on users, resourceNames cluster-admin. Right side, two result rows as a short command story. Row A, default path: kubectl get configmaps returns no resources found (allowed, read-only). Row B, write without elevation: kubectl create configmap returns Forbidden, user john cannot create. Row C, elevated: kubectl --as=cluster-admin create configmap returns configmap created, drawn with the flag --as=cluster-admin in monospace. Step 1 circle on card 1, step 2 circle on card 3, step 3 circle on row C. Below, an audit note: the audit log records both john and the impersonated cluster-admin. Orange highlight only on the --as=cluster-admin flag. Icon of a shield for the cluster-admin user and a lock on the impersonate card. Green takeaway bar at the bottom: daily work runs with reader rights, and a deliberate command raises the rights for one action.",
+  "anchor": "### Least-privilege admin elevation via RBAC `impersonate` (`sudo`-style workflow)",
+  "alt": "An ops-team operator reads by default, is refused a write, and gains cluster-admin rights for one command with --as=cluster-admin.",
+  "cap": "Operators get read-only rights by default and raise to cluster-admin for one command with the impersonation flag, which the audit log records."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "k18-gang-deadlock",
+  "title": "Two 4-pod jobs on six nodes: pod-by-pod placement deadlocks, gang admission does not",
+  "spec": "Two side-by-side panels sharing one row of six node boxes labelled node 1 to node 6, each node drawn as a small server box with a GPU icon. Left panel titled Default pod-by-pod scheduling: Job A has four pod boxes labelled A1 to A4 and Job B has four pod boxes labelled B1 to B4. Three A pods and three B pods are placed on nodes 1 to 6, each placed pod drawn solid, and the one remaining pod of each job (A4 and B4) drawn as a dashed box labelled Pending. A note under the row: each partial job holds its GPUs at 0 percent use while it waits for its last rank. A closed loop arrow in orange between Job A and Job B labelled hold and wait, deadlock. Right panel titled Kueue gang admission: Job A and Job B drawn as suspended cards, labelled suspend true. Kueue checks the whole job against quota, admits Job A first, shown by four pods placed on nodes 1 to 4, and Job B waits in a grey queue box labelled pending in queue with the note admitted later when quota is free. Step 1 circle on the Kueue admission check, step 2 circle on the admitted job. Icons: a lock on the queue box, a gear for Kueue. Green takeaway bar at the bottom: the default scheduler places pods one at a time, so two half-placed jobs can block each other, while Kueue admits a whole job or none of it.",
+  "anchor": "## 5. Why default scheduling fails for distributed jobs",
+  "alt": "Default pod-by-pod placement leaves each of two 4-pod jobs half-placed and waiting, while Kueue admits one whole job at a time.",
+  "cap": "Pod-by-pod placement leaves two 4-pod jobs half-started and blocking each other, while Kueue admits one whole job at a time."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "k18-fragmentation",
+  "title": "Spreading small pods strands the free GPUs; packing them keeps whole nodes free",
+  "spec": "Two side-by-side panels, each showing four node boxes in a row, labelled node 0 to node 3, each node drawn as a box with eight GPU squares inside it. Left panel titled LeastAllocated spread: every node has two small blue inference pod blocks each using one GPU square, so each node shows six free squares in green. Below the row, a red-outlined label: 24 GPUs free in total, but no node has 8 free, so the 8-GPU training pods stay Pending. Right panel titled MostAllocated bin-pack (gpu-binpack profile, nvidia.com/gpu weight 5): all eight one-GPU inference pods stacked in node 0, filling its eight squares, and nodes 1 to 3 shown fully green with eight free squares each. Below, a green label: three 8-GPU training pods each fit on one empty node. Step 1 circle on the left panel and step 2 circle on the right panel. Orange highlight only on the left panel red label, the stranded capacity. Icon of a chip for each GPU square group. Green takeaway bar at the bottom: spreading leaves free GPUs scattered in pieces too small for a big job, while packing keeps whole nodes free for it.",
+  "anchor": "## 2. Resource fit and accounting",
+  "alt": "Spreading one-GPU pods across four 8-GPU nodes strands free GPUs, while packing them onto one node leaves three whole nodes for 8-GPU jobs.",
+  "cap": "Spreading one-GPU pods across nodes strands free GPUs, while packing them onto one node keeps whole nodes free for 8-GPU jobs."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "k18-taint-toleration-selector",
+  "title": "A taint keeps guests out, a toleration lets them in, a selector takes them there",
+  "spec": "Three columns, each a small scene with one GPU node pool and a set of pods. Column 1 titled Taint only: a row of GPU nodes with a taint sign nvidia.com/gpu=present:NoSchedule on them, and a CPU pod box with an arrow hitting the sign and a red cross labelled rejected. Column 2 titled Toleration only: the same taint sign and a GPU pod carrying a badge labelled toleration nvidia.com/gpu; the arrow goes into the GPU node pool but also an arrow goes to an untainted CPU node with a note may still land on any node. Mark that arrow with a question mark and label it not forced there. Column 3 titled Toleration plus nodeSelector: the GPU pod with the badge and a selector label nvidia.com/gpu.product equals NVIDIA-H100 80GB HBM3; a green arrow goes only to the H100 GPU node pool, and the CPU node and the other GPU node are shown faded with a red cross. Step 1 circle on column 1, step 2 circle on column 2, step 3 circle on column 3. Orange highlight only on the question mark arrow in column 2, the trap. Icons: a sign for the taint, a badge for the toleration, a magnet or label tag for the selector. Green takeaway bar at the bottom: a taint keeps other pods out, a toleration only allows entry, and a selector is what pulls the pod to the right pool.",
+  "anchor": "### Taints and tolerations",
+  "alt": "A taint repels pods without a toleration, a toleration alone does not attract a pod, and a node selector sends it to the right GPU pool.",
+  "cap": "A taint keeps out pods without a toleration, but only a node selector steers a GPU pod to the right pool."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "k23-overprovision-preempt",
+  "title": "Warm buffer nodes hidden by negative-priority pause pods",
+  "spec": "Three stages drawn left to right, each a row of GPU node boxes with pods shown as small blocks. Stage 1, titled Steady state: a warm GPU node box holding a row of pause pods (grey blocks) labelled cluster-overprovisioner, value -10, reserving nearly all of the node. A label: pause pods consume no real resources. Stage 2, titled Traffic spike: a real production inference pod (green block, priority 0 or more) arrives, with an arrow into the same warm node. A numbered step 1 on the arrow: kube-scheduler preempts the pause pods, with a 0 s node wait. The pause pods are shown being pushed out in orange. Stage 3, titled Buffer rebuilt: the pause pods are now Pending (dashed grey outline), with an arrow from them to a Cluster Autoscaler box, which adds a new buffer node in the background, labelled a new node joins in the background. Number circles 1, 2, 3 on the three stages (r=24, green). Orange highlight on the pause pods preempted in stage 2. Under the stages, a small note: the real pod starts at once on the warm node, instead of waiting for a new node to boot. Green takeaway bar: pause pods hold a warm node so the next burst does not wait for a new one to boot.",
+  "anchor": "### Cluster overprovisioning",
+  "alt": "Low-priority pause pods hold a warm GPU node; a real pod preempts them and starts at once while the autoscaler rebuilds the buffer.",
+  "cap": "Low-priority placeholder pods hold a warm node, so a real pod can preempt them and start at once while a new buffer node boots in the background."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "k23-gang-atomic",
+  "title": "Pod-by-pod scale-up versus all-or-nothing capacity for a gang",
+  "spec": "Two horizontal lanes stacked, each showing a 16-node gang needing all of its nodes before training starts. Top lane, titled Reactive scale-up pod by pod: a row of 16 node slots, the first several filled with green boxes labelled worker pod waiting, and the rest empty and dashed. An orange note: the waiting pods hold the new nodes idle while the rest are still being provisioned. A label: the gang cannot start with only part of its nodes. A small clock icon with the label scale-up trickles in. Bottom lane, titled ProvisioningRequest with Kueue AdmissionCheck: a single arrow labelled 1 request capacity for all 16 pods at once, leading to a bar with 16 node slots all filled and marked reserved. Then an arrow labelled 2 workload admitted, leading to a row of 16 running worker pods (green). A label: all or none, the nodes are held for the job. Numbered circles 1 and 2 on the bottom lane (r=24, green). Icons: a gear for the autoscaler, a lock for reserved capacity. Green takeaway bar: book the whole crew before anyone gets into the boat.",
+  "anchor": "### Atomic capacity for multi-node jobs",
+  "alt": "Pod-by-pod scale-up fills nodes slowly and leaves partial capacity idle, while a ProvisioningRequest reserves all nodes before the gang starts.",
+  "cap": "A ProvisioningRequest reserves capacity for the whole gang at once, while pod-by-pod scale-up can leave some nodes idle until the rest arrive."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "k23-scale-down-window",
+  "title": "The scale-down stabilization window remembers the highest recent recommendation",
+  "spec": "A horizontal timeline from left to right labelled time, with a shaded rolling window of 600 seconds drawn as a band spanning the most recent ten minutes at the current moment. Above the timeline, a step line labelled desired replicas, rising to a high level during a busy period on the left, then dropping briefly during a dip in traffic in the middle, then recovering. A dashed horizontal line within the band marked stabilized value, the highest recommendation in the last 600 s, which stays high through the brief dip. Only at the right, after a sustained quiet period, does the stabilized value step down, shown with an orange arrow and label sustained quiet period lets the count fall. Small markers along the timeline: a brief dip labelled short dip, a long quiet span labelled sustained quiet. Numbered circles 1 and 2 at the two drops. Green takeaway bar: a brief dip does not remove replicas, only a sustained quiet period does.",
+  "anchor": "### Behaviour tuning",
+  "alt": "A scale-down window keeps the highest recent recommendation, so a brief dip keeps replicas while a sustained quiet period lets the count fall.",
+  "cap": "A scale-down stabilization window keeps the highest recent recommendation, so only a sustained quiet period lets replicas be removed."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "k25-capture-points",
+  "title": "Where to capture packets on the path between two pods",
+  "spec": "A left-to-right path across two node-sized panels. Left panel labelled Node A holds a client pod box with a window icon, labelled client pod, and a small pipe-shaped box labelled client veth attached to its edge. Right panel labelled Node B holds a server pod box with a window icon, labelled server pod, and a pipe-shaped box labelled server veth on its edge. Between the two panels a horizontal link labelled node uplink. A single arrow runs from the client pod through client veth, node uplink and server veth to the server pod, labelled packets. Three numbered capture markers, each a green circle r=24 with a white number, sit on the path: 1 at client veth, 2 at node uplink, 3 at server veth. Each marker has a short label under it with the source wording: capture here. Orange note under marker 2 and the node uplink: running tcpdump only on the node's primary interface misses the veth and bridge hops. Green takeaway bar: capture at each hop, so you see where the packets disappear.",
+  "anchor": "### 3.3 Networking tools",
+  "alt": "Packets from a client pod cross its veth, the node uplink and the server veth, and captures at each point show where they vanish.",
+  "cap": "Capturing packets at the client veth, the node uplink and the server veth shows the hop where traffic disappears."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "k25-nsenter-room",
+  "title": "Host tools working inside a pod's network namespace",
+  "spec": "Two stacked panels on a left-to-right layout. Top panel labelled Node (host): a box labelled host tools with small icons for tcpdump, ip, ss and curl, each icon with its name under it. A dashed green arrow labelled nsenter -t PID -n leads from host tools into a large rounded room on the right labelled pod network namespace. Inside the room a small box labelled pod app and a box labelled pod eth0. Bottom panel labelled Pod image: a small box labelled app image with the note: no tcpdump, ip or ss needed inside the image, drawn with a grey strike-through on those three names. Numbered steps inside the top panel: 1 find the PID with crictl inspect; 2 run host tools with nsenter -n. Orange note on the pod image panel: the host binaries stay under your control, not the app team's. Green takeaway bar: the room is the pod's network, and your tools come from the host.",
+  "anchor": "### 3.2 Namespaces: nsenter, lsns, unshare",
+  "alt": "Host tools run through nsenter -n inside the pod's network namespace, so the pod image needs no debugging tools.",
+  "cap": "The nsenter command runs the node's own tools inside a pod's network namespace, so the pod image needs none of them."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "k25-oom-scope",
+  "title": "Container limit versus node memory: two different OOM kills",
+  "spec": "Two side-by-side panels titled by scope. Left panel titled Container limit: a dashed rounded box labelled memory limit (the cgroup ceiling) containing a filled green bar that reaches the top of the box, labelled container working set. Beside the box, a line labelled node memory: plenty free, drawn as a large light green block with white space. A label on the left panel: CONSTRAINT_MEMCG, the container hit its own ceiling, and an arrow labelled oom_kill pointing to a red-bordered box labelled container killed. Right panel titled Whole node: a large box labelled node memory with every container bar below its own dashed limit, and the bars together filling the node. A label: CONSTRAINT_NONE, the node ran short while every container stayed under its limit. Below it a red-bordered box labelled node-level kill. Under the right panel, a short fix row with three small boxes: reserve system memory; reduce workers; enforce Guaranteed QoS. Orange note on the left panel: a pod can be killed while the node still has free memory. Green takeaway bar: separate the container's limit from the node's use before you change anything.",
+  "anchor": "### 4.6 OOM and eviction",
+  "alt": "A container can hit its own memory limit while the node has memory free, and a node can run short while each container stays under its limit.",
+  "cap": "A container OOM kill comes from its own memory limit, while a node-level kill means the whole host ran out of memory."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-pipeline-conveyor",
+  "title": "Pipelining: 104 cycles instead of 500",
+  "spec": "Two horizontal conveyor lanes, one above the other, each lane labelled with its case. Top lane title: Without a pipeline. Bottom lane title: With a pipeline. Each lane carries the same five stage boxes in order, left to right: load from memory, normalize mantissas, add, correct, write result back. Each stage box is numbered 1 to 5 in time order. Each element is drawn as a small green block that moves through the stages. Top lane: element 1 passes through all five stages, then element 2 starts only after element 1 has left the last stage, and so on. Label under the top lane: 500 cycles for N = 100 elements with S = 5. Bottom lane: element 1 passes through the five stages, and each later element enters one stage-slot behind the element ahead of it, so the blocks form a staircase. Orange highlight on the first element's full pass, labelled pipeline fill time (S cycles). Label under the bottom lane: 104 cycles = K x (N - 1) + S, with K = 1, N = 100, S = 5. Formula line above the lanes: Total cycles = K * (N - 1) + S. Plain note at the bottom: pipelining is a different idea from vectorization. No takeaway bar.",
+  "anchor": "### Parallelism, pipelining, and the nine levels of cluster parallelism",
+  "alt": "Five-stage pipeline: 100 elements take 104 cycles pipelined versus 500 without a pipeline.",
+  "cap": "A pipeline overlaps the stages of successive elements, so 100 elements finish in 104 cycles instead of 500."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-rpeak-rmax",
+  "title": "Rpeak is the ceiling, Rmax is what you measure",
+  "spec": "One long horizontal bar on the top labelled Rpeak, the theoretical ceiling: every arithmetic unit finishes an instruction on every clock cycle, with no waiting. Under its left part, a shorter green bar aligned to the left edge, labelled Rmax, the best sustained rate measured on HPL. The empty space between the end of the Rmax bar and the end of the Rpeak bar is orange, labelled the cost of real work: waiting for memory, waiting for the network, waiting for the slowest node, and heat or power limits. Below the bars, a formula line: HPL efficiency = Rmax / Rpeak. Worked example beneath it: 38 PFLOP/s Rmax against 48.0 PFLOP/s Rpeak gives 79% HPL efficiency. Three small question marks or check boxes beside the Rmax label, one per question: which precision, dense or sparse, peak or measured. Green takeaway bar at the bottom with the sentence: Never accept a FLOPS figure without its precision, its sparsity mode, and its efficiency ratio.",
+  "anchor": "## 2. Measuring speed: FLOPS, precision, peak and achieved",
+  "alt": "Rpeak is the theoretical ceiling, Rmax is the measured HPL rate, and the gap is the cost of real work.",
+  "cap": "Rmax is the measured HPL rate, always below the theoretical Rpeak ceiling, and the gap is the cost of waiting."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "01",
+  "name": "h01-power-on-order",
+  "title": "Power-on order: storage first, compute in staggered groups",
+  "spec": "Top row: three hazard cards side by side, each with a warning icon. Card 1 title: Electrical inrush and boot-storm service overload. Card 2 title: Multi-rack disk array spin-up torque and controller sequencing. Card 3 title: Hot-corridor thermal baking. Each card has a one-line label. Card 1: power draw jumps by dozens or thousands of kilowatts; all nodes request data at once. Card 2: shelves and disks start in order; controllers expect a fixed order. Card 3: servers blow hot air into a shared hot aisle; neighbours with fans off get no cooling. Below the cards, a left-to-right flow of three numbered steps with arrows between them (time order, number circles 1, 2, 3). Step 1 box: Storage first, disk shelves and then controllers in the order the controllers expect. Step 2 box: Compute nodes in staggered groups, so electrical load and request load stay manageable. Step 3 box: Racks spaced out in time, so running servers keep the hot corridor under control. Each step box has an icon of a power switch or a gear. Orange arrow from the hazard cards down to the step boxes, labelled write the startup order down and keep it on a card at the rack. No takeaway bar.",
+  "anchor": "### Power-on surge hazards and startup sequencing",
+  "alt": "Three hazards of powering on a cluster lead to a startup order: storage first, then compute nodes in staggered groups.",
+  "cap": "Powering on storage first and then compute nodes in staggered groups keeps the electrical load, the request load, and the heat within limits."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-munge-credential",
+  "title": "How munge proves who sent a request",
+  "spec": "Two node boxes side by side with a gap between them. The left box is titled Submitting node and holds a small user icon labelled user alice. The right box is titled Controller node and holds a box labelled slurmctld. Each node box contains a box labelled munged. Step 1: inside the left box, an arrow runs from the user into munged, labelled ask for a credential. Step 2: munged encodes a short credential holding the numeric UID and GID, drawn as a small token card with a clock icon labelled validity window, five minutes by default. Step 3: a green arrow labelled credential sent with the request crosses the gap from the left munged to the right munged. Step 4: inside the right box, munged decodes the credential, and an arrow leads out from it to a result box labelled numeric UID and GID reported back. Below both node boxes sits one wide key box labelled /etc/munge/munge.key, with a note beside it reading same key on every node. Two dotted lines run from the key box up into each munged box. Orange highlight on the key box, the single most important item. Number circles 1 to 4 mark the steps in time order. Green takeaway bar at the bottom: This is how Slurm can trust user 1042 sent this without passwords.",
+  "anchor": "## 6. Authentication: munge, and its successor",
+  "alt": "Munge encodes a credential on the sending node and the controller decodes it with the same shared key.",
+  "cap": "Munge lets the controller trust a user ID because every node decodes the same credential with one shared key."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-bringup-order",
+  "title": "First bring-up order for a new Slurm cluster",
+  "spec": "A left-to-right chain of eight numbered step boxes, arranged in two rows of four with an arrow from the end of row one down to the start of row two. Each box has a green number circle with its step number 1 to 8 and a small outline icon, then a bold title and a short line of text. Step 1, title Users and time: create the slurm and munge users with fixed, identical UIDs on all nodes; confirm chrony is synchronised. Step 2, title Munge: create the key on one node, copy it to all nodes with mode 0400 and owner munge, then test with munge -n | unmunge. Step 3, title Database: install MariaDB, create the slurm_acct_db database and the slurm user. Step 4, title slurmdbd: write slurmdbd.conf with mode 600 and owner slurm, start it, and read its log because it creates the tables on first start. Step 5, title Controller: put slurm.conf in /etc/slurm, create the state and log directories owned by slurm, start slurmctld. Step 6, title Compute nodes: start slurmd on each node, copy the config or use configless mode. Step 7, title Accounting hierarchy: run the sacctmgr commands. Step 8, title Verify: run sinfo, scontrol ping, and sacct. Each arrow goes from one step to the next, and every step is drawn in the same size box. Above the row of boxes, a short orange note reads each step depends on the one before it. Green takeaway bar at the bottom reads Order matters when you bring a cluster up for the first time.",
+  "anchor": "## 11. Bringing it up, and verifying",
+  "alt": "Eight numbered steps bring up a Slurm cluster in order, from users and munge through the database and daemons to verification.",
+  "cap": "A first Slurm install works in eight ordered steps, and each one depends on the step before it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "h07-upgrade-order",
+  "title": "Upgrade order: database, controller, then nodes",
+  "spec": "A horizontal chain of three large boxes left to right with arrows between them. Box 1 titled slurmdbd, with a small database cylinder icon, labelled database first. Box 2 titled slurmctld, with a gear icon, labelled controller second. Box 3 titled slurmd and clients, with a server icon, labelled nodes last. Number circles 1, 2 and 3 sit on the boxes in time order. Above the chain, a box with a shield icon lists the two steps before you start: take a database backup, copy StateSaveLocation. Beneath the chain, a note reads stay within the supported compatibility window. Orange highlight on the arrow between box 2 and box 3. Green takeaway bar at the bottom reads Reversing that order is how a rolling upgrade turns into a stuck cluster.",
+  "anchor": "### Versions and upgrades",
+  "alt": "Slurm upgrades go in order: slurmdbd first, then slurmctld, then slurmd and the clients.",
+  "cap": "Upgrade slurmdbd first, then slurmctld, then the compute nodes and clients, so no daemon meets a message it cannot read."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-task-remap",
+  "title": "A job sees its GPUs renumbered from zero",
+  "spec": "Three columns from left to right. Left column: a node box titled gpu node with eight small GPU boxes in one row, labelled /dev/nvidia0 through /dev/nvidia7. Only /dev/nvidia3 and /dev/nvidia7 are filled green and marked allocated; the other six are light grey with a small padlock icon, and a bracket under the grey boxes reads hidden by ConstrainDevices=yes. A caption under the node box reads the cgroup exposes /dev/nvidia3 and /dev/nvidia7. Middle column: a single box labelled SLURM_JOB_GPUS=3,7, with an arrow from the green GPUs into it. Right column: two task boxes stacked vertically with a note that they run with --gpus-per-task=1. Task 0 box reads CUDA_VISIBLE_DEVICES=0 and below it a small label reads physical GPU 3. Task 1 box reads CUDA_VISIBLE_DEVICES=1 and below it a small label reads physical GPU 7. Thin arrows run from the middle box to each task box, labelled relative to the job. Number circles are not used. Orange highlight on the relative-to-the-job label, the single most important point. Green takeaway bar at the bottom reads The job sees a renumbered world, so scripts should follow the renumbering, not the physical labels.",
+  "anchor": "### What the job sees",
+  "alt": "Allocated GPUs 3 and 7 appear inside the job as CUDA_VISIBLE_DEVICES 0 and 1, one for each task.",
+  "cap": "Inside a job, the allocated GPUs are renumbered from zero, so physical GPU 3 can appear as device 0."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-numa-binding",
+  "title": "GPU and CPU binding on a two-socket node",
+  "spec": "A two-socket node drawn as one wide outline. Left half: a box titled Socket 0, NUMA 0, with a label Cores=0-31 and a row of four GPU boxes labelled GPU 0, GPU 1, GPU 2, GPU 3. Right half: a box titled Socket 1, NUMA 1, with a label Cores=32-63 and a row of four GPU boxes labelled GPU 4, GPU 5, GPU 6, GPU 7. Below the node, a row of three option cards side by side, each with a small outline icon. Card 1 title: --gpu-bind=closest. Text: each task is bound to the nearest GPU, with CPUs from the same NUMA node. Card 2 title: --gres-flags=enforce-binding. Text: CPUs come only from the cores bound to the job's GPUs, and the job may wait longer. Card 3 title: --gres-flags=disable-binding. Text: any core on the node can be used, for a job that wants more CPUs than its GPUs have bound to them. A thin dashed line from card 1 points to the socket that holds the chosen GPU. The card 2 border is orange as the single most important item. Below the cards, a small note reads check the layout with nvidia-smi topo -m. Green takeaway bar at the bottom reads Bind when ranks need their GPUs close to their CPUs, and confirm the layout first.",
+  "anchor": "## 3. Binding GPUs to tasks and CPUs",
+  "alt": "On a two-socket node, GPUs 0 to 3 sit on socket 0 with cores 0 to 31, and GPUs 4 to 7 sit on socket 1 with cores 32 to 63.",
+  "cap": "On a two-socket node, each GPU has a local socket, so binding keeps a rank's CPUs and GPU on the same side."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "10",
+  "name": "h10-sharing-spectrum",
+  "title": "Sharing one GPU trades isolation for density",
+  "spec": "A horizontal arrow across the top of the figure, labelled more isolation on the left and more density on the right. Above the arrow, a separate box at the far left labelled Whole GPU, the default for training, with a note never share, and an icon of one full GPU block. Below the arrow, three cards placed left to right in increasing density order: card 1 MIG (Multi-Instance GPU) with an icon of a GPU split into blocks, note hardware partitioned, strong isolation, static layout, no NVLink across slices. Card 2 MPS (Multi-Process Service) with an icon of several small processes on one GPU, note several processes share one GPU, a percentage of GPU resources each, no memory isolation, trusted users only. Card 3 Sharding with an icon of a clock dividing time into slices, note takes turns on a GPU, does not fence processes or constrain device memory by default. Each card has a bold title and a short line of text, with the same size boxes. The card 2 box has the orange highlight as the single most important item for shared work. Green takeaway bar at the bottom reads Each sharing method trades isolation for density, so choose by what the workload can tolerate.",
+  "anchor": "## 5. Sharing a GPU: MIG, MPS and sharding",
+  "alt": "Whole GPUs, MIG, MPS and sharding sit on a spectrum from strong isolation to high density.",
+  "cap": "Each way of sharing a GPU gives up some isolation to fit more jobs on one device."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-batch-vs-steps",
+  "title": "Commands without srun run once, on the first node",
+  "spec": "Two panels side by side. Left panel titled Batch script, with a short script box listing three lines in monospace: echo Start, then srun hostname, then echo End. Above the script box, two directive lines in monospace: #SBATCH --nodes 2 and #SBATCH --ntasks-per-node 2. Right panel titled Allocation of two nodes, with two large node boxes stacked vertically. The top node box is labelled n10 and carries a green badge reading Step 0, first allocated node. The bottom node box is labelled n11. Arrow 1: from the echo Start line to the top node box only, with a label runs once. Arrow 2: from the srun hostname line to both node boxes. Inside the top node box, two small task blocks, each labelled n10. Inside the bottom node box, two small task blocks, each labelled n11. A caption under the task blocks reads runs four times across the two nodes, in arbitrary completion order. Arrow 3: from the echo End line to the top node box only, labelled runs once. Below the right panel, a dashed note box with an orange border reads without srun, the second node stays idle. Number circles are not used. Green takeaway bar at the bottom reads A command without srun runs once, on the first node.",
+  "anchor": "## 1. Allocations, batch jobs and steps",
+  "alt": "In a two-node batch script, echo lines run once on the first node, while srun hostname runs four tasks across both nodes.",
+  "cap": "In a multi-node batch script, only the lines that start with srun reach the second node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-array-grid",
+  "title": "Mapping array task 5 onto a learning-rate and batch-size grid",
+  "spec": "A grid drawn as a table with four columns and three rows. Column headers across the top, left to right: learning rate 1e-4 (LR index 0), 3e-4 (LR index 1), 1e-3 (LR index 2), 3e-3 (LR index 3). Row labels down the left side, top to bottom: batch size 16 (BS index 0), batch size 32 (BS index 1), batch size 64 (BS index 2). Each cell shows its array task number in a green square: row 16 holds tasks 0, 1, 2, 3; row 32 holds tasks 4, 5, 6, 7; row 64 holds tasks 8, 9, 10, 11. The cell for task 5, in the row for batch size 32 and the column for 3e-4, has the orange highlight. Beside the grid, a small arithmetic panel with three lines in monospace: LR_IDX = 5 % 4 = 1, BS_IDX = 5 / 4 = 1, pair = (3e-4, 32). Under the grid, a note reads %4 throttle: four training runs read the dataset at once, and the other eight wait. Number circles are not used. Green takeaway bar at the bottom reads Modulo picks the learning rate, and integer division picks the batch size.",
+  "anchor": "### 2D hyperparameter grid search with job arrays (*Distributed AI Systems* Chapter 8)",
+  "alt": "Array task 5 maps to learning rate 3e-4 and batch size 32 using modulo and integer division.",
+  "cap": "Each array task index maps to one learning rate and one batch size, so task 5 runs 3e-4 with batch size 32."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-dependency-chain",
+  "title": "A training run split across segments, then evaluated",
+  "spec": "A left-to-right chain of three job boxes with arrows between them. Box 1, labelled J1, train segment 1, with a small script icon labelled train.sh. Box 2, labelled J2, train segment 2, resumes from latest checkpoint, with a script icon labelled train.sh. Box 3, labelled J3, evaluate, with a script icon labelled evaluate.sh. Arrow from J1 to J2, labelled --dependency=afterany:$J1, with a note beneath reading a timeout counts as a failure, so afterany lets the chain continue. Arrow from J2 to J3, labelled --dependency=afterok:$J2, with a note beneath reading the evaluation runs only if segment 2 succeeds. Number circles 1, 2 and 3 mark the boxes in time order. Below box 2, an orange-bordered note box reads if a job with afterok fails, the dependent job stays pending with DependencyNeverSatisfied; add --kill-on-invalid-dep=yes to cancel it instead. Green takeaway bar at the bottom reads Each segment resumes from the latest checkpoint, so no work repeats.",
+  "anchor": "## 6. Dependencies and pipelines",
+  "alt": "Two training segments run one after another with afterany, and an evaluation job runs with afterok after the last segment.",
+  "cap": "Dependencies chain training segments and an evaluation job so the run continues past one time limit."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "h11-signal-requeue",
+  "title": "A warning signal, a clean stop, and a requeue",
+  "spec": "Three swim lanes drawn as horizontal bands, top to bottom: Batch shell (the script), Training (srun python train.py), slurmctld (controller). Time flows left to right. Number circles mark steps in time order. Step 1, in the batch shell lane: an arrow arrives labelled #SBATCH --signal=B:USR1@600, with the note 600 seconds before the time limit, the batch shell receives USR1. Step 2, in the batch shell lane: a box labelled trap runs checkpoint_and_requeue. Step 3, arrow from the batch shell lane to the training lane, labelled kill -TERM on the training process, with a note that the training program writes a checkpoint on SIGTERM. Step 4, in the batch shell lane after the wait: a box labelled wait for training to exit. Step 5, arrow from the batch shell lane up to the slurmctld lane, labelled scontrol requeue $SLURM_JOB_ID. Step 6, in the slurmctld lane: a box labelled job goes back to the queue with the same job ID. A small note in the slurmctld lane reads the next run sees SLURM_RESTART_COUNT increase. The step 5 arrow is orange as the single most important item. Green takeaway bar at the bottom reads Periodic checkpoints are the real safety net; the signal handler saves the wait for the next checkpoint.",
+  "anchor": "## 7. Time limits, signals, checkpoints, requeue",
+  "alt": "At a warning signal, the batch shell stops the training process, waits for it to exit, and requeues the job with the same ID.",
+  "cap": "A warning signal lets the batch script stop training cleanly and requeue the job under the same ID."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-launch-styles",
+  "title": "Two launch styles: srun per GPU or torchrun per node",
+  "spec": "Two panels side by side, each titled with its style. Left panel title: Style A, srun with one task per GPU. A top box labelled srun python train.py, with arrows fanning out to four node boxes labelled node 1 to node 4. Each node box holds a row of eight small rank boxes, one per GPU. A label under the left panel reads Slurm starts every rank. Right panel title: Style B, one torchrun per node. A top box labelled srun torchrun, with arrows to four node boxes labelled node 1 to node 4. Each node box holds one wide torchrun box, and inside it a row of eight small rank boxes started by torchrun. A label under the right panel reads Slurm sees one task per node. Below both panels, a comparison strip with two rows of short text. Row for Style A: Slurm keeps control of binding, cgroups, accounting per step and signals; train.py reads SLURM_PROCID, SLURM_LOCALID and SLURM_NTASKS. Row for Style B: torchrun adds elastic features and sets the rank variables for you; the cost is coarser per-rank binding and GPU isolation. Orange highlight on the label Slurm sees one task per node, the single most important item. Green takeaway bar at the bottom reads Pick the launch style before you write the batch script, because the training code has to match it.",
+  "anchor": "## 2. Two launch styles",
+  "alt": "Style A starts every GPU rank from srun, while style B starts one torchrun per node that launches the eight local ranks.",
+  "cap": "Style A lets Slurm start every GPU rank, while style B lets torchrun start the ranks on each node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-glue-translation",
+  "title": "Translating Slurm variables into PyTorch variables",
+  "spec": "Two columns of boxes with a narrow translation band between them. Left column, titled Slurm variables, five boxes top to bottom: SLURM_PROCID (global task number), SLURM_LOCALID (position on its own node), SLURM_NTASKS (total number of tasks), SLURM_JOB_NODELIST (compressed nodelist), SLURM_JOB_ID (job number). Right column, titled PyTorch variables, five boxes in the same top-to-bottom order: RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR, MASTER_PORT. Five horizontal arrows run straight across the middle band, one per row, each labelled with its rule: the first row labelled global task number, the second labelled position on node, the third labelled total tasks, the fourth labelled first host in the nodelist, the fifth labelled 10000 plus job ID modulo 20000. The arrows are parallel and do not cross. In the middle band, above the arrows, a small box labelled dist_env() holds the rule set. Beneath the MASTER_ADDR and MASTER_PORT boxes, a dashed loop arrow labelled a value already set in the environment wins. The fifth arrow (MASTER_PORT) has the orange highlight as the single most important rule. Green takeaway bar at the bottom reads The glue only maps variables; it does not prove the network is fast.",
+  "anchor": "## 3. The glue, tested",
+  "alt": "Five Slurm variables map straight across to RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR and MASTER_PORT.",
+  "cap": "The glue maps five Slurm variables onto the PyTorch rendezvous variables, and a value you set yourself wins."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-master-addr-trap",
+  "title": "A loopback MASTER_ADDR splits one job into isolated groups",
+  "spec": "Two panels side by side. Left panel title: MASTER_ADDR set to 127.0.0.1. Two node boxes, node A and node B, drawn apart with no connection between them. Each node box holds its own group box labelled 1-node process group. A dashed double-headed line between node A and node B is crossed out with the note gradients are never synchronized across nodes. A status note under the left panel reads training looks normal and does not crash. Right panel title: MASTER_ADDR from the first host in the nodelist. The same two node boxes, now both with arrows pointing into one wide shared box labelled one process group across both nodes. The shared box shows a sub-label first host in the nodelist. Orange highlight on the two isolated groups in the left panel, the single most important item. Green takeaway bar at the bottom reads Derive MASTER_ADDR from the nodelist, and never use 127.0.0.1 on a multi-node job.",
+  "anchor": "## 7. Framework patterns",
+  "alt": "A MASTER_ADDR of 127.0.0.1 gives each node its own process group, while the first host in the nodelist joins all nodes into one group.",
+  "cap": "Setting MASTER_ADDR to 127.0.0.1 on a multi-node job splits it into separate single-node groups that never sync gradients."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "h12-diagnose-ladder",
+  "title": "Diagnosing the fabric in three rungs",
+  "spec": "A vertical ladder with three rungs stacked from the bottom up, each rung a wide box with a green number circle and an outline icon. Rung 1 at the bottom, titled Reachability: each node pings the others, command srun -N 2 bash -c echo hostname and ping. Rung 2 in the middle, titled AllReduce sweep: tensor sizes 1, 10, 100 and 500 MB, with 3 warmup calls and 10 timed calls, and a formula line bandwidth = (size_mb * 2 * 10) / elapsed. Rung 3 at the top, titled Point-to-point latency: 100 round trips of a one-element tensor between rank 0 and the target, with a formula line one-way latency = (elapsed / 200) * 1e6 microseconds. An arrow on the left side runs up the ladder labelled work from small to large. A note beside rung 1 reads If this fails, nothing above it can work. Beside rung 3 is a short branch note: low bandwidth means bisect the node list with exclude. Orange highlight on rung 1, the single most important rung. Green takeaway bar at the bottom reads Test reachability first, then bandwidth, then latency.",
+  "anchor": "## 8. Failure and diagnosis",
+  "alt": "A three-step check tests node reachability, then AllReduce bandwidth across sizes, then point-to-point latency.",
+  "cap": "Check node reachability first, then all-reduce bandwidth, then point-to-point latency, because each step depends on the one below."
+ }
+]

@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>Check-then-create leaves a race window; attempt-then-handle does not</title>
+  <desc>Visual comparison of race-prone check-then-create pattern versus atomic attempt-then-handle pattern and advisory file locking.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="60" dy="0">Check-then-create leaves a race window;</tspan>
+    <tspan x="60" dy="58">attempt-then-handle does not</tspan>
+  </text>
+
+  
+  <rect x="60" y="160" width="720" height="415" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="420" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#db8129">Check, then create (race)</text>
+
+  
+  <rect x="90" y="225" width="660" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <circle cx="130" cy="262" r="20" fill="#207448"/>
+  <text x="130" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <circle cx="178" cy="258" r="14" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="188" y1="268" x2="198" y2="278" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="225" y="271" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">if not exists(path)</text>
+
+  
+  <line x1="420" y1="300" x2="420" y2="332" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="90" y="338" width="660" height="80" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="2.5" stroke-dasharray="6,4"/>
+  <polygon points="140,352 116,392 164,392" stroke="#dc2626" stroke-width="3" fill="#fee2e2"/>
+  <line x1="140" y1="365" x2="140" y2="378" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="140" cy="385" r="1.5" fill="#dc2626"/>
+  <text x="180" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#991b1b">
+    <tspan x="180" dy="0">another process can create</tspan>
+    <tspan x="180" dy="28">the file here</tspan>
+  </text>
+
+  
+  <line x1="420" y1="418" x2="420" y2="450" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="90" y="456" width="660" height="75" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <circle cx="130" cy="493" r="20" fill="#207448"/>
+  <text x="130" y="501" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <path d="M 168 480 V 506 C 168 512 188 512 188 506 V 480" stroke="#207448" stroke-width="3" fill="none"/>
+  <ellipse cx="178" cy="480" rx="10" ry="4" stroke="#207448" stroke-width="3" fill="none"/>
+  <text x="225" y="502" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">open(path, w)</text>
+
+  
+  <rect x="820" y="160" width="720" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="1180" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" text-anchor="middle" fill="#207448">Attempt, then handle (safe)</text>
+
+  
+  <rect x="850" y="230" width="660" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 895 255 L 915 262 V 282 C 915 295 895 303 895 303 C 895 303 875 295 875 282 V 262 Z" stroke="#207448" stroke-width="3" fill="none"/>
+  <text x="940" y="283" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">open(path, x) or os.mkdir(path)</text>
+
+  
+  <line x1="1180" y1="320" x2="1180" y2="407" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="850" y="415" width="660" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="895" cy="460" r="18" stroke="#207448" stroke-width="3" fill="none"/>
+  <path d="M 887 460 L 893 466 L 905 454" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round"/>
+  <text x="940" y="468" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan font-family="monospace">FileExistsError</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> handled in one step</tspan>
+  </text>
+
+  
+  <rect x="60" y="605" width="1480" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="85" y="635" width="555" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <path d="M 350 668 V 658 A 12 12 0 0 1 374 658 V 668" stroke="#207448" stroke-width="4" fill="none"/>
+  <rect x="344" y="668" width="36" height="26" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+  <circle cx="362" cy="679" r="3" fill="#207448"/>
+  <line x1="362" y1="682" x2="362" y2="687" stroke="#207448" stroke-width="3"/>
+  <text x="362" y="732" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">fcntl.flock(fd, LOCK_EX | LOCK_NB)</text>
+
+  
+  <text x="670" y="664" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">first run gets the lock</text>
+  <line x1="640" y1="675" x2="1352" y2="675" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="1360" y="645" width="145" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 1432 657 L 1448 663 V 678 C 1448 689 1432 696 1432 696 C 1432 696 1416 689 1416 678 V 663 Z" stroke="#207448" stroke-width="2.5" fill="none"/>
+  <path d="M 1426 676 L 1430 680 L 1438 671" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+
+  
+  <text x="670" y="749" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif">second run gets </tspan>
+    <tspan font-family="monospace" fill="#c53030">BlockingIOError</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif">, exits</tspan>
+  </text>
+  <line x1="640" y1="760" x2="1352" y2="760" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="1360" y="730" width="145" height="60" rx="8" fill="#fef2f2" stroke="#dc2626" stroke-width="2"/>
+  <circle cx="1432" cy="760" r="16" stroke="#dc2626" stroke-width="2.5" fill="none"/>
+  <line x1="1422" y1="760" x2="1442" y2="760" stroke="#dc2626" stroke-width="3" stroke-linecap="round"/>
+
+  
+  <rect x="85" y="820" width="1430" height="65" rx="8" fill="#f5f8f5" stroke="#94a3b8" stroke-width="1.5"/>
+  <circle cx="120" cy="852" r="14" stroke="#207448" stroke-width="2.5" fill="none"/>
+  <text x="120" y="859" font-family="system-ui, -apple-system, sans-serif" font-size="22" font-weight="bold" text-anchor="middle" fill="#207448">i</text>
+  <text x="150" y="860" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">The lock is advisory, and the kernel releases it when the process exits.</text>
+
+  
+  <rect x="60" y="935" width="1480" height="75" rx="10" fill="#207448"/>
+  <circle cx="115" cy="972" r="16" stroke="#ffffff" stroke-width="2.5" fill="none"/>
+  <path d="M 108 972 L 113 977 L 122 967" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+  <text x="800" y="982" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Remove the gap between the check and the use.</text>
+</svg>

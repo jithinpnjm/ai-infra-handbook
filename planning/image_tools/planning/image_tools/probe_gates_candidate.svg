@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Three probes for a slow model server</title>
+  <desc>A timeline for vllm-llama showing the startup probe protecting model weights download and CUDA graph capture before readiness gates traffic and liveness handles deadlocks.</desc>
+
+  <defs>
+    <!-- Orange arrowhead (18px) for the transition arrow -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  <!-- Title: 48px bold -->
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three probes for a slow model server</text>
+
+  <!-- Context Header Card: Timeline for vllm-llama -->
+  <rect x="50" y="85" width="1500" height="70" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(75, 92)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Container / application window icon (56x56) -->
+    <rect x="4" y="8" width="48" height="40" rx="6" />
+    <line x1="4" y1="20" x2="52" y2="20" />
+    <circle cx="12" cy="14" r="2" fill="#207448" />
+    <circle cx="20" cy="14" r="2" fill="#207448" />
+    <line x1="14" y1="32" x2="26" y2="32" />
+    <line x1="14" y1="40" x2="38" y2="40" />
+  </g>
+  <text x="160" y="130" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Timeline for vllm-llama</text>
+
+  <!-- ==================== LEFT PANEL: SEGMENT 1 (STARTUP PHASE) ==================== -->
+  <rect x="50" y="175" width="710" height="760" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Left Note Card: Model loading mechanics -->
+  <rect x="75" y="195" width="660" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(95, 242)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Chip / hardware GPU memory icon (56x56) -->
+    <rect x="10" y="10" width="36" height="36" rx="6" />
+    <circle cx="28" cy="28" r="7" />
+    <line x1="18" y1="2" x2="18" y2="10" />
+    <line x1="28" y1="2" x2="28" y2="10" />
+    <line x1="38" y1="2" x2="38" y2="10" />
+    <line x1="18" y1="46" x2="18" y2="54" />
+    <line x1="28" y1="46" x2="28" y2="54" />
+    <line x1="38" y1="46" x2="38" y2="54" />
+    <line x1="2" y1="18" x2="10" y2="18" />
+    <line x1="2" y1="28" x2="10" y2="28" />
+    <line x1="2" y1="38" x2="10" y2="38" />
+    <line x1="46" y1="18" x2="54" y2="18" />
+    <line x1="46" y1="28" x2="54" y2="28" />
+    <line x1="46" y1="38" x2="54" y2="38" />
+  </g>
+  <text x="175" y="244" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">during loading the server </tspan>
+    <tspan x="175" dy="36">downloads or maps weights and </tspan>
+    <tspan x="175" dy="36">captures CUDA graphs</tspan>
+  </text>
+
+  <!-- Segment 1 Prober Card: startupProbe configuration -->
+  <rect x="75" y="365" width="660" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(95, 485)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Clock / timer prober icon (56x56) -->
+    <circle cx="28" cy="28" r="22" />
+    <polyline points="28,14 28,28 38,28" />
+    <path d="M 22 2 L 34 2" />
+  </g>
+  <text x="175" y="425" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="175" dy="0">startupProbe: periodSeconds 10, </tspan>
+    <tspan x="175" dy="38">failureThreshold 180, up to 30 </tspan>
+    <tspan x="175" dy="38">minutes; liveness and readiness </tspan>
+    <tspan x="175" dy="38">are disabled until it succeeds </tspan>
+    <tspan x="175" dy="38">once</tspan>
+  </text>
+
+  <!-- Failure Note: Red cross failure scenario -->
+  <rect x="75" y="680" width="660" height="230" rx="12" fill="#fff5f5" stroke="#c53030" stroke-width="2" />
+  <g transform="translate(95, 767)">
+    <!-- Red cross outline badge (56x56) -->
+    <circle cx="28" cy="28" r="22" fill="#fee2e2" stroke="#c53030" stroke-width="3" />
+    <line x1="18" y1="18" x2="38" y2="38" stroke="#c53030" stroke-width="4" stroke-linecap="round" />
+    <line x1="38" y1="18" x2="18" y2="38" stroke="#c53030" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="175" y="750" font-family="sans-serif" font-size="26" font-weight="bold" fill="#991b1b">
+    <tspan x="175" dy="0">liveness with no startup probe </tspan>
+    <tspan x="175" dy="38">on a slow starter creates a </tspan>
+    <tspan x="175" dy="38">restart loop</tspan>
+  </text>
+
+  <!-- Single Transition Arrow: Segment 1 success unlocks Segment 2 (Orange) -->
+  <line x1="760" y1="512" x2="840" y2="512" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  <!-- ==================== RIGHT PANEL: SEGMENT 2 (TWO STACKED LANES) ==================== -->
+  <rect x="840" y="175" width="710" height="760" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Stacked Lane 1: readinessProbe configuration -->
+  <rect x="865" y="210" width="660" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(885, 342)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Gate / network endpoints icon (56x56) -->
+    <rect x="6" y="10" width="44" height="36" rx="6" />
+    <line x1="16" y1="20" x2="40" y2="20" />
+    <line x1="16" y1="28" x2="34" y2="28" />
+    <circle cx="20" cy="38" r="2" fill="#207448" />
+    <circle cx="28" cy="38" r="2" fill="#207448" />
+    <circle cx="36" cy="38" r="2" fill="#207448" />
+  </g>
+  <text x="965" y="300" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="965" dy="0">readinessProbe periodSeconds 5: </tspan>
+    <tspan x="965" dy="38">on failure the pod IP leaves the </tspan>
+    <tspan x="965" dy="38">EndpointSlices, container is NOT </tspan>
+    <tspan x="965" dy="38">restarted</tspan>
+  </text>
+
+  <!-- Stacked Lane 2: livenessProbe configuration -->
+  <rect x="865" y="560" width="660" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(885, 692)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Shield / watchdog health heartbeat icon (56x56) -->
+    <path d="M 28 6 L 46 14 L 46 28 C 46 40 28 50 28 50 C 28 50 10 40 10 28 L 10 14 Z" />
+    <polyline points="20,28 25,33 36,22" />
+  </g>
+  <text x="965" y="650" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="965" dy="0">livenessProbe periodSeconds 20, </tspan>
+    <tspan x="965" dy="38">failureThreshold 6: restarts </tspan>
+    <tspan x="965" dy="38">only after 2 full minutes of no </tspan>
+    <tspan x="965" dy="38">response</tspan>
+  </text>
+
+  <!-- ==================== FOOTER TAKEAWAY BAR ==================== -->
+  <rect x="50" y="960" width="1500" height="70" rx="14" fill="#207448" />
+  <text x="800" y="1004" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Never tie liveness to dependencies</text>
+</svg>

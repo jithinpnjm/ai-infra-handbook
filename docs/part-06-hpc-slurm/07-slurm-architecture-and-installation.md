@@ -40,6 +40,10 @@ Slurm changes quickly. The parameter names, defaults and plugin behaviour in thi
 
 ## 1. What a workload manager does
 
+![Four jobs of a workload manager above its three parts: queue manager, scheduler and node agents.](./img/p3-0607-wm-four-jobs.svg)
+
+*Figure 6.7.1. A batch system waits until it can give a job everything it asked for at once.*
+
 Picture a cluster with no scheduling software at all. Users ssh to nodes, fight over GPUs, leave stray processes behind, and have no fair way to share the machine. A **workload manager** (also called a batch scheduler or resource manager) fixes this. It solves four separate problems. Keep them apart in your head, because Slurm implements each one with different components.
 
 1. Resource management: know what exists (nodes, CPUs, memory, GPUs, licences) and what is currently in use, and enforce that jobs only use what they were given.
@@ -87,6 +91,10 @@ HPC is usually different. Demand is much higher than supply, so the queue has to
 
 ### Dedicated test partition, scheduler overhead, and compute-node access control (`pam_listfile` and `pam_slurm_adopt`)
 
+![Two ways to block direct SSH to compute nodes: pam_slurm_adopt and a prolog-managed pam_listfile allowlist.](./img/p3-0607-compute-node-access.svg)
+
+*Figure 6.7.2. Only a user who owns a running job on a node should be able to log in to it.*
+
 In *Supercomputers for Linux SysAdmins* Chapter 13 (*Job Management Systems*), Zhumatiy notes that a task management system has at least three components: the **queue manager** itself, the **scheduler**, and the **agents on compute nodes**. Simple "first-come, first-served" queuing leaves many processors idle whenever small tasks wait behind a giant job. An overly complex scheduler, though, can take tens of minutes to compute a schedule across huge resource pools and task queues. That delay is unacceptable in production. The trade-off is between a clever plan that arrives late and a simple plan that arrives on time.
 
 Some legacy systems such as Torque pair with an external scheduler service called **MAUI**. Its site is `http://www.adaptivecomputing.com`. Commercial **Moab** is another option. Other batch managers include **LSF**, **SGE** (Grid Engine), **Condor** and **OpenLava**. You will meet several of these names in old runbooks, so it helps to know which family each one belongs to.
@@ -108,44 +116,15 @@ Statistics close the loop. Only with usage statistics can you see how efficientl
 
 ## 2. The daemons
 
+![Slurm's daemons: the controller slurmctld holds the queue and state, slurmdbd records accounting into a database, and slurmd runs on each compute node.](./img/p2-0607-daemon-roles.svg)
+
+*Figure 6.7.3. Slurm's daemons split work between slurmctld, which holds queue and state, slurmdbd for accounting, and slurmd on each compute node.*
+
 When a job is stuck, the first question is which daemon is involved. Slurm is a small set of cooperating daemons, which are background services that each do one job. Learn their names and responsibilities, because every later chapter assumes you know them. The diagram below shows where each one sits and which ones talk to which.
 
-```mermaid
-flowchart TB
-  subgraph users["Login / submit nodes"]
-    U1["sbatch, srun, salloc, squeue, sinfo, scancel"]
-    U2["sacct, sacctmgr, sreport (accounting queries)"]
-  end
-  subgraph control["Control plane"]
-    CTLD["slurmctld<br/>controller, port 6817<br/>queue, scheduler, node and job state"]
-    BACKUP["backup slurmctld (optional)<br/>shared StateSaveLocation"]
-    DBD["slurmdbd, port 6819<br/>accounting daemon"]
-    DB[("MariaDB / MySQL<br/>accounting database")]
-    REST["slurmrestd (optional)<br/>REST API"]
-  end
-  subgraph compute["Compute nodes (data plane)"]
-    D1["slurmd, port 6818"]
-    D2["slurmd"]
-    D3["slurmd"]
-    STEPD["slurmstepd<br/>one per job step per node"]
-  end
-  MUNGE["munge on every node<br/>(shared key, authenticates every request)"]
-  U1 -->|"RPC + munge credential"| CTLD
-  U2 -->|"RPC"| DBD
-  CTLD <--> BACKUP
-  CTLD -->|"job and usage records"| DBD
-  DBD --> DB
-  REST --> CTLD
-  CTLD -->|"launch and control RPCs"| D1
-  CTLD --> D2
-  CTLD --> D3
-  D1 --> STEPD
-  STEPD -->|"runs your program"| JOB["application processes"]
-  U1 -->|"srun talks to slurmd and slurmstepd directly"| D1
-  MUNGE -.-> CTLD
-  MUNGE -.-> D1
-  MUNGE -.-> DBD
-```
+![The daemons](./img/m6-07-1.svg)
+
+*Figure 6.7.4. The daemons, as a diagram.*
 
 `slurmctld`, the controller. This is the single brain of the cluster, listening on port 6817 by default. It holds the authoritative in-memory state of every node, partition, job and reservation. It runs the scheduling algorithms, decides allocations, tells compute nodes what to launch, and notices when nodes stop responding. Think of it as the API server, scheduler and controller-manager of Kubernetes combined in one process. Because so much state sits in one process, much of its work is serialised behind internal locks. That is the root cause of the "controller overloaded" failures in section 12. You can run more than one `slurmctld` for high availability, but only one is active at a time (section 5).
 
@@ -165,30 +144,15 @@ The command-line tools (`sbatch`, `srun`, `salloc`, `squeue`, `sinfo`, `scancel`
 
 ## 3. The life of a job
 
+![One two-node batch job goes from submission through pending, allocation of nodes A and B, the batch script and srun steps, cleanup and accounting.](./img/p2-0607-job-life.svg)
+
+*Figure 6.7.5. A two-node batch job moves from submission to pending, allocation, running steps, cleanup and accounting, with each arrow a message between daemons.*
+
 The easiest way to understand the architecture is to follow one job from start to finish. In this example, a user submits a batch script that requests two nodes. Each arrow in the diagram below is one message, and the names on the left are the daemons you have just met.
 
-```mermaid
-sequenceDiagram
-  participant U as User on login node
-  participant C as slurmctld
-  participant DBD as slurmdbd
-  participant D1 as slurmd on node A
-  participant D2 as slurmd on node B
-  U->>C: sbatch job.sh (RPC with munge credential)
-  C->>C: authenticate, run job_submit plugin, check limits and associations
-  C-->>U: Submitted batch job 4217
-  C->>C: job PENDING in queue, scheduler loop and backfill evaluate it
-  C->>C: resources found: allocate nodes A and B, state RUNNING
-  C->>D1: launch batch step (RPC tree fan-out)
-  C->>D2: prepare node (prolog)
-  D1->>D1: prolog, fork slurmstepd, run the batch script
-  D1->>D2: script runs srun, steps launched on both nodes
-  D1->>D1: epilog, cleanup of processes
-  D2->>D2: epilog, cleanup of processes
-  D1->>C: job complete RPC
-  C->>DBD: job record: times, resources, exit code, usage
-  C->>C: free nodes A and B, run scheduler again
-```
+![The life of a job](./img/m6-07-2.svg)
+
+*Figure 6.7.6. The life of a job, as a diagram.*
 
 Read the diagram slowly, one arrow at a time. Each step has a clear owner, and when a job misbehaves, you can ask which owner did not do its part. The walkthrough below follows the same order.
 
@@ -217,6 +181,10 @@ These two takeaways also help when a teammate asks why a job is slow. If the tra
 Two takeaways are worth saying out loud in an interview. First, *the controller is on the path of every allocation and every state change, but not on the path of the application's data traffic or of task launch within an allocation.* Second, *the accounting database is written asynchronously from the scheduling path.* Keep both in mind when you debug a slow job, because they tell you where to look first. A slow training job is rarely the controller's fault, and a slow `sacct` is rarely the scheduler's fault.
 
 ## 4. Plugins and extension points
+
+![A grouped map of slurm.conf plugin parameters with typical choices and the two stable extension points.](./img/p3-0607-plugin-families.svg)
+
+*Figure 6.7.7. Every behaviour is a plugin chosen by name, and only job_submit and SPANK survive upgrades well.*
 
 Almost every behaviour in Slurm is a **plugin**, and `slurm.conf` picks each one by name. Learn the plugin families and you have a map of the whole configuration file. The table lists each family, the parameter that selects it, and the typical production choice. Read each row as one question Slurm has to answer, such as who is allowed to log in or where a job's processes should run.
 
@@ -250,6 +218,10 @@ Picture the controller restarting in the middle of a busy afternoon. What does i
 
 ### What lives where
 
+![Five stores of Slurm state with what is lost if each disappears, ordered from cheap to permanent.](./img/p3-0607-state-stores.svg)
+
+*Figure 6.7.8. The state directory is the controller's memory, and a lost accounting database cannot be rebuilt.*
+
 Before you read the table, think about what a restart would cost you. A lost configuration file is a quick restore from version control. A lost accounting database is a permanent gap in your history. A lost state directory is somewhere in between, because the running jobs may still be on the nodes even though the controller no longer knows about them. Sorting the state by cost tells you where your backup effort should go first.
 
 Each kind of state sits in a different place, and each one has a different cost when it is lost. Read the table as a list of things to back up, and of things that can be rebuilt from other sources.
@@ -264,35 +236,15 @@ Each kind of state sits in a different place, and each one has a different cost 
 
 Of these, `StateSaveLocation` is the one that gets operators into trouble. It is how `slurmctld` survives restarts. On startup, the controller reads it back and rebuilds the queue and the cluster state. Then it asks the nodes what is running. The directory must sit on fast, reliable storage with enough free space, and it must be owned by the `SlurmUser`. For HA, it must also be shared between controllers. A state directory that lives on one local disk is a single point of failure that nobody notices until the day it fails.
 
-```mermaid
-flowchart LR
-  subgraph clients["Clients and nodes"]
-    SUBMIT["login nodes: sbatch, srun"]
-    NODES["slurmd on compute nodes"]
-  end
-  subgraph ha["Controller HA pair"]
-    P["slurmctld primary"]
-    B["slurmctld backup (standby)"]
-    SS[("Shared StateSaveLocation<br/>NFS or clustered FS")]
-  end
-  subgraph acct["Accounting tier"]
-    DBD1["slurmdbd"]
-    DBD2["slurmdbd standby (optional)"]
-    DBC[("MariaDB with replication or Galera")]
-  end
-  SUBMIT --> P
-  NODES --> P
-  P --> SS
-  B -.heartbeat.-> P
-  B --> SS
-  SUBMIT -.failover.-> B
-  NODES -.failover.-> B
-  P --> DBD1
-  DBD1 --> DBC
-  DBD2 --> DBC
-```
+![What lives where](./img/m6-07-3.svg)
+
+*Figure 6.7.9. What lives where, as a diagram.*
 
 ### High availability of the controller
+
+![Two Slurm controllers share a state directory, with the backup taking control when the primary stops answering for the timeout.](./img/p2-0607-controller-failover.svg)
+
+*Figure 6.7.10. Two Slurm controllers share one state directory, and the backup takes control when the primary stops answering for SlurmctldTimeout seconds.*
 
 Slurm HA (high availability) is active/passive. You list more than one host with `SlurmctldHost`. The first one is primary, and the rest are backups, in order:
 
@@ -327,6 +279,14 @@ Older tutorials use `ControlMachine`, `ControlAddr` and `BackupController`. Thos
 
 ## 6. Authentication: munge, and its successor
 
+![Four munge rules and a two-step test ladder, local then cross-node, with the usual failure messages.](./img/p3-0607-munge-checklist.svg)
+
+*Figure 6.7.11. Test munge across nodes before installing anything else because key and clock mismatches cause most failures.*
+
+![Munge encodes a credential on the sending node and the controller decodes it with the same shared key.](./img/h07-munge-credential.svg)
+
+*Figure 6.7.12. Munge lets the controller trust a user ID because every node decodes the same credential with one shared key.*
+
 Every request in Slurm carries an identity. When a user submits a job, when `slurmctld` tells `slurmd` to launch something, or when an admin updates a node, the request arrives with proof of who sent it. By default, that proof is a munge credential. Munge is a tiny service that runs on every node, and it does one thing. Any process can ask the local `munged` for a credential. Any other node's `munged` can decode it and report back the numeric UID and GID of the process that asked for it. This works provided both nodes share the same secret key and their clocks are within a few minutes of each other. This is how Slurm can trust "user 1042 sent this" without passwords. The credential is a short token, and it is checked, not remembered.
 
 Four things follow for installation. Each one is a rule that, when broken, produces an error message that looks like something else.
@@ -349,24 +309,15 @@ Newer Slurm releases offer a built-in alternative to munge. It arrived around 23
 
 ## 7. Configuration files and configless mode
 
+![Copying slurm.conf to every node is contrasted with configless mode where nodes fetch the file from the controller.](./img/p3-0607-configless.svg)
+
+*Figure 6.7.13. Configless mode removes the drift that comes from keeping many copies of slurm.conf.*
+
 Picture a new compute node that refuses to join the cluster, because its configuration file is one change out of date. Slurm is configured by a family of plain-text files, normally in `/etc/slurm`. Each one covers a different area, and the diagram shows how they connect. Most of the files hang off `slurm.conf`, which is the hub.
 
-```mermaid
-flowchart TB
-  SC["slurm.conf<br/>cluster, nodes, partitions, plugins, timers, accounting hooks"]
-  CG["cgroup.conf<br/>how cgroups constrain cores, memory, devices"]
-  GR["gres.conf<br/>per-node GPU and other generic resources; autodetect"]
-  TP["topology.conf<br/>switch tree for topology-aware placement"]
-  DB["slurmdbd.conf<br/>database connection and daemon settings (mode 600)"]
-  PL["plugstack.conf<br/>SPANK plugins, for example Pyxis"]
-  JS["job_submit.lua<br/>policy hook script"]
-  SC --- CG
-  SC --- GR
-  SC --- TP
-  SC --- PL
-  SC --- JS
-  SC -. accounting .-> DB
-```
+![Configuration files and configless mode](./img/m6-07-4.svg)
+
+*Figure 6.7.14. Configuration files and configless mode, as a diagram.*
 
 Think of `slurm.conf` as the blueprint that every daemon reads from the same page. The controller uses it to decide what exists and how it is scheduled. Each compute node uses it to know its own name, its own size and the controller it should report to. When two copies disagree, each daemon is working from a different blueprint, and no single error message will tell you that. That is why the comparison of configuration files is the first check after any change.
 
@@ -393,6 +344,10 @@ Before you install anything, decide which machine plays which role. In a lab, al
 
 ### Planning roles and sizing
 
+![Cluster role boxes with sizing notes joined by arrows labelled with ports 6817, 6818 and 6819.](./img/p3-0607-roles-ports.svg)
+
+*Figure 6.7.15. Separate the roles and open the three daemon ports between them before installing.*
+
 A small production cluster has the roles below. Use the sizing notes as a checklist for each host. Read the table row by row, and ask for each role what would happen if that host went down on a Friday evening.
 
 | Role | Runs | Sizing notes |
@@ -418,25 +373,27 @@ Have these prerequisites in place before you touch any Slurm package. You need D
 
 ### Versions and upgrades
 
+![Slurm upgrades go in order: slurmdbd first, then slurmctld, then slurmd and the clients.](./img/h07-upgrade-order.svg)
+
+*Figure 6.7.16. Upgrade slurmdbd first, then slurmctld, then the compute nodes and clients, so no daemon meets a message it cannot read.*
+
 Think of an upgrade as moving the cluster's memory forward. The database holds the history, the controller holds the live state, and the compute nodes hold only the running work. Upgrading the history first means the newer controller can read what the older one wrote. Upgrading the nodes last means no old node has to understand a message it has never seen. Reversing that order is how a rolling upgrade turns into a stuck cluster.
 
 Releases follow a `YY.MM` scheme and arrive roughly twice a year. Plan each upgrade carefully. Upgrade in this order: `slurmdbd` first, then `slurmctld`, then `slurmd` and clients. Before you start, take a database backup and copy `StateSaveLocation`. Stay within the supported compatibility window. The controller and database daemons understand RPCs and state files from a limited number of earlier major releases, so check the upgrade notes for the exact rule for your version. Skipping versions is the usual way upgrades fail. Chapter 6.15 covers upgrades in depth.
 
 ## 9. Accounting: the account tree
 
+![An ordered sacctmgr sequence that builds the account tree first and only then enables enforcement.](./img/p3-0607-accounting-enforce-order.svg)
+
+*Figure 6.7.17. Enabling enforcement before the tree exists locks every user out.*
+
 If you install only one optional component, install accounting. Without it you lose fairshare, QoS, per-user and per-account limits, and `sacct`. Suppose you turn on enforcement before the tree exists. A submit from a user with no association is then rejected, and everyone is locked out. The fix is simple, but it is a bad hour to learn it during a live cluster's first day.
 
 The data model is an association tree. Users belong to accounts, and accounts can be nested. An association is a tuple of cluster, account, user and optionally partition. Policy such as limits and shares attaches to associations and accounts. Once enforcement is on, every user must have at least one association before they can submit jobs. Think of the tree as an org chart with a budget attached to each box.
 
-```mermaid
-flowchart TB
-  ROOT["root account (cluster mycluster)"]
-  ROOT --> AI["account ai-research<br/>share 60"]
-  ROOT --> ENG["account platform-eng<br/>share 40"]
-  AI --> U1["user alice"]
-  AI --> U2["user bob"]
-  ENG --> U3["user carol"]
-```
+![Accounting: the account tree](./img/m6-07-5.svg)
+
+*Figure 6.7.18. Accounting: the account tree, as a diagram.*
 
 You manage the tree with `sacctmgr`, which creates and modifies the hierarchy and its limits. You read usage with `sacct` and `sreport`. A typical bootstrap looks like this, and the order of the lines matters, because each line depends on the one above it:
 
@@ -476,6 +433,10 @@ Accounting also needs housekeeping, or the database grows without bound. In `slu
 Enforcement is controlled by `AccountingStorageEnforce` in `slurm.conf`, for example `associations,limits,qos`. With enforcement on, a submit from a user with no association is rejected, and limits are applied. Enable it only after the tree exists, or you will lock everyone out. Build the whole tree first, then switch enforcement on.
 
 ## 10. A first `slurm.conf`, and the node definition problem
+
+![A first slurm.conf grouped into blocks that each answer one question, with the companion cgroup, gres and slurmdbd files.](./img/p3-0607-first-conf-blocks.svg)
+
+*Figure 6.7.19. Each block of slurm.conf answers one question, and cgroup settings make job cleanup reliable.*
 
 You are about to write your first configuration for a small GPU cluster. Most of the file is routine. The node definition is the line that trips people up, and the rest of this section takes the file one block at a time.
 
@@ -570,6 +531,10 @@ A few notes cover what older material gets wrong or skips:
 
 ## 11. Bringing it up, and verifying
 
+![Eight numbered steps bring up a Slurm cluster in order, from users and munge through the database and daemons to verification.](./img/h07-bringup-order.svg)
+
+*Figure 6.7.20. A first Slurm install works in eight ordered steps, and each one depends on the step before it.*
+
 Picture a first install where the controller starts before the database exists. The controller then fails to reach its accounting host, and the logs point in several directions at once. Order matters when you bring a cluster up for the first time. This sequence works for a first install on a controller, a database host, and compute nodes, and each step depends on the one before it.
 
 1. Users and time: create the `slurm` and `munge` users with fixed, identical UIDs on all nodes. Confirm chrony is synchronised everywhere.
@@ -608,6 +573,10 @@ Read the log files when something fails: `slurmctld.log`, `slurmd.log` and `slur
 
 ## 12. How it fails during installation and early operation
 
+![A table of eight early Slurm failures with symptom, likely cause and the first diagnosis step.](./img/p3-0607-install-failure-table.svg)
+
+*Figure 6.7.21. Match the symptom, then read the first error in the log rather than the last.*
+
 Something will go wrong during your first install, and you need a path to follow when it does. The failures below each give you the symptom, the cause, how to diagnose it, and the fix. Each one is a real pattern from first installs, so read them even if your install goes smoothly.
 
 ### 1. "Invalid authentication credential" or "Unable to contact slurm controller"
@@ -615,6 +584,10 @@ Something will go wrong during your first install, and you need a path to follow
 Every command fails straight away. `slurmd` cannot register, and the logs show munge errors such as `Rewound credential` or `Invalid credential`. The cause can be different munge keys, clock skew over a few minutes, `munged` not running, or wrong permissions on `/etc/munge` or `/run/munge`. To diagnose it, check `systemctl status munge`, and run `munge -n | unmunge` locally and across nodes. Compare `md5sum /etc/munge/munge.key` on each node, and check `chronyc tracking`. The fix is to redistribute the key, correct the permissions, and fix time sync. Then restart munge, and then Slurm.
 
 ### 2. Node shows `invalid`, `drain` with "Low RealMemory" or "Low socket*core*thread count"
+
+![The node line in slurm.conf is compared with what slurmd discovers and a mismatch drains the node.](./img/p3-0607-node-def-drain.svg)
+
+*Figure 6.7.22. Run slurmd -C on the real node and paste its output instead of guessing the layout.*
 
 Picture a new node that the controller accepts for a few seconds and then pulls out of service. The controller has compared what the node reported with what the configuration promised, and the two did not match. Nothing is broken in the node itself. The problem is the gap between the blueprint and the building, and closing that gap is the job of the checks below.
 
@@ -627,6 +600,10 @@ A quick way to think about this failure is to follow the request. The command ta
 `sacctmgr` hangs, or it says it cannot talk to the database. Once enforcement is on, submissions fail with "Invalid account or account/partition combination". The cause can be `slurmdbd` not running, wrong DB credentials or permissions, `max_allowed_packet` set too small, a blocked port, or no association for the user. Check `slurmdbd.log`, `systemctl status slurmdbd`, `mysql -u slurm -p slurm_acct_db`, and `sacctmgr list associations user=NAME`. Correct the credentials and configuration, and create the association. Switch `AccountingStorageEnforce` on only when the tree is complete.
 
 ### 4. Controller will not start, or starts with an empty queue: `StateSaveLocation` problems
+
+![Causes of an empty queue after a controller start and the recovery flags and ordered steps to restore state.](./img/p3-0607-statesave-recovery.svg)
+
+*Figure 6.7.23. Check the state directory first and restore it from backup under exactly one controller.*
 
 It helps to think of the state directory as the controller's memory on disk. A controller that cannot write to that memory cannot start cleanly, and a controller that reads a damaged memory may start with a missing queue. Both failures look like a broken daemon at first, so check the directory before you touch the daemon.
 
@@ -661,6 +638,10 @@ Run `sdiag`. Look at "Remote Procedure Call statistics by message type" and by u
 Run `sdiag` and check the server thread count against its maximum, the agent queue and the RPC counts. Check `slurmdbd.log` for lock waits and connection errors. In the database, run `SHOW FULL PROCESSLIST;` to find long-running queries. With the owner's agreement, end the offending query with `KILL <id>;`. Then confirm that `slurmdbd` drains its queue and `slurmctld` recovers. To prevent a repeat, use `MaxQueryTimeRange`, purge old records, and size the database as the Slurm documentation recommends. Ending a query belongs to the database owner, so check before you act.
 
 ## 13. Reading the logs: three patterns to recognise
+
+![Three log patterns: node flapping, a job killed for memory and an invalid RPC after an upgrade, with what each means.](./img/p3-0607-log-patterns.svg)
+
+*Figure 6.7.24. Recognise the shape of a log pattern first and then investigate the layer it points to.*
 
 Slurm explains most failures in its logs. You only need to recognise the shapes, and once you have seen them, you will spot them quickly. The three snippets below are illustrative, since the exact wording differs between versions, and each one is an everyday pattern. Treat each snippet as a shape to match, not as text to grep for word for word.
 

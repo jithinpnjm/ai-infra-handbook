@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Deleting a pod: two paths race, preStop buys time</title>
+  <desc>Infographic explaining Kubernetes pod termination timeline, the race between the control plane and node paths, and how preStop hooks prevent dropped connections.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="108%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Deleting a pod: two paths race, preStop buys time</text>
+
+  
+  
+  <g transform="translate(60, 95)" filter="url(#shadow)">
+    <rect width="660" height="84" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="24" y="16" width="54" height="52" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 36 34 L 46 42 L 36 50 M 52 50 L 64 50" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="96" y="49" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">kubectl delete pod</text>
+  </g>
+
+  
+  <path d="M 720 137 L 850 137" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(860, 95)" filter="url(#shadow)">
+    <rect width="680" height="84" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="51" cy="42" r="26" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 51 26 L 51 42 L 64 42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="96" y="49" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">deletionTimestamp set, pod shows Terminating</text>
+  </g>
+
+  
+  <path d="M 1200 179 L 1200 215 L 430 215 L 430 240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <path d="M 1200 179 L 1200 240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 245)">
+    <rect width="710" height="585" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(24, 20)">
+      
+      <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="28" r="9" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <text x="70" y="38" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Control plane path</text>
+    </g>
+
+    
+    <g transform="translate(24, 90)" filter="url(#shadow)">
+      <rect width="662" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <circle cx="44" cy="46" r="24" fill="#207448" />
+      <text x="44" y="55" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="86" y="47" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="86" dy="0">EndpointSlice controller</tspan>
+        <tspan x="86" dy="32">removes the pod IP</tspan>
+      </text>
+    </g>
+
+    
+    <path d="M 355 215 L 355 250" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <g transform="translate(24, 255)" filter="url(#shadow)">
+      <rect width="662" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <circle cx="44" cy="46" r="24" fill="#207448" />
+      <text x="44" y="55" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="86" y="47" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="86" dy="0">kube-proxy, Ingress and</tspan>
+        <tspan x="86" dy="32">Envoy tables update</tspan>
+      </text>
+    </g>
+
+    
+    <path d="M 355 380 L 355 415" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <g transform="translate(24, 420)" filter="url(#shadow)">
+      <rect width="662" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <circle cx="44" cy="50" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 44 36 L 44 50 L 55 50" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <text x="86" y="52" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+        <tspan x="86" dy="0">takes about 1 to 5 seconds</tspan>
+        <tspan x="86" dy="32">across a large cluster</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(830, 245)">
+    <rect width="710" height="585" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(24, 20)">
+      
+      <rect x="6" y="8" width="44" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="6" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="4" />
+      <circle cx="16" cy="18" r="3" fill="#207448" />
+      <circle cx="16" cy="38" r="3" fill="#207448" />
+      <text x="70" y="38" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Node path</text>
+    </g>
+
+    
+    <g transform="translate(24, 80)" filter="url(#shadow)">
+      <rect width="662" height="100" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      
+      <circle cx="44" cy="50" r="24" fill="none" stroke="#db8129" stroke-width="4" />
+      <path d="M 36 50 L 42 56 L 54 42" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="86" y="44" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="86" dy="0">kubelet runs preStop hook</tspan>
+        <tspan x="86" dy="30" font-family="monospace" fill="#db8129">(for example sleep 10)</tspan>
+      </text>
+    </g>
+
+    
+    <path d="M 355 180 L 355 205" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <g transform="translate(24, 205)" filter="url(#shadow)">
+      <rect width="662" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="44" cy="47" r="24" fill="#207448" />
+      <text x="44" y="56" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">!</text>
+      <text x="86" y="56" font-family="sans-serif" font-size="24" fill="#303a36">SIGTERM to PID 1 of each container</text>
+    </g>
+
+    
+    <path d="M 355 300 L 355 325" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <g transform="translate(24, 325)" filter="url(#shadow)">
+      <rect width="662" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="44" cy="55" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 44 41 L 44 55 L 56 55" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <text x="86" y="47" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="86" dy="0">wait up to</tspan>
+        <tspan x="86" dy="32" font-family="monospace">terminationGracePeriodSeconds (default 30 s)</tspan>
+      </text>
+    </g>
+
+    
+    <path d="M 355 435 L 355 460" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+    
+    <g transform="translate(24, 460)" filter="url(#shadow)">
+      <rect width="662" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="44" cy="47" r="24" fill="#c0392b" />
+      <text x="44" y="56" font-family="sans-serif" font-size="22" font-weight="bold" fill="#ffffff" text-anchor="middle">&#x2715;</text>
+      <text x="86" y="56" font-family="monospace" font-size="28" font-weight="bold" fill="#c0392b">SIGKILL</text>
+    </g>
+  </g>
+
+  
+  
+  <g transform="translate(60, 850)" filter="url(#shadow)">
+    <rect width="710" height="135" rx="14" fill="#fdf2f2" stroke="#e06a6a" stroke-width="2" />
+    <circle cx="48" cy="45" r="24" fill="#c0392b" />
+    <text x="48" y="53" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">&#x2715;</text>
+    <text x="88" y="44" font-family="sans-serif" font-size="24" fill="#842029">
+      <tspan x="88" dy="0">server closes its socket at SIGTERM before</tspan>
+      <tspan x="88" dy="32">proxies updated: 502 or connection reset</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(830, 850)" filter="url(#shadow)">
+    <rect width="710" height="135" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="48" cy="45" r="24" fill="#207448" />
+    <path d="M 38 45 L 45 52 L 58 39" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="88" y="44" font-family="sans-serif" font-size="24" fill="#207448">
+      <tspan x="88" dy="0">with preStop sleep the server keeps accepting</tspan>
+      <tspan x="88" dy="32">while removal spreads, then drains in-flight requests</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(60, 1005)" filter="url(#shadow)">
+    <rect width="1480" height="85" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 32 30 L 46 18 L 60 30 L 60 62 L 32 62 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 40 62 L 40 44 L 52 44 L 52 62" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="82" y="51" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">sign comes off the door, customers inside finish, then lights off</text>
+  </g>
+
+  
+  <g transform="translate(60, 1105)" filter="url(#shadow)">
+    <rect width="1480" height="68" rx="12" fill="#207448" />
+    <text x="740" y="43" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">preStop does not run when a node fails; its time counts against the grace period</text>
+  </g>
+</svg>

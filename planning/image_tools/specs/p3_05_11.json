@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "p3-0511-records-by-object",
+  "title": "Which DNS record each Kubernetes object produces",
+  "spec": "Table drawn as rows. 'ClusterIP Service svc in ns: svc.ns.svc.cluster.local A (AAAA for IPv6) points to the single ClusterIP; named port gets SRV _http._tcp.svc.ns.svc.cluster.local'. 'Headless Service (clusterIP None): same name returns several A records, one per ready pod IP; publishNotReadyAddresses true returns all pods; one SRV per pod'. 'StatefulSet pod behind a headless Service with serviceName: pod-0.svc.ns.svc.cluster.local A points to that pod IP (stable identity)'. 'ExternalName Service: CNAME to the external name'. 'Pod IP (pods insecure or verified mode): 10-244-3-17.ns.pod.cluster.local A (rarely useful)'. 'Reverse lookups: PTR for Service and pod IPs'. Footer with the record vocabulary: 'A = IPv4, AAAA = IPv6, SRV = host and port, CNAME = another name, PTR = address back to name'. Short-name rule: 'from namespace ns, svc works; svc.other-ns resolves through svc.cluster.local; use at least svc.ns across namespaces'. Text at least 24px.",
+  "anchor": "## 1. Records Kubernetes creates",
+  "alt": "A table maps each Kubernetes object type to the DNS record CoreDNS creates for it.",
+  "cap": "Find the object you have and read across to the record type you will get back."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "p3-0511-dnspolicy-modes",
+  "title": "The four dnsPolicy values and what they put in resolv.conf",
+  "spec": "Four cards. 'ClusterFirst (the real default): nameserver is the kube-dns ClusterIP; search ns.svc.domain svc.domain domain plus node search domains; options ndots:5; names outside the cluster domain are forwarded upstream by CoreDNS'. 'Default (not the default despite the name): inherit the node resolver config from the node resolv.conf or kubelet resolvConf'. 'ClusterFirstWithHostNet: for hostNetwork true pods that still want cluster DNS; plain ClusterFirst is ignored for hostNetwork pods'. 'None: use only dnsConfig (custom nameservers, searches, options)'. Below, a dnsConfig example: 'options ndots 2, single-request-reopen, timeout 2, attempts 3; searches extra.example.com'. Callout: 'job title trap: Default sounds standard but its job is narrower'. Text at least 24px.",
+  "anchor": "## 2. Resolver behaviour inside pods",
+  "alt": "Four cards compare ClusterFirst, Default, ClusterFirstWithHostNet and None dnsPolicy values.",
+  "cap": "ClusterFirst is the real default, and Default means inherit the node's resolver."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "p3-0511-corefile-annotated",
+  "title": "Reading the default Corefile and the three customisation recipes",
+  "spec": "Left: the default server block annotated line by line. '.:53 answer every zone on port 53', 'errors', 'health { lameduck 5s }: :8080/health, drains', 'ready: :8181/ready', 'kubernetes cluster.local in-addr.arpa ip6.arpa { pods insecure; fallthrough in-addr.arpa ip6.arpa; ttl 30 }: answers cluster names from Services and EndpointSlices', 'prometheus :9153', 'forward . /etc/resolv.conf { max_concurrent 1000; prefer_udp }: non-cluster names go upstream', 'cache 30', 'loop: detects forwarding loops', 'reload: picks up edits in about 30 s', 'loadbalance: shuffles A records'. Note: 'plugins run in the fixed order set at compile time, not the order written'. Right: three recipe cards. 'Stub domain: corp.example.com:53 { errors; cache 30; forward . 10.1.0.53 10.1.0.54 }'. 'Rewrite and hosts: rewrite name huggingface.mirror.local huggingface-proxy.registry.svc.cluster.local; hosts { 10.20.0.15 storage.lab.internal; fallthrough }'. 'DoT upstream: forward . tls://1.1.1.1 { tls_servername cloudflare-dns.com; health_check 5s }'. Footer: 'Corefile is ConfigMap kube-system/coredns: keep it in GitOps, test in staging; managed clusters use coredns-custom or stubDomains'. Text at least 24px.",
+  "anchor": "## 3. CoreDNS architecture",
+  "alt": "The default Corefile annotated line by line beside stub domain, rewrite and DoT recipes.",
+  "cap": "The Corefile is a chain of plugins, and three small blocks cover most customisation needs."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "p3-0511-nodelocal-cache",
+  "title": "NodeLocal DNSCache: no DNAT, no conntrack, TCP on a miss",
+  "spec": "Before and after on one node. Before: 'pod -> UDP 53 to kube-dns ClusterIP 10.96.0.10 -> DNAT and conntrack entry -> CoreDNS pod on another node; parallel A and AAAA can race and cost 5 s'. After: 'pod -> UDP or TCP 53 to 169.254.20.10 (node-local-dns DaemonSet on a dummy interface with NOTRACK iptables rules) -> cache hit answers on the node with no DNAT, no conntrack and no cross-node hop; on a miss it asks the kube-dns Service over TCP 53 (avoids the UDP race and spreads load)'. Extras: 'negative caching: the node remembers NXDOMAIN so the next pod gets it locally', 'run as a critical DaemonSet with maxUnavailable 10 percent and readiness checks; if one node cache fails that node loses DNS until it restarts, so decide the fallback', 'Cilium alternatives: DNS proxy or localRedirectPolicy', 'kubelet clusterDNS points at 169.254.20.10'. Capacity side box: 'load = pod count x lookup rate x ndots amplification; a 5,000 pod start can produce 100k+ queries in seconds; CoreDNS about 10-20k QPS per core with caching; replicas about nodes/100 to nodes/20, minimum 3, spread across nodes and zones, PDB, system-cluster-critical'. Text at least 24px.",
+  "anchor": "### NodeLocal DNSCache",
+  "alt": "A per-node cache answers pod DNS without DNAT or conntrack and asks CoreDNS over TCP on a miss.",
+  "cap": "NodeLocal DNSCache removes the DNAT and conntrack steps that cause the race and cuts CoreDNS load."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "p3-0511-loop-detected",
+  "title": "CoreDNS Loop detected on systemd-resolved hosts",
+  "spec": "Cycle diagram. 'Node resolv.conf points to 127.0.0.53 (systemd-resolved stub)' -> 'CoreDNS forward . /etc/resolv.conf sends external queries to 127.0.0.53' -> 'the stub hands the question back to CoreDNS' -> 'loop plugin detects it and CoreDNS crashes with Loop detected, CrashLoop' (red). Fix box: 'set kubelet resolvConf: /run/systemd/resolve/resolv.conf to the real upstream file, or forward . 10.x.x.x'. Footer: 'the question is handed to a resolver that hands it back, so it circles forever'. Text at least 24px.",
+  "anchor": "## 3. CoreDNS architecture",
+  "alt": "CoreDNS forwards to the systemd stub which loops the query back, and the fix points kubelet at the real upstream file.",
+  "cap": "Pointing CoreDNS upstream at 127.0.0.53 makes the query circle, and the loop plugin stops CoreDNS."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "p3-0511-negative-cache-startup",
+  "title": "Why a worker that asks too early waits 30 seconds",
+  "spec": "Timeline. T0 'worker pod resolves trainer-0.trainer.ml before that pod exists: NXDOMAIN, cached as a negative answer (cache denial, SOA minimum 30 s)'. T0+few s 'trainer-0 pod starts and its record now exists'. Until T0+30 s 'the worker keeps getting the cached NXDOMAIN: sticky note saying no such person'. T0+30 s 'cache entry expires, lookup succeeds, worker joins'. Fix box: 'workers retry with backoff and bounded timeouts; applications avoid caching failures; headless Service with publishNotReadyAddresses true so peers resolve before ready; stagger startup'. Side: 'JVM caches successful lookups indefinitely with a security manager, 30 s without one; set TTL properties so clients drop old IPs after failover'. Text at least 24px.",
+  "anchor": "## 5. DNS-based discovery for distributed AI workloads",
+  "alt": "A negative DNS answer is cached for 30 seconds even after the peer pod appears.",
+  "cap": "A too-early lookup is remembered as a failure, so retry with backoff instead of waiting on a stale answer."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "p3-0511-dns-debug-ladder",
+  "title": "Debugging a name that will not resolve",
+  "spec": "Ten-step ladder compressed into five groups with commands. Group 1 'Is it DNS? getent hosts svc.ns and dig from the failing pod; curl by IP works but the name fails means DNS'. Group 2 'Which resolver? cat /etc/resolv.conf: nameserver should be kube-dns or the node-local cache; note ndots, search list, dnsPolicy'. Group 3 'Is CoreDNS healthy? pods Running and Ready, endpoints present, logs show no loop, SERVFAIL or forward errors; dig @coredns-pod-ip kubernetes.default.svc.cluster.local; compare three paths: ClusterIP tests kube-proxy and CNI, pod IP tests CoreDNS alone, node-local cache tests that layer'. Group 4 'Upstream and records: dig @upstream example.com from the CoreDNS pod; firewall for UDP and TCP 53; headless Service with no ready pods returns no A records; check selectors, namespace spelling, fallthrough, pods mode'. Group 5 'Timing and kernel: tcpdump -ni any port 53 for unanswered queries and 5 s retransmits; dig +stats, time getent hosts, strace -T; dig name. with trailing dot versus dig name to count NXDOMAINs; conntrack -S and insert_failed counters'. Right: symptoms 'CrashLoop Loop detected, SERVFAIL external names, NXDOMAIN for existing Service, random 5 s delays, hostNetwork pods fail (use ClusterFirstWithHostNet), failures during CoreDNS rollout (lameduck, PDB, 3+ replicas), large responses fail (allow TCP 53, EDNS, MTU)'. Text at least 24px.",
+  "anchor": "## 7. Debugging method",
+  "alt": "A five-group ladder for diagnosing DNS failures with a symptom list beside it.",
+  "cap": "Start with the client's view and work toward the server, then the network and the kernel."
+ }
+]

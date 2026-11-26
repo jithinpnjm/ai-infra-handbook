@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>Burn rate and the multiwindow alert</title>
+  <desc>Visual explanation of burn rate multiwindow alert evaluation</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Burn rate and the multiwindow alert</text>
+
+  
+
+  
+  <path d="M 420 290 V 340 H 680 V 390" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1180 290 V 340 H 920 V 390" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 570 470 H 230 V 710" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <rect x="350" y="412" width="100" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="400" y="443" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <path d="M 800 550 V 710" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <rect x="818" y="608" width="200" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="918" y="638" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">yes, burn 1</text>
+
+  
+  <path d="M 1030 470 H 1370 V 710" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <rect x="1040" y="412" width="320" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1200" y="443" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">yes, burn 14.4 or 6</text>
+
+  
+
+  
+  <g>
+    <rect x="140" y="140" width="560" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="420" cy="190" r="23" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 420 175 V 190 H 433" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="420" y="255" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Error ratio, long window</text>
+  </g>
+
+  
+  <g>
+    <rect x="900" y="140" width="560" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="1180" cy="194" r="21" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1180 173 V 166 M 1173 166 H 1187 M 1195 179 L 1200 174" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 1180 194 L 1190 182" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="1180" y="255" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Error ratio, short window</text>
+  </g>
+
+  
+  <g>
+    <rect x="570" y="390" width="460" height="160" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <path d="M 800 414 L 826 440 L 800 466 L 774 440 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 785 440 H 815" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="4,3" />
+    <path d="M 793 450 V 432 M 807 450 V 426" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="800" y="512" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Both above threshold?</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="710" width="380" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 230 735 L 253 743 C 253 766 243 781 230 787 C 217 781 207 766 207 743 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 219 759 L 227 767 L 243 751" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="230" y="825" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">No alert</text>
+  </g>
+
+  
+  <g>
+    <rect x="610" y="710" width="380" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="780" y="738" width="40" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="790" y="732" width="20" height="10" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <path d="M 789 756 H 811 M 789 766 H 811 M 789 776 H 804" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="800" y="825" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Open a ticket</text>
+  </g>
+
+  
+  <g>
+    <rect x="1180" y="710" width="380" height="150" rx="16" fill="#fdf7f0" stroke="#db8129" stroke-width="4" />
+    
+    <rect x="1348" y="737" width="44" height="48" rx="8" fill="none" stroke="#db8129" stroke-width="4" />
+    <rect x="1356" y="745" width="28" height="18" rx="3" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 1358 771 H 1366 M 1374 771 H 1382" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <path d="M 1341 745 C 1337 753 1337 761 1341 769" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 1399 745 C 1403 753 1403 761 1399 769" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+    <text x="1370" y="825" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Page on-call</text>
+  </g>
+</svg>

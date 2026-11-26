@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 940" width="1600" height="940">
+  <title>How Slurm configuration is organized</title>
+  <desc>Visual organization of Slurm configuration files in /etc/slurm and their consumer daemons slurmctld and slurmstepd.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="60" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How Slurm configuration is organized</text>
+
+  
+  <rect x="60" y="130" width="760" height="760" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="85" y="178" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">/etc/slurm configuration files</text>
+
+  
+  <rect x="80" y="210" width="720" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" fill="none">
+    <rect x="105" y="255" width="46" height="58" rx="4" stroke-width="4" />
+    <line x1="117" y1="272" x2="139" y2="272" stroke-width="3" stroke-linecap="round" />
+    <line x1="117" y1="285" x2="139" y2="285" stroke-width="3" stroke-linecap="round" />
+    <line x1="117" y1="298" x2="131" y2="298" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="180" y="256" font-family="monospace" font-size="30" font-weight="bold">slurm.conf:</tspan>
+    <tspan x="180" y="296" font-family="monospace" font-size="24">nodes, partitions, cons_tres,</tspan>
+    <tspan x="180" y="332" font-family="monospace" font-size="24">SchedulerParameters</tspan>
+  </text>
+
+  
+  <rect x="80" y="380" width="720" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" fill="none">
+    <rect x="117" y="420" width="22" height="15" rx="2" stroke-width="3" />
+    <rect x="105" y="458" width="20" height="15" rx="2" stroke-width="3" />
+    <rect x="131" y="458" width="20" height="15" rx="2" stroke-width="3" />
+    <path d="M 128 435 v 11 M 115 446 h 26 M 115 446 v 12 M 141 446 v 12" stroke-width="3" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="180" y="432" font-family="monospace" font-size="30" font-weight="bold">topology.conf / topology.yaml:</tspan>
+    <tspan x="180" y="478" font-family="monospace" font-size="24">SwitchName &amp; BlockName</tspan>
+  </text>
+
+  
+  <rect x="80" y="540" width="720" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" fill="none">
+    <rect x="110" y="589" width="36" height="38" rx="4" stroke-width="4" />
+    <path d="M 119 582 v 7 M 128 582 v 7 M 137 582 v 7" stroke-width="3" stroke-linecap="round" />
+    <path d="M 119 627 v 7 M 128 627 v 7 M 137 627 v 7" stroke-width="3" stroke-linecap="round" />
+    <path d="M 103 598 h 7 M 103 608 h 7 M 103 618 h 7" stroke-width="3" stroke-linecap="round" />
+    <path d="M 146 598 h 7 M 146 608 h 7 M 146 618 h 7" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="180" y="586" font-family="monospace" font-size="30" font-weight="bold">cgroup.conf:</tspan>
+    <tspan x="180" y="626" font-family="monospace" font-size="24">ConstrainCores, ConstrainRAMSpace,</tspan>
+    <tspan x="180" y="662" font-family="monospace" font-size="24">ConstrainDevices</tspan>
+  </text>
+
+  
+  <rect x="80" y="715" width="720" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g stroke="#207448" fill="none">
+    <rect x="108" y="762" width="46" height="36" rx="3" stroke-width="4" />
+    <circle cx="131" cy="780" r="10" stroke-width="3" />
+    <path d="M 108 770 h -6 v 26" stroke-width="3" />
+    <line x1="118" y1="798" x2="142" y2="798" stroke-width="3" stroke-dasharray="3 2" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="180" y="768" font-family="monospace" font-size="30" font-weight="bold">gres.conf:</tspan>
+    <tspan x="180" y="812" font-family="monospace" font-size="24">AutoDetect=nvml, GPU device files</tspan>
+  </text>
+
+  
+  <rect x="980" y="240" width="560" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" fill="none">
+    <rect x="1015" y="280" width="56" height="42" rx="4" stroke-width="4" />
+    <circle cx="1029" cy="301" r="3.5" fill="#207448" />
+    <circle cx="1041" cy="301" r="3.5" fill="#207448" />
+    <line x1="1053" y1="293" x2="1063" y2="293" stroke-width="3" stroke-linecap="round" />
+    <line x1="1053" y1="301" x2="1063" y2="301" stroke-width="3" stroke-linecap="round" />
+    <line x1="1053" y1="309" x2="1063" y2="309" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="1090" y="318" font-family="monospace" font-size="32" font-weight="bold">slurmctld</tspan>
+    <tspan x="1090" y="366" font-family="sans-serif" font-size="24">(serves configless to</tspan>
+    <tspan x="1090" y="404" font-family="sans-serif" font-size="24">slurmd &amp; sackd)</tspan>
+  </text>
+
+  
+  <rect x="980" y="585" width="560" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" fill="none">
+    <path d="M 1042 622 L 1068 632 V 652 C 1068 668 1042 680 1042 680 C 1042 680 1016 668 1016 652 V 632 Z" stroke-width="4" />
+    <path d="M 1034 650 L 1040 656 L 1052 644" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text fill="#303a36">
+    <tspan x="1090" y="662" font-family="monospace" font-size="32" font-weight="bold">slurmstepd</tspan>
+    <tspan x="1090" y="710" font-family="sans-serif" font-size="24">(enforces cgroup v2</tspan>
+    <tspan x="1090" y="748" font-family="sans-serif" font-size="24">CPU/RAM/GPU limits)</tspan>
+  </text>
+
+  
+   CTLD (Primary connection in single accent orange) -->
+  <path d="M 800 285 C 890 285 890 320 978 320" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+   CTLD -->
+  <path d="M 800 450 C 890 450 890 405 978 405" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+   STEPD -->
+  <path d="M 800 617 C 890 617 890 660 978 660" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+   STEPD -->
+  <path d="M 800 787 C 890 787 890 745 978 745" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+</svg>

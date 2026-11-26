@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>An ordered Calico policy read as a checklist</title>
+  <desc>Visual explanation of Calico GlobalNetworkPolicy ordered evaluation checklist compared to standard Kubernetes NetworkPolicy and Cilium policy models.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">An ordered Calico policy read as a checklist</text>
+
+  
+  
+  <rect x="40" y="110" width="940" height="1050" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(68, 138)">
+    <path d="M 28 4 L 52 14 L 52 32 C 52 48 28 58 28 58 C 28 58 4 48 4 32 L 4 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 18 30 L 25 37 L 38 23" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <text x="140" y="152" font-family="system-ui, -apple-system, sans-serif" fill="#207448">
+    <tspan x="140" dy="0" font-size="30" font-weight="bold">Worked example GlobalNetworkPolicy</tspan>
+    <tspan x="140" dy="38" font-size="28" font-weight="bold" font-family="ui-monospace, monospace">deny-metadata-and-private-egress</tspan>
+    <tspan x="140" dy="36" font-size="30" font-weight="bold">with order 100</tspan>
+  </text>
+
+  
+  <path d="M 265 510 L 265 558" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <path d="M 265 820 L 265 868" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="64" y="250" width="406" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="100" cy="292" r="22" fill="#207448" />
+  <text x="100" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <text x="136" y="300" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="136" dy="0" font-size="30" font-weight="bold">rule 1 Deny:</tspan>
+    <tspan x="100" dy="48" font-size="25">destination</tspan>
+    <tspan x="100" dy="36" font-size="25">the cloud metadata</tspan>
+    <tspan x="100" dy="36" font-size="25">address</tspan>
+  </text>
+
+  
+  <path d="M 470 380 L 508 380" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="510" y="250" width="446" height="260" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(534, 274)">
+    <rect x="0" y="0" width="46" height="32" rx="4" fill="none" stroke="#db8129" stroke-width="3" />
+    <path d="M 0 0 L 23 18 L 46 0" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round" />
+  </g>
+  
+  <text x="534" y="342" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="534" dy="0" font-size="24">packet to the metadata</tspan>
+    <tspan x="534" dy="35" font-size="24">address matches rule 1,</tspan>
+    <tspan x="534" dy="35" font-size="24" font-weight="bold" fill="#db8129">DENIED, later allow rules</tspan>
+    <tspan x="534" dy="35" font-size="24">never see it</tspan>
+  </text>
+
+  
+  
+  <rect x="64" y="560" width="406" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="100" cy="602" r="22" fill="#207448" />
+  <text x="100" y="610" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <text x="136" y="610" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="136" dy="0" font-size="30" font-weight="bold">rule 2 Allow:</tspan>
+    <tspan x="100" dy="54" font-size="26">object gateway</tspan>
+  </text>
+
+  
+  <path d="M 470 690 L 508 690" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="510" y="560" width="446" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(534, 584)">
+    <rect x="0" y="0" width="46" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 0 0 L 23 18 L 46 0" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+  </g>
+  
+  <text x="534" y="652" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="534" dy="0" font-size="24">packet to the object</tspan>
+    <tspan x="534" dy="36" font-size="24">gateway skips rule 1,</tspan>
+    <tspan x="534" dy="36" font-size="24" font-weight="bold">matches rule 2, ALLOWED</tspan>
+  </text>
+
+  
+  
+  <rect x="64" y="870" width="406" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="100" cy="912" r="22" fill="#207448" />
+  <text x="100" y="920" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <text x="136" y="920" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="136" dy="0" font-size="30" font-weight="bold">rule 3 Allow:</tspan>
+    <tspan x="100" dy="54" font-size="26">DNS over UDP port 53</tspan>
+  </text>
+
+  
+  <path d="M 470 1000 L 508 1000" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="510" y="870" width="446" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(534, 894)">
+    <rect x="0" y="0" width="46" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 0 0 L 23 18 L 46 0" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+  </g>
+  
+  <text x="534" y="975" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="534" dy="0" font-size="24">DNS on UDP 53 reaches</tspan>
+    <tspan x="534" dy="38" font-size="24" font-weight="bold">rule 3, ALLOWED</tspan>
+  </text>
+
+  
+  
+  <rect x="1020" y="110" width="540" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1050, 134)">
+    <rect x="0" y="6" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="18" cy="24" r="7" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <text x="1050" y="218" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1050" dy="0" font-size="30" font-weight="bold">standard NetworkPolicy:</tspan>
+    <tspan x="1050" dy="48" font-size="25">namespaced, additive,</tspan>
+    <tspan x="1050" dy="38" font-size="25">no deny, no ordering</tspan>
+  </text>
+
+  
+  <rect x="1020" y="435" width="540" height="400" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1050, 458)">
+    <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 2 20 L 38 20" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 20 2 C 27 9 27 31 20 38 C 13 31 13 9 20 2" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <text x="1050" y="534" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1050" dy="0" font-size="30" font-weight="bold">Calico</tspan>
+    <tspan x="1050" dy="36" font-size="30" font-weight="bold">GlobalNetworkPolicy:</tspan>
+    <tspan x="1050" dy="42" font-size="25">cluster-wide,</tspan>
+    <tspan x="1050" dy="34" font-size="25">order for priority,</tspan>
+    <tspan x="1050" dy="34" font-size="25">actions Allow, Deny, Log, Pass,</tspan>
+    <tspan x="1050" dy="34" font-size="25">selectors like</tspan>
+    <tspan x="1050" dy="36" font-size="24" font-weight="bold" font-family="ui-monospace, monospace">app == x &amp;&amp; has(team)</tspan>
+  </text>
+
+  
+  <rect x="1020" y="880" width="540" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1050, 904)">
+    <path d="M 20 4 L 38 12 L 38 26 C 38 36 20 44 20 44 C 20 44 2 36 2 26 L 2 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="12" y1="24" x2="28" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  
+  <text x="1050" y="986" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1050" dy="0" font-size="30" font-weight="bold">Cilium:</tspan>
+    <tspan x="1050" dy="46" font-size="25">ingressDeny and egressDeny</tspan>
+    <tspan x="1050" dy="38" font-size="25">take precedence over allows</tspan>
+  </text>
+</svg>

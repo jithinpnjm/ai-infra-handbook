@@ -185,20 +185,9 @@ On the Slurm side, passive checks run in the job prolog, the epilog and every 12
 
 The last row is the dangerous one. A non-zero prolog exit other than the runner's own exit 1 makes Slurm drain with `Prolog error`, which has no known prefix, so no controller replaces the node and no check undrains it. Matching is by substring and the first match in a fixed list wins [source-code, `consts/slurm.go`]. Matching by substring means the classifier looks for a fragment anywhere in the reason text, so the order of the list decides which fragment counts. The public docs add an extensive check procedure: a critical failure drains with `[node_problem]` and moves the node into a suspicious reservation for deeper tests. A reservation holds nodes away from the normal queue. If they fail the reason becomes `[hardware_problem]` and the node is re-created. If they pass the node returns [official, worker health page].
 
-```mermaid
-flowchart TD
-  A["Check fails on worker"] --> B["Slurm drain: node_problem"]
-  B --> C{"Jobs still running?"}
-  C -->|yes| D["Wait: no replacement under a job"]
-  D --> C
-  C -->|no| E["Set HardwareIssuesSuspected"]
-  E --> F["Platform: SetUnhealthy, retries"]
-  F --> G{"Tenant report limit free?"}
-  G -->|no| H["Node stays cordoned and drained"]
-  H --> F
-  G -->|yes| I["Delete node, create new VM"]
-  I --> J["Worker pod joins, stale drain cleared"]
-```
+![Two repair systems and one rule to avoid a fight](./img/m20-36-1.svg)
+
+*Figure 20.36.1. Two repair systems and one rule to avoid a fight, as a diagram.*
 
 Two details protect you. If the drain time predates the new node's creation or the pod's scheduling time, the controller undrains, because the hardware was already replaced. In other words, a drain that is older than the fix is stale, and the controller clears it so the node is not held out for no reason. And it builds the `HardwareIssuesSuspected` message from the drain reason and node comment, because the platform needs a failure description.
 

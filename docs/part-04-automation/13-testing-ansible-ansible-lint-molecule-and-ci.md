@@ -41,15 +41,9 @@ A role change looks harmless in a pull request. The real question is how you wou
 
 Suppose a role passes lint and syntax checks, then fails on the first real host. The question is which layer should have caught the bug.
 
-```mermaid
-flowchart TB
-  E["Hardware-in-the-loop (real GPU nodes, reboots)\nfew, slow, scheduled"]
-  V["VM scenarios (systemd, kernel, networking, reboot)\nmedium"]
-  C["Container scenarios (Molecule + Docker/Podman)\nmany, fast"]
-  D["Syntax check, --check --diff, template render tests"]
-  L["Static analysis: yamllint, ansible-lint, secrets scan"]
-  L --> D --> C --> V --> E
-```
+![Test pyramid for Ansible](./img/m4-13-1.svg)
+
+*Figure 4.13.1. Test pyramid for Ansible, as a diagram.*
 
 Each layer catches different bugs. Lint finds style problems, deprecated syntax and risky constructs. Syntax and check tests find structural errors. Container Molecule scenarios find logic and idempotency bugs in user-space configuration. VMs cover kernel, systemd and network behaviour, and hardware tests cover drivers, firmware and fabrics. Keep most of your tests low in the pyramid, and save the expensive tiers for risks that only they can reveal.
 

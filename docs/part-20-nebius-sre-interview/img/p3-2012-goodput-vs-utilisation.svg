@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Busy is not the same as useful</title>
+  <desc>Infographic illustrating GPU goodput versus dashboard utilisation, latency objectives, cost per good token, and operational rules.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Busy is not the same as useful</text>
+
+  
+  <rect x="40" y="95" width="1520" height="355" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="74" y="119" width="48" height="48" rx="6" />
+    <line x1="84" y1="137" x2="112" y2="137" />
+    <line x1="84" y1="149" x2="102" y2="149" />
+    <line x1="86" y1="113" x2="86" y2="119" />
+    <line x1="98" y1="113" x2="98" y2="119" />
+    <line x1="110" y1="113" x2="110" y2="119" />
+    <line x1="86" y1="167" x2="86" y2="173" />
+    <line x1="98" y1="167" x2="98" y2="173" />
+    <line x1="110" y1="167" x2="110" y2="173" />
+  </g>
+  <text x="145" y="153" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Two bars for the same GPU hour</text>
+
+  
+  <text x="70" y="205" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Dashboard utilisation 95 percent</text>
+
+  
+  <g>
+    
+    <rect x="70" y="220" width="460" height="75" rx="6" fill="#207448" />
+    <text x="300" y="266" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">requests finished on time</text>
+
+    
+    <rect x="530" y="220" width="380" height="75" rx="6" fill="#385e49" />
+    <text x="720" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="720" dy="0">requests finished</tspan>
+      <tspan x="720" dy="28">too late to help anyone</tspan>
+    </text>
+
+    
+    <rect x="910" y="220" width="180" height="75" rx="6" fill="#4f735d" />
+    <text x="1000" y="266" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">retries</text>
+
+    
+    <rect x="1090" y="220" width="400" height="75" rx="6" fill="#688874" />
+    <text x="1290" y="250" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="1290" dy="0">preempted requests whose</tspan>
+      <tspan x="1290" dy="28">cache was thrown away</tspan>
+    </text>
+  </g>
+
+  
+  <text x="70" y="332" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Goodput</text>
+
+  
+  <g>
+    
+    <rect x="70" y="345" width="460" height="75" rx="6" fill="#db8129" />
+    
+    <rect x="530" y="345" width="960" height="75" rx="6" fill="#ffffff" stroke="#a3c4b0" stroke-width="2" stroke-dasharray="8 6" />
+  </g>
+
+  
+  <rect x="40" y="475" width="1520" height="195" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="74" y="499" width="48" height="48" rx="6" />
+    <path d="M 84 527 L 90 527 L 96 539 L 104 513 L 114 513" />
+  </g>
+  <text x="145" y="533" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Formulas</text>
+
+  
+  <rect x="70" y="555" width="1460" height="45" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="90" y="586" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">goodput QPS = QPS x fraction of requests within the objective</text>
+
+  
+  <rect x="70" y="610" width="1460" height="45" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="90" y="641" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">cost per good token = cost per token / fraction within the objective</text>
+
+  
+  <rect x="40" y="700" width="740" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="74" y="724" width="48" height="48" rx="6" />
+    <line x1="86" y1="758" x2="86" y2="746" />
+    <line x1="98" y1="758" x2="98" y2="736" />
+    <line x1="110" y1="758" x2="110" y2="750" />
+  </g>
+  <text x="145" y="758" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Worked case</text>
+
+  <rect x="65" y="785" width="690" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="85" y="817" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">if 5 percent of requests miss the objective,</tspan>
+    <tspan x="85" dy="32">goodput is 95 percent of throughput and the</tspan>
+    <tspan x="85" dy="32">cost of a good token rises by about 5 percent</tspan>
+  </text>
+
+  
+  <rect x="40" y="935" width="740" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="98" cy="965" r="22" />
+    <line x1="98" y1="965" x2="98" y2="953" />
+    <line x1="98" y1="965" x2="108" y2="965" />
+    <line x1="98" y1="943" x2="98" y2="937" />
+    <line x1="92" y1="937" x2="104" y2="937" />
+  </g>
+  <text x="145" y="973" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Example objective from the book</text>
+
+  <rect x="65" y="1010" width="690" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="85" y="1056" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">0.4 second p90 time to first token and</tspan>
+    <tspan x="85" dy="36">0.04 second p90 time per output token</tspan>
+  </text>
+
+  
+  <rect x="820" y="700" width="740" height="455" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 874 724 L 894 732 C 894 752 874 766 874 770 C 874 766 854 752 854 732 Z" />
+    <path d="M 864 744 L 871 751 L 884 738" />
+  </g>
+  <text x="925" y="758" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rules</text>
+
+  
+  <rect x="845" y="785" width="690" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="865" y="822" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="865" dy="0">report goodput not throughput when comparing</tspan>
+    <tspan x="865" dy="34">configurations, and name the latency objectives</tspan>
+    <tspan x="865" dy="34">applied; do not push for full use if the</tspan>
+    <tspan x="865" dy="34">latency objective is broken</tspan>
+  </text>
+
+  
+  <rect x="845" y="985" width="690" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1" />
+  <text x="865" y="1042" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="865" dy="0">fraction of paid GPU time spent at the</tspan>
+    <tspan x="865" dy="36">planned load, not the nvidia-smi figure</tspan>
+  </text>
+</svg>

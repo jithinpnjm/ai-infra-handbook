@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p2-0118-k8s-mapping",
+  "title": "A pod spec turns into a few cgroup files on the node",
+  "spec": "A left-to-right mapping diagram with three columns. Left column, heading 'Pod spec', boxes: 'requests.cpu: 500m', 'limits.cpu: 2', 'limits.memory: 4Gi'. Middle column, heading 'Node cgroup v2 file', boxes: 'cpu.weight', 'cpu.max: 200000 100000', 'memory.max'. Arrows from each pod spec box to its file box, labelled 'scheduling share', 'hard CPU ceiling', and 'hard memory limit'. Right column, heading 'Enforced as', boxes: 'Proportional share under contention', 'Throttled once the quota is spent', 'cgroup OOM kill when exceeded'. Arrows from each file to its effect. Bottom band, orange outline, heading 'QoS class sets oom_score_adj': three small chips 'Guaranteed: -997', 'Burstable: between', 'BestEffort: 1000'. Caption: 'BestEffort pods are the first to die under memory pressure.'",
+  "anchor": "## 9. Kubernetes and cgroups",
+  "alt": "Pod CPU requests become cpu.weight, CPU limits become cpu.max, and memory limits become memory.max, while the QoS class sets the OOM score.",
+  "cap": "A pod's CPU request becomes a weight, its CPU limit becomes a quota, its memory limit becomes memory.max, and the QoS class sets the OOM score."
+ }
+]

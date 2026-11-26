@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Bootstrapping a GPU platform: ordering</title>
+  <desc>Visual ordering flow for bootstrapping a GPU platform across six successive waves from foundation to applications.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Bootstrapping a GPU platform: ordering</text>
+
+  
+  <rect x="120" y="120" width="1360" height="124" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="190" cy="182" r="24" fill="#207448"/>
+  <text x="190" y="182" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">0</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+    <rect x="240" y="193" width="23" height="13" rx="2"/>
+    <rect x="267" y="193" width="23" height="13" rx="2"/>
+    <rect x="244" y="176" width="42" height="13" rx="2"/>
+    <rect x="251" y="159" width="28" height="13" rx="2"/>
+  </g>
+  
+  <text x="325" y="168" fill="#303a36" font-family="sans-serif">
+    <tspan x="325" font-size="30" font-weight="bold" fill="#207448">Wave 0: </tspan>
+    <tspan font-size="24">namespaces, PSA labels, priority classes, </tspan>
+    <tspan x="325" dy="40" font-size="24">CRDs for operators</tspan>
+  </text>
+
+  
+  <line x1="800" y1="244" x2="800" y2="282" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <polygon points="791,282 809,282 800,298" fill="#207448"/>
+
+  
+  <rect x="120" y="298" width="1360" height="124" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="190" cy="360" r="24" fill="#207448"/>
+  <text x="190" y="360" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="3.2" fill="none">
+    <ellipse cx="265" cy="344" rx="22" ry="7"/>
+    <path d="M 243,344 v 30 c 0,4 9.8,7 22,7 s 22,-3 22,-7 v -30"/>
+    <path d="M 243,359 c 0,4 9.8,7 22,7 s 22,-3 22,-7"/>
+  </g>
+  
+  <text x="325" y="346" fill="#303a36" font-family="sans-serif">
+    <tspan x="325" font-size="30" font-weight="bold" fill="#207448">Wave 1: </tspan>
+    <tspan font-size="24">cert-manager, CSI drivers, storage classes, </tspan>
+    <tspan x="325" dy="40" font-size="24">monitoring CRDs (Prometheus Operator)</tspan>
+  </text>
+
+  
+  <line x1="800" y1="422" x2="800" y2="460" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <polygon points="791,460 809,460 800,476" fill="#207448"/>
+
+  
+  <rect x="120" y="476" width="1360" height="124" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  
+  <circle cx="190" cy="538" r="24" fill="#db8129"/>
+  <text x="190" y="538" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#db8129" stroke-linecap="round" fill="none">
+    <rect x="245" y="518" width="40" height="40" rx="5" stroke-width="3.5"/>
+    <rect x="254" y="527" width="22" height="22" rx="2" stroke-width="2.5"/>
+    
+    <circle cx="261" cy="534" r="1.5" fill="#db8129"/>
+    <circle cx="269" cy="534" r="1.5" fill="#db8129"/>
+    <circle cx="261" cy="542" r="1.5" fill="#db8129"/>
+    <circle cx="269" cy="542" r="1.5" fill="#db8129"/>
+    
+    <line x1="251" y1="518" x2="251" y2="511" stroke-width="3"/>
+    <line x1="265" y1="518" x2="265" y2="511" stroke-width="3"/>
+    <line x1="279" y1="518" x2="279" y2="511" stroke-width="3"/>
+    <line x1="251" y1="558" x2="251" y2="565" stroke-width="3"/>
+    <line x1="265" y1="558" x2="265" y2="565" stroke-width="3"/>
+    <line x1="279" y1="558" x2="279" y2="565" stroke-width="3"/>
+    
+    <line x1="245" y1="524" x2="238" y2="524" stroke-width="3"/>
+    <line x1="245" y1="538" x2="238" y2="538" stroke-width="3"/>
+    <line x1="245" y1="552" x2="238" y2="552" stroke-width="3"/>
+    <line x1="285" y1="524" x2="292" y2="524" stroke-width="3"/>
+    <line x1="285" y1="538" x2="292" y2="538" stroke-width="3"/>
+    <line x1="285" y1="552" x2="292" y2="552" stroke-width="3"/>
+  </g>
+  
+  <text x="325" y="524" fill="#303a36" font-family="sans-serif">
+    <tspan x="325" font-size="30" font-weight="bold" fill="#db8129">Wave 2: </tspan>
+    <tspan font-size="24">NVIDIA GPU Operator (NFD, device plugin, DCGM), </tspan>
+    <tspan x="325" dy="40" font-size="24">Network Operator (Multus, RDMA plugin)</tspan>
+  </text>
+
+  
+  <line x1="800" y1="600" x2="800" y2="638" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <polygon points="791,638 809,638 800,654" fill="#207448"/>
+
+  
+  <rect x="120" y="654" width="1360" height="124" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="190" cy="716" r="24" fill="#207448"/>
+  <text x="190" y="716" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-linecap="round" fill="none">
+    <circle cx="265" cy="716" r="23" stroke-width="3.5"/>
+    <circle cx="265" cy="716" r="3" fill="#207448"/>
+    <line x1="265" y1="716" x2="265" y2="702" stroke-width="3.5"/>
+    <line x1="265" y1="716" x2="278" y2="723" stroke-width="3.5"/>
+    <line x1="265" y1="696" x2="265" y2="700" stroke-width="2.5"/>
+    <line x1="285" y1="716" x2="281" y2="716" stroke-width="2.5"/>
+    <line x1="265" y1="736" x2="265" y2="732" stroke-width="2.5"/>
+    <line x1="245" y1="716" x2="249" y2="716" stroke-width="2.5"/>
+  </g>
+  
+  <text x="325" y="702" fill="#303a36" font-family="sans-serif">
+    <tspan x="325" font-size="30" font-weight="bold" fill="#207448">Wave 3: </tspan>
+    <tspan font-size="24">schedulers &amp; batch: Kueue, JobSet, Volcano, </tspan>
+    <tspan x="325" dy="40" font-size="24">KubeRay, Training Operator</tspan>
+  </text>
+
+  
+  <line x1="800" y1="778" x2="800" y2="816" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <polygon points="791,816 809,816 800,832" fill="#207448"/>
+
+  
+  <rect x="120" y="832" width="1360" height="124" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="190" cy="894" r="24" fill="#207448"/>
+  <text x="190" y="894" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g stroke="#207448" stroke-linecap="round" fill="none">
+    <path d="M 252,890 v -9 a 13,13 0 0 1 26,0 v 9" stroke-width="3.5"/>
+    <rect x="246" y="890" width="38" height="28" rx="5" stroke-width="3.5"/>
+    <circle cx="265" cy="901" r="3" fill="#207448"/>
+    <polygon points="263.5,901 266.5,901 268,909 262,909" fill="#207448"/>
+  </g>
+  
+  <text x="325" y="880" fill="#303a36" font-family="sans-serif">
+    <tspan x="325" font-size="30" font-weight="bold" fill="#207448">Wave 4: </tspan>
+    <tspan font-size="24">policies (Kyverno/Gatekeeper), </tspan>
+    <tspan x="325" dy="40" font-size="24">tenancy (namespaces, quotas, LocalQueues)</tspan>
+  </text>
+
+  
+  <line x1="800" y1="956" x2="800" y2="994" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <polygon points="791,994 809,994 800,1010" fill="#207448"/>
+
+  
+  <rect x="120" y="1010" width="1360" height="124" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="190" cy="1072" r="24" fill="#207448"/>
+  <text x="190" y="1072" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g stroke="#207448" stroke-linecap="round" fill="none">
+    <rect x="241" y="1050" width="48" height="44" rx="5" stroke-width="3.2"/>
+    <line x1="241" y1="1062" x2="289" y2="1062" stroke-width="2.5"/>
+    <circle cx="249" cy="1056" r="2" fill="#207448"/>
+    <circle cx="255" cy="1056" r="2" fill="#207448"/>
+    <circle cx="261" cy="1056" r="2" fill="#207448"/>
+    <path d="M 249,1084 l 9,-10 l 7,5 l 10,-11 l 6,6" stroke-width="2.5" stroke-linejoin="round"/>
+    <line x1="249" y1="1068" x2="273" y2="1068" stroke-width="2"/>
+  </g>
+  
+  <text x="325" y="1058" fill="#303a36" font-family="sans-serif">
+    <tspan x="325" font-size="30" font-weight="bold" fill="#207448">Wave 5: </tspan>
+    <tspan font-size="24">apps: inference gateways, pipelines, </tspan>
+    <tspan x="325" dy="40" font-size="24">dashboards</tspan>
+  </text>
+</svg>

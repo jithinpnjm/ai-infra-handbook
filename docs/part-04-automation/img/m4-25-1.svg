@@ -1,0 +1,75 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Where Terraform fits in the Kubernetes lifecycle</title>
+  <desc>Where Terraform fits in the Kubernetes lifecycle</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where Terraform fits in the Kubernetes lifecycle</text>
+
+  
+  <line x1="800" y1="270" x2="800" y2="325" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <line x1="800" y1="475" x2="800" y2="530" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <line x1="800" y1="705" x2="800" y2="760" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <line x1="800" y1="910" x2="800" y2="965" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="80" y="120" width="1440" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 128 214 a 12 12 0 0 1 2 -17 a 15 15 0 0 1 22 -6 a 18 18 0 0 1 26 8 a 13 13 0 0 1 7 15 a 11 11 0 0 1 -11 10 l -40 0 a 10 10 0 0 1 -6 -10 z" />
+  </g>
+  <text x="210" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Layer 1: cloud foundation</text>
+  <text x="210" y="225" font-family="sans-serif" font-size="24" fill="#303a36">network, IAM, KMS, buckets (Terraform)</text>
+
+  
+  <rect x="80" y="325" width="1440" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="122" y="375" width="44" height="12" rx="3" />
+    <rect x="122" y="394" width="44" height="12" rx="3" />
+    <rect x="122" y="413" width="44" height="12" rx="3" />
+    <circle cx="131" cy="381" r="1.5" fill="#207448" stroke="none" />
+    <circle cx="131" cy="400" r="1.5" fill="#207448" stroke="none" />
+    <circle cx="131" cy="419" r="1.5" fill="#207448" stroke="none" />
+  </g>
+  <text x="210" y="380" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Layer 2: cluster</text>
+  <text x="210" y="430" font-family="sans-serif" font-size="24" fill="#303a36">GKE/EKS/AKS or kubeadm VMs; node pools (Terraform)</text>
+
+  
+  <rect x="80" y="530" width="1440" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="144" cy="617" r="12" />
+    <circle cx="144" cy="617" r="5" />
+    <path d="M 144 599 L 144 605 M 144 629 L 144 635 M 126 617 L 132 617 M 156 617 L 162 617 M 131 604 L 135 608 M 153 626 L 157 630 M 131 630 L 135 626 M 153 608 L 157 604" />
+  </g>
+  <text x="210" y="580" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Layer 3: cluster platform</text>
+  <text x="210" y="625" font-family="sans-serif" font-size="24" fill="#303a36">GPU Operator, cert-manager, CSI, ingress, monitoring, Argo CD</text>
+  <text x="210" y="668" font-family="sans-serif" font-size="24" fill="#303a36">(Terraform helm_release or bootstrap)</text>
+
+  
+  <rect x="80" y="760" width="1440" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 144 809 L 166 818 C 166 838 156 852 144 858 C 132 852 122 838 122 818 Z" />
+    <path d="M 137 834 L 142 839 L 152 827" />
+  </g>
+  <text x="210" y="815" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Layer 4: tenancy &amp; policy</text>
+  <text x="210" y="865" font-family="sans-serif" font-size="24" fill="#303a36">namespaces, quotas, RBAC, network policies, Kueue queues (Terraform or GitOps)</text>
+
+  
+  <rect x="80" y="965" width="1440" height="150" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+  <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="122" y="1015" width="44" height="38" rx="4" />
+    <line x1="122" y1="1027" x2="166" y2="1027" />
+    <circle cx="129" cy="1021" r="1.5" fill="#db8129" stroke="none" />
+    <circle cx="135" cy="1021" r="1.5" fill="#db8129" stroke="none" />
+    <path d="M 130 1035 L 135 1040 L 130 1045 M 139 1045 L 148 1045" />
+  </g>
+  <text x="210" y="1020" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Layer 5: workloads</text>
+  <text x="210" y="1070" font-family="sans-serif" font-size="24" fill="#303a36">training jobs, inference services, pipelines (GitOps/Helm/CI, NOT Terraform)</text>
+</svg>

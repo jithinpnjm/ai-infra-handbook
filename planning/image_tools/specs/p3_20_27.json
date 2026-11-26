@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "p3-2027-declare-handover",
+  "title": "When to declare an incident and how to hand it over",
+  "spec": "Left box 'Declare when any one of three signs is true (Google SRE book): a second team is needed; the outage is visible to customers; the problem is unsolved after an hour of focused analysis. Declaring costs very little, declaring late can cost the whole night'. Right numbered handover: '1 the outgoing commander fully briefs the successor'; '2 says: You're now the incident commander, okay?'; '3 stays on the call until the successor firmly acknowledges'; '4 tells everyone else who is in charge'. Failure note 'a short-sentence handover from an exhausted commander leaves the successor not knowing what has been tried, and the next hour is wasted'. Bottom 'what the successor checks on taking over: the current mitigation, the open hypotheses, and who holds each role; if unclear ask for those three facts again before touching anything'. Interview line 'name the roles you filled; if you did everything yourself say so and say what you would delegate first, usually communications, which frees the commander to keep thinking'. Text at least 24px.",
+  "anchor": "### 2. Incident roles: one person decides, one person changes things, one person talks",
+  "alt": "Three signs for declaring an incident beside a four-step handover with an explicit acknowledgement.",
+  "cap": "The outgoing commander stays on the call until the successor firmly acknowledges."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "p3-2027-severity-table",
+  "title": "Severity levels defined by customer impact and a response",
+  "spec": "Table (an example to adapt, not a standard; Nebius has not published its levels). Columns Level, Customer impact, Example for a token API, First response, Update cadence. 'SEV1 | most users cannot use the service | gateway returns errors for most chat requests | 5 minutes, page the commander | every 15 minutes'. 'SEV2 | a real share of users see a worse service | one replica group slow, 25 percent of requests affected | 15 minutes | every 30 minutes'. 'SEV3 | few users affected or a workaround exists | one tenant on a rarely used model sees errors | within working hours | daily'. 'Ticket | no user effect yet | certificate expires in 20 days | next planning round | none'. Notes 'workbook on-call table: revenue-impacting outage response in 5 minutes, stuck batch system 30 minutes, failing pre-launch backup only a ticket; the response time comes from the impact, not from how alarming the failure looks'; 'a level is a setting, not a verdict: raise it when impact grows, lower it when damage is contained, write each change and its reason in the incident record'; 'declare a level within the first two minutes and say why; raising early is cheap'. Text at least 24px.",
+  "anchor": "### 3. Severity definitions: tie them to customer impact and to a response",
+  "alt": "A table of SEV1 to ticket levels with customer impact, a token API example, first response time and update cadence.",
+  "cap": "Pick the level from impact, then attach a response time and an update cadence."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "p3-2027-postmortem-anatomy",
+  "title": "Anatomy of a blameless post-mortem",
+  "spec": "Left triggers decided before the incident 'user-visible downtime beyond a threshold; any data loss; an on-call intervention such as a rollback or traffic reroute; a long resolution time; a monitoring failure'. Center the section stack: 'Metadata: one owner, status, incident date, severity'; 'Summary: impact and cause in two or three sentences'; 'Impact: numbers, share of traffic, minutes, errors, budget used'; 'Detection: how you found out and how long it took'; 'Timeline: timestamped events with detect, mitigate, resolve times'; 'Root cause and trigger: the system flaw, and the event that set it off'; 'What went well, what went poorly, where we got lucky: three short lists, luck named honestly'; 'Action items: table with action, type, owner, due date, measure'. Right rules 'blame discourages escalation and can lead to incidents being hidden; identify contributing causes without blaming any individual'; 'quantify impact even if estimated, with the method beside it'; 'publish while details are fresh, ideally within about a week'; 'leaders model blameless language and steer back to system improvements'. Text at least 24px.",
+  "anchor": "### 4. A blameless post-mortem has a fixed structure and measured impact",
+  "alt": "A stack of the eight post-mortem sections between pre-agreed triggers and the blameless writing rules.",
+  "cap": "A fixed structure with measured impact keeps the write-up about the system, not the person."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "p3-2027-weak-to-strong-postmortem",
+  "title": "Repairing a weak post-mortem",
+  "spec": "Two columns, weak draft against repaired. Row Summary: weak 'Human error during a config push broke the endpoint' (the person is the story); repaired 'A config change reduced the cache budget and the rollout tool promoted it'. Row Impact: weak 'missing'; repaired 'add the impact numbers'. Row Actions: weak 'Improve monitoring (owned by everyone)' and 'Be more careful with config pushes' (nothing checkable); repaired 'add a canary latency gate (prevent)'; 'add a per-group alert with a 2 minute window (detect)'; 'add a gateway weight step to the runbook (mitigate)', each with one owner, a due date and a measure such as 'replay of the failing change is blocked in staging'. Process strip 'run the linter first so the problems come from a rule not your mood: it reports fifteen findings on the bad fixture, from missing sections to blame language; take them in order of value; the good fixture reports zero findings'. Footer 'a good post-mortem reads as a plan: what changed, who will check it, how they will know it worked'. Text at least 24px.",
+  "anchor": "### Scenario 1: repair a weak post-mortem",
+  "alt": "A before and after comparison of a weak post-mortem summary and actions against checkable prevent, detect and mitigate actions.",
+  "cap": "Remove the person from the summary and give every action an owner, a date and a measure."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "p3-2027-runbook-rules",
+  "title": "Seven rules for a runbook written for a half-asleep reader",
+  "spec": "Setting 'the page arrives at 03:10; the engineer is tired, does not know the service well and has the runbook in one tab'. Table of rule and example. 'Open with the user impact, then the first safe action: Users see slow replies. First step: set the group weight to 0'. 'One action per numbered step: Run this command. You should see this'. 'Say what the result should look like: Expected: weight 0 in the output'. 'State the undo before the risky step: To undo, set the weight back to 25'. 'Give a stop point and a name to call: If errors continue after step 4, page the platform on-call'. 'No background theory in the steps: put theory under a link at the bottom'. 'Date and owner on the first line: Reviewed 2026-03-28 by Mei Tanaka'. Footer 'test it by giving it to an engineer who has not used it and watch where they pause; Wheel of Misfortune: new engineers act out a past incident from its post-mortem (example target: runbook drill in under 10 minutes); every step is a claim that it works today, so review after every service change; automate deterministic steps'. Text at least 24px.",
+  "anchor": "### 7. A runbook is for the engineer who is half asleep",
+  "alt": "Seven runbook writing rules with an example for each, aimed at a tired engineer at 03:10.",
+  "cap": "An old runbook that looks confident is more dangerous than a missing one."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "p3-2027-oncall-health",
+  "title": "On-call health as a measured service",
+  "spec": "Left Google SRE book figures (Google's numbers for Google's teams, a reference point, not Nebius's): 'on-call takes no more than 25 percent of an SRE's time, at least 50 percent for engineering'; 'maximum two incidents per 12-hour shift because one incident including root cause and follow-up averages about 6 hours'; 'single-site rotation needs 8 engineers, or 6 per site with two sites'; 'limit shifts to 12 hours, a 12-hour overnight shift beats 24 hours or more'. Right measures table: 'Incidents per shift | count problems not alerts | warning: more than 2 on average'; 'Alerts per incident | pages divided by incidents | far above 1'; 'Night pages | between local midnight and 06:00 | rising over 21 days'; 'Actionable rate | pages that needed a human action | lower than most pages'; 'Toil share | hours on repetitive work | above 50 percent'. Load rules 'align paging alerts with symptoms that threaten SLOs; make every paging alert actionable; group related alerts; tune toward one alert per incident; review the alert list monthly and remove pages nobody acted on'. Footer 'first thing on a new team: measure pages per shift for four weeks before changing anything'. Text at least 24px.",
+  "anchor": "### 8. On-call health is measured, not felt",
+  "alt": "Google on-call load figures beside a table of five on-call health measures with warning signs.",
+  "cap": "Measure pages per shift for four weeks before changing anything."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "p3-2027-budget-negotiation",
+  "title": "Negotiating a Friday release with the budget in minutes",
+  "spec": "Worked arithmetic. '99.9 percent SLO over 30 days: 0.1 percent of 43,200 minutes = 43.2 minutes of budget'. 'A fictional 40-minute incident uses 40 / 43.2 = 92.6 percent'. 'Remaining budget is 3.2 minutes'. Two option boxes offered to the product engineer: 'spend the remaining 3.2 minutes of risk on the Friday release' or 'hold it until the budget recovers'. Cheap reliability to offer 'canary gates, feature flags and rollbacks; ask what latency or error figure users notice and set the SLO from that'. Policy panel from the workbook example 'if the service exceeds its budget over the preceding four weeks, changes and releases stop except P0 issues and security fixes until it is back within its SLO; the team must work on reliability if a code bug or process error caused the overrun; it may continue feature work if a company-wide network problem caused it; disputes go to a named escalation path; SRE needs authority to stop launches'. Rule 'say the number first, offer a choice, let the policy make the decision; if the budget is exhausted so often that launches stall, loosen the SLO; if a VP overrides, record the risk and escalate through the agreed policy, not around it'. Text at least 24px.",
+  "anchor": "### 9. Error budgets turn a reliability argument into arithmetic",
+  "alt": "Budget arithmetic of 43.2 minutes with 92.6 percent spent, two options for the release and the budget policy rules.",
+  "cap": "A number said first turns the argument from who is right into what the options cost."
+ }
+]

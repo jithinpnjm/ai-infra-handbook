@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>A default list is created once and shared by every call</title>
+  <desc>Visual infographic comparing Python functions with mutable versus immutable default arguments, illustrating shared list references and the list multiplication sibling trap.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A default list is created once and shared by every call</text>
+
+  
+  <rect x="40" y="120" width="720" height="730" rx="16" fill="#fdfefe" stroke="#d32f2f" stroke-width="3"/>
+
+  
+  <g transform="translate(65, 142)">
+    <rect x="0" y="0" width="46" height="36" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="12" x2="46" y2="12" stroke="#207448" stroke-width="3"/>
+    <circle cx="10" cy="6" r="2.5" fill="#207448"/>
+    <circle cx="18" cy="6" r="2.5" fill="#207448"/>
+    <path d="M 10 22 L 16 26 L 10 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="125" y="170" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">def append_bad(x, bucket=[])</text>
+
+  
+  <rect x="65" y="215" width="670" height="95" rx="12" fill="#f5f8f5" stroke="#a2b5ab" stroke-width="2"/>
+  <circle cx="110" cy="262" r="24" fill="#207448"/>
+  <text x="110" y="262" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  <g transform="translate(150, 246)">
+    <path d="M 0 6 L 14 16 L 0 26 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="18" y1="26" x2="32" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="205" y="271" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">append_bad(1)</text>
+
+  
+  <rect x="65" y="355" width="670" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(90, 372)">
+    <circle cx="18" cy="18" r="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="18" cy="18" r="14" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="6,5"/>
+  </g>
+  <text x="140" y="398" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">function object</text>
+
+  
+  <rect x="85" y="420" width="630" height="210" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+  <text x="400" y="455" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">default list, created once</text>
+  <text x="400" y="485" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">when the function is defined</text>
+  <text x="400" y="535" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">[1, 2]</text>
+  <text x="400" y="580" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">the same list object is</text>
+  <text x="400" y="608" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">returned both times</text>
+
+  
+  <rect x="65" y="695" width="670" height="95" rx="12" fill="#f5f8f5" stroke="#a2b5ab" stroke-width="2"/>
+  <circle cx="110" cy="742" r="24" fill="#207448"/>
+  <text x="110" y="742" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  <g transform="translate(150, 726)">
+    <path d="M 0 6 L 14 16 L 0 26 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="18" y1="26" x2="32" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="205" y="751" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">append_bad(2)</text>
+
+  
+  <line x1="590" y1="310" x2="590" y2="416" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="590" y1="695" x2="590" y2="634" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="840" y="120" width="720" height="730" rx="16" fill="#fdfefe" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(865, 142)">
+    <rect x="0" y="0" width="46" height="36" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="12" x2="46" y2="12" stroke="#207448" stroke-width="3"/>
+    <path d="M 12 24 L 20 30 L 34 16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="925" y="170" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">def append_good(x, bucket=None)</text>
+
+  
+  <rect x="865" y="215" width="670" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="910" cy="262" r="24" fill="#207448"/>
+  <text x="910" y="262" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  <g transform="translate(950, 246)">
+    <path d="M 0 6 L 14 16 L 0 26 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="18" y1="26" x2="32" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1005" y="271" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">append_good(1)</text>
+
+  
+  <rect x="910" y="315" width="580" height="140" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(950, 362)">
+    <path d="M 10 0 L 0 0 L 0 46 L 10 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 36 0 L 46 0 L 46 46 L 36 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <rect x="12" y="10" width="10" height="26" rx="2" fill="#207448"/>
+    <rect x="25" y="10" width="10" height="26" rx="2" fill="#207448"/>
+  </g>
+  <text x="1220" y="395" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">[1]</text>
+
+  
+  <rect x="865" y="525" width="670" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="910" cy="572" r="24" fill="#207448"/>
+  <text x="910" y="572" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  <g transform="translate(950, 556)">
+    <path d="M 0 6 L 14 16 L 0 26 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="18" y1="26" x2="32" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1005" y="581" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">append_good(2)</text>
+
+  
+  <rect x="910" y="625" width="580" height="140" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(950, 672)">
+    <path d="M 10 0 L 0 0 L 0 46 L 10 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 36 0 L 46 0 L 46 46 L 36 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <rect x="12" y="10" width="10" height="26" rx="2" fill="#207448"/>
+    <rect x="25" y="10" width="10" height="26" rx="2" fill="#207448"/>
+  </g>
+  <text x="1220" y="705" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">[2]</text>
+
+  
+  <rect x="40" y="890" width="1520" height="90" rx="12" fill="#e8f1ea" stroke="#a2b5ab" stroke-width="2"/>
+  <g transform="translate(70, 911)">
+    <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="24" y1="0" x2="24" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="24" x2="48" y2="24" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="145" y="943" font-family="monospace" font-size="24" fill="#303a36" dominant-baseline="central">grid = [[0] * 2] * 2 holds the same row twice, setting one cell gives [[1, 0], [1, 0]]</text>
+
+  
+  <rect x="40" y="1020" width="1520" height="80" rx="12" fill="#207448"/>
+  <g transform="translate(72, 1036)">
+    <path d="M 12 0 A 12 12 0 0 0 4 20 L 4 26 L 20 26 L 20 20 A 12 12 0 0 0 12 0 Z" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="6" y1="31" x2="18" y2="31" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="8" y1="36" x2="16" y2="36" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="125" y="1068" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" dominant-baseline="central">The default is evaluated once at definition time, so a mutable default is shared between calls.</text>
+</svg>

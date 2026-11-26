@@ -1,0 +1,230 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The Drainer test run step by step with a fake clock and no sleeping</title>
+  <desc>Visual explanation of testing time-dependent drain logic instantly using fake clock and no-op sleep collaborators.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="106%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1b3022" flood-opacity="0.07" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="50" y="62" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">The Drainer test run step by step with a fake clock and no sleeping</text>
+
+  
+  <g transform="translate(40, 90)">
+    
+    <rect width="1520" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+
+    
+    <g transform="translate(25, 27)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14" />
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" />
+    </g>
+
+    
+    
+    <rect x="105" y="20" width="370" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="125" y="63" font-family="monospace" font-size="24" fill="#303a36">FakeKube([[a, b], [b], []])</text>
+
+    
+    <rect x="495" y="20" width="670" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="515" y="63" font-family="monospace" font-size="24" fill="#303a36">clock=lambda: next(t) with t = iter(range(0, 1000, 5))</text>
+
+    
+    <rect x="1185" y="20" width="310" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1210" y="63" font-family="monospace" font-size="24" fill="#303a36">sleep=lambda s: None</text>
+  </g>
+
+  
+  <path d="M 520 200 L 520 226" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  
+  <g transform="translate(40, 230)">
+    <rect width="960" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="48" cy="42" r="24" fill="#207448" />
+    <text x="48" y="51" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g transform="translate(90, 14)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="12" y="24" width="32" height="26" rx="4" />
+      <path d="M 20 24 L 20 14 C 20 8, 36 8, 36 14 L 36 24" />
+    </g>
+    
+    <text x="170" y="52" font-family="monospace" font-size="25" fill="#303a36">cordon(n1): cordoned = [n1]</text>
+  </g>
+
+  
+  <path d="M 520 315 L 520 338" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(40, 342)">
+    <rect width="960" height="98" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="48" cy="49" r="24" fill="#207448" />
+    <text x="48" y="58" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g transform="translate(90, 21)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="28" cy="28" r="22" />
+      <path d="M 28 14 L 28 28 L 38 28" />
+    </g>
+    
+    <text x="170" y="44" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="170" dy="0">deadline = clock() + 600:</tspan>
+      <tspan x="170" dy="34">clock returns 0, so deadline is 600</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 520 440 L 520 463" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(40, 467)">
+    <rect width="960" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="48" cy="60" r="24" fill="#207448" />
+    <text x="48" y="69" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g transform="translate(90, 32)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 12 18 C 16 8, 38 8, 42 18 C 44 26, 36 34, 28 42 L 14 42 L 44 42" />
+    </g>
+    
+    <text x="170" y="42" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="170" dy="0">pass 1: pods_on(n1) returns [a, b];</tspan>
+      <tspan x="170" dy="34">clock() returns 5 which is not past 600;</tspan>
+      <tspan x="170" dy="34">sleep does nothing</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 520 587 L 520 610" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(40, 614)">
+    <rect width="960" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="48" cy="42" r="24" fill="#207448" />
+    <text x="48" y="51" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(90, 14)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 14 36 A 18 18 0 1 1 42 36" />
+      <path d="M 42 24 L 42 36 L 30 36" />
+    </g>
+    
+    <text x="170" y="52" font-family="monospace" font-size="24" fill="#303a36">pass 2: pods_on returns [b]; clock returns 10</text>
+  </g>
+
+  
+  <path d="M 520 699 L 520 722" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(40, 726)">
+    <rect width="960" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+    
+    <circle cx="48" cy="42" r="24" fill="#207448" />
+    <text x="48" y="51" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <g transform="translate(90, 14)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="28" cy="28" r="20" />
+      <path d="M 18 28 L 25 35 L 38 20" />
+    </g>
+    
+    <text x="170" y="52" font-family="monospace" font-size="24" fill="#303a36">pass 3: pods_on returns []: loop ends</text>
+  </g>
+
+  
+  <path d="M 520 811 L 520 834" stroke="#db8129" stroke-width="3.5" fill="none" marker-end="url(#arrow-orange)" />
+
+  
+  <g transform="translate(40, 838)">
+    <rect width="960" height="88" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" filter="url(#shadow)" />
+    
+    <g transform="translate(35, 16)" stroke="#db8129" stroke-width="3.5" fill="none">
+      <circle cx="28" cy="28" r="22" />
+      <path d="M 18 28 L 25 35 L 38 20" />
+    </g>
+    
+    <text x="110" y="53" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">drain returns; the test runs instantly, no real sleeping</text>
+  </g>
+
+  
+  <g transform="translate(1040, 230)">
+    
+    <rect width="520" height="696" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)" />
+
+    
+    <g transform="translate(30, 30)">
+      
+      <g stroke="#207448" stroke-width="3.5" fill="none">
+        <path d="M 28 6 L 50 46 L 6 46 Z" />
+        <path d="M 28 22 L 28 32 M 28 38 L 28 40" stroke-linecap="round" />
+      </g>
+      <text x="70" y="38" font-family="sans-serif" font-size="34" font-weight="bold" fill="#303a36">Timeout path</text>
+    </g>
+
+    
+    
+    <g transform="translate(25, 115)">
+      <rect width="470" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <text x="24" y="55" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">if self.clock() &gt; deadline:</tspan>
+        <tspan x="24" dy="44">    raise TimeoutError(node)</tspan>
+      </text>
+    </g>
+
+    
+    <path d="M 260 275 L 260 325" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+    
+    <g transform="translate(25, 335)">
+      <rect width="470" height="325" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      
+      <g transform="translate(205, 35)" stroke="#207448" stroke-width="3" fill="none">
+        <circle cx="30" cy="30" r="26" />
+        <path d="M 30 14 L 30 30 L 46 22" />
+        <path d="M 12 8 L 22 2 M 48 8 L 56 2" />
+      </g>
+      <text x="30" y="145" font-family="sans-serif" font-size="25" fill="#303a36">
+        <tspan x="30" dy="0">a fake clock that jumps past</tspan>
+        <tspan x="30" dy="42">the deadline covers the</tspan>
+        <tspan x="30" dy="42">600-second timeout loop</tspan>
+        <tspan x="30" dy="42">in about a millisecond</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <path d="M 1000 391 L 1040 391" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(40, 955)">
+    <rect width="1520" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" filter="url(#shadow)" />
+    
+    <g transform="translate(28, 27)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="28" cy="28" r="22" />
+      <path d="M 28 24 L 28 38 M 28 16 L 28 18" stroke-linecap="round" />
+    </g>
+    
+    <text x="100" y="47" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="100" dy="0">Drainer(kube, clock=time.monotonic, sleep=time.sleep) takes its collaborators from the caller;</tspan>
+      <tspan x="100" dy="36">FakeKube.pods_on returns seq.pop(0) if seq else []</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 1088)">
+    <rect width="1520" height="74" rx="10" fill="#207448" />
+    <text x="760" y="47" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Injecting the clock and sleep makes time-dependent logic testable without waiting</text>
+  </g>
+</svg>

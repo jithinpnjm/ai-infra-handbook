@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>On-call health as a measured service</title>
+  <desc>Infographic illustrating on-call health metrics, Google SRE baseline figures, operational load rules, and team measurement practices.</desc>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">On-call health as a measured service</text>
+
+  
+  <rect x="40" y="100" width="740" height="625" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <path d="M68 126 h14 c7 0 11 4 11 9 v30 c0-5-4-9-11-9 h-14 z M108 126 h-14 c-7 0-11 4-11 9 v30 c0-5 4-9 11-9 h14 z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+
+  
+  <text x="130" y="138" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Google SRE book figures</text>
+  <text x="130" y="168" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="130" dy="0">(Google's numbers for Google's teams,</tspan>
+    <tspan x="130" dy="28">a reference point, not Nebius's)</tspan>
+  </text>
+
+  
+  <rect x="60" y="215" width="700" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="98" cy="270" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+  <polyline points="98 259 98 270 107 270" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <text x="135" y="248" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">on-call takes no more than 25 percent</tspan>
+    <tspan x="135" dy="30">of an SRE's time, at least 50 percent</tspan>
+    <tspan x="135" dy="30">for engineering</tspan>
+  </text>
+
+  
+  <rect x="60" y="343" width="700" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <path d="M83 383 l15-6 15 6 v14 c0 10-15 18-15 18 s-15-8-15-18 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <text x="135" y="376" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">maximum two incidents per 12-hour shift</tspan>
+    <tspan x="135" dy="30">because one incident including root cause</tspan>
+    <tspan x="135" dy="30">and follow-up averages about 6 hours</tspan>
+  </text>
+
+  
+  <rect x="60" y="471" width="700" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="93" cy="517" r="7" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M83 538 c0-6 4-9 10-9 s10 3 10 9" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="106" cy="520" r="5.5" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M102 538 c1-4 4-6 7-6 s6 2 6 6" fill="none" stroke="#207448" stroke-width="2.5" />
+  <text x="135" y="520" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">single-site rotation needs 8 engineers,</tspan>
+    <tspan x="135" dy="32">or 6 per site with two sites</tspan>
+  </text>
+
+  
+  <rect x="60" y="599" width="700" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <path d="M107 642 a14 14 0 1 1-14 14 c0-1 0-2 0.3-3 a11 11 0 0 0 11-11 c0-0.1 0-0.2 0-0.3 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <text x="135" y="648" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">limit shifts to 12 hours, a 12-hour</tspan>
+    <tspan x="135" dy="32">overnight shift beats 24 hours or more</tspan>
+  </text>
+
+  
+  <rect x="820" y="100" width="740" height="625" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="848" y="123" width="38" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <line x1="848" y1="135" x2="886" y2="135" stroke="#207448" stroke-width="3.5" />
+  <line x1="867" y1="135" x2="867" y2="157" stroke="#207448" stroke-width="3" />
+
+  
+  <text x="905" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Measures table</text>
+
+  
+  <rect x="840" y="180" width="700" height="94" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="872" cy="227" r="15" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="872" y1="219" x2="872" y2="228" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <circle cx="872" cy="234" r="1.5" fill="#207448" />
+  <text x="905" y="218" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="905" dy="0" font-weight="bold" fill="#207448">Incidents per shift</tspan>
+    <tspan> | count problems not alerts | </tspan>
+    <tspan x="905" dy="32" font-weight="bold" fill="#db8129">warning: more than 2 on average</tspan>
+  </text>
+
+  
+  <rect x="840" y="289" width="700" height="94" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <path d="M865 344 h14 l2 3 h-18 z M872 324 a6 6 0 0 1 6 6 c0 6 3 9 3 9 h-18 s3-3 3-9 a6 6 0 0 1 6-6 z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+  <text x="905" y="327" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="905" dy="0" font-weight="bold" fill="#207448">Alerts per incident</tspan>
+    <tspan> | pages divided by incidents | </tspan>
+    <tspan x="905" dy="32">far above 1</tspan>
+  </text>
+
+  
+  <rect x="840" y="398" width="700" height="94" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <path d="M879 436 a12 12 0 1 1-12 12 c0-0.8 0.1-1.6 0.3-2.4 a9.5 9.5 0 0 0 9.3-9.3 c0-0.1 0-0.2 0-0.3 z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+  <text x="905" y="436" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="905" dy="0" font-weight="bold" fill="#207448">Night pages</tspan>
+    <tspan> | between local midnight and 06:00 | </tspan>
+    <tspan x="905" dy="32">rising over 21 days</tspan>
+  </text>
+
+  
+  <rect x="840" y="507" width="700" height="94" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="872" cy="554" r="14" fill="none" stroke="#207448" stroke-width="3" />
+  <polyline points="865 554 870 559 879 548" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="905" y="545" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="905" dy="0" font-weight="bold" fill="#207448">Actionable rate</tspan>
+    <tspan> | pages that needed a human action | </tspan>
+    <tspan x="905" dy="32">lower than most pages</tspan>
+  </text>
+
+  
+  <rect x="840" y="616" width="700" height="94" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="872" cy="663" r="6" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M870 651 h4 v3 h-4 z M870 672 h4 v3 h-4 z M860 661 h3 v4 h-3 z M881 661 h3 v4 h-3 z" fill="#207448" />
+  <text x="905" y="654" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="905" dy="0" font-weight="bold" fill="#207448">Toil share</tspan>
+    <tspan> | hours on repetitive work | </tspan>
+    <tspan x="905" dy="32">above 50 percent</tspan>
+  </text>
+
+  
+  <rect x="40" y="745" width="1520" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <line x1="66" y1="768" x2="102" y2="768" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="76" cy="768" r="4.5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+  <line x1="66" y1="782" x2="102" y2="782" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="92" cy="782" r="4.5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+  <line x1="66" y1="796" x2="102" y2="796" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="82" cy="796" r="4.5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+
+  
+  <text x="125" y="788" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Load rules</text>
+
+  
+  <rect x="60" y="818" width="1480" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+  <text x="85" y="854" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">align paging alerts with symptoms that threaten SLOs;</tspan>
+    <tspan x="85" dy="33">make every paging alert actionable;</tspan>
+    <tspan x="85" dy="33">group related alerts;</tspan>
+    <tspan x="85" dy="33">tune toward one alert per incident;</tspan>
+    <tspan x="85" dy="33">review the alert list monthly and remove pages nobody acted on</tspan>
+  </text>
+
+  
+  <rect x="40" y="1045" width="1520" height="75" rx="8" fill="#207448" />
+  <text x="800" y="1092" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">first thing on a new team: measure pages per shift for four weeks before changing anything</text>
+</svg>

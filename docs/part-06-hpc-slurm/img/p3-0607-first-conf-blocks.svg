@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A first slurm.conf read in blocks</title>
+  <desc>slurm.conf grouped by the question each block answers, with values from the chapter.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A first slurm.conf read in blocks</text>
+  <text x="40" y="98" font-family="sans-serif" font-size="24" fill="#303a36">slurm.conf grouped by the question each block answers, with values from the chapter.</text>
+
+  
+
+  
+  <g transform="translate(40, 125)">
+    <rect width="740" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="40" height="14" rx="2"/>
+      <line x1="10" y1="13" x2="14" y2="13"/>
+      <circle cx="38" cy="13" r="1.5" fill="#207448"/>
+      <rect x="4" y="26" width="40" height="14" rx="2"/>
+      <line x1="10" y1="33" x2="14" y2="33"/>
+      <circle cx="38" cy="33" r="1.5" fill="#207448"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Identity of the cluster</text>
+    <text x="24" y="96" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">ClusterName=mycluster, SlurmctldHost=ctl1,</tspan>
+      <tspan x="24" dy="32">SlurmUser=slurm, ports 6817 and 6818,</tspan>
+      <tspan x="24" dy="32">StateSaveLocation=/var/spool/slurmctld,</tspan>
+      <tspan x="24" dy="32">SlurmdSpoolDir=/var/spool/slurmd</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 365)">
+    <rect width="740" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="20" width="32" height="24" rx="3"/>
+      <path d="M16 20 V12 A8 8 0 0 1 32 12 V20"/>
+      <circle cx="24" cy="31" r="2" fill="#207448"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Authentication</text>
+    <text x="24" y="96" font-family="monospace" font-size="24" fill="#303a36">AuthType=auth/munge, CredType=cred/munge</text>
+  </g>
+
+  
+  <g transform="translate(40, 505)">
+    <rect width="740" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="6" y1="12" x2="42" y2="12"/>
+      <circle cx="18" cy="12" r="4" fill="#e8f1ea"/>
+      <line x1="6" y1="24" x2="42" y2="24"/>
+      <circle cx="32" cy="24" r="4" fill="#e8f1ea"/>
+      <line x1="6" y1="36" x2="42" y2="36"/>
+      <circle cx="14" cy="36" r="4" fill="#e8f1ea"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Scheduling and selection</text>
+    <text x="24" y="94" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">SchedulerType=sched/backfill,</tspan>
+      <tspan x="24" dy="30">SelectType=select/cons_tres,</tspan>
+      <tspan x="24" dy="30">SelectTypeParameters=CR_Core_Memory,</tspan>
+      <tspan x="24" dy="30">GresTypes=gpu,</tspan>
+      <tspan x="24" dy="30">PriorityType=priority/multifactor</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 770)">
+    <rect width="740" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="24" height="24" rx="2"/>
+      <line x1="18" y1="4" x2="18" y2="12"/>
+      <line x1="30" y1="4" x2="30" y2="12"/>
+      <line x1="18" y1="36" x2="18" y2="44"/>
+      <line x1="30" y1="36" x2="30" y2="44"/>
+      <line x1="4" y1="18" x2="12" y2="18"/>
+      <line x1="4" y1="30" x2="12" y2="30"/>
+      <line x1="36" y1="18" x2="44" y2="18"/>
+      <line x1="36" y1="30" x2="44" y2="30"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Nodes and partitions</text>
+    <text x="24" y="94" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">NodeName=gpu[01-04] CPUs=64 Sockets=2</tspan>
+      <tspan x="24" dy="30">CoresPerSocket=16 ThreadsPerCore=2</tspan>
+      <tspan x="24" dy="30">RealMemory=500000 Gres=gpu:8;</tspan>
+      <tspan x="24" dy="30">PartitionName=gpu Default=YES</tspan>
+      <tspan x="24" dy="30">MaxTime=2-00:00:00</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 1035)">
+    <rect width="740" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18"/>
+      <line x1="12" y1="12" x2="36" y2="36"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Removed or deprecated</text>
+    <text x="24" y="94" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">FastSchedule removed; ControlMachine and</tspan>
+      <tspan x="24" dy="30">ControlAddr deprecated for SlurmctldHost</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g transform="translate(820, 125)">
+    <rect width="740" height="245" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(24, 18)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 6 L40 12 V24 C40 34 24 42 24 42 C24 42 8 34 8 24 V12 Z"/>
+      <line x1="24" y1="17" x2="24" y2="25"/>
+      <circle cx="24" cy="31" r="1.5" fill="#db8129"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Cleanup foundation</text>
+    <text x="24" y="94" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">ProctrackType=proctrack/cgroup,</tspan>
+      <tspan x="24" dy="30">TaskPlugin=task/affinity,task/cgroup,</tspan>
+      <tspan x="24" dy="30">JobAcctGatherType=jobacct_gather/cgroup</tspan>
+    </text>
+    <text x="24" y="196" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">(without them a killed job can leave a</tspan>
+      <tspan x="24" dy="30">Python process holding GPU memory)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(820, 390)">
+    <rect width="740" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18"/>
+      <polyline points="24,12 24,24 33,24"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Timers</text>
+    <text x="24" y="94" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">SlurmctldTimeout=120, SlurmdTimeout=300,</tspan>
+      <tspan x="24" dy="32">ReturnToService=2, MinJobAge=300,</tspan>
+      <tspan x="24" dy="32">MaxJobCount=50000</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(820, 585)">
+    <rect width="740" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="24" cy="12" rx="18" ry="6"/>
+      <path d="M6 12 V24 C6 27.5 14 30 24 30 C34 30 42 27.5 42 24 V12"/>
+      <path d="M6 24 V36 C6 39.5 14 42 24 42 C34 42 42 39.5 42 36 V24"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Accounting</text>
+    <text x="24" y="94" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">slurmdbd, AccountingStorageHost=db1,</tspan>
+      <tspan x="24" dy="32">TRES gres/gpu,</tspan>
+      <tspan x="24" dy="32">Enforce associations,limits,qos</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(820, 780)">
+    <rect width="740" height="395" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M10 6 H30 L40 16 V42 H10 Z"/>
+      <polyline points="30,6 30,16 40,16"/>
+      <line x1="16" y1="26" x2="34" y2="26"/>
+      <line x1="16" y1="34" x2="28" y2="34"/>
+    </g>
+    <text x="86" y="52" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Companion files</text>
+
+    
+    <text x="24" y="94" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">cgroup.conf CgroupPlugin=autodetect,</tspan>
+      <tspan x="24" dy="30">ConstrainCores, ConstrainRAMSpace,</tspan>
+      <tspan x="24" dy="30">ConstrainDevices=yes</tspan>
+    </text>
+    <text x="24" y="196" font-family="sans-serif" font-size="24" fill="#303a36">(a job only sees the GPUs it was given)</text>
+
+    <line x1="24" y1="216" x2="716" y2="216" stroke="#207448" stroke-width="1" stroke-opacity="0.3"/>
+
+    
+    <text x="24" y="248" font-family="monospace" font-size="24" fill="#303a36">gres.conf AutoDetect=nvml</text>
+
+    <line x1="24" y1="268" x2="716" y2="268" stroke="#207448" stroke-width="1" stroke-opacity="0.3"/>
+
+    
+    <text x="24" y="302" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">slurmdbd.conf mode 600 owner slurm</tspan>
+      <tspan x="24" dy="32">holds the database password</tspan>
+    </text>
+  </g>
+</svg>

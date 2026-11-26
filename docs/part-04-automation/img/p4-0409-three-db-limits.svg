@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Three layers that limit database access</title>
+  <desc>Infographic illustrating the three defense layers limiting PostgreSQL database access: firewall, network interface, and client address authentication.</desc>
+
+  <defs>
+    <marker id="arrowhead-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrowhead-stop" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#303a36"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Three layers that limit database access</text>
+
+  
+  
+  <g>
+    <rect x="80" y="120" width="600" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="110" y="137" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="110" y1="157" x2="166" y2="157" stroke="#207448" stroke-width="4"/>
+    <circle cx="124" cy="147" r="3" fill="#207448"/>
+    <circle cx="136" cy="147" r="3" fill="#207448"/>
+    <path d="M 124 175 L 134 181 L 124 187" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="140" y1="187" x2="152" y2="187" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="185" y="177" font-size="32" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">app hosts</text>
+  </g>
+
+  
+  <g>
+    <rect x="920" y="120" width="600" height="90" rx="12" fill="#e8f1ea" stroke="#303a36" stroke-width="2"/>
+    
+    <rect x="950" y="137" width="56" height="56" rx="8" fill="none" stroke="#303a36" stroke-width="4"/>
+    <line x1="950" y1="157" x2="1006" y2="157" stroke="#303a36" stroke-width="4"/>
+    <circle cx="964" cy="147" r="3" fill="#303a36"/>
+    <circle cx="976" cy="147" r="3" fill="#303a36"/>
+    <circle cx="978" cy="177" r="10" fill="none" stroke="#303a36" stroke-width="4"/>
+    <line x1="971" y1="184" x2="985" y2="170" stroke="#303a36" stroke-width="4" stroke-linecap="round"/>
+    <text x="1025" y="177" font-size="32" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">unlisted host</text>
+  </g>
+
+  
+  <line x1="220" y1="210" x2="220" y2="880" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead-green)"/>
+
+  
+  <g>
+    <rect x="250" y="238" width="230" height="42" rx="8" fill="#207448"/>
+    <text x="365" y="267" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">passes all three</text>
+  </g>
+
+  
+  <line x1="1240" y1="210" x2="1240" y2="300" stroke="#303a36" stroke-width="4" marker-end="url(#arrowhead-stop)"/>
+
+  
+  <g>
+    <rect x="1270" y="238" width="130" height="42" rx="8" fill="#303a36"/>
+    <text x="1335" y="267" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">stopped</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="300" width="1440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="1190" y1="300" x2="1290" y2="300" stroke="#303a36" stroke-width="8" stroke-linecap="round"/>
+    
+    <circle cx="220" cy="370" r="18" fill="#207448"/>
+    <path d="M 212 370 L 218 376 L 228 364" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <circle cx="330" cy="370" r="24" fill="#207448"/>
+    <text x="330" y="378" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">1</text>
+    
+    <path d="M 395 352 L 423 342 L 451 352 C 451 380 423 400 423 400 C 423 400 395 380 395 352 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="423" y1="352" x2="423" y2="388" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="407" y1="368" x2="439" y2="368" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="475" y="358" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">limits the port at the firewall</text>
+    <text x="475" y="406" font-size="24" font-weight="bold" fill="#207448" font-family="'SF Mono', Monaco, Consolas, monospace">ufw allow tcp 5432 from each app host</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="490" width="1440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="220" cy="560" r="18" fill="#207448"/>
+    <path d="M 212 560 L 218 566 L 228 554" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <circle cx="330" cy="560" r="24" fill="#207448"/>
+    <text x="330" y="568" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">2</text>
+    
+    <rect x="395" y="540" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 407 582 L 407 568 L 417 568 L 417 582" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 429 582 L 429 568 L 439 568 L 439 582" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="411" cy="552" r="3" fill="#207448"/>
+    <circle cx="435" cy="552" r="3" fill="#207448"/>
+    
+    <text x="475" y="548" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">limits the network interface</text>
+    <text x="475" y="596" font-size="24" font-weight="bold" fill="#207448" font-family="'SF Mono', Monaco, Consolas, monospace">listen_addresses = localhost plus ansible_host</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="680" width="1440" height="140" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <circle cx="220" cy="750" r="18" fill="#db8129"/>
+    <path d="M 212 750 L 218 756 L 228 744" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <circle cx="330" cy="750" r="24" fill="#db8129"/>
+    <text x="330" y="758" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">3</text>
+    
+    <rect x="397" y="744" width="52" height="38" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 409 744 L 409 732 C 409 724 415 718 423 718 C 431 718 437 724 437 732 L 437 744" fill="none" stroke="#db8129" stroke-width="4"/>
+    <circle cx="423" cy="760" r="4" fill="#db8129"/>
+    <line x1="423" y1="764" x2="423" y2="772" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="475" y="738" font-size="30" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">limits the client address</text>
+    <text x="475" y="786" font-size="24" font-weight="bold" fill="#db8129" font-family="'SF Mono', Monaco, Consolas, monospace">pg_hba.conf host db_name db_user app host /32 scram-sha-256</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="880" width="1440" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <ellipse cx="300" cy="918" rx="28" ry="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 272 918 L 272 952 C 272 958 285 962 300 962 C 315 962 328 958 328 952 L 328 918" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 272 935 C 272 941 285 945 300 945 C 315 945 328 941 328 935" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="350" y="942" font-size="32" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">PostgreSQL on db01</text>
+  </g>
+</svg>

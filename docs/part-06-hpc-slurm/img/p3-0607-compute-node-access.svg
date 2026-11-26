@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Stopping users from bypassing the queue by SSH</title>
+  <desc>Visual comparison of two architectures to prevent unauthorized direct SSH onto cluster compute nodes: pam_slurm_adopt versus pam_listfile with prolog and epilog scripts, alongside operational partitioning habits.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="70" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">Stopping users from bypassing the queue by SSH</text>
+
+  
+  <g transform="translate(60, 105)">
+    <rect width="1480" height="150" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(32, 47)">
+      <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="28" y1="14" x2="28" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="40" r="3" fill="#207448"/>
+    </g>
+
+    <text x="110" y="55" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Problem</text>
+    <text x="110" y="98" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="110" dy="0">unless SSH on compute nodes is locked down, a user can ssh directly to a</tspan>
+      <tspan x="110" dy="32">compute node and run work outside the queue</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 435 255 L 435 320" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <path d="M 1165 255 L 1165 320" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(60, 325)">
+    <rect width="715" height="430" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(32, 28)">
+      <rect x="8" y="16" width="40" height="34" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 18 16 V 10 C 18 5 38 5 38 10 V 16" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="31" r="4" fill="#207448"/>
+      <line x1="28" y1="35" x2="28" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="110" y="65" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Option A</text>
+
+    <text x="36" y="132" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="36" dy="0"><tspan font-family="monospace">pam_slurm_adopt</tspan>: a scheduler-integrated</tspan>
+      <tspan x="36" dy="38">PAM module; user may ssh into a compute</tspan>
+      <tspan x="36" dy="38">node only if they currently own a running job</tspan>
+      <tspan x="36" dy="38">on that node; the SSH session is adopted into</tspan>
+      <tspan x="36" dy="38">the job's cgroup</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(825, 325)">
+    <rect width="715" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(32, 28)">
+      <path d="M 12 6 H 36 L 46 16 V 50 H 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <polyline points="36,6 36,16 46,16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="20" y1="26" x2="36" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="20" y1="36" x2="36" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="110" y="65" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Option B</text>
+
+    <text x="36" y="132" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="36" dy="0">prolog and epilog scripts add and remove the</tspan>
+      <tspan x="36" dy="38">allocated user's name in a node-local allowlist</tspan>
+      <tspan x="36" dy="38">file; the standard <tspan font-family="monospace">pam_listfile</tspan> PAM module</tspan>
+      <tspan x="36" dy="38">checks that file; scripts update the file before</tspan>
+      <tspan x="36" dy="38">and after the job</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 785)">
+    <rect width="1480" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(32, 77)">
+      <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="6" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="4"/>
+      <line x1="28" y1="6" x2="28" y2="50" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    <text x="110" y="65" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Second operational habit</text>
+    <text x="110" y="112" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="110" dy="0">keep production partitions for real work, for example separating nodes with</tspan>
+      <tspan x="110" dy="34">and without accelerators, and add a small dedicated test partition for fast</tspan>
+      <tspan x="110" dy="34">smoke tests</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(60, 1025)">
+    <rect width="1480" height="95" rx="16" fill="#207448"/>
+    <text x="740" y="58" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      both are cheap on day one and expensive to add after users built habits
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,111 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" viewBox="0 0 1600 1040" font-family="sans-serif">
+  <title>The webhook deadlock: a loop that blocks its own recovery</title>
+  <desc>A circular loop of four boxes showing how a failed admission webhook blocks the creation of its own replacement pods, with a green panel listing three steps to break the loop.</desc>
+
+  <rect x="0" y="0" width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="86" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36">The webhook deadlock:</text>
+  <text x="800" y="144" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36">a loop that blocks its own recovery</text>
+
+  
+  <rect x="60" y="170" width="420" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <rect x="610" y="170" width="420" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <rect x="610" y="720" width="420" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <rect x="60" y="720" width="420" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+
+  
+  
+  <g transform="translate(270,214)" stroke="#207448" stroke-width="5" fill="none">
+    <circle r="12"/>
+    <circle r="6"/>
+    <line transform="rotate(0)" x1="0" y1="-14" x2="0" y2="-23"/>
+    <line transform="rotate(45)" x1="0" y1="-14" x2="0" y2="-23"/>
+    <line transform="rotate(90)" x1="0" y1="-14" x2="0" y2="-23"/>
+    <line transform="rotate(135)" x1="0" y1="-14" x2="0" y2="-23"/>
+    <line transform="rotate(180)" x1="0" y1="-14" x2="0" y2="-23"/>
+    <line transform="rotate(225)" x1="0" y1="-14" x2="0" y2="-23"/>
+    <line transform="rotate(270)" x1="0" y1="-14" x2="0" y2="-23"/>
+    <line transform="rotate(315)" x1="0" y1="-14" x2="0" y2="-23"/>
+  </g>
+  
+  <g transform="translate(820,214)" stroke="#207448" stroke-width="4" fill="none">
+    <rect x="-26" y="-20" width="52" height="40" rx="3"/>
+    <line x1="-26" y1="-8" x2="26" y2="-8"/>
+    <line x1="-9" y1="-8" x2="-9" y2="20"/>
+    <line x1="9" y1="-8" x2="9" y2="20"/>
+  </g>
+  
+  <g transform="translate(820,764)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M -20 -25 C -7 -29 7 -29 20 -25 L 23 -5 C 24 9 13 22 0 26 C -13 22 -24 9 -23 -5 Z"/>
+  </g>
+  
+  <g transform="translate(270,764)" stroke="#207448" stroke-width="4" fill="none">
+    <circle r="22"/>
+    <line x1="-15" y1="0" x2="15" y2="0" stroke-width="5"/>
+  </g>
+
+  
+  <text text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="270" y="282">Webhook pods go down</tspan>
+    <tspan x="270" y="320">after a node drain</tspan>
+  </text>
+  
+  <text text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="820" y="282">Deployment tries</tspan>
+    <tspan x="820" y="320">to create</tspan>
+    <tspan x="820" y="358">replacement pods</tspan>
+  </text>
+  
+  <text text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="820" y="832">API server calls</tspan>
+    <tspan x="820" y="870">the webhook</tspan>
+  </text>
+  <text text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan x="820" y="912"><tspan font-family="monospace">failurePolicy</tspan> <tspan font-family="monospace">Fail,</tspan> timeout</tspan>
+    <tspan x="820" y="944">30 seconds, <tspan font-family="monospace">Pod CREATE</tspan> in</tspan>
+    <tspan x="820" y="976">every namespace</tspan>
+  </text>
+  
+  <text text-anchor="middle" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="270" y="832">Connection refused,</tspan>
+    <tspan x="270" y="870">create rejected</tspan>
+  </text>
+  <text text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan x="270" y="912">The webhook cannot admit</tspan>
+    <tspan x="270" y="944">its own replacement pods</tspan>
+  </text>
+
+  
+  <path d="M 486 310 L 598 310" stroke="#207448" stroke-width="4" fill="none"/>
+  <polygon points="610,310 594,302 594,318" fill="#207448"/>
+  
+  <path d="M 820 448 L 820 706" stroke="#207448" stroke-width="4" fill="none"/>
+  <polygon points="820,720 812,705 828,705" fill="#207448"/>
+  
+  <path d="M 602 860 L 488 860" stroke="#207448" stroke-width="4" fill="none"/>
+  <polygon points="480,860 496,852 496,868" fill="#207448"/>
+  
+  <path d="M 270 712 L 270 454" stroke="#db8129" stroke-width="4" fill="none"/>
+  <polygon points="270,440 262,455 278,455" fill="#db8129"/>
+
+  
+  <text x="150" y="570" text-anchor="middle" font-size="24" fill="#303a36">Loop: nothing</text>
+  <text x="150" y="602" text-anchor="middle" font-size="24" fill="#303a36">new can start</text>
+
+  
+  <rect x="1080" y="360" width="480" height="420" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <text x="1320" y="422" text-anchor="middle" font-size="34" font-weight="bold" fill="#303a36">Break the loop</text>
+  <text font-size="24" fill="#303a36">
+    <tspan x="1108" y="478">1 Patch or delete the webhook</tspan>
+    <tspan x="1108" y="510">configuration, which</tspan>
+    <tspan x="1108" y="542">no webhook can block</tspan>
+  </text>
+  <text font-size="24" fill="#303a36">
+    <tspan x="1108" y="578">2 Set <tspan font-family="monospace">failurePolicy</tspan> to <tspan font-family="monospace">Ignore</tspan></tspan>
+    <tspan x="1108" y="610">and add a <tspan font-family="monospace">namespaceSelector</tspan></tspan>
+    <tspan x="1108" y="642">that excludes <tspan font-family="monospace">kube-system</tspan></tspan>
+    <tspan x="1108" y="674">and <tspan font-family="monospace">policy-system</tspan></tspan>
+  </text>
+  <text x="1108" y="706" font-size="24" fill="#303a36">3 Restart the webhook pods</text>
+</svg>

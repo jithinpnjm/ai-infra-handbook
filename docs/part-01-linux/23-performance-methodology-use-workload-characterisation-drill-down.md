@@ -81,6 +81,10 @@ Latency is the best metric for that quantification. Time can be compared and sum
 
 ## 2. Vocabulary and concepts
 
+![Definition cards contrasting bandwidth with throughput, latency with response time and utilisation with saturation, plus a comparison showing 98 to 99 percent cache hit ratio halves misses.](./img/p3-0123-vocab-hit-ratio.svg)
+
+*Figure 1.23.2. Going from a 98 to a 99 percent hit ratio halves the misses, while 10 to 11 percent barely changes them.*
+
 Performance talk uses a few words loosely, and two engineers can argue for an hour before noticing they mean different things. So pin the words down before you measure anything. This chapter uses throughput for the rate of work done, such as requests, tokens or samples per second, and IOPS for operations per second. Latency is the time an operation spends waiting before service starts, and response time is waiting plus service.
 
 Utilisation is the fraction of an interval a resource was busy. Saturation is work that cannot be serviced yet and waits in a queue. Errors are failed or retried operations, which are cheap to check and often decisive. The bottleneck is the resource that limits the whole system, and removing one reveals the next.
@@ -93,7 +97,7 @@ Two points cause the most confusion. Bandwidth is the maximum possible throughpu
 
 ![Typical latencies scaled so that one CPU cycle takes one second.](./img/l23-latency-scale.svg)
 
-*Figure 1.23.2. Scaling latencies to human time shows how large the gaps between memory, disk and network are.*
+*Figure 1.23.3. Scaling latencies to human time shows how large the gaps between memory, disk and network are.*
 
 Convert everything to time when you can, because time is the one currency every component accepts. You cannot compare 100 network I/Os with 50 disk I/Os. You can compare 100 ms of network time with 50 ms of disk time. It also helps to know the orders of magnitude, so that a suspicious number stands out before you dig. The table below scales things so that a 0.3 ns CPU cycle equals one second. Read the scaled column as a rough map of how far apart the events are.
 
@@ -120,6 +124,14 @@ Use the table to spot results that are physically implausible. A "10 µs" disk r
 
 ### Other concepts
 
+![A ladder of known-knowns, known-unknowns and unknown-unknowns using the example of CPU busy and interrupt load, with the rule for when to stop analysing.](./img/p3-0123-known-unknowns.svg)
+
+*Figure 1.23.4. A resource-by-resource checklist turns unknown-unknowns into known-unknowns, and you stop only when the bulk of the problem is explained.*
+
+![Two columns comparing a load problem, where request rate and duration both rise, with an architecture problem, where the rate is steady but duration rises or one core is saturated while others are idle.](./img/p3-0123-load-vs-architecture.svg)
+
+*Figure 1.23.5. If rate and duration both rise it is load, and if the rate is steady while duration rises it points at architecture or resources.*
+
 Every tuning has a price, and you can rarely have good, fast and cheap all at once. You can usually pick two, which is why "just make it faster" is not a plan. Many trade-offs pit CPU against memory, so you either cache results or recompute them. Tunables show the same tension. A small filesystem record size suits random I/O, while a large one suits streaming. Small network buffers suit many connections, and large buffers suit throughput.
 
 Tuning pays off most when it sits close to the work. Eliminating a database query in the application can give 20x. Tuning a storage device may give 20%. For AI, removing a pointless host-device copy or fusing kernels beats tuning TCP buffers. Still, observe from the OS level too, because that view often explains application behaviour.
@@ -142,6 +154,10 @@ Before you start measuring, agree on these terms with the people who will read y
 
 ## 3. The problem statement comes first
 
+![Six numbered problem statement questions with a panel of extra questions for GPU work such as model, parallelism, expected throughput and stragglers.](./img/p3-0123-six-questions.svg)
+
+*Figure 1.23.6. Ask the six questions and the GPU extras first, and write the answers down as the problem statement you test against.*
+
 Suppose someone tells you the nightly training run is slower than it used to be. This is the moment where three engineers give three different guesses. Before you log in, stop and ask questions instead. Often the answers alone reveal the cause, even over the phone, and you save the trip entirely.
 
 Ask these six questions first.
@@ -158,6 +174,10 @@ For GPU work, add more questions, because the shape of the job matters as much a
 Write the answers down before you touch the system. They become the problem statement you test against, and later they become the record that shows whether your fix actually worked.
 
 ## 4. Anti-methods and good methods
+
+![Three anti-methods, streetlight, random change and blame someone else, beside the replacement flow of problem statement, scientific method and diagnosis cycle.](./img/p3-0123-anti-methods.svg)
+
+*Figure 1.23.7. Streetlight, random change and blame-someone-else all skip the evidence, so start from the problem statement and run the scientific method.*
 
 Picture the engineer who starts with the tool they know best, because the tool is comfortable and the question is not. A method exists to stop that. It fixes the order of the questions, so your favourite tool comes after the evidence rather than before it. The table compares the habits that waste time with the ones that work.
 
@@ -200,6 +220,10 @@ The performance mantras rank fixes, and the order is the whole point. The best f
 
 ### The Scientific Method in practice (examples)
 
+![A hypothesis loop for slow node 17 where the NVMe await prediction fails and the hypothesis changes, with an experimental NUMA balancing A/B example.](./img/p3-0123-node17-prediction.svg)
+
+*Figure 1.23.8. When the prediction of high NVMe await fails, the finding eliminates the disk and sends you back with a new hypothesis.*
+
 *Observational.* Suppose training steps on node 17 are slow, and only that node. You suspect its data loader is starved by a slow local NVMe. You predict that `iostat` will show high await on that device, and that GPU `sm` activity will drop in lockstep. Then you look, and the prediction fails. The await is normal and the data loader queue is full, so the GPU is waiting in NCCL. The NVMe is not the cause. Return to step 2 with a new hypothesis, such as a slow NIC link. A failed prediction is information, not a wasted trip.
 
 *Experimental.* Does disabling NUMA balancing raise throughput? Your hypothesis says yes, and the prediction is smaller run-to-run variance and fewer page faults. Run an A/B comparison on identical nodes, with the same data and pinned clocks. Use confidence intervals from section 9. If the setting has no effect, revert it and write down that you tried.
@@ -210,11 +234,19 @@ A resource with low utilisation, no saturation and no errors is valuable evidenc
 
 ## 5. The Linux 60-second checklist
 
+![Two GPUs both showing 100 percent GPU-Util, one running a tiny kernel and one with many SMs busy, with the better metrics to read instead.](./img/p3-0123-gpu-util-trap.svg)
+
+*Figure 1.23.9. GPU-Util only says a kernel was running on at least one SM, so read SM activity, memory bandwidth, MFU and tokens per second.*
+
+![A table of eight read-only GPU node checks from nvidia-smi through DCGM, Xid log search, InfiniBand counters, PSI and NUMA placement.](./img/p3-0123-gpu-first-minute.svg)
+
+*Figure 1.23.10. Eight read-only GPU checks extend the host checklist to cover GPUs, topology, Xid errors, fabric counters and pressure.*
+
 A host is slow, and someone wants an answer now. Run these commands in the first minute of any investigation on a Linux host. The list is deliberately short, because this is a first look and not the whole investigation. Each one is covered in later chapters, where you will learn to read its output properly. Here, read each output once before you move on.
 
 ![The 60-second Linux checklist](./img/ch23-fig1-60s.jpg)
 
-*Figure 1.23.3. Ten commands, one line each, that give a first view of a slow host.*
+*Figure 1.23.11. Ten commands, one line each, that give a first view of a slow host.*
 
 | # | Command | What to check |
 |---|---|---|
@@ -246,13 +278,17 @@ Be careful with one number in particular, because it misleads almost everyone at
 
 ## 6. The USE method
 
+![The order for reading USE results as errors, saturation, utilisation, with three traps: interval length, the 60 percent line and the first finding.](./img/p3-0123-use-order-traps.svg)
+
+*Figure 1.23.12. Check errors, then saturation, then utilisation, and beware long intervals, the 60 percent line and stopping at the first finding.*
+
 **For every resource, check utilisation, saturation and errors.** Resources are the physical components, and some software ones too. The method works through *resources*, not tools. You build the full list of questions first, then find a tool for each. Any question you cannot answer is a known unknown, and writing it down is part of the work.
 
 The diagram below is the loop, and it is worth reading once as a picture of the habit. For each resource you ask the cheap question first, and only then the expensive ones.
 
 ![The USE method](./img/ch23-d2-luna.svg)
 
-*Figure 1.23.4. The USE method.*
+*Figure 1.23.13. The USE method.*
 
 When you read the results, check in this order. Errors come first, because they are cheap and objective. Saturation comes second, because any amount of it matters. Utilisation comes third, because it needs interpretation.
 
@@ -263,6 +299,14 @@ As you work through the table, watch out for three traps. Trap 1 is interval len
 Include software resources too, because a sweep that skips them is not a sweep. Mutex locks, thread pools, file descriptors, process counts and connection pools all count. So do resource controls, such as cgroup limits. For a memory cgroup, utilisation is usage versus the cap. Saturation is an allocation failure or swapping caused by the limit, even when the host itself is fine. CPU quota throttling is saturation, as chapter 1.18 explains.
 
 ### The USE table for a GPU server
+
+![A USE matrix for CPU, host memory, NVMe, network interfaces, fabric and container limits with the utilisation, saturation and error check for each.](./img/p3-0123-use-host-rows.svg)
+
+*Figure 1.23.14. The host and fabric rows give each resource a utilisation, saturation and error check, and containers add cgroup limits to the sweep.*
+
+![A USE matrix for PCIe, GPU compute, HBM capacity, NVLink and power with the utilisation, saturation and error check for each.](./img/p3-0123-use-gpu-rows.svg)
+
+*Figure 1.23.15. Each GPU-side resource gets a utilisation, saturation and error check, and every blank cell is a known unknown to close.*
 
 Fill this table in for your platform. The commands are starting points, and every blank is a known unknown you should close over time. A table with three honest blanks teaches you more than a table filled with guesses.
 
@@ -291,6 +335,14 @@ The interconnects, meaning the CPU, memory and I/O buses, are easy to forget, an
 
 ### RED for services
 
+![A request timeline for LLM serving split into queue time, time to first token, time per output token and total, with what each part points at.](./img/p3-0123-llm-duration.svg)
+
+*Figure 1.23.16. LLM serving duration splits into queue time, time to first token, time per output token and total, and each part points at a different fix.*
+
+![A USE matrix for file descriptors, pinned memory, threads and NCCL, beside the RED method for services.](./img/p3-0123-use-software-rows.svg)
+
+*Figure 1.23.17. Software limits such as descriptors, memlock, pids and NCCL stragglers belong in the USE sweep next to the hardware.*
+
 Now aim the same discipline at services, where the machine can look healthy and the user is still unhappy. Apply RED to every service, such as inference endpoints, schedulers, registries and feature stores. RED stands for **R**equest **r**ate, **E**rrors and **D**uration, and you should use percentiles for duration, because an average hides the users who waited. USE describes machine health, while RED describes user health, and the two complement each other. The request rate shows at once whether a slowdown comes with more load, which is a load problem, or with the same load, which points to architecture or resources.
 
 For LLM serving, duration splits into queue time, time to first token (TTFT), time per output token (TPOT) and total. Each part points at a different fix, which is why the split repays the effort. Track tokens/s, batch size, KV-cache utilisation and the number of preemptions and evictions too, see Part 10. Fill in the USE table for your own GPU server, and treat every blank as a question to answer.
@@ -299,7 +351,7 @@ For LLM serving, duration splits into queue time, time to first token (TTFT), ti
 
 ![Four questions about who, why, what and when characterise the load before measuring speed.](./img/l23-workload-4q.svg)
 
-*Figure 1.23.5. Characterise the input load, not the resulting performance.*
+*Figure 1.23.18. Characterise the input load, not the resulting performance.*
 
 A cluster is busy and nobody can say why. Before you study how fast anything runs, look at what is being asked of it. Characterise the **input**, not the resulting performance. Ask four questions about the load:
 
@@ -326,13 +378,21 @@ Drill-down narrows the search in three stages, from the whole fleet down to one 
 
 ![Three-stage drill-down](./img/ch23-d3-luna.svg)
 
-*Figure 1.23.6. Three-stage drill-down.*
+*Figure 1.23.19. Three-stage drill-down.*
 
 ### Five whys
+
+![A five-step chain starts from a 20 percent throughput drop and ends at a neighbour process pinning memory that evicts the page cache.](./img/p2-0123-five-whys.svg)
+
+*Figure 1.23.20. A five whys chain moves from a 20 percent throughput drop, through a late all-reduce rank and evicted page cache, to a neighbour process that pins memory.*
 
 Ask "why" repeatedly. Answer each time from evidence, and stop when you reach something you can act on. Here is how that looks in one real incident. Take a training job whose throughput dropped 20%. Its step time grew, so the all-reduce phase lengthened. One rank started that phase late, because its data loader stalls now and then. The host page cache was being evicted, so the dataset was re-read from the network filesystem every epoch. A neighbour process on that node pins a large amount of memory, so the cache no longer fits. Your action is to fix the memory budget or cgroup limits, and to add a cache-hit-ratio alert. The root cause was three layers away from the symptom, which is why stopping at the first plausible answer would have missed it.
 
 ### Latency analysis: halve the problem
+
+![A descent tree for high p99 time to first token that narrows from GPU or before, to queue, to held batches, beside a training step split into components.](./img/p3-0123-latency-halving.svg)
+
+*Figure 1.23.21. Each measurement picks one of two branches, so a handful of questions narrows a high time to first token to the batch fill timeout.*
 
 Break an operation's time into components, then descend into the larger one. Each step is a measurement, not a guess, which is what makes the halving safe. Take an LLM inference request. You find a latency problem, because the p99 TTFT is high. Is the time spent on the GPU or before it? It is before. Is the wait in the queue or in tokenization? It is in the queue. Is the queue long because arrivals exceed service capacity, or because batches are held? The batch scheduler waits for a fill timeout, so you adjust the policy. Each answer picks one of two branches, so a handful of questions covers a very wide stack.
 
@@ -340,9 +400,17 @@ The same procedure works on a training step. Treat the step as data, plus host-t
 
 ### Event tracing
 
+![A latency chart with one tall outlier among short bars, head of line blocking, and a table of tools to trace packets, block I/O, syscalls and GPU kernels.](./img/p3-0123-event-tracing-tools.svg)
+
+*Figure 1.23.22. Trace individual events with timestamps when summaries hide outliers, and keep the windows short to limit overhead.*
+
 Summaries hide outliers, and outliers are what users feel. When averages look fine but users still complain, trace individual events. Use `tcpdump -ttt` for packets, `biosnoop` for block I/O, `strace -T` or `perf trace` for syscalls, and the Nsight Systems timeline for GPU kernels and copies. You can also trace scheduler wake-ups and NCCL operations. For each event, record its input attributes, its start and end times so you get latency, and its result. A latency outlier can be caused by *previous* events, through head-of-line blocking, rather than by its own properties. Only the event sequence reveals that. Tracing costs overhead, so use short windows in production.
 
 ### Baselines and static tuning
+
+![A baseline collection list beside a grid of common static audit findings such as a negotiated NIC rate, a downgraded PCIe link and debug logging left on.](./img/p3-0123-baseline-static.svg)
+
+*Figure 1.23.23. Store a baseline with the image version and audit configuration at rest, because drift is the most common cause of identical nodes differing.*
 
 Baseline statistics record what normal looks like, and a baseline is a promise to your future self. On a healthy node, run a script that collects the 60-second checklist outputs, `sysctl -a`, `lscpu`, `lspci -vv` link states, `nvidia-smi -q`, firmware versions and benchmark results. Those benchmarks include `nccl-tests`, `dcgmi diag` and a small reference training step. Store the baseline with the image version. After an incident or a change, diff against it, and take baselines before and after every change. If no baseline exists, "summary since boot" counters are a coarse substitute.
 
@@ -352,7 +420,7 @@ Static performance tuning audits the configuration at rest. Ask whether each com
 
 ![The performance mantras ranked from most to least effective.](./img/l23-mantras.svg)
 
-*Figure 1.23.7. The order of the mantras is the point: eliminating work beats making it cheaper.*
+*Figure 1.23.24. The order of the mantras is the point: eliminating work beats making it cheaper.*
 
 Performance mantras rank the fixes, from most effective to least, and the ranking is more useful than the list. Don't do it. Remove unneeded work, such as a redundant copy or a debug sync. Next, do it, but don't do it again. Cache the tokenized data, the compiled kernels or the KV prefix cache. Then do it less, by reducing polling, checkpoint frequency and logging. Do it later with async checkpointing or write-back. Do it when they're not looking, with off-peak maintenance or background compaction. Do it concurrently, overlapping communication and compute with multiple streams or data-loader workers. Last, do it more cheaply with faster hardware, lower precision or a better algorithm.
 
@@ -362,11 +430,15 @@ Before you tune anything, check the configuration at rest and compare it against
 
 ### Reading scalability curves
 
+![A worked Amdahl example giving 15.4x for 64 workers with a 20x ceiling, the USL term, the fitting steps and the three questions for multi-GPU scaling.](./img/p3-0123-scaling-worked.svg)
+
+*Figure 1.23.25. With a 5 percent serial fraction, 64 workers give only 15.4x and the ceiling is 20x, and multi-GPU curves are read by knee, topology and message size.*
+
 Plot the performance you deliver, such as tokens/s, samples/s or requests/s, against a scaling dimension, such as GPUs, nodes, threads or clients. The shape of the curve tells you what limits you, often before any profiler does. Learn the shapes first, because you will recognise them in a graph long before you can name the cause.
 
 ![Reading scalability curves](./img/ch23-d4-luna.svg)
 
-*Figure 1.23.8. Reading scalability curves.*
+*Figure 1.23.26. Reading scalability curves.*
 
 - Linear: performance grows in proportion. That rarely lasts.
 - Contention: part of the work is serial or shared. A lock, a data loader, the all-reduce or a single metadata server can be that part.
@@ -384,6 +456,14 @@ Multi-GPU scaling follows the same ideas. Strong scaling, with a fixed global ba
 
 ### Queueing theory in four lines
 
+![Little's law L equals lambda times W with two worked examples: 200 requests per second at 50 ms giving 10 in flight, and 32 sequences at 4 seconds giving 8 per second.](./img/p3-0123-littles-law.svg)
+
+*Figure 1.23.27. At 200 req/s and 50 ms there are 10 requests in flight, so a concurrency limit of 8 makes them queue.*
+
+![A queueing curve shows response time rising from one service time at zero load to 5.5 times at 90 percent utilisation, with a 60 to 70 percent target band.](./img/p2-0123-queue-curve.svg)
+
+*Figure 1.23.28. Response time for a queue rises from one service time at zero load to 5.5 times at 90 percent utilisation, so latency services keep headroom.*
+
 Many components are queues: a request queue, a disk, a NIC, a GPU stream and a scheduler. Four results cover most of what you need, and they are worth learning by heart.
 
 - Little's law: L = λW. The average number of items in a system equals the arrival rate times the average time each one spends in it. It holds for any stable system, and it is the best sanity check you have. A service handles 200 req/s with an average latency of 50 ms. On average, it therefore has 10 requests in flight. If your concurrency limit is 8, requests queue. A GPU batch scheduler holds 32 sequences, and each takes 4 s. Sustainable throughput is therefore at most 8 sequences/s.
@@ -394,6 +474,10 @@ Many components are queues: a request queue, a disk, a NIC, a GPU stream and a s
 For AI serving, model the request queue and the batch scheduler. The arrival rate and the p99 target together decide how many replicas you need. Continuous batching changes the service-time distribution, so account for it. Always validate the model by measurement.
 
 ## 10. Capacity planning
+
+![Three capacity planning methods with worked numbers: the resource limit method giving 2,500 requests per second, factor analysis needing about ten tests for eight factors, and scaling options.](./img/p3-0123-capacity-worked.svg)
+
+*Figure 1.23.29. The resource-limit method turns 40 percent CPU at 1,000 req/s into a 2,500 req/s ceiling, and factor analysis needs about ten tests for eight factors.*
 
 Sooner or later someone asks how many GPUs to buy, and "more" is not an answer. Capacity planning is how you turn that question into numbers with assumptions attached, so the decision can be argued with instead of guessed. Three methods do most of the work.
 
@@ -406,6 +490,10 @@ For GPU capacity, start with demand. Express it as a model, tokens/s or samples/
 Write down demand, supply and headroom before you commit to a purchase.
 
 ## 11. Statistics you must get right
+
+![Three worked cards: the harmonic mean of two transfer rates giving 11.1 MB/s, a bimodal latency average that describes no request, and a bounded gain of 9.9x from a cache.](./img/p3-0123-stats-worked.svg)
+
+*Figure 1.23.30. Two transfers at 50 and 10 MB/s average 11.1 MB/s by harmonic mean, not 30, and an average can describe no actual request.*
 
 Averages hide things, and they hide them politely, which is the danger. The average of a bimodal latency distribution, with fast cache hits and slow misses, can describe *no actual request*. Think of the saying: "The man drowned in a river with an average depth of six inches." So always ask for the distribution. When a dashboard shows only one number, ask what that number hides.
 
@@ -425,6 +513,10 @@ Before you claim a win, check the distribution and repeat the run.
 
 ## 12. Visualisation and monitoring
 
+![A table matching questions to chart types: line charts for trends, scatter plots for events, heat maps for distributions, timelines for dependencies, flame graphs for code paths and surface plots.](./img/p3-0123-chart-chooser.svg)
+
+*Figure 1.23.31. Pick line charts for trends, heat maps for distributions and outliers, timelines for dependencies and flame graphs for code paths.*
+
 Monitoring records metrics over time, so you can compare past with present. It shows daily and weekly patterns, quantifies growth and sets alerts. Patterns repeat hourly, daily, weekly, quarterly and yearly. Irregular events add to them, such as a new release, a holiday or a job queue draining.
 
 Collect critical metrics at one-second resolution if you can afford it. At least keep short-term, high-resolution data for incidents, because that is the window where most answers live. Agents, or exporters, such as node_exporter, the DCGM exporter and cAdvisor, publish the metrics. Prefer collection from kernel interfaces over parsing command output. Build dashboards around USE and RED, rather than showing every metric available.
@@ -434,6 +526,10 @@ Choose the chart that fits the question, because a chart is an argument and some
 Observing the observability matters too, which sounds circular until a tool lies to you. Tools have overhead and bugs. Metrics may not mean what their names suggest. They may be missing inside containers, where you see host values. Some tools report a per-interval average, while others report a cumulative counter. Cross-check surprising values with a second source. Tool inventories have blind spots as well, so map each USE cell to a tool, and list the cells that have no tool.
 
 ### Observability tool taxonomy (preview of chapter 1.24)
+
+![Four columns for counters, profiling, tracing and monitoring tools with the question each answers, plus data sources and the crisis tools to install in advance.](./img/p3-0123-tool-families.svg)
+
+*Figure 1.23.32. Counters, profilers, tracers and monitoring each answer a different kind of question, and the crisis tools must be installed before the crisis.*
 
 The table previews four families of tools. Each family answers a different kind of question.
 
@@ -452,9 +548,13 @@ Before the next incident, check that every host has the crisis tools installed.
 
 ## 13. AI-specific measures of efficiency
 
+![A GPU timeline idle gap above seven starvation questions about data loading, CPU launch overhead, pinning, exposed communication, stragglers, checkpoints and small kernels, with the outcome metrics.](./img/p3-0123-gpu-starvation.svg)
+
+*Figure 1.23.33. Work through seven starvation questions with measurements, and read throughput, step breakdown, MFU and goodput before tuning anything.*
+
 ![Outcome metrics that measure work delivered, such as throughput, MFU, scaling efficiency and goodput.](./img/l23-ai-metrics.svg)
 
-*Figure 1.23.9. Use outcome metrics rather than raw utilisation because they measure work delivered.*
+*Figure 1.23.34. Use outcome metrics rather than raw utilisation because they measure work delivered.*
 
 Raw utilisation numbers are weak signals on accelerators, as the `GPU-Util` example in section 5 showed. Use the outcome metrics in the table below, because they measure work delivered rather than time occupied.
 
@@ -479,6 +579,10 @@ Start with throughput and the step-time breakdown before you tune anything else.
 
 ### Case 1: "Slow disks" becomes "slow data loading"
 
+![A seven step chain from a slow disks ticket through USE, off-CPU view and workload characterisation to a page cache hit ratio of 91 versus 98 percent and a memory hungry prototype process.](./img/p3-0123-case-slow-disks.svg)
+
+*Figure 1.23.35. The slow disks ticket ended at a prototype process squeezing the page cache, found through the cache hit ratio rather than a disk tool.*
+
 A training team files a ticket, and their wording already contains the answer they expect. The NVMe scratch is slow, they say, and epochs got 30% longer this week. The administrator starts with the problem statement, not the disks. Is there a measurable regression, in epoch time or in step data-wait? Since when? What changed, and why were the disks suspected in the first place?
 
 The team's monitoring shows the disks busy, but its interval is one minute. The administrator applies USE across all the resources. The CPUs and the network look modest. The NVMe devices show 80% utilisation at one-minute resolution. At one-second resolution, `iostat` shows bursts to 100% with queueing, which is saturation, and higher latency. There are no device errors. An off-CPU view of the data-loader workers shows they spend their time blocked in file reads. So the disk sits on the critical path, but that does not make it guilty.
@@ -488,6 +592,10 @@ Next comes workload characterisation. Reads dominate, I/O sizes are small and ra
 The lessons are worth keeping. Ask first. Check all the resources before you trust the suspect. Look at short intervals. Characterise the load before you blame the devices. The answer was a memory budget problem, found through the cache hit ratio and not through a disk tool.
 
 ### Case 2: non-regression test of a software change
+
+![A ramp test plateauing at 700 samples per second with idle server resources, a fixed rate test showing 30 versus 20 percent CPU, and a parallel generator showing 3,500 versus 2,300 samples per second.](./img/p3-0123-case-benchmark.svg)
+
+*Figure 1.23.36. A plateau at 700 samples per second with an idle server exposed the single-threaded load generator, and the fixed-rate test showed 50 percent more CPU per sample.*
 
 An engineer must find out whether a new data-pipeline library version hurts throughput. She acquires an idle node and configures it as production. Then she characterises the real workload from logs, to check that her load generator resembles it. It matches the average but not the variance, and she notes that gap instead of ignoring it.
 
@@ -503,7 +611,7 @@ Here is the whole chapter as one flow, the way you would walk through it during 
 
 ![Putting a method into practice: a template](./img/ch23-d5-luna.svg)
 
-*Figure 1.23.10. Putting a method into practice: a template.*
+*Figure 1.23.37. Putting a method into practice: a template.*
 
 Follow the flow in the diagram. Start with the problem statement, then set a baseline. Run the 60-second checklist and a USE sweep. If a resource is implicated, drill down on it. Otherwise, analyse the workload and latency, and audit the static configuration. Form a hypothesis, change one thing, and predict the result. Then verify against the baseline, quantify the gain and document the work. Finally, add monitoring and alerts, and update the checklist or runbook.
 
@@ -567,6 +675,10 @@ Interviewers ask these questions to see whether you have a method, not whether y
 "Describe a performance investigation you led: what was your method and how did you know when to stop?"
 
 ### When the method itself fails
+
+![Four cards for method failures: a missing counter, an interval that hides the problem, measurement overhead and a first explanation that is only partial, each with its counter-move.](./img/p3-0123-method-failures.svg)
+
+*Figure 1.23.38. Mark missing counters as unknowns, shorten the interval, start with cheap tools, and check the fix against the original symptom.*
 
 A method gives you a shape, not a guarantee. Four failure modes are worth knowing before an incident teaches them to you the hard way.
 

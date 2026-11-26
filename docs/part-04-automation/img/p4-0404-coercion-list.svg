@@ -1,0 +1,223 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>How the YAML 1.1 parser reads unquoted text, with the Ansible guidance</title>
+  <desc>A visual comparison of unquoted YAML 1.1 values, PyYAML parsing quirks, Ansible file mode rules, and the sudoers permission diff scenario.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="68" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">How the YAML 1.1 parser reads unquoted text,</tspan>
+    <tspan x="40" dy="56">with the Ansible guidance</tspan>
+  </text>
+
+  
+  <g id="two-column-mapping">
+    <rect x="40" y="150" width="920" height="525" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <path d="M 40 162 A 12 12 0 0 1 52 150 L 948 150 A 12 12 0 0 1 960 162 L 960 220 L 40 220 Z" fill="#e8f1ea" />
+    <line x1="40" y1="220" x2="960" y2="220" stroke="#207448" stroke-width="2" />
+    <line x1="410" y1="150" x2="410" y2="675" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" />
+
+    
+    <path d="M 60 174 H 52 V 202 H 60 M 72 174 H 80 V 202 H 72" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" />
+
+    
+    <text x="96" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">You write</text>
+    <text x="430" y="182" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="430" dy="0">PyYAML (YAML 1.1,</tspan>
+      <tspan x="430" dy="32">used by Ansible) reads</tspan>
+    </text>
+
+    
+    <rect x="42" y="222" width="916" height="52" fill="#fdf4eb" stroke="#db8129" stroke-width="2" />
+    <text x="60" y="255" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">yes, no, on, off, y, n</text>
+    <text x="430" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="430" dy="0">booleans (the Norway problem:</tspan>
+      <tspan x="430" dy="25">country code NO becomes false)</tspan>
+    </text>
+
+    
+    <rect x="42" y="276" width="916" height="40" fill="#ffffff" />
+    <line x1="42" y1="316" x2="958" y2="316" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="304" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">1.10</text>
+    <text x="430" y="304" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">float 1.1, a version loses its zero</text>
+
+    
+    <rect x="42" y="316" width="916" height="40" fill="#f5f8f5" />
+    <line x1="42" y1="356" x2="958" y2="356" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="344" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">010</text>
+    <text x="430" y="344" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">octal</text>
+
+    
+    <rect x="42" y="356" width="916" height="40" fill="#ffffff" />
+    <line x1="42" y1="396" x2="958" y2="396" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="384" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">1e3</text>
+    <text x="430" y="384" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">float</text>
+
+    
+    <rect x="42" y="396" width="916" height="40" fill="#f5f8f5" />
+    <line x1="42" y1="436" x2="958" y2="436" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="424" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">2024-01-15</text>
+    <text x="430" y="424" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">date object</text>
+
+    
+    <rect x="42" y="436" width="916" height="40" fill="#ffffff" />
+    <line x1="42" y1="476" x2="958" y2="476" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="464" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">~ and empty</text>
+    <text x="430" y="464" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">null</text>
+
+    
+    <rect x="42" y="476" width="916" height="40" fill="#f5f8f5" />
+    <line x1="42" y1="516" x2="958" y2="516" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="504" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">0x1f</text>
+    <text x="430" y="504" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">hex</text>
+
+    
+    <rect x="42" y="516" width="916" height="40" fill="#ffffff" />
+    <line x1="42" y1="556" x2="958" y2="556" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="544" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">22:30</text>
+    <text x="430" y="544" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">may be a sexagesimal integer</text>
+
+    
+    <rect x="42" y="556" width="916" height="40" fill="#f5f8f5" />
+    <line x1="42" y1="596" x2="958" y2="596" stroke="#e8f1ea" stroke-width="1" />
+    <text x="60" y="584" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">0.0.0.0</text>
+    <text x="430" y="584" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">string</text>
+
+    
+    <rect x="42" y="596" width="916" height="40" fill="#ffffff" />
+    <text x="60" y="624" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">1.2</text>
+    <text x="430" y="624" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">float</text>
+  </g>
+
+  
+  <g id="rule-panel">
+    <rect x="980" y="150" width="580" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="1010" y="180" width="44" height="34" rx="6" stroke="#207448" stroke-width="4" fill="none" />
+    <path d="M 1020 180 V 168 A 12 12 0 0 1 1044 168 V 180" stroke="#207448" stroke-width="4" fill="none" />
+    <circle cx="1032" cy="195" r="3" fill="#207448" />
+    <line x1="1032" y1="198" x2="1032" y2="205" stroke="#207448" stroke-width="3" />
+
+    
+    <text x="1010" y="256" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1010" dy="0">Quote versions, codes, IDs and</tspan>
+      <tspan x="1010" dy="32">file modes such as mode: "0644";</tspan>
+      <tspan x="1010" dy="32">Ansible's guidance is to quote</tspan>
+      <tspan x="1010" dy="32">file modes because 0644 is octal</tspan>
+      <tspan x="1010" dy="32">in YAML 1.1 while many tools</tspan>
+      <tspan x="1010" dy="32">expect a string</tspan>
+    </text>
+  </g>
+
+  
+  <g id="guard-strip">
+    <rect x="980" y="465" width="580" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 1010 492 L 1035 480 L 1060 492 V 514 C 1060 528 1035 540 1035 540 C 1035 540 1010 528 1010 514 Z" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" />
+    <path d="M 1023 508 L 1031 516 L 1047 500" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="1010" y="574" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1010" dy="0">yamllint truthy rule:</tspan>
+      <tspan x="1010" dy="34">allowed-values true and false</tspan>
+      <tspan x="1010" dy="34">flags yes, no, on and off</tspan>
+    </text>
+  </g>
+
+  
+  <g id="story-strip">
+    <rect x="40" y="695" width="1520" height="365" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="68" y="720" width="330" height="315" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="113" cy="762" r="24" fill="#207448" />
+    <text x="113" y="771" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <circle cx="340" cy="748" r="6" stroke="#207448" stroke-width="3.5" fill="none" />
+    <circle cx="340" cy="780" r="6" stroke="#207448" stroke-width="3.5" fill="none" />
+    <circle cx="368" cy="764" r="6" stroke="#207448" stroke-width="3.5" fill="none" />
+    <path d="M 340 754 V 774 M 340 768 C 352 768 356 764 362 764" stroke="#207448" stroke-width="3.5" fill="none" />
+    
+    <text x="88" y="830" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="88" dy="0">a pull request</tspan>
+      <tspan x="88" dy="34">changes the mode</tspan>
+      <tspan x="88" dy="34">of a sudoers</tspan>
+      <tspan x="88" dy="34">drop-in</tspan>
+    </text>
+
+    
+    <line x1="398" y1="875" x2="446" y2="875" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="446" y="720" width="330" height="315" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="491" cy="762" r="24" fill="#207448" />
+    <text x="491" y="771" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <rect x="714" y="742" width="34" height="42" rx="4" stroke="#207448" stroke-width="3.5" fill="none" />
+    <line x1="722" y1="754" x2="740" y2="754" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="722" y1="763" x2="740" y2="763" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="722" y1="772" x2="732" y2="772" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="466" y="830" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="466" dy="0">the reviewer reads</tspan>
+      <tspan x="466" dy="34">0644 in the diff</tspan>
+      <tspan x="466" dy="34">and approves</tspan>
+    </text>
+
+    
+    <line x1="776" y1="875" x2="824" y2="875" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="824" y="720" width="330" height="315" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="869" cy="762" r="24" fill="#207448" />
+    <text x="869" y="771" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <circle cx="1115" cy="762" r="20" stroke="#207448" stroke-width="3.5" fill="none" />
+    <path d="M 1105 762 L 1111 768 L 1125 754" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="844" y="830" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">the file is valid</tspan>
+      <tspan x="844" dy="34">YAML so every</tspan>
+      <tspan x="844" dy="34">check passes</tspan>
+    </text>
+
+    
+    <line x1="1154" y1="875" x2="1202" y2="875" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+    
+    <rect x="1202" y="720" width="330" height="315" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <circle cx="1247" cy="762" r="24" fill="#207448" />
+    <text x="1247" y="771" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <path d="M 1494 742 L 1516 780 L 1472 780 Z" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" />
+    <line x1="1494" y1="755" x2="1494" y2="767" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="1494" cy="774" r="1.5" fill="#207448" />
+    
+    <text x="1222" y="825" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1222" dy="0">the parser reads an</tspan>
+      <tspan x="1222" dy="32">octal number and</tspan>
+      <tspan x="1222" dy="32">the file lands with</tspan>
+      <tspan x="1222" dy="32">permissions nobody</tspan>
+      <tspan x="1222" dy="32">intended</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1085" width="1520" height="75" rx="12" fill="#207448" />
+    <text x="800" y="1132" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">A human reading the file and a parser reading the file may disagree about what it means</text>
+  </g>
+</svg>

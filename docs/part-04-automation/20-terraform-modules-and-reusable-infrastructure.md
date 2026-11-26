@@ -46,17 +46,9 @@ Any other directory of `.tf` files that the root calls with a `module` block is 
 
 The diagram shows how a root wires its child modules together. Read it from the top. The root calls each child module once and passes values between them. Each arrow is a value that one module hands to the next, such as a network ID that the cluster needs before it can be created. Nothing in the cluster module looks up the network by name.
 
-```mermaid
-flowchart TB
-  ROOT["Root module (environment): envs/prod/main.tf\nwires modules together, holds backend + provider config"]
-  ROOT --> NET["module.network\nVPC, subnets, firewall, NAT"]
-  ROOT --> STO["module.storage\nbuckets, KMS, lifecycle"]
-  ROOT --> GKE["module.cluster\ncluster + system pool"]
-  ROOT --> POOL["module.gpu_pool (for_each)\nGPU node pools"]
-  NET -->|"network_id, subnet_ids"| GKE
-  GKE -->|"cluster_name"| POOL
-  STO -->|"bucket_names"| POOL
-```
+![What a module is](./img/m4-20-1.svg)
+
+*Figure 4.20.1. What a module is, as a diagram.*
 
 This is the same wiring in HCL. The GPU pool gets its subnet from `module.network` and never looks the network up by name. The wiring is the whole point, so it is worth reading slowly.
 

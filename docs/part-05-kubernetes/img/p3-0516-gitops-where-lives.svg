@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>GitOps secret patterns: what stays in Git and what lands in etcd</title>
+  <desc>Comparison table explaining GitOps secret patterns across External Secrets Operator, Secrets Store CSI Driver, Vault Agent Injector or Vault Secrets Operator, Sealed Secrets, SOPS with age or KMS, and CSI or Workload Identity.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">GitOps secret patterns:</tspan>
+    <tspan x="40" dy="54">what stays in Git and what lands in etcd</tspan>
+  </text>
+
+  
+  <rect x="40" y="125" width="1520" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <line x1="500" y1="125" x2="500" y2="210" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+  <line x1="1050" y1="125" x2="1050" y2="210" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+
+  <text x="60" y="177" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Approach</text>
+  <text x="525" y="177" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">How the value arrives</text>
+  <text x="1075" y="160" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="1075" dy="0">Notable fact</tspan>
+    <tspan x="1075" dy="34">from the chapter</tspan>
+  </text>
+
+  
+  <rect x="40" y="220" width="1520" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+  <line x1="500" y1="220" x2="500" y2="365" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+  <line x1="1050" y1="220" x2="1050" y2="365" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+
+  
+  <circle cx="75" cy="292" r="12" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M75,272 L75,278 M75,306 L75,312 M55,292 L61,292 M89,292 L95,292 M61,278 L65,282 M85,302 L89,306 M61,306 L65,302 M85,282 L89,278" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  <text x="115" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">External Secrets</tspan>
+    <tspan x="115" dy="36">Operator</tspan>
+  </text>
+  <text x="525" y="256" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0">ExternalSecret and SecretStore CRs</tspan>
+    <tspan x="525" dy="30">reference Vault, AWS SM, GCP SM</tspan>
+    <tspan x="525" dy="30">or Azure KV; ESO syncs into</tspan>
+    <tspan x="525" dy="30">native Secrets</tspan>
+  </text>
+  <text x="1075" y="256" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0">values never in Git;</tspan>
+    <tspan x="1075" dy="30">native Secret still in etcd;</tspan>
+    <tspan x="1075" dy="30">refresh intervals handle</tspan>
+    <tspan x="1075" dy="30">rotation</tspan>
+  </text>
+
+  
+  <rect x="40" y="375" width="1520" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+  <line x1="500" y1="375" x2="500" y2="500" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+  <line x1="1050" y1="375" x2="1050" y2="500" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+
+  
+  <ellipse cx="75" cy="423" rx="18" ry="7" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M57,437 C57,441 65,444 75,444 C85,444 93,441 93,437" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M57,423 L57,451 C57,455 65,458 75,458 C85,458 93,455 93,451 L93,423" stroke="#207448" stroke-width="4" fill="none"/>
+
+  <text x="115" y="425" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">Secrets Store</tspan>
+    <tspan x="115" dy="36">CSI Driver</tspan>
+  </text>
+  <text x="525" y="416" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0">SecretProviderClass mounts secrets</tspan>
+    <tspan x="525" dy="32">from a vault as a volume via driver</tspan>
+    <tspan x="525" dy="32" font-family="ui-monospace, monospace">secrets-store.csi.k8s.io</tspan>
+  </text>
+  <text x="1075" y="448" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0">optionally syncs to a Secret</tspan>
+  </text>
+
+  
+  <rect x="40" y="510" width="1520" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+  <line x1="500" y1="510" x2="500" y2="640" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+  <line x1="1050" y1="510" x2="1050" y2="640" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+
+  
+  <rect x="56" y="555" width="38" height="38" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="56" y1="566" x2="94" y2="566" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="63" cy="560.5" r="1.5" fill="#207448"/>
+  <circle cx="69" cy="560.5" r="1.5" fill="#207448"/>
+  <path d="M70,580 L80,580 M76,576 L80,580 L76,584" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="115" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">Vault Agent Injector</tspan>
+    <tspan x="115" dy="32">or Vault Secrets</tspan>
+    <tspan x="115" dy="32">Operator</tspan>
+  </text>
+  <text x="525" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0">sidecar or operator renders</tspan>
+    <tspan x="525" dy="32">secrets into the pod via Vault</tspan>
+    <tspan x="525" dy="32">Kubernetes auth</tspan>
+  </text>
+  <text x="1075" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0">dynamic secrets and leases</tspan>
+  </text>
+
+  
+  <rect x="40" y="650" width="1520" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+  <line x1="500" y1="650" x2="500" y2="775" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+  <line x1="1050" y1="650" x2="1050" y2="775" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+
+  
+  <path d="M66,702 L66,694 C66,688 84,688 84,694 L84,702" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <rect x="61" y="702" width="28" height="22" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+  <circle cx="75" cy="711" r="2.5" fill="#207448"/>
+  <line x1="75" y1="713.5" x2="75" y2="717" stroke="#207448" stroke-width="2.5"/>
+
+  <text x="115" y="722" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">Sealed Secrets</tspan>
+  </text>
+  <text x="525" y="690" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0">kubeseal encrypts with the</tspan>
+    <tspan x="525" dy="32">cluster public key; controller</tspan>
+    <tspan x="525" dy="32">decrypts to a Secret</tspan>
+  </text>
+  <text x="1075" y="706" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0">cluster-bound key;</tspan>
+    <tspan x="1075" dy="32">rotate keys every 30 days</tspan>
+  </text>
+
+  
+  <rect x="40" y="785" width="1520" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+  <line x1="500" y1="785" x2="500" y2="905" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+  <line x1="1050" y1="785" x2="1050" y2="905" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+
+  
+  <circle cx="67" cy="845" r="9" stroke="#207448" stroke-width="4" fill="none"/>
+  <path d="M76,845 L91,845 M86,845 L86,851 M90,845 L90,849" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  <text x="115" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">SOPS with age</tspan>
+    <tspan x="115" dy="36">or KMS</tspan>
+  </text>
+  <text x="525" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0">encrypted YAML in Git,</tspan>
+    <tspan x="525" dy="32">decrypted at apply</tspan>
+  </text>
+  <text x="1075" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0">reviewable diffs because</tspan>
+    <tspan x="1075" dy="32">keys stay visible</tspan>
+  </text>
+
+  
+  <rect x="40" y="915" width="1520" height="135" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <line x1="500" y1="915" x2="500" y2="1050" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+  <line x1="1050" y1="915" x2="1050" y2="1050" stroke="#207448" stroke-width="1.5" stroke-opacity="0.2"/>
+
+  
+  <path d="M75,961 L91,968 C91,986 75,999 75,1003 C75,999 59,986 59,968 Z" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round"/>
+  <path d="M68,981 L73,986 L82,975" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+  <text x="115" y="970" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">CSI or Workload</tspan>
+    <tspan x="115" dy="36">Identity</tspan>
+  </text>
+  <text x="525" y="955" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="525" dy="0">pods authenticate to cloud APIs</tspan>
+    <tspan x="525" dy="32">with federated tokens,</tspan>
+    <tspan x="525" dy="32">no secret at all</tspan>
+  </text>
+  <text x="1075" y="987" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1075" dy="0">best for cloud resources</tspan>
+  </text>
+
+  
+  <rect x="40" y="1065" width="1520" height="110" rx="10" fill="#207448"/>
+  <text x="800" y="1112" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    <tspan x="800" dy="0">Never commit plaintext Secrets to Git. A synced Secret lives in etcd</tspan>
+    <tspan x="800" dy="36">and is readable through the API; an injected secret is rendered into the pod</tspan>
+  </text>
+</svg>

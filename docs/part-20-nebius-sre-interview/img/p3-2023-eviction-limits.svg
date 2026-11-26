@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Drill 4: what limits the blast radius of a dead node</title>
+  <desc>Visual infographic explaining Kubernetes node eviction rate limiters, NotReady failure diagnostics, order of fix, and prevention mechanisms.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="50" dy="0">Drill 4: what limits the blast radius</tspan>
+    <tspan x="50" dy="54">of a dead node</tspan>
+  </text>
+  <text x="50" y="165" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    <tspan x="50" dy="0">Numbered limiters on a NotReady event for kube-worker-1</tspan>
+    <tspan x="50" dy="32">with eight inference pods and nine other nodes.</tspan>
+  </text>
+
+  
+  <rect x="50" y="215" width="1500" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(10, 0)">
+    <rect x="65" y="245" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="77" y1="262" x2="109" y2="262" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="107" cy="274" r="3" fill="#207448" />
+    <path d="M 83 287 L 75 299 L 111 299 L 103 287" fill="none" stroke="#207448" stroke-width="3.5" />
+  </g>
+  <text x="155" y="252" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan>Reading: </tspan>
+    <tspan font-weight="normal" font-size="24" fill="#303a36">node Ready Unknown, reason NodeStatusUnknown,</tspan>
+  </text>
+  <text x="155" y="284" font-family="sans-serif" font-size="24" fill="#303a36">
+    message Kubelet stopped posting node status;
+  </text>
+  <text x="155" y="316" font-family="monospace" font-size="24" fill="#303a36">
+    taints node.kubernetes.io/unreachable NoExecute and NoSchedule;
+  </text>
+  <text x="155" y="348" font-family="sans-serif" font-size="24" fill="#303a36">
+    VM still running in the console, SSH hangs, console shows filesystem read-only
+  </text>
+
+  
+  <line x1="415" y1="370" x2="415" y2="393" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  
+  <rect x="50" y="395" width="730" height="135" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="103" cy="462" r="26" fill="none" stroke="#db8129" stroke-width="3.5" />
+  <polyline points="103,446 103,462 117,462" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+  <text x="150" y="432" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Limiter 1:</text>
+  <text x="150" y="470" font-family="sans-serif" font-size="24" fill="#303a36">node controller waits 5 minutes before</text>
+  <text x="150" y="502" font-family="sans-serif" font-size="24" fill="#303a36">submitting the first eviction</text>
+
+  
+  <line x1="415" y1="530" x2="415" y2="558" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="50" y="560" width="730" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="103" cy="627" r="26" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="103" y1="627" x2="119" y2="613" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="103" cy="627" r="4" fill="#207448" />
+  <text x="150" y="597" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan>Limiter 2: </tspan>
+    <tspan font-weight="normal" font-size="24" fill="#303a36">evictions rate limited by</tspan>
+  </text>
+  <text x="150" y="634" font-family="monospace" font-size="24" fill="#303a36">--node-eviction-rate,</text>
+  <text x="150" y="666" font-family="sans-serif" font-size="24" fill="#303a36">default 0.1 per second</text>
+
+  
+  <line x1="415" y1="695" x2="415" y2="723" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="50" y="725" width="730" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="103" cy="775" r="9" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="86" cy="807" r="9" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="120" cy="807" r="9" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="97" y1="783" x2="91" y2="799" stroke="#207448" stroke-width="3" />
+  <line x1="109" y1="783" x2="115" y2="799" stroke="#207448" stroke-width="3" />
+  <line x1="95" y1="807" x2="111" y2="807" stroke="#207448" stroke-width="3" />
+  <text x="150" y="760" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan>Limiter 3: </tspan>
+    <tspan font-weight="normal" font-size="24" fill="#303a36">when at least 55 percent</tspan>
+  </text>
+  <text x="150" y="795" font-family="sans-serif" font-size="24" fill="#303a36">of nodes in a zone are unhealthy</text>
+  <text x="150" y="828" font-family="sans-serif" font-size="24" fill="#303a36">the rate drops</text>
+
+  
+  <line x1="415" y1="860" x2="415" y2="888" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="50" y="890" width="730" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <polygon points="93,934 113,934 127,948 127,968 113,982 93,982 79,968 79,948" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="90" y1="958" x2="116" y2="958" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <text x="150" y="930" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan>Limiter 4: </tspan>
+    <tspan font-weight="normal" font-size="24" fill="#303a36">on a cluster of 50 nodes</tspan>
+  </text>
+  <text x="150" y="970" font-family="sans-serif" font-size="24" fill="#303a36">or fewer evictions stop</text>
+
+  
+  <line x1="415" y1="1025" x2="415" y2="1078" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  
+  <rect x="820" y="395" width="730" height="495" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(845, 412)">
+    <circle cx="28" cy="28" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 28 4 L 28 12 M 28 44 L 28 52 M 4 28 L 12 28 M 44 28 L 52 28 M 11 11 L 17 17 M 39 39 L 45 45 M 11 45 L 17 39 M 39 17 L 45 11" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="915" y="450" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Order of fix:</text>
+
+  
+  <rect x="845" y="475" width="680" height="90" rx="8" fill="#e8f1ea" stroke="#b8d5c2" stroke-width="1.5" />
+  <text x="865" y="510" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">1 </tspan>confirm replacement capacity exists
+  </text>
+  <text x="865" y="542" font-family="sans-serif" font-size="24" fill="#303a36">
+    for eight pods on nine nodes;
+  </text>
+
+  
+  <rect x="845" y="578" width="680" height="110" rx="8" fill="#e8f1ea" stroke="#b8d5c2" stroke-width="1.5" />
+  <text x="865" y="612" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">2 </tspan>recover or replace the node:
+  </text>
+  <text x="865" y="644" font-family="monospace" font-size="24" fill="#303a36">
+    systemctl status kubelet,
+  </text>
+  <text x="865" y="674" font-family="monospace" font-size="24" fill="#303a36">
+    journalctl -xeu kubelet;
+  </text>
+
+  
+  <rect x="845" y="700" width="680" height="100" rx="8" fill="#e8f1ea" stroke="#b8d5c2" stroke-width="1.5" />
+  <text x="865" y="734" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold" fill="#207448">3 </tspan>if damaged, drain what you can,
+  </text>
+  <text x="865" y="766" font-family="sans-serif" font-size="24" fill="#303a36">
+    delete the node object, let the autoscaler replace it;
+  </text>
+
+  
+  <rect x="845" y="812" width="680" height="66" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="5,5" />
+  <text x="865" y="839" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    never delete the node first,
+  </text>
+  <text x="865" y="865" font-family="sans-serif" font-size="24" fill="#303a36">
+    read conditions and logs first
+  </text>
+
+  
+  <rect x="820" y="905" width="730" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(845, 922)">
+    <path d="M 12 10 L 28 4 L 44 10 C 44 32 28 46 28 46 C 28 46 12 32 12 10 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  </g>
+  <text x="915" y="955" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Prevention:</text>
+  <text x="850" y="995" font-family="sans-serif" font-size="24" fill="#303a36">
+    alert on Ready not true for longer than the eviction delay;
+  </text>
+  <text x="850" y="1027" font-family="sans-serif" font-size="24" fill="#303a36">
+    keep N+1 GPU capacity
+  </text>
+
+  
+  <rect x="50" y="1080" width="1500" height="90" rx="12" fill="#207448" />
+  
+  <circle cx="100" cy="1125" r="24" fill="none" stroke="#ffffff" stroke-width="3.5" />
+  <polyline points="89,1125 97,1133 112,1117" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="145" y="1134" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+    <tspan>Outcome: </tspan>
+    <tspan font-weight="normal">a partitioned zone does not trigger a mass reschedule</tspan>
+  </text>
+</svg>

@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Where a variable is visible depends on where it was set</title>
+  <desc>Concentric hierarchy of variable scopes in Ansible from innermost task vars to outermost role variables, with notes on lazy evaluation and recursion.</desc>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Where a variable is visible depends on where it was set</text>
+
+  
+
+  
+  <rect x="40" y="120" width="950" height="810" rx="16" ry="16" fill="#ffffff" stroke="#7a8b84" stroke-width="3" stroke-dasharray="10 6" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M68 162 l23 -14 l23 14 v28 l-23 14 l-23 -14 z" />
+    <path d="M68 162 l23 14 l23 -14" />
+    <path d="M91 176 v28" />
+  </g>
+
+  
+  <text x="140" y="165" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">role variables: </tspan>
+    <tspan font-size="24">not scoped by default,</tspan>
+    <tspan x="140" dy="34" font-size="24">visible to later roles and tasks, so prefix them</tspan>
+  </text>
+
+  
+  <rect x="65" y="245" width="900" height="665" rx="14" ry="14" fill="#f4f8f5" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="90" y="280" width="46" height="18" rx="3" />
+    <rect x="90" y="306" width="46" height="18" rx="3" />
+    <circle cx="101" cy="289" r="2.5" fill="#207448" />
+    <circle cx="110" cy="289" r="2.5" fill="#207448" />
+    <line x1="120" y1="289" x2="128" y2="289" />
+    <circle cx="101" cy="315" r="2.5" fill="#207448" />
+    <circle cx="110" cy="315" r="2.5" fill="#207448" />
+    <line x1="120" y1="315" x2="128" y2="315" />
+  </g>
+
+  
+  <text x="165" y="292" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">inventory, group and host variables:</tspan>
+    <tspan x="165" dy="34" font-size="24">each host, for the whole run</tspan>
+  </text>
+
+  
+  <rect x="90" y="370" width="850" height="520" rx="12" ry="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="117" y="408" width="42" height="40" rx="4" />
+    <line x1="125" y1="402" x2="125" y2="408" />
+    <line x1="138" y1="402" x2="138" y2="408" />
+    <line x1="151" y1="402" x2="151" y2="408" />
+    <line x1="125" y1="448" x2="125" y2="454" />
+    <line x1="138" y1="448" x2="138" y2="454" />
+    <line x1="151" y1="448" x2="151" y2="454" />
+    <path d="M128 428 h20" />
+  </g>
+
+  
+  <text x="190" y="416" fill="#303a36">
+    <tspan font-family="monospace" font-size="28" font-weight="bold" fill="#207448">set_fact </tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold">and </tspan>
+    <tspan font-family="monospace" font-size="28" font-weight="bold" fill="#207448">register:</tspan>
+    <tspan x="190" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24">this host, for the rest of the play run</tspan>
+  </text>
+
+  
+  <rect x="115" y="495" width="800" height="375" rx="10" ry="10" fill="#dcebe0" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M145 528 h28 l12 12 v36 h-40 z" />
+    <path d="M173 528 v12 h12" />
+    <line x1="153" y1="554" x2="177" y2="554" />
+    <line x1="153" y1="564" x2="171" y2="564" />
+  </g>
+
+  
+  <text x="215" y="540" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold">play vars and </tspan>
+    <tspan font-family="monospace" font-size="26" font-weight="bold" fill="#207448">vars_files:</tspan>
+    <tspan x="215" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24">only this play</tspan>
+  </text>
+
+  
+  <rect x="140" y="620" width="750" height="230" rx="10" ry="10" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="195" cy="735" r="24" />
+    <path d="M185 735 l7 7 l14 -14" />
+  </g>
+
+  
+  <text x="245" y="744" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan font-size="32" font-weight="bold">task vars: </tspan>
+    <tspan font-size="28" font-weight="bold">only this task</tspan>
+  </text>
+
+  
+
+  
+  <rect x="1030" y="120" width="530" height="385" rx="14" ry="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1088" cy="178" r="24" />
+    <polyline points="1088,164 1088,178 1098,184" />
+  </g>
+
+  
+  <text x="1135" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Lazy evaluation:</text>
+  <text x="1060" y="246" fill="#303a36">
+    <tspan font-family="monospace" font-size="24">group_vars </tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24">can set </tspan>
+    <tspan font-family="monospace" font-size="24">driver_pkg</tspan>
+    <tspan x="1060" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24">from </tspan>
+    <tspan font-family="monospace" font-size="24">nvidia_driver_branch,</tspan>
+    <tspan x="1060" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24">and the branch is filled in</tspan>
+    <tspan x="1060" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24">only when a task reads</tspan>
+    <tspan x="1060" dy="34" font-family="monospace" font-size="24">driver_pkg.</tspan>
+  </text>
+
+  
+  <rect x="1030" y="535" width="530" height="395" rx="14" ry="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M1088 573 l24 40 h-48 z" />
+    <line x1="1088" y1="588" x2="1088" y2="598" />
+    <circle cx="1088" cy="605" r="1.5" fill="#207448" />
+  </g>
+
+  
+  <text x="1060" y="662" fill="#303a36">
+    <tspan font-family="monospace" font-size="26" font-weight="bold">x: {{ x }} </tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold">recurses and fails,</tspan>
+    <tspan x="1060" dy="38" font-family="system-ui, -apple-system, sans-serif" font-size="24">because the value keeps</tspan>
+    <tspan x="1060" dy="34" font-family="system-ui, -apple-system, sans-serif" font-size="24">asking for itself.</tspan>
+  </text>
+
+  
+  <rect x="40" y="960" width="1520" height="64" rx="10" ry="10" fill="#207448" />
+  <text x="800" y="1001" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Scope answers where a value can be read, lifetime answers how long it lasts.</text>
+</svg>

@@ -1,0 +1,227 @@
+import re
+import xml.etree.ElementTree as ET
+import subprocess
+import pathlib
+
+svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Layer order decides how much a code edit rebuilds</title>
+  <desc>Technical infographic comparing careless vs cache-friendly Dockerfile layer ordering, showing how invalidating early layers forces costly dependency reinstall while copying lockfiles first keeps installs cached.</desc>
+
+  <defs>
+    <!-- Arrowhead Orange (18px) -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Layer order decides how much a code edit rebuilds</text>
+
+  <!-- ==================== LEFT COLUMN: Careless order ==================== -->
+  <g id="careless-stack">
+    <!-- Red bordered container -->
+    <rect x="50" y="115" width="490" height="660" rx="16" fill="#ffffff" stroke="#c93b2b" stroke-width="3" />
+
+    <!-- Icon: Stack with invalidation / warning (56px) -->
+    <g transform="translate(80, 138)" stroke="#c93b2b" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="12" rx="3" />
+      <rect x="4" y="22" width="48" height="12" rx="3" />
+      <rect x="4" y="38" width="48" height="12" rx="3" />
+      <line x1="28" y1="28" x2="44" y2="28" stroke-width="3" />
+    </g>
+
+    <!-- Header Text (32px bold) -->
+    <text x="150" y="177" font-family="sans-serif" font-size="32" font-weight="bold" fill="#c93b2b">Careless order</text>
+
+    <!-- Arrow: edit one line of code (Orange) -->
+    <line x1="80" y1="228" x2="500" y2="228" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    <text x="290" y="216" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">edit one line of code</text>
+
+    <!-- Rebuilt Banner / Container (Orange) -->
+    <rect x="75" y="246" width="440" height="184" rx="12" fill="#fff5ea" stroke="#db8129" stroke-width="2.5" />
+    <text x="295" y="280" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="295" dy="0">rebuilt: every commit</tspan>
+      <tspan x="295" dy="31">forces a full dependency</tspan>
+      <tspan x="295" dy="31">reinstall (a 10-minute</tspan>
+      <tspan x="295" dy="31">reinstall in the</tspan>
+      <tspan x="295" dy="31">checkpoint example)</tspan>
+    </text>
+
+    <!-- Layer 3: RUN pip install (Orange Rebuilt) -->
+    <rect x="75" y="445" width="440" height="85" rx="10" fill="#fff5ea" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(95, 460)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6,16 16,28 6,40" />
+      <line x1="22" y1="40" x2="38" y2="40" />
+    </g>
+    <text x="155" y="498" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">RUN pip install</text>
+
+    <!-- Layer 2: COPY . . (Orange Rebuilt) -->
+    <rect x="75" y="550" width="440" height="85" rx="10" fill="#fff5ea" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(95, 565)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="26" height="32" rx="3" />
+      <path d="M 16 8 V 20 H 28" />
+      <polyline points="22,28 32,38 42,28" />
+    </g>
+    <text x="155" y="603" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">COPY . .</text>
+
+    <!-- Layer 1: FROM base (Cached) -->
+    <rect x="75" y="655" width="440" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(95, 670)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 16 L 24 8 L 40 16 L 24 24 Z" />
+      <path d="M 8 26 L 24 34 L 40 26" />
+      <path d="M 8 36 L 24 44 L 40 36" />
+    </g>
+    <text x="155" y="708" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">FROM base</text>
+  </g>
+
+  <!-- ==================== MIDDLE COLUMN: Cache-friendly order ==================== -->
+  <g id="cache-friendly-stack">
+    <!-- Green bordered container -->
+    <rect x="570" y="115" width="570" height="660" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+    <!-- Icon: Stack with shield / checkmark (56px) -->
+    <g transform="translate(600, 138)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="12" rx="3" />
+      <rect x="4" y="22" width="48" height="12" rx="3" />
+      <rect x="4" y="38" width="48" height="12" rx="3" />
+      <polyline points="20,28 26,34 38,22" stroke-width="3.5" />
+    </g>
+
+    <!-- Header Text (32px bold) -->
+    <text x="670" y="177" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Cache-friendly order</text>
+
+    <!-- Rebuilt Callout on Top Layer (Orange) -->
+    <rect x="595" y="210" width="520" height="56" rx="8" fill="#fff5ea" stroke="#db8129" stroke-width="2" />
+    <text x="855" y="247" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">rebuilt in about 1 second</text>
+
+    <!-- Layer 4: COPY src/ (Orange Rebuilt) -->
+    <rect x="595" y="278" width="520" height="72" rx="10" fill="#fff5ea" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(615, 288)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="26" height="32" rx="3" />
+      <path d="M 16 8 V 20 H 28" />
+      <polyline points="22,28 32,38 42,28" />
+    </g>
+    <text x="675" y="323" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">COPY src/</text>
+
+    <!-- Cached Group Container / Bracket -->
+    <rect x="595" y="365" width="520" height="385" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+
+    <!-- Cache hit label banner -->
+    <rect x="615" y="380" width="480" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="855" y="415" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">cache hit, digest matches</text>
+
+    <!-- Layer 3: RUN pip install (Cached) -->
+    <rect x="615" y="445" width="480" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(635, 460)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6,16 16,28 6,40" />
+      <line x1="22" y1="40" x2="38" y2="40" />
+    </g>
+    <text x="695" y="498" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">RUN pip install</text>
+
+    <!-- Layer 2: COPY requirements.lock (Cached) -->
+    <rect x="615" y="550" width="480" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(635, 565)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="26" height="32" rx="3" />
+      <path d="M 16 8 V 20 H 28" />
+      <circle cx="28" cy="34" r="6" />
+      <line x1="28" y1="28" x2="28" y2="24" />
+    </g>
+    <text x="695" y="603" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">COPY requirements.lock</text>
+
+    <!-- Layer 1: FROM base (Cached) -->
+    <rect x="615" y="655" width="480" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(635, 670)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 16 L 24 8 L 40 16 L 24 24 Z" />
+      <path d="M 8 26 L 24 34 L 40 26" />
+      <path d="M 8 36 L 24 44 L 40 36" />
+    </g>
+    <text x="695" y="708" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">FROM base</text>
+  </g>
+
+  <!-- ==================== RIGHT SIDEBAR: Node.js example ==================== -->
+  <g id="right-sidebar">
+    <rect x="1170" y="115" width="380" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Icon: Gear / Node code (56px) -->
+    <g transform="translate(1332, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14" />
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 12 L 44 18" />
+    </g>
+
+    <!-- Sidebar text (>= 24px) wrapped cleanly -->
+    <text x="1360" y="240" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1360" dy="0" font-weight="bold">Same idea in the</tspan>
+      <tspan x="1360" dy="36" font-weight="bold">Node.js example:</tspan>
+      <tspan x="1360" dy="46" font-family="monospace" font-weight="bold" fill="#207448">COPY package*.json,</tspan>
+      <tspan x="1360" dy="42" font-family="monospace" font-weight="bold" fill="#207448">RUN npm install,</tspan>
+      <tspan x="1360" dy="42" font-family="monospace" font-weight="bold" fill="#db8129">then COPY . .</tspan>
+      <tspan x="1360" dy="46">so editing</tspan>
+      <tspan x="1360" dy="38" font-family="monospace" font-weight="bold">server.js</tspan>
+      <tspan x="1360" dy="38">rebuilds only the</tspan>
+      <tspan x="1360" dy="36">last layer</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== DOMINO ROW: Bottom ==================== -->
+  <g id="domino-row">
+    <rect x="50" y="800" width="1500" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Domino Graphic: 5 domino tiles showing stable front vs falling tail -->
+    <g transform="translate(85, 825)">
+      <!-- Domino 1 (stable) -->
+      <rect x="0" y="0" width="30" height="70" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="15" cy="20" r="3" fill="#207448" />
+      <line x1="4" y1="35" x2="26" y2="35" stroke="#207448" stroke-width="2" />
+      <circle cx="15" cy="50" r="3" fill="#207448" />
+
+      <!-- Domino 2 (stable) -->
+      <rect x="50" y="0" width="30" height="70" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="65" cy="20" r="3" fill="#207448" />
+      <line x1="54" y1="35" x2="76" y2="35" stroke="#207448" stroke-width="2" />
+      <circle cx="65" cy="50" r="3" fill="#207448" />
+
+      <!-- Domino 3 (stable) -->
+      <rect x="100" y="0" width="30" height="70" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <circle cx="115" cy="20" r="3" fill="#207448" />
+      <line x1="104" y1="35" x2="126" y2="35" stroke="#207448" stroke-width="2" />
+      <circle cx="115" cy="50" r="3" fill="#207448" />
+
+      <!-- Domino 4 (falling / tilted, orange) -->
+      <g transform="translate(150, 0) rotate(22 15 70)">
+        <rect x="0" y="0" width="30" height="70" rx="4" fill="#fff5ea" stroke="#db8129" stroke-width="3" />
+        <circle cx="15" cy="20" r="3" fill="#db8129" />
+        <line x1="4" y1="35" x2="26" y2="35" stroke="#db8129" stroke-width="2" />
+        <circle cx="15" cy="50" r="3" fill="#db8129" />
+      </g>
+
+      <!-- Domino 5 (tumbled flat, orange) -->
+      <g transform="translate(200, 20) rotate(48 15 50)">
+        <rect x="0" y="0" width="30" height="70" rx="4" fill="#fff5ea" stroke="#db8129" stroke-width="3" />
+        <circle cx="15" cy="20" r="3" fill="#db8129" />
+        <line x1="4" y1="35" x2="26" y2="35" stroke="#db8129" stroke-width="2" />
+        <circle cx="15" cy="50" r="3" fill="#db8129" />
+      </g>
+    </g>
+
+    <!-- Domino Text (>= 24px) -->
+    <text x="380" y="852" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="380" dy="0">rarely changing pieces first, so a change near the front</tspan>
+      <tspan x="380" dy="38">is the only one that knocks the rest down.</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== FOOTNOTE ==================== -->
+  <text x="800" y="960" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Layers match RUN, COPY and ADD; ENV, LABEL and CMD change only metadata.</text>
+
+  <!-- ==================== TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="50" y="995" width="1500" height="85" rx="14" fill="#207448" />
+    <text x="800" y="1048" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Copy the lockfile before the source.</text>
+  </g>
+</svg>'''
+
+pathlib.Path("test_p3_0501.svg").write_text(svg_content)
+print("Updated test_p3_0501.svg successfully!")

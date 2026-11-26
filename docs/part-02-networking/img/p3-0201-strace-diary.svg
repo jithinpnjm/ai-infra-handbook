@@ -1,0 +1,245 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Reading the strace diary of curl: which call belongs to which stage</title>
+  <desc>Visual breakdown of curl system calls traced with strace, mapping each call to its corresponding stage from URL splitting to connection teardown.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <g text-anchor="middle">
+    <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading the strace diary of curl:</text>
+    <text x="800" y="112" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">which call belongs to which stage</text>
+  </g>
+
+  
+  <g id="left-panel">
+    <rect x="40" y="145" width="430" height="395" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <path d="M 68 185 A 16 16 0 1 1 100 185 A 16 16 0 1 1 68 185 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <ellipse cx="84" cy="185" rx="7" ry="16" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="68" y1="185" x2="100" y2="185" stroke="#207448" stroke-width="2.5"/>
+    <text x="115" y="194" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">curl splits the URL</text>
+
+    
+    <rect x="58" y="218" width="394" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="248" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">scheme </tspan>
+      <tspan font-family="monospace" font-weight="bold">https</tspan>
+    </text>
+    <text x="74" y="278" font-family="sans-serif" font-size="24" fill="#303a36">(default port 443,</text>
+    <text x="74" y="306" font-family="sans-serif" font-size="24" fill="#303a36">which language to speak)</text>
+
+    
+    <rect x="58" y="326" width="394" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="356" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">host </tspan>
+      <tspan font-family="monospace" font-weight="bold">example.com</tspan>
+    </text>
+    <text x="74" y="396" font-family="sans-serif" font-size="24" fill="#303a36">(who to talk to)</text>
+
+    
+    <rect x="58" y="428" width="394" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="458" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">path </tspan>
+      <tspan font-family="monospace" font-weight="bold">/</tspan>
+    </text>
+    <text x="74" y="498" font-family="sans-serif" font-size="24" fill="#303a36">(what to ask for)</text>
+  </g>
+
+  
+  <g id="transition-arrow">
+    <rect x="40" y="565" width="430" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="62" y="612" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="62" dy="0">curl hands the networking</tspan>
+      <tspan x="62" dy="38">to libcurl, which asks the</tspan>
+      <tspan x="62" dy="38">C library to resolve names</tspan>
+      <tspan x="62" dy="38">and the kernel for sockets</tspan>
+    </text>
+
+    
+    <path d="M 255 540 L 255 555 L 485 555 L 485 672 L 512 672" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  </g>
+
+  
+  <g id="timeline-container">
+    <rect x="515" y="145" width="1045" height="860" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <line x1="552" y1="197" x2="552" y2="953" stroke="#207448" stroke-width="4"/>
+
+    
+    <g id="row-1">
+      <circle cx="552" cy="197" r="22" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+      <text x="552" y="205" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+      
+      
+      <path d="M 590 177 L 614 177 L 626 189 L 626 217 L 590 217 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M 614 177 L 614 189 L 626 189" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="597" y1="197" x2="618" y2="197" stroke="#207448" stroke-width="2.5"/>
+      <line x1="597" y1="207" x2="614" y2="207" stroke="#207448" stroke-width="2.5"/>
+
+      
+      <rect x="640" y="145" width="465" height="104" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="656" y="180" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">openat /etc/resolv.conf,</text>
+      <text x="656" y="210" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">/etc/nsswitch.conf,</text>
+      <text x="656" y="238" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">/etc/hosts</text>
+
+      
+      <rect x="1120" y="145" width="425" height="104" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="1136" y="180" font-family="sans-serif" font-size="24" fill="#303a36">Stage: finding out how to</text>
+      <text x="1136" y="210" font-family="sans-serif" font-size="24" fill="#303a36">look a name up</text>
+      <text x="1136" y="238" font-family="sans-serif" font-size="24" fill="#303a36">(files before DNS)</text>
+    </g>
+
+    
+    <g id="row-2">
+      <circle cx="552" cy="323" r="22" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+      <text x="552" y="331" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+      
+      
+      <circle cx="608" cy="318" r="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 596 306 A 18 18 0 0 1 620 306" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 590 300 A 26 26 0 0 1 626 300" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="608" y1="326" x2="608" y2="344" stroke="#207448" stroke-width="3"/>
+      <line x1="598" y1="344" x2="618" y2="344" stroke="#207448" stroke-width="3"/>
+
+      
+      <rect x="640" y="271" width="465" height="104" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="656" y="316" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">socket(AF_INET,</text>
+      <text x="656" y="348" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">SOCK_DGRAM, ...)</text>
+
+      
+      <rect x="1120" y="271" width="425" height="104" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="1136" y="316" font-family="sans-serif" font-size="24" fill="#303a36">the phone line for the</text>
+      <text x="1136" y="348" font-family="sans-serif" font-size="24" fill="#303a36">DNS question (UDP/53)</text>
+    </g>
+
+    
+    <g id="row-3">
+      <circle cx="552" cy="449" r="22" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+      <text x="552" y="457" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+      
+      
+      <path d="M 592 441 L 622 441 M 614 433 L 622 441 L 614 449" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M 624 457 L 594 457 M 602 449 L 594 457 L 602 465" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+
+      
+      <rect x="640" y="397" width="465" height="104" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="656" y="442" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">sendto and recvfrom</text>
+      <text x="656" y="474" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">(DNS query and answer)</text>
+
+      
+      <rect x="1120" y="397" width="425" height="104" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="1136" y="457" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">name resolution</text>
+    </g>
+
+    
+    <g id="row-4">
+      <circle cx="552" cy="575" r="22" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+      <text x="552" y="583" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+      
+      
+      <rect x="594" y="563" width="28" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <line x1="601" y1="553" x2="601" y2="563" stroke="#207448" stroke-width="3"/>
+      <line x1="615" y1="553" x2="615" y2="563" stroke="#207448" stroke-width="3"/>
+      <line x1="608" y1="587" x2="608" y2="599" stroke="#207448" stroke-width="3"/>
+
+      
+      <rect x="640" y="523" width="465" height="104" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="656" y="568" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">socket(AF_INET6 or</text>
+      <text x="656" y="600" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">AF_INET, SOCK_STREAM, ...)</text>
+
+      
+      <rect x="1120" y="523" width="425" height="104" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="1136" y="568" font-family="sans-serif" font-size="24" fill="#303a36">a second line for the</text>
+      <text x="1136" y="600" font-family="sans-serif" font-size="24" fill="#303a36">real conversation (TCP)</text>
+    </g>
+
+    
+    <g id="row-5">
+      <circle cx="552" cy="701" r="22" fill="#db8129" stroke="#ffffff" stroke-width="3"/>
+      <text x="552" y="709" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+      
+      
+      <path d="M 596 701 L 606 691 C 610 687 616 687 620 691 C 624 695 624 701 620 705 L 614 711" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 620 701 L 610 711 C 606 715 600 715 596 711 C 592 707 592 701 596 697 L 602 691" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+
+      
+      <rect x="640" y="649" width="465" height="104" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+      <text x="656" y="694" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">connect(fd, address,</text>
+      <text x="656" y="726" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">port 443)</text>
+
+      
+      <rect x="1120" y="649" width="425" height="104" rx="10" fill="#db8129" stroke="#db8129" stroke-width="3"/>
+      <text x="1136" y="694" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">triggers the</text>
+      <text x="1136" y="726" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">three-way handshake</text>
+    </g>
+
+    
+    <g id="row-6">
+      <circle cx="552" cy="827" r="22" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+      <text x="552" y="835" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+      
+      
+      <rect x="594" y="818" width="28" height="22" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 600 818 L 600 810 A 8 8 0 0 1 616 810 L 616 818" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="608" cy="829" r="2.5" fill="#207448"/>
+
+      
+      <rect x="640" y="775" width="465" height="104" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="656" y="820" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">sendto and recvfrom</text>
+      <text x="656" y="852" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">(TLS and HTTP bytes)</text>
+
+      
+      <rect x="1120" y="775" width="425" height="104" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="1136" y="820" font-family="sans-serif" font-size="24" fill="#303a36">TLS handshake then</text>
+      <text x="1136" y="852" font-family="sans-serif" font-size="24" fill="#303a36">HTTP request and response</text>
+    </g>
+
+    
+    <g id="row-7">
+      <circle cx="552" cy="953" r="22" fill="#207448" stroke="#ffffff" stroke-width="3"/>
+      <text x="552" y="961" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+      
+      
+      <circle cx="608" cy="953" r="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <line x1="599" y1="944" x2="617" y2="962" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="617" y1="944" x2="599" y2="962" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+      
+      <rect x="640" y="901" width="465" height="104" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <text x="656" y="961" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">close</text>
+
+      
+      <rect x="1120" y="901" width="425" height="104" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      <text x="1136" y="961" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">teardown</text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-command-strip">
+    <rect x="40" y="1025" width="1520" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="58" y="1048" width="44" height="42" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 68 1063 L 76 1069 L 68 1075" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="80" y1="1077" x2="92" y2="1077" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="118" y="1062" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">strace -f -tt -e trace=openat,socket,connect,sendto,recvfrom,sendmsg,recvmsg,close</text>
+    <text x="118" y="1096" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">curl -s https://example.com/ -o /dev/null 2&gt;&amp;1 | head -80</text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="1132" width="1520" height="52" rx="10" fill="#207448"/>
+    <text x="800" y="1167" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The strace output is the program's own diary of the journey</text>
+  </g>
+</svg>

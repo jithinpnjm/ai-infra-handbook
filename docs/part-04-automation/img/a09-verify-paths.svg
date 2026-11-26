@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Verification checks the path a user takes, then each app node</title>
+  <desc>Visual infographic explaining how verify.yml checks the public HTTPS endpoint through nginx first, verifies the served version matches what was deployed, and then directly queries each backend app node.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Verification checks the path a user takes,</tspan>
+    <tspan x="800" dy="56">then each app node</tspan>
+  </text>
+
+  
+  <g id="column-1-verify">
+    
+    <rect x="40" y="170" width="400" height="710" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(62, 185)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 8 L 24 2 L 42 8 C 42 26 24 38 24 38 C 24 38 6 26 6 8 Z"/>
+      <polyline points="15,20 22,27 33,14"/>
+    </g>
+
+    
+    <text x="126" y="222" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">verify.yml</text>
+    <line x1="40" y1="248" x2="440" y2="248" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+    
+    <g id="step-1-box">
+      <rect x="55" y="265" width="370" height="595" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+      
+      <circle cx="95" cy="310" r="24" fill="#207448"/>
+      <text x="95" y="319" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+      
+      <g transform="translate(142, 282)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="20" width="36" height="28" rx="5"/>
+        <path d="M 16 20 V 12 A 10 10 0 0 1 36 12 V 20"/>
+        <circle cx="26" cy="33" r="3" fill="#207448"/>
+      </g>
+
+      
+      <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+        <tspan x="240" y="390">HTTPS endpoint</tspan>
+        <tspan x="240" y="430">answers</tspan>
+      </text>
+
+      
+      <rect x="70" y="470" width="340" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="90" y="515">https://{{</tspan>
+        <tspan x="90" y="555">  nginx_server_name</tspan>
+        <tspan x="90" y="595">}}/readyz</tspan>
+      </text>
+
+      
+      <rect x="70" y="650" width="340" height="185" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+      <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="240" y="700">the path a user</tspan>
+        <tspan x="240" y="740">takes, delegated</tspan>
+        <tspan x="240" y="780">to localhost</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <line x1="440" y1="440" x2="476" y2="440" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="box-nginx">
+    <rect x="480" y="370" width="110" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(507, 385)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="10" width="52" height="28" rx="6"/>
+      <line x1="12" y1="24" x2="20" y2="24"/>
+      <circle cx="28" cy="24" r="2" fill="#207448"/>
+      <circle cx="38" cy="24" r="2" fill="#207448"/>
+      <line x1="14" y1="10" x2="14" y2="2"/>
+      <line x1="42" y1="10" x2="42" y2="2"/>
+    </g>
+
+    
+    <text x="535" y="480" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">nginx</text>
+  </g>
+
+  
+  <line x1="590" y1="440" x2="626" y2="440" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="step-2-box">
+    <rect x="630" y="170" width="400" height="710" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <circle cx="675" cy="220" r="24" fill="#207448"/>
+    <text x="675" y="229" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(790, 192)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="16,28 24,36 40,20"/>
+    </g>
+
+    
+    <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="830" y="285">Version served</tspan>
+      <tspan x="830" y="325">matches what</tspan>
+      <tspan x="830" y="365">we deployed</tspan>
+    </text>
+
+    
+    <rect x="660" y="415" width="340" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="830" y="472" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">app_version</text>
+
+    
+    <rect x="660" y="540" width="340" height="295" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="830" y="615">the assert compares</tspan>
+      <tspan x="830" y="665">the served version</tspan>
+      <tspan x="830" y="715">with the pinned</tspan>
+      <tspan x="830" y="765">one</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1030" y1="310" x2="1076" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="step-3-box">
+    <rect x="1080" y="170" width="480" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <circle cx="1125" cy="215" r="24" fill="#207448"/>
+    <text x="1125" y="224" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(1480, 187)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="4"/>
+      <rect x="4" y="30" width="48" height="18" rx="4"/>
+      <circle cx="14" cy="15" r="2" fill="#207448"/>
+      <circle cx="14" cy="39" r="2" fill="#207448"/>
+    </g>
+
+    
+    <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1160" y="215">Every app node</tspan>
+      <tspan x="1160" y="255">reports ready</tspan>
+      <tspan x="1160" y="295">(direct)</tspan>
+    </text>
+
+    
+    <rect x="1100" y="325" width="440" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="1115" y="358">http://{{ hostvars[item]</tspan>
+      <tspan x="1115" y="388">  ['ansible_host'] }}:</tspan>
+      <tspan x="1115" y="418">  {{ app_port }}/readyz</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1250 450 L 1190 526" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <path d="M 1390 450 L 1450 526" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <g id="box-app01">
+    <rect x="1080" y="530" width="220" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1105, 545)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="40" height="34" rx="4"/>
+      <line x1="4" y1="22" x2="44" y2="22"/>
+      <circle cx="12" cy="14" r="2" fill="#207448"/>
+      <circle cx="12" cy="30" r="2" fill="#207448"/>
+    </g>
+    <text x="1215" y="585" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">app01</text>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1190" y="635">asked</tspan>
+      <tspan x="1190" y="668">directly</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-app02">
+    <rect x="1340" y="530" width="220" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(1365, 545)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="40" height="34" rx="4"/>
+      <line x1="4" y1="22" x2="44" y2="22"/>
+      <circle cx="12" cy="14" r="2" fill="#207448"/>
+      <circle cx="12" cy="30" r="2" fill="#207448"/>
+    </g>
+    <text x="1475" y="585" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">app02</text>
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1450" y="635">asked</tspan>
+      <tspan x="1450" y="668">directly</tspan>
+    </text>
+  </g>
+
+  
+  <g id="orange-fanout-highlight">
+    <line x1="1190" y1="690" x2="1190" y2="720" stroke="#db8129" stroke-width="2" stroke-dasharray="4 4"/>
+    <line x1="1450" y1="690" x2="1450" y2="720" stroke="#db8129" stroke-width="2" stroke-dasharray="4 4"/>
+    <rect x="1080" y="720" width="480" height="160" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="2.5"/>
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="1320" y="760">a single broken host</tspan>
+      <tspan x="1320" y="796">is found even when</tspan>
+      <tspan x="1320" y="832">nginx would have</tspan>
+      <tspan x="1320" y="868">routed around it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="920" width="1520" height="75" rx="12" fill="#207448"/>
+    <text x="800" y="966" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Modules verify state, while uri and assert verify behaviour, and you need both.</text>
+  </g>
+</svg>

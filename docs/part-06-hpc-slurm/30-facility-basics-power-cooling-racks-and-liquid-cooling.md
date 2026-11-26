@@ -36,12 +36,9 @@ You need no special preparation for this chapter. It walks through the units you
 
 Picture a new order of GPU servers arriving on a Monday. The procurement form asks for a power figure, and the facility team asks how many kilowatts the rack will draw. Before you can answer either question, you need one simple idea and the mechanism behind it.
 
-```mermaid
-flowchart LR
-  Grid["1. Utility / Generator + UPS<br/>apcupsd (:3551) + Staged haltall"] --> PDU["2. 3-Phase Rack PDUs (N=2)<br/>sqrt(3) * V * I * 0.80 * 0.95"]
-  PDU --> Server["3. GPU Server (DGX B200 14.3 kW)<br/>6 PSUs (5-of-6 N+1 Required)"]
-  Server --> Cool["4. Heat Rejection (100% of Watts)<br/>Air (150 CFM/kW) or Cold-Plate CDU"]
-```
+![Start with the simple idea](./img/m6-30-1.svg)
+
+*Figure 6.30.1. Start with the simple idea, as a diagram.*
 
 The diagram follows one path. Power comes in from the utility or a generator, passes through a UPS (a battery that bridges short outages), and reaches the rack through power distribution units (PDUs, the strips that feed each server). The server then turns the power into computation and heat, and the heat has to leave the room through the cooling system. Read it from left to right, and notice that the final box is not optional. Every watt that goes in must come out again as heat.
 

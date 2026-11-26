@@ -44,6 +44,10 @@ Before you can follow a request, you need a map of where requests can go. Every 
 
 ### Groups, versions, kinds, resources
 
+![Two API URLs are split into group, version, resource, object and subresource parts.](./img/p3-0505-url-anatomy.svg)
+
+*Figure 5.5.1. Core group objects live under api v1 and named groups under apis, with subresources hanging off one object.*
+
 Every object in the API belongs to a group and a version. The core group sits under `/api/v1`, and it holds pods, nodes, services, configmaps, secrets and PVCs. Named groups sit under `/apis`. The `apps/v1` group holds deployments, statefulsets and daemonsets. The `batch/v1` group holds jobs and cronjobs. Other named groups include `networking.k8s.io/v1`, `rbac.authorization.k8s.io/v1`, `storage.k8s.io/v1`, `scheduling.k8s.io/v1`, `apiextensions.k8s.io/v1`, `node.k8s.io/v1`, `coordination.k8s.io/v1` for leases, and `flowcontrol.apiserver.k8s.io/v1`. Custom resource definitions add groups of their own, such as `kueue.x-k8s.io` and `nvidia.com`.
 
 Three words cause confusion here. A kind is the type, such as Deployment. A resource is the REST collection that holds those objects, such as deployments. A subresource hangs off a single object, such as `/status`, `/scale`, `/binding`, `/eviction`, `/log`, `/exec`, `/portforward`, `/token` and `/ephemeralcontainers`. A helpful way to keep them apart is a filing cabinet. The kind is the label on a type of folder, the resource is the drawer that holds all of those folders, and a subresource is a sticky note attached to one particular folder.
@@ -64,6 +68,10 @@ kubectl explain deployment.spec.strategy --api-version=apps/v1
 Each line shows a different slice of the same API. Some show the root paths and the groups. Others show the resources in one group, or the OpenAPI document and the field documentation behind them. The `kubectl proxy` line starts a small local server that forwards requests with your credentials, so the `curl` lines can run without extra login steps.
 
 ### Versioning and conversion
+
+![A resource stored in one storage version in etcd, converted by the API server whenever a client reads or writes a different edition.](./img/p2-0505-storage-version.svg)
+
+*Figure 5.5.2. A resource is stored in one storage version, and the API server converts objects when a client reads or writes another edition.*
 
 A resource can be served in several versions, moving from alpha to beta to stable `v1`. Think of versions as different editions of the same form. An older edition may have fewer fields, and a newer one may rename a field. The cluster stores the object in exactly one edition, called the storage version. When a client reads or writes a different edition, the API server converts the object on the way. Built-in types convert internally. For CRDs, you choose `conversion: None` or a conversion webhook.
 
@@ -90,20 +98,15 @@ Notice that `update` fails with 409 unless it carries the current `resourceVersi
 
 ## 2. The request pipeline
 
+![A failing Fail-policy webhook blocks its own replacement pods, with five safeguards listed beside it.](./img/p3-0505-webhook-deadlock.svg)
+
+*Figure 5.5.3. A webhook that blocks the pods needed to restart itself deadlocks the cluster, so scope it, time-limit it and replicate it.*
+
 A request can be rejected at several points on its way in. Think of the API server as a building with a series of security desks. You show your badge at the front door, then the guard checks what you are allowed to do, then a clerk may stamp or change your form, and only then does the record go into the filing room. Knowing the order of those desks tells you where to look when a call fails. The diagram shows the path.
 
-```mermaid
-flowchart LR
-  C["Client (TLS)"] --> A1["Authentication\nx509 client cert, bearer token (SA JWT, OIDC, static), webhook, front-proxy"]
-  A1 --> A2["Authorisation\nRBAC, Node authz, ABAC, webhook"]
-  A2 --> APF["API Priority & Fairness\n(queue / reject)"]
-  APF --> M["Mutating admission\nbuilt-in plugins + MutatingAdmissionWebhooks + CEL policies"]
-  M --> S["Object schema validation & defaulting"]
-  S --> V["Validating admission\nbuilt-in + ValidatingAdmissionWebhooks + ValidatingAdmissionPolicy (CEL)"]
-  V --> ST["Storage layer\ncodec → etcd Txn (compare resourceVersion)"]
-  ST --> R["Response (and watch fan-out to watchers)"]
-  A1 -.-> AU["Audit events at each stage"]
-```
+![The request pipeline](./img/m5-05-1.svg)
+
+*Figure 5.5.4. The request pipeline, as a diagram.*
 
 Stage 1 is authentication, which decides who is making the request. It produces a user, groups and extra fields. Clients can present a client certificate, which the kubeadm admin, the kubelet and the controller-manager all use. ServiceAccount tokens are projected, audience-bound JWTs with a short life, and the API server verifies them with its ServiceAccount signing key. A JWT is a signed token that carries its own claims, so the server can check it without asking anyone. OIDC id tokens from an identity provider work too, as do webhook token review and authenticating proxy headers. An anonymous request becomes `system:anonymous`, unless you turn anonymous access off.
 
@@ -137,6 +140,18 @@ Before you write a webhook, decide which of these three patterns your extension 
 
 ## 3. resourceVersion, generation and concurrency
 
+![A table shows which of three counters changes on each kind of write.](./img/p3-0505-three-counters.svg)
+
+*Figure 5.5.5. resourceVersion changes on every write, generation only on spec changes, and observedGeneration shows how far the controller has caught up.*
+
+![Timeline shows a stale watch getting 410 Gone and bookmarks keeping the resume point fresh.](./img/p3-0505-list-watch-410.svg)
+
+*Figure 5.5.6. Bookmarks keep a watch client's resume point inside the compaction window so it avoids 410 Gone and a full relist.*
+
+![Two engineers read the same version, the second save is refused with 409 Conflict, and it retries on the latest version.](./img/k05-conflict.svg)
+
+*Figure 5.5.7. The API server refuses a write made against a stale resourceVersion, so a second save cannot silently erase the first.*
+
 Two clients can read the same object, change it, and write it back. Without a check, the second write can silently erase the first. Picture two engineers editing one shared document. The second one saves last, and the first engineer's edits vanish with no warning. The `resourceVersion` field is the check that prevents this, and it works like a version stamp on that document.
 
 The `metadata.resourceVersion` field is an opaque string. Do not parse it or compare it, except for equality. It changes on every write, and it is derived from etcd's global revision. It does three jobs. Job 1 is optimistic concurrency. An update that includes `resourceVersion=X` succeeds only if the stored object is still at X. Otherwise the server returns `409 Conflict` with the message "the object has been modified; please apply your changes to the latest version". Controllers handle that by retrying with `retry.RetryOnConflict`. The word optimistic means the server assumes nobody else is editing, and it checks only at write time. That is cheap, because nothing is locked while you think. Job 2 marks the point where a watch resumes. Job 3 keeps list results consistent with the cache.
@@ -158,6 +173,10 @@ Selectors on list and watch cut the traffic. `labelSelector` and `fieldSelector=
 If your client polls the API with `kubectl get` in a loop, replace the loop with an informer. A loop asks the same question again and again, while an informer asks once and then listens for changes.
 
 ## 4. Writing objects: create, update, patch, apply
+
+![Argo CD and the HPA both touch replicas, and leaving the field out of the manifest gives one owner.](./img/p3-0505-apply-managers.svg)
+
+*Figure 5.5.8. Server-side apply tracks field owners, so removing replicas from the manifest avoids a fight with the HPA.*
 
 Writing an object is not one operation. Each verb changes the object in a different way, and your choice decides who wins when two actors touch the same field. The table compares the options. Read it as a list of trade-offs, not a ranking, because each option fits a different job.
 
@@ -194,6 +213,10 @@ Configure `EncryptionConfiguration` with a KMS v2 provider to encrypt Secrets. T
 The API server endpoint should not sit on the Internet. Put it behind private endpoints, a VPN or a bastion, and authorised networks. Client certificates and tokens are bearer credentials, which means whoever holds one can use it. A bearer credential works like cash, because it does not ask who is carrying it. Keep the endpoint on a private network, so an attacker cannot even reach the door to try the credential.
 
 ## 6. API Priority and Fairness (APF)
+
+![A request matches a FlowSchema, goes to a PriorityLevelConfiguration, and is queued in a few shuffle-sharded queues.](./img/k05-apf.svg)
+
+*Figure 5.5.9. API Priority and Fairness routes each request to a priority level and shuffle-shards it into a few queues, so one noisy client cannot starve the rest.*
 
 Imagine a busy restaurant with one kitchen. One large party orders everything at once and blocks the line for everyone else. APF is the host who splits the kitchen's capacity between groups, so one party cannot starve the rest. It replaced the crude `--max-requests-inflight` limits, which treated all traffic as one pool. A single noisy client could drain that pool and deny service to the critical components that keep the cluster alive.
 
@@ -263,6 +286,10 @@ For colocated etcd, run it in a container. Kubeadm supports and tests that setup
 
 ### Data model and Raft
 
+![A write goes to the etcd leader, is fsynced by a majority, then committed and applied.](./img/k05-raft-write.svg)
+
+*Figure 5.5.10. Every etcd write waits for a disk fsync on a majority of members, so disk latency sets the speed of the whole control plane.*
+
 etcd is a replicated, linearizable key-value store. Its members use Raft, a consensus algorithm. The idea is simple. One member is the leader, and it accepts every write. Before the leader confirms a write, a majority of members must have saved it. Here is the sequence. One leader accepts writes and appends them to its log, the WAL, which is the write-ahead log. A write-ahead log records each change on disk before the change takes effect, so a crash can be replayed. The leader replicates the entries to followers. Once a majority has persisted an entry, with an `fsync` per commit, the leader commits it. An fsync is the call that forces data out of memory onto the physical disk. It then applies the entry to the state machine, which is a bbolt B+tree. bbolt is the embedded storage engine that holds etcd's data on disk.
 
 Reads can be linearizable, through the leader or the read index. That is the default for Kubernetes quorum reads. A linearizable read sees the newest committed write, even if a moment ago another client wrote it. Reads can also be serializable, which means they are served locally and may be stale. Heartbeats and election timeouts default to 100 ms and 1000 ms, so the network must be fast. A heartbeat is the leader's regular "I am still here" message. If followers stop hearing it for the election timeout, they start a new election. A leader that cannot keep up triggers elections, and those show up as API latency spikes.
@@ -270,6 +297,14 @@ Reads can be linearizable, through the leader or the read index. That is the def
 Quorum arithmetic governs every operation, as chapter 5.3 explains. Three members tolerate one failure, and five tolerate two. An even number of members adds cost without adding tolerance. A four-member cluster still needs three votes to make a majority, so it survives only one failure, the same as three members. Never add a member before you remove a dead one, because the cluster size and quorum rise while a member is down. Learner members are non-voting, so they can catch up safely before they are promoted. A learner copies the data without counting toward the majority, so it cannot break quorum while it is still behind.
 
 ### MVCC, revisions, compaction, defrag
+
+![A four-step NOSPACE recovery ladder beside a wrong and right order for replacing a dead etcd member.](./img/p3-0505-nospace-recovery.svg)
+
+*Figure 5.5.11. Compact, defragment and disarm to clear NOSPACE, and always remove a dead member before adding its replacement.*
+
+![Compaction frees old revisions inside the database file, and defragmentation rewrites the file smaller.](./img/k05-compact-defrag.svg)
+
+*Figure 5.5.12. Compaction frees old revisions inside the etcd file, but only defragmentation shrinks the file on disk.*
 
 Each write creates a new revision. A revision is a cluster-wide counter that only goes up. MVCC stands for multi-version concurrency control, a way of keeping several versions of a key at once so readers never block writers. etcd keeps a history of key versions for watches and consistent reads, and the Kubernetes `resourceVersion` comes from that revision. The history grows until compaction discards revisions older than a chosen point. The API server runs compaction every 5 minutes by default, controlled by `--etcd-compaction-interval`. Compaction frees logical space, but the bbolt file does not shrink until defragmentation runs. The space is freed inside the file, and it becomes reusable, but the file on disk stays the same size. Think of a warehouse where old boxes are emptied but still take up floor space. The shelves can hold new stock, and the building is no smaller until someone rearranges the racks and sells the spare room. Run `etcdctl defrag` one member at a time, because it briefly blocks that member. The database quota, set by `--quota-backend-bytes`, defaults to 2 GiB and is recommended up to 8 GiB. When the database exceeds the quota, etcd raises a `NOSPACE` alarm and becomes read-only until you free space. Compact, defragment and disarm the alarm, in that order.
 
@@ -297,6 +332,14 @@ Keys live under `/registry/<resource>/...`. For namespaced objects, the key is `
 An object can be up to about 1.5 MiB, the etcd request size limit. Large ConfigMaps and Secrets, and huge custom resources such as Argo Workflows with a large status, hurt performance. Huge Pod lists do the same. Avoid three patterns. Do not store blobs, logs or metrics in objects. Do not update status every second across tens of thousands of objects. And do not create thousands of Events per second. Each of those patterns turns etcd into a log file, and etcd is built for small, careful writes.
 
 ### Encrypting Secrets in etcd
+
+![Provider order decides whether Secrets are encrypted and old keys must stay for decryption.](./img/p3-0505-encryption-rotation.svg)
+
+*Figure 5.5.13. The first provider encrypts, later providers only decrypt, so keep old keys until every Secret is rewritten.*
+
+![Envelope encryption for Secrets, where a key encryption key held in an outside KMS wraps a per-Secret data encryption key stored with the data.](./img/p2-0505-envelope-keys.svg)
+
+*Figure 5.5.14. Envelope encryption wraps each Secret's data key with a key encryption key held in an external KMS, so the wrapped key can be stored with the data.*
 
 Like most Kubernetes objects, Secrets are stored in etcd. By default, Kubernetes does not encrypt Secret data before it reaches etcd. That does not mean the data is exposed the moment someone touches the hardware. Encryption at rest still protects a removed drive. The weak point is access to the running host.
 
@@ -467,6 +510,10 @@ Watch these metrics: `etcd_server_has_leader`, `etcd_server_leader_changes_seen_
 
 ### Backup, restore, and member operations
 
+![Steps to restore etcd from a snapshot: stop the control plane, restore each member with a new cluster token, point the static pod at the restored directory, and restart.](./img/p2-0505-etcd-restore.svg)
+
+*Figure 5.5.15. Restoring etcd from a snapshot means stopping the control plane, restoring each member with a new cluster token, and restarting from the restored data directory.*
+
 Take snapshots regularly. Run the save on a healthy member, schedule it, and ship the file off the cluster. A snapshot stored only on the cluster's own disk is lost with the cluster. The commands below save a snapshot, check it, restore it and replace a dead member.
 
 ```bash
@@ -524,6 +571,10 @@ The table lists eight levers for a GPU cluster of 1,000 to 5,000 nodes. Decide w
 Work through the levers that match your bottleneck first, rather than changing all eight at once. Changing everything at once makes it impossible to tell which change helped, and it can hide a regression you introduced.
 
 ## 9. Diagnosing control-plane saturation
+
+![A six-rung ladder from slow kubectl symptom to fixing the noisy client.](./img/p3-0505-saturation-ladder.svg)
+
+*Figure 5.5.16. Start from the user symptom, confirm with metrics, find the noisy client in the audit log, then fix it at the source.*
 
 When the platform slows down, match the symptom to a cause in the table below. Each row names the metric or log to check and the fix that usually follows. Start from what users see, because that is the symptom you can confirm first. Then work toward the metric that explains it.
 

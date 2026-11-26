@@ -111,14 +111,9 @@ Read the table as a set of bets. In-place rolling costs the least, but a failure
 
 For GPU clusters, in-place rolling with canary pools and strict drain choreography is typical. Blue/green is attractive for major platform shifts, such as a CNI change or a major GPU stack change, if you can borrow capacity.
 
-```mermaid
-flowchart TD
-    Pre["0. Pre-Flight & Backups<br/>Scan deprecated APIs (pluto/kubent);<br/>audit PDBs; etcdctl snapshot save + PKI backup"] --> CP1["1. Upgrade First Control Plane (cp1)<br/>kubeadm upgrade apply v1.31.x;<br/>drain cp1 -> upgrade kubelet/kubectl -> uncordon"]
-    CP1 --> CP23["2. Upgrade Remaining Control Planes (cp2, cp3)<br/>One by one: kubeadm upgrade node;<br/>verify etcdctl endpoint health --cluster"]
-    CP23 --> Addon["3. Upgrade CNI / CSI / GPU Operator<br/>Per compatibility matrix;<br/>ClusterPolicy driver.upgradePolicy"]
-    Addon --> Canary["4. Canary GPU Worker Pool<br/>Checkpoint in-flight jobs -> kubectl drain -> <br/>kubeadm upgrade node + kubelet -> NCCL smoke test"]
-    Canary --> Fleet["5. Rolling Batch Worker Upgrade<br/>Rack/pool batches respecting maxUnavailable & PDBs"]
-```
+![Upgrade planning](./img/m5-20-1.svg)
+
+*Figure 5.20.1. Upgrade planning, as a diagram.*
 
 Read the diagram from top to bottom. Each box waits for the one above it to finish and to pass its check. The arrow from the canary to the fleet is the important one. You do not roll the whole GPU fleet until one pool has already run the new version under a real job.
 

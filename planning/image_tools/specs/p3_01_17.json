@@ -1,0 +1,162 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-rss-pss-uss",
+  "title": "Four workers sharing one dataset: RSS overcounts, PSS adds up",
+  "spec": "Left: four worker boxes 'worker 1' to 'worker 4', each containing a private block '100,000 KiB private anonymous' and, below all four, one wide shared block '400,000 KiB memory-mapped dataset' that every worker maps. Right: a table with one row per measure for ONE worker and a totals column for four workers. 'USS (unique set size): only private memory' 100,000 KiB per worker. 'PSS (proportional set size): shared pages divided among their users' 100,000 + 400,000 / 4 = 200,000 KiB per worker, total 800,000 KiB (green, adds up correctly). 'RSS (resident set size): shared pages counted in every process that maps them' 100,000 + 400,000 = 500,000 KiB per worker, total 2,000,000 KiB (orange, overstates real use). A small strip 'VSZ or VIRT counts everything allocated, RSS only the part in RAM'. Where to read them: '/proc/PID/smaps_rollup', 'smem -rk', 'pmap -X', 'ps -eo pid,rss,vsz'. Bottom bar: 'Summing RSS over processes overstates real use; sum PSS instead'.",
+  "anchor": "### Demand paging, page faults, memory states",
+  "alt": "Four worker processes each with 100000 KiB private memory sharing a 400000 KiB dataset, with USS, PSS and RSS values showing RSS totals overstate use.",
+  "cap": "Four workers sharing a 400,000 KiB mapping total 2,000,000 KiB by RSS but only 800,000 KiB by PSS."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-tlb-reach",
+  "title": "TLB reach: entries times page size, and why huge pages help",
+  "spec": "Top formula bar 'TLB reach = number of entries x page size' with the chapter example 'a data TLB with 64 entries for 4 KiB pages'. Three horizontal bars of increasing length drawn to a log-like scale, each labelled. Bar 1 '4 KiB pages: 64 x 4 KiB = 256 KiB reach' (tiny, orange). Bar 2 '2 MiB huge pages: 64 x 2 MiB = 128 MiB reach'. Bar 3 '1 GiB huge pages: 64 x 1 GiB = 64 GiB reach'. Right panel 'The 256 GiB dataset problem': '256 GiB mapped with 4 KiB pages needs 67 million page-table entries; the TLB caches only a few dozen, so most accesses pay a page walk'. Under it a chain 'TLB hit: almost nothing' versus 'TLB miss: hardware page-table walk, tens to hundreds of cycles; if the table entries miss the CPU caches, about a hundred nanoseconds'. A result strip 'Huge pages shrink the page table, shorten the walk and raise TLB reach by 512x or more; typical gain 3% to 10%, larger on memory-heavy workloads'. Bottom bar: 'A multi-gigabyte working set on 4 KiB pages misses the TLB constantly'.",
+  "anchor": "## 8. Huge pages and transparent huge pages",
+  "alt": "Three bars showing TLB reach of 256 KiB with 4 KiB pages, 128 MiB with 2 MiB pages and 64 GiB with 1 GiB pages for a 64 entry TLB.",
+  "cap": "A 64 entry TLB reaches 256 KiB with 4 KiB pages but 128 MiB with 2 MiB pages and 64 GiB with 1 GiB pages."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-memory-latency-ladder",
+  "title": "How far away is the data: cache, DRAM, GPU memory",
+  "spec": "A vertical ladder, fastest at the top, with each rung a labelled box and a latency tag. 'L1 cache, per core: about 1 ns'. 'L2 cache: a few ns'. 'L3 cache, shared: ten-plus ns'. 'DRAM (DDR4 and DDR5): about 80 to 100 ns, including CAS latency of tens of ns plus the memory controller and the interconnect' with side note 'DDR5-4800 delivers 38.4 GB/s per channel; servers have 8 to 12 channels per socket, hundreds of GB/s in total'. 'Remote NUMA memory: commonly 1.3x to 2x the local latency, with reduced bandwidth' (orange). A side strip 'The hardware moves data in cache lines of 64 bytes'. Right panel 'Separate pools': 'GPU HBM sits next to the GPU and is much faster; Grace LPDDR5X with NVLink-C2C on GH200 and GB200 gives a coherent CPU-GPU address space; Linux still treats CPU DRAM and GPU HBM as separate pools and exposes Grace memory as NUMA nodes'. Another note 'ECC detects and corrects single-bit errors; correctable errors are logged by EDAC and are a leading indicator of failure; uncorrectable errors crash processes or the machine'. Bottom bar: 'Where a page lives decides how fast every access is'.",
+  "anchor": "## 3. Memory hardware that affects performance",
+  "alt": "A latency ladder from L1 cache at about 1 ns through L2, L3 and DRAM at 80 to 100 ns to remote NUMA memory at 1.3 to 2 times local latency.",
+  "cap": "Latency grows from about 1 ns in L1 to 80 to 100 ns in DRAM, and remote NUMA memory costs 1.3x to 2x more."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-loader-wrong-node",
+  "title": "The NUMA trap: loader memory on node 0, GPU on node 1",
+  "spec": "Two-socket sketch. Left box 'Socket 0 (NUMA node 0)' containing 'data-loading process (running here)' and 'its buffers (allocated on node 0 DRAM)'. Right box 'Socket 1 (NUMA node 1)' containing 'GPU attached to node 1's PCIe root'. A thick slow arrow between the sockets labelled 'interconnect (UPI, or Infinity Fabric or xGMI on AMD): every host-to-device copy crosses it' in orange. Below, a second drawing 'After the fix' with the loader's CPUs and memory both on node 1 next to the GPU and a short direct arrow. Command panel 'Check and bind': 'nvidia-smi topo -m (each GPU's CPU and NUMA affinity)', 'cat /sys/bus/pci/devices/0000:3b:00.0/numa_node (a device's home node, -1 = unknown)', 'numastat -p PID', 'numactl --cpunodebind=1 --membind=1 python train.py --gpu 4'. Side note 'PCIe devices such as GPUs, NICs and NVMe drives hang off one socket's root complex, so they have a home node too'. Bottom bar: 'Before you start a loader, check which node the GPU lives on, and bind to that node'.",
+  "anchor": "### UMA versus NUMA",
+  "alt": "A data loader and its buffers on NUMA node 0 feeding a GPU on node 1 across the slow interconnect, then the fixed layout with both on node 1.",
+  "cap": "When a loader allocates on node 0 but its GPU hangs off node 1, every copy crosses the interconnect until you bind both to node 1."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-oom-three-kinds",
+  "title": "Three kinds of OOM: cgroup, global and NUMA-constrained",
+  "spec": "Three columns, each a scenario with a picture, the evidence and the first check. Column 1 'cgroup OOM' (orange, the one containers meet): a container box with 'memory.max' ceiling and a host box with 'hundreds of GB free' outside it; text 'The group exceeds memory.max and cannot reclaim, so the kernel runs the OOM killer inside that cgroup: one process, or the whole group if memory.oom.group=1'; evidence 'memory.events counters high, max, oom, oom_kill; dmesg constraint=CONSTRAINT_MEMCG plus the cgroup path; Kubernetes reason OOMKilled'. Column 2 'Global OOM': a whole machine box full; text 'the whole machine is out of memory and reclaim has failed'; evidence 'Out of memory: Killed process 1234 (python) total-vm: anon-rss:; oom-kill:constraint= and a dump of candidate processes in dmesg or journalctl -k'. Column 3 'NUMA-constrained OOM': two node boxes, node 0 full and node 1 with free space; text 'a process bound with --membind or cpuset.mems to a full node hits OOM while other nodes have free memory'; also 'low-memory zones such as DMA32 can run out: check the Node 0 DMA32 free lines'. Bottom strip 'The victim gets SIGKILL, so no handler, no final checkpoint, no flush; the parent or Kubernetes sees exit status 137 (128 + 9)'. Bottom bar: 'Look in dmesg, not in your application log'.",
+  "anchor": "## 5. The OOM killer",
+  "alt": "Three columns comparing a cgroup OOM inside a container, a global machine wide OOM and a NUMA constrained OOM, with the evidence for each.",
+  "cap": "A container can be OOM-killed with plenty of host memory free, while a global or NUMA-bound OOM leaves different evidence in the kernel log."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-oom-report-read",
+  "title": "Reading an OOM report: which part points at which consumer",
+  "spec": "A vertical stack of the pieces of an OOM report, top to bottom, each a card with a number circle and what it tells you. 1 'invoked oom-killer line: who requested memory, with gfp_mask and order'. 2 'Mem-Info summary: active_anon, inactive_file, slab_reclaimable, free, shmem'. 3 'Per-zone free counts (Node 0 DMA32 free ...)'. 4 'Task table: pid, uid, total_vm, rss, oom_score_adj, name'. 5 'Killed process line: Out of memory: Killed process 1234 (python) total-vm:... anon-rss:...'. On the right a three-way decision box 'Which grew?'. Branch A 'shmem or tmpfs is huge' leads to 'An in-memory filesystem is the consumer: /dev/shm, /tmp on tmpfs, or an emptyDir with the Memory medium'. Branch B 'slab_unreclaimable is huge' leads to 'Suspect a kernel or driver leak'. Branch C 'anon_rss of one process dominates' leads to 'The application is the consumer' (orange). Below, a scale strip 'oom_score_adj from -1000 (immune) through -900 (OOMScoreAdjust for sshd and kubelet) and 0 to +500 (batch workers) to +1000 (first choice); oom_score 0 to 1000 tracks share of RAM and swap used'. Bottom bar: 'Before you raise a memory limit, find which of the three grew'.",
+  "anchor": "## 5. The OOM killer",
+  "alt": "The five parts of an OOM report in reading order and a decision showing that shmem, slab unreclaimable or one process anon rss points to different consumers.",
+  "cap": "Read the OOM report in order and ask whether tmpfs, unreclaimable slab or one process's anonymous memory grew."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-meminfo-breakdown",
+  "title": "Where did my RAM go: reading free and /proc/meminfo",
+  "spec": "Top: the chapter free -h output in monospace: 'total 1.9Ti  used 120Gi  free 40Gi  shared 1.2Gi  buff/cache 1.7Ti  available 1.7Ti' with the Swap line '0B 0B 0B'. 'available' circled in orange with note 'MemAvailable: how much you can use to start new applications without swapping; counts reclaimable page cache and slab'. 'free' annotated 'idle memory, deliberately small'. Below a stacked bar of RAM split into labelled segments: 'AnonPages: process private heap and stack', 'Cached: page cache, including mapped files and tmpfs through Shmem', 'Slab = SReclaimable (can be freed) + SUnreclaim (cannot)', 'PageTables and KernelStack: kernel overhead', 'HugePages_*: explicitly reserved, ordinary allocation cannot use it', 'Mlocked and Unevictable: reclaim cannot touch'. A side box 'In buff/cache, shared and tmpfs pages and mlocked pages are not reclaimable'. Bottom bar: 'Read available, not free'.",
+  "anchor": "### The summary view: `free` and `/proc/meminfo`",
+  "alt": "A free output with available highlighted beside a stacked bar of RAM split into anonymous pages, page cache, slab, page tables, huge pages and locked pages.",
+  "cap": "The available number counts reclaimable cache, while anonymous pages, unreclaimable slab, huge page reservations and locked pages cannot be freed."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-psi-read",
+  "title": "Pressure stall information: some versus full",
+  "spec": "Top: the chapter line 'cat /proc/pressure/memory: some avg10= avg60= avg300= total=  and  full ...' in monospace. Below two timelines of four task lanes each over the same time axis. Timeline 1 'some': two of the four task bars show a hatched 'stalled waiting for memory' segment while two keep running; shaded caption 'some = share of time at least one task stalled'. Timeline 2 'full': all four task bars hatched at the same moment; caption 'full = share of time all non-idle tasks stalled' (orange). Right panel 'Reading it': 'averages over 10, 60 and 300 seconds', 'any sustained non-zero some, and any full value, signals saturation more directly than free-memory numbers', 'per-cgroup pressure in memory.pressure', 'PSI appeared in Linux 4.20'. Another small row 'Pair it with': 'vmstat si/so', 'sar -B pgscand/s: allocating threads reclaim for themselves, each pass is a stall'. Bottom bar: 'A machine can have plenty of memory and still be saturated'.",
+  "anchor": "### Pressure and activity: `vmstat`, PSI, `sar`",
+  "alt": "Two timelines comparing PSI some, where at least one task is stalled, with PSI full, where all non idle tasks are stalled.",
+  "cap": "Some counts time when at least one task waits for memory and full counts time when all non-idle tasks wait, and either signals saturation."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-numa-counters",
+  "title": "Reading numactl and numastat: where did the pages land",
+  "spec": "Left panel 'numactl --hardware node distances' as a two by two matrix: row 0: 10, 21; row 1: 21, 10, with the legend '10 = local, 21 = about 2.1x remote cost' and orange on the 21 cells. Right panel 'numastat counters' with four cards, each a small diagram of two nodes and an arrow. 'numa_hit: allocation landed on the node it was meant for' (green). 'numa_miss: landed here although another node was intended, because that node was full'. 'numa_foreign: intended here but landed elsewhere'. 'other_node: a process allocated a page while running on a different node than the page's'. Bottom strip 'If numa_miss or other_node rises while a workload runs, pages are being placed remotely and traffic crosses sockets'. Tool strip 'lscpu', 'numactl --hardware', 'lstopo --of ascii', 'nvidia-smi topo -m', 'numastat -m', 'numastat -p PID'. Note 'Many CPUs present several NUMA nodes per socket (sub-NUMA clustering or NPS modes): a 2-socket server can show 2, 4 or 8 nodes'. Bottom bar: 'Run these on every new platform before you trust a habit'.",
+  "anchor": "### Discover the topology",
+  "alt": "A NUMA distance matrix with 10 for local and 21 for remote nodes beside four numastat counters numa_hit, numa_miss, numa_foreign and other_node.",
+  "cap": "A distance of 21 against 10 means remote memory costs about 2.1 times more, and rising numa_miss or other_node shows pages landing remotely."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-numa-policies",
+  "title": "NUMA memory policies: first touch, bind, preferred, interleave",
+  "spec": "Two node boxes 'node 0' and 'node 1' repeated in four rows, one row per policy, with page squares showing where pages land. Row 'local with first touch (default)': a page lands on the node of the CPU that first writes it; trap note 'one thread initialises a huge buffer and threads on another node use it: the buffer is entirely remote for them' (orange). Row 'bind': pages only on the named nodes; command 'numactl --cpunodebind=1 --membind=1 python train.py --gpu 4'. Row 'preferred': tries a node and falls back. Row 'interleave': pages spread round-robin across nodes, suits data every CPU reads; command 'numactl --interleave=all ./big_shared_table'. Side panel 'Related': 'taskset -c 16-31 ./prog is CPU affinity only; memory follows first touch', 'numactl --show prints the current policy', 'spawn or exec does not inherit the numactl memory policy, but fork does', 'kernel.numa_balancing=0 where processes are explicitly bound'. Bottom bar: 'Bind by topology rather than by habit'.",
+  "anchor": "### Policies and binding",
+  "alt": "Four rows showing where memory pages land under the local first touch, bind, preferred and interleave NUMA policies with the matching numactl commands.",
+  "cap": "The default places a page on the node of the CPU that first touches it, while bind and interleave let you choose the nodes."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-free-keeps-memory",
+  "title": "Why RSS stays high after free: the allocator keeps the memory",
+  "spec": "A left to right flow. Box 1 'Program calls malloc' with two branches. Upper branch 'small request: allocator takes pages from the kernel with brk (main heap) or mmap (per-thread arenas) and hands out pieces'. Lower branch 'large request above M_MMAP_THRESHOLD (default 128 KiB, dynamic): its own mmap'. Box 2 'Program calls free'. Upper branch result 'memory returns to the allocator, not to the operating system: RSS stays high; normal heap growth, not a leak' (orange). Lower branch result 'returned to the OS right away on free'. Under the upper branch a release option 'glibc malloc_trim() and M_TRIM_THRESHOLD release memory at the top of the heap, and since glibc 2.8 free ranges too'. Right panel 'Tools to check': 'MALLOC_ARENA_MAX=2..4 (threads can create up to 8x CPU-count arenas)', 'LD_PRELOAD=/usr/lib/x86_64-linux-gnu/libjemalloc.so.2 python train.py', 'check /proc/PID/maps to confirm it loaded'. Python note 'pymalloc allocates 256 KiB arenas: one surviving small object keeps the whole arena resident'. Bottom bar: 'When RSS climbs, decide whether the growth is a leak or a cache before you touch the allocator'.",
+  "anchor": "## 9. Allocators and heap behaviour",
+  "alt": "A flow showing malloc taking memory from the kernel and free returning it to the allocator so RSS stays high, while large mmap allocations return to the OS at once.",
+  "cap": "Free usually returns memory to the allocator rather than the kernel, so RSS can stay high without any leak."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-fork-cow-workers",
+  "title": "Why every data-loader worker ends up with a full dataset copy",
+  "spec": "Three stages left to right. Stage 1 'fork: parent and workers share the dataset pages copy-on-write': a parent box with a dataset block and three worker boxes all pointing at the same single dataset block 'one physical copy'. Stage 2 'Python reference counting writes to each object it touches': arrow labelled 'refcount update is a write', dataset pages marked as 'written' in orange. Stage 3 'the write breaks the sharing: each worker gradually copies the dataset': three worker boxes each with their own dataset block; label 'memory grows with every worker you add instead of staying flat'. Fix panel on the right in green: 'Store the dataset in NumPy, Arrow, mmap or shared memory instead of Python lists, so the pages stay shared'; 'recycle worker processes with maxtasksperchild'; 'avoid giant collections of Python objects'. Footnote 'GPU note: del plus torch.cuda.empty_cache() acts on GPU memory only, not on host RAM'. Bottom bar: 'Fork shares pages copy-on-write, but reference counting writes to them'.",
+  "anchor": "## 9. Allocators and heap behaviour",
+  "alt": "Workers sharing dataset pages copy-on-write after fork, then Python reference counting writing to objects so each worker gradually copies the data.",
+  "cap": "Reference counting writes to Python objects and breaks copy-on-write sharing, so each worker slowly copies the dataset."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-cgroup-memory-ladder",
+  "title": "cgroup v2 memory files: protection below, throttle above, kill at the top",
+  "spec": "A vertical gauge with five horizontal levels from bottom to top, each labelled with its file and effect. 'memory.min: hard protection, reclaim will not take this'. 'memory.low: best-effort protection; the kernel avoids reclaiming this much'. 'memory.current: current usage (anon + file cache + kernel memory)' drawn as a rising fill level with a marker. 'memory.high: throttle and reclaim threshold; above it the group is slowed before any kill (a good soft limit for batch jobs)'. 'memory.max: hard limit; exceeding it and failing to reclaim runs the OOM killer inside the cgroup' (orange). A right panel 'Evidence': 'memory.events counters low, high, max, oom, oom_kill', 'memory.stat: anon, file, kernel, slab, shmem, pgfault, pgmajfault', 'memory.pressure: per-cgroup PSI', 'memory.oom.group=1 kills the whole group', 'memory.swap.max and memory.swap.current'. A note box 'memory.current includes page cache charged to the cgroup; near memory.max the kernel reclaims the cgroup's own cache first, so high usage is not necessarily a problem; a container whose anon approaches memory.max will be OOM-killed'. Kubernetes strip 'resources.limits.memory sets memory.max; requests.memory drives memory.min and memory.low protection through QoS classes Guaranteed, Burstable, BestEffort; BestEffort pods are killed first'. Bottom bar: 'The limit that matters may belong to the group, not to the machine'.",
+  "anchor": "### cgroup v2 memory controller",
+  "alt": "A gauge of cgroup v2 memory files from memory.min and memory.low protection up through current usage, memory.high throttling and the memory.max OOM kill limit.",
+  "cap": "Protection sits below usage, memory.high throttles above it, and memory.max triggers an OOM kill inside the cgroup."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-pinned-path",
+  "title": "Pageable versus pinned host memory: why memlock decides whether registration works",
+  "spec": "Two lanes. Upper lane 'Pageable host memory': host buffer, then a box 'staging copy into a pinned buffer', then 'DMA to the GPU'; tag 'extra copy; no overlap with compute'. Lower lane 'Pinned (page-locked) memory' (orange): host buffer, then directly 'DMA to the GPU' with tag 'typically 2x to 3x faster; allows asynchronous overlap through cudaMemcpyAsync, pin_memory=True and non_blocking=True'. Below the lanes a limit gate: 'RLIMIT_MEMLOCK (ulimit -l)' with two outcomes 'unlimited: pinning succeeds' and 'low limit: ibv_reg_mr errors, CUDA out of memory while pinning host memory, NCCL ibv_reg_mr failures' while 'the GPU has room'. A where-to-set list: '/etc/security/limits.d/*.conf for logins', 'LimitMEMLOCK=infinity for systemd units', '--ulimit memlock=-1:-1 for Docker', 'Slurm PropagateResourceLimits', 'runtime configuration for Kubernetes'. Consequences strip: 'Pinned pages are unevictable (counted in Mlocked and Unevictable and in cgroup accounting)', 'Pinning is slow: allocate once up front, not per batch', 'Huge pages for pinned buffers reduce mappings and registration cost'. Bottom bar: 'GPUDirect RDMA, GPUDirect Storage and InfiniBand verbs need registered, pinned memory too'.",
+  "anchor": "### Pinned (page-locked) memory, `memlock`, and DMA",
+  "alt": "A pageable copy path with a staging copy compared with a direct pinned path, and the memlock limit that makes pinned registration fail.",
+  "cap": "Pinned memory skips the staging copy and allows overlap, but a low memlock limit makes registration fail even when the GPU has room."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-host-budget",
+  "title": "Host memory budget for an 8 GPU node: multiplied workers add up fast",
+  "spec": "Left: a stacked budget bar for one training node with labelled segments in the order the chapter lists them: 'Operating system and daemons (a few GB)', 'Data-loader workers (process overhead, decoded batches, prefetch queue) x number of workers x GPUs', 'Pinned staging buffers', 'Framework host allocations: CUDA context host memory, NCCL buffers, NCCL proxy threads', 'Page cache to keep for the dataset', 'Checkpoint staging headroom in tmpfs or page cache', 'Margin'. The loader segment is orange. Right: the chapter's worked arithmetic as a boxed calculation: '8 GPUs x 16 workers x 2 GB = 256 GB' drawn as eight GPU columns each with 16 small worker squares labelled 2 GB. Beside it a second mistake card 'Checkpoints put in /dev/shm without a size cap'. Bottom strip 'Compare the total with MemAvailable and the cgroup limits; test with the real job and watch RssAnon and PSI; monitor MemAvailable, PSI, per-cgroup memory.stat and the OOM counters'. Bottom bar: 'A budget on paper is a starting point, not a promise'.",
+  "anchor": "### Host memory budget for a training node",
+  "alt": "A stacked host memory budget bar for a training node and the worked example of 8 GPUs times 16 workers times 2 GB equalling 256 GB.",
+  "cap": "Eight GPUs with sixteen workers each at 2 GB already need 256 GB, which can exceed RAM before anyone notices."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "17",
+  "name": "p3-0117-enomem-ladder",
+  "title": "Cannot allocate memory while RAM is free: six limits to check",
+  "spec": "A symptom box at the top 'Cannot allocate memory, but free -h shows plenty of RAM'. Below, a vertical table of six rows, each with a number circle, a cause, and a check. 1 'vm.max_map_count exhausted (default 65530); frameworks with many mmaps need 262144 to 1048576': 'sysctl vm.max_map_count'. 2 'overcommit_memory=2 (strict) limits committed memory to swap plus overcommit_ratio percent of RAM': 'grep -E Commit /proc/meminfo' showing CommitLimit and Committed_AS. 3 'Address-space limit hit': 'ulimit -v'. 4 'A cgroup limit applies': 'memory.max and memory.events'. 5 'A NUMA bind points at a full node': 'numactl --show, numastat -p PID'. 6 'A fork of a large process fails under strict overcommit'. Orange outline on row 1. Side panel for the related pinned case 'ibv_reg_mr or pinned allocation fails while the GPU has room: ulimit -l, unit limits, container ulimits'. Bottom bar: 'Confirm the symptom with the counters before you change a setting'.",
+  "anchor": "## How it fails",
+  "alt": "A six row ladder of limits that cause cannot allocate memory errors while RAM is free: map count, strict overcommit, address space, cgroup, NUMA bind and fork.",
+  "cap": "Several limits other than free RAM can produce cannot allocate memory, and each has its own check."
+ }
+]

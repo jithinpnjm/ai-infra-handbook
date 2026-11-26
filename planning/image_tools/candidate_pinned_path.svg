@@ -1,0 +1,271 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Pageable versus pinned host memory: why memlock decides whether registration works</title>
+  <desc>Visual infographic comparing pageable host memory data transfer via staging buffers against direct pinned memory DMA, showing how RLIMIT_MEMLOCK limits cause registration failures even when GPU memory has room.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+
+    <!-- RAM / Host Memory Icon (56px, green stroke 4) -->
+    <g id="icon-ram" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="14" width="48" height="28" rx="4" fill="#ffffff" />
+      <line x1="12" y1="20" x2="12" y2="28" />
+      <line x1="20" y1="20" x2="20" y2="28" />
+      <line x1="28" y1="20" x2="28" y2="28" />
+      <line x1="36" y1="20" x2="36" y2="28" />
+      <line x1="44" y1="20" x2="44" y2="28" />
+      <line x1="12" y1="42" x2="12" y2="48" />
+      <line x1="20" y1="42" x2="20" y2="48" />
+      <line x1="28" y1="42" x2="28" y2="48" />
+      <line x1="36" y1="42" x2="36" y2="48" />
+      <line x1="44" y1="42" x2="44" y2="48" />
+    </g>
+
+    <!-- Lock / Pinned Icon (56px, green stroke 4) -->
+    <g id="icon-lock" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="22" width="36" height="26" rx="4" fill="#ffffff" />
+      <path d="M 18 22 V 14 C 18 8 38 8 38 14 V 22" />
+      <circle cx="28" cy="35" r="3.5" fill="#207448" />
+    </g>
+
+    <!-- GPU Chip Icon (56px, green stroke 4) -->
+    <g id="icon-gpu" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" fill="#ffffff" />
+      <circle cx="28" cy="28" r="6" />
+      <line x1="20" y1="4" x2="20" y2="12" />
+      <line x1="28" y1="4" x2="28" y2="12" />
+      <line x1="36" y1="4" x2="36" y2="12" />
+      <line x1="20" y1="44" x2="20" y2="52" />
+      <line x1="28" y1="44" x2="28" y2="52" />
+      <line x1="36" y1="44" x2="36" y2="52" />
+      <line x1="4" y1="20" x2="12" y2="20" />
+      <line x1="4" y1="28" x2="12" y2="28" />
+      <line x1="4" y1="36" x2="12" y2="36" />
+      <line x1="44" y1="20" x2="52" y2="20" />
+      <line x1="44" y1="28" x2="52" y2="28" />
+      <line x1="44" y1="36" x2="52" y2="36" />
+    </g>
+
+    <!-- Shield / Gate Icon (56px, green stroke 4) -->
+    <g id="icon-shield" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 46 14 V 28 C 46 40 28 50 28 50 C 28 50 10 40 10 28 V 14 Z" fill="#ffffff" />
+      <line x1="28" y1="18" x2="28" y2="36" />
+      <line x1="20" y1="27" x2="36" y2="27" />
+    </g>
+
+    <!-- Settings Gear Icon (56px, green stroke 4) -->
+    <g id="icon-gear" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="10" fill="#ffffff" />
+      <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12.5 12.5 L 16.7 16.7 M 39.3 39.3 L 43.5 43.5 M 12.5 43.5 L 16.7 39.3 M 39.3 16.7 L 43.5 12.5" />
+    </g>
+
+    <!-- Clock / Timer Icon (56px, green stroke 4) -->
+    <g id="icon-clock" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="20" fill="#ffffff" />
+      <polyline points="28 16 28 28 36 28" />
+    </g>
+
+    <!-- Document / Huge Page Icon (56px, green stroke 4) -->
+    <g id="icon-page" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 14 8 H 34 L 44 18 V 48 H 14 Z" fill="#ffffff" />
+      <polyline points="34 8 34 18 44 18" />
+      <line x1="20" y1="26" x2="38" y2="26" />
+      <line x1="20" y1="34" x2="38" y2="34" />
+    </g>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Main Title -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Pageable versus pinned host memory:</tspan>
+    <tspan x="800" dy="54">why memlock decides whether registration works</tspan>
+  </text>
+
+  <!-- ==================== UPPER LANE: PAGEABLE ==================== -->
+  <g id="upper-lane">
+    <rect x="40" y="135" width="1520" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- RAM Icon + Lane Title -->
+    <use href="#icon-ram" x="60" y="145" />
+    <text x="130" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pageable host memory</text>
+    
+    <!-- Host buffer visual block (no text label) -->
+    <rect x="60" y="210" width="150" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(70, 222)" stroke="#207448" stroke-width="2" fill="none">
+      <rect x="0" y="0" width="130" height="40" rx="4" />
+      <line x1="26" y1="0" x2="26" y2="40" stroke-dasharray="2 2" />
+      <line x1="52" y1="0" x2="52" y2="40" stroke-dasharray="2 2" />
+      <line x1="78" y1="0" x2="78" y2="40" stroke-dasharray="2 2" />
+      <line x1="104" y1="0" x2="104" y2="40" stroke-dasharray="2 2" />
+    </g>
+
+    <!-- Arrow 1: host buffer to staging copy -->
+    <line x1="210" y1="242" x2="280" y2="242" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Staging copy into a pinned buffer -->
+    <rect x="280" y="202" width="400" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="480" y="233" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="480" dy="0">staging copy into</tspan>
+      <tspan x="480" dy="28">a pinned buffer</tspan>
+    </text>
+
+    <!-- Arrow 2: staging copy to DMA to the GPU -->
+    <line x1="680" y1="242" x2="1240" y2="242" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    <!-- Tag: extra copy; no overlap with compute -->
+    <rect x="730" y="206" width="460" height="68" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" />
+    <text x="960" y="234" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="960" dy="0">extra copy;</tspan>
+      <tspan x="960" dy="28">no overlap with compute</tspan>
+    </text>
+
+    <!-- Destination: DMA to the GPU -->
+    <rect x="1240" y="198" width="290" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-gpu" x="1255" y="208" />
+    <text x="1420" y="244" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">DMA to the GPU</text>
+  </g>
+
+  <!-- ==================== LOWER LANE: PINNED (ORANGE HIGHLIGHT) ==================== -->
+  <g id="lower-lane">
+    <rect x="40" y="315" width="1520" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Lock Icon + Lane Title -->
+    <use href="#icon-lock" x="60" y="325" />
+    <text x="130" y="360" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pinned (page-locked) memory</text>
+
+    <!-- Host buffer visual block (no text label) -->
+    <rect x="60" y="390" width="150" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(70, 402)" stroke="#207448" stroke-width="2" fill="none">
+      <rect x="0" y="0" width="130" height="40" rx="4" />
+      <line x1="26" y1="0" x2="26" y2="40" stroke-dasharray="2 2" />
+      <line x1="52" y1="0" x2="52" y2="40" stroke-dasharray="2 2" />
+      <line x1="78" y1="0" x2="78" y2="40" stroke-dasharray="2 2" />
+      <line x1="104" y1="0" x2="104" y2="40" stroke-dasharray="2 2" />
+    </g>
+
+    <!-- Direct Arrow 3 to DMA to the GPU (Orange) -->
+    <line x1="210" y1="422" x2="1240" y2="422" stroke="#db8129" stroke-width="4.5" marker-end="url(#arrow-orange)" />
+
+    <!-- Tag: typically 2x to 3x faster; allows asynchronous overlap through cudaMemcpyAsync, pin_memory=True and non_blocking=True -->
+    <rect x="250" y="375" width="940" height="82" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="720" y="401" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="720" dy="0">typically 2x to 3x faster; allows asynchronous overlap</tspan>
+      <tspan x="720" dy="28">through cudaMemcpyAsync, pin_memory=True and non_blocking=True</tspan>
+    </text>
+
+    <!-- Destination: DMA to the GPU -->
+    <rect x="1240" y="380" width="290" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-gpu" x="1255" y="390" />
+    <text x="1420" y="426" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">DMA to the GPU</text>
+  </g>
+
+  <!-- ==================== MIDDLE SECTION: LIMIT GATE & WHERE-TO-SET ==================== -->
+  
+  <!-- Left Side: Limit Gate Container (w=850, x=40) -->
+  <g id="limit-gate-container">
+    <rect x="40" y="495" width="850" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-shield" x="60" y="510" />
+    
+    <!-- Limit Gate Header -->
+    <rect x="130" y="510" width="460" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="360" y="546" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">RLIMIT_MEMLOCK (ulimit -l)</text>
+
+    <!-- Arrow 4 (Down-left): Gate to Unlimited Success -->
+    <path d="M 280 564 L 280 610" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
+
+    <!-- Outcome 1: unlimited: pinning succeeds -->
+    <rect x="65" y="610" width="440" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="95" cy="642" r="14" fill="#207448" />
+    <path d="M 89 642 L 93 646 L 101 638" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" />
+    <text x="125" y="650" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">unlimited: pinning succeeds</text>
+
+    <!-- Arrow 5 (Down-right): Gate to Low Limit Failures -->
+    <path d="M 460 564 L 460 705" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
+
+    <!-- Outcome 2: low limit: ibv_reg_mr errors, CUDA out of memory while pinning host memory, NCCL ibv_reg_mr failures -->
+    <rect x="65" y="705" width="800" height="142" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="465" y="742" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="465" dy="0">low limit: ibv_reg_mr errors,</tspan>
+      <tspan x="465" dy="32">CUDA out of memory while pinning host memory,</tspan>
+      <tspan x="465" dy="32">NCCL ibv_reg_mr failures</tspan>
+    </text>
+
+    <!-- Tag: the GPU has room (beside low limit) -->
+    <rect x="530" y="610" width="335" height="64" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.8" stroke-dasharray="4 4" />
+    <text x="697" y="650" text-anchor="middle" font-family="sans-serif" font-size="24" font-style="italic" fill="#303a36">the GPU has room</text>
+  </g>
+
+  <!-- Right Side: Where-to-set List Container (w=650, x=910) -->
+  <g id="where-to-set-container">
+    <rect x="910" y="495" width="650" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <use href="#icon-gear" x="930" y="510" />
+    
+    <!-- Item 1: /etc/security/limits.d/*.conf for logins -->
+    <rect x="925" y="578" width="620" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1235" y="610" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">/etc/security/limits.d/*.conf for logins</text>
+
+    <!-- Item 2: LimitMEMLOCK=infinity for systemd units -->
+    <rect x="925" y="635" width="620" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1235" y="667" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">LimitMEMLOCK=infinity for systemd units</text>
+
+    <!-- Item 3: ulimit memlock=-1:-1 for Docker -->
+    <rect x="925" y="692" width="620" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1235" y="724" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">--ulimit memlock=-1:-1 for Docker</text>
+
+    <!-- Item 4: Slurm PropagateResourceLimits -->
+    <rect x="925" y="749" width="620" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1235" y="781" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">Slurm PropagateResourceLimits</text>
+
+    <!-- Item 5: runtime configuration for Kubernetes -->
+    <rect x="925" y="806" width="620" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1235" y="838" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">runtime configuration for Kubernetes</text>
+  </g>
+
+  <!-- ==================== CONSEQUENCES STRIP ==================== -->
+  
+  <!-- Card 1: Pinned pages are unevictable (counted in Mlocked and Unevictable and in cgroup accounting) -->
+  <g id="card-consequence-1">
+    <rect x="40" y="885" width="480" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="55" y="900" width="450" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="280" y="942" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="280" dy="0">Pinned pages are unevictable</tspan>
+      <tspan x="280" dy="32">(counted in Mlocked and</tspan>
+      <tspan x="280" dy="32">Unevictable and in</tspan>
+      <tspan x="280" dy="32">cgroup accounting)</tspan>
+    </text>
+  </g>
+
+  <!-- Card 2: Pinning is slow: allocate once up front, not per batch -->
+  <g id="card-consequence-2">
+    <rect x="560" y="885" width="480" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="575" y="900" width="450" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="958" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">Pinning is slow:</tspan>
+      <tspan x="800" dy="34">allocate once up front,</tspan>
+      <tspan x="800" dy="34">not per batch</tspan>
+    </text>
+  </g>
+
+  <!-- Card 3: Huge pages for pinned buffers reduce mappings and registration cost -->
+  <g id="card-consequence-3">
+    <rect x="1080" y="885" width="480" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="1095" y="900" width="450" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1320" y="958" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1320" dy="0">Huge pages for pinned buffers</tspan>
+      <tspan x="1320" dy="34">reduce mappings and</tspan>
+      <tspan x="1320" dy="34">registration cost</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1100" width="1520" height="70" rx="10" fill="#207448" />
+    <text x="800" y="1144" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">GPUDirect RDMA, GPUDirect Storage and InfiniBand verbs need registered, pinned memory too</text>
+  </g>
+</svg>

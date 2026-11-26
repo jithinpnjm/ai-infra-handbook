@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Pets and cattle: name one by one, or number the herd</title>
+  <desc>Visual comparison between pet servers managed individually by name and cattle servers managed as numbered, replaceable fleet ranges.</desc>
+
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="70" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Pets and cattle: name one by one, or number the herd</text>
+  
+  <rect x="1170" y="36" width="370" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1355" y="67" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Ansible: Up and Running chapter 4</text>
+
+  
+  <g transform="translate(60, 110)">
+    <rect width="720" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(36, 32)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+      <line x1="12" y1="18" x2="44" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="28" cy="40" r="4" fill="#207448"/>
+      <path d="M42,20 C42,42 14,42 14,20" fill="none" stroke="#207448" stroke-width="2.5"/>
+    </g>
+
+    
+    <text x="110" y="54" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="110" dy="0">Pets: a server you name</tspan>
+      <tspan x="110" dy="38">and nurse back to health by hand</tspan>
+    </text>
+
+    
+    <g transform="translate(36, 140)">
+      <rect width="648" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      
+      <g transform="translate(30, 30)">
+        <rect width="180" height="170" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <line x1="20" y1="40" x2="160" y2="40" stroke="#207448" stroke-width="2"/>
+        <line x1="20" y1="80" x2="160" y2="80" stroke="#207448" stroke-width="2"/>
+        <line x1="20" y1="120" x2="160" y2="120" stroke="#207448" stroke-width="2"/>
+        <circle cx="145" cy="25" r="4" fill="#207448"/>
+        <circle cx="145" cy="65" r="4" fill="#207448"/>
+        <circle cx="145" cy="105" r="4" fill="#207448"/>
+        <circle cx="145" cy="145" r="4" fill="#207448"/>
+        
+        <path d="M-10,30 L30,30 L45,45 L30,60 L-10,60 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+        <circle cx="5" cy="45" r="3" fill="#207448"/>
+      </g>
+
+      <rect x="240" y="80" width="378" height="70" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <text x="429" y="124" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">frankfurt.example.com</text>
+    </g>
+
+    
+    <g transform="translate(36, 410)">
+      <rect width="648" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      
+      <g transform="translate(30, 30)">
+        <rect width="180" height="170" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+        <line x1="20" y1="40" x2="160" y2="40" stroke="#207448" stroke-width="2"/>
+        <line x1="20" y1="80" x2="160" y2="80" stroke="#207448" stroke-width="2"/>
+        <line x1="20" y1="120" x2="160" y2="120" stroke="#207448" stroke-width="2"/>
+        <circle cx="145" cy="25" r="4" fill="#207448"/>
+        <circle cx="145" cy="65" r="4" fill="#207448"/>
+        <circle cx="145" cy="105" r="4" fill="#207448"/>
+        <circle cx="145" cy="145" r="4" fill="#207448"/>
+        
+        <path d="M-10,30 L30,30 L45,45 L30,60 L-10,60 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+        <circle cx="5" cy="45" r="3" fill="#207448"/>
+      </g>
+
+      <rect x="240" y="80" width="378" height="70" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <text x="429" y="124" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">helsinki.example.com</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(820, 110)">
+    <rect width="720" height="690" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+
+    
+    <g transform="translate(36, 32)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="#fdf3e8" stroke="#db8129" stroke-width="3"/>
+      <rect x="10" y="10" width="14" height="14" rx="2" fill="#db8129"/>
+      <rect x="32" y="10" width="14" height="14" rx="2" fill="#db8129"/>
+      <rect x="10" y="32" width="14" height="14" rx="2" fill="#db8129"/>
+      <rect x="32" y="32" width="14" height="14" rx="2" fill="#db8129"/>
+    </g>
+
+    
+    <text x="110" y="54" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="110" dy="0">Cattle: a herd where each member</tspan>
+      <tspan x="110" dy="38">is numbered and replaceable</tspan>
+    </text>
+
+    
+    <g transform="translate(36, 140)">
+      <rect width="648" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+      
+      <rect x="24" y="22" width="600" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="324" y="54" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">web[01:20].example.com</text>
+
+      <rect x="24" y="82" width="600" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <text x="324" y="114" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">web-[a:t].example.com</text>
+
+      <rect x="24" y="142" width="600" height="48" rx="8" fill="#fdf3e8" stroke="#db8129" stroke-width="2"/>
+      <text x="324" y="174" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">gpu[001:032]</text>
+    </g>
+
+    
+    <g transform="translate(36, 370)">
+      <rect width="648" height="120" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <text x="324" y="52" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="324" dy="0">leading zeros in [001:032] are kept automatically,</tspan>
+        <tspan x="324" dy="36">so you get gpu001 through gpu032</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(36, 510)">
+      <rect width="648" height="150" rx="12" fill="#fdf3e8" stroke="#db8129" stroke-width="2"/>
+      
+      
+      <g transform="translate(36, 20)">
+        <rect x="0" y="8" width="70" height="34" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+        <line x1="12" y1="12" x2="58" y2="38" stroke="#db8129" stroke-width="2.5"/>
+        <line x1="12" y1="38" x2="58" y2="12" stroke="#db8129" stroke-width="2.5"/>
+        <path d="M85,25 L115,25" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+        <polygon points="115,20 125,25 115,30" fill="#db8129"/>
+        <rect x="135" y="8" width="70" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      </g>
+
+      <text x="324" y="88" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+        <tspan x="324" dy="0">nobody names node 17, a failed node gets swapped</tspan>
+        <tspan x="324" dy="36">for a spare with the next number</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(60, 825)">
+    <rect width="1480" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(24, 18)">
+      <circle cx="17" cy="17" r="16" fill="#207448"/>
+      <path d="M10,17 L15,22 L24,12" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="75" y="44" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">lab function expand_inventory_range covers gpu[001:004] and web-[a:d].example.com</text>
+  </g>
+
+  
+  <g transform="translate(60, 915)">
+    <rect width="1480" height="65" rx="12" fill="#207448"/>
+    <text x="740" y="42" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">A scale-out fleet works better with ranges</text>
+  </g>
+</svg>

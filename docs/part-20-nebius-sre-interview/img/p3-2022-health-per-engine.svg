@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What each engine's health endpoint actually checks</title>
+  <desc>Comparison table of health check endpoints and what each proves across vLLM, Triton, TensorRT-LLM, SGLang, and Ray Serve, plus the core probe rule.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">What each engine's health endpoint actually checks</text>
+  <text x="800" y="106" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Table of engines with endpoint and what it proves.</text>
+
+  
+  <g id="panel-vllm">
+    <rect x="60" y="130" width="1480" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="85" y="182" width="56" height="56" rx="8" stroke="#207448" stroke-width="4" fill="none"/>
+    <circle cx="113" cy="210" r="11" stroke="#207448" stroke-width="3" fill="none"/>
+    <path d="M103 210 H123 M113 200 V220" stroke="#207448" stroke-width="3"/>
+    
+    <text x="180" y="172" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">vLLM v0.32.0: </tspan>
+      <tspan font-family="monospace">/health </tspan>
+      <tspan font-family="sans-serif">calls the engine client health check, 200 if it passes,</tspan>
+      <tspan x="180" dy="33" font-family="sans-serif">503 if the engine is dead; render-only servers with no engine always return 200;</tspan>
+      <tspan x="180" dy="33" font-family="sans-serif">liveness style only, does not prove good tokens, a short queue or KV room;</tspan>
+      <tspan x="180" dy="33" font-family="sans-serif">a hung engine can still pass</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-triton">
+    <rect x="60" y="306" width="1480" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="88" y="347" width="50" height="18" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <rect x="88" y="373" width="22" height="18" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <rect x="116" y="373" width="22" height="18" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+    
+    <text x="180" y="358" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Triton (KServe protocol): </tspan>
+      <tspan font-family="monospace">v2/health/live, v2/health/ready, v2/models/name/ready;</tspan>
+      <tspan x="180" dy="38" font-family="sans-serif">server ready means all models are ready; separates process up from model loaded</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-tensorrt">
+    <rect x="60" y="452" width="1480" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="85" y="489" width="56" height="56" rx="8" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <polygon points="115,499 103,517 113,517 111,535 123,513 113,513" fill="#207448"/>
+    
+    <text x="180" y="504" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">TensorRT-LLM v1.2.1: </tspan>
+      <tspan font-family="monospace">/health </tspan>
+      <tspan font-family="sans-serif">200 or 503 from the engine health check;</tspan>
+      <tspan x="180" dy="38" font-family="monospace">/health_generate </tspan>
+      <tspan font-family="sans-serif">runs a real one-token chat request</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-sglang">
+    <rect x="60" y="598" width="1480" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M90 642 C90 636 96 636 102 636 H124 C132 636 136 640 136 648 V660 C136 668 130 672 122 672 H106 L94 682 V672 H102 C94 672 90 666 90 660 Z" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+    <circle cx="104" cy="654" r="3" fill="#207448"/>
+    <circle cx="113" cy="654" r="3" fill="#207448"/>
+    <circle cx="122" cy="654" r="3" fill="#207448"/>
+    
+    <text x="180" y="642" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">SGLang v0.5.23: </tspan>
+      <tspan font-family="monospace">/health </tspan>
+      <tspan font-family="sans-serif">also sends a one-token generation by default,</tspan>
+      <tspan x="180" dy="35" font-family="sans-serif">waits up to 20 seconds by default, 503 while starting or shutting down;</tspan>
+      <tspan x="180" dy="35" font-family="sans-serif">under load a slow answer can fail a short-timeout probe</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-rayserve">
+    <rect x="60" y="759" width="1480" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="113" cy="807" r="9" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <circle cx="95" cy="837" r="9" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <circle cx="131" cy="837" r="9" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <line x1="106" y1="815" x2="100" y2="829" stroke="#207448" stroke-width="3"/>
+    <line x1="120" y1="815" x2="126" y2="829" stroke="#207448" stroke-width="3"/>
+    <line x1="104" y1="837" x2="122" y2="837" stroke="#207448" stroke-width="3"/>
+    
+    <text x="180" y="803" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Ray Serve: </tspan>
+      <tspan font-family="sans-serif">proxy </tspan>
+      <tspan font-family="monospace">/-/healthz </tspan>
+      <tspan font-family="sans-serif">is non-OK while draining or with no route table;</tspan>
+      <tspan x="180" dy="35" font-family="sans-serif">each replica runs optional </tspan>
+      <tspan font-family="monospace">check_health </tspan>
+      <tspan font-family="sans-serif">every 10 s with a 30 s timeout by default,</tspan>
+      <tspan x="180" dy="35" font-family="sans-serif">the controller restarts a replica whose check raises</tspan>
+    </text>
+  </g>
+
+  
+  <g id="rule-box">
+    <rect x="60" y="930" width="1480" height="150" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3.5"/>
+    
+    <path d="M113 977 L135 987 V1005 C135 1019 113 1027 113 1027 C113 1027 91 1019 91 1005 V987 Z" stroke="#db8129" stroke-width="4" fill="none" stroke-linejoin="round"/>
+    <path d="M104 1001 L111 1008 L124 995" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="180" y="980" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan font-family="sans-serif">use </tspan>
+      <tspan font-family="monospace">/health </tspan>
+      <tspan font-family="sans-serif">for the startup probe and a forgiving liveness probe; put load and</tspan>
+      <tspan x="180" dy="36" font-family="sans-serif">warm-up judgement in readiness through the router or a metric; only a truly</tspan>
+      <tspan x="180" dy="36" font-family="sans-serif">dead process may cause a restart</tspan>
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Which query command for which question</title>
+  <desc>A visual menu pairing Slurm job questions with squeue, scontrol, sacct, sstat, and scancel query commands.</desc>
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+  <text x="40" y="46" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which query command for which question</text>
+  <rect x="40" y="65" width="1520" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="64" y="101"><tspan font-family="sans-serif" font-weight="bold" fill="#207448">States: </tspan>PENDING, RUNNING, COMPLETING, COMPLETED, FAILED, CANCELLED,</tspan>
+    <tspan x="64" y="131">TIMEOUT, NODE_FAIL, OUT_OF_MEMORY, PREEMPTED, REQUEUED, SUSPENDED</tspan>
+  </text>
+  <rect x="40" y="195" width="740" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(700, 213)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="14" />
+    <line x1="33" y1="33" x2="48" y2="48" />
+    <line x1="14" y1="22" x2="30" y2="22" />
+  </g>
+  <text font-size="30" fill="#207448">
+    <tspan x="64" y="234" font-family="sans-serif" font-weight="bold">Where is my job and</tspan>
+    <tspan x="64" y="264" font-family="sans-serif" font-weight="bold">why is it waiting: </tspan>
+    <tspan x="64" y="292" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">squeue -u $USER</tspan>
+    <tspan x="64" y="318" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">-o %.10i %.9P %.20j %.8T %.10M %.6D %R</tspan>
+    <tspan x="64" y="344" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">(job id, partition, name, state, runtime,</tspan>
+    <tspan x="64" y="370" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">nodes, reason or nodes)</tspan>
+  </text>
+  <rect x="820" y="195" width="740" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1480, 213)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22" />
+    <polyline points="28,14 28,28 38,28" />
+  </g>
+  <text font-size="30" fill="#207448">
+    <tspan x="844" y="265" font-family="sans-serif" font-weight="bold">When will it start: </tspan>
+    <tspan x="844" y="320" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">squeue -j JOBID --start</tspan>
+  </text>
+  <rect x="40" y="440" width="740" height="175" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(700, 458)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 6 L 32 6 L 46 20 L 46 50 L 10 50 Z" />
+    <polyline points="32,6 32,20 46,20" />
+    <line x1="18" y1="30" x2="38" y2="30" />
+    <line x1="18" y1="38" x2="38" y2="38" />
+  </g>
+  <text font-size="30" fill="#207448">
+    <tspan x="64" y="484" font-family="sans-serif" font-weight="bold">Everything about it: </tspan>
+    <tspan x="64" y="520" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">scontrol show job JOBID</tspan>
+    <tspan x="64" y="556" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">(Reason, TresPerNode, StdOut,</tspan>
+    <tspan x="64" y="588" font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36">WorkDir, NodeList)</tspan>
+  </text>
+  <rect x="820" y="440" width="740" height="175" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1480, 458)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="14" y1="8" x2="14" y2="48" />
+    <line x1="28" y1="8" x2="28" y2="48" />
+    <line x1="42" y1="8" x2="42" y2="48" />
+    <circle cx="14" cy="20" r="5" fill="#e8f1ea" />
+    <circle cx="28" cy="36" r="5" fill="#e8f1ea" />
+    <circle cx="42" cy="18" r="5" fill="#e8f1ea" />
+  </g>
+  <text font-size="30" fill="#207448">
+    <tspan x="844" y="479" font-family="sans-serif" font-weight="bold">Change it: </tspan>
+    <tspan x="844" y="508" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">scontrol update job JOBID</tspan>
+    <tspan x="844" y="535" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">TimeLimit=+2:00:00 (extend is privileged),</tspan>
+    <tspan x="844" y="562" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">Dependency=afterok:123,</tspan>
+    <tspan x="844" y="589" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">scontrol hold and release</tspan>
+  </text>
+  <rect x="40" y="655" width="740" height="155" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(700, 673)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="12" width="32" height="32" rx="4" />
+    <rect x="20" y="20" width="16" height="16" />
+    <line x1="20" y1="4" x2="20" y2="12" />
+    <line x1="28" y1="4" x2="28" y2="12" />
+    <line x1="36" y1="4" x2="36" y2="12" />
+    <line x1="20" y1="44" x2="20" y2="52" />
+    <line x1="28" y1="44" x2="28" y2="52" />
+    <line x1="36" y1="44" x2="36" y2="52" />
+  </g>
+  <text font-size="30" fill="#207448">
+    <tspan x="64" y="700" font-family="sans-serif" font-weight="bold">What is a running step using: </tspan>
+    <tspan x="64" y="740" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">sstat -j JOBID.0</tspan>
+    <tspan x="64" y="775" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">--format=JobID,AveCPU,MaxRSS</tspan>
+  </text>
+  <rect x="820" y="655" width="740" height="155" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1480, 673)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="40" rx="6" />
+    <line x1="6" y1="20" x2="50" y2="20" />
+    <polyline points="14,28 20,34 14,40" />
+    <line x1="26" y1="40" x2="38" y2="40" />
+  </g>
+  <text font-size="30" fill="#207448">
+    <tspan x="844" y="694" font-family="sans-serif" font-weight="bold">Peek inside a running job: </tspan>
+    <tspan x="844" y="725" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">srun --overlap --jobid=JOBID --pty bash,</tspan>
+    <tspan x="844" y="753" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">or srun --overlap --jobid=JOBID</tspan>
+    <tspan x="844" y="781" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">-w NODE nvidia-smi; site policy decides</tspan>
+  </text>
+  <rect x="40" y="850" width="740" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(700, 868)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="12" width="40" height="40" rx="4" />
+    <path d="M 20 12 L 20 6 L 36 6 L 36 12" />
+    <polyline points="18,32 26,40 38,24" />
+  </g>
+  <text font-size="30" fill="#207448">
+    <tspan x="64" y="895" font-family="sans-serif" font-weight="bold">What did a finished job do: </tspan>
+    <tspan x="64" y="938" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">sacct -j JOBID --format=JobID,JobName,</tspan><tspan x="64" y="974" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">Partition,State,ExitCode,Elapsed,</tspan><tspan x="64" y="1010" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">TotalCPU,MaxRSS,AllocTRES%50</tspan>
+  </text>
+  <rect x="820" y="850" width="740" height="205" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1480, 868)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="18,6 38,6 50,18 50,38 38,50 18,50 6,38 6,18" />
+    <line x1="20" y1="28" x2="36" y2="28" />
+  </g>
+  <text font-size="30" fill="#207448">
+    <tspan x="844" y="890" font-family="sans-serif" font-weight="bold">Stop it: </tspan>
+    <tspan x="844" y="920" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">scancel JOBID,</tspan>
+    <tspan x="844" y="948" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">scancel -u $USER --state=PENDING,</tspan>
+    <tspan x="844" y="976" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">scancel --signal=USR1 JOBID;</tspan>
+    <tspan x="844" y="1004" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">scancel 12345_7 ends one array task,</tspan>
+    <tspan x="844" y="1032" font-family="monospace" font-size="24" font-weight="normal" fill="#303a36">scancel 12345 ends all</tspan>
+  </text>
+  <rect x="40" y="1095" width="1520" height="65" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(60, 1108)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="20,4 38,36 2,36" />
+    <line x1="20" y1="16" x2="20" y2="24" />
+    <circle cx="20" cy="30" r="2" fill="#db8129" />
+  </g>
+  <text x="120" y="1136" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">sstat for a running step, sacct once finished; sacct too early shows a job that looks unfinished</text>
+</svg>

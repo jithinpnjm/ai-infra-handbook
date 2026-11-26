@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Debug in a fixed order, from the object outward</title>
+  <desc>Flowchart depicting Kubernetes troubleshooting in a fixed order from the object outward across 10 sequential steps.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Debug in a fixed order, from the object outward</text>
+
+  
+  
+  <path d="M 770 200 H 830" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1195 280 v 16 q 0 14 -14 14 H 419 q -14 0 -14 14 v 16" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 770 420 H 830" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1195 500 v 16 q 0 14 -14 14 H 419 q -14 0 -14 14 v 16" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 770 640 H 830" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1195 720 v 16 q 0 14 -14 14 H 419 q -14 0 -14 14 v 16" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 770 860 H 830" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1195 940 v 16 q 0 14 -14 14 H 419 q -14 0 -14 14 v 16" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 770 1080 H 830" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="step-1">
+    <rect x="40" y="120" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    <circle cx="88" cy="200" r="24" fill="#db8129" />
+    <text x="88" y="200" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <rect x="136" y="176" width="48" height="48" rx="12" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M 148 200 l 8 8 l 16 -16" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="210" y="210" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">get pod: <tspan font-family="system-ui, -apple-system, sans-serif">STATUS</tspan></text>
+  </g>
+
+  
+  <g id="step-2">
+    <rect x="830" y="120" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="878" cy="200" r="24" fill="#207448" />
+    <text x="878" y="200" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <rect x="926" y="174" width="46" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 941 174 v -6 h 16 v 6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="938" y1="192" x2="960" y2="192" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="938" y1="204" x2="960" y2="204" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="938" y1="216" x2="952" y2="216" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1000" y="210" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">describe pod: <tspan font-family="system-ui, -apple-system, sans-serif">Events</tspan></text>
+  </g>
+
+  
+  
+  <g id="step-3">
+    <rect x="40" y="340" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="88" cy="420" r="24" fill="#207448" />
+    <text x="88" y="420" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <rect x="136" y="396" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 160 408 v 14 M 160 430 v 2" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="210" y="430" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">get events: <tspan font-family="system-ui, -apple-system, sans-serif">namespace</tspan></text>
+  </g>
+
+  
+  <g id="step-4">
+    <rect x="830" y="340" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="878" cy="420" r="24" fill="#207448" />
+    <text x="878" y="420" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <rect x="924" y="396" width="50" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="924" y1="408" x2="974" y2="408" stroke="#207448" stroke-width="2" />
+    <path d="M 932 422 l 6 5 l -6 5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="944" y1="427" x2="962" y2="427" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1000" y="410" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1000" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">logs <tspan font-family="system-ui, -apple-system, sans-serif">and</tspan></tspan>
+      <tspan x="1000" dy="38" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">logs --previous</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="step-5">
+    <rect x="40" y="560" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="88" cy="640" r="24" fill="#207448" />
+    <text x="88" y="640" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    
+    <rect x="136" y="616" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 146 640 h 26 m -8 -8 l 8 8 l -8 8" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="210" y="650" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">exec <tspan font-family="system-ui, -apple-system, sans-serif">into container</tspan></text>
+  </g>
+
+  
+  <g id="step-6">
+    <rect x="830" y="560" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="878" cy="640" r="24" fill="#207448" />
+    <text x="878" y="640" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    
+    <rect x="924" y="616" width="50" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="932" y1="630" x2="956" y2="630" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="932" y1="642" x2="956" y2="642" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="932" y1="654" x2="956" y2="654" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="963" cy="630" r="2" fill="#207448" />
+    <circle cx="963" cy="642" r="2" fill="#207448" />
+    <circle cx="963" cy="654" r="2" fill="#207448" />
+    
+    <text x="1000" y="630" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1000" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">describe node:</tspan>
+      <tspan x="1000" dy="38" font-family="system-ui, -apple-system, sans-serif">Conditions, Taints</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="step-7">
+    <rect x="40" y="780" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="88" cy="860" r="24" fill="#207448" />
+    <text x="88" y="860" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+    
+    <rect x="138" y="836" width="46" height="48" rx="5" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="148" y1="836" x2="148" y2="884" stroke="#207448" stroke-width="3" />
+    <line x1="156" y1="850" x2="174" y2="850" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="156" y1="862" x2="174" y2="862" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="156" y1="872" x2="168" y2="872" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="210" y="870" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">kubelet journal</text>
+  </g>
+
+  
+  <g id="step-8">
+    <rect x="830" y="780" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="878" cy="860" r="24" fill="#207448" />
+    <text x="878" y="860" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">8</text>
+    
+    <circle cx="949" cy="860" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="949" cy="860" r="5" fill="#207448" />
+    <path d="M 949 838 v 8 M 949 874 v 8 M 927 860 h 8 M 963 860 h 8 M 933 844 l 6 6 M 959 870 l 6 6 M 933 876 l 6 -6 M 959 850 l 6 -6" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="1000" y="870" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">container runtime</text>
+  </g>
+
+  
+  
+  <g id="step-9">
+    <rect x="40" y="1000" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="88" cy="1080" r="24" fill="#207448" />
+    <text x="88" y="1080" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">9</text>
+    
+    <circle cx="160" cy="1062" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="144" cy="1092" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="176" cy="1092" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="156" y1="1068" x2="148" y2="1086" stroke="#207448" stroke-width="3" />
+    <line x1="164" y1="1068" x2="172" y2="1086" stroke="#207448" stroke-width="3" />
+    <line x1="151" y1="1092" x2="169" y2="1092" stroke="#207448" stroke-width="3" />
+    
+    <text x="210" y="1090" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">CNI and pod network</text>
+  </g>
+
+  
+  <g id="step-10">
+    <rect x="830" y="1000" width="730" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="878" cy="1080" r="24" fill="#207448" />
+    <text x="878" y="1080" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">10</text>
+    
+    <circle cx="949" cy="1080" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="927" y1="1080" x2="971" y2="1080" stroke="#207448" stroke-width="3" />
+    <ellipse cx="949" cy="1080" rx="11" ry="22" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="1000" y="1090" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">DNS</text>
+  </g>
+</svg>

@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1010" viewBox="0 0 1600 1010">
+  <title>Host tools working inside a pod's network namespace</title>
+  <desc>Top panel: Node (host) holds host tools with tcpdump, ip, ss and curl, connected by a dashed nsenter -t PID -n arrow into a pod network namespace containing pod app and pod eth0, with steps 1 and 2. Bottom panel: Pod image holds app image with a note and an orange note. A green takeaway bar closes the diagram.</desc>
+
+  <rect x="0" y="0" width="1600" height="1010" fill="#f5f8f5"/>
+
+  <defs>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <text x="60" y="80" font-family="Helvetica, Arial, sans-serif" font-size="48" font-weight="700" fill="#303a36">Host tools working inside a pod's network namespace</text>
+
+  
+  <rect x="60" y="106" width="1480" height="508" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="96" y="156" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#207448">Node (host)</text>
+
+  
+  <rect x="100" y="182" width="520" height="216" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="132" y="228" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#303a36">host tools</text>
+
+  
+  <g transform="translate(188 302)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-28" y="-18" width="56" height="36" rx="6"/>
+    <line x1="-18" y1="-7" x2="-4" y2="-7"/>
+    <circle cx="10" cy="-7" r="3" fill="#207448" stroke="none"/>
+    <line x1="-18" y1="8" x2="2" y2="8"/>
+    <circle cx="16" cy="8" r="3" fill="#207448" stroke="none"/>
+  </g>
+
+  
+  <g transform="translate(303 302)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <line x1="-14" y1="-12" x2="-5" y2="-4"/>
+    <line x1="14" y1="-12" x2="5" y2="-4"/>
+    <line x1="-14" y1="12" x2="-5" y2="4"/>
+    <line x1="14" y1="12" x2="5" y2="4"/>
+    <circle cx="0" cy="0" r="7" fill="#e8f1ea"/>
+    <circle cx="-21" cy="-18" r="6" fill="#e8f1ea"/>
+    <circle cx="21" cy="-18" r="6" fill="#e8f1ea"/>
+    <circle cx="-21" cy="18" r="6" fill="#e8f1ea"/>
+    <circle cx="21" cy="18" r="6" fill="#e8f1ea"/>
+  </g>
+
+  
+  <g transform="translate(418 302)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M-9 -22 H-20 A6 6 0 0 0 -26 -16 V16 A6 6 0 0 0 -20 22 H-9"/>
+    <path d="M9 -22 H20 A6 6 0 0 1 26 -16 V16 A6 6 0 0 1 20 22 H9"/>
+    <line x1="-4" y1="0" x2="4" y2="0"/>
+  </g>
+
+  
+  <g transform="translate(533 302)" fill="none" stroke="#207448" stroke-width="4">
+    <circle cx="0" cy="0" r="24"/>
+    <ellipse cx="0" cy="0" rx="10" ry="24"/>
+    <line x1="-24" y1="0" x2="24" y2="0"/>
+  </g>
+
+  <text x="188" y="368" font-family="monospace" font-size="24" text-anchor="middle" fill="#303a36">tcpdump</text>
+  <text x="303" y="368" font-family="monospace" font-size="24" text-anchor="middle" fill="#303a36">ip</text>
+  <text x="418" y="368" font-family="monospace" font-size="24" text-anchor="middle" fill="#303a36">ss</text>
+  <text x="533" y="368" font-family="monospace" font-size="24" text-anchor="middle" fill="#303a36">curl</text>
+
+  
+  <circle cx="132" cy="466" r="24" fill="#207448"/>
+  <text x="132" y="475" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="176" y="458" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">find the PID with</text>
+  <text x="176" y="490" font-family="monospace" font-size="24" fill="#207448">crictl inspect</text>
+
+  <circle cx="132" cy="552" r="24" fill="#207448"/>
+  <text x="132" y="561" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="176" y="544" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">run host tools with</text>
+  <text x="176" y="576" font-family="monospace" font-size="24" fill="#207448">nsenter -n</text>
+
+  
+  <rect x="920" y="182" width="580" height="320" rx="28" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="952" y="236" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#207448">pod network namespace</text>
+
+  
+  <rect x="990" y="286" width="200" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1090 334)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <rect x="-28" y="-24" width="56" height="48" rx="6"/>
+    <line x1="-28" y1="-10" x2="28" y2="-10"/>
+    <circle cx="-19" cy="-17" r="2.5" fill="#207448" stroke="none"/>
+    <circle cx="-10" cy="-17" r="2.5" fill="#207448" stroke="none"/>
+  </g>
+  <text x="1090" y="414" font-family="Helvetica, Arial, sans-serif" font-size="26" text-anchor="middle" fill="#303a36">pod app</text>
+
+  
+  <rect x="1230" y="286" width="200" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1330 334)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-26" y="-10" width="52" height="26" rx="5"/>
+    <line x1="-14" y1="-10" x2="-14" y2="-24"/>
+    <line x1="14" y1="-10" x2="14" y2="-24"/>
+    <line x1="0" y1="16" x2="0" y2="26"/>
+  </g>
+  <text x="1330" y="414" font-family="Helvetica, Arial, sans-serif" font-size="26" text-anchor="middle" fill="#303a36">pod eth0</text>
+
+  
+  <path d="M620 300 H918" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="12 9" marker-end="url(#arrowGreen)"/>
+  <text x="769" y="278" font-family="monospace" font-size="24" text-anchor="middle" fill="#207448">nsenter -t PID -n</text>
+
+  
+  <rect x="60" y="654" width="1480" height="208" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="96" y="706" font-family="Helvetica, Arial, sans-serif" font-size="32" font-weight="700" fill="#207448">Pod image</text>
+
+  
+  <rect x="100" y="722" width="300" height="116" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(152 780)" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+    <path d="M-26 -14 L0 -28 L26 -14 L26 14 L0 28 L-26 14 Z"/>
+    <path d="M-26 -14 L0 0 L26 -14"/>
+    <line x1="0" y1="0" x2="0" y2="28"/>
+  </g>
+  <text x="200" y="790" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#303a36">app image</text>
+
+  
+  <text x="440" y="768" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">no</text>
+  <text x="478" y="768" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">tcpdump</text>
+  <text x="578" y="768" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">,</text>
+  <text x="592" y="768" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">ip</text>
+  <text x="622" y="768" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">or</text>
+  <text x="654" y="768" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">ss</text>
+  <text x="688" y="768" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">needed</text>
+  <text x="440" y="802" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">inside the image</text>
+
+  <line x1="474" y1="760" x2="576" y2="760" stroke="#98a4a0" stroke-width="3" stroke-linecap="round"/>
+  <line x1="588" y1="760" x2="616" y2="760" stroke="#98a4a0" stroke-width="3" stroke-linecap="round"/>
+  <line x1="650" y1="760" x2="682" y2="760" stroke="#98a4a0" stroke-width="3" stroke-linecap="round"/>
+
+  
+  <rect x="880" y="714" width="620" height="132" rx="12" fill="#fdf0e2" stroke="#db8129" stroke-width="3"/>
+  <text x="912" y="752" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600" fill="#db8129">the host binaries stay</text>
+  <text x="912" y="784" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600" fill="#db8129">under your control,</text>
+  <text x="912" y="816" font-family="Helvetica, Arial, sans-serif" font-size="24" font-weight="600" fill="#db8129">not the app team's.</text>
+
+  
+  <rect x="60" y="906" width="1480" height="64" rx="14" fill="#207448"/>
+  <text x="800" y="946" font-family="Helvetica, Arial, sans-serif" font-size="28" font-weight="600" fill="#ffffff" text-anchor="middle">the room is the pod's network, and your tools come from the host.</text>
+</svg>

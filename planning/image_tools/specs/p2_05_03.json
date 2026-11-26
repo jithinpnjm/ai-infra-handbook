@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p2-0503-apiserver-pipeline",
+  "title": "Every request passes the API server checkpoints",
+  "spec": "A horizontal pipeline of six checkpoint boxes left to right with number circles 1 to 6, joined by arrows. Box 1 'Authentication' with a badge icon and the note 'certs, tokens, OIDC, webhook: who are you'. Box 2 'Authorization' with a key icon and the note 'RBAC, Node, webhook: what may you do'. Box 3 'Mutating admission' with the note 'can change the object, for example add a default'. Box 4 'Schema validation' with a check icon. Box 5 'Validating admission' with the note 'can only accept or reject'. Box 6 'Persist to etcd' with a cylinder icon and then a final arrow out labelled 'Response returns'. A side branch from the pipeline labelled 'API Priority and Fairness: queues requests by flow'. Orange outline on box 3 as the only step that changes the object. Above the pipeline a client icon labelled 'kubectl request on port 6443'. Bottom note: 'Reads and watches mostly come from the in-memory watch cache, not etcd.'",
+  "anchor": "### kube-apiserver",
+  "alt": "A request to the API server passes authentication, authorization, mutating admission, validation and validating admission before it is saved to etcd.",
+  "cap": "Each API server request passes authentication, authorization, admission and persistence to etcd in that order before the response returns."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p2-0503-scheduler-cycles",
+  "title": "Filter, score and bind: three candidate nodes",
+  "spec": "Left to right, a flow with three phases. Phase 1 on the left: a pending pod card 'Training pod asks for GPUs' with a clock icon, and three node cards below it: 'Node A: no free GPUs', 'Node B', 'Node C'. Phase 2 'Scheduling cycle, Filter': Node A card gets a red cross and the label 'Filter removes it'; Nodes B and C get green checks labelled 'Pass the filter'. Phase 3 'Scheduling cycle, Score': B and C are ranked with bars, Node C bar shorter in fullness labelled 'More room', Node B labelled 'Fuller memory footprint'. Phase 4 'Binding cycle': a box 'Writes a Binding to Node C' with an arrow to a small kubelet icon labelled 'Kubelet on Node C notices and starts the container'. Orange outline on the Binding box. Side note in a dashed box: 'The scheduler never starts containers. It does not check the image on Node C.' Top label band: 'Filter is yes or no, Score is a ranking'.",
+  "anchor": "### kube-scheduler",
+  "alt": "A scheduler filters out a node with no free GPUs, scores the remaining two nodes, and binds the pod to the node with more room.",
+  "cap": "The scheduler filters out the node with no free GPUs, scores the rest, and writes the binding to node C while the kubelet starts the container."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p2-0503-deployment-relay",
+  "title": "Spec says 3, status says 2: who owns the missing Pod",
+  "spec": "A vertical chain of five controller boxes from top to bottom, each with a number circle, joined by downward arrows. Box 1 'Deployment controller: ReplicaSet exists and matches, nothing to change'. Box 2 'ReplicaSet controller: desired 3, only 2 Pods exist, creates the missing Pod'. Box 3 'Scheduler: one new Pod with no node name, places it'. Box 4 'Kubelet on the chosen node: starts the container, reports Ready'. Box 5 'EndpointSlice controller: adds the new Pod address to the Service'. Right side, a split panel with two cards: 'spec (desired): 3' and 'status (observed): 2', with a gap bracket between them labelled 'The gap shows what controllers have not done yet'. A small caption under the panel: 'Level-triggered: controllers compare current with desired on every resync.' Orange outline on box 2, the step that creates the missing Pod.",
+  "anchor": "## 5. The declarative object model",
+  "alt": "A Deployment with three desired and two ready Pods, showing how each controller acts in turn until the new Pod is ready and added to the Service.",
+  "cap": "A Deployment with a desired count of three and two ready Pods is fixed by five controllers acting in turn, starting with the ReplicaSet controller."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p2-0503-ingress-contract",
+  "title": "Service ships built in, Ingress needs a controller",
+  "spec": "Two columns. Left column titled 'Service: built into core': a box 'Service' with a virtual IP icon labelled 'VIP' and an arrow to a kube-proxy box 'kube-proxy programs each host', then to two Pod boxes. A green note 'Works on a fresh cluster'. Right column titled 'Ingress: only a contract': a box 'Ingress object' with the note 'Creating it by itself does nothing', a dashed empty arrow with a question mark, then two alternative controller boxes: 'ingress-nginx: writes NGINX config for Pods' and 'Contour: programs Envoy'. Both controller boxes point at the same Pod boxes. An orange outline on the empty dashed arrow labelled 'No controller: the Ingress does nothing'. Bottom note: 'Many APIs take the plug-in route, such as Ingress and NetworkPolicy.'",
+  "anchor": "### Why some APIs are only a contract",
+  "alt": "A Service works on a fresh cluster because kube-proxy is built in, while an Ingress object does nothing without a controller such as ingress-nginx or Contour.",
+  "cap": "A Service works out of the box through kube-proxy, while an Ingress object does nothing until a controller such as ingress-nginx or Contour implements it."
+ }
+]

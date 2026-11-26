@@ -1,104 +1,121 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
   <title>Encapsulation overhead and ECMP entropy</title>
-  <desc>Horizontal bar chart of overhead in bytes under IPv4 underlay comparing UDP-based encapsulations with ECMP entropy against portless encapsulations that hash to a single path.</desc>
+  <desc>Horizontal bar chart of encapsulation overhead in bytes for IPv4 underlay, contrasting UDP-based encapsulations that provide ECMP entropy against portless tunnels that hash to a single path.</desc>
 
-  <defs>
-    <pattern id="diagonal-stripe-green" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <line x1="0" y1="0" x2="0" y2="12" stroke="#207448" stroke-width="4" />
-    </pattern>
-    <pattern id="diagonal-stripe-orange" width="12" height="12" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
-      <line x1="0" y1="0" x2="0" y2="12" stroke="#db8129" stroke-width="4" />
-    </pattern>
-  </defs>
+  
+  <rect width="1600" height="980" fill="#f5f8f5" />
 
-  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Encapsulation overhead and ECMP entropy</text>
 
-  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Encapsulation overhead and ECMP entropy</text>
+  
+  <g id="chart-header">
+    <rect x="40" y="78" width="1520" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(60, 83)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="36" height="32" rx="3" />
+      <line x1="12" y1="28" x2="12" y2="20" />
+      <line x1="22" y1="28" x2="22" y2="14" />
+      <line x1="32" y1="28" x2="32" y2="24" />
+    </g>
+    <text x="800" y="115" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Horizontal bar chart of overhead in bytes (IPv4 underlay)</text>
+  </g>
 
-  <text x="800" y="100" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">overhead in bytes (IPv4 underlay)</text>
+  
+  <line x1="920" y1="145" x2="920" y2="845" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" opacity="0.4" />
 
-  <g id="card-mpls">
-    <rect x="60" y="125" width="1480" height="115" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g id="mpls-card">
+    <rect x="40" y="146" width="1520" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(56, 151)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 16 L 24 8 L 40 16 L 24 24 Z" />
+      <path d="M 8 26 L 24 34 L 40 26" />
+      <path d="M 8 36 L 24 44 L 40 36" />
+    </g>
+    <text x="116" y="188" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">MPLS 4 B per label</text>
     
-    <g transform="translate(86, 154)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M 6 28 L 28 6 L 50 6 L 50 28 L 28 50 Z"/>
-      <circle cx="38" cy="18" r="4" fill="#207448"/>
-    </g>
-
-    <text x="165" y="165" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">MPLS 4 B per label</text>
-
-    <rect x="165" y="180" width="60" height="30" rx="6" fill="#207448"/>
+    <rect x="920" y="163" width="32" height="32" rx="4" fill="#207448" />
   </g>
 
-  <g id="card-udp">
-    <rect x="60" y="265" width="1480" height="400" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g id="udp-group">
+    <rect x="40" y="226" width="1520" height="290" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="40" y="226" width="1520" height="54" rx="10" fill="#e8f1ea" />
+    <g transform="translate(56, 230)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16" />
+      <polyline points="16,24 22,30 32,18" />
+    </g>
+    <text x="116" y="263" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">UDP-based: ECMP entropy from outer source port</text>
 
-    <g transform="translate(86, 285)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="10" cy="28" r="7"/>
-      <circle cx="46" cy="10" r="7"/>
-      <circle cx="46" cy="28" r="7"/>
-      <circle cx="46" cy="46" r="7"/>
-      <path d="M 17 28 L 39 10"/>
-      <path d="M 17 28 L 39 28"/>
-      <path d="M 17 28 L 39 46"/>
+    
+    <g id="row-vxlan">
+      <text x="60" y="328" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">VXLAN 50 B (outer Ethernet 14 + IP 20 + UDP 8 + VXLAN 8)</text>
+      
+      <rect x="920" y="304" width="400" height="32" rx="4" fill="#207448" />
     </g>
 
-    <text x="165" y="322" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">UDP-based: ECMP entropy from outer source port</text>
-
-    <g transform="translate(165, 355)">
-      <text x="0" y="24" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">VXLAN 50 B (outer Ethernet 14 + IP 20 + UDP 8 + VXLAN 8)</text>
-      <rect x="0" y="36" width="750" height="30" rx="6" fill="#207448"/>
-      <line x1="210" y1="36" x2="210" y2="66" stroke="#ffffff" stroke-width="2"/>
-      <line x1="510" y1="36" x2="510" y2="66" stroke="#ffffff" stroke-width="2"/>
-      <line x1="630" y1="36" x2="630" y2="66" stroke="#ffffff" stroke-width="2"/>
+    
+    <g id="row-geneve">
+      <text x="60" y="400" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">GENEVE 50+ B</text>
+      
+      <rect x="920" y="376" width="400" height="32" rx="4" fill="#207448" />
+      <rect x="920" y="376" width="424" height="32" rx="4" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" />
     </g>
 
-    <g transform="translate(165, 452)">
-      <text x="0" y="24" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">GENEVE 50+ B</text>
-      <rect x="0" y="36" width="750" height="30" rx="6" fill="#207448"/>
-      <rect x="750" y="36" width="150" height="30" rx="6" fill="url(#diagonal-stripe-green)" stroke="#207448" stroke-width="2"/>
-    </g>
-
-    <g transform="translate(165, 549)">
-      <text x="0" y="24" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">WireGuard 60 B</text>
-      <rect x="0" y="36" width="900" height="30" rx="6" fill="#207448"/>
+    
+    <g id="row-wireguard">
+      <text x="60" y="472" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">WireGuard 60 B</text>
+      
+      <rect x="920" y="448" width="480" height="32" rx="4" fill="#207448" />
     </g>
   </g>
 
-  <g id="card-noports">
-    <rect x="60" y="690" width="1480" height="400" rx="18" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
-
-    <g transform="translate(86, 710)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="10" cy="10" r="6"/>
-      <circle cx="10" cy="28" r="6"/>
-      <circle cx="10" cy="46" r="6"/>
-      <path d="M 16 10 L 34 28"/>
-      <path d="M 16 28 L 34 28"/>
-      <path d="M 16 46 L 34 28"/>
-      <line x1="34" y1="28" x2="50" y2="28"/>
+  
+  <g id="noports-group">
+    <rect x="40" y="530" width="1520" height="290" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    
+    <rect x="40" y="530" width="1520" height="54" rx="10" fill="#fdf3eb" />
+    <g transform="translate(56, 534)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 8 L 42 38 L 6 38 Z" />
+      <line x1="24" y1="20" x2="24" y2="28" />
+      <circle cx="24" cy="33" r="1.5" fill="currentColor" stroke="none" />
     </g>
+    <text x="116" y="567" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">no ports: all traffic between two endpoints hashes to one path</text>
 
-    <text x="165" y="747" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">no ports: all traffic between two endpoints hashes to one path</text>
+    
+    <g fill="#db8129">
+      
+      <g id="row-ipip">
+        <text x="60" y="632" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IPIP 20 B</text>
+        
+        <rect x="920" y="608" width="160" height="32" rx="4" />
+      </g>
 
-    <g transform="translate(165, 780)">
-      <text x="0" y="24" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IPIP 20 B</text>
-      <rect x="0" y="36" width="300" height="30" rx="6" fill="#db8129"/>
-    </g>
+      
+      <g id="row-gre">
+        <text x="60" y="704" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">GRE 24 B</text>
+        
+        <rect x="920" y="680" width="192" height="32" rx="4" />
+      </g>
 
-    <g transform="translate(165, 877)">
-      <text x="0" y="24" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">GRE 24 B</text>
-      <rect x="0" y="36" width="360" height="30" rx="6" fill="#db8129"/>
-    </g>
-
-    <g transform="translate(165, 974)">
-      <text x="0" y="24" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IPsec ESP about 50 to 73 B</text>
-      <rect x="0" y="36" width="750" height="30" rx="6" fill="#db8129"/>
-      <rect x="750" y="36" width="345" height="30" rx="6" fill="url(#diagonal-stripe-orange)" stroke="#db8129" stroke-width="2"/>
+      
+      <g id="row-esp">
+        <text x="60" y="776" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IPsec ESP about 50 to 73 B</text>
+        
+        <rect x="920" y="752" width="400" height="32" rx="4" />
+        <rect x="1320" y="752" width="184" height="32" rx="4" fill-opacity="0.45" />
+      </g>
     </g>
   </g>
 
-  <g id="footer-takeaway">
-    <rect x="60" y="1115" width="1480" height="65" rx="14" fill="#207448"/>
-    <text x="800" y="1156" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">VXLAN is L2 over UDP/4789, GENEVE UDP/6081</text>
+  
+  <g id="footer-bar">
+    <rect x="40" y="836" width="1520" height="64" rx="8" fill="#207448" />
+    <g transform="translate(60, 842)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16" />
+      <line x1="24" y1="14" x2="24" y2="24" />
+      <line x1="24" y1="24" x2="30" y2="28" />
+    </g>
+    <text x="800" y="877" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">VXLAN is L2 over UDP/4789, GENEVE UDP/6081</text>
   </g>
 </svg>

@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-pid1-sigterm",
+  "title": "Why a container ignores SIGTERM: PID 1 has no default signal actions",
+  "spec": "Two timelines side by side, each from 'docker stop or kubelet sends SIGTERM' on the left to the end on the right. Left timeline 'Shell script as PID 1, no SIGTERM handler' (orange): SIGTERM arrives, a box 'PID 1 has no default action, so with no handler the signal is ignored', then a wait bar 'grace period, 30 seconds in Kubernetes by default', then 'SIGKILL from the parent namespace', then a red-free outcome box 'training job loses its chance to checkpoint'. Right timeline 'exec python train.py (the program is PID 1 and installs its own handler)': SIGTERM arrives, 'handler runs', 'checkpoint written', 'clean exit'. Below, a three-card strip 'The three PID 1 rules'. Card 1 'Signals: from inside the namespace a signal reaches PID 1 only if it installed a handler; SIGKILL and SIGSTOP from inside are ignored; from the parent namespace they still work'. Card 2 'Zombies: orphans are re-parented to PID 1, which must call wait(); otherwise zombies pile up and can exhaust pids.max'. Card 3 'When PID 1 exits the kernel kills every other process in the namespace with SIGKILL, which is why a container dies when its main process dies'. Fix strip 'exec in the entrypoint; tini; docker run --init; dumb-init; Kubernetes shareProcessNamespace; exec form [\"python\",\"train.py\"] not the shell form'. Bottom bar: 'End the script with exec so the program becomes PID 1'.",
+  "anchor": "## 3. PID namespaces",
+  "alt": "Two timelines comparing a shell script as PID 1 that ignores SIGTERM until SIGKILL with an exec'd program that handles it and checkpoints, plus the three PID 1 rules.",
+  "cap": "A shell script as PID 1 with no handler ignores SIGTERM until the grace period ends in SIGKILL, so exec the program to let it checkpoint."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-nsenter-recipe",
+  "title": "Debugging a pod from the host: find the PID, then enter its network namespace",
+  "spec": "A vertical three step recipe on the left, a picture on the right. Step 1 'Find the container's host PID: crictl inspect <id> | grep -i pid, or docker inspect -f {{.State.Pid}} <name>'. Step 2 'Check the namespace: ls -l /proc/PID/ns shows links like net:[4026531992]; the same number as another process means the same namespace; lsns -t net lists network namespaces'. Step 3 'Run host tools inside the pod's network namespace: sudo nsenter -t PID -n ss, tcpdump, ethtool, ip addr' (orange). Right: a host box containing tools 'tcpdump', 'ss', 'ethtool' with an arrow into a pod box labelled 'pod network namespace (image has none of those tools)' and a note 'nsenter wraps setns: this is also approximately what docker exec and kubectl exec do'. Longer variant strip 'sudo nsenter -t 1234 -m -u -i -n -p /bin/sh'. Footer 'A namespace stays alive while a process, an open file descriptor on /proc/PID/ns/xxx, or a bind mount of that file refers to it; ip netns keeps named namespaces under /run/netns this way'. Bottom bar: 'Learn to read the /proc/PID/ns links before you need them during an incident'.",
+  "anchor": "### Inspecting namespaces",
+  "alt": "A three step recipe to find a container's host PID, check its namespace links and run host tools inside its network namespace with nsenter.",
+  "cap": "Find the container's host PID and use nsenter to run host tools such as tcpdump inside its network namespace."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-overlay-writes-land",
+  "title": "Where does a write land: the image layer or a volume",
+  "spec": "A decision tree. Start box 'A container process writes a file'. Diamond 'Is the path on a volume (bind mount, emptyDir, hostPath or PVC)?'. 'Yes' leads to green box 'Volumes bypass overlay completely: no copy-up, data stays outside the image storage'. 'No' leads to diamond 'Does the file already exist in a lower image layer?'. 'No' leads to box 'New file lands in upperdir (the read-write layer)'. 'Yes' leads to orange box 'Copy-up: the whole file is copied into upperdir before the write lands (metadata-only changes copy only metadata on modern kernels with metacopy)'. Below the orange box a consequence chain 'a job appending to a multi-GB file baked into an image triggers a huge copy', 'doubles disk use', 'fills /var/lib/containerd or /var/lib/docker', 'evictions and NodeNotReady'. A second branch for delete: 'rm of a lower file creates a 0/0 character device whiteout in upperdir (or an opaque-directory xattr for removed directories): the lower data stays on disk, so deleting in a later Dockerfile layer does not shrink the image and a baked-in secret can still be extracted'. Side list 'Put in volumes: mutable and large data, package caches, model weights and datasets (mount them, do not copy them into images)'. Bottom bar: 'Before you size a node's disk, check whether your writes land in a volume or in the image layer'.",
+  "anchor": "### OverlayFS: images as layers",
+  "alt": "A decision tree showing writes to volumes bypass overlay while writes to existing image files trigger copy-up and deletes create whiteouts that leave lower data on disk.",
+  "cap": "Writes to a volume bypass overlay, while the first write to a lower-layer file copies the whole file up and a delete only hides it."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-dockerfile-layers",
+  "title": "A three line Dockerfile and the layers it builds",
+  "spec": "Left: the chapter Dockerfile in monospace: 'FROM alpine:latest', 'RUN apk update && apk add bash', 'CMD [\"/bin/bash\"]'. Next to it the build command 'docker build -t hlw_test .' with note 'sends a 2.048kB build context to the Docker daemon'. Right: a stack of layers drawn bottom to top. Bottom 'alpine:latest, image f70734b6a266, 5.61MB (pulled)'. Middle 'RUN apk update && apk add bash, run in an intermediate container fb082e6a0728'. Top 'committed image hlw_test:latest, 1b64f94e5a54, 9.19MB'. Arrows from each Dockerfile line to its layer. Below, a row showing the mount from inside the running container ('docker run -it hlw_test' then 'mount'): 'overlay on / type overlay (rw,relatime,lowerdir=.../overlay2/l/..., upperdir=.../overlay2/.../diff, workdir=.../overlay2/.../work)' with three labels: 'lowerdir: colon-separated read-only layers', 'upperdir: every change the container makes lands here', 'workdir: scratch space, must be empty when mounted' (orange on upperdir). Side strip of habits 'Combine steps and use multi-stage builds', 'Pin base image tags or digests, latest is not reproducible', 'ENTRYPOINT and CMD define PID 1: use the exec form', 'docker ps -a, docker images, docker system df, docker system prune with care'. Bottom bar: 'Each RUN or COPY step adds a layer, and the container writes only to the upper one'.",
+  "anchor": "### Reading an overlay mount on the host",
+  "alt": "A three line Dockerfile mapped to its image layers with sizes and the overlay mount output showing lowerdir, upperdir and workdir.",
+  "cap": "Each Dockerfile step adds a read-only layer, and the running container writes only to the upper directory of the overlay mount."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-net-modes",
+  "title": "Container network modes compared: which namespace, which path",
+  "spec": "A comparison table with one row per mode and columns 'Network namespace', 'How traffic leaves', 'Typical use or caveat'. Rows: 'Docker bridge (default)': 'own namespace; veth pair to a bridge such as docker0 or cni0'; 'NAT or masquerade by iptables or nftables; published ports use DNAT'. 'Docker host': 'the host's namespace'; 'no isolation'. 'Docker none': 'own namespace with only a down lo'; 'no connectivity'. 'Docker container:<id>': 'joins another container's namespace'; 'shares its network'. 'macvlan or ipvlan': 'own namespace'; 'address directly on the physical network'. 'Kubernetes pod': 'one namespace shared by all containers, created by the pause container; a CNI plugin such as Calico, Cilium or Flannel creates the veth, assigns the pod IP and installs routes or tunnels'; 'default'. 'Kubernetes hostNetwork: true': 'the host's namespace'; 'node agents and some performance-sensitive jobs; often with NCCL over InfiniBand to avoid NAT and the CNI path' (orange). 'Rootless Podman': 'cannot create veth without privilege; uses a user-space stack slirp4netns or pasta'; 'lower throughput; containers cannot reach each other the same way'. 'SR-IOV VF or RDMA device': 'moved into the namespace through Multus, SR-IOV CNI or rdma-shared-device-plugin'; 'needs device files and the host IB stack; rdma system set netns exclusive or shared'. Footer 'A new network namespace has only a down loopback; moving an interface in removes it from the original namespace'. Bottom bar: 'When a pod's traffic misbehaves, first check whether it uses the pod network or the host network'.",
+  "anchor": "## 5. Network namespaces",
+  "alt": "A table comparing Docker bridge, host, none, container, macvlan, Kubernetes pod and hostNetwork, rootless Podman and SR-IOV networking by namespace and traffic path.",
+  "cap": "Each network mode differs in which namespace the container uses and how its traffic leaves the node."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-shm-bus-error",
+  "title": "PyTorch bus error in a container: the 64 MiB /dev/shm",
+  "spec": "A left to right causal chain. Box 1 'Container starts in its own IPC namespace; /dev/shm is a tmpfs, 64 MiB by default in Docker'. Box 2 'PyTorch DataLoader workers pass batches through shared memory in /dev/shm'. Box 3 'Batches exceed 64 MiB' (orange). Box 4 'Bus error (SIGBUS) or DataLoader hangs; the logs say nothing about memory'. Below the chain three fix cards: '--shm-size to raise the limit', '--ipc=host to use the host's IPC namespace', 'a memory-backed emptyDir (medium: Memory), which is tmpfs and counts toward the pod's memory'. Right panel 'IPC namespace facts': 'System V shared memory, semaphores, message queues and POSIX message queues are namespaced', 'containers in different IPC namespaces cannot share SysV segments', 'within a pod all containers share the IPC namespace by default; hostIPC: true joins the host's', 'MPI ranks in separate pods on the same node fall back to network paths'. Check strip 'ipcmk -M 1024 then ipcs -m on the host; sudo unshare --ipc ipcs -m shows nothing'. Bottom bar: 'When a PyTorch job crashes on shared memory, check the size of /dev/shm before you change the code'.",
+  "anchor": "## 7. UTS, IPC, cgroup and time namespaces",
+  "alt": "A chain from a 64 MiB default dev shm in a container through DataLoader batches to a bus error, with three fixes: shm-size, ipc host and a memory backed emptyDir.",
+  "cap": "Docker's 64 MiB default for dev shm is a classic cause of DataLoader bus errors, fixed by shm-size, ipc host or a memory emptyDir."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-pod-namespace-knobs",
+  "title": "Pod spec switches that join the host's namespaces, and what each one costs",
+  "spec": "A table with one row per Kubernetes setting and columns 'Setting', 'Which namespace', 'Effect', 'Risk or use'. Rows: 'default pod': 'the pause container (infra container) holds the pod's shared namespaces; containers in the pod share one network namespace and one IPC namespace'. 'shareProcessNamespace: true': 'all containers in the pod share one PID namespace; pause runs as PID 1 and reaps zombies'. 'hostPID: true': 'the host PID namespace'; 'some profilers and node agents need it; a strong security exposure' (orange). 'hostNetwork: true': 'the host network namespace'; 'no isolation; node agents and performance-sensitive jobs'. 'hostIPC: true': 'the host IPC namespace'; 'shared memory with host processes'. 'hostUsers: false': 'a user namespace'; 'newer, behind a feature gate: check status for your version'. 'mountPropagation: HostToContainer (rslave)': 'mount namespace'; 'sees mounts created later on the host; CSI drivers rely on it'. 'mountPropagation: Bidirectional (rshared)': 'mount namespace'; 'container mounts are visible on the host; needs privileged mode'. Footer 'kubectl debug and ephemeral containers share the target's PID namespace for tracing'. Bottom bar: 'Before you add a host namespace to a pod, write down which workload needs it'.",
+  "anchor": "## 8. Putting it together: what a runtime does",
+  "alt": "A table of Kubernetes pod settings such as shareProcessNamespace, hostPID, hostNetwork, hostIPC, hostUsers and mountPropagation with the namespace each affects and the risk.",
+  "cap": "Each host flag in a pod spec joins one host namespace, so add them only when a workload needs that view."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-observe-traps",
+  "title": "What you see inside a container: host numbers versus the container's own",
+  "spec": "Two columns. Left column 'Shows the HOST even inside a container (not namespaced)' in orange: 'top summary lines, uptime and load average', 'mpstat, vmstat, free, iostat', '/proc/cpuinfo, /proc/meminfo, /proc/stat', 'nproc'. A note 'Per-process tools such as ps and pidstat are filtered by the PID namespace, so they behave differently'. Right column 'Read the container's true usage and limits' in green: 'cpu.stat (throttling)', 'memory.current', 'memory.events', 'io.stat', 'PSI pressure files'; plus 'lxcfs can present cgroup-aware /proc files'. Bottom half 'Other traps' as four cards. 1 'Limits are checked first: software resource-control limits are hit long before hardware limits; top and iostat are blind to them'. 2 'From the host everything is visible: map a PID to its container through /proc/PID/cgroup where the container ID appears in the path; crictl ps, docker ps, nsenter; the kernel has no container ID, BPF tools use the cgroup ID or UTS nodename'. 3 'Tracing from inside is mostly blocked: perf, bpftrace, strace need SYS_ADMIN, PERFMON, BPF, SYS_PTRACE and /sys/kernel/debug; seccomp blocks perf_event_open, bpf and ptrace by default; trace from the host or use kubectl debug ephemeral containers'. 4 'Noisy neighbours: contention on the dentry cache, locks, interrupts and CPU caches slows a container without any limit being hit; needs host-side tools'. Bottom bar: 'Before you blame the hardware for a slow container, read its cgroup files and check for throttling'.",
+  "anchor": "## 10. Observing containers (and the traps)",
+  "alt": "Tools that show host numbers inside a container beside the cgroup files that show the container's real usage, plus traps around limits, tracing and noisy neighbours.",
+  "cap": "Summary tools inside a container report the host, so read the container's cgroup files for its real usage and limits."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-gpu-three-steps",
+  "title": "Three things a runtime must do to give a container a GPU",
+  "spec": "Three numbered columns left to right, each with a title, what it does and how to check it. Column 1 'Make the device nodes exist in the container's mount namespace': by bind mount or mknod; nodes listed '/dev/nvidia0..N, /dev/nvidiactl, /dev/nvidia-uvm, /dev/nvidia-uvm-tools, /dev/nvidia-modeset'; MIG adds '/dev/nvidia-caps/*'; check 'ls -l /dev/nvidia* inside the container'. Column 2 'Allow those devices in the devices cgroup' (chapter 1.18): check 'runtime class, CDI spec, cgroup driver match'. Column 3 'Mount the driver user-space libraries and binaries from the host': 'libcuda.so, NVML, nvidia-smi must match the host kernel driver version' (orange); note 'the CUDA toolkit libraries can live in the image, but the driver library cannot'. Top strip 'Namespaces and cgroups know nothing about GPUs, so the GPU layer supplies the pieces'. Bottom panel 'Automation: NVIDIA Container Toolkit (nvidia-container-runtime, nvidia-ctk, libnvidia-container); historically an OCI prestart hook, now prefers CDI, a declarative spec file listing device nodes, mounts and environment variables, created with nvidia-ctk cdi generate'. Symptom strip 'nvidia-smi fails with driver/library version mismatch: the container has its own libcuda not matching the host driver, or the toolkit hook is missing' and 'GPU visible on the host but not in the container: nodes missing, devices cgroup denies, or runtime not configured'. Bottom bar: 'Do not bake driver libraries into images; let the toolkit inject them from the host'.",
+  "anchor": "## 11. GPUs inside containers",
+  "alt": "Three columns for giving a container a GPU: create the device nodes, allow them in the devices cgroup, and mount the matching host driver libraries, with the NVIDIA Container Toolkit and CDI automating them.",
+  "cap": "A runtime must create the device nodes, allow them in the devices cgroup and mount the host driver libraries, which the NVIDIA Container Toolkit automates."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "19",
+  "name": "p3-0119-five-questions",
+  "title": "A container misbehaves: five questions from the top down",
+  "spec": "A vertical ladder of five numbered boxes, stop at the first that explains the symptom. 1 'Can the process start at all? Image pull, rootfs, entrypoint exit code: crictl ps -a, kubectl describe pod, the events'. 2 'Are any limits hit? cgroup memory.events, cpu.stat throttling, pids'. 3 'What does the container see: mounts, network, user and devices?'. 4 'What does the host see for the same PID? nsenter, or host-side strace and perf'. 5 'What does the container share with its neighbours: the kernel, devices, the NIC and the disks?'. Right panel 'Quick symptom pointers from the chapter table' as five small rows each with an arrow to a question number. 'Pod ignores SIGTERM and is killed after 30 s' to 'PID 1 (question 3)'. 'free and nproc show host values' to 'question 3 and 2: /proc is not namespaced'. 'Bus error in DataLoader' to 'question 3: /dev/shm size'. 'GPU visible on host, not in container' to 'question 3: device nodes, devices cgroup'. 'Node disk full under /var/lib/containerd' to 'question 2 and 5: image storage, logs'. 'Operation not permitted for mount, ip, sysctl' (orange) to 'a missing capability or seccomp or LSM block (chapter 1.21): do not fix with --privileged without review'. Bottom bar: 'Work the five questions in order, and stop at the first one that explains the symptom'.",
+  "anchor": "## 13. Failure modes and diagnosis",
+  "alt": "A five question ladder for diagnosing a misbehaving container from startup through limits, the container view, the host view and shared resources, with symptom pointers.",
+  "cap": "Ask whether it starts, whether limits are hit, what the container and host each see, and what is shared, and stop at the first answer that fits."
+ }
+]

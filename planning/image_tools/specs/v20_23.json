@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "x23-gpu-pending-branches",
+  "title": "A Pending GPU pod: read the scheduler's reason, then take one of three branches",
+  "spec": "A top-to-bottom decision tree. Top box, orange highlight: monospace 'kubectl describe pod' and the sans label 'Read the FailedScheduling event', with the note 'The scheduler's own reason'. Below it, a box 'Pending means the scheduler has not placed it'. A downward arrow leads to three branch boxes side by side, each with a small outline icon. Branch 1: 'Insufficient nvidia.com/gpu' (monospace) with the sub-text 'No node has a free GPU in its Allocatable'. Under branch 1 a sub-box 'Allocatable is zero on a GPU node' with an arrow to the label 'Device plugin is the suspect'. Branch 2: 'Untolerated taint' with the sub-text 'Pod needs a toleration'. Branch 3: 'Selector mismatch' with the sub-text 'Labels do not match'. A separate box to the right of the three branches, labelled 'ResourceQuota is hit', with the sub-text 'API server returns 403, so no Pod exists and the ReplicaSet records the failure'. Use monospace for nvidia.com/gpu, FailedScheduling and kubectl describe pod. Orange only on the FailedScheduling event box.",
+  "anchor": "### \"A GPU pod is Pending. Walk me through it.\"",
+  "alt": "Decision tree for a Pending GPU pod: read the FailedScheduling event, then check insufficient GPUs, untolerated taints or selector mismatch",
+  "cap": "Pending GPU pod: the scheduler event names one of three causes, and a hit ResourceQuota never creates a Pod at all."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "x23-oom-or-liveness",
+  "title": "Restart loop: read Last State first, then the OOM branch or the liveness branch",
+  "spec": "A decision flow with a starting box at the top: 'Pod restarts every few minutes' with a clock icon, and the sub-text 'Read Last State from describe'. Arrow down to a diamond-like decision box 'Who pulled the trigger?' (drawn as a rounded box with a shield-free clock or gear icon). Two branches split left and right. Left branch, green panel: 'OOM kill' with the monospace lines 'Reason: OOMKilled' and 'Exit Code: 137', sub-text 'Kernel enforces the memory limit'. Below it the fix box 'Fix: the memory limit, a leak, or the batch and context size'. Right branch, light green panel: 'Liveness kill' with the event lines 'Unhealthy' and 'Killing' in monospace, and the sub-text 'No OOMKilled in Last State'. Below it the fix box 'Fix: a startup probe with failureThreshold times periodSeconds covering the worst start time'. Under both branches, a wide strip labelled 'Restart back-off' with the text 'Starts at 10 seconds, doubles, capped at 300 seconds, resets after ten clean minutes'. Monospace for OOMKilled, Exit Code: 137, Unhealthy, Killing, failureThreshold and periodSeconds. Orange only on the liveness-kill fix box.",
+  "anchor": "### \"A pod restarts every few minutes. OOM or probe?\"",
+  "alt": "Decision flow for a restarting pod: Last State OOMKilled with exit code 137 points to the memory limit, while Unhealthy and Killing events point to a liveness kill",
+  "cap": "Restart loop: OOMKilled with exit code 137 is a memory-limit kill, and Unhealthy and Killing events with no OOMKilled is a liveness kill."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "x23-node-notready-cascade",
+  "title": "A NotReady node: the timeline from missed heartbeat to rescheduled pods",
+  "spec": "A left-to-right timeline with five numbered steps, each step a box with an outline icon and a green number circle (r=24, white number). Step 1 box: 'Node stops sending heartbeats' with sub-text 'Its Lease is not renewed'. Step 2 box: 'Node controller sets Ready to Unknown' with sub-text 'Unreachable taints are added'. Monospace for Ready Unknown and node.kubernetes.io/unreachable. Step 3 box, orange highlight: 'Waits 5 minutes by default' with sub-text 'Before the first eviction'. Step 4 box: 'Evictions are rate limited' with monospace '--node-eviction-rate' and sub-text 'Default 0.1 per second'. Step 5 box: 'Pods reschedule elsewhere' with sub-text 'If capacity exists'. Under step 4 a side note panel with two rules: 'At least 55 percent of nodes in a zone unhealthy, so the rate drops' and 'On a cluster of 50 nodes or fewer, evictions stop'. Along the bottom a green strip labelled 'Protect capacity first, then fix the cause'. Monospace for --node-eviction-rate and 0.1.",
+  "anchor": "### \"A node is NotReady. What happens to its pods?\"",
+  "alt": "Timeline of a NotReady node from missed heartbeat through the five minute wait and rate-limited evictions to rescheduled pods",
+  "cap": "NotReady node: missed heartbeats make the node Unknown, the controller waits five minutes, and evictions are rate limited so a partition does not cause a storm."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "x23-webhook-deadlock-loop",
+  "title": "The webhook deadlock: a loop that blocks its own recovery",
+  "spec": "A circular loop of four boxes arranged as a square with arrows in clockwise order. Box 1 (top-left): 'Webhook pods go down after a node drain' with a gear icon. Arrow to Box 2 (top-right): 'Deployment tries to create replacement pods' with a window icon. Arrow to Box 3 (bottom-right): 'API server calls the webhook' with a shield icon, sub-text 'failurePolicy Fail, timeout 30 seconds, Pod CREATE in every namespace'. Monospace for failurePolicy: Fail and Pod CREATE. Arrow to Box 4 (bottom-left): 'Connection refused, create rejected' with sub-text 'The webhook cannot admit its own replacement pods'. Orange arrow from Box 4 back to Box 1, labelled 'Loop: nothing new can start'. Beside the loop on the right, a green panel titled 'Break the loop' with three steps in order: '1 Patch or delete the webhook configuration, which no webhook can block', '2 Set failurePolicy to Ignore and add a namespaceSelector that excludes kube-system and policy-system', '3 Restart the webhook pods'. Monospace for failurePolicy: Ignore, namespaceSelector, kube-system and policy-system. Keep the loop arrows clear of the panel text.",
+  "anchor": "### Drill 12: An admission webhook outage blocks deploys",
+  "alt": "Loop showing a fail-closed admission webhook blocking the creation of its own replacement pods, and the three steps that break the loop",
+  "cap": "Webhook deadlock: a fail-closed webhook with wide scope rejects the pods it needs to restart, so the fix is to exclude system namespaces and set failurePolicy to Ignore."
+ }
+]

@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>all, ungrouped and the implicit localhost</title>
+  <desc>Visual breakdown of Ansible default groups all and ungrouped, the implicit localhost behavior, host naming, and group naming rules.</desc>
+
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">all, ungrouped and the implicit localhost</text>
+
+  
+  <g>
+    <rect x="60" y="130" width="466" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3" fill="#e8f1ea">
+      <line x1="293" y1="185" x2="255" y2="160"/>
+      <line x1="293" y1="185" x2="331" y2="160"/>
+      <line x1="293" y1="185" x2="250" y2="205"/>
+      <line x1="293" y1="185" x2="336" y2="205"/>
+      <line x1="293" y1="185" x2="293" y2="220"/>
+      <circle cx="293" cy="185" r="9" fill="#207448"/>
+      <circle cx="255" cy="160" r="7"/>
+      <circle cx="331" cy="160" r="7"/>
+      <circle cx="250" cy="205" r="7"/>
+      <circle cx="336" cy="205" r="7"/>
+      <circle cx="293" cy="220" r="7"/>
+    </g>
+    <text x="293" y="275" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="293" dy="0" font-size="32" font-weight="bold" fill="#207448">all:</tspan>
+      <tspan x="293" dy="42" font-size="26">contains every host</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="566" y="130" width="466" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3" fill="#e8f1ea">
+      <rect x="745" y="160" width="60" height="50" rx="6" stroke-dasharray="5,4" fill="none"/>
+      <circle cx="775" cy="185" r="6" fill="#207448"/>
+      <circle cx="845" cy="170" r="8"/>
+      <circle cx="835" cy="210" r="8"/>
+    </g>
+    <text x="799" y="270" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="799" dy="0" font-size="32" font-weight="bold" fill="#207448">ungrouped:</tspan>
+      <tspan x="799" dy="40" font-size="25">contains the hosts that</tspan>
+      <tspan x="799" dy="38" font-size="25">belong to no other group</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1072" y="130" width="468" height="300" rx="12" fill="#fdf4ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g stroke="#db8129" stroke-width="3" fill="none">
+      <rect x="1278" y="158" width="56" height="38" rx="4" fill="#fdf4ea"/>
+      <line x1="1268" y1="204" x2="1344" y2="204" stroke-width="4" stroke-linecap="round"/>
+      <path d="M 1290 171 L 1297 177 L 1290 183" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="1302" y1="183" x2="1312" y2="183" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="1306" y="255" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="1306" dy="0" font-size="32" font-weight="bold" fill="#db8129">localhost:</tspan>
+      <tspan x="1306" dy="38" font-size="25">implicit, connection local;</tspan>
+      <tspan x="1306" dy="36" font-size="25">not part of all unless</tspan>
+      <tspan x="1306" dy="36" font-size="25">you define it explicitly</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="460" width="1480" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 115 525 L 140 525 L 160 545 L 135 570 L 115 570 Z" fill="#e8f1ea"/>
+      <circle cx="127" cy="540" r="3.5" fill="#207448"/>
+    </g>
+    <text x="830" y="528" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="830" dy="0" font-size="26">give each host a stable logical name (<tspan font-family="monospace">inventory_hostname</tspan>) and</tspan>
+      <tspan x="830" dy="48" font-size="26">put its network address in <tspan font-family="monospace">ansible_host</tspan>; the name can differ from that address</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="660" width="1480" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="135,745 160,795 110,795" fill="#e8f1ea"/>
+      <line x1="135" y1="763" x2="135" y2="777"/>
+      <circle cx="135" cy="787" r="1.5" fill="#207448"/>
+    </g>
+    <text x="830" y="722" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="830" dy="0" font-size="25">letters, digits and underscores only: a hyphen produces warnings because</tspan>
+      <tspan x="830" dy="38" font-size="25">the group name becomes part of a variable name and a hyphen reads like a minus sign;</tspan>
+      <tspan x="830" dy="38" font-size="25">avoid names that collide with variables or keywords,</tspan>
+      <tspan x="830" dy="38" font-size="25">such as a group gpu next to a variable gpu</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="920" width="1480" height="80" rx="10" fill="#207448"/>
+    <text x="800" y="970" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Stable names, addresses in <tspan font-family="monospace">ansible_host</tspan>, plain group names
+    </text>
+  </g>
+</svg>

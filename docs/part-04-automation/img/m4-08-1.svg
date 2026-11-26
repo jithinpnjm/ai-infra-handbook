@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Handlers</title>
+  <desc>Flowchart of Ansible block, rescue, and always error handling for GPU node maintenance</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Handlers</text>
+
+  
+  <path d="M 800 250 L 800 318" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 620 490 C 620 545, 420 545, 420 598" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <rect x="380" y="523" width="280" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="520" y="554" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">All tasks succeed</text>
+
+  
+  <path d="M 980 490 C 980 545, 1180 545, 1180 598" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <rect x="960" y="523" width="240" height="44" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="1080" y="554" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">Any task fails</text>
+
+  
+  <path d="M 420 770 L 420 838" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1180 770 L 1180 838" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <g>
+    <rect x="400" y="80" width="800" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="440" cy="120" r="24" fill="#207448"/>
+    <text x="440" y="120" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="776" y="98" width="48" height="20" rx="4"/>
+      <rect x="776" y="124" width="48" height="20" rx="4"/>
+      <circle cx="786" cy="108" r="2" fill="#207448"/>
+      <circle cx="786" cy="134" r="2" fill="#207448"/>
+      <line x1="796" y1="108" x2="816" y2="108"/>
+      <line x1="796" y1="134" x2="816" y2="134"/>
+    </g>
+    
+    <text x="800" y="190" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">1. Drain node from Slurm / ELB</text>
+    <text x="800" y="226" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">(delegate_to controller/localhost)</text>
+  </g>
+
+  
+  <g>
+    <rect x="400" y="320" width="800" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="440" cy="360" r="24" fill="#207448"/>
+    <text x="440" y="360" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="782" y="346" width="36" height="36" rx="4"/>
+      <rect x="792" y="356" width="16" height="16" rx="2"/>
+      <line x1="788" y1="338" x2="788" y2="346"/>
+      <line x1="800" y1="338" x2="800" y2="346"/>
+      <line x1="812" y1="338" x2="812" y2="346"/>
+      <line x1="788" y1="382" x2="788" y2="390"/>
+      <line x1="800" y1="382" x2="800" y2="390"/>
+      <line x1="812" y1="382" x2="812" y2="390"/>
+      <line x1="774" y1="352" x2="782" y2="352"/>
+      <line x1="774" y1="364" x2="782" y2="364"/>
+      <line x1="774" y1="376" x2="782" y2="376"/>
+      <line x1="818" y1="352" x2="826" y2="352"/>
+      <line x1="818" y1="364" x2="826" y2="364"/>
+      <line x1="818" y1="376" x2="826" y2="376"/>
+    </g>
+    
+    <text x="800" y="430" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">2. block: Apply driver/config changes</text>
+    <text x="800" y="466" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">&amp; run <tspan font-family="monospace">nvidia-smi</tspan> / smoke validation</text>
+  </g>
+
+  
+  <g>
+    <rect x="70" y="600" width="700" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="112" cy="640" r="24" fill="#207448"/>
+    <text x="112" y="640" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3a</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 402 620 L 428 620 L 438 630 L 438 666 L 402 666 Z"/>
+      <polyline points="428,620 428,630 438,630"/>
+      <line x1="410" y1="638" x2="422" y2="638"/>
+      <line x1="410" y1="648" x2="430" y2="648"/>
+      <line x1="410" y1="656" x2="426" y2="656"/>
+    </g>
+    
+    <text x="420" y="728" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">3a. always: <tspan font-size="24" font-weight="normal">Collect </tspan><tspan font-family="monospace" font-size="24" font-weight="normal">journalctl</tspan><tspan font-size="24" font-weight="normal"> diagnostics</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="830" y="600" width="700" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="872" cy="640" r="24" fill="#207448"/>
+    <text x="872" y="640" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3b</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 1180 620 L 1200 628 C 1200 652, 1180 666, 1180 668 C 1180 666, 1160 652, 1160 628 Z"/>
+      <line x1="1180" y1="632" x2="1180" y2="648"/>
+      <circle cx="1180" cy="656" r="2" fill="#207448"/>
+    </g>
+    
+    <text x="1180" y="705" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">3b. rescue: <tspan font-size="24" font-weight="normal">Log </tspan><tspan font-family="monospace" font-size="24" font-weight="normal">ansible_failed_task</tspan><tspan font-size="24" font-weight="normal">,</tspan></text>
+    <text x="1180" y="742" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">rollback driver/snapshot, &amp; fail loudly</text>
+  </g>
+
+  
+  <g>
+    <rect x="70" y="840" width="700" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="112" cy="880" r="24" fill="#207448"/>
+    <text x="112" y="880" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4a</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="420" cy="884" r="24"/>
+      <polyline points="408,884 416,892 432,874"/>
+    </g>
+    
+    <text x="420" y="945" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">4a. Return healthy node to service</text>
+    <text x="420" y="982" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">(scontrol State=RESUME)</text>
+  </g>
+
+  
+  <g>
+    <rect x="830" y="840" width="700" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="872" cy="880" r="24" fill="#207448"/>
+    <text x="872" y="880" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4b</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 1162 860 L 1188 860 L 1198 870 L 1198 906 L 1162 906 Z"/>
+      <polyline points="1188,860 1188,870 1198,870"/>
+      <line x1="1170" y1="878" x2="1182" y2="878"/>
+      <line x1="1170" y1="888" x2="1190" y2="888"/>
+      <circle cx="1180" cy="898" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="1180" y="945" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">4b. always: <tspan font-size="24" font-weight="normal">Collect </tspan><tspan font-family="monospace" font-size="24" font-weight="normal">journalctl</tspan><tspan font-size="24" font-weight="normal"> diagnostics</tspan></text>
+    <text x="1180" y="982" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">(Node stays DRAINED for investigation)</text>
+  </g>
+</svg>

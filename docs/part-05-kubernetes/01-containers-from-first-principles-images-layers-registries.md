@@ -43,28 +43,19 @@ The list below is a self-check, not a test you have to pass in order. Each line 
 
 ## 1. What a container is
 
+![The kernel mechanisms behind a container grouped by the question they answer: namespaces for what it can see, cgroups for how much it can use, capabilities seccomp and MAC for what it can reach, and overlayfs for where files come from.](./img/p3-0501-four-questions.svg)
+
+*Figure 5.1.1. Every container has all four answers, even when you never typed a flag for them.*
+
 Picture a colleague who says, "A container is basically a tiny virtual machine, so it is safe to run it as root." Both halves of that sentence rest on a wrong picture, and the wrong picture leads to real mistakes. A container is not a lightweight VM, and it is not a kernel feature called "container." A container is a **process** that the kernel starts with a set of isolation and limit mechanisms applied. That process runs from a **root filesystem** assembled from an image. Once you see it that way, the security and resource questions answer themselves.
 
 A helpful picture is an apartment building. A virtual machine is a separate house, with its own foundation, wiring and plumbing. A container is an apartment in a shared building. Each tenant has a locked door, a private mailbox and a meter that caps how much power they can draw. But the walls, the water main and the electrical panel belong to the building. If the wiring in the building is faulty, every apartment feels it. In this picture, the building is the Linux kernel, and every container on the host lives inside it.
 
 The diagram below shows two containers on one host. Both run on the same kernel. Each one gets its own process tree and its own root filesystem, and the kernel keeps them apart. Follow the arrows from the kernel box to each container, and notice that nothing in the diagram adds a second kernel.
 
-```mermaid
-flowchart TB
-  subgraph Host["Linux host (one kernel)"]
-    K["Kernel: namespaces, cgroups, capabilities, seccomp, LSM, overlayfs"]
-    subgraph C1["Container A (process tree)"]
-      P1["PID 1 (app)"]
-      R1["rootfs: overlay of image layers + writable layer"]
-    end
-    subgraph C2["Container B"]
-      P2["PID 1 (app)"]
-      R2["rootfs"]
-    end
-  end
-  K --- C1
-  K --- C2
-```
+![What a container is](./img/m5-01-1.svg)
+
+*Figure 5.1.2. What a container is, as a diagram.*
 
 Each isolation or limit mechanism covers one part of the process. The table lists them, with the setting you will usually meet in practice. Some rows are defaults, such as the PID namespace that `docker run` creates for you, so you get them without asking.
 
@@ -139,16 +130,9 @@ Think of an image as a set of numbered transparent sheets, one on top of another
 
 The diagram shows how one tag leads down to the layers. Follow the arrows from the tag to the index, then to a manifest for each platform, and finally to the blobs. A blob is just a stored file, such as a layer or a config, named by its hash.
 
-```mermaid
-flowchart LR
-  TAG["tag: registry/app:1.4"] --> IDX["Image index (manifest list)\nmediaType: application/vnd.oci.image.index.v1+json"]
-  IDX --> M1["Manifest linux/amd64\nsha256:aaa..."]
-  IDX --> M2["Manifest linux/arm64\nsha256:bbb..."]
-  M1 --> CFG["Config blob\nsha256:ccc..."]
-  M1 --> L1["Layer 1 (base OS)\nsha256:l1"]
-  M1 --> L2["Layer 2 (packages)\nsha256:l2"]
-  M1 --> L3["Layer 3 (app)\nsha256:l3"]
-```
+![Images: layers, content addressing and the OCI formats](./img/m5-01-2.svg)
+
+*Figure 5.1.3. Images: layers, content addressing and the OCI formats, as a diagram.*
 
 Every blob in an image is named by the SHA-256 hash of its bytes, written as `sha256:...`. This is called content addressing. The name is derived from the content, not chosen by a person. Identical layers across images are therefore stored and transferred only once, because two copies with the same bytes have the same name. If one layer changes, its digest changes, and so does the digest of everything that refers to it. A tag is a mutable pointer, a bit like a sticky note on a shelf that someone can move. A digest, written as `image@sha256:...`, never changes, because it is the fingerprint of the bytes themselves. For reproducibility and supply-chain integrity, deploy by digest.
 
@@ -182,6 +166,10 @@ The `docker image inspect` line shows the image's identity and its entrypoint, w
 
 ### Overlay filesystems: how layers stack
 
+![Three stacked layers where a later layer changes a file and a whiteout hides it, while the earlier copies stay in the image.](./img/k01-whiteout-layers.svg)
+
+*Figure 5.1.4. Each layer is additive, so a later delete only hides a file and the earlier bytes stay in the image.*
+
 The most popular container image format is the Docker image format. The Docker open source project developed it for packaging, distributing and running containers with the `docker` command. Later, Docker, Inc., and others began standardizing it through the Open Container Initiative (OCI). The OCI standard reached a 1.0 release in mid-2017, but adoption is moving slowly. The Docker image format remains the de facto standard, and it is made of a series of filesystem layers.
 
 Each layer adds, removes or modifies files from the layer before it. This stacking is an example of an overlay filesystem. The same overlay system is used when the image is packaged and again when the image runs. At run time, several concrete implementations exist, including `aufs`, `overlay` and `overlay2`. The implementations differ, but the idea is the same. Read-only layers sit underneath, and one writable layer sits on top.
@@ -191,6 +179,10 @@ Here is a worked walkthrough. Layer 1 holds a file called `config.yaml` with one
 The word "image" can mislead. An image is not one file. It is a specification for a manifest file, and the manifest points to other files. Users often treat the manifest and those files as one unit. That extra level of indirection makes storage and transfer more efficient, because the same file can be named once and used many times. The format also comes with an API for uploading and downloading images to a registry.
 
 ### Manifests, indexes and configs
+
+![An image index points to a platform manifest, which lists the config and the layers by digest and size.](./img/p2-0501-manifest-chain.svg)
+
+*Figure 5.1.5. An image index points to a per-platform manifest, which lists the config and the layers by digest and size.*
 
 An image manifest is the document that describes an image. It points to the image configuration and lists the image layers. It can also carry an optional map of annotations, which are free-form labels that tools can read. Here is an example manifest from the OCI image specification. Notice that every entry is a digest and a size, not a file name:
 
@@ -304,6 +296,10 @@ When you inspect an image, read the digest rather than the tag. The digest is th
 A Dockerfile is a recipe, and every line changes the image you get. Suppose you write a Python service. A careless Dockerfile copies the whole source tree first and installs dependencies afterwards. Every code edit then forces a full reinstall, because the copy step changed and everything after it has to run again. The Dockerfile below avoids that problem, uses a multi-stage build and runs as a non-root user.
 
 ### Dockerfile mechanics
+
+![Two Dockerfile orders compared: copying all source before installing dependencies rebuilds the dependency install on every code change, while copying the lockfile first keeps the install cached and rebuilds only the last layer.](./img/p3-0501-cache-order.svg)
+
+*Figure 5.1.6. Order layers from least to most frequently changing, because a change invalidates the cache for every layer built on top of it.*
 
 ```dockerfile
 # syntax=docker/dockerfile:1.7
@@ -432,6 +428,10 @@ Lazy-pulling snapshotters go a step further. These are stargz or eStargz, SOCI, 
 
 ### Choosing a base
 
+![Base image choices arranged from smallest to most debuggable, with Alpine flagged as a poor fit for GPU and ML work because of musl libc.](./img/p2-0501-base-choice.svg)
+
+*Figure 5.1.7. Base images trade size against debuggability, and for GPU and ML work Debian, Ubuntu or NVIDIA images beat Alpine.*
+
 The base image decides how big your image is, how easy it is to debug, and whether CUDA and Python wheels will run. The table compares the common choices, with the pros and cons of each. Read it as a trade-off table. Smaller bases give you less to patch, but they also give you fewer tools when something goes wrong in the middle of the night.
 
 | Base | Pros | Cons |
@@ -446,6 +446,10 @@ The base image decides how big your image is, how easy it is to debug, and wheth
 For GPU and ML work, the table points you to Debian or Ubuntu bases, or to NVIDIA's own images, rather than Alpine. The reason is that most ML wheels and CUDA libraries are built for the standard glibc C library, and Alpine uses a different one. The next section explains why a mismatch like that becomes a runtime failure rather than a build error.
 
 ### Build image versus runtime image
+
+![A builder stage compiles the program, and only the compiled binary is copied into a slim final stage.](./img/k01-multistage.svg)
+
+*Figure 5.1.8. A multi-stage build compiles in a large stage and copies only the finished binary into a slim runtime stage.*
 
 Building an app needs compilers, SDKs and test tools. Running the app needs none of them. If you ship the build tools too, the image grows, takes longer to pull, and gives an attacker more to use. Imagine moving into a house and keeping the construction crew's tool chest in the hallway. The house works, but every visitor now has a set of saws. The fix is a multistage Dockerfile. One stage builds the program, and a second, slim stage runs it.
 
@@ -478,6 +482,10 @@ Each part of this file has a clear job:
 A container runs a single process and usually has no init system. That process must handle signals correctly, and it must reap orphaned child processes. Minimal init programs exist for this job, and you can use one as the bootstrap for your app. If you do not, a child process that exits can stay behind as a zombie for as long as the container runs.
 
 ### Runtime user and pinned packages
+
+![With shell form ENTRYPOINT the shell is PID 1 and does not forward SIGTERM so the pod waits the full grace period before SIGKILL, while exec form runs the app as PID 1 and receives SIGTERM directly.](./img/p3-0501-exec-vs-shell.svg)
+
+*Figure 5.1.9. Use the exec form of ENTRYPOINT and CMD so signals reach your process, and add tini or --init when the app forks children.*
 
 When you do not set a runtime user, the container's process usually runs as root. Containers share the host's Linux kernel, so the user matters. If an attacker escapes a root container, they can gain root on the host. Decide the user while you build the image, and set it with the `USER` directive. This example runs `my-app` as the `nonroot` user and group, which distroless images create by default:
 
@@ -530,6 +538,10 @@ Trust is also a concern. Images from a public registry are built by someone else
 
 ## 4. Registries and distribution
 
+![Without a cache, every node pulls from the central registry; with a pull-through cache, only the cache pulls from it.](./img/k01-pull-cache.svg)
+
+*Figure 5.1.10. A pull-through cache inside the cluster fetches each image once, so the central registry is not overloaded by every node.*
+
 Your cluster has a few hundred nodes, and a new job starts on all of them at once. Every node asks the same registry for the same image, at the same moment. The registry becomes the bottleneck, and the job waits. The answer to that problem depends on how registries store and hand out images, so this section starts there.
 
 A registry stores your images and hands them out to nodes. It implements the OCI Distribution API. Its core calls are `GET /v2/<name>/manifests/<reference>` and `GET /v2/<name>/blobs/<digest>`, plus chunked or monolithic blob uploads and tag listing. Common choices include Docker Hub, GHCR, Quay, GCP Artifact Registry, AWS ECR, Azure ACR and NVIDIA NGC (`nvcr.io`). Self-hosted options include Harbor, which adds scanning, replication, RBAC and quotas, along with Artifactory, Nexus, `registry:2`, and Zot.
@@ -566,6 +578,10 @@ Running a registry inside the cluster is convenient, because Kubernetes keeps it
 
 ## 5. Rootless containers and security basics
 
+![A process that is root inside a container maps to an unprivileged user ID on the host.](./img/k01-userns-map.svg)
+
+*Figure 5.1.11. In rootless mode, the kernel maps root inside the container to an unprivileged user on the host.*
+
 Suppose a runtime or container escape happens on a shared node. An attacker who breaks out of a container running as root now has root on the host, and every other workload on that node is exposed. Rootless mode limits the damage. Podman, rootless Docker, rootless containerd and nerdctl, and BuildKit in rootless mode run the runtime and its containers under an unprivileged user, using user namespaces configured in `/etc/subuid` and `/etc/subgid`. An escape then gives the attacker only an unprivileged user. Rootless networking uses slirp4netns or pasta, and storage uses fuse-overlayfs or native overlay on modern kernels. Rootless mode cannot bind privileged ports, and some cgroup limits need cgroup v2 delegation. Its networking performance is a limit too. GPU access needs device and permission setup, and CDI helps with that.
 
 The user-namespace idea is easiest to hold with a mapping table. Inside the container, the process believes it is root, with user ID 0. On the host, that same process is an ordinary unprivileged user, and its ID maps to a range that belongs to a regular account. The kernel does the translation on every check, so "root" inside the container has no power over files and processes outside it.
@@ -578,16 +594,17 @@ Supply-chain hygiene starts with trusted base images and pinned digests. Never r
 
 ## 6. GPU containers
 
+![The host provides the kernel driver, device nodes and libcuda, the image provides the CUDA runtime, cuDNN and NCCL, and two different error messages point to a driver version problem or a compute capability problem.](./img/p3-0501-gpu-image-host-split.svg)
+
+*Figure 5.1.12. The image brings the tools and the host brings the engine; the error message tells you which side to fix.*
+
 Your first GPU container fails with `CUDA driver version is insufficient for CUDA runtime version`, and the image looked correct. The cause is not inside the image alone. It sits in the split between what the image carries and what the host provides, so the section begins by drawing that line.
 
 A container cannot carry a GPU driver. The kernel driver and its device nodes live on the host. The container carries only the userspace libraries it was built with, such as the CUDA runtime, cuDNN and NCCL. The glue between the two is the NVIDIA Container Toolkit. The diagram shows the path a GPU request takes, from the command you type down to the library call that reaches the GPU.
 
-```mermaid
-flowchart LR
-  A["docker run --gpus all / CDI"] --> B["NVIDIA Container Toolkit\n(hook or CDI spec)"]
-  B --> C["Injects /dev/nvidia* and host libs:\nlibcuda.so, libnvidia-ml.so, nvidia-smi"]
-  C --> D["Container CUDA runtime/cuDNN/NCCL\ncalls host libcuda.so"]
-```
+![GPU containers](./img/m5-01-3.svg)
+
+*Figure 5.1.13. GPU containers, as a diagram.*
 
 The split between image and host is the key idea. Here is the walkthrough for a `--gpus all` request. The runtime is asked to start a container with GPU access. The toolkit's hook runs before the container's main process starts, and it reads the list of GPUs on the host. For each device it adds the matching device node, such as `/dev/nvidia*`, to the container's view. It also bind-mounts the host's driver libraries into the container. Only then does your process start. When your code calls CUDA, it loads the library from the image, and that library calls into the driver library that the toolkit mounted from the host. If a step in that chain is missing, the failure shows up as a CUDA error from inside your program, which is why the checks at the end of this section go in order.
 
@@ -666,6 +683,10 @@ An image ID can be shortened as long as it stays unique. Usually three or four c
 For general cleanup, `docker system prune` removes all stopped containers, all untagged images and all unused image layers left by the build process. Use it carefully, because it removes things you may still want to inspect. For a steady approach, run `docker system prune` as a recurring `cron` job. A daily or hourly schedule fits you best if you create many images.
 
 ## 8. Troubleshooting images and containers
+
+![A decision table from container exit code to likely cause: 137 with OOMKilled true is a memory limit kill, 143 is SIGTERM, 139 is a segmentation fault, 135 is a bus error on shared memory, and 1 or 2 is an application error.](./img/p3-0501-exit-code-map.svg)
+
+*Figure 5.1.14. An exit code of 128 plus N means the process died of signal N, and State.OOMKilled separates a memory kill from other SIGKILLs.*
 
 Your container exits, and the only clue is one line in the logs. The table below is how experienced engineers turn that one line into a short list of causes. Most container failures show a symptom that points to a small set of causes. The table matches each symptom to its likely cause and the check that confirms it.
 

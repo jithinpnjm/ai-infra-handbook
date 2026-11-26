@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Three ways to run kubectl debug</title>
+  <desc>Comparison of three kubectl debug approaches: ephemeral container, copy of the pod, and node debug pod, plus attach command and production policy guidelines.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="45" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three ways to run kubectl debug</text>
+
+  
+  <g id="attach-panel">
+    <rect x="45" y="105" width="1510" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="68" y="120" width="46" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 78 135 L 86 142 L 78 149" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="91" y1="149" x2="103" y2="149" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="135" y="152" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">kubectl attach -it POD -c C</tspan>
+      <tspan font-family="sans-serif"> attaches to PID 1 stdin and stdout when no shell is installed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-ephemeral">
+    
+    <rect x="45" y="205" width="480" height="675" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <rect x="45" y="205" width="480" height="10" rx="5" fill="#db8129"/>
+
+    
+    <g transform="translate(65, 228)">
+      <rect x="0" y="0" width="48" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="14" x2="48" y2="14" stroke="#207448" stroke-width="3"/>
+      <circle cx="10" cy="7" r="3" fill="#207448"/>
+      <circle cx="20" cy="7" r="3" fill="#207448"/>
+      
+      <path d="M 28 26 L 44 26 M 36 18 L 36 34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="135" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ephemeral container</text>
+
+    
+    <rect x="65" y="305" width="440" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="80" y="345" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="80" dy="0">kubectl debug -it POD</tspan>
+      <tspan x="80" dy="34">--image=nicolaka/netshoot</tspan>
+      <tspan x="80" dy="34">--target=CONTAINER</tspan>
+      <tspan x="80" dy="34">--share-processes</tspan>
+    </text>
+
+    
+    <rect x="65" y="500" width="440" height="150" rx="8" fill="#ffffff" stroke="#cbdcd0" stroke-width="1.5"/>
+    <text x="80" y="546" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">adds a toolbox container</tspan>
+      <tspan x="80" dy="34">that shares namespaces</tspan>
+      <tspan x="80" dy="34">with the running pod</tspan>
+    </text>
+
+    
+    <rect x="65" y="670" width="440" height="180" rx="8" fill="#ffffff" stroke="#cbdcd0" stroke-width="1.5"/>
+    <text x="80" y="744" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">use when the image has no</tspan>
+      <tspan x="80" dy="36">shell or tools (distroless)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-copy">
+    
+    <rect x="560" y="205" width="480" height="675" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="560" y="205" width="480" height="10" rx="5" fill="#207448"/>
+
+    
+    <g transform="translate(580, 228)">
+      <rect x="12" y="0" width="38" height="36" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <rect x="0" y="10" width="38" height="36" rx="5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+      <line x1="0" y1="22" x2="38" y2="22" stroke="#207448" stroke-width="2.5"/>
+    </g>
+
+    
+    <text x="645" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Copy of the pod</text>
+
+    
+    <rect x="580" y="305" width="440" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="595" y="345" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="595" dy="0">kubectl debug POD -it</tspan>
+      <tspan x="595" dy="34">--copy-to=POD-debug</tspan>
+      <tspan x="595" dy="34">--container=CONTAINER</tspan>
+      <tspan x="595" dy="34">--image=ubuntu -- bash</tspan>
+    </text>
+
+    
+    <rect x="580" y="500" width="440" height="150" rx="8" fill="#ffffff" stroke="#cbdcd0" stroke-width="1.5"/>
+    <text x="595" y="563" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="595" dy="0">copy with changed image</tspan>
+      <tspan x="595" dy="34">or command</tspan>
+    </text>
+
+    
+    <rect x="580" y="670" width="440" height="180" rx="8" fill="#ffffff" stroke="#cbdcd0" stroke-width="1.5"/>
+    <text x="595" y="728" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="595" dy="0">use for a crashing app,</tspan>
+      <tspan x="595" dy="34">override command to</tspan>
+      <tspan x="595" dy="34">sleep infinity</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-node">
+    
+    <rect x="1075" y="205" width="480" height="675" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="1075" y="205" width="480" height="10" rx="5" fill="#207448"/>
+
+    
+    <g transform="translate(1095, 228)">
+      <rect x="0" y="2" width="48" height="42" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="0" y1="16" x2="48" y2="16" stroke="#207448" stroke-width="2.5"/>
+      <line x1="0" y1="30" x2="48" y2="30" stroke="#207448" stroke-width="2.5"/>
+      <circle cx="8" cy="9" r="2" fill="#207448"/>
+      <circle cx="8" cy="23" r="2" fill="#207448"/>
+      <circle cx="8" cy="37" r="2" fill="#207448"/>
+      <line x1="16" y1="9" x2="40" y2="9" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="16" y1="23" x2="40" y2="23" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="16" y1="37" x2="40" y2="37" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="1160" y="262" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node debug pod</text>
+
+    
+    <rect x="1095" y="305" width="440" height="175" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1110" y="360" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1110" dy="0">kubectl debug node/NODE</tspan>
+      <tspan x="1110" dy="36">-it --image=ubuntu</tspan>
+      <tspan x="1110" dy="36">-- chroot /host</tspan>
+    </text>
+
+    
+    <rect x="1095" y="500" width="440" height="150" rx="8" fill="#ffffff" stroke="#cbdcd0" stroke-width="1.5"/>
+    <text x="1110" y="563" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1110" dy="0">host filesystem appears</tspan>
+      <tspan x="1110" dy="34">at /host</tspan>
+    </text>
+
+    
+    <rect x="1095" y="670" width="440" height="180" rx="8" fill="#ffffff" stroke="#cbdcd0" stroke-width="1.5"/>
+    <text x="1110" y="744" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1110" dy="0">use for node-level</tspan>
+      <tspan x="1110" dy="36">evidence</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer-takeaway">
+    <rect x="45" y="905" width="1510" height="160" rx="10" fill="#207448"/>
+
+    
+    <g transform="translate(70, 955)">
+      <path d="M 24 2 L 44 12 C 44 32 24 44 24 44 C 24 44 4 32 4 12 Z" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linejoin="round"/>
+      <path d="M 15 22 L 21 28 L 33 16" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="135" y="952" font-family="sans-serif" font-size="24" fill="#ffffff">
+      <tspan x="135" dy="0">plan a team-approved toolbox image such as netshoot, busybox, or your own with curl, dig, nc,</tspan>
+      <tspan x="135" dy="38">tcpdump, iperf3, strace, perf, nvidia-smi; restrict who may use it with RBAC and policy;</tspan>
+      <tspan x="135" dy="38">clean up privileged debug pods and ephemeral containers afterwards</tspan>
+    </text>
+  </g>
+</svg>

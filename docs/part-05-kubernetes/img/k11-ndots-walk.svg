@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Why one external hostname costs several DNS lookups with ndots 5</title>
+  <desc>Visual infographic explaining why one external hostname costs several DNS lookups under ndots 5 in Kubernetes, the search domain sequence, wasted lookups, and the trailing dot fix.</desc>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Why one external hostname costs</tspan>
+    <tspan x="800" dy="56">several DNS lookups with ndots 5</tspan>
+  </text>
+
+  
+  <g id="banner-box">
+    <rect x="60" y="145" width="1480" height="100" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(90, 167)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="22" cy="22" r="16" />
+      <line x1="34" y1="34" x2="48" y2="48" />
+    </g>
+
+    <text x="165" y="185" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pod in namespace ml asks for api.example.com</text>
+    <text x="165" y="224" font-family="sans-serif" font-size="24" fill="#303a36">this name has 2 dots, fewer than ndots 5, so search domains are tried first</text>
+  </g>
+
+  
+  
+  <g id="row-1">
+    <rect x="60" y="270" width="1110" height="88" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="314" r="24" fill="#207448" />
+    <text x="106" y="314" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <rect x="150" y="284" width="760" height="60" rx="8" fill="#f8faf8" stroke="#d5dfd8" stroke-width="1.5" />
+    <text x="175" y="314" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">api.example.com.ml.svc.cluster.local</text>
+    
+    <rect x="930" y="289" width="215" height="50" rx="10" fill="#ebeeed" stroke="#87968f" stroke-width="2" />
+    <text x="1037" y="314" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#55635c">NXDOMAIN</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="60" y="374" width="1110" height="88" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="418" r="24" fill="#207448" />
+    <text x="106" y="418" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <rect x="150" y="388" width="760" height="60" rx="8" fill="#f8faf8" stroke="#d5dfd8" stroke-width="1.5" />
+    <text x="175" y="418" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">api.example.com.svc.cluster.local</text>
+    
+    <rect x="930" y="393" width="215" height="50" rx="10" fill="#ebeeed" stroke="#87968f" stroke-width="2" />
+    <text x="1037" y="418" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#55635c">NXDOMAIN</text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="60" y="478" width="1110" height="88" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="522" r="24" fill="#207448" />
+    <text x="106" y="522" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <rect x="150" y="492" width="760" height="60" rx="8" fill="#f8faf8" stroke="#d5dfd8" stroke-width="1.5" />
+    <text x="175" y="522" dominant-baseline="central" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">api.example.com.cluster.local</text>
+    
+    <rect x="930" y="497" width="215" height="50" rx="10" fill="#ebeeed" stroke="#87968f" stroke-width="2" />
+    <text x="1037" y="522" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#55635c">NXDOMAIN</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="60" y="582" width="1110" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="106" cy="630" r="24" fill="#207448" />
+    <text x="106" y="630" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <rect x="150" y="594" width="760" height="72" rx="8" fill="#f8faf8" stroke="#d5dfd8" stroke-width="1.5" />
+    <text x="175" y="622" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">api.example.com.&lt;node-search&gt;</text>
+    <text x="175" y="654" font-family="sans-serif" font-size="24" fill="#55635c">once for each node search domain</text>
+    
+    <rect x="930" y="605" width="215" height="50" rx="10" fill="#ebeeed" stroke="#87968f" stroke-width="2" />
+    <text x="1037" y="630" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#55635c">NXDOMAIN</text>
+  </g>
+
+  
+  <g id="wasted-lookups-bracket">
+    <path d="M 1195 270 Q 1225 270 1225 300 L 1225 444 Q 1225 474 1255 474 Q 1225 474 1225 504 L 1225 648 Q 1225 678 1195 678" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <text x="1275" y="474" dominant-baseline="central" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">wasted lookups</text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="60" y="694" width="1110" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="106" cy="742" r="24" fill="#207448" />
+    <text x="106" y="742" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <rect x="150" y="706" width="760" height="72" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="175" y="734" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">api.example.com.</text>
+    <text x="445" y="734" font-family="sans-serif" font-size="24" fill="#303a36">with the trailing dot</text>
+    <text x="175" y="766" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">the only row that gets an answer</text>
+    
+    <rect x="930" y="717" width="215" height="50" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <text x="1037" y="742" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">answer</text>
+  </g>
+
+  
+  <g id="counter-box">
+    <rect x="60" y="810" width="1480" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(90, 832)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="6" width="48" height="38" rx="6" />
+      <line x1="4" y1="20" x2="52" y2="20" />
+      <circle cx="16" cy="31" r="3" fill="#207448" />
+      <circle cx="28" cy="31" r="3" fill="#207448" />
+      <circle cx="40" cy="31" r="3" fill="#207448" />
+    </g>
+
+    <text x="165" y="851" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">8 or more queries for one hostname</text>
+    <text x="165" y="888" font-family="sans-serif" font-size="24" fill="#303a36">each query is sent as both A and AAAA</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="60" y="930" width="1480" height="80" rx="14" fill="#207448" />
+    <text x="800" y="970" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">a trailing dot on an external name skips the search list</text>
+  </g>
+</svg>

@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "x04-strace-line-anatomy",
+  "title": "Reading one strace line: call, arguments, result, errno",
+  "spec": "A large monospace trace line across the middle of the canvas: openat(AT_FDCWD, \"not_a_file\", O_RDONLY) = -1 ENOENT (No such file or directory). Four numbered callout boxes with leader lines pointing into the line, each with an outline icon and a title and a one-line meaning. Callout 1 points at openat, title 'Call name', meaning 'the system call the program made, here an attempt to open a file'. Callout 2 points at the quoted path and AT_FDCWD, title 'Arguments', meaning 'which file it wanted and where to start from'. Callout 3 points at O_RDONLY, title 'Flags', meaning 'the program asked to read'. Callout 4 points at the equals sign and -1 ENOENT, title 'Result', meaning 'the call failed: -1 means failure'. Callout 4 is highlighted in orange with the errno name ENOENT called out separately, title 'Errno', meaning 'No such file or directory: the path part is missing'. Below the line, a row of three small tiles showing a successful return: openat returns the new descriptor, for example = 3, with a green check. Title 'Read the first unexpected failure'. Green takeaway bar: Find the first failing call that matters, name the errno, and say what resource it points to.",
+  "anchor": "### 4. strace: how to read what it prints",
+  "alt": "One strace line split into call name, arguments, equals sign, and the failing result with its errno.",
+  "cap": "Each strace line gives the call name, its arguments and a result, and a failure shows as minus one with an errno name."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "x04-emfile-enfile-ceilings",
+  "title": "Three ceilings: per process, system-wide, and the cap on the cap",
+  "spec": "Three nested rounded rectangles drawn as a stack from inside to outside. Innermost box labelled 'One process' with sub-label RLIMIT_NOFILE soft, error EMFILE, read in /proc/PID/limits as Max open files, and a note 'only this process fails'. Middle box labelled 'Whole machine' with sub-label fs.file-max, error ENFILE, read in /proc/sys/fs/file-nr, and a note 'every process that needs a new descriptor fails'. Outer box labelled 'The cap on the cap' with sub-label /proc/sys/fs/nr_open, default 1048576, and a note 'raising RLIMIT_NOFILE cannot go above this'. A small lock icon on the inner box labelled hard limit can be raised up to nr_open by a privileged process. Monospace for EMFILE, ENFILE, RLIMIT_NOFILE, /proc/sys/fs/file-max, /proc/sys/fs/file-nr, /proc/sys/fs/nr_open. Orange outline on the inner box labelled EMFILE, the most common case. Right side: a short checklist 'Who is refusing?' with two lines: 'one process: EMFILE' and 'whole host: ENFILE'. Green takeaway bar: Check the error name before you touch any setting.",
+  "anchor": "### 2. Three ceilings: per process, per system, and the cap on the cap",
+  "alt": "Three nested limits for open files: the per-process limit, the system-wide file-max, and the nr_open cap above both.",
+  "cap": "EMFILE means one process hit its own limit, ENFILE means the whole machine hit the shared pool, and nr_open caps how high a process limit can go."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "x04-df-du-two-pools",
+  "title": "Two pools on one disk: blocks and inodes, counted by df and du",
+  "spec": "Top: a horizontal label 'One filesystem has two pools'. Left pool: a cylinder icon labelled data blocks, drawn as a grid of small squares, with a green fill for used squares and a white fill for free. Right pool: a folder icon labelled inodes, drawn as a row of small index cards with a green fill for used cards and white for free. Below the left pool, a green-outlined box with monospace df -h, sub-line 'counts bytes used by blocks, and free bytes'. Below the right pool, a green-outlined box with monospace df -i, sub-line 'counts inodes used and free'. A third box with monospace du, sub-line 'adds up sizes of files it can reach by name, so it misses blocks with no name'. Two short arrows from the df boxes to the pools, one arrow from the du box to a single file icon. Orange callout beside the right pool: ENOSPC with free bytes means this pool is full. Monospace for df -h, df -i, du, ENOSPC. Green takeaway bar: Count bytes and inodes separately, then ask who still holds deleted files.",
+  "anchor": "### 5. Blocks, inodes, and files that are deleted but still open",
+  "alt": "A filesystem has a pool of data blocks and a pool of inodes, and df -h, df -i and du each count a different thing.",
+  "cap": "Free bytes and free inodes are separate pools, and df and du answer different questions about them."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "x04-deleted-open-rescue",
+  "title": "Deleted but open: the name is gone, the blocks stay until the descriptor closes",
+  "spec": "Four-step left-to-right sequence with numbered green circles (r=24). Step 1 box, icon of a log file: a process opens app.log and writes 20 MB. Step 2 box, icon of a trash can: rm removes the name, labelled link count 0 and ls and du no longer see the file. Step 3 box, icon of a descriptor slot: the process still holds the descriptor, so df still counts the blocks, with the monospace link /tmp/.../app.log (deleted) under the descriptor. Step 4 box, icon of a broom: rescue, copy out, then truncate through /proc/PID/fd/N, labelled df used space falls. Arrows between steps are orthogonal. Under step 4, a monospace command block with three lines: copy what you need out of /proc/PID/fd/N, then : > /proc/PID/fd/N, then the process keeps writing. Under the whole row, a separate box in grey labelled lasting fix: make the writer reopen its file after rotation. Orange highlight on step 3 as the non-obvious part. Monospace for rm, df, du, /proc/PID/fd/N, lsof +L1. Green takeaway bar: The space comes back when the last descriptor closes or the file is truncated.",
+  "anchor": "### Scenario 2: the disk that is full of nothing",
+  "alt": "A deleted log stays on disk while a process holds it open, and truncating it through the descriptor frees the space.",
+  "cap": "A file removed while a process still has it open keeps using disk space until that descriptor is closed or the file is truncated."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "x04-path-walk-locked-directory",
+  "title": "The path walk: a locked directory blocks a 644 file before its mode is checked",
+  "spec": "A horizontal corridor of three doors from left to right, labelled in order: a root door labelled / with a green check and mode r-x, a door labelled secret with mode drw-------, shown in grey with a red x, and a last door labelled app.conf with mode -rw-r--r--, drawn behind the second door and shown unreached. Each door has an outline icon of a key or a lock. Labels in monospace: /, secret, app.conf, mode values. An arrow from the entry point on the left moves right through door one, then stops at door two with a labelled arrow end: no search bit, so EACCES. A dashed arrow from the chmod 777 action sits above app.conf with a crossed-out label: chmod on the file cannot help. A second tile below labelled namei -l shows the mode of each component listed in a monospace block with drw-------, then app.conf with the words Permission denied. Numbered steps 1 to 3 in green circles along the bottom: 1 check search bit on every directory, 2 read the file mode, 3 fix the directory with chmod u+x or 755. Orange highlight on the locked directory door. Green takeaway bar: Check every parent directory, not only the last.",
+  "anchor": "### Scenario 6: readable file, locked directory",
+  "alt": "A file with mode 644 cannot be opened because the directory above it has no search bit, so the walk stops at the directory.",
+  "cap": "Opening a path needs search permission on every directory along the way, so a locked directory blocks a readable file."
+ }
+]

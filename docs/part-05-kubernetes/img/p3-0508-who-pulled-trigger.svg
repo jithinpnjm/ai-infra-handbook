@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title></title>
+  <desc></desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Eviction, node pressure and preemption:</tspan>
+    <tspan x="800" dy="58">who pulled the trigger</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="180" width="480" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="290" cy="230" r="10"/>
+    <circle cx="290" cy="230" r="18" stroke-dasharray="8 6"/>
+  </g>
+  <text x="290" y="305" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="290" dy="0">API-initiated eviction</tspan>
+    <tspan x="290" dy="40">(<tspan font-family="monospace">kubectl drain</tspan>, Cluster</tspan>
+    <tspan x="290" dy="40">Autoscaler, Karpenter)</tspan>
+  </text>
+
+  
+  <rect x="560" y="180" width="420" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="770" cy="222" r="10"/>
+    <path d="M 752 246 C 752 236 788 236 788 246"/>
+  </g>
+  <text x="770" y="325" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="770" dy="0">a person or tool via the</tspan>
+    <tspan x="770" dy="36">Eviction subresource</tspan>
+  </text>
+
+  
+  <rect x="1010" y="180" width="540" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 1262 214 L 1280 208 L 1298 214 C 1298 230 1280 244 1280 244 C 1280 244 1262 230 1262 214 Z"/>
+    <polyline points="1272,224 1278,230 1289,219" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1280" y="290" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1280" dy="0">strictly enforced: rejected with</tspan>
+    <tspan x="1280" dy="34">429 Too Many Requests if it</tspan>
+    <tspan x="1280" dy="34">would break minAvailable</tspan>
+    <tspan x="1280" dy="34">or maxUnavailable</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="480" width="480" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <ellipse cx="290" cy="516" rx="20" ry="7"/>
+    <path d="M 270 530 A 20 7 0 0 0 310 530"/>
+    <path d="M 270 516 V 544 A 20 7 0 0 0 310 544 V 516"/>
+  </g>
+  <text x="290" y="620" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="290" dy="0">Kubelet node-</tspan>
+    <tspan x="290" dy="40">pressure eviction</tspan>
+  </text>
+
+  
+  <rect x="560" y="480" width="420" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="752" y="512" width="36" height="34" rx="4"/>
+    <line x1="758" y1="524" x2="774" y2="524"/>
+    <circle cx="781" cy="524" r="1.5" fill="#207448"/>
+    <line x1="758" y1="534" x2="774" y2="534"/>
+    <circle cx="781" cy="534" r="1.5" fill="#207448"/>
+  </g>
+  <text x="770" y="625" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="770" dy="0">the node, short on</tspan>
+    <tspan x="770" dy="36">memory or disk</tspan>
+  </text>
+
+  
+  <rect x="1010" y="480" width="540" height="260" rx="12" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
+  
+  <g stroke="#db8129" stroke-width="3" fill="none">
+    <path d="M 1262 514 L 1280 508 L 1298 514 C 1298 530 1280 544 1280 544 C 1280 544 1262 530 1262 514 Z"/>
+    <line x1="1280" y1="518" x2="1280" y2="528" stroke-linecap="round"/>
+    <circle cx="1280" cy="534" r="1.5" fill="#db8129"/>
+  </g>
+  <text x="1280" y="625" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1280" dy="0">ignored, node is in</tspan>
+    <tspan x="1280" dy="36">immediate danger</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="780" width="480" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="290" cy="830" r="22"/>
+    <polyline points="290,816 290,830 302,830" stroke-linecap="round"/>
+  </g>
+  <text x="290" y="930" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="290" dy="0">Scheduler preemption</tspan>
+  </text>
+
+  
+  <rect x="560" y="780" width="420" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="754" y="824" width="32" height="18" rx="3"/>
+    <path d="M 770 818 L 770 808 M 764 814 L 770 808 L 776 814" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="770" y="915" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="770" dy="0">scheduler, a higher-</tspan>
+    <tspan x="770" dy="34">priority pod needs</tspan>
+    <tspan x="770" dy="34">a place</tspan>
+  </text>
+
+  
+  <rect x="1010" y="780" width="540" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 1262 814 L 1280 808 L 1298 814 C 1298 830 1280 844 1280 844 C 1280 844 1262 830 1262 814 Z" stroke-dasharray="6 3"/>
+    <path d="M 1272 824 Q 1276 819 1280 824 T 1288 824" stroke-linecap="round"/>
+  </g>
+  <text x="1280" y="915" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1280" dy="0">best effort: prefers victims that</tspan>
+    <tspan x="1280" dy="34">do not break a budget, still</tspan>
+    <tspan x="1280" dy="34">preempts if no other feasible node</tspan>
+  </text>
+
+  
+  <rect x="50" y="1080" width="1500" height="90" rx="12" fill="#207448"/>
+  <text x="800" y="1118" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">All three end in graceful termination; the reason recorded on the pod tells you which path it was;</tspan>
+    <tspan x="800" dy="34">training jobs should treat SIGTERM as checkpoint now</tspan>
+  </text>
+</svg>

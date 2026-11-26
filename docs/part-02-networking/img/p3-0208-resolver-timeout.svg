@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>The dead first nameserver: where 5 and 10 second delays come from</title>
+  <desc>Visual infographic explaining DNS lookup delays caused by a dead primary nameserver in resolv.conf and how glibc timeouts, retries, resolver options, and local caching resolvers affect lookup latency.</desc>
+
+  <defs>
+    <marker id="arr-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+    <marker id="arr-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The dead first nameserver: where 5 and 10 second delays come from</text>
+
+  
+  <g>
+    <rect x="40" y="110" width="470" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(62, 130)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="6" y="4" width="36" height="46" rx="4" />
+      <line x1="14" y1="16" x2="34" y2="16" />
+      <line x1="14" y1="26" x2="34" y2="26" />
+      <line x1="14" y1="36" x2="26" y2="36" />
+    </g>
+    <text x="126" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="126" dy="0">glibc default: 5 s per attempt,</tspan>
+      <tspan x="126" dy="34">2 attempts per nameserver;</tspan>
+      <tspan x="126" dy="34">up to 3 nameserver lines used</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="530" y="110" width="490" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(552, 130)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M 6 4 L 32 4 L 44 16 L 44 50 L 6 50 Z" />
+      <polyline points="32,4 32,16 44,16" />
+      <line x1="14" y1="28" x2="34" y2="28" />
+      <line x1="14" y1="38" x2="28" y2="38" />
+    </g>
+    <text x="616" y="165" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="616" dy="0">nameserver 10.32.45.23 (dead)</tspan>
+      <tspan x="616" dy="50">nameserver 10.3.2.3 (alive)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1060" y="110" width="500" height="425" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1085, 130)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="30" r="20" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="22" y1="4" x2="34" y2="4" />
+      <polyline points="28,30 28,18 36,24" />
+    </g>
+    <text x="1085" y="215" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0">Exactly N seconds means a timer:</tspan>
+      <tspan x="1085" dy="34">DNS problems often show up as</tspan>
+      <tspan x="1085" dy="34">delays of a fixed number of</tspan>
+      <tspan x="1085" dy="34">seconds; match the number to a</tspan>
+      <tspan x="1085" dy="34">resolver timeout (here 5 s from</tspan>
+      <tspan x="1085" dy="34">glibc, multiplied by retries)</tspan>
+      <tspan x="1085" dy="34">and you find the layer</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1060" y="560" width="500" height="480" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1085, 580)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="10" />
+      <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" />
+    </g>
+    <text x="1085" y="662" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0">resolv.conf options: ndots:N,</tspan>
+      <tspan x="1085" dy="34">timeout:, attempts:, rotate,</tspan>
+      <tspan x="1085" dy="34">edns0; the file is often a symlink</tspan>
+      <tspan x="1085" dy="34">managed by systemd-resolved,</tspan>
+      <tspan x="1085" dy="34">NetworkManager, resolvconf or</tspan>
+      <tspan x="1085" dy="34">cloud-init, hand edits are</tspan>
+      <tspan x="1085" dy="34">overwritten, configure the manager</tspan>
+      <tspan x="1085" dy="34">instead: netplan nameservers,</tspan>
+      <tspan x="1085" dy="34">nmcli or resolved.conf</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="280" width="980" height="380" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(60, 300)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="28,14 28,28 38,28" />
+    </g>
+
+    
+    <g>
+      <circle cx="88" cy="382" r="24" fill="#207448" />
+      <text x="88" y="390" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      
+      <rect x="128" y="356" width="860" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <rect x="128" y="356" width="580" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="140" y1="382" x2="690" y2="382" stroke="#207448" stroke-width="3" marker-end="url(#arr-green)" />
+      <text x="144" y="391" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">attempt 1 to the first server waits 5 s</text>
+    </g>
+
+    
+    <g>
+      <circle cx="88" cy="456" r="24" fill="#207448" />
+      <text x="88" y="464" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      
+      <rect x="128" y="430" width="860" height="52" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <rect x="128" y="430" width="580" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="140" y1="456" x2="690" y2="456" stroke="#207448" stroke-width="3" marker-end="url(#arr-green)" />
+      <text x="144" y="465" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">attempt 2 waits another 5 s</text>
+    </g>
+
+    
+    <g>
+      <circle cx="88" cy="530" r="24" fill="#207448" />
+      <text x="88" y="538" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      
+      <rect x="128" y="504" width="860" height="52" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="140" y1="530" x2="970" y2="530" stroke="#207448" stroke-width="3" marker-end="url(#arr-green)" />
+      <text x="144" y="539" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">falls to the second server and gets an answer</text>
+    </g>
+
+    
+    <g>
+      <rect x="68" y="582" width="920" height="60" rx="8" fill="#fff5ea" stroke="#db8129" stroke-width="3" />
+      <text x="528" y="622" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">stalled 5 to 10 s on every lookup</text>
+    </g>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="685" width="980" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(60, 705)" stroke="#207448" stroke-width="4" fill="none">
+      <line x1="8" y1="16" x2="48" y2="16" />
+      <line x1="8" y1="40" x2="48" y2="40" />
+      <circle cx="20" cy="16" r="6" fill="#ffffff" />
+      <circle cx="36" cy="40" r="6" fill="#ffffff" />
+    </g>
+
+    <text x="140" y="736" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#207448">options timeout:1 attempts:2 rotate</text>
+
+    
+    <g transform="translate(140, 762)">
+      <rect x="0" y="0" width="220" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="16" y1="27" x2="204" y2="27" stroke="#207448" stroke-width="3" marker-end="url(#arr-green)" />
+      
+      <rect x="250" y="0" width="220" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="266" y1="27" x2="454" y2="27" stroke="#207448" stroke-width="3" marker-end="url(#arr-green)" />
+
+      <rect x="500" y="0" width="340" height="54" rx="8" fill="#207448" stroke="#207448" stroke-width="2" />
+      <line x1="516" y1="27" x2="824" y2="27" stroke="#ffffff" stroke-width="3" />
+    </g>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="875" width="980" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g transform="translate(60, 895)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M 28 6 L 46 14 L 46 30 C 46 42 28 50 28 50 C 28 50 10 42 10 30 L 10 14 Z" />
+      <polyline points="30,16 22,30 32,30 26,42" />
+    </g>
+
+    <text x="140" y="938" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="140" dy="0">local caching resolver (systemd-resolved,</tspan>
+      <tspan x="140" dy="40">dnsmasq, unbound): fails over quickly</tspan>
+    </text>
+
+    
+    <g transform="translate(740, 915)">
+      <rect x="0" y="0" width="240" height="64" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      <line x1="20" y1="32" x2="220" y2="32" stroke="#207448" stroke-width="4" marker-end="url(#arr-green)" />
+    </g>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1065" width="1520" height="85" rx="12" fill="#207448" />
+    <text x="800" y="1118" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">A dead resolver at the front of the list stalls every lookup</text>
+  </g>
+</svg>

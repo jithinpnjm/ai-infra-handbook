@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Four questions on a three-of-200 failure</title>
+  <desc>Infographic explaining the four diagnostic questions applied to a three-of-200 nodes failure and its root cause.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four questions on a three-of-200 failure</text>
+
+  
+  <g id="box-1">
+    <rect x="40" y="130" width="350" height="410" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="100" cy="185" r="24" fill="#207448"/>
+    <text x="100" y="194" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(250, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="28,14 28,28 38,28"/>
+    </g>
+    
+    <text x="215" y="268" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">When did it fail</text>
+    
+    <rect x="55" y="305" width="320" height="215" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+    <text x="215" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="215" dy="0">at a task,</tspan>
+      <tspan x="215" dy="38">not parsing,</tspan>
+      <tspan x="215" dy="38">so the parse drawer</tspan>
+      <tspan x="215" dy="38">is closed</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="390" y1="335" x2="430" y2="335" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="box-2">
+    <rect x="430" y="130" width="350" height="410" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="490" cy="185" r="24" fill="#207448"/>
+    <text x="490" y="194" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(640, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="10" rx="2"/>
+      <rect x="6" y="23" width="44" height="10" rx="2"/>
+      <rect x="6" y="38" width="44" height="10" rx="2"/>
+      <circle cx="14" cy="13" r="1.5" fill="#207448"/>
+      <circle cx="14" cy="28" r="1.5" fill="#207448"/>
+      <circle cx="14" cy="43" r="1.5" fill="#207448"/>
+    </g>
+    
+    <text x="605" y="268" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Where did it fail</text>
+    
+    <rect x="445" y="305" width="320" height="215" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+    <text x="605" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="605" dy="0">three of the 200</tspan>
+      <tspan x="605" dy="38">nodes, so the cause</tspan>
+      <tspan x="605" dy="38">is something those</tspan>
+      <tspan x="605" dy="38">three have</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="780" y1="335" x2="820" y2="335" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="box-3">
+    <rect x="820" y="130" width="350" height="410" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="880" cy="185" r="24" fill="#207448"/>
+    <text x="880" y="194" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(1030, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 48 24 A 20 20 0 1 0 46 36"/>
+      <polyline points="48,12 48,24 36,24"/>
+    </g>
+    
+    <text x="995" y="268" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">What changed</text>
+    
+    <rect x="835" y="305" width="320" height="215" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+    <text x="995" y="396" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="995" dy="0">those three were</tspan>
+      <tspan x="995" dy="38">re-imaged last week</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1170" y1="335" x2="1210" y2="335" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="box-4">
+    <rect x="1210" y="130" width="350" height="410" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="1270" cy="185" r="24" fill="#207448"/>
+    <text x="1270" y="194" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(1420, 157)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="48" height="40" rx="4"/>
+      <polyline points="14,24 22,30 14,36"/>
+      <line x1="26" y1="36" x2="36" y2="36"/>
+    </g>
+    
+    <text x="1385" y="250" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1385" dy="0">Can you</tspan>
+      <tspan x="1385" dy="36">reproduce it</tspan>
+    </text>
+    
+    <rect x="1225" y="305" width="320" height="215" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.8"/>
+    <text x="1385" y="358" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1385" dy="0"><tspan font-family="monospace">--limit</tspan> on one</tspan>
+      <tspan x="1385" dy="38">of them with <tspan font-family="monospace">-vvv</tspan></tspan>
+      <tspan x="1385" dy="38">shows a missing</tspan>
+      <tspan x="1385" dy="38">package</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1385" y1="540" x2="1385" y2="640" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="result-box">
+    <rect x="40" y="640" width="1520" height="200" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(85, 712)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 14 V 30 C 50 44 28 52 28 52 C 28 52 6 44 6 30 V 14 Z"/>
+      <polyline points="18,29 25,36 38,20"/>
+    </g>
+    
+    <text x="180" y="722" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="180" dy="0">privilege or module layer,</tspan>
+      <tspan x="180" dy="44">machine state was wrong and the playbook was not</tspan>
+    </text>
+  </g>
+</svg>

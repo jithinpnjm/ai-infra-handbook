@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Collection traps: shared inner lists, mutating while iterating, and slow membership</title>
+  <desc>Visual infographic explaining collection traps in Python including shared inner lists, dictionary fromkeys pitfalls, mutating sequences during iteration, linear lookup costs, cost table, and hashable keys rule.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Collection traps: shared inner lists,</text>
+  <text x="40" y="135" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">mutating while iterating, and slow membership</text>
+
+  
+
+  
+  <g id="panel-grid">
+    <rect x="40" y="175" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="62" y="197" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="77" y1="197" x2="77" y2="241" stroke="#207448" stroke-width="3"/>
+    <line x1="91" y1="197" x2="91" y2="241" stroke="#207448" stroke-width="3"/>
+    <line x1="62" y1="212" x2="106" y2="212" stroke="#207448" stroke-width="3"/>
+    <line x1="62" y1="226" x2="106" y2="226" stroke="#207448" stroke-width="3"/>
+
+    <text x="125" y="230" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">grid = [[0] * 3] * 3</text>
+
+    
+    <rect x="60" y="258" width="700" height="74" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2"/>
+    <text x="75" y="290" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="75" dy="0">three references to the same inner list,</tspan>
+      <tspan x="75" dy="28">so changing one row changes all</tspan>
+    </text>
+
+    
+    <rect x="60" y="344" width="700" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="75" y="375" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">[[0] * 3 for _ in range(3)]</text>
+  </g>
+
+  
+  <g id="panel-dict-fromkeys">
+    <rect x="820" y="175" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="842" y="197" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 854 219 L 874 219 M 868 213 L 868 225" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <text x="905" y="230" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">d = dict.fromkeys(keys, [])</text>
+
+    
+    <rect x="840" y="258" width="700" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="855" y="289" font-family="sans-serif" font-size="24" fill="#303a36">one list shared across all keys</text>
+
+    
+    <rect x="840" y="316" width="700" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="855" y="346" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="855" dy="0">fix with a comprehension that makes</tspan>
+      <tspan x="855" dy="28">a new list per key</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-iter-mutate">
+    <rect x="40" y="425" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 84 449 A 18 18 0 1 1 68 475" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="84,443 84,453 74,453" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+    <text x="125" y="480" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">for x in lst: lst.remove(x)</text>
+
+    
+    <rect x="60" y="504" width="700" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="75" y="531" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">skips elements</tspan>
+      <tspan x="75" dy="28">mutating a dict's size during iteration raises RuntimeError</tspan>
+    </text>
+
+    
+    <rect x="60" y="598" width="700" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="75" y="628" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">iterate over a copy or build a new collection</text>
+  </g>
+
+  
+  <g id="panel-membership">
+    <rect x="820" y="425" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="860" cy="465" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="872" y1="477" x2="888" y2="493" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+    <text x="905" y="480" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">x in list on large data</text>
+
+    
+    <rect x="840" y="504" width="700" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="855" y="535" font-family="sans-serif" font-size="24" fill="#303a36">linear</text>
+
+    
+    <rect x="840" y="562" width="700" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="855" y="593" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="855" dy="0">use sets or dicts for repeated in checks;</tspan>
+      <tspan x="855" dy="28">set and dict lookup O(1) average</tspan>
+    </text>
+  </g>
+
+  
+  <g id="cost-table">
+    <rect x="40" y="675" width="1520" height="276" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="42" y="677" width="1516" height="44" fill="#ffffff"/>
+    <text x="65" y="707" font-family="monospace" font-size="24" fill="#303a36">list: index O(1), append amortised O(1), insert or delete at front O(n), in O(n)</text>
+    <line x1="40" y1="721" x2="1560" y2="721" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="42" y="723" width="1516" height="44" fill="#e8f1ea"/>
+    <text x="65" y="753" font-family="monospace" font-size="24" fill="#303a36">tuple: index O(1), hashable if elements are</text>
+    <line x1="40" y1="767" x2="1560" y2="767" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="42" y="769" width="1516" height="44" fill="#ffffff"/>
+    <text x="65" y="799" font-family="monospace" font-size="24" fill="#303a36">dict: lookup and insert O(1) average, insertion-ordered since 3.7, keys must be hashable</text>
+    <line x1="40" y1="813" x2="1560" y2="813" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="42" y="815" width="1516" height="44" fill="#e8f1ea"/>
+    <text x="65" y="845" font-family="monospace" font-size="24" fill="#303a36">set: in O(1) average, empty is set()</text>
+    <line x1="40" y1="859" x2="1560" y2="859" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="42" y="861" width="1516" height="44" fill="#ffffff"/>
+    <text x="65" y="891" font-family="monospace" font-size="24" fill="#303a36">frozenset: immutable set</text>
+    <line x1="40" y1="905" x2="1560" y2="905" stroke="#e8f1ea" stroke-width="2"/>
+
+    
+    <rect x="42" y="907" width="1516" height="42" rx="0 0 10 10" fill="#e8f1ea"/>
+    <text x="65" y="937" font-family="monospace" font-size="24" fill="#303a36">deque: O(1) at both ends</text>
+  </g>
+
+  
+  <g id="mini-rule">
+    <rect x="40" y="966" width="1520" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="65" y="1005" width="40" height="34" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 75 1005 L 75 993 A 10 10 0 0 1 95 993 L 95 1005" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="130" y="1015" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">dict keys must be hashable: strings, numbers, tuples of hashables, frozensets;</tspan>
+      <tspan x="130" dy="32">lists and dicts cannot be keys</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1095" width="1520" height="65" rx="10" fill="#207448"/>
+    <text x="800" y="1136" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The type you pick sets how fast the script runs and which bugs it carries</text>
+  </g>
+</svg>

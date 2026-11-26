@@ -26,6 +26,10 @@ A realistic question in the interviewer's voice: "Your vLLM fleet is on Kubernet
 
 ### 1. Why CPU and GPU utilisation fail for LLM engines
 
+![Three stacked line charts share one time axis. Load rises steadily. GPU utilisation climbs quickly and flattens at 100 percent once the batch is full. The waiting queue stays at zero until the batch is full and then grows, so utilisation cannot tell busy from overloaded.](./img/x20-utilisation-saturates-queue-grows.svg)
+
+*Figure 20.20.1. Continuous batching saturates the GPU early, so utilisation reads the same at light load and at overload while the queue grows.*
+
 Picture a fleet of three replicas on a quiet afternoon. Each has a handful of streams open. The GPU still reads as busy, because the engine keeps launching kernels every few milliseconds. Now picture the same fleet at five times the traffic, with a queue growing outside the engines. The GPU reads as busy again. Utilisation cannot tell you which of the two situations you are in, and an autoscaler that trusts it is guessing.
 
 The mechanism is continuous batching. The engine keeps one batch of running sequences and adds or removes sequences every step. A small batch already keeps the GPU active. Once the batch is full, more load goes to the waiting queue, and utilisation cannot rise any further. The signal saturates exactly when you most need it to grow. LLMs in Production, Chapter 6, makes a related point. It says an individual GPU's utilisation tends to sit near 0 percent or 100 percent, which makes the autoscaler oscillate, and it advises averaging across GPUs or over time.
@@ -43,6 +47,14 @@ The failure has two faces, and you should name both. Utilisation can over-provis
 **Decision: do not scale an LLM engine on CPU or GPU utilisation. Use them as a health view, and scale on a signal that counts work.**
 
 ### 2. Signals that work, and the difference between leading and lagging
+
+![Two bars show queue depth violating the SLO for 57 percent of requests versus 8 percent for in-flight scaling.](./img/p3-2020-signal-ramp-test.svg)
+
+*Figure 20.20.2. Pick a signal that leads saturation and stays proportional to demand.*
+
+![Concurrent requests rise before users complain and so lead, while the waiting queue and time to first token lag behind the complaint.](./img/p2-2020-leading-lagging.svg)
+
+*Figure 20.20.3. Concurrent requests lead the complaint because they rise before any queue forms, while the waiting queue and time to first token lag behind it.*
 
 An alert says time to first token tripled. The queue is long. Was it long ten minutes ago, when you could have acted? A good scaling signal rises before users feel pain. A poor one rises together with the pain, and by then the autoscaler is already late. Leading and lagging are the two words to hold onto. A leading signal moves first, and a lagging one tells you about damage that has already happened.
 
@@ -69,6 +81,14 @@ In the room, you can put it this way. Count the requests to see how busy the eng
 
 ### 3. The HPA formula, with a worked example
 
+![The HPA ratio formula surrounded by five guard rules for tolerance, not-ready pods, several metrics, missing metrics and KEDA.](./img/p3-2020-hpa-guard-rules.svg)
+
+*Figure 20.20.4. Each rule answers a case where the bare ratio would decide wrongly.*
+
+![Two HPA sync steps side by side. At the first sync four ready replicas hold 22 requests each against a target of 11, so the ratio is 2.0 and the desired count is 8. Fifteen seconds later the four new pods are not ready, the average over eight pods is 11, the ratio is 1.0, and nothing changes.](./img/x20-hpa-two-syncs-worked.svg)
+
+*Figure 20.20.5. The HPA doubles on the first sync, then the not-ready rule keeps the second sync from asking for more replicas on an inflated average.*
+
 Your autoscaler reads a number every 15 seconds and decides how many replicas to want. Practise that arithmetic on a whiteboard until it feels routine, because the interviewer will ask you to do it. The Kubernetes docs give the rule. The desired count is the current count times the ratio of the current metric value to the target. The ceiling function rounds the result up to a whole replica.
 
 ```text
@@ -89,6 +109,14 @@ Where the metric comes from is a real decision. Production Kubernetes, Chapter 1
 
 ### 4. Stabilization windows and flapping
 
+![A comparison of default scale-up and scale-down windows with a slower starting point for engines that take minutes to boot.](./img/p3-2020-window-defaults.svg)
+
+*Figure 20.20.6. Scale up fast, scale down slowly and keep the window longer than the cold start.*
+
+![A row of recommended replica counts over time shows a short dip to 5. A 300 second stabilization window keeps the highest recommendation inside it, so the scale-down to 8 is held and the short dip changes nothing.](./img/x20-stabilization-window-rolling-max.svg)
+
+*Figure 20.20.7. The scale-down window works as a rolling maximum, so a short dip in load does not remove replicas that the next burst will need.*
+
 At 14:00 a burst ends. At 14:03 a second one starts. If the autoscaler removed six replicas in the gap, it must now pay six cold starts. That oscillation is flapping. LLMs in Production defines it as booting a service only to terminate it before it served anything. Each flap spends GPU time on machines that never answer a request, and the bill grows while the users see nothing better.
 
 The defaults come from the Kubernetes docs. Scaling up has no stabilization window, and it may add 100 percent of the replicas or 4 pods every 15 seconds, whichever is larger. Scaling down has a 300-second window and a single policy that can remove 100 percent of the replicas per 15 seconds. The window works as a rolling maximum. The controller records each recommendation and, before scaling down, takes the highest one from the last window. A short dip in load therefore changes nothing.
@@ -107,6 +135,10 @@ Two controls matter at the other end. `selectPolicy: Min` on scale-down picks th
 
 ### 5. Scale-up latency, broken down
 
+![Scale-up runs through decision, node provision, image pull, weight load, warm-up and registration, and a warm node pool skips the slow provisioning step.](./img/p2-2020-scale-up-clock.svg)
+
+*Figure 20.20.8. Scale-up runs through six stages from the metric crossing the target to serving, and a warm node pool skips the slowest one.*
+
 A new replica is not capacity until it answers. The time between "the metric crossed the line" and "a stream is served" is the number that decides whether autoscaling works for you. Imagine the clock starting at the moment the metric crosses the target. Every stage after that adds delay, and some stages are much longer than others. Break the total into parts, because each part has a different cure.
 
 | Stage | What happens | Assumed value in my simulator | Cure |
@@ -122,18 +154,9 @@ The values in the third column are my assumptions, chosen to be round and plausi
 
 The path below shows where a spare node skips work. When a warm node is waiting, the pod does not need to wait for provisioning, and the image pull may also be avoided if the image is already on that node.
 
-```mermaid
-flowchart LR
-  A["Signal crosses target"] --> B["Scrape and 15 s sync"]
-  B --> C["HPA raises replicas"]
-  C --> D["Pod Pending"]
-  D -->|"no free GPU node"| E["Autoscaler adds node"]
-  E --> F["Image pull"]
-  D -->|"warm node free"| G["Weight load"]
-  F --> G
-  G --> H["Warm-up"]
-  H --> I["Ready, router adds it"]
-```
+![Scale-up latency, broken down](./img/m20-20-1.svg)
+
+*Figure 20.20.9. Scale-up latency, broken down, as a diagram.*
 
 Add the stages for my assumed values and you get 480 seconds for a replica on a fresh node, and 150 seconds when a spare node is already waiting. The simulator computes both. Now you can say how much a given burst needs. If demand grows by 0.4 requests per second each minute, and one replica serves 0.8 requests per second, an eight-minute cold start needs 4 replicas of headroom. A 150-second cold start needs 2. The chapter on [capacity estimation](./12-estimation-toolkit-for-inference-capacity.md) shows where the per-replica rate comes from.
 
@@ -146,6 +169,10 @@ Model delivery has its own choice. LLMs in Production, Chapter 6, calls baking w
 **Decision: measure each stage on your own cluster, then buy back the largest one first.**
 
 ### 6. Minimum replicas, X+1, and cost against latency
+
+![A table of five replica floor setups with GPU-hours and the share of requests missing the queue SLO.](./img/p3-2020-floor-tradeoff.svg)
+
+*Figure 20.20.10. The extra 3.6 GPU-hours of a floor of 9 buy the whole burst.*
 
 Finance asks why the GPU bill is high on a quiet Sunday. The answer is almost always the minimum replica count. Your minimum is a price you pay every hour for a latency promise. Set it too low and a burst arrives before the autoscaler can answer. Set it too high and GPUs sit idle through the quiet hours. LLMs in Production says the minimum should sit slightly above the baseline, because steady traffic is rarely steady.
 
@@ -171,6 +198,14 @@ This is also where the SLO decides. The chapter on [SLIs and SLOs](./19-slis-slo
 
 ### 7. Scale-down safety and connection draining
 
+![The Kubernetes scale-down pod selection order next to four layers that keep streams from being cut.](./img/p3-2020-who-dies-scaledown.svg)
+
+*Figure 20.20.11. Kubernetes does not pick the idle pod, so you must make any pod safe to remove.*
+
+![A five step termination sequence shows the scale-down choosing a pod, the preStop sleep running, SIGTERM reaching the engine which drains or aborts based on its shutdown timeout, the grace period ending, and SIGKILL. A PodDisruptionBudget with maxUnavailable 1 sits beside the sequence.](./img/x20-scale-down-termination-steps.svg)
+
+*Figure 20.20.12. Kubernetes removes pods without checking open streams, so the grace period, preStop pause, engine drain and disruption budget must work together.*
+
 At 15:10 the autoscaler removes a replica that is halfway through 40 streaming answers. Forty users see a cut stream. This is the failure that quiet dashboards hide, because the request counter shows an error, and nothing shows a cause.
 
 Walk the incident forward. The scale-down event is logged by the controller, and the pod enters termination. The stream on that pod is still writing tokens. The kubelet sends the stop signal, the engine has no drain, and the connection closes in the middle of a sentence. The client sees a broken stream, retries or gives up, and the gateway records a failure with no obvious link to the scale-down. Only when someone lines up the termination times against the stream errors does the pattern show. The lesson for the interview is that scale-down needs its own telemetry, not only the scale-up graph. The scale-down looked fine on the controller's graph, which is why the team did not expect it.
@@ -192,6 +227,10 @@ The gap matters on a real cluster. A node can hold a single pod that requests it
 **Decision: make a pod unable to die mid-stream by setting a grace period, a preStop pause, an engine drain and a disruption budget together.**
 
 ### 8. Cluster autoscaler and GPU node pools
+
+![A five-step flow from HPA request to a ready node, with a table of cluster autoscaler settings and Nebius node group notes.](./img/p3-2020-ca-pending-to-node.svg)
+
+*Figure 20.20.13. By the time the cluster autoscaler acts the cluster is already full, so keep a warm floor.*
 
 Your pods are pending, and the events say the cluster has no free GPU. The pod autoscaler asked for replicas, but something must supply the nodes. The cluster autoscaler watches for pods that cannot be scheduled and adds a node when a node group could fit them. Production Kubernetes, Chapter 13, points out the consequence. By the time it acts, the cluster is already full, so your replicas wait for the node to appear.
 
@@ -257,6 +296,10 @@ Read the scenario as a story in order. At the first sync the controller sees a c
 
 ### Scenario B. The ramp that no reaction can catch
 
+![Headroom arithmetic showing 4 replicas needed with an eight-minute cold start versus 2 with a 150-second cold start.](./img/p3-2020-ramp-headroom.svg)
+
+*Figure 20.20.14. Headroom equals demand growth during one cold start divided by per-replica capacity.*
+
 Demand grows 0.4 requests per second every minute. A replica serves 0.8 requests per second. Cold start with a fresh node is 480 seconds.
 
 Demand grows by 0.4 times 8, which is 3.2 requests per second during one cold start. Divide by 0.8 and you need 4 replicas of headroom. With spare nodes, the cold start is 150 seconds. Demand grows 1.0 requests per second in that time, so you need 2 replicas. The function `lead_time_headroom` does this sum. The answer: hold 4 standing replicas, or hold spare nodes and 2 standing replicas. Then say which costs less per hour on your GPU price.
@@ -264,6 +307,10 @@ Demand grows by 0.4 times 8, which is 3.2 requests per second during one cold st
 When you present the choice, say what each option buys and what it leaves exposed. Standing replicas buy the fastest answer to the ramp and cost money in every quiet hour. Spare nodes cost less while idle and still leave the weight load exposed. Name both costs and then pick the one that matches the SLO you agreed in the previous chapter. The interviewer is listening for the reasoning, and the arithmetic is only the setup for it.
 
 ### Scenario C. The sawtooth and the cut streams
+
+![Two overlapping problems, flapping and undrained scale-down, with simulator counts of 130 versus 13 starts and 168 cut streams.](./img/p3-2020-sawtooth-two-fixes.svg)
+
+*Figure 20.20.15. Name both problems and fix the window first, then add the drain.*
 
 Short bursts arrive every six minutes. After each burst the autoscaler removes replicas, and a few minutes later it adds them again. Users report streams that stop halfway.
 

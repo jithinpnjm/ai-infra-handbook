@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Four layers keep a streaming pod alive until its streams finish</title>
+  <desc>Four layers keep a streaming pod alive until its streams finish</desc>
+
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-size="48" font-weight="bold" fill="#303a36" font-family="sans-serif" text-anchor="middle">Four layers keep a streaming pod alive until its streams finish</text>
+
+  
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="14" refY="9" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 0 3 L 14 9 L 0 15 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="40" y="110" width="1000" height="165" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="85" cy="192.5" r="24" fill="#207448" />
+  <text x="85" y="201.5" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif" text-anchor="middle">1</text>
+  
+  <g transform="translate(125, 166.5)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="26" cy="26" r="10" />
+    <path d="M26,4 L26,10 M26,42 L26,48 M4,26 L10,26 M42,26 L48,26 M10.5,10.5 L14.7,14.7 M37.3,37.3 L41.5,41.5 M10.5,41.5 L14.7,37.3 M37.3,14.7 L41.5,10.5" />
+  </g>
+  
+  <text x="185" y="148" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Scale-down picks the pod</text>
+  
+  <text x="185" y="180" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="185" dy="0">Pending pods go first, then pod-deletion-cost,</tspan>
+    <tspan x="185" dy="28">then pods on busier nodes, then newer pods.</tspan>
+    <tspan x="185" dy="28">Open streams are not checked.</tspan>
+  </text>
+
+  
+  <line x1="540" y1="275" x2="540" y2="305" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="305" width="1000" height="135" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="85" cy="372.5" r="24" fill="#207448" />
+  <text x="85" y="381.5" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif" text-anchor="middle">2</text>
+  
+  <g transform="translate(125, 346.5)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="26" cy="26" r="22" />
+    <polyline points="26,12 26,26 36,26" />
+  </g>
+  
+  <text x="185" y="343" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">preStop hook runs</text>
+  
+  <text x="185" y="378" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="185" dy="0">sleep 15 gives load balancers time</tspan>
+    <tspan x="185" dy="28">to stop sending new requests.</tspan>
+  </text>
+
+  
+  <line x1="540" y1="440" x2="540" y2="470" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="470" width="1000" height="165" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="85" cy="552.5" r="24" fill="#207448" />
+  <text x="85" y="561.5" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif" text-anchor="middle">3</text>
+  
+  <g transform="translate(125, 526.5)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M26,6 L8,14 L8,26 C8,38 26,46 26,46 C26,46 44,38 44,26 L44,14 Z" />
+  </g>
+  
+  <text x="185" y="508" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif"><tspan font-family="monospace">SIGTERM</tspan> is sent to the engine</text>
+  
+  <text x="185" y="540" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="185" dy="0">vLLM <tspan font-family="monospace" font-weight="bold">--shutdown-timeout</tspan> 0 aborts every</tspan>
+    <tspan x="185" dy="28">in-flight request at once. Above 0 it stops new</tspan>
+    <tspan x="185" dy="28">requests and lets running ones finish.</tspan>
+  </text>
+
+  
+  <line x1="540" y1="635" x2="540" y2="665" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="665" width="1000" height="135" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="85" cy="732.5" r="24" fill="#207448" />
+  <text x="85" y="741.5" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif" text-anchor="middle">4</text>
+  
+  <g transform="translate(125, 706.5)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <circle cx="26" cy="28" r="19" />
+    <path d="M26,5 L26,9 M21,5 L31,5 M39,15 L43,11" />
+    <polyline points="26,18 26,28 34,28" />
+  </g>
+  
+  <text x="185" y="703" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">terminationGracePeriodSeconds ends</text>
+  
+  <text x="185" y="738" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="185" dy="0">The default is 30 seconds. Set it above the longest</tspan>
+    <tspan x="185" dy="28">stream plus the drain timeout.</tspan>
+  </text>
+
+  
+  <line x1="540" y1="800" x2="540" y2="830" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="830" width="1000" height="110" rx="16" ry="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="85" cy="885" r="24" fill="#207448" />
+  <text x="85" y="894" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif" text-anchor="middle">5</text>
+  
+  <g transform="translate(125, 859)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M12,18 A18,18 0 1,0 40,18" />
+    <line x1="26" y1="8" x2="26" y2="24" />
+  </g>
+  
+  <text x="185" y="868" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">SIGKILL</text>
+  
+  <text x="185" y="902" font-size="24" fill="#303a36" font-family="sans-serif">The pod is force-killed when the grace period ends.</text>
+
+  
+  <rect x="1080" y="110" width="480" height="165" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1105, 126)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <rect x="4" y="14" width="24" height="18" rx="3" />
+    <path d="M9,14 L9,9 A7,7 0 0,1 23,9 L23,14" />
+    <circle cx="16" cy="22" r="2" fill="#207448" />
+  </g>
+  <text x="1145" y="148" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">PodDisruptionBudget</text>
+  <text x="1105" y="184" font-size="24" font-weight="bold" fill="#303a36" font-family="monospace">maxUnavailable: 1</text>
+  <text x="1105" y="216" font-size="24" fill="#303a36" font-family="sans-serif">
+    <tspan x="1105" dy="0">limits how many pods of one</tspan>
+    <tspan x="1105" dy="28">service can be removed at once</tspan>
+  </text>
+
+  
+  <line x1="1040" y1="192.5" x2="1080" y2="192.5" stroke="#207448" stroke-width="2.5" stroke-dasharray="6,4" />
+
+  
+  <rect x="40" y="980" width="1520" height="70" rx="14" ry="14" fill="#207448" />
+  <text x="800" y="1024" font-size="26" font-weight="bold" fill="#ffffff" font-family="sans-serif" text-anchor="middle">Set a grace period, a preStop pause, an engine drain and a disruption budget together.</text>
+</svg>

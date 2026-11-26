@@ -1,0 +1,199 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which benchmark tells you what</title>
+  <desc>Visual comparison matrix of supercomputing and AI infrastructure benchmarks, diagnostic burn-in use, key caveats, and decision habits.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Which benchmark tells you what</text>
+
+  
+  <g id="benchmark-table">
+    <rect x="40" y="105" width="1520" height="592" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <path d="M 41 106 L 1559 106 A 11 11 0 0 1 1559 160 L 41 160 A 0 0 0 0 1 41 106 Z" fill="#e8f1ea" />
+    
+    
+    <text x="60" y="142" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">benchmark</text>
+    <text x="500" y="142" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">what it stresses</text>
+    <text x="1100" y="142" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">what it leaves out</text>
+    
+    
+    <line x1="40" y1="160" x2="1560" y2="160" stroke="#207448" stroke-width="2" />
+
+    
+    <line x1="480" y1="105" x2="480" y2="348" stroke="#e8f1ea" stroke-width="2" />
+    <line x1="1080" y1="105" x2="1080" y2="348" stroke="#e8f1ea" stroke-width="2" />
+
+    
+    <g id="row-top500">
+      <text x="60" y="195" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="60" dy="0">TOP500</tspan>
+        <tspan x="60" dy="28">(June at ISC, November at SC)</tspan>
+      </text>
+      <text x="500" y="209" font-family="sans-serif" font-size="24" fill="#303a36">ranks by Rmax on HPL in FP64</text>
+      <text x="1100" y="195" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1100" dy="0">low-precision AI speed,</tspan>
+        <tspan x="1100" dy="28">storage I/O, multi-job mixes</tspan>
+      </text>
+      <line x1="40" y1="235" x2="1560" y2="235" stroke="#e8f1ea" stroke-width="1.5" />
+    </g>
+
+    
+    <g id="row-hpl">
+      <rect x="41" y="236" width="1518" height="112" fill="#fbfdfb" />
+      <text x="60" y="297" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">HPL</text>
+      <text x="500" y="264" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="500" dy="0">dense linear system Ax = b by LU</tspan>
+        <tspan x="500" dy="28">factorization in FP64; stresses compute,</tspan>
+        <tspan x="500" dy="28">power, cooling and regular collectives</tspan>
+      </text>
+      <text x="1100" y="264" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1100" dy="0">memory-bound sparse kernels,</tspan>
+        <tspan x="1100" dy="28">irregular communication,</tspan>
+        <tspan x="1100" dy="28">file systems</tspan>
+      </text>
+      <line x1="40" y1="348" x2="1560" y2="348" stroke="#e8f1ea" stroke-width="1.5" />
+    </g>
+
+    
+    <g id="row-hpcg">
+      <line x1="480" y1="348" x2="480" y2="697" stroke="#e8f1ea" stroke-width="2" />
+      <text x="60" y="392" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">HPCG</text>
+      <text x="500" y="380" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="500" dy="0">sparse system with irregular memory access and global reductions;</tspan>
+        <tspan x="500" dy="28">typically a few percent of Rpeak</tspan>
+      </text>
+      <line x1="40" y1="420" x2="1560" y2="420" stroke="#e8f1ea" stroke-width="1.5" />
+    </g>
+
+    
+    <g id="row-hpl-mxp">
+      <rect x="41" y="421" width="1518" height="60" fill="#fbfdfb" />
+      <text x="60" y="458" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">HPL-MxP</text>
+      <text x="500" y="458" font-family="sans-serif" font-size="24" fill="#303a36">Linpack with mixed-precision tensor arithmetic and FP64 iterative refinement</text>
+      <line x1="40" y1="481" x2="1560" y2="481" stroke="#e8f1ea" stroke-width="1.5" />
+    </g>
+
+    
+    <g id="row-green500">
+      <text x="60" y="515" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Green500</text>
+      <text x="500" y="515" font-family="sans-serif" font-size="24" fill="#303a36">TOP500 re-ranked by GFLOP/s per watt</text>
+      <line x1="40" y1="535" x2="1560" y2="535" stroke="#e8f1ea" stroke-width="1.5" />
+    </g>
+
+    
+    <g id="row-graph500">
+      <rect x="41" y="536" width="1518" height="54" fill="#fbfdfb" />
+      <text x="60" y="570" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Graph500</text>
+      <text x="500" y="570" font-family="sans-serif" font-size="24" fill="#303a36">graph traversal in traversed edges per second</text>
+      <line x1="40" y1="590" x2="1560" y2="590" stroke="#e8f1ea" stroke-width="1.5" />
+    </g>
+
+    
+    <g id="row-io500">
+      <text x="60" y="625" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IO500</text>
+      <text x="500" y="625" font-family="sans-serif" font-size="24" fill="#303a36">parallel storage via IOR bandwidth and mdtest metadata</text>
+      <line x1="40" y1="645" x2="1560" y2="645" stroke="#e8f1ea" stroke-width="1.5" />
+    </g>
+
+    
+    <g id="row-mlperf">
+      <rect x="41" y="646" width="1518" height="50" rx="11" fill="#fbfdfb" />
+      <text x="60" y="679" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">MLPerf Training and Inference</text>
+      <text x="500" y="668" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="500" dy="0">time to train reference models to a target accuracy, or inference</tspan>
+        <tspan x="500" dy="25">throughput and latency under quality limits</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+  <g id="panel-burn-in">
+    <rect x="40" y="725" width="740" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    
+    <g id="icon-burnin" transform="translate(65, 745)">
+      <rect x="8" y="8" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="16" y1="0" x2="16" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="0" x2="28" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="0" x2="40" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="16" y1="48" x2="16" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="48" x2="28" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="40" y1="48" x2="40" y2="56" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="0" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="0" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="0" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="48" y1="40" x2="56" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M28 38 C22 38 21 31 24 27 C25 23 28 18 28 18 C28 18 31 23 32 27 C35 31 34 38 28 38 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    </g>
+    
+    <text x="140" y="785" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Burn-in use</text>
+    <line x1="65" y1="815" x2="755" y2="815" stroke="#e8f1ea" stroke-width="2" />
+    
+    <text x="65" y="852" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">run HPL, watch power and temperature per node,</tspan>
+      <tspan x="65" dy="32">compare efficiency with the vendor expectation;</tspan>
+      <tspan x="65" dy="32">a node that draws less power or runs hotter than</tspan>
+      <tspan x="65" dy="32">peers points to a bad transceiver or throttling</tspan>
+      <tspan x="65" dy="32">cooling loop</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-caveats">
+    <rect x="820" y="725" width="740" height="280" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    
+    
+    <g id="icon-caveats" transform="translate(845, 745)">
+      <path d="M28 4 L52 14 C52 34 42 49 28 56 C14 49 4 34 4 14 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+      <line x1="28" y1="18" x2="28" y2="34" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+      <circle cx="28" cy="42" r="2.5" fill="#db8129" />
+    </g>
+    
+    <text x="920" y="785" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Caveats</text>
+    <line x1="845" y1="815" x2="1535" y2="815" stroke="#fceee0" stroke-width="2" />
+    
+    
+    <circle cx="855" cy="855" r="5" fill="#db8129" />
+    <text x="875" y="862" font-family="sans-serif" font-size="24" fill="#303a36">many large AI clusters never submit to TOP500</text>
+    
+    
+    <circle cx="855" cy="902" r="5" fill="#db8129" />
+    <text x="875" y="909" font-family="sans-serif" font-size="24" fill="#303a36">TOP500 rewards FP64</text>
+    
+    
+    <circle cx="855" cy="948" r="5" fill="#db8129" />
+    <text x="875" y="955" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="875" dy="0">exascale means 10^18 sustained FP64 operations</tspan>
+      <tspan x="875" dy="30">per second on HPL</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-habit-strip">
+    <rect x="40" y="1035" width="1520" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g id="icon-habit" transform="translate(65, 1070)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <polygon points="28,12 34,24 44,28 34,32 28,44 22,32 12,28 22,24" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    </g>
+    
+    
+    <rect x="140" y="1080" width="165" height="36" rx="6" fill="#207448" />
+    <text x="222" y="1106" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Habit strip</text>
+    
+    
+    <text x="330" y="1092" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="330" dy="0">write down the workload a score does not test; if that is your workload,</tspan>
+      <tspan x="330" dy="30">the score does not answer your question</tspan>
+    </text>
+  </g>
+</svg>

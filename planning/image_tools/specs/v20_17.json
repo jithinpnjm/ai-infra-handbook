@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "x17-burst-gpus",
+  "title": "A 3x burst needs three times the GPUs, so the design must queue and shed",
+  "spec": "A horizontal bar chart with three bars, each bar a row of small GPU icons, about 56 px each, with a label and a count. Bar 1 labelled Peak, 300 requests per second times 300 output tokens = 90,000 tokens/s, needs 28 GPUs at a planning rate of 3,217 tokens/s per GPU (0.6 times 5,361). Bar 2 labelled With one spare (N+1): 28 + 1 = 29 GPUs. Bar 3, drawn in orange, labelled 3x burst for 5 minutes: 270,000 / 3,217 = 84 GPUs. A dashed vertical line at the 29 mark labelled what you can add in minutes, with a note that you cannot buy 55 more GPUs in five minutes. Beside the orange bar a short action list of three labels: queue within a bound, shed on purpose, prioritise by traffic class. Formula line at the bottom: GPUs = demand tokens/s divided by per-GPU planning rate, rounded up. Green takeaway bar: Say the 3x burst number aloud and choose shed or buy.",
+  "anchor": "### 2. Model inference serving [report]",
+  "alt": "Peak demand of 90,000 tokens per second needs 28 GPUs, 29 with one spare, and a 3x burst needs 84 GPUs, which cannot be bought in minutes.",
+  "cap": "A burst far above peak cannot be covered by buying GPUs in time, so the serving design must queue, shed and prioritise."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "x17-kv-tier-crossover",
+  "title": "A cache tier pays only when loading a prefix is much faster than recomputing it",
+  "spec": "A horizontal bar chart comparing time in milliseconds for one 2,000-token prefix of 0.295 GB, with three bars sorted from longest to shortest. Bar 1 labelled Recompute prefill at assumed 400 TFLOPS effective: 82 ms, drawn as a grey bar, the longest. Bar 2 labelled Load from NVMe at 7 GB/s: 42 ms, a medium bar with a disk cylinder icon and the note NVMe is only about twice as fast as recomputing, so the slow tier barely pays. Bar 3, drawn in green, labelled Load from host RAM at 128 GB/s times 50 percent: 4.6 ms, with a chip icon and the note RAM clearly pays. A vertical dashed line at 82 ms labelled recompute time. Beside the bars a small fit table with three rows: GPU KV budget 50.6 GB fits 171 prefixes, host RAM 512 GB fits 1,736, NVMe 8 TB fits 27,126. Orange highlight on the NVMe bar as the marginal tier. Green takeaway bar: Justify each cache tier with a load-versus-recompute number.",
+  "anchor": "### 8. A prompt-cache or KV-cache tier [my addition]",
+  "alt": "For a 2,000-token prefix, recomputing takes 82 milliseconds, loading from host RAM takes 4.6 milliseconds, and loading from NVMe takes 42 milliseconds.",
+  "cap": "A cache tier is worth its cost only when loading a cached prefix is much faster than recomputing it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "x17-weights-tree",
+  "title": "Seeding one node per rack turns a 700 second pull into a 163 second tree",
+  "spec": "Left panel: a bar chart of the transfer time in seconds with three bars. Bar 1 labelled Naive, all 100 nodes pull from origin: 700 s, drawn in orange as the tallest bar. Bar 2 labelled Seed one node per rack: 70 s, a short green segment. Bar 3 labelled Rack copy, 4 doubling rounds at 23.3 s each: 93 s, stacked on the seed segment, giving a total labelled Tree total: 163 s. Right panel: a small tree diagram of 10 racks, each rack a group box containing a seeder node box and a few node boxes, with arrows from the origin object store at the top to one seeder per rack, then arrows from each seeder into its rack nodes, labelled round 1 to round 4. A cylinder icon for Object store at 10 GB/s origin. Numbered steps 1 to 3 in green circles: 1 origin seeds one node per rack, 2 racks double copies over the fabric in 4 rounds, 3 local disk to GPU at 7 GB/s takes 10 s. Note: the rack stage is a sum, an upper bound, since it overlaps with seeding. Green takeaway bar: Origin bandwidth is the bottleneck, so fan out inside the fabric and verify every chunk.",
+  "anchor": "### 9. A model weights distribution system for cold start [my addition]",
+  "alt": "Pulling 70 GB of weights to 100 nodes from one origin takes 700 seconds, while seeding one node per rack and copying inside racks takes about 163 seconds.",
+  "cap": "Fanning copies out inside the fabric avoids the origin bandwidth bottleneck, so a rollout does not wait on every node pulling from one place."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "17",
+  "name": "x17-failover-budget",
+  "title": "Cold failover eats most of the 43.2 minute monthly budget, warm failover eats less than a quarter",
+  "spec": "A horizontal stacked-bar comparison with a shared scale from 0 to 43.2 minutes, the monthly error budget, drawn as a long outlined bar on top labelled Error budget 43.2 min. Bar 1 below, labelled Cold plan outage: detect 5 min, decide 5 min, create 15 min, total 25 min, drawn as three adjacent blocks in orange, filling 57.9 percent of the budget bar. Bar 2 below, labelled Warm plan outage: detect 5 min and decide 5 min, total 10 min, a single green block filling 23.1 percent. Right side, cost panel with two rows: Active-active second region, 16 GPUs x 730 h x $3 = $35,040 per month; Warm standby at 25 percent, 4 GPUs x 730 h x $3 = $8,760 per month. A small note under the cost panel: the $3 per GPU-hour is a placeholder price. A lock or shield icon beside the title Failover is customer-built. Numbered steps 1 to 3 on the bars: 1 detect, 2 decide, 3 create. Green takeaway bar: Price warm against cold in both minutes of outage and dollars per month.",
+  "anchor": "### 6. Multi-region failover for dedicated endpoints [my addition]",
+  "alt": "A cold failover outage of 25 minutes uses 57.9 percent of a 43.2 minute monthly budget, while a warm failover of 10 minutes uses 23.1 percent.",
+  "cap": "Warm standby costs a quarter of active-active and keeps the outage inside a much smaller share of the monthly error budget than a cold rebuild."
+ }
+]

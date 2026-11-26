@@ -1,0 +1,288 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Scenario B: "A 64-node training job is frozen at a step"</title>
+  <desc>Triage flowchart for frozen distributed training jobs, comparing Slurm and NCCL RAS diagnostics with parallel hardware and fabric sweeps before recovery.</desc>
+
+  <defs>
+    
+    <marker id="arrow" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="12" refY="7" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 2 L 12 7 L 2 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#207448">Scenario B: "A 64-node training job is frozen at a step"</text>
+
+  
+  
+  
+  
+  <rect x="40" y="270" width="740" height="735" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.6" />
+  
+  <rect x="820" y="270" width="740" height="735" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.6" />
+
+  
+  
+  
+  <g transform="translate(40, 80)">
+    <rect x="0" y="0" width="700" height="88" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(18, 16)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="3" />
+      <rect x="4" y="30" width="48" height="18" rx="3" />
+      <circle cx="12" cy="15" r="2" fill="#207448" />
+      <circle cx="20" cy="15" r="2" fill="#207448" />
+      <circle cx="12" cy="39" r="2" fill="#207448" />
+      <circle cx="20" cy="39" r="2" fill="#207448" />
+      <line x1="36" y1="15" x2="44" y2="15" />
+      <line x1="36" y1="39" x2="44" y2="39" />
+    </g>
+    
+    <text x="88" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">64-node (512-GPU) job frozen</text>
+    <text x="88" y="70" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">squeue=RUNNING, GPU util=0%</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(860, 80)">
+    <rect x="0" y="0" width="700" height="88" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="46" cy="44" r="24" fill="#db8129" />
+    <text x="46" y="53" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <text x="88" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">1. Preserve evidence first</text>
+    <text x="88" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Do NOT scancel before capturing state</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(110, 285)">
+    <rect x="0" y="0" width="650" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="44" cy="46" r="24" fill="#207448" />
+    <text x="44" y="55" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <text x="84" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">2. Check Slurm &amp; process liveness</text>
+    <text x="84" y="72" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">squeue, scontrol, srun ps, ulimit -l</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(110, 435)">
+    <rect x="0" y="0" width="650" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(16, 18)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 46 L 6 46 Z" />
+      <line x1="28" y1="20" x2="28" y2="32" stroke-width="3.5" />
+      <circle cx="28" cy="40" r="2" fill="#207448" />
+    </g>
+    
+    <text x="84" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Identify dead node/rank.</text>
+    <text x="84" y="72" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">Check slurmd.log &amp; OOM killer</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(110, 585)">
+    <rect x="0" y="0" width="650" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="44" cy="48" r="24" fill="#207448" />
+    <text x="44" y="57" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <text x="84" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">3. Query NCCL 2.24+ RAS twice (5s apart)</text>
+    <text x="84" y="72" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">ncclras client on active job</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(110, 735)">
+    <rect x="0" y="0" width="650" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(16, 18)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="28 14 28 28 38 28" />
+    </g>
+    
+    <text x="84" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Ranks with lower op count are behind.</text>
+    <text x="84" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Inspect those specific hosts</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(110, 885)">
+    <rect x="0" y="0" width="650" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(16, 18)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="22" width="32" height="26" rx="4" />
+      <path d="M 18 22 L 18 14 A 10 10 0 0 1 38 14 L 38 22" />
+      <circle cx="28" cy="35" r="3" fill="#207448" />
+    </g>
+    
+    <text x="84" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Named rank process is wedged</text>
+    <text x="84" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">in kernel/driver call (stack trace)</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(850, 285)">
+    <rect x="0" y="0" width="690" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="44" cy="46" r="24" fill="#207448" />
+    <text x="44" y="55" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <text x="84" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">4. Parallel hardware &amp; fabric sweep</text>
+    <text x="84" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">across all 64 nodes</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(890, 435)">
+    <rect x="0" y="0" width="650" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(16, 18)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <rect x="20" y="20" width="16" height="16" />
+      <line x1="20" y1="6" x2="20" y2="12" />
+      <line x1="28" y1="6" x2="28" y2="12" />
+      <line x1="36" y1="6" x2="36" y2="12" />
+      <line x1="20" y1="44" x2="20" y2="50" />
+      <line x1="28" y1="44" x2="28" y2="50" />
+      <line x1="36" y1="44" x2="36" y2="50" />
+      <line x1="6" y1="20" x2="12" y2="20" />
+      <line x1="6" y1="28" x2="12" y2="28" />
+      <line x1="6" y1="36" x2="12" y2="36" />
+      <line x1="44" y1="20" x2="50" y2="20" />
+      <line x1="44" y1="28" x2="50" y2="28" />
+      <line x1="44" y1="36" x2="50" y2="36" />
+    </g>
+    
+    <text x="84" y="38" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">GPU &amp; PCIe: dmesg NVRM: Xid / SXid,</text>
+    <text x="84" y="72" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">nvidia-smi ECC &amp; thermal slowdown</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(890, 585)">
+    <rect x="0" y="0" width="650" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(16, 22)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="36" rx="4" />
+      <circle cx="16" cy="28" r="4" fill="#207448" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+      <circle cx="40" cy="28" r="4" fill="#207448" />
+      <line x1="16" y1="18" x2="16" y2="20" />
+      <line x1="28" y1="18" x2="28" y2="20" />
+      <line x1="40" y1="18" x2="40" y2="20" />
+    </g>
+    
+    <text x="84" y="35" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">RDMA Fabric: ibstat port state/rate,</text>
+    <text x="84" y="65" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36"><tspan x="84" dy="0">sminfo SM alive,</tspan><tspan x="300" dy="0">perfquery delta (2 reads)</tspan></text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(890, 745)">
+    <rect x="0" y="0" width="650" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(16, 18)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="20" ry="6" />
+      <path d="M 8 14 L 8 28 A 20 6 0 0 0 48 28 L 48 14" />
+      <path d="M 8 28 L 8 42 A 20 6 0 0 0 48 42 L 48 28" />
+    </g>
+    
+    <text x="84" y="38" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">Storage: df/mount hang on /scratch,</text>
+    <text x="84" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">stuck rank-0 checkpoint write</text>
+  </g>
+
+  
+  
+  
+  <g transform="translate(40, 1045)">
+    <rect x="0" y="0" width="1520" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <circle cx="50" cy="60" r="26" fill="#207448" />
+    <text x="50" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(94, 32)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <polyline points="18 28 25 36 38 20" />
+    </g>
+    
+    <text x="175" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">5. Remediate &amp; recover</text>
+    <text x="175" y="76" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Drain bad node with ticket, resume from</text>
+    <text x="175" y="106" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">last verified atomic checkpoint</text>
+  </g>
+
+  
+  
+  
+
+  
+  <path d="M 740 124 L 860 124" stroke="#db8129" stroke-width="3.5" fill="none" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 1000 168 L 1000 215 L 435 215 L 435 285" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1380 168 L 1380 215 L 1195 215 L 1195 285" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  
+  <path d="M 230 377 L 230 435" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+  <rect x="245" y="390" width="455" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="255" y="414" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Node DOWN/DRAIN or rank exited</text>
+
+  
+  <path d="M 110 331 L 70 331 L 70 632 L 110 632" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+  <g transform="translate(78, 480) rotate(-90)">
+    <rect x="-120" y="0" width="240" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="23" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">All 512 ranks alive</text>
+  </g>
+
+  
+  <path d="M 230 680 L 230 735" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+  <rect x="245" y="692" width="290" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="255" y="716" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">MISMATCH row static</text>
+
+  
+  <path d="M 110 660 L 85 660 L 85 931 L 110 931" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+  <g transform="translate(93, 805) rotate(-90)">
+    <rect x="-105" y="0" width="210" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="0" y="23" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">INCOMPLETE row</text>
+  </g>
+
+  
+  <path d="M 960 377 L 960 410 L 860 410 L 860 791" stroke="#207448" stroke-width="3" fill="none" />
+  
+  <path d="M 860 481 L 890 481" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+  
+  <path d="M 860 635 L 890 635" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+  
+  <path d="M 860 791 L 890 791" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+
+  
+  
+  <path d="M 435 977 L 435 1045" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+  <path d="M 760 481 L 775 481 L 775 1015 L 435 1015" stroke="#207448" stroke-width="2.5" fill="none" />
+  <path d="M 760 781 L 775 781" stroke="#207448" stroke-width="2.5" fill="none" />
+
+  
+  <path d="M 1215 837 L 1215 1045" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)" />
+  <path d="M 1540 481 L 1555 481 L 1555 930 L 1215 930" stroke="#207448" stroke-width="2.5" fill="none" />
+  <path d="M 1540 635 L 1555 635" stroke="#207448" stroke-width="2.5" fill="none" />
+
+</svg>

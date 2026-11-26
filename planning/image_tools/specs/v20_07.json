@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07",
+  "name": "x07-uniq-needs-sort",
+  "title": "uniq only merges neighbours, so sort first",
+  "spec": "Two rows side by side, each a vertical list of five small boxes that each hold one word, with the words in monospace. Left row titled unsorted input, with boxes in this order top to bottom: 203.0.113.7, 198.51.100.4, 203.0.113.7, 198.51.100.4, 203.0.113.7. A monospace command strip under the left row: awk print first field, then uniq -c. Below the left row a result box: uniq -c output, three lines, 1 203.0.113.7, 1 198.51.100.4, 1 203.0.113.7, then 1 198.51.100.4 and 1 203.0.113.7 are shown with an orange cross mark titled wrong, the same address counted in several places. Right row titled sorted input, with the same five words now grouped: 203.0.113.7 three times then 198.51.100.4 twice. Monospace command strip under the right row: sort, then uniq -c, then sort -k2,2nr. Result box: 3 203.0.113.7 and 2 198.51.100.4 with a green check mark titled right. Use a bracket or small arrow between neighbouring equal boxes to show uniq only joins touching lines. Green takeaway bar: uniq only merges lines that touch, so sort before uniq. Monospace for uniq -c, sort, sort -k2,2nr, and the IP addresses.",
+  "anchor": "### 2. The traps inside field splitting",
+  "alt": "Without a sort, uniq counts the same address in several separate runs, and sorting first gives one correct count per address.",
+  "cap": "uniq only collapses neighbouring equal lines, so the input has to be sorted before uniq -c gives a true count."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07",
+  "name": "x07-percentile-rank",
+  "title": "Nearest-rank percentile: the p95 is the 3023rd of 3181 sorted values",
+  "spec": "A horizontal sorted scale drawn as a long bar from left to right, labelled sorted ascending, fastest on the left and slowest on the right. Mark a dense green block covering most of the bar labelled the bulk of requests. Three markers above the bar: at about 50 percent position labelled p50, value 1.152 s; at about 95 percent position, labelled p95, rank 3023 of 3181, value 2.857 s, with an orange marker; at the far right near 100 percent a small tail block labelled the top 1 percent with p99, value 29.176 s. A thin grey dashed line across the whole bar labelled mean 1.606 s, drawn low on the scale, noting it sits in the bulk and hides the tail. Below the scale, a formula box in monospace: rank = ceil(p / 100 times N), with N = 3181 and p95 example ceil(3022.95) = 3023. A small note with the awk trick in monospace: add 0.999999 then int. Steps numbered 1 to 3 in green circles along the bottom: 1 sort the values, 2 count N, 3 take the value at the rank. Title: Nearest rank: no averaging, no guessing. Green takeaway bar: The mean hides the tail; the percentile shows where the slow requests start.",
+  "anchor": "### 4. Percentiles by hand",
+  "alt": "Nearest-rank percentiles on sorted request times: p50, p95 and p99 are read from fixed ranks, and the mean sits in the bulk.",
+  "cap": "A nearest-rank percentile reads one sorted position, so it shows the slow tail that a mean would hide."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07",
+  "name": "x07-requires-wants-failure",
+  "title": "Requires spreads a failure, Wants does not",
+  "spec": "Two side-by-side panels, each showing two unit boxes: a dependent unit labelled web.service at the top and a dependency labelled database.service below it, connected by a vertical arrow pointing from web to database. Left panel titled Requires: the arrow is solid and labelled Requires. The database box is shown with a red cross for failed. A cascade arrow from database to web labelled stop, and the web box turns to grey labelled also stopped. Right panel titled Wants: the arrow is dashed and labelled Wants. The database box is red and failed, but the web box stays green labelled still running, with a small warning tag labelled may fail later when it cannot reach the database. Under both panels, a separate timing strip labelled Order, not dependency: two bars Start A and Start B side by side with the note: without an explicit ordering directive, both start at the same time. Monospace for web.service, database.service, Requires, Wants. Orange outline on the Requires cascade as the trap. Numbered steps 1 to 2 at the bottom: 1 ask what happens when the other unit fails, 2 check Order separately from the dependency. Green takeaway bar: Requires spreads a failure to the dependent unit; Wants leaves the failure where it started.",
+  "anchor": "### 5. Reading journald and systemd units",
+  "alt": "A strict Requires dependency stops the dependent unit when its dependency fails, while a Wants dependency leaves the dependent unit running.",
+  "cap": "Requires makes a dependent unit stop when its dependency fails, while Wants only asks for activation and leaves the failure where it started."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07",
+  "name": "x07-logrotate-old-handle",
+  "title": "After rotation the service keeps writing to the renamed file",
+  "spec": "A left-to-right sequence of four numbered steps (green circles r=24), each a card with a small icon and a monospace label. Step 1, icon of a log file: app.log is the current log with a service writer attached by an arrow. Step 2, icon of a rename arrow: logrotate renames app.log to app.log.1. Step 3, icon of a new blank page: logrotate creates a new empty app.log. Step 4, icon of a writer with a handle: the service still holds the handle, so its next write lands in app.log.1 and app.log stays empty. Below step 4, two file cards side by side: app.log with a size of 0 lines, grey and not growing, and app.log.1 with a growing count, orange outline. Under the cards, a two-row remedy strip: row 1 monospace postrotate with the words tell the service to reopen its log; row 2 monospace copytruncate with the words copy then truncate in place, small risk of losing lines in the gap. Monospace for app.log, app.log.1, logrotate, postrotate, copytruncate. Title: Rotation renames the file, but the open handle still points at it. Green takeaway bar: When a log stops growing, check whether the writer reopens the file before blaming the schedule.",
+  "anchor": "### 7. cron and logrotate gotchas",
+  "alt": "Log rotation renames the file, so a service that never reopens its log keeps writing to the renamed file while the new file stays empty.",
+  "cap": "A service that keeps its open handle after rotation writes into the renamed file, so the new log stops growing."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07",
+  "name": "x07-zombie-parent-tree",
+  "title": "A zombie is a finished child waiting on its parent: fix the parent",
+  "spec": "A small process tree drawn top-down. At the top, a parent box labelled PID 902 with a warning icon and the note failed to reap its children. Under it, three child boxes in a row, each labelled defunct with the monospace state Z, drawn with dashed outlines to show they are already dead and hold only a slot. Beside the parent box, a second box labelled PID 1 adopts orphans, shown as an arrow from the parent that would reap them only if the parent stops. A bracket beneath the three children with a count of zombies 3. A separate small box to the right with a crossed-out action: kill -9 on a zombie, with the note does nothing, it is already dead. Monospace for PID 902, Z, defunct, kill -9, ps -eo pid,ppid,stat,comm. A numbered two-step strip at bottom: 1 match the STAT column for Z, 2 fix or stop the parent, not the zombie. Orange outline on the parent box as the thing to fix. Green takeaway bar: Fix the parent: a zombie cannot be killed because it is already dead.",
+  "anchor": "### Task 7. Zombies and their parents (fixture `ps.txt`)",
+  "alt": "Zombie children of one parent process, which must be fixed or stopped because a zombie cannot be killed.",
+  "cap": "Zombies are finished children that the parent has not collected, so the fix is in the parent and not in the zombie."
+ }
+]

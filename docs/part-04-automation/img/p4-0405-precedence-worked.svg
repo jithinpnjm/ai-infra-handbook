@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which driver branch wins: a worked run through the stack</title>
+  <desc>A worked walkthrough of Ansible variable precedence comparing stacked sheets across role defaults, group_vars, host_vars, and extra vars.</desc>
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  
+  <text x="800" y="88" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Which driver branch wins: </tspan>
+    <tspan x="800" dy="52">a worked run through the stack</tspan>
+  </text>
+  
+  <g id="panel-analogy">
+    <rect x="40" y="188" width="1520" height="98" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(68, 209)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="14" width="36" height="38" rx="4" fill="#ffffff" stroke-dasharray="4,4" />
+      <rect x="16" y="4" width="36" height="38" rx="4" fill="#e8f1ea" />
+      <line x1="22" y1="14" x2="44" y2="14" />
+      <line x1="22" y1="22" x2="38" y2="22" />
+    </g>
+    <text x="145" y="230" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">transparent sheets: where the top sheet has writing you read it, </tspan>
+      <tspan x="145" dy="32">where it is blank the sheet below shows through</tspan>
+    </text>
+  </g>
+  
+  <g id="scenario-1">
+    <rect x="40" y="326" width="740" height="490" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="65" y="346" width="690" height="88" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2.5" stroke-dasharray="8,6" />
+    <g transform="translate(85, 362)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="4" />
+      <line x1="14" y1="20" x2="26" y2="20" />
+      <circle cx="38" cy="20" r="2" fill="#207448" />
+      <circle cx="38" cy="36" r="2" fill="#207448" />
+    </g>
+    <text x="160" y="386" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0">a host_vars file for one node </tspan>
+      <tspan x="160" dy="30">sets nothing</tspan>
+    </text>
+    
+    <rect x="65" y="446" width="690" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(85, 458)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <line x1="18" y1="3" x2="18" y2="10" /><line x1="28" y1="3" x2="28" y2="10" /><line x1="38" y1="3" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="53" /><line x1="28" y1="46" x2="28" y2="53" /><line x1="38" y1="46" x2="38" y2="53" />
+      <line x1="3" y1="18" x2="10" y2="18" /><line x1="3" y1="28" x2="10" y2="28" /><line x1="3" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="53" y2="18" /><line x1="46" y1="28" x2="53" y2="28" /><line x1="46" y1="38" x2="53" y2="38" />
+      <rect x="20" y="20" width="16" height="16" rx="2" fill="#207448" />
+    </g>
+    <text x="160" y="493" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">gpu_h100 group sets 550</text>
+    
+    <rect x="65" y="538" width="690" height="88" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(85, 554)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="14" width="40" height="34" rx="4" />
+      <path d="M 8 20 L 22 14 L 32 14 L 38 20" />
+      <line x1="16" y1="28" x2="40" y2="28" />
+      <line x1="16" y1="36" x2="32" y2="36" />
+    </g>
+    <text x="160" y="578" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0">role default sets an </tspan>
+      <tspan x="160" dy="30">older driver branch</tspan>
+    </text>
+    
+    <rect x="65" y="646" width="690" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(85, 690)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" fill="#ffffff" />
+      <polyline points="18,28 25,36 38,20" />
+    </g>
+    <text x="160" y="690" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="160" dy="0">that node gets 550, </tspan>
+      <tspan x="160" dy="32">because the group layer </tspan>
+      <tspan x="160" dy="32">sits above the role default</tspan>
+    </text>
+  </g>
+  
+  <g id="scenario-2">
+    <rect x="820" y="326" width="740" height="490" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="845" y="346" width="690" height="155" rx="12" fill="#fff7f0" stroke="#db8129" stroke-width="3.5" />
+    <g transform="translate(865, 395)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="6" fill="#ffffff" />
+      <polyline points="16,22 24,28 16,34" />
+      <line x1="28" y1="36" x2="40" y2="36" />
+    </g>
+    <text x="940" y="393" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="940" dy="0">extra vars on the command line: </tspan>
+      <tspan x="940" dy="35" font-family="monospace">-e nvidia_driver_branch</tspan>
+      <tspan x="940" dy="35"> with a newer value</tspan>
+    </text>
+    
+    <g id="scenario-2-lower-stack">
+      <rect x="845" y="521" width="690" height="28" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,4" opacity="0.8" />
+      <rect x="845" y="561" width="690" height="28" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" opacity="0.6" />
+      <rect x="845" y="601" width="690" height="28" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" opacity="0.5" />
+    </g>
+    
+    <rect x="845" y="646" width="690" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(865, 690)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="12" width="22" height="16" rx="2" fill="#ffffff" />
+      <rect x="18" y="24" width="22" height="16" rx="2" fill="#ffffff" />
+      <circle cx="44" cy="18" r="8" fill="#207448" />
+      <polyline points="40,18 43,21 48,15" stroke="#ffffff" stroke-width="2.5" />
+    </g>
+    <text x="940" y="690" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="940" dy="0">every host gets that newer value, </tspan>
+      <tspan x="940" dy="32">because extra vars sit </tspan>
+      <tspan x="940" dy="32">at the top of the stack</tspan>
+    </text>
+  </g>
+  
+  <g id="panel-debug">
+    <rect x="40" y="856" width="1520" height="165" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(68, 910)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16" fill="#ffffff" />
+      <line x1="36" y1="36" x2="48" y2="48" stroke-width="5" />
+      <line x1="16" y1="24" x2="32" y2="24" />
+      <line x1="24" y1="16" x2="24" y2="32" />
+    </g>
+    <text x="145" y="898" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">when a variable has the wrong value, check each layer in order before editing anything: </tspan>
+      <tspan x="145" dy="32">work from the bottom upward, find the lowest layer holding the value you expected, </tspan>
+      <tspan x="145" dy="32">then look at each layer above it until you find the one that replaced it; </tspan>
+      <tspan x="145" dy="32">that is the layer to change, editing any other layer changes nothing</tspan>
+    </text>
+  </g>
+  
+  <g id="panel-takeaway">
+    <rect x="40" y="1061" width="1520" height="75" rx="12" fill="#207448" />
+    <text x="800" y="1108" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Find the layer that replaced it</text>
+  </g>
+</svg>

@@ -30,6 +30,10 @@ Picture a dashboard review where every panel on the wall hides one trap in its q
 
 ### 1. Counters, resets and what rate really computes
 
+![Chart of a counter that resets to zero, with a subtraction over ten minutes giving minus ten and increase giving 88.9](./img/x25-counter-reset-compare.svg)
+
+*Figure 20.25.1. Counter reset: subtracting two counter values gives a negative number after a restart, while increase repairs the reset and reports the real work done.*
+
 Picture a deploy that goes out in the middle of the afternoon. The gateway pods restart, and the request counter on each one falls back to zero. A dashboard that subtracts this morning's counter from this evening's counter now shows a negative number of requests, and no user caused that.
 
 A counter only goes up, except when a process restarts and it falls back to zero. Dashboards that subtract two counter values break at that moment, because the subtraction has no idea a restart happened. The Prometheus docs say `rate` adjusts automatically for breaks in monotonicity, such as counter resets after target restarts. Monotonicity is the plain word for only going up. So the function spots the drop and repairs it, and you do not have to write that repair yourself.
@@ -41,6 +45,10 @@ The exercise test in this chapter shows both sides. A counter that climbs by ten
 **Never subtract counters yourself. Use `rate` or `increase`, and never compare the result with a whole number.**
 
 ### 2. rate versus irate, and the range-selector trap
+
+![A scrape timeline showing a 30 second range holding one sample and a 2 minute range holding four, with the irate trap.](./img/p3-2025-range-and-irate.svg)
+
+*Figure 20.25.2. Use a range of at least four scrape intervals and keep irate for graphs.*
 
 Imagine you have just added a panel for the gateway, and it shows nothing at all while traffic is flowing. You write `rate(gateway_requests_total[30s])` and the panel is empty. Nothing is broken in the service. The range is too short.
 
@@ -54,6 +62,14 @@ Two samples is the bare minimum, and it is still too thin for a stable answer. G
 
 ### 3. Aggregate after rate, never before
 
+![A wrong averaged ratio of 0.25 against the correct summed ratio of 0.002 with the recording rules that build it.](./img/p3-2025-ratio-trap.svg)
+
+*Figure 20.25.3. Aggregate numerator and denominator separately, then divide.*
+
+![Summing two pods' counters before the rate hides a restart, while taking the rate per series first keeps the reset visible and gives the fleet rate.](./img/p2-2025-sum-before-rate.svg)
+
+*Figure 20.25.4. Summing counters before taking the rate hides a pod restart, so the rate is taken per series first and then summed by the labels kept.*
+
 Your gateway runs as two pods behind one service, and a manager asks for the total request rate across the fleet. The quick answer feels natural. Two pods report a request counter. One restarts. You want the fleet rate. The tempting query sums the counters first and then asks for the rate of the sum.
 
 Summing first throws away the reset. When pod A falls from 100 to 0 while pod B climbs by 100, the sum stays flat. In the sum, the drop in A and the climb in B cancel each other out, so the reset is invisible. The work pod A did before the restart is lost from the total. The docs say to take a `rate` first and then aggregate, so each pod's reset is repaired before anything is added together. In the exercise test the sum-first form reports 1.38 per second and the correct form reports 1.79.
@@ -64,22 +80,23 @@ The same order applies to ratios. The Prometheus recording-rule guide says to ag
 
 ### 4. Histograms: keep le, then take the quantile once
 
+![A busy pod and an idle pod whose averaged p99 of 1.47 seconds differs from the true combined p99 of 0.99 seconds.](./img/p3-2025-average-p99.svg)
+
+*Figure 20.25.5. Merge buckets across pods and take the quantile once.*
+
+![A cumulative latency histogram where summing without the le label breaks the p99, and the right query keeps le in the by clause before taking the quantile once.](./img/p2-2025-le-buckets.svg)
+
+*Figure 20.25.6. A latency histogram stores cumulative buckets by le, and the p99 is correct only when le stays in the by clause before histogram_quantile runs.*
+
 Your p99 panel looks simple, but underneath it sits a set of counters called buckets. Think of a histogram as a row of boxes. Each box has an upper bound, and it counts every request that finished at or under that bound. The boxes are cumulative, so the box for a larger bound also holds everything the smaller boxes hold.
 
 A latency histogram is a set of cumulative bucket counters, one per upper bound, with a label called `le`. The label stands for less than or equal to. The function `histogram_quantile` reads those buckets and interpolates inside the bucket that holds your quantile. Interpolate means estimate a value between the two bounds of that bucket. The function needs the `le` label to do that, because without it the function cannot tell one bucket from another.
 
 Here is the trap in practice. A dashboard author wants a p99 for each model, so they write a sum that keeps the model label and drops everything else. The docs say that when you aggregate classic histograms, `le` has to be in the `by` clause. Write `sum by (le)` or `sum by (model, le)`. If you write plain `sum`, the label is gone and the function returns nothing. If you write `sum by (pod)`, you get nothing too, because `le` is dropped there as well. The exercise test confirms both return an empty result.
 
-```mermaid
-flowchart LR
-  P1["Pod A buckets"] --> R1["rate per series"]
-  P2["Pod B buckets"] --> R2["rate per series"]
-  R1 --> S["sum by (model, le)"]
-  R2 --> S
-  S --> H["histogram_quantile(0.99)"]
-  H --> A["alert or panel"]
-  P1 -. "p99 per pod, then avg" .-> X["wrong answer"]
-```
+![Histograms: keep le, then take the quantile once](./img/m20-25-1.svg)
+
+*Figure 20.25.7. Histograms: keep le, then take the quantile once, as a diagram.*
 
 The next trap is averaging percentiles, and it is the one interviewers like best. A percentile of a pod says nothing about how many requests that pod served. Picture a busy pod next to a nearly idle one. In the test, pod A serves 1,000 requests per step and has a p99 of 0.95 seconds. Pod B serves ten and has a p99 of 1.99 seconds. The average of the two is 1.47. The p99 of all the requests together is 0.99 seconds. The busy pod dominates the truth, because most of the users sat on it. The average gives both pods equal weight, so a nearly idle pod drags the number up by half.
 
@@ -88,6 +105,10 @@ There is also a limit that no query fixes. The docs say the highest bucket must 
 **Sum buckets by le across everything you want in the answer, take the quantile once, and never average quantiles.**
 
 ### 5. Gauges, saturation and dashboards that tell the truth
+
+![Three pods where the average cache usage of 0.53 hides one pod at 1, with USE versus RED and gauge function rules.](./img/p3-2025-saturation-panels.svg)
+
+*Figure 20.25.8. Show the worst pod and put saturation beside every utilization panel.*
 
 A panel shows average KV cache usage at 53 percent. It looks comfortable. One of three pods sits at 100 percent and is rejecting work. The average hides it, and the maximum shows it.
 
@@ -104,6 +125,10 @@ Grafana's best-practice page names two methods. USE suits hardware resources, su
 **Every utilization panel needs a saturation panel beside it, and fleet panels should show the worst pod.**
 
 ### 6. Staleness, absent and silent alerts
+
+![Three alert checks side by side: up equals zero for unscrapable targets, a count for vanished series, and absent for a total blackout](./img/x25-alert-blind-spots.svg)
+
+*Figure 20.25.9. Silent alerts: pair a no-data risk with a count or an absent check, because absent alone misses the loss of one pod out of several.*
 
 Imagine a Tuesday night when one exporter stops reporting. The error panel goes blank, nobody is paged, and in the morning the team finds the errors were climbing the whole time. An alert never fires because the metric stopped existing. This is the quietest failure in monitoring, and it deserves more attention than the loud ones.
 
@@ -127,6 +152,10 @@ The safe habit is to know which side is many before you write the join. The side
 
 ### 8. Alert rules: for, flapping and keep_firing_for
 
+![A queue depth timeline with two spikes and a plateau and three alert variants showing when each one fires.](./img/p3-2025-for-keepfiring.svg)
+
+*Figure 20.25.10. Use for to ignore blips and keep_firing_for to stop flapping.*
+
 Picture a queue that spikes for a few seconds every time a batch of requests lands. A person who gets paged for every spike will stop trusting the pager. An alert without a `for` clause becomes active on the first evaluation, as the docs say, so one noisy sample pages a person. A `for` clause holds the alert in the pending state until it has been active for the whole duration.
 
 The opposite problem is flapping. When a metric hovers around the threshold, the alert resolves and fires again, and every flip sends a notification. The `keep_firing_for` clause tells Prometheus to keep the alert firing for a stated time after the condition was last met. The docs say it prevents flapping and false resolutions caused by data gaps.
@@ -138,6 +167,10 @@ A burn-rate alert from chapter 20.19 can skip `for` because its two windows alre
 **Use for to ignore blips and keep_firing_for to stop flapping, and say why when you leave either out.**
 
 ### 9. Alertmanager: grouping, inhibition and routing
+
+![Alertmanager flow: alerts grouped by cluster and model, routed by severity to a pager or a ticket queue, with inhibition rules that silence symptoms](./img/x25-alertmanager-routing.svg)
+
+*Figure 20.25.11. Alertmanager routing: group by cluster and model, send pages and tickets to separate receivers, and let a cause alert or a page silence its symptoms.*
 
 The pager rings forty times in a minute because one pod failure trips twenty alerts. The fix is not in Prometheus. It is in Alertmanager, the component that receives alerts from Prometheus and decides who hears about them and when.
 
@@ -206,6 +239,10 @@ exit $fail
 **Group by what a person acts on, inhibit symptoms when a cause is firing, and keep source and target matchers disjoint.**
 
 ### 10. Recording rules and naming
+
+![Three layers of recording rules from rates through ratios and quantiles to alerts, with the naming convention.](./img/p3-2025-rule-layers.svg)
+
+*Figure 20.25.12. Record the expensive expression once and build each layer on a clean input.*
 
 A dashboard takes eight seconds to load because every refresh runs a heavy `histogram_quantile` over a week of data. Nobody can wait eight seconds for a p99 during an incident. The fix is to precompute the expensive expression once, on a schedule, and let the dashboard read the result. That is what a recording rule does.
 
@@ -304,19 +341,19 @@ Keep user, request and prompt identifiers out of metric labels. They belong in l
 
 ### 13. Tracing a streaming request
 
+![The four fields of a traceparent header and a table of gateway, router and engine spans for a streaming request.](./img/p3-2025-traceparent-anatomy.svg)
+
+*Figure 20.25.13. One span per hop, with the gateway span covering the whole stream.*
+
 A user says the answer started late. The gateway shows a healthy p50 and the engine shows a healthy queue. Both dashboards look fine, so neither one explains the complaint. You need to see one slow request end to end, from the moment it entered the gateway to the moment its last token left.
 
 The OpenTelemetry docs define a span as a unit of work or operation. Context propagation, in their words, is the core concept that enables distributed tracing. The W3C Trace Context specification defines the `traceparent` header as version, trace ID, parent ID and trace flags, with fields of 2, 32, 16 and 2 hex characters. The least significant bit of the flags is the sampled bit. Each service reads the header, creates a child span, and passes a new header to the next hop. The header is the thread that ties the spans of one request together.
 
 A streaming request is awkward because the HTTP status is sent early and the work continues for seconds. The 200 goes out before the first token, and the tokens keep coming after it. A design that I think works, and that Nebius has not published, is below. Treat it as my reasoning, except where the table says what vLLM v0.32.0 does.
 
-```mermaid
-flowchart LR
-  C["Client"] -->|"traceparent"| G["Gateway span<br/>whole stream"]
-  G -->|"traceparent"| R["Router span<br/>pick replica"]
-  R -->|"traceparent"| E["Engine span<br/>queue, prefill, decode"]
-  G -. "event: first_token" .-> G
-```
+![Tracing a streaming request](./img/m20-25-2.svg)
+
+*Figure 20.25.14. Tracing a streaming request, as a diagram.*
 
 | Span | Kind | Lives until | Attributes and events |
 |---|---|---|---|
@@ -331,6 +368,10 @@ vLLM documents tracing through the flags `--otlp-traces-endpoint` and `--collect
 **One span per hop, the gateway span covers the whole stream, and failure after the 200 must set span status.**
 
 ### 14. Sampling and joining traces to metrics
+
+![Five steps from a red bar on a metrics panel through an exemplar and a trace to the matching log lines using one trace ID](./img/x25-exemplar-join-path.svg)
+
+*Figure 20.25.15. Metrics to traces: an exemplar on a slow bucket links the panel to one trace, and the same trace ID finds the matching log lines.*
 
 At high volume you cannot keep every trace. Storing each one costs money and attention, and most of them show a request that went fine. The question is which traces to keep. The OTel docs split sampling into two approaches, and the choice between them is a trade-off that you need to explain in your own words.
 
@@ -382,6 +423,10 @@ Run the linter on the old query. It reports P003 for averaging a quantile. The a
 
 ### Scenario 2: The silent outage
 
+![Two quiet alerts during a pod loss and the up, count and absent checks that would have caught the shrinking fleet.](./img/p3-2025-silent-outage-count.svg)
+
+*Figure 20.25.16. Count what should be there, because a vanished series returns nothing rather than zero.*
+
 One of four vLLM pods crashes at night. The error ratio alert stays quiet because requests moved to other pods. The `absent` alert is quiet too.
 
 Notice that both alerts are quiet for good reasons. Nothing is wrong with the traffic that is still arriving. The failure is a shrinking fleet, and neither alert was written to notice a shrinking fleet.
@@ -415,6 +460,10 @@ All steps run on a laptop with `promtool`, `amtool` and Python. No Docker is nee
 8. Break a join on purpose. Build two vLLM series for one pod and one `kube_pod_info` series. Query them without `group_left`. Expect `promtool` to print the many-to-one error quoted in idea 7.
 
 ## The 15 exercises: what is wrong with this query
+
+![A table of five query mistakes with their errors and fixes, covering absent, joins, labels, extrapolation and offset.](./img/p3-2025-query-mistakes-alerts.svg)
+
+*Figure 20.25.17. A query that parses can still mean something other than what you intended.*
 
 Picture a pull request that changes one line of a dashboard query and claims the panel is now correct. Each exercise below is that kind of change, with the bad query, the reason it fails and the fix. The status line says how it was checked. "Test" means `promtool test rules` passed with the bad and fixed query asserted. "Lint" means the linter flags the bad one.
 

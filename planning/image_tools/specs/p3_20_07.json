@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07",
+  "name": "p3-2007-pipeline-stages",
+  "title": "Top five clients: what each pipeline stage does to the data",
+  "spec": "A horizontal five-stage pipeline of boxes joined by arrows with a small data sample under each. Stage 1 monospace 'awk print $1' with note 'keep the client address field'. Stage 2 'sort' with note 'equal addresses become neighbours'. Stage 3 'uniq -c' with note 'count each run of equal lines'. Stage 4 'awk print $2, $1' with note 'put address first, count second'. Stage 5 'sort -k2,2nr -k1,1' and 'awk NR<=5' with note 'rank by count, address breaks ties; awk instead of head so pipefail never reports exit 141'. Below the stages, the output table in monospace: '203.0.113.77 362', '203.0.113.18 68', '203.0.113.17 62', '203.0.113.24 62', '198.51.100.22 60', with the first row orange outlined. A red-bordered panel at the bottom labelled 'Common wrong approach': 'cut -d space -f1 access.log | uniq -c | sort -rn | head -3 skips the first sort, so uniq counted only neighbouring lines and printed 3 203.0.113.77 twice'. Step 6 box 'Cross-check: count the same thing with an awk array and compare'. Takeaway bar: 'Never report a number you have produced only one way.'",
+  "anchor": "### Task 1. Top five clients (fixture `access.log`)",
+  "alt": "A five-stage pipeline of awk, sort, uniq -c, awk and sort that turns access log lines into counted client addresses, with the top client 203.0.113.77 at 362 requests.",
+  "cap": "Each stage does one job, and sort must come before uniq -c because uniq only merges neighbouring lines."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07",
+  "name": "p3-2007-xargs-nul",
+  "title": "File names with spaces: newline lists split them, NUL separators do not",
+  "spec": "Two horizontal lanes. Top lane red-bordered 'Wrong: find . -name *.log -size +100k | xargs wc -c': a box with three file names 'svc/api.log', 'svc/old requests.log', 'tmp/core dump.log' separated by newline marks; an arrow into 'xargs' splitting the names into pieces 'svc/old' 'requests.log' 'tmp/core' 'dump.log'; result box 'missed old requests.log and core dump.log, and included svc/fresh.log which is newer than the stamp'. Bottom lane green 'Right: find . -type f -name *.log -size +100k ! -newer ref.stamp -print0 | xargs -0 wc -c': names separated by a drawn NUL mark labelled 'NUL byte between names', arrow into 'xargs -0' keeping each name as one item including 'old requests.log' and 'core dump.log', then 'awk removes the total line that wc -c adds', then output rows '716800 ./deep/a/b/engine.log', '409600 ./svc/worker-a.log', '307200 ./svc/api.log', '256000 ./svc/old requests.log', '153600 ./tmp/core dump.log', '122880 ./tmp/boundary.log'. A clock icon crossed out next to 'ref.stamp: a fixed file, not the moving clock'. Takeaway bar: 'Never delete from such a list without printing it first.'",
+  "anchor": "### Task 9. Old big logs with spaces in the name (generated tree)",
+  "alt": "find piped to xargs splits old requests.log and core dump.log at the spaces, while find print0 with xargs -0 keeps each name whole and uses ref.stamp as a fixed reference.",
+  "cap": "Pass names through find -print0 and xargs -0, and compare against ref.stamp instead of the clock."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "07",
+  "name": "p3-2007-cron-percent",
+  "title": "Why a percent sign cuts a crontab command in two",
+  "spec": "Two rows, each a crontab line in monospace with an arrow to its result. Row 1 red-bordered: 'date +%Y%m%d > /tmp/cr1' with the first '%' highlighted orange and the line split into two pieces by a scissors mark: left piece 'date +' runs as the command, right piece 'Y%m%d > /tmp/cr1' is sent to the command as standard input; result 'cr1 was never created, the redirect is on the far side of the cut'. Row 2 green-bordered: 'date +\\%Y\\%m\\%d > /tmp/cr2' result 'cr2 held 20261109'. Below, three cron facts as small boxes: 'SHELL defaults to /bin/sh, no default PATH is stated, so use absolute paths', 'Output is mailed to the job owner, redirect what you do not want', 'Times that do not exist in a spring-forward change never match, repeated times in a fall-back change run twice'. Side box 'Task 11 finds these lines': 'awk skips comments, blanks and NAME=value lines, takes the command from field 6, or field 2 for an @daily line, and looks for a percent sign not preceded by a backslash'. Takeaway: 'grep -n % also lists the correct escaped line and a commented-out line.'",
+  "anchor": "### 7. cron and logrotate gotchas",
+  "alt": "An unescaped percent sign in a crontab line becomes a newline, so the command is cut at the first percent sign and the redirect is lost, while the escaped version writes the date.",
+  "cap": "In a crontab an unescaped percent sign becomes a newline and the rest goes to standard input, so write it as backslash percent."
+ }
+]

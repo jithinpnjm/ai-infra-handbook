@@ -1,0 +1,132 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-hpa-manifest-anatomy",
+  "title": "Anatomy of the embeddings HPA manifest",
+  "spec": "Annotated manifest for HPA embeddings in namespace serving. scaleTargetRef Deployment embeddings; minReplicas 2 (floor), maxReplicas 40 (ceiling). Three metrics, each asks its own question and the controller uses the LARGEST result: Resource cpu Utilization averageUtilization 60 (percent of CPU request); Pods inflight_requests AverageValue 8 (custom metric per pod); External queue_depth AverageValue 30 (total divided by replicas). Behavior: scaleUp stabilizationWindowSeconds 0 with policies Percent 100 per 60 s (at most double per minute) and Pods 4 per 60 s, selectPolicy Max; scaleDown stabilizationWindowSeconds 600 (highest recommendation over 10 min) with policy Percent 10 per 120 s. Side facts: 'plus or minus 10 percent tolerance band around the target', 'cpu initialisation period 5 min so warm-up CPU is not read as load'. Text at least 24px.",
+  "anchor": "### Controller and algorithm",
+  "alt": "An annotated HPA manifest showing three metrics, a replica floor and ceiling, and scale-up and scale-down behavior.",
+  "cap": "The HPA takes the largest answer of its metrics, then the behavior block limits how fast the count may move."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-metric-types-apis",
+  "title": "Which API each HPA metric type reads",
+  "spec": "Table with columns Type, Source API, Provider, Example. 'Resource: metrics.k8s.io, metrics-server from kubelet and cAdvisor: CPU or memory average utilisation relative to requests, or average value'. 'ContainerResource: metrics.k8s.io per container: scale on the app container only, ignoring sidecars'. 'Pods: custom.metrics.k8s.io via Prometheus Adapter, KEDA or vendor adapters: per-pod requests_in_flight or queue_length_per_pod'. 'Object: custom.metrics.k8s.io for one object: Ingress requests_per_second'. 'External: external.metrics.k8s.io via KEDA, Prometheus Adapter or cloud adapters: SQS queue length, Pub/Sub backlog, global QPS'. Footer rules: 'utilisation metrics need requests on all containers or the metric is unavailable', 'memory is a poor scaling signal because it does not fall after load drops', 'freshness delay: metrics-server scrapes kubelets about every 15 s, custom metrics add the Prometheus scrape interval of 15 to 30 s plus the adapter'. Text at least 24px.",
+  "anchor": "### Metric types",
+  "alt": "A table maps five HPA metric types to the Kubernetes metrics API and provider they read from.",
+  "cap": "The metric type decides which API serves the number, so check that API before tuning."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-adapter-pipeline",
+  "title": "From a vLLM metric to an HPA decision",
+  "spec": "Pipeline left to right. 'vLLM pod exposes vllm:num_requests_waiting' then 'Prometheus scrapes it' then 'prometheus-adapter rule: seriesQuery vllm:num_requests_waiting with namespace and pod labels; resources overrides map namespace and pod; name as vllm_requests_waiting; metricsQuery sum by group' then 'custom.metrics.k8s.io API' then 'HPA reads it and decides'. Second lane for external: 'kafka_consumergroup_lag topic embed' then rule name kafka_lag then 'external.metrics.k8s.io'. Check commands under each: 'kubectl get --raw /apis/custom.metrics.k8s.io/v1beta1/namespaces/serving/pods/*/vllm_requests_waiting', 'kubectl get --raw /apis/external.metrics.k8s.io/v1beta1/namespaces/serving/kafka_lag', 'kubectl describe hpa vllm -n serving'. Conditions box: 'AbleToScale: can the HPA change the count at all', 'ScalingActive: can it read the metrics', 'ScalingLimited: has a minimum or maximum capped the result'. Note 'if the first command returns nothing, no amount of tuning helps'. Text at least 24px.",
+  "anchor": "### Exposing custom metrics (Prometheus Adapter example)",
+  "alt": "A pipeline from a vLLM queue metric through Prometheus and an adapter rule to the custom metrics API read by the HPA.",
+  "cap": "Verify each hop with a raw API call before blaming the HPA settings."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-signal-lead-lag",
+  "title": "Leading and lagging signals for an LLM server",
+  "spec": "Horizontal timeline of load building, with each signal placed where it rises. Earliest (leading): 'queue depth, vllm:num_requests_waiting or Triton nv_inference_pending_request_count: best primary signal, requests start waiting before latency climbs', 'in-flight requests or concurrency per replica: load versus capacity'. Middle: 'KV-cache utilisation vllm:gpu_cache_usage_perc: scale up at about 70 to 80 percent sustained'. Late (lagging, guardrail or alert): 'TTFT p95, inter-token latency, 5xx errors'. Weak signals: 'GPU utilisation DCGM_FI_DEV_GPU_UTIL: misleading, saturates early with batching, low-latency inference may show low use', 'CPU: only for tokenisation-heavy front-ends, often says nothing for GPU backends', 'RPS at the gateway: needs a per-replica capacity model, brittle across prompt lengths'. Analogy label 'supermarket line: open another till before the line reaches the door'. Recipe strip: 'scale on queue depth per replica or concurrency, minReplicas covers baseline, maxReplicas bounded by GPU quota, alert on TTFT and 5xx'. Text at least 24px.",
+  "anchor": "### Scaling signals for inference services",
+  "alt": "A timeline places queue depth first, KV-cache next and latency last, with weak signals set aside.",
+  "cap": "Scale on signals that rise before users feel pain and keep latency as a guardrail."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-readiness-overshoot",
+  "title": "Why slow model load makes HPA overshoot",
+  "spec": "Timeline for a GPU model server whose readiness takes 8 minutes because the model has to load. t0 'load rises, metric above target'; HPA adds replicas; 'new pods are created but not ready, so they do not count'; 'metric stays high while pods start'; 'HPA keeps adding replicas and overshoots'; when pods become ready after 8 minutes load is shared, metric falls, then 'too many replicas, the scale-down window must absorb them'. Side by side mitigations: 'rate-limit scale-up with behavior policies', 'readiness probe that only passes when the model is loaded', 'pre-warm and pre-pulled images', 'set minReplicas to pay the cold start up front', 'measure your readiness time first: it tells you how long a new replica is useless'. Lab reference 'add a 3-minute startup delay with sleep and no startup probe; watch HPA overshoot; compare after adding readiness probe and rate limits'. Text at least 24px.",
+  "anchor": "### Behaviour tuning",
+  "alt": "A timeline shows pods that are not yet ready keeping the metric high so the HPA overshoots, with mitigations.",
+  "cap": "Measure readiness time first because every other autoscaling setting depends on it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-vpa-parts",
+  "title": "VPA: recommender, updater and admission controller",
+  "spec": "Three boxes in a loop plus a mode table. 'Recommender: analyses historical and live usage, produces target, lower and upper bounds (the tailor who measures)'. 'Updater: evicts pods whose requests deviate so new values apply (calls the customer in)'. 'Admission controller: sets requests on new pods (fits the new garment)'. Modes: 'Off: recommendations only', 'Initial: sets requests when a pod is created', 'Recreate or Auto: evict and recreate pods with new requests', 'InPlaceOrRecreate: newer in-place resize changes CPU and memory without restarts where supported'. Rules: 'use recommendation mode to right-size services and data-prep jobs', 'avoid Auto for GPU model servers: a restart costs minutes and model weights dominate fixed memory', 'HPA and VPA on the same CPU or memory metric fight each other; HPA on custom or external metrics with VPA on resources is acceptable (HPA answers how many copies, VPA answers how big each is)', 'VPA evicting pods repeatedly means Auto mode with fluctuating recommendations: use Off or Initial, set bounds, PDBs'. Text at least 24px.",
+  "anchor": "## 3. Vertical Pod Autoscaler (VPA)",
+  "alt": "Three VPA components form a loop and a table lists the four update modes with rules for GPU servers.",
+  "cap": "Start in Off mode and let VPA change pods only where a restart is cheap."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-vpa-recommendation-output",
+  "title": "Reading a VPA recommendation",
+  "spec": "Annotated kubectl describe vpa Status for container coredns. Four rows with the chapter values: 'Lower Bound: Cpu 25m, Memory 262144k', 'Target: Cpu 25m, Memory 262144k (use as the baseline for requests)', 'Uncapped Target: Cpu 25m, Memory 262144k', 'Upper Bound: Cpu 427m, Memory 916943343'. Draw a number line for CPU from 25m to 427m with the target at the low end and a bracket 'range the recommender thinks is safe'. Callout 'a wide gap between lower and upper means the workload varies a lot'. Steps: '1 run VPA in Off mode, 2 describe vpa after real traffic, 3 engineers set requests by hand from Target, 4 nothing is evicted at peak'. Text at least 24px.",
+  "anchor": "### Off mode as a tuning aid",
+  "alt": "A VPA recommendation with lower bound, target and upper bound for CPU and memory is read as a safe range.",
+  "cap": "Use the target as the starting request and read the bound gap as workload variability."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-keda-switch-dimmer",
+  "title": "KEDA: the switch and the dimmer",
+  "spec": "Two-stage diagram. Stage A 'zero to one: the switch, handled by KEDA operator (a plain HPA cannot scale to zero because the formula multiplies by zero)'. Stage B 'one to N: the dimmer, handled by the HPA that KEDA creates, fed by KEDA metrics adapter on the External Metrics API'. ScaledObject batch-embed: minReplicaCount 0, maxReplicaCount 50, pollingInterval 15, cooldownPeriod 300 (quiet time before one to zero), scaleDown stabilizationWindowSeconds 600. Triggers: 'kafka lagThreshold 200', 'prometheus query sum vllm:num_requests_waiting threshold 5', 'cron 0 8 to 0 20 Monday to Friday desiredReplicas 4 (pre-warm business hours)'. Rule 'the largest desired count across active triggers wins, so cron acts as a floor in business hours'. Contrast ScaledJob transcribe-job: 'one short Job per queued message, aws-sqs-queue queueLength 1, maxReplicaCount 20, strategy accurate' versus ScaledObject 'keeps a long-running Deployment and changes its size'. Warning 'scale-to-zero on a GPU service costs a cold start; fine for a nightly batch job, painful for a person typing in chat'. Text at least 24px.",
+  "anchor": "## 4. KEDA: event-driven autoscaling",
+  "alt": "KEDA handles scaling from zero to one while an HPA handles one to N, with triggers taking the maximum.",
+  "cap": "KEDA flips the workload on and the HPA it creates sets how many replicas run."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-cpa-methods",
+  "title": "Cluster Proportional Autoscaler: scale with the cluster, not the load",
+  "spec": "Two-panel comparison with a small plot each. Common frame: 'scales replicas by the number of nodes or cores; reads no metrics API; no Metrics Server or Prometheus Adapter; configured by flags naming the target workload plus a ConfigMap holding the scaling parameters, not a Kubernetes resource'. Panel 'Linear method': replicas rise in direct proportion to nodes or cores (a straight line). Panel 'Ladder method': a step function sets a ratio of nodes to replicas or cores to replicas (a staircase). Use case: 'cluster DNS: demand at 5 nodes differs a lot from demand at 300 nodes; a proportional rule keeps the service sized to match'. Decision note: 'narrow use case for platform services; if HPAs and metrics APIs are already in place check whether an HPA fits better; a CronJob that updates the replica count is also a valid custom autoscaler, but write down what happens when it fails'. Text at least 24px.",
+  "anchor": "### Cluster proportional autoscaler",
+  "alt": "A line plot for the linear method and a staircase for the ladder method show replicas scaling with node count.",
+  "cap": "CPA sizes platform services by cluster size instead of load metrics."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-ca-up-down",
+  "title": "Cluster Autoscaler: what triggers a node and what blocks its removal",
+  "spec": "Two lanes. Scale-up lane: '1 pods Pending with FailedScheduling for insufficient resources', '2 for each node group, simulate adding a node from its template: would the pod fit', '3 expander picks among groups: random picks any, least-waste leaves the fewest empty seats, most-pods carries the most waiting pods', '4 group size raised within its min and max, for example --nodes=1:10:worker-auto-scaling-group', '5 node joins, scheduler places pods'. Scale-down lane: 'node utilisation (requests against allocatable) below --scale-down-utilization-threshold 0.5 for --scale-down-unneeded-time 10 min, then drain and remove'. Blockers list: 'pods without controllers', 'emptyDir local storage unless annotated', 'PDBs', 'kube-system pods', 'annotation cluster-autoscaler.kubernetes.io/safe-to-evict false', 'recently added node (scale-down-delay-after-add)'. Limits: 'reacts only to Pending pods; assumes homogeneous node groups; does not understand gang all-or-nothing needs'. GPU settings: '--gpu-total, burst pools min 0, --balance-similar-node-groups'. Text at least 24px.",
+  "anchor": "### Cluster Autoscaler (CA)",
+  "alt": "Two lanes show how Pending pods trigger node group scale-up and what blocks scale-down.",
+  "cap": "The autoscaler adds nodes only for Pending pods and removes them only when nothing blocks the drain."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-karpenter-vs-ca",
+  "title": "Karpenter versus node groups, and the NodePool rules",
+  "spec": "Left panel menu versus chef. 'Cluster Autoscaler orders from a fixed menu of node groups, each with one shape'. 'Karpenter watches Pending pods, batches them, computes the best set of instance types that satisfy their constraints, and provisions just in time; bin-packing, spot handling with interruption notices, automatic rotation and drift correction'. Right panel annotated NodePool gpu-inference: requirements instance-family In g6, g6e, p5; capacity-type On-demand; zones us-east-1a and us-east-1b; taints nvidia.com/gpu=present NoSchedule (keeps ordinary pods off); nodeClassRef EC2NodeClass gpu; expireAfter 720h; limits nvidia.com/gpu 64 (cap on total GPUs); disruption consolidationPolicy WhenEmptyOrUnderutilized, consolidateAfter 10m, budgets nodes 10 percent. Warning 'consolidation can remove a node under a training job: set do-not-disrupt'. Text at least 24px.",
+  "anchor": "### Karpenter",
+  "alt": "A menu-versus-chef comparison beside an annotated Karpenter NodePool with requirements, limits and disruption rules.",
+  "cap": "A NodePool states what Karpenter may buy and how fast it may reshuffle nodes."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-ai-workload-patterns",
+  "title": "Autoscaling patterns per AI workload",
+  "spec": "Table with columns Workload, Pod scaling, Node scaling. 'LLM online inference (vLLM, Triton, TGI): HPA or KEDA on queue depth, concurrency, KV-cache; min 1 to 2; slow scale-down; node: fixed reserved GPU pool plus burst autoscaled pool, overprovision pause pods, pre-pulled images; replica start 2 to 15 min'. 'Embedding and reranker services: HPA on CPU or GPU concurrency, smaller replicas; autoscaled L4 or L40S pool'. 'Batch inference: KEDA on queue backlog, Jobs with parallelism; cluster autoscaler or Karpenter on Pending, spot allowed; scale to zero'. 'Training: not HPA-based, fixed job size, elastic training can scale workers within min and max; admit with Kueue, provision nodes atomically; scale events trigger rendezvous restarts'. 'Data processing (Spark, Ray): operator-driven dynamic allocation; Ray autoscaler talks to Kubernetes through KubeRay'. 'Interactive notebooks: none per user; pool scaling plus idle culling, quotas cap spend'. 'Gateways and ingress: HPA on CPU, RPS or connections; keep at least 3 for HA'. Rule strip 'multi-metric safety: scale up on queue depth OR latency, scale down only when both are low over a long window'. Text at least 24px.",
+  "anchor": "## 6. Autoscaling patterns for AI workloads",
+  "alt": "A table gives pod scaling and node scaling choices for seven AI workload types.",
+  "cap": "Pick the pattern from the workload's shape: serving now, a queue of work, or a gang that trains."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p3-0523-autoscale-troubleshoot",
+  "title": "Autoscaling symptom to layer to first check",
+  "spec": "Table grouped by layer, symptom then first check. Metrics layer: 'HPA unknown metric or FailedGetResourceMetric: metrics-server missing or unhealthy, no CPU requests, kubelet certs: kubectl top pods, metrics-server logs, set requests'. HPA layer: 'not scaling despite load: metric below target, tolerance band, readiness delay, maxReplicas hit: kubectl describe hpa conditions and events'; 'flapping: short scale-down window, noisy metric, readiness lag: increase stabilisation, smooth metric with Prometheus avg_over_time'; 'over-scaling inference: HPA reacts to queue spikes faster than model start: cap scale-up rate, per-replica metric, pre-warm'. Node layer: 'scale-up creates Pending pods: no capacity, CA disabled, quota: CA logs, status ConfigMap'; 'CA will not scale up: pod fits no node group template (GPU label or taint mismatch), group at max, permissions: kubectl -n kube-system logs deploy/cluster-autoscaler'; 'CA will not scale down: local storage, PDB, annotations, utilisation above threshold: add safe-to-evict, adjust thresholds'; 'Karpenter launches wrong instance: requirements too loose'. Others: 'VPA evicting repeatedly: Auto mode, use Off or Initial', 'KEDA not scaling from zero: trigger authentication, scaler errors, duplicate HPA on same target: kubectl describe scaledobject', 'costs high: minReplicas high, idle pools, spot fallback to on-demand'. Note 'read the cause before changing a threshold because a threshold change can hide the real fault'. Text at least 24px.",
+  "anchor": "## 7. Troubleshooting",
+  "alt": "A table groups autoscaling symptoms by metrics, HPA and node layer with the first check for each.",
+  "cap": "Each symptom points to one layer, so find the layer before changing a threshold."
+ }
+]

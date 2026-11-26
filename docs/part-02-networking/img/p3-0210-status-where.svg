@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>HTTP status codes as a map of where the failure happened</title>
+  <desc>Visual map showing failure locations across Client, Proxy or load balancer or ingress, and Upstream model server zones, with status classes, method safety, and debugging takeaway.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">HTTP status codes as a map of where the failure happened</text>
+
+  
+  <rect x="40" y="120" width="480" height="550" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="65" y="145" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="65" y1="157" x2="121" y2="157" stroke="#207448" stroke-width="3"/>
+  <circle cx="74" cy="151" r="2" fill="#207448"/>
+  <circle cx="82" cy="151" r="2" fill="#207448"/>
+  <line x1="83" y1="187" x2="103" y2="187" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="75" y1="195" x2="111" y2="195" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="140" y="184" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Client</text>
+
+  
+  <rect x="60" y="215" width="440" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="78" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold">401</tspan> the caller is
+    <tspan x="78" dy="28">unauthenticated</tspan>
+  </text>
+
+  
+  <rect x="60" y="293" width="440" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="78" y="322" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold">403</tspan> the caller is
+    <tspan x="78" dy="28">unauthorised</tspan>
+  </text>
+
+  
+  <rect x="60" y="371" width="440" height="114" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="78" y="400" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold">413</tspan> body larger than a
+    <tspan x="78" dy="28">proxy limit, common with</tspan>
+    <tspan x="78" dy="28">big prompts or uploads</tspan>
+  </text>
+
+  
+  <rect x="60" y="497" width="440" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="78" y="532" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold">429</tspan> rate limited
+  </text>
+
+  
+  <rect x="60" y="561" width="440" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="78" y="592" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold">499</tspan> (nginx) the client
+    <tspan x="78" dy="30">went away</tspan>
+  </text>
+
+  
+  <rect x="560" y="120" width="480" height="550" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="585" y="145" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="613" cy="173" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="595" y1="173" x2="603" y2="173" stroke="#207448" stroke-width="4"/>
+  <line x1="623" y1="173" x2="631" y2="173" stroke="#207448" stroke-width="4"/>
+  <line x1="613" y1="155" x2="613" y2="163" stroke="#207448" stroke-width="4"/>
+  <line x1="613" y1="183" x2="613" y2="191" stroke="#207448" stroke-width="4"/>
+
+  <text x="655" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    Proxy or load
+    <tspan x="655" dy="34">balancer or ingress</tspan>
+  </text>
+
+  
+  <rect x="580" y="240" width="440" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="605" y="295" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold">502</tspan> bad gateway
+  </text>
+
+  
+  <rect x="580" y="360" width="440" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="605" y="415" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold">503</tspan> unavailable
+  </text>
+
+  
+  <rect x="580" y="480" width="440" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="605" y="535" font-family="sans-serif" font-size="26" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold">504</tspan> gateway timeout
+  </text>
+
+  
+  <rect x="1080" y="120" width="480" height="550" rx="12" fill="#fef8f0" stroke="#db8129" stroke-width="3"/>
+  
+  
+  <rect x="1105" y="145" width="56" height="56" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+  <rect x="1117" y="157" width="32" height="32" rx="3" fill="none" stroke="#db8129" stroke-width="3"/>
+  <line x1="1123" y1="139" x2="1123" y2="145" stroke="#db8129" stroke-width="3"/>
+  <line x1="1133" y1="139" x2="1133" y2="145" stroke="#db8129" stroke-width="3"/>
+  <line x1="1143" y1="139" x2="1143" y2="145" stroke="#db8129" stroke-width="3"/>
+  <line x1="1123" y1="201" x2="1123" y2="207" stroke="#db8129" stroke-width="3"/>
+  <line x1="1133" y1="201" x2="1133" y2="207" stroke="#db8129" stroke-width="3"/>
+  <line x1="1143" y1="201" x2="1143" y2="207" stroke="#db8129" stroke-width="3"/>
+
+  <text x="1175" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    Upstream
+    <tspan x="1175" dy="34">(model server)</tspan>
+  </text>
+
+  
+  <rect x="1100" y="235" width="440" height="415" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="1120" y="272" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1120" dy="0">a 502, 503 or 504 from a</tspan>
+    <tspan x="1120" dy="34">load balancer or ingress</tspan>
+    <tspan x="1120" dy="34">points to the upstream,</tspan>
+    <tspan x="1120" dy="34">not to the client; a 504</tspan>
+    <tspan x="1120" dy="34">is an upstream timeout:</tspan>
+    <tspan x="1120" dy="34">the model server may be</tspan>
+    <tspan x="1120" dy="34">slow, or the proxy timeout</tspan>
+    <tspan x="1120" dy="34">may be shorter than the</tspan>
+    <tspan x="1120" dy="34">inference time</tspan>
+  </text>
+
+  
+  <rect x="40" y="700" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="65" y="725" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="77" y1="743" x2="109" y2="743" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="77" y1="753" x2="109" y2="753" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="77" y1="763" x2="97" y2="763" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  <text x="140" y="746" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold">status classes:</tspan> 1xx informational,
+    <tspan x="140" dy="34">2xx success (200, 201, 204),</tspan>
+    <tspan x="140" dy="34">3xx redirection</tspan>
+    <tspan x="140" dy="34">(301, 302, 307, 308, 304 Not Modified),</tspan>
+    <tspan x="140" dy="34">4xx client error, 5xx server error</tspan>
+  </text>
+
+  
+  <rect x="820" y="700" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <path d="M 873 723 L 897 732 C 897 758 873 775 873 775 C 873 775 849 758 849 732 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 863 748 L 870 755 L 883 741" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <text x="920" y="770" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-weight="bold">method safety:</tspan>
+    <tspan x="920" dy="38"><tspan font-family="monospace" font-weight="bold">GET, PUT, DELETE</tspan> are idempotent</tspan>
+    <tspan x="920" dy="36">so a retry is safe; <tspan font-family="monospace" font-weight="bold">POST</tspan> is not</tspan>
+  </text>
+
+  
+  <rect x="40" y="970" width="1520" height="80" rx="10" fill="#207448"/>
+  
+  
+  <circle cx="85" cy="1010" r="16" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <line x1="85" y1="1002" x2="85" y2="1011" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="85" cy="1017" r="2.5" fill="#ffffff"/>
+
+  <text x="120" y="1019" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The first line of each message matters most, so read it first when you debug</text>
+</svg>

@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Draining a node that is serving inference</title>
+  <desc>Flowchart illustrating the decision paths and operational steps for draining an inference-serving GPU node under soft and hard fault conditions.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="sans-serif">Draining a node that is serving inference</text>
+
+  
+  
+  <path d="M 800 210 V 260" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 550 305 H 430 V 420" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1050 305 H 1170 V 420" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 430 530 V 580" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 430 690 V 715 H 700 V 740" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1170 530 V 715 H 900 V 740" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 800 830 V 880" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 530 925 H 430 V 1030" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1070 925 H 1170 V 1030" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <text x="445" y="365" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">yes, soft fault</text>
+  <text x="1185" y="365" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">no, hard fault</text>
+  <text x="445" y="980" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">yes</text>
+  <text x="1185" y="980" font-size="24" font-weight="bold" fill="#303a36" font-family="sans-serif">no</text>
+
+  
+  <g id="node-A">
+    <rect x="580" y="120" width="440" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="605" y="137" width="40" height="52" rx="6" stroke="#207448" stroke-width="3.5" fill="none" />
+    <rect x="617" y="131" width="16" height="10" rx="3" stroke="#207448" stroke-width="3" fill="#e8f1ea" />
+    <line x1="615" y1="155" x2="635" y2="155" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="615" y1="167" x2="635" y2="167" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 615 178 L 622 183 L 634 173" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="670" y="175" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Verdict: drain</text>
+  </g>
+
+  
+  <g id="node-B">
+    <rect x="550" y="260" width="500" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="575" y="278" width="44" height="44" rx="6" stroke="#207448" stroke-width="3.5" fill="none" />
+    <rect x="587" y="290" width="20" height="20" rx="3" stroke="#207448" stroke-width="2.5" fill="none" />
+    <line x1="583" y1="272" x2="583" y2="278" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="597" y1="272" x2="597" y2="278" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="611" y1="272" x2="611" y2="278" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="583" y1="322" x2="583" y2="328" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="597" y1="322" x2="597" y2="328" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="611" y1="322" x2="611" y2="328" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="569" y1="286" x2="575" y2="286" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="569" y1="300" x2="575" y2="300" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="569" y1="314" x2="575" y2="314" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="619" y1="286" x2="625" y2="286" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="619" y1="300" x2="625" y2="300" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="619" y1="314" x2="625" y2="314" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="645" y="315" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">GPU still serving?</text>
+  </g>
+
+  
+  <g id="node-C">
+    <rect x="190" y="420" width="480" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="215" y="457" width="50" height="28" rx="5" stroke="#207448" stroke-width="3.5" fill="none" />
+    <line x1="225" y1="457" x2="225" y2="442" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="255" y1="457" x2="255" y2="442" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="230" cy="471" r="3" fill="#207448" />
+    <circle cx="240" cy="471" r="3" fill="#207448" />
+    <line x1="250" y1="471" x2="257" y2="471" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="253" cy="492" r="11" stroke="#207448" stroke-width="3" fill="#e8f1ea" />
+    <line x1="246" y1="492" x2="260" y2="492" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="295" y="468" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">
+      <tspan x="295" dy="0">Router stops</tspan>
+      <tspan x="295" dy="38">new requests</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-D">
+    <rect x="190" y="580" width="480" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="243" cy="635" r="24" stroke="#207448" stroke-width="3.5" fill="none" />
+    <polyline points="243,620 243,635 254,635" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <path d="M 213 623 C 209 631 209 639 213 647" stroke="#207448" stroke-width="3" stroke-linecap="round" fill="none" />
+    <text x="295" y="628" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">
+      <tspan x="295" dy="0">Wait for streams</tspan>
+      <tspan x="295" dy="38">or grace limit</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-F">
+    <rect x="930" y="420" width="480" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 955 450 L 980 440 L 1005 450 C 1005 478 980 494 980 494 C 980 494 955 478 955 450 Z" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" fill="none" />
+    <line x1="968" y1="467" x2="992" y2="467" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="980" y1="455" x2="980" y2="479" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="1035" y="468" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">
+      <tspan x="1035" dy="0">Fence node at</tspan>
+      <tspan x="1035" dy="38">router now</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-E">
+    <rect x="580" y="740" width="440" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="605" y="759" width="46" height="42" rx="6" stroke="#207448" stroke-width="3.5" fill="none" />
+    <path d="M 628 788 L 628 768 M 620 776 L 628 767 L 636 776" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="675" y="795" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Evict pod</text>
+  </g>
+
+  
+  <g id="node-G">
+    <rect x="530" y="880" width="540" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 580 898 L 607 942 L 553 942 Z" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" fill="none" />
+    <line x1="580" y1="912" x2="580" y2="926" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="580" cy="934" r="2.5" fill="#207448" />
+    <text x="635" y="935" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Eviction blocked 429?</text>
+  </g>
+
+  
+  <g id="node-H">
+    <rect x="170" y="1030" width="520" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 226 1066 A 18 18 0 1 0 240 1088" stroke="#207448" stroke-width="3.5" stroke-linecap="round" fill="none" />
+    <polyline points="220,1058 227,1067 236,1060" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <line x1="242" y1="1092" x2="256" y2="1078" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <polyline points="247,1078 256,1078 256,1087" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <text x="275" y="1078" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">
+      <tspan x="275" dy="0">Retry with timeout,</tspan>
+      <tspan x="275" dy="38">then escalate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-I">
+    <rect x="930" y="1030" width="480" height="110" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <rect x="955" y="1063" width="48" height="32" rx="4" stroke="#207448" stroke-width="3.5" fill="none" />
+    <line x1="963" y1="1073" x2="982" y2="1073" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="963" y1="1083" x2="982" y2="1083" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <circle cx="992" cy="1073" r="2.5" fill="#207448" />
+    <circle cx="992" cy="1083" r="2.5" fill="#207448" />
+    <path d="M 971 1063 V 1052 C 971 1046 987 1046 987 1052 V 1063" stroke="#207448" stroke-width="3.5" fill="none" />
+    <text x="1035" y="1095" font-size="30" font-weight="bold" fill="#303a36" font-family="sans-serif">Node quarantined</text>
+  </g>
+</svg>

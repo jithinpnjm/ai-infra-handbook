@@ -1,0 +1,222 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-degraded-conditions",
+  "title": "Test what the code meets in the wild: the degraded cases and the GPU-free setup",
+  "spec": "Two panels. Panel 'Degraded conditions to cover, not only the happy path': a list of seven tiles 'timeouts', 'partial outputs', '[N/A] fields', 'empty lists', '500s', 'permission errors', 'a node that answers slowly or halfway'. Rule 'every error handler deserves a test that triggers it'. Panel 'Deterministic and hermetic': 'deterministic: the same run always gives the same result'; 'hermetic: no dependence on wall-clock time, random numbers, the network or test order'; 'inject clocks and random seeds so you control them'. Panel 'A GPU tool with no GPU on the runner' (orange): 'parse recorded nvidia-smi and dcgmi outputs'; 'simulate NVML with a fake module'; 'a small hardware-in-the-loop set marked gpu runs only on labelled runners'. Side rule 'push logic into pure functions: parsers, rules, planners, which turn input into output without touching network, clock or filesystem; keep I/O at the edges: functional core, imperative shell from 3.8'. Bottom bar: 'Decide which tier a new test belongs to before you write it'.",
+  "anchor": "## 1. Test strategy for infrastructure code",
+  "alt": "Seven degraded conditions infrastructure tests must cover, the deterministic and hermetic rules and how a GPU tool is tested with recorded output, a fake NVML module and a small gpu-marked tier.",
+  "cap": "Cover timeouts, partial output and empty results, keep tests hermetic, and test GPU tools with recorded output and fakes."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-parametrize-anatomy",
+  "title": "One parametrised test replaces four pasted copies",
+  "spec": "Left the code '@pytest.mark.parametrize(\"temp,bad\", [(84, False), (85, False), (86, True), (None, False)])' feeding 'def test_temperature_threshold(temp, bad): problems = evaluate([gpu(i, temp=temp) for i in range(8)]); assert bool(problems) is bad'. Arrows fan out to four rows of the generated test cases: 'temp 84: no problem', 'temp 85: no problem (the threshold is above 85)', 'temp 86: problem', 'temp None: no problem ([N/A] is missing, not hot)' with orange on the boundary rows 85 and 86. Right panel 'Neighbouring tests': 'test_healthy_node: evaluate of 8 healthy GPUs == []'; 'test_missing_gpu_reported: 7 GPUs gives [expected 8 GPUs, found 7]'; 'test_raises_on_bad_input: pytest.raises(ValueError, match=unexpected nvidia-smi columns) for parse_smi_csv(0,H100,60)'. Note 'ids= gives readable case names'. Discovery strip 'pytest picks up test_*.py or *_test.py files, test_* functions, and Test* classes with no __init__; plain assert statements are rewritten to show a detailed diff'. Bottom bar: 'Each row in the list becomes its own test case'.",
+  "anchor": "## 2. pytest essentials",
+  "alt": "A parametrize decorator with four temperature and expected pairs fanning out to four generated cases with the boundary at 85 and 86, beside the healthy, missing GPU and bad input tests.",
+  "cap": "Each row of the parametrize list becomes a separate test, and the boundary rows 85 and 86 pin the threshold."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-fixture-scopes",
+  "title": "Fixtures: how pytest hands setup to a test, and how long it lives",
+  "spec": "A diagram of a test function with a parameter named env. Arrow 'pytest matches a fixture to a test by parameter name: an argument named env gets the fixture called env'. Scope ladder from narrow to wide: 'function (default)', 'class', 'module', 'session'; rule 'use the narrowest scope you can afford'. Example fixtures: 'env: monkeypatch.setenv(FLEET_TOKEN, test-token) and delenv(FLEET_CONFIG, raising=False): undone automatically after the test'; 'workdir: monkeypatch.chdir(tmp_path) and return tmp_path'; 'kind_cluster, scope=session (orange): create_kind_cluster() is expensive and shared; yield name; delete_kind_cluster(name) teardown always runs, even when the test fails'. Side list 'built-in fixtures: tmp_path, monkeypatch, capsys, capfd, caplog, request, tmp_path_factory'; 'conftest.py shares fixtures across a directory without imports'. Leak story strip 'the classic leak: a test mutates a module-level dict or a default argument, and a later test fails for an unrelated-looking reason; fix with fixtures that build fresh objects and monkeypatch instead of assigning globals; run pytest-randomly in CI; never share mutable state through a session fixture unless it is reset for each test'. Bottom bar: 'Each fixture undoes its own changes'.",
+  "anchor": "### Fixtures that clean up and avoid leaked state",
+  "alt": "A test receiving fixtures by parameter name, the four fixture scopes from function to session, three example fixtures that clean up after themselves and the module-level dictionary leak story.",
+  "cap": "Fixtures arrive by parameter name, use the narrowest scope, and clean up through monkeypatch and yield teardown even when a test fails."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-markers-config-flags",
+  "title": "Markers, pytest configuration and the flags that do most of the work",
+  "spec": "Three panels. Panel 'Markers': '@pytest.mark.slow, @pytest.mark.gpu; built-in skip, skipif, xfail(strict=True); register markers in config; select with -m \"not slow\"'. Panel 'pyproject.toml [tool.pytest.ini_options]' annotated: 'minversion = 8.0', 'addopts = -ra --strict-markers --strict-config -q', 'testpaths = [tests]', 'markers = slow, gpu (needs a real GPU), integration (needs containers)', 'filterwarnings = [error]: warnings become failures, deprecations surface early' (orange), 'asyncio_mode = auto: with pytest-asyncio'. Panel 'Flags': '-k expr select by name', '-x stop at first failure', '--maxfail', '--lf and --ff rerun failures first', '--pdb debugger on failure', '-n auto parallel with pytest-xdist', '--durations=10 slowest tests', 'pytest-randomly randomises order to expose hidden coupling; -p no:randomly turns it off'. Bottom bar: 'Register your markers, and let warnings fail the build'.",
+  "anchor": "## 2. pytest essentials",
+  "alt": "Three panels covering pytest markers and selection, an annotated pyproject pytest configuration with strict markers and filterwarnings error, and the flags for selecting, stopping, parallelism and ordering.",
+  "cap": "Register markers, make warnings fail, and use -k, -x, --lf, -n auto and --durations to run the suite quickly."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-test-doubles",
+  "title": "Stub, fake, mock and spy: four stand-ins, four jobs",
+  "spec": "A four row table 'Double', 'What it does', 'Asserts on'. 'Stub' / 'returns canned answers' / 'outcomes'. 'Fake' / 'a working, lightweight implementation, such as an in-memory repository (FakeKube)' / 'outcomes' (orange). 'Mock' / 'records calls so you can assert on the interactions' / 'implementation, so tests break whenever you refactor'. 'Spy' / 'wraps the real thing' / 'calls on the real object'. Left problem strip 'a test that calls a real API is slow, depends on the network and can fail for reasons unrelated to your code'. Rule 'prefer fakes and stubs over heavy mocking'. Smell strip 'over-mocking is a smell: if a test needs ten patches, the code under test has too many collaborators'. Bottom bar: 'Fakes and stubs assert on outcomes, mocks tend to assert on implementation'.",
+  "anchor": "## 3. Isolating dependencies: fakes, stubs and mocks",
+  "alt": "A table of stub, fake, mock and spy with what each does and what it asserts on, with the advice to prefer fakes and stubs and the smell of ten patches.",
+  "cap": "A stub returns canned answers, a fake works in a light way, a mock records calls and a spy wraps the real object, so prefer fakes and stubs."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-drainer-timeline",
+  "title": "The Drainer test run step by step with a fake clock and no sleeping",
+  "spec": "A timeline for test_drain_waits_until_empty. Setup 'FakeKube([[a, b], [b], []])' and 'clock=lambda: next(t) with t = iter(range(0, 1000, 5))' and 'sleep=lambda s: None'. Rows for each loop pass: 'cordon(n1): cordoned = [n1]'; 'deadline = clock() + 600: clock returns 0, so deadline is 600'; 'pass 1: pods_on(n1) returns [a, b]; clock() returns 5 which is not past 600; sleep does nothing'; 'pass 2: pods_on returns [b]; clock returns 10'; 'pass 3: pods_on returns []: loop ends'. Result 'drain returns; the test runs instantly, no real sleeping' (orange). Right side 'Timeout path': 'if self.clock() > deadline: raise TimeoutError(node)'; 'a fake clock that jumps past the deadline covers the 600-second timeout loop in about a millisecond'. Footer 'Drainer(kube, clock=time.monotonic, sleep=time.sleep) takes its collaborators from the caller; FakeKube.pods_on returns seq.pop(0) if seq else []'. Bottom bar: 'Injecting the clock and sleep makes time-dependent logic testable without waiting'.",
+  "anchor": "### Dependency injection beats patching",
+  "alt": "A step-by-step run of the Drainer test where a fake pod sequence and a fake clock stepping by five seconds let the loop finish instantly, with the timeout branch covered by a clock that jumps past the deadline.",
+  "cap": "A fake clock stepping by 5 and a no-op sleep let the drain loop run through three passes instantly, and a clock past 600 covers the timeout."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-patch-rules",
+  "title": "When you must patch: where to patch and what to guard",
+  "spec": "Left example 'def test_get_retries(mocker): m = mocker.patch(\"fleetctl.client.httpx.Client.get\"); m.side_effect = [httpx.ConnectError(boom), make_response(200, {ok: True})]; assert get_json(/x) == {ok: True}; assert m.call_count == 2' with a two step timeline 'call 1 raises ConnectError', 'call 2 returns 200'. Right rules list. 'Patch where the name is looked up: fleetctl.client.httpx, not httpx' (orange). 'autospec=True or create_autospec so the mock carries the real signature and cannot silently accept wrong calls'. 'side_effect: a list for a sequence of results, or an exception class to simulate a failure'. 'Keep mocks local to the test'. Alternative strip 'intercept at the transport boundary so the real client code still runs: responses for requests, respx for httpx, aioresponses and pytest-aiohttp, vcrpy or pytest-recording (record once, replay later; scrub secrets from cassettes, re-record periodically to detect drift)'. Mini example strip 'respx serves two pages: params limit=2 returns items [1, 2] with next_page_token t; params limit=2 and page_token t returns [3]; paginate(page_size=2) == [1, 2, 3]'. Bottom bar: 'Patch the lookup site, and prefer the transport boundary'.",
+  "anchor": "### unittest.mock and pytest-mock",
+  "alt": "A mocker.patch test where the first call raises ConnectError and the second returns 200, with the patch-where-looked-up and autospec rules and the respx two-page alternative at the transport boundary.",
+  "cap": "Patch where the name is looked up, use autospec, and prefer HTTP-level fakes so the real client code still runs."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-fake-the-edges",
+  "title": "Faking subprocess, filesystem, time and randomness",
+  "spec": "A table 'Edge' to 'Technique'. 'Subprocess parser' / 'test with recorded output'. 'Subprocess wrapper' / 'patch subprocess.run to return CompletedProcess(args, 0, stdout=..., stderr=...); include subprocess.TimeoutExpired and non-zero exits'. 'Whole subprocess path' / 'a tiny fake executable written to tmp_path and placed first in PATH exercises the real subprocess path end to end'. 'Filesystem' / 'tmp_path; never let a test read a real home directory'. '/proc and /sys readers' / 'take the root as a parameter, root=Path(\"/\"), and point it at a fixture tree; pyfakefs can fake the whole filesystem when necessary'. 'Environment variables' / 'monkeypatch.setenv'. 'Time' / 'inject clocks or use freezegun or time-machine'. 'Randomness' / 'seed explicitly or inject random.Random(1)'. 'Async code' (orange) / 'pytest-asyncio or the anyio plugin with async def tests; bound each test with asyncio.wait_for; AsyncMock for awaitables; test task.cancel() and timeout behaviour explicitly; inject sleep or a fake event loop clock'. Bottom bar: 'Whenever a test would wait, inject the clock or sleep so it does not'.",
+  "anchor": "### Subprocess, filesystem and environment",
+  "alt": "A table of techniques for faking subprocess calls, a fake executable in PATH, tmp_path and a root parameter for proc readers, environment, time, randomness and async code.",
+  "cap": "Take the root, clock, sleep and seed as parameters so tests can fake the filesystem, time, randomness and subprocess output."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-hypothesis-properties",
+  "title": "Four kinds of property, with the two Hypothesis tests from the chapter",
+  "spec": "Left two test examples. 'Round trip: @given(st.lists(st.tuples(st.integers(0, 15), st.integers(0, 120)), max_size=16)); gpus = [Gpu(i, H100, t, None, None, None, None) for i, t in pairs]; assert parse_smi_csv(render_csv(gpus)) == gpus'. 'Only the documented exception: @given(st.text()); try parse_smi_csv(s) except ValueError: pass'. Right a four item property list: 'round trip: encode then decode'; 'idempotence: normalize(normalize(x)) == normalize(x)'; 'invariants: a preserved sum, an order that does not matter'; 'compare against a slow reference, or check that the code never raises anything except a specific exception'. Orange on 'a property is a rule about behaviour, not one hand-picked example'. Strip 'when Hypothesis finds a counterexample it shrinks the input to a minimal case; failing examples go into a database so regressions are replayed on later runs'. Good fit strip 'parsers, serialisers, validators, arithmetic on units'. Opening story 'a parser passes every example in its test file, then someone feeds it an empty field'. Bottom bar: 'Example tests check the inputs you thought of, properties go looking for the ones you missed'.",
+  "anchor": "### Property-based testing with Hypothesis",
+  "alt": "Two Hypothesis tests for a round trip of render and parse and for only raising ValueError, beside the four property kinds of round trip, idempotence, invariants and reference comparison.",
+  "cap": "State a property that must hold for all inputs and let Hypothesis search, shrink and remember the failures."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-beyond-examples-table",
+  "title": "Golden files, contracts and integration tests: what each pins down",
+  "spec": "A table 'Test kind', 'Use for', 'How', 'Caution'. 'Golden or snapshot' / 'config generators, Jinja templates, tabular output, Kubernetes manifests: text with no single input to argue about' / 'compare output with a reviewed expected file using syrupy, pytest-regressions or your own helper; update with --snapshot-update as a deliberate reviewed act' / 'keep snapshots small, large ones invite approving diffs without reading'. 'Contract' / 'services and clients drifting apart quietly' / 'validate payloads against the provider OpenAPI or JSON Schema with schemathesis, jsonschema, openapi-core; pact for consumer-driven contracts; refresh recorded real responses on a schedule; share pydantic models; for Redfish or vendor APIs keep sanitised real payloads from each platform as fixtures' / 'vendor differences from 3.8 become regression tests'. 'Integration' (orange) / 'real PostgreSQL, Redis, Prometheus, Kafka or an S3 stand-in' / 'testcontainers-python or docker-compose; kind or k3d clusters created and deleted by a pytest fixture; envtest-style API servers; mark integration and run in CI' / 'keep each test independent with unique namespaces or names and cleanup in teardown; poll with tenacity with generous but bounded waits, never sleep(30)'. Bottom bar: 'Each of these checks something an example unit test cannot'.",
+  "anchor": "### Golden files and snapshot tests",
+  "alt": "A table comparing golden snapshot tests, contract tests and integration tests by what they cover, the tools used and the cautions such as small snapshots, sanitised fixtures and bounded polling.",
+  "cap": "Snapshots pin rendered text, contracts pin the API shape, and containerised integration tests run real dependencies with bounded polling."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-clirunner-checks",
+  "title": "What a CLI test must pin: exit code, stdout and stderr",
+  "spec": "Left example 'CliRunner().invoke(cli, [--output, json, status, h1, h2])' with 'monkeypatch.setattr(fleetctl.cli.query_host, lambda h, c: {host: h, gpus: 8, state: ok})'. Result boxes 'r.exit_code == 0', 'json.loads(r.output)[0][host] == h1' (stdout is pure JSON), and second test 'CliRunner().invoke(cli, [drain]).exit_code == 2' (usage error, the missing argument). Right 'Other ways': 'argparse tools: call main([...]) and use capsys'; 'end to end: subprocess.run([sys.executable, -m, fleetctl, ...]) in a few smoke tests'; 'exit codes 0, 1, 2, 3 and 4, JSON on stdout pure, --dry-run does not mutate, and a smoke test of the installed entry point'. Warning (orange) 'a CLI with no tests for exit codes, or for the split between stdout and stderr, can break automation without anyone noticing'. Bottom bar: 'CliRunner returns the exit code and the output in one in-process call'.",
+  "anchor": "### Testing CLIs",
+  "alt": "A CliRunner test that checks exit code 0 and pure JSON on stdout and another that expects usage error 2, with argparse capsys and subprocess smoke test alternatives.",
+  "cap": "CliRunner checks exit code and output in-process, so pin exit codes, pure JSON on stdout and the usage error code 2."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-mutation-flaky",
+  "title": "Is the suite any good? Mutants, and treating flakes as defects",
+  "spec": "Two panels. Panel 'Mutation testing (mutmut, cosmic-ray)': flow 'change the code, for example flip > to >= or remove a branch (each changed copy is a mutant)' to 'run the tests' to two outcomes 'tests fail: the mutant is killed, good' and 'tests still pass: the mutant survives, which points to a weak test' (orange). Note 'coverage tells you which lines ran, not whether your assertions are meaningful'; 'use it on the critical core: parsers, rules and planners, not the whole repository'. Panel 'Flaky tests: a defect, not a nuisance': 'usual causes: shared state, test ordering, real time, real network, resource contention, race conditions'; 'quarantine with a marker and an issue'; 'do not silently retry everything with pytest-rerunfailures'; 'reproduce with -p randomly seeds, pytest --count loops or xdist stress runs'; 'fix the root cause and fail the build on any new flake'. Compare strip 'line coverage, branch coverage (branch = true) and mutation testing: only mutation tells you whether the suite actually catches regressions'. Bottom bar: 'A surviving mutant is a weak test'.",
+  "anchor": "### Mutation testing and test quality",
+  "alt": "Mutation testing where a flipped comparison is either killed by a failing test or survives to reveal a weak test, beside the causes and handling of flaky tests.",
+  "cap": "A surviving mutant exposes a weak test even at high coverage, and a flaky test is quarantined and fixed at its root cause."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-gate-tools",
+  "title": "Static gates: which tool catches which class of problem",
+  "spec": "A table 'Tool', 'Catches', 'Remember'. 'ruff' / 'lint and import sorting, replaces flake8, isort, pyupgrade; ruff format is Black-compatible' / 'very fast; rule sets in pyproject.toml'. 'black or ruff format' / 'uniform formatting, ends style debates' / 'one tool, not both' (orange). 'mypy or pyright' / 'static types' / 'lenient on legacy code, strict on new modules'. 'bandit, ruff S rules' / 'shell=True, yaml.load, hard-coded passwords, assert in prod' / 'review findings, tune false positives'. 'pip-audit, safety, Dependabot or Renovate' / 'vulnerable dependencies' / 'CI and on a schedule'. 'vulture' / 'dead code'. 'radon, ruff C901' / 'complexity limits'. 'coverage.py, pytest-cov' / 'line and branch coverage' / 'gate branch coverage for the core and diff coverage for PRs rather than one global number'. 'pre-commit' / 'hooks on staged files' / 'same hooks in CI to prevent bypass'. 'codespell, yamllint, shellcheck, hadolint, actionlint' / 'prose, YAML, shell, Dockerfile, workflows' / 'infrastructure repos are mixed-language'. Bottom bar: 'Before you add another tool, check whether an existing one already covers the check'.",
+  "anchor": "## 5. Static quality gates",
+  "alt": "A table of ruff, formatters, mypy, bandit, pip-audit, vulture, radon, coverage, pre-commit and linters for prose, YAML, shell and Dockerfiles, with what each catches.",
+  "cap": "Each static tool catches one class of problem, and black and ruff format should not both be used."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-config-annotated",
+  "title": "The quality configuration in pyproject.toml and pre-commit, line by line",
+  "spec": "Annotated config. '[tool.ruff] line-length = 100, target-version = py311'. 'lint select = E, F, I, B, UP, S, C4, SIM, PT, RUF, ASYNC, T20: pycodestyle, pyflakes, isort, bugbear, upgrade, bandit and more'. 'ignore = [S101]: asserts allowed in tests; per-file-ignores tests/** = [S, T20]'. '[tool.mypy] python_version 3.11, strict = true, warn_unused_ignores = true, exclude build/'. '[tool.coverage.run] branch = true, source = [fleetctl]'. '[tool.coverage.report] fail_under = 85 (orange), show_missing = true, exclude_also: if TYPE_CHECKING, raise NotImplementedError, if __name__ == __main__'. Right pre-commit panel: 'ruff-pre-commit rev v0.6.9: ruff with --fix, and ruff-format'; 'mirrors-mypy rev v1.11.2 with types-PyYAML'; 'pre-commit-hooks rev v4.6.0: check-yaml, end-of-file-fixer, trailing-whitespace, detect-private-key'. Notes 'the versions are examples; pin the versions you have reviewed; run the same hooks in CI so nobody can bypass them'. Typing strip 'annotate public functions; Protocol for injected collaborators so fakes type-check; TypedDict, dataclasses or pydantic for payloads; avoid Any creep; type checker is a required CI check, not only an editor feature'. Bottom bar: 'Configure the gates once in pyproject.toml and the hooks file'.",
+  "anchor": "## 5. Static quality gates",
+  "alt": "Annotated pyproject sections for ruff rules, strict mypy and branch coverage with fail_under 85, beside the pre-commit hooks for ruff, mypy and file checks, with the typing advice.",
+  "cap": "Configure ruff, strict mypy and branch coverage in pyproject, and run the same pre-commit hooks in CI so they cannot be bypassed."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-workflow-jobs",
+  "title": "The GitHub Actions workflow: five jobs and what each needs",
+  "spec": "A dependency graph. 'lint' (ubuntu, Python 3.12, pip cache: ruff check, ruff format --check, mypy src) to 'test (needs lint): matrix python 3.10, 3.11, 3.12 times ubuntu-latest and macos-latest, fail-fast false; pytest -m \"not integration and not gpu\" --cov --cov-report=xml; upload-artifact coverage-os-python with if: always()' to 'integration (needs test): pytest -m integration' and 'build (needs test): pipx run build; upload artifact dist/' both into 'publish (needs build and integration): only if startsWith(github.ref, refs/tags/v); environment: release; permissions id-token: write for trusted publishing, no long-lived tokens; download dist/; pypa/gh-action-pypi-publish' (orange). Header strip 'on: pull_request, and push to main and tags v*; permissions contents: read; concurrency group ci-ref with cancel-in-progress true'. Notes strip 'action versions are examples: pin to reviewed versions or commit SHAs'. Bottom bar: 'Cheap jobs first, publish only from a tag'.",
+  "anchor": "### GitHub Actions example",
+  "alt": "A dependency graph of the CI workflow from lint to a test matrix of three Python versions on two operating systems, then integration and build, ending in a tag-only trusted publish job.",
+  "cap": "lint gates the test matrix, test gates integration and build, and publish runs only on a v tag with an OIDC token."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-ci-hardening",
+  "title": "CI hardening: least privilege, reproducibility, packaging and nightly runs",
+  "spec": "Four panels. Panel 'Least privilege': 'permissions: set to the minimum; pin third-party actions by SHA; never echo secrets; pull requests from forks are untrusted and get no secrets (orange); pull_request_target only with great care'. Panel 'Reproducible': 'lock files, pinned base images, --require-hashes, hermetic builds, record tool versions in logs; cache dependencies and test data keyed on lock file hashes; minimum-dependency run: uv pip install --resolution lowest-direct validates lower bounds'. Panel 'Packaging and release': 'install the built wheel into a clean venv and run a smoke test: catches missing package data and wrong entry points; tag, changelog from conventional commits; version from the git tag with hatch-vcs or setuptools-scm; sign artefacts, provenance attestations, SBOM; protect the environment so publishing needs approval'. Panel 'GPU and nightly': 'GPU tests on self-hosted runners labelled gpu, ephemeral or containerised jobs, limit who can trigger, clean state between jobs; NVIDIA publishes GPU-enabled container images and the container toolkit'; 'nightly: full suite with random seeds, dependency audit, slow and integration tiers; notify on failure; track flakiness over time'. Footer 'artefacts: coverage files, JUnit XML, failure logs; GitLab CI uses stages, needs, cache, artifacts:reports:junit, rules: and runner tags'. Bottom bar: 'Order the jobs cheap to expensive, and make the required checks branch-protected'.",
+  "anchor": "### GitHub Actions example",
+  "alt": "Four panels on CI hardening for least privilege and fork pull requests, reproducible builds with hashes and caching, wheel smoke tests and signed releases, and GPU runners and nightly runs.",
+  "cap": "Give workflows least privilege, pin everything, smoke-test the built wheel, and run GPU tests only on controlled labelled runners."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-iac-testing-map",
+  "title": "Which checker for which infrastructure file type",
+  "spec": "A table 'File type', 'Checks'. 'Ansible' / 'yamllint ., ansible-lint, ansible-later (.later.yml), ansible-playbook --syntax-check, --check --diff against a staging host'. 'Ansible roles (Molecule)' / 'molecule init scenario -r ssh --driver-name docker; molecule create, converge, idempotence (orange), verify, destroy; drivers Docker, Podman, Vagrant, VirtualBox, cloud; Testinfra checks real host state; or Goss: goss -g test_sshd.yml validate'. 'Terraform and OpenTofu' / 'fmt -check, validate, tflint; OPA and Conftest, Checkov or tfsec policy; plan in CI with output reviewed; Terratest in Go or terraform test for ephemeral environments'. 'Kubernetes manifests and Helm' / 'kubeconform or kubeval; helm lint; helm template piped into kubeconform; kube-linter and conftest policies; kind smoke deploys; chainsaw or kuttl for operators'. 'Dockerfiles and images' / 'hadolint; trivy or grype scans; container-structure-test'. 'Shell' / 'shellcheck, shfmt, bats'. 'Jinja network templates' / 'render with representative variables, diff against golden files, validate with the target parser such as nft -c -f or FRR vtysh dry-run style checks'. 'Config YAML' / 'pydantic or JSON Schema in CI so malformed YAML never reaches production'. Side note 'a green Python suite says nothing about the playbooks, manifests or templates beside it'. Bottom bar: 'Pick the checker for each file type and make it a required CI step'.",
+  "anchor": "## 7. Testing the infrastructure code around Python",
+  "alt": "A table mapping Ansible, Molecule, Terraform, Kubernetes and Helm, Dockerfiles, shell, Jinja network templates and config YAML to the checkers that test each.",
+  "cap": "Each infrastructure file type has its own linter or validator, and each should be a required CI step."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-molecule-lifecycle",
+  "title": "Molecule role lifecycle and the Testinfra assertions",
+  "spec": "A left to right step chain 'molecule create' to 'molecule converge' to 'molecule idempotence' (orange: run the role again and expect no changes) to 'molecule verify' to 'molecule destroy'. Below, drivers 'Docker, Podman, Vagrant or VirtualBox, cloud drivers' and the scenario command 'molecule init scenario -r ssh --driver-name docker'. Right panel 'Testinfra verify': 'hosts = testinfra.utils.ansible_runner.AnsibleRunner(os.environ[MOLECULE_INVENTORY_FILE]).get_hosts(all)' then four assertions 'host.package(openssh-server).is_installed', 'host.service(sshd).is_running', 'host.file(/etc/ssh/ssh_host_ed25519_key.pub).mode == 0o644', 'host.user(sshd).exists'. Alternative 'Goss: goss -g test_sshd.yml validate'. Source label 'Ansible: Up and Running, chapter 14, Quality Assurance with Molecule; modelled in code/part03/python_testing_quality_ci.py'. Bottom bar: 'Testinfra checks the real state of the host'.",
+  "anchor": "## 7. Testing the infrastructure code around Python",
+  "alt": "The Molecule lifecycle of create, converge, idempotence, verify and destroy, with the Testinfra assertions for the openssh package, sshd service, key file mode and sshd user.",
+  "cap": "Molecule creates, converges, checks idempotence, verifies with Testinfra and destroys the test host."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-benchmark-method",
+  "title": "Timing helpers and why the minimum beats the average",
+  "spec": "Left a ladder of four timing helpers built on time.perf_counter(). 'once(func, *pargs, **kargs): times a single call'. 'total(func, *pargs, _reps=1000, **kargs): sums _reps calls'. 'bestof(func, *pargs, _reps=5, **kargs): min(once(...) for i in range(_reps)); tuples compare left to right so (elapsed, result) pairs pick the lowest time'. 'bestoftotal(func, *pargs, _reps1=50, _reps=1000, **kargs): the minimum across _reps1 totals of _reps calls each' (orange). Right 'Why the minimum': 'background interrupts and context switches can only inflate a run's elapsed time, so the minimum shows the code's true speed, free of system noise'. Bottom 'timeit' strip: 'python3 -m timeit -n 1000 -r 5 -s \"L = list(range(1000))\" \"[x ** 2 for x in L]\"' or 'min(timeit.repeat(stmt=..., setup=..., number=1000, repeat=5))'; '-s keeps one-time setup out of the timed loop'; 'timeit disables garbage collection while timing; gc.enable() inside setup turns it back on'; 'measure across the Python versions you target, such as CPython and PyPy'. Source label 'Learning Python chapter 21, timer.py and timer2.py'. Bottom bar: 'Measure instead of guessing'.",
+  "anchor": "## 7. Testing the infrastructure code around Python",
+  "alt": "The four timing helpers once, total, bestof and bestoftotal, with the reason the minimum is used rather than the mean and the timeit command line with setup and gc notes.",
+  "cap": "Take the minimum of repeated runs because system noise can only add time, and keep setup out of the timed loop."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-iteration-timings",
+  "title": "Five iteration styles timed on range(10,000): the winner flips with the operation",
+  "spec": "Two bar groups with the chapter's numbers. Group 'Built-in C function abs(x)' (timer_tests.py): 'list(map(abs, repslist)) 0.144 s' (orange, fastest), '[abs(x) for x in repslist] 0.208 s', 'for loop with res.append(abs(x)) 0.260 s', 'list(abs(x) for x in repslist) 0.411 s', 'list(gen()) 0.412 s'. Group 'User expression x + 10' (timer_tests2.py): '[x + 10 for x in repslist] 0.244 s' (orange, fastest), 'for loop 0.287 s', 'list(map(lambda x: x + 10, repslist)) 0.496 s'. Explanations: 'map wins with a built-in C function because no Python frame is created per item'; 'with a user expression a lambda adds function-call frame overhead on each of the 10,000 calls, so the comprehension wins'; 'generator forms are slower: forcing a generator into a list all at once adds overhead on every item'. Bottom bar: 'Measure the operation you actually have'.",
+  "anchor": "## 7. Testing the infrastructure code around Python",
+  "alt": "Two bar groups of timings on range 10,000 where map wins for the built-in abs at 0.144 seconds and the list comprehension wins for x plus 10 at 0.244 seconds, with generator forms slowest.",
+  "cap": "map beats a comprehension for a built-in C function, but a comprehension beats map with a lambda, and generators are slower in both."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-test-suite-health",
+  "title": "Watching the test suite itself: five things to track",
+  "spec": "A dashboard-style layout with five tiles. 'Duration over time: fail slow tests loudly with --durations; parallelise with xdist when isolation allows'. 'Flake rate: how often tests flake'. 'Diff coverage: how much of the changed code the tests cover, using diff-cover'. 'Time-to-green' . 'Pipeline length: keep under about ten minutes for PR feedback, or split and shard' (orange). Side strip 'keep logs and JUnit reports as artefacts; print reproduction commands for failing tests, including seed values and pytest -k hints'. Bottom bar: 'A suite that nobody watches creeps'.",
+  "anchor": "## 8. Observability of the tests themselves",
+  "alt": "Five tiles for tracking test duration, flake rate, diff coverage, time to green and the ten-minute pipeline budget, with artefacts and reproduction commands.",
+  "cap": "Track duration, flakes, diff coverage and time-to-green, and keep PR feedback under about ten minutes."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "09",
+  "name": "p3-0309-mistake-groups",
+  "title": "Common testing mistakes in five groups",
+  "spec": "A five row table 'Group', 'Mistakes', 'Fix'. 'Reaching outside' / 'tests that call real networks, clocks or hardware; depend on execution order; leak global state; sleep(10)' / 'fakes, injected clock, poll with a timeout; if a test behaves differently on one machine, check this group first'. 'Mocking' / 'over-mocking asserts on call internals so a refactor breaks tests; patching the wrong import path; leaving out autospec' / 'fakes, patch the lookup site, autospec'. 'Coverage and flakiness' / 'chasing a global percentage while asserting nothing; ignoring branch coverage and error paths; retrying flaky tests blindly; ignoring warnings' / 'branch coverage, fix the cause, warnings as signal'. 'CI' / 'runs only on main; checks not required; unpinned actions and dependencies; secrets exposed to fork PRs; mixing black and ruff format; type checking only in the editor' (orange) / 'required checks, pins, no secrets for forks, one formatter, mypy in CI'. 'Contracts other tools rely on' / 'a CLI with no tests for exit codes or the stdout and stderr split; recorded fixtures never refreshed so tests pass against an API that no longer exists' / 'test exit codes, refresh fixtures'. Bottom bar: 'Read this list before your next pull request'.",
+  "anchor": "## 10. Common mistakes",
+  "alt": "A five row table of testing mistakes from reaching outside the sandbox and over-mocking to coverage chasing, CI gaps and untested CLI exit codes or stale fixtures, each with its fix.",
+  "cap": "Most testing mistakes come from tests reaching the outside world, over-mocking, trusting coverage alone, weak CI and stale fixtures."
+ }
+]

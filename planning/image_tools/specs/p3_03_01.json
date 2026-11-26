@@ -1,0 +1,122 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-import-vs-exec",
+  "title": "import versus exec: where a file's names land",
+  "spec": "Two panels with a session namespace holding x = 999 shown in both. Panel 'import script1 (and importlib.reload)': finds script1.py, compiles it to bytecode, runs its top-level statements inside a separate module namespace object named script1; result 'script1.x is the file's x, your x stays 999'; runs only once per process because sys.modules caches the module, so a second import does nothing; to re-run after editing call from importlib import reload; reload(script1). Panel 'exec(open(\"script1.py\").read())' (orange): compiles and runs the string every time it is called; runs in the caller's current namespace as if the lines were pasted at the call site; if script1.py assigns x = 'hacked' your x is silently overwritten with 'hacked'; prevent by passing explicit namespace dictionaries to exec. Bottom strip '__name__ is \"__main__\" when a file is run and the module name when it is imported; if __name__ == \"__main__\": raise SystemExit(main()) keeps a file usable as library and script'. Footer 'Reload quirk: it updates importers that used import, but not those that used from; for repeatable runs, start a fresh process'. Bottom bar: 'Import isolates names, exec pastes them'.",
+  "anchor": "### Ways to run code",
+  "alt": "Two panels comparing import, which runs a file once in its own module namespace, with exec, which runs it every time in the caller's namespace and can overwrite x equal to 999.",
+  "cap": "Import keeps a file's names in a module namespace and runs it once, while exec pastes them into your namespace every time."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-copy-depth",
+  "title": "Alias, shallow copy and deep copy of a dict of lists",
+  "spec": "Three rows over one original structure: 'original' dict with key rack1 pointing to a list ['gpu01','gpu02'] object. Row 1 'b = a: alias': two names, one object; b.append changes what a shows. Row 2 'a.copy() (also a[:], list(a), copy.copy)': new outer container, same inner element objects; original['rack1'].append('gpu03') shows up in the copy too (orange). Row 3 'copy.deepcopy(a)': recursively copies nested mutable structures, cycles included; the inner list is a new object and does not change; costs time. Side facts 'Tuples contain references: t = ([1], 2) cannot change which objects it holds, yet t[0].append(5) mutates the list inside; a tuple is hashable only if all its elements are'. Slicing note 'slicing returns shallow copies'. Equality strip '== compares values by calling __eq__, is compares identity; use is only for singletons such as x is None; small ints (about -5 to 256) and many short strings are interned so is sometimes appears to work; never rely on it'. Bottom bar: 'Assignment never copies objects, it binds names to objects'.",
+  "anchor": "### Mutability",
+  "alt": "An alias, a shallow copy and a deep copy of a dict holding a list, showing that the shallow copy shares the inner list while the deep copy does not, with the is versus equals note.",
+  "cap": "A shallow copy duplicates only the outer container, so nested lists stay shared, while deepcopy duplicates everything."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-numeric-traps",
+  "title": "Numeric types and the quiet traps they hide",
+  "spec": "A table of six types. 'int: arbitrary precision, no overflow; 0x1f, 0o17, 0b101, 1_000_000'. 'float: IEEE 754 double, about 15 to 17 significant digits; 0.1 + 0.2 != 0.3, use math.isclose; float(\"inf\"), nan never equals itself'. 'complex: 3 + 4j, rarely used in infra'. 'bool: subclass of int, True == 1, True + True == 2'. 'decimal.Decimal: exact decimal arithmetic for money and billing; construct from strings' (orange). 'fractions.Fraction: exact rational numbers'. Right panel 'Operators': '/ is always true division (float)', '// floors toward negative infinity: -7 // 2 == -4', '% takes the sign of the divisor', 'divmod(a, b)', 'round() rounds half to even: round(2.5) == 2', 'chained comparison 1 <= x < 10', 'bitwise & | ^ ~ << >> for IP and mask: 0xFF & addr', 'random is not for security, use secrets'. Bottom worked examples 'disk_bytes / gib with gib = 1024 ** 3 gives 3577.0 GiB for 3_840_755_982_336 bytes', 'free_pct = 100 * free / total if total else 0.0 guards divide by zero', 'timeout = base * 2 ** attempt', 'pages, rem = divmod(total_items, 100)'. Bottom bar: 'Compare floats with tolerance, use // versus / on purpose, remember bool is an int, and use the ipaddress module instead of string IP arithmetic'.",
+  "anchor": "## 3. Numbers and expressions",
+  "alt": "A table of int, float, complex, bool, Decimal and Fraction with their traps, plus operator rules and four infrastructure arithmetic examples.",
+  "cap": "Floats need tolerance, Decimal is for money, bool is an int, and // floors toward negative infinity."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-aliasing-traps",
+  "title": "Collection traps: shared inner lists, mutating while iterating, and slow membership",
+  "spec": "Four mini panels. Panel 'grid = [[0] * 3] * 3': three references to the same inner list, so changing one row changes all (orange); fix '[[0] * 3 for _ in range(3)]'. Panel 'd = dict.fromkeys(keys, [])': one list shared across all keys; fix with a comprehension that makes a new list per key. Panel 'for x in lst: lst.remove(x)': skips elements; mutating a dict's size during iteration raises RuntimeError; fix 'iterate over a copy or build a new collection'. Panel 'x in list on large data': linear; 'use sets or dicts for repeated in checks; set and dict lookup O(1) average'. Beneath, a cost table 'list: index O(1), append amortised O(1), insert or delete at front O(n), in O(n)', 'tuple: index O(1), hashable if elements are', 'dict: lookup and insert O(1) average, insertion-ordered since 3.7, keys must be hashable', 'set: in O(1) average, empty is set()', 'frozenset: immutable set', 'deque: O(1) at both ends'. Mini rule 'dict keys must be hashable: strings, numbers, tuples of hashables, frozensets; lists and dicts cannot be keys'. Bottom bar: 'The type you pick sets how fast the script runs and which bugs it carries'.",
+  "anchor": "## 5. Core collections",
+  "alt": "Four collection traps, a repeated inner list from multiplication, dict.fromkeys sharing one list, mutating during iteration and slow list membership, with fixes and a cost table.",
+  "cap": "Multiplying a list of lists or using fromkeys with a list shares one object, and large membership tests belong in a set or dict."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-none-trap",
+  "title": "Truthiness: when a valid zero looks like missing",
+  "spec": "Left list of falsy values 'empty containers, 0, 0.0, empty string, None, False; everything else is truthy' with the preferred style 'if not items: instead of if len(items) == 0:'. Middle comparison of two lines. Line A 'if not timeout: timeout = 30' (orange) with input 'timeout = 0' arrow 'treated as missing and replaced by 30'. Line B 'if timeout is None: timeout = 30' with input 'timeout = 0' arrow 'kept as 0'. Right panel 'or-defaulting': 'target = os.environ.get(\"CLUSTER\") or \"staging\"' with the note 'beware falsy valid values'. Plus 'and and or short-circuit and return one of their operands, not necessarily a bool'. Footer 'None is the single null object, and the default return value of a function without return'. Bottom bar: 'Use is None when 0 or empty are valid values'.",
+  "anchor": "### Truthiness and `None`",
+  "alt": "Falsy values listed beside two timeout checks, where not timeout replaces a valid 0 with 30 and is None keeps it, plus the or-defaulting warning.",
+  "cap": "Test for None with is None whenever 0 or an empty value is valid, otherwise a timeout of zero is treated as missing."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-lbyl-eafp",
+  "title": "Three ways to guard the squaring loop against bad input",
+  "spec": "A three row comparison, all inside the same loop 'reply = input(\"Enter text:\")', 'if reply == \"stop\": break'. Version 1 'check first with isdigit': 'elif not reply.isdigit(): print(\"Bad!\" * 8)' 'else: print(int(reply) ** 2)'; limitation 'strings have no isfloat, so a check for every float form is a hard job'. Version 2 'try, except, else': 'try: num = int(reply)' 'except: print(\"Bad!\" * 8)' 'else: print(num ** 2)'; note 'you do not detect the error, you respond when one happens; the else belongs to the try because its indentation lines up with try'. Version 3 'try with float' (orange): 'print(float(reply) ** 2)' accepts 50, 40.5, 1.23E-100 and rejects hack. Sample outputs 'Enter text:5 gives 25', 'xxx gives Bad! eight times', '40.5 gives 1640.25', '1.23E-100 gives 1.5129e-200', 'stop prints Bye'. Warning 'eval would also work but runs any expression such as 2 ** 100, so with untrusted input use narrow tools like int and float'. Source type note 'input always arrives as a string: reply ** 2 raises TypeError, so convert with int(reply) first'. Bottom bar: 'The last print is not indented under the loop, so it runs once after the loop exits'.",
+  "anchor": "### Example: an interactive loop",
+  "alt": "Three versions of an input loop that squares numbers: an isdigit check, a try except else, and a float version, with sample outputs and the eval warning.",
+  "cap": "Checking first needs a test for every input form, while try and except handles every bad value and accepts more kinds of numbers."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-for-else-retry",
+  "title": "The for-else retry loop: else means no break happened",
+  "spec": "A flow of the chapter's retry loop. Header 'for attempt in range(1, 6):'. Body box 'try: connect(); break' with two exits. Exit 1 'connect succeeds, break leaves the loop' arrow to 'else is skipped, the program continues after the loop'. Exit 2 'OSError: time.sleep(2 ** attempt), then the next attempt' loops back to the header. After the fifth failure the loop ends without a break arrow to (orange) 'else: raise RuntimeError(\"gave up\")'. Side notes 'continue skips to the next iteration', 'the loop else clause is the no break happened branch, ideal for search and retry loops', 'prefer for over while with indices; use enumerate, zip(strict=True), itertools', 'avoid infinite while True without a clear exit path and timeout; add backoff and jitter'. Mini table of delays 'attempt 1: 2 s, attempt 2: 4 s, attempt 3: 8 s, attempt 4: 16 s' from 2 ** attempt. Bottom bar: 'else runs only if the loop did NOT break'.",
+  "anchor": "### `while` and `for` loops",
+  "alt": "A retry loop over five attempts that breaks on success, sleeps 2 to the power of attempt on OSError, and runs the else clause that raises RuntimeError only when no break happened.",
+  "cap": "The else branch of a for loop runs only when the loop finished without break, which makes it the natural place to give up."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-match-handle",
+  "title": "How the first matching case in handle(event) is chosen",
+  "spec": "A decision ladder with four example events entering from the left and the case list at the top to bottom. Cases in order: 'case {\"type\": \"node_down\", \"node\": str(name)}' returns 'drain name'; 'case {\"type\": \"temp\", \"value\": float(v)} if v > 85' returns 'throttle'; 'case {\"type\": \"gpu\", \"ids\": [first, *_]}' returns 'first gpu first'; 'case {\"type\": t}' returns 'unhandled t'; 'case _' returns 'unknown'. Events and outcomes derived only from these patterns: event {type: node_down, node: gpu07} matches case 1 and binds name to gpu07, result 'drain gpu07'; event {type: temp, value: 91.0} matches case 2 because the guard v > 85 holds (orange), result 'throttle'; event {type: gpu, ids: [3, 4]} matches case 3 binding first to 3, result 'first gpu 3'; event {type: fan} reaches case 4 binding t to fan, result 'unhandled fan'. Pattern kinds strip 'literals, captures, wildcard _, sequences, mappings, class patterns Point(x=0, y=0), alternatives with |, guards with if'. Command parsing strip 'match cmd.split(): case [\"start\", service], case [\"stop\", service, *flags], case [\"status\"]'. Bottom bar: 'Not a C-style switch: the first matching case wins, and matched parts are bound to names'.",
+  "anchor": "### The `match` statement (3.10+)",
+  "alt": "Four example events walked down the case list of handle(event), with the first matching pattern winning, including a guard on temperature and a wildcard fallback.",
+  "cap": "Cases are tried in order, the first matching pattern wins and binds its names, and a guard can reject an otherwise matching pattern."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-signature-worked",
+  "title": "One call mapped onto def f(a, /, b, c=3, *ps, e=4, **ks)",
+  "spec": "The header shown large in four coloured sections: 'positional-only: a, /' then 'positional-or-keyword: b, c=3' then 'collector and keyword-only: *ps, e=4' then 'keyword collector: **ks (must be last)'. The call 'f(0, 1, 2, 3, 4, e=5, f=6, g=7)' below with arrows: '0 goes to a', '1 goes to b', '2 goes to c', '3 and 4 are collected into ps=(3, 4)', 'e=5 goes to the keyword-only e', 'f=6 and g=7 are collected into ks={f: 6, g: 7}'. Output line 'a=0, b=1, c=2, ps=(3, 4), e=5, ks={f: 6, g: 7}'. Rules strip left 'before *, once one parameter has a default, every later one up to * must also have one: def f(a, b=2, /, c): is a SyntaxError'; 'after * or *args, keyword-only parameters can mix with and without defaults: def kwonly(a, *, b=2, c, d=4) is valid' . Call-site strip 'plain positional before keyword; several *iterable and **mapping allowed; positional and *iterable must precede **mapping; func(*[1], **dict(b=2, c=3), *[4]) raises SyntaxError'. Examples 'func(*[1], *(2,), **dict(c=3), **{d: 4}) prints 1 2 3 4'. Bottom bar: 'Prefer keyword-only parameters for booleans and options, as in deploy(app, *, dry_run=True)'.",
+  "anchor": "#### Formal parameter-ordering rules in `def` and `lambda` headers",
+  "alt": "A function header split into positional-only, normal, collector with keyword-only and keyword collector sections, with one call mapped argument by argument onto the parameters.",
+  "cap": "Each argument of the example call lands in a named section of the header, and the leftovers are collected into ps and ks."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-closure-latebind",
+  "title": "Closures: remembering n, and the late-binding trap",
+  "spec": "Two panels. Panel 'make_counter': code 'n = 0; def inc(): nonlocal n; n += 1; return n; return inc' and a timeline 'c = make_counter() creates n = 0 and inc', 'c() returns 1', 'c() returns 2'; label 'a closure: inc remembers n from the function that created it'; contrast 'bump() with global counter rebinding a module-level name'. Rule strip 'name lookup order L, E, G, B; assignment inside a function makes a name local unless declared global or nonlocal; reading a global needs no declaration; assigning without global creates a local, and reading that local earlier in the same function raises UnboundLocalError; prefer passing values and returning results over mutable globals; UPPER_CASE module constants are fine'. Panel 'Late binding' (orange): '[lambda: i for i in range(3)]' all three see the final i; fix 'lambda i=i: i' binds the value at creation, or use functools.partial. Footer 'Locals: res, seq1, seq2 and x in intersect exist only while the call runs; the returned object lives on, the name goes away'. Bottom bar: 'Use nonlocal for state kept in a closure, and default arguments to freeze a value'.",
+  "anchor": "### Scope: LEGB",
+  "alt": "A make_counter closure keeping n across calls with nonlocal, the UnboundLocalError rule, and the late-binding lambda trap fixed with lambda i=i.",
+  "cap": "A closure keeps the enclosing variable alive between calls, and lambdas built in a loop all see the final value unless it is bound as a default."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-str-toolbox",
+  "title": "String toolbox: pick the formatting and replacement tool",
+  "spec": "A table. 'f-string (preferred): f\"{name} has {n} GPUs\"; mini-language :>10 :^10 :08.3f :, thousands :% !r for repr, {n=}'. 'str.format: \"{} has {} GPUs\".format(...)'. 'printf style: \"%s has %d GPUs\" % (...) (legacy)'. 'string.Template: $name or ${name} from keyword arguments or a dict; no inline expressions, so safer for user-supplied or file-loaded templates; substitute raises KeyError on a missing key, safe_substitute leaves it intact: Template(\"$host has ${gpus} GPUs\").safe_substitute(host=\"node1\") gives node1 has ${gpus} GPUs'. 'str.replace(old, new): one substring at a time'. 'str.maketrans(\":-\", \"__\", \" ()\") with translate: map : and - to _, delete spaces and parens in one pass; gpu-01: (rack-2) becomes gpu_01_rack_2' (orange). 'removeprefix, removesuffix, casefold for case-insensitive comparison, unicodedata.normalize for Unicode equivalence'. 'join: collect parts in a list and \"\".join(parts); += in a loop builds a new string each time'. 'str versus repr: str for humans, repr for developers; use !r in log messages'. Regex strip 'LINE = re.compile(r\"(?P<ts>...) (?P<host>...)...\") ; m[\"host\"], int(m[\"pid\"]); prefer structured outputs (--json, ip -j, kubectl -o json) over parsing text'. Security note 'never build shell commands or SQL by formatting untrusted input'. Bottom bar: 'Text is encoded to bytes on the way out and decoded on the way in; mixing the two raises TypeError'.",
+  "anchor": "## 4. Strings and bytes",
+  "alt": "A table of string tools: f-strings, format, percent formatting, Template with substitute and safe_substitute, maketrans and translate, join and regex with named groups.",
+  "cap": "Use f-strings by default, Template for untrusted templates, translate for multi-character cleanup and join instead of repeated concatenation."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "01",
+  "name": "p3-0301-mistakes",
+  "title": "Ten common mistakes and the chapter idea that fixes each",
+  "spec": "A two column table 'Mistake' and 'Fix from this chapter'. 'Treating names as boxes; mutating a list through an alias' / 'names are labels, assignment binds; copy when you need independence'. 'Mutable default arguments, module-level mutable state, defaults computed at import time' / 'nodes=None idiom; ruff B006 flags it' (orange). 'Comparing with is instead of ==, except None; using == with floats; relying on round or interning' / 'is only for singletons; math.isclose'. 'Modifying a collection while iterating; list for membership on large data' / 'iterate a copy; use a set'. 'Building strings by += in loops; building commands or queries from untrusted input' / 'join; argument lists and parameterised queries'. 'Catching exceptions too broadly or silently, except: pass' / 'catch narrow exceptions (chapter 3.5)'. 'from module import *; shadowing built-ins list, dict, id, type, input' / 'explicit imports, other names'. 'Mixing tabs and spaces; unversioned global pip install into the system Python' / 'four spaces; virtual environments'. 'Trusting dynamic types without validation at boundaries: API input, config files, environment variables' / 'validate at the boundary, type hints'. 'Optimising without measuring' / 'timeit, cProfile, py-spy; gains usually come from algorithms and I/O'. Bottom bar: 'Read once now, and once more before you hand a script to production'.",
+  "anchor": "## 11. Common mistakes",
+  "alt": "A table of ten Python mistakes such as names as boxes, mutable defaults, is versus equals, mutation during iteration, broad except and unmeasured optimisation, each with its fix.",
+  "cap": "Most Python mistakes in infrastructure code are the same few stories from this chapter, each with a standard fix."
+ }
+]

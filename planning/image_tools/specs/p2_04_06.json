@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p2-0406-play-phases",
+  "title": "A play runs its phases in a fixed order, and handlers flush at each boundary",
+  "anchor": "## 1. Playbook anatomy",
+  "spec": "A left-to-right flow of five numbered boxes, with small diamond-shaped flush points between them. Box 1, green: 'pre_tasks: assert the OS, check Slurm DRAIN'. Flush point A labelled 'flush handlers notified by pre_tasks'. Box 2: 'roles, then tasks: packages, sysctl, templates'. Flush point B labelled 'flush handlers, each restart runs once even if notified many times'. Box 3: 'post_tasks: nvidia-smi or uri smoke test'. Flush point C labelled 'flush handlers notified by post_tasks'. A side note above the chain: 'Plays run in file order, and each play covers all its hosts.' A grey note under box 3: 'A handler that restarts a service runs only after the file that configures it is in place.' Caption: 'Handlers run at flush points, not in the middle of a task.'",
+  "alt": "A play runs pre_tasks, then a handler flush, then roles and tasks, another flush, then post_tasks, and a final flush, so handlers run at fixed boundaries.",
+  "cap": "A play runs pre_tasks, roles and tasks, then post_tasks, and handlers run at flush points between these phases."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p2-0406-exit-codes",
+  "title": "The exit code and the recap tell a CI job what happened",
+  "anchor": "### Exit codes and recap",
+  "spec": "A two-part figure. Left part, heading 'Exit codes of ansible-playbook': a vertical list of codes drawn as small badges. Badge '0' green: 'success'. Badge '1': 'generic error'. Badge '2', orange outline: 'one or more hosts failed'. Badge '3': 'one or more hosts unreachable'. Badge '4': 'parse error'. Badge '5': 'bad or incomplete options'. Badge '99': 'run interrupted'. Badge '250': 'unexpected error'. Right part, heading 'PLAY RECAP' with two monospace lines: 'gpu001 : ok=12 changed=3 unreachable=0 failed=0 skipped=2' and 'gpu002 : ok=12 changed=3 unreachable=0 failed=1 skipped=2', with the second line marked by a red arrow labelled 'one failed task, investigate this host'. Bottom note: 'In CI, treat any non-zero exit as failure. For drift, parse the changed counts.' Caption: 'Read every host line, not only the first one.'",
+  "alt": "Exit codes from ansible-playbook map success, generic error, failed hosts, unreachable hosts, parse errors, bad options and interruption, and a recap line marks the host with a failure.",
+  "cap": "Exit codes from ansible-playbook range from 0 for success to 2 for failed hosts and 3 for unreachable hosts, and the recap shows each host's counts."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "06",
+  "name": "p2-0406-driver-rollout",
+  "title": "A driver change goes out in batches: one canary host first, then growing batches, with a stop rule",
+  "anchor": "## 7. Worked example: a safe driver-parameter rollout",
+  "spec": "A horizontal flow of five stages from left to right with numbered circles 1 to 5. Stage 1 box: 'Check run: --check --diff --limit gpu001'. Stage 2 box, orange outline: 'Canary batch of 1 host: pre-task checks the Slurm node shows DRAIN'. Under stage 2, a vertical list of the tasks in order: 'sysctl: persist vm.swappiness', 'template: override.conf', 'handler: restart nvidia-persistenced if changed', 'post-task: nvidia-smi GPU count equals expected_gpus'. Stage 3 box: '10% batch, max_fail_percentage 5'. Stage 4 box: 'remaining 100% batch'. Stage 5 box, green: 'Resume Slurm nodes in a separate, explicit play'. A red diamond between stages 2 and 3 labelled 'validation fails: the play stops before the 10% batch'. Caption: 'Each stage catches a different kind of mistake.'",
+  "alt": "A driver change runs a check first, then a one-host canary with a Slurm DRAIN check, sysctl and template tasks, and a GPU count validation, before growing batches and a stop rule.",
+  "cap": "A driver change runs a check, then a one-host canary with validation, and only then grows to larger batches, stopping if validation fails."
+ }
+]

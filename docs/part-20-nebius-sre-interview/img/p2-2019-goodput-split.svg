@@ -1,0 +1,120 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1010" viewBox="0 0 1600 1010">
+  <title>Throughput counts everything; goodput counts what met the target</title>
+  <desc>Visual comparison showing that total throughput includes unviable late tokens while goodput accounts strictly for tokens meeting SLA constraints.</desc>
+
+  
+  <rect width="1600" height="1010" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Throughput counts everything;</tspan>
+    <tspan x="800" dy="58">goodput counts what met the target</tspan>
+  </text>
+
+  
+  <rect x="60" y="170" width="900" height="530" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 90 238 A 24 24 0 1 1 138 238"/>
+    <line x1="114" y1="238" x2="130" y2="216"/>
+    <circle cx="114" cy="238" r="3" fill="#207448"/>
+    <line x1="90" y1="238" x2="138" y2="238"/>
+  </g>
+
+  
+  <text x="160" y="228" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Throughput: 40,000 tokens per second</text>
+
+  
+  <line x1="90" y1="260" x2="930" y2="260" stroke="#303a36" stroke-width="3"/>
+  <line x1="90" y1="260" x2="90" y2="274" stroke="#303a36" stroke-width="3"/>
+  <line x1="930" y1="260" x2="930" y2="274" stroke="#303a36" stroke-width="3"/>
+
+  
+  <text x="90" y="306" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="90" dy="0">Goodput: only work that</tspan>
+    <tspan x="90" dy="32">met both targets</tspan>
+  </text>
+
+  
+  <line x1="90" y1="354" x2="600" y2="354" stroke="#207448" stroke-width="3"/>
+  <line x1="90" y1="354" x2="90" y2="368" stroke="#207448" stroke-width="3"/>
+  <line x1="600" y1="354" x2="600" y2="368" stroke="#207448" stroke-width="3"/>
+
+  
+  
+  <path d="M 102 380 L 600 380 L 600 570 L 102 570 A 12 12 0 0 1 90 558 L 90 392 A 12 12 0 0 1 102 380 Z" fill="#207448"/>
+  <text x="345" y="462" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    <tspan x="345" dy="0">Tokens that met the TTFT</tspan>
+    <tspan x="345" dy="36">and per-token limits</tspan>
+  </text>
+
+  
+  <path d="M 600 380 L 918 380 A 12 12 0 0 1 930 392 L 930 558 A 12 12 0 0 1 918 570 L 600 570 Z" fill="#d3ddd6" stroke="#9aa8a0" stroke-width="2"/>
+  <text x="765" y="445" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="765" dy="0">Tokens that</tspan>
+    <tspan x="765" dy="32">arrived too late</tspan>
+    <tspan x="765" dy="32">for anyone to care</tspan>
+  </text>
+
+  
+  <rect x="1000" y="170" width="540" height="530" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1032" y="194" width="52" height="52" rx="8"/>
+    <polyline points="1042,232 1054,216 1066,224 1074,206"/>
+  </g>
+
+  
+  <line x1="1106" y1="210" x2="1136" y2="210" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="1150" y="208" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1150" dy="0">Throughput: climbs when</tspan>
+    <tspan x="1150" dy="28">batch size rises</tspan>
+  </text>
+
+  
+  <rect x="1032" y="270" width="476" height="300" rx="8" fill="#ffffff" stroke="#c4d5c9" stroke-width="2"/>
+
+  
+  <line x1="1032" y1="330" x2="1508" y2="330" stroke="#e3ede5" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <line x1="1032" y1="390" x2="1508" y2="390" stroke="#e3ede5" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <line x1="1032" y1="450" x2="1508" y2="450" stroke="#e3ede5" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <line x1="1032" y1="510" x2="1508" y2="510" stroke="#e3ede5" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+  <line x1="1151" y1="270" x2="1151" y2="570" stroke="#e3ede5" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <line x1="1270" y1="270" x2="1270" y2="570" stroke="#e3ede5" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <line x1="1389" y1="270" x2="1389" y2="570" stroke="#e3ede5" stroke-width="1.5" stroke-dasharray="4,4"/>
+
+  
+  
+  <path d="M 1060 520 C 1170 480, 1310 370, 1480 310" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="1480" cy="310" r="7" fill="#207448"/>
+
+  
+  <path d="M 1060 380 C 1170 360, 1260 380, 1340 450 S 1430 525, 1480 540" fill="none" stroke="#db8129" stroke-width="5" stroke-linecap="round"/>
+  <circle cx="1480" cy="540" r="7" fill="#db8129"/>
+
+  
+  <line x1="1032" y1="620" x2="1062" y2="620" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  <text x="1076" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1076" dy="0">Goodput: falls at the</tspan>
+    <tspan x="1076" dy="28">same time</tspan>
+  </text>
+
+  
+  <rect x="60" y="730" width="1480" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="92" y="764" width="52" height="52" rx="8"/>
+    <line x1="105" y1="784" x2="131" y2="784"/>
+    <line x1="105" y1="796" x2="131" y2="796"/>
+  </g>
+
+  <text x="850" y="800" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">Goodput = requests per second meeting both limits / all requests per second</text>
+
+  
+  <rect x="60" y="880" width="1480" height="90" rx="12" fill="#207448"/>
+  <text x="800" y="936" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Report goodput next to throughput, because only goodput falls when users suffer.</text>
+</svg>

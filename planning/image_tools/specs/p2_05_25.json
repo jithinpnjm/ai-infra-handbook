@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p2-0525-scope-first",
+  "title": "Define the scope before you touch anything",
+  "spec": "A top-down flow. Top box 'Symptom: what, who, since when, scope'. Arrow to a box 'Define scope: one pod, one node, one namespace or cluster-wide? One version or one zone?' with a funnel icon. Arrow to a box 'Recent changes: deploys, config, upgrades, node events, certs, quotas'. Arrow to a decision diamond 'Which layer?' with seven branches fanning out to seven small boxes in a row: 'app: logs, probes, exit codes', 'pod or runtime: events, describe, crictl', 'scheduling: FailedScheduling reasons', 'network: DNS, Service, endpoints, CNI, node, underlay', 'storage: PVC, PV, CSI, mount', 'node: kubelet, runtime, kernel, GPU and NIC health', 'control plane: API latency, etcd, controllers, webhooks'. Orange outline on the 'Define scope' box as the first step that narrows the search. Caption: 'Each answer removes causes from the list, as a doctor does with chest pain.'",
+  "anchor": "## 1. Method",
+  "alt": "A troubleshooting method that defines the scope of a failure, checks recent changes, then branches to the right layer from app to control plane.",
+  "cap": "Troubleshooting starts by defining the failure's scope and recent changes, then branches to the layer that holds the fault."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p2-0525-pod-name-to-node",
+  "title": "From a pod name to the node's directory and ID",
+  "spec": "A left-to-right chain of boxes showing how names translate on the node. Box 1 at the left 'kubectl: pod trainer-0 in namespace training' with a kubectl icon. Arrow to Box 2 'Node stores logs by namespace, name and pod UID' with a monospace chip '/var/log/pods/<namespace>_<name>_<UID>'. Arrow to Box 3 'Runtime knows the container by an ID' with a chip 'crictl ps -a'. Arrow to Box 4 'Inspect the sandbox and container' with chips 'crictl inspectp <pod-id>' and 'crictl inspect <ctr-id>'. Box 5 'Logs' with chip 'crictl logs --tail 100 <ctr-id>'. Under the chain a small line for the kubelet and runtime journal: 'journalctl -u kubelet -u containerd --since -30 min'. Orange outline on Box 2 as the translation step that most people miss. Caption: 'Walk the chain once, and it becomes easy to repeat.'",
+  "anchor": "### 3.1 Container runtime state (crictl / ctr)",
+  "alt": "A pod name from kubectl maps to the node's log directory built from namespace, name and UID, then to a runtime container ID used by crictl.",
+  "cap": "Kubernetes names a pod by namespace and name, while the node finds its logs and containers by directory and ID, which crictl reads."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p2-0525-pending-ladder",
+  "title": "Six checks for a Pending pod, in order",
+  "spec": "A vertical ladder of six numbered steps, top to bottom, each a rounded box with a number circle and a short monospace chip. Step 1 'describe pod: read the FailedScheduling message'. Step 2 'Resource: Insufficient nvidia.com/gpu, check allocated, fragmentation, taints, device plugin, Kueue workload'. Step 3 'Placement: relax affinity, selectors, taints or topology spread; label typo looks like capacity'. Step 4 'Volume: unbound PVC, zone conflict, attach limits'. Step 5 'Quota: exceeded quota means rejected, not Pending'. Step 6 'Scheduler: logs, leader lease, API latency'. A side note beside step 2 with a small fragmentation sketch: 'Free GPUs exist, but in pieces too small for this pod'. Orange outline on step 3 with the note 'A label typo looks exactly like a capacity problem'. Bottom note: 'Find the layer that holds the pod before you change labels or limits.'",
+  "anchor": "### 4.1 Pod Pending",
+  "alt": "Six checks for a Pending pod in order, from the FailedScheduling message through resources, placement, volumes, quota and the scheduler.",
+  "cap": "A Pending pod is checked in six steps, from the FailedScheduling message through resources, placement, volumes, quota and the scheduler."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p2-0525-creating-branches",
+  "title": "ContainerCreating: the event names the missing part",
+  "spec": "A central box 'Pod stuck in ContainerCreating: the event names what it waits for'. Three branches fanning out to three boxes. Branch 1 'FailedMount' with the points 'CSI or the volume: check volumeattachment, driver logs, findmnt'. Branch 2 'FailedCreatePodSandBox' with the points 'CNI: check /etc/cni/net.d, IPAM, MTU, runtime logs'. Branch 3 'Pulling' with the points 'Large image still downloading: check registry bandwidth, crictl images, the mirror'. A restaurant side-illustration in a corner: 'Kitchen ready, table not set: the meal cannot start'. Orange outline on Branch 2 'FailedCreatePodSandBox' as the network setup step. Bottom note: 'The waiter is the event: read which part is missing.'",
+  "anchor": "### 4.2 `ContainerCreating` for a long time",
+  "alt": "A pod stuck in ContainerCreating shows its missing part in the event: FailedMount points to storage, FailedCreatePodSandBox to CNI, and Pulling to a large image download.",
+  "cap": "A pod stuck in ContainerCreating shows the missing part in its event, such as FailedMount for storage or FailedCreatePodSandBox for CNI."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p2-0525-terminating-chain",
+  "title": "A Terminating pod is held by a chain of checks",
+  "spec": "A vertical ladder of four checks on the left, top to bottom, with numbered circles. Check 1 box 'API side: deletionTimestamp and finalizers in kubectl get pod -o yaml' with the note 'A finalizer whose controller is dead holds the pod forever'. Check 2 box 'Node side: crictl ps, and a D-state process through /proc/PID/stack and wchan' with the note 'NFS and Lustre hangs usually appear here'. Check 3 box 'Stuck unmounts: lsof +D and fuser -vm'. Check 4 box 'Unresponsive kubelet, hung runtime shim, or failing CNI DEL'. On the right a mitigation panel with two steps: 'Fix the underlying I/O' then 'Restart kubelet or the runtime'. A command chip in monospace near check 3 'fuser -vm'. Orange outline on check 2's D-state note as the state a kill cannot clear. Caption at the bottom: 'Find the first step that is still standing, as with a line of dominoes.'",
+  "anchor": "### 4.7 Terminating pods that never finish",
+  "alt": "A Terminating pod is checked at the API for finalizers, on the node for D-state processes and stuck unmounts, and at the kubelet, runtime and CNI, then mitigated by fixing I/O first.",
+  "cap": "A pod stuck in Terminating is checked for finalizers, D-state processes, stuck unmounts and a hung kubelet or runtime, and the I/O is fixed before any restart."
+ }
+]

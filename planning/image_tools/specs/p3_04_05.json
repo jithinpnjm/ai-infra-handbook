@@ -1,0 +1,232 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-ini-anatomy",
+  "title": "Reading hosts.ini as a spreadsheet of groups",
+  "spec": "Left the annotated INI file. Top host with no group 'mgmt01 ansible_host=10.1.0.2'. '[login] login01 ansible_host=10.1.1.5'. '[gpu_h100] gpu[001:032] ansible_user=automation (range gpu001 to gpu032); gpu033 gpu_count=4 (a node with a different build)'. '[gpu_a100] dgx-a100-[01:08].mgmt.example.com'. '[gpu:children] gpu_h100 gpu_a100 (group of groups)'. '[slurm_controller] slurmctl01'. '[cluster:children] login gpu slurm_controller'. '[gpu:vars] nvidia_driver_branch=550, ansible_python_interpreter=/usr/bin/python3'. Right reading guide: 'each host line is a row: the first word is the row name and every key=value pair after it is a column'; 'section headers in square brackets start a new table'; 'values on host lines are parsed as loose Python literals: a string with spaces needs quotes'; ':children and :vars are special suffixes'; 'ranges support letters like [a:f] as well as zero-padded numbers'; 'a host can appear in several groups'. Orange on 'gpu033 gpu_count=4' as the one-off. Bottom bar: 'INI is quick to type for a small static fleet'.",
+  "anchor": "### INI",
+  "alt": "An annotated INI inventory with login, GPU H100 and A100 groups using ranges, children groups and a vars section, with the rules for host lines, suffixes and ranges.",
+  "cap": "Each INI host line is a row of key=value columns, with ranges, children groups and inline group variables."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-yaml-tree",
+  "title": "The YAML inventory as a tree: which settings a host inherits",
+  "spec": "A tree. Trunk 'all' with 'vars: ansible_user automation, ansible_python_interpreter /usr/bin/python3' and 'children'. Branches: 'login' hosts 'login01 { ansible_host 10.1.1.5 }'; 'gpu' with its own 'vars: nvidia_driver_branch 550 (applies to everything beneath it)' and two child branches 'gpu_h100' hosts 'gpu001 { ansible_host 10.1.10.1, rack r01 }' and 'gpu002 { ansible_host 10.1.10.2, rack r01 }', 'gpu_a100' host 'dgx-a100-01 { ansible_host 10.1.20.1, rack r09 }'; 'slurm_controller' host 'slurmctl01'. Callout (orange) on gpu001: 'inherits ansible_user and python interpreter from all, nvidia_driver_branch 550 from gpu, and ansible_host and rack from its own braces'. Choice panel 'choose YAML when variables are structured, such as lists and dicts stored on a host, or when a generator writes the file; choose INI for a small static fleet; many teams keep only hosts and group membership in the inventory file and put variables in group_vars and host_vars'. Bottom bar: 'Reading the tree from the top shows what a host inherits before you read any host line'.",
+  "anchor": "### YAML",
+  "alt": "A YAML inventory drawn as a tree from all through login, gpu with H100 and A100 children and slurm_controller, showing which settings gpu001 inherits from each level.",
+  "cap": "Reading the YAML tree from the top shows which variables a host inherits from all and its parent groups before its own braces."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-special-groups",
+  "title": "all, ungrouped and the implicit localhost",
+  "spec": "Three boxes. 'all: contains every host'. 'ungrouped: contains the hosts that belong to no other group'. 'localhost: implicit, connection local; not part of all unless you define it explicitly' (orange, the surprise). Naming strip 'give each host a stable logical name (inventory_hostname) and put its network address in ansible_host; the name can differ from that address'. Group naming strip 'letters, digits and underscores only: a hyphen produces warnings because the group name becomes part of a variable name and a hyphen reads like a minus sign; avoid names that collide with variables or keywords, such as a group gpu next to a variable gpu'. Bottom bar: 'Stable names, addresses in ansible_host, plain group names'.",
+  "anchor": "### Special groups, names and connection variables",
+  "alt": "The built-in groups all, ungrouped and the implicit localhost that is not part of all, with the naming rules for hosts and groups.",
+  "cap": "all holds every host, ungrouped holds the rest, and the implicit localhost is not in all unless you define it."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-pets-cattle-ranges",
+  "title": "Pets and cattle: name one by one, or number the herd",
+  "spec": "Two columns. Column 'Pets: a server you name and nurse back to health by hand': examples 'frankfurt.example.com', 'helsinki.example.com'. Column 'Cattle: a herd where each member is numbered and replaceable' (orange, a GPU fleet): range forms 'web[01:20].example.com', 'web-[a:t].example.com', 'gpu[001:032]'; note 'leading zeros in [001:032] are kept automatically, so you get gpu001 through gpu032'; 'nobody names node 17, a failed node gets swapped for a spare with the next number'. Source label 'Ansible: Up and Running chapter 4'. Check strip 'lab function expand_inventory_range covers gpu[001:004] and web-[a:d].example.com'. Bottom bar: 'A scale-out fleet works better with ranges'.",
+  "anchor": "### Special groups, names and connection variables",
+  "alt": "Pets named one by one with city hostnames versus cattle numbered with ranges such as gpu001 to gpu032, web01 to web20 and web-a to web-t, with zero padding preserved.",
+  "cap": "Name pets one at a time, but number a GPU fleet with ranges, where zero padding is kept automatically."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-connection-vars",
+  "title": "Connection variables: the delivery slip for each host",
+  "spec": "A grouped table of the variables that tell Ansible how to reach a host. 'Where: ansible_host (the address), ansible_port'. 'Who: ansible_user, ansible_ssh_private_key_file (key file)'. 'How: ansible_connection with values ssh, local, docker, winrm, network_cli, httpapi, kubectl'. 'Through what: ansible_ssh_common_args (ProxyJump for a jump host)'. 'Privilege: ansible_become, ansible_become_method, ansible_become_user'. 'Remote Python: ansible_python_interpreter'. 'Shell: Ansible assumes Bourne shell syntax (/bin/sh); if the remote login shell is csh or fish set ansible_shell_type=csh or fish so that environment exports and command wrappers are formatted for it'. Warning (orange) 'keep passwords in Vault or a secrets lookup, never in plaintext inventory'. Bottom bar: 'Set ansible_host, ansible_port, ansible_user and ansible_connection most often'.",
+  "anchor": "### Special groups, names and connection variables",
+  "alt": "A grouped table of Ansible connection variables for address, user and key, connection type, jump host, privilege escalation, Python interpreter and shell type, with the rule to keep passwords out of inventory.",
+  "cap": "Connection variables say where to go, who signs in, how to connect and which interpreter and shell to use."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-inspect-ladder",
+  "title": "Check what Ansible built: five inventory commands in order",
+  "spec": "A ladder of five commands with the question each answers. '1 ansible-inventory -i inventories/prod --graph: where did this host land? tree of groups and hosts, no variable values, stays short' (run first). '2 --graph --vars: the same tree with variables'. '3 --host gpu001: what value does this host end up with? fully merged variables for one host after every layer'. '4 --list --yaml: the whole inventory as data, to save for a review because a diff tool can compare it' (orange). '5 ansible gpu_h100 -i inventories/prod --list-hosts: who would a pattern match'. Side note 'count the lines --list-hosts prints for the group: a count smaller than the number of machines you started is the first sign of the same-address collapse trap'. Bottom bar: 'Check the shape, then the final variables for one machine'.",
+  "anchor": "### Special groups, names and connection variables",
+  "alt": "A five step ladder of ansible-inventory --graph, --graph --vars, --host, --list --yaml and --list-hosts with the question each answers.",
+  "cap": "Run --graph first for the shape, then --host for the merged variables of one machine, and count --list-hosts."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-pattern-table",
+  "title": "Host pattern operators in one table",
+  "spec": "A table 'Pattern', 'Meaning'. 'all or *' / 'every host'. 'gpu' / 'group'. 'gpu:login' / 'union'. 'gpu:&rack_r01' / 'intersection'. 'gpu:!gpu_a100' / 'exclusion'. 'gpu00*' / 'wildcard'. '~gpu0(0[1-9]|1[0-6])' / 'regex'. 'gpu[0:2]' / 'group subscript, the first three hosts'. 'gpu001,gpu002' / 'explicit list, commas or colons'. '@retry.txt' / 'hosts listed in a file'. Analogy strip 'a filter on a contact list: a group name returns everyone in it, a colon joins two selections, & keeps only what two selections share, ! removes a group from the result; combine them in one string'. Story strip 'restart the Slurm daemon on every GPU node except the one under repair: typing names by hand invites a typo and a missed node is hard to notice; a pattern is checked against the inventory before anything runs, so you can see the matched hosts first'. Highlight 'gpu:&rack_r01' in orange as the GPU hosts in rack r01. Bottom bar: 'One short string selects the exact slice'.",
+  "anchor": "## 2. Host patterns",
+  "alt": "A table of ten host pattern forms including all, group, union, intersection, exclusion, wildcard, regex, subscript, explicit list and file, with the analogy of filters on a contact list.",
+  "cap": "Colon joins, ampersand intersects, bang excludes, and patterns are checked against the inventory before anything runs."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-limit-rolling",
+  "title": "--limit only narrows, and how to rerun just the failures",
+  "spec": "A flow. 'play says hosts: gpu (the widest scope)' to '--limit gpu_h100 (or -l) adds one more pattern on top: narrows to one hardware family for a first pass' (orange). Rule 'it never widens the play: a host outside the play's hosts: line stays out of the run even when --limit names it'. Second row 'partial failure' to 'ansible-playbook --limit @failed_hosts.txt reruns only the failed hosts' with condition 'works only if you enabled retry files or captured the failures; like the sign-in sheet for a workshop, if you did not collect it the rerun starts from the full roster'. Third row 'order key on a play': 'sorted: same sequence every time, easy to compare a log with the last run'; 'reverse_sorted'; 'reverse_inventory'; 'shuffle: spreads risk and load, one bad rack does not always come first'. Bottom bar: 'Before a rolling change, decide the order and capture failures'.",
+  "anchor": "## 2. Host patterns",
+  "alt": "A play with hosts gpu narrowed by --limit to gpu_h100 without ever widening, a rerun of failed hosts from a captured file, and the four order values sorted, reverse_sorted, reverse_inventory and shuffle.",
+  "cap": "--limit only narrows the play, a captured failure file reruns only failed hosts, and order shuffle spreads risk."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-vars-layout-tree",
+  "title": "The inventory directory for two environments, with who owns what",
+  "spec": "Annotated tree. 'inventories/' with 'prod/': 'hosts.yml', 'group_vars/' containing 'all/ main.yml (non-secret defaults for all hosts in prod) and vault.yml (encrypted secrets, 4.12)', 'gpu/ main.yml (driver, CUDA, NCCL defaults)', 'gpu_h100.yml (single-file form also works)', 'slurm_controller.yml'; 'host_vars/' containing 'gpu033.yml (one-off exceptions)'. 'staging/' with 'hosts.yml' and 'group_vars/ ...'. 'shared_vars/ optional; load with vars_files or include_vars'. Callouts: 'Ansible looks for group_vars and host_vars next to the inventory file or directory, and next to the playbook'; 'each entry can be name.yml or a directory name/ that holds several files, merged in alphabetical order, so main.yml and vault.yml sit side by side'. Orange on 'select one environment with -i inventories/prod: each environment has its own tree and a run can only read the one it points at; never separate Git branches for environments (chapter 4.1)'. Analogy 'hosts file is the floor plan, group_vars and host_vars are room labels and fittings'. Bottom bar: 'One inventory directory per environment'.",
+  "anchor": "## 3. Variables: group_vars, host_vars, and layout",
+  "alt": "An annotated inventories directory with prod and staging environments, group_vars with main.yml and vault.yml, a host_vars one-off, and the rule to select an environment with -i instead of using Git branches.",
+  "cap": "Give each environment its own inventory directory and variable tree, and split plain settings from vault files."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-var-ownership",
+  "title": "Who owns this variable: placement rules and naming",
+  "spec": "A table 'Kind of value', 'Where it lives'. 'Hardware traits' / 'hardware groups'. 'Role settings' / 'role groups'. 'Cluster-wide settings' / 'all'. 'True exceptions only' / 'host_vars: every entry makes the host a snowflake, a one-off nobody else shares'. 'Defaults' / 'role defaults/'. 'Per-run overrides' / '-e'. Quick test strip (orange) 'would the value still be true if the host were moved to a different rack? if no, it belongs on a rack group or a host, not on a hardware group'. Naming panel 'prefix each variable with its role: nvidia_driver_branch, slurm_cluster_name; a generic name like version that a Slurm role and a driver role both set means one value silently wins and the other role breaks without a clear message; the prefix makes the collision visible and precedence easier to debug'. Secrets panel 'keep secrets in encrypted files or an external store (4.12); refer by name: slurm_db_password: \"{{ vault_slurm_db_password }}\"; the plain file holds only a pointer; a grep shows where each secret is used, so rotation is a search instead of a guess'. Check strip 'ansible-inventory --host from the workstation before a run; debug: var=hostvars[inventory_hostname] inside a play'. Bottom bar: 'Keep each variable close to the group that owns it'.",
+  "anchor": "## 3. Variables: group_vars, host_vars, and layout",
+  "alt": "A placement table for hardware traits, role settings, cluster-wide values, exceptions, defaults and overrides, with the move-it-to-another-rack test, role prefix naming and vault pointer variables.",
+  "cap": "Put each variable on the group that owns it, prefix names by role, and point plain variables at vaulted secrets."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-precedence-ladder",
+  "title": "The seven-step precedence ladder, lowest to highest",
+  "spec": "A ladder of seven steps, bottom to top, with the note 'about 22 levels in all; this is the practical order'. 1 'command-line values such as -u (not -e), and role defaults in roles/x/defaults/main.yml, designed to be overridden'. 2 'group variables from inventory or script, group_vars/all and group_vars/group; parent groups before child groups; same level sorted alphabetically, then by ansible_group_priority'. 3 'host_vars next to the inventory or playbook, and inventory host variables'. 4 'host facts, set_fact and registered variables: facts rank among play-level variables'. 5 'play vars, vars_files, vars_prompt and role vars/: these rank above inventory, so keep overridable settings out of role vars/'. 6 'block and task vars, include_vars, set_fact, registered variables and role parameters'. 7 'extra vars passed with -e always win' (orange). Side panel 'practical rule: defaults in role defaults/, environment values in group_vars, per-host exceptions in host_vars, -e for one-off overrides and CI parameters'. Conflict note 'a variable defined in two sibling groups is a conflict and group order decides the winner: set ansible_group_priority or restructure the groups'. Bottom bar: 'The more specific the place, the higher the sheet'.",
+  "anchor": "### Variable precedence (summary)",
+  "alt": "A seven step precedence ladder from role defaults and command-line values at the bottom through group_vars, host_vars, facts, play vars and task vars up to extra vars, with the practical placement rule.",
+  "cap": "Role defaults sit lowest, group_vars and host_vars above them, play and role vars higher, and -e always wins."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-precedence-worked",
+  "title": "Which driver branch wins: a worked run through the stack",
+  "spec": "Two scenarios as stacked sheets. Scenario 1: 'role default sets an older driver branch' (bottom sheet), 'gpu_h100 group sets 550' (above), 'a host_vars file for one node sets nothing' (blank sheet, so the one below shows through); result 'that node gets 550, because the group layer sits above the role default'. Scenario 2: add 'extra vars on the command line: -e nvidia_driver_branch with a newer value' (top sheet, orange); result 'every host gets that newer value, because extra vars sit at the top of the stack'. Debug method panel 'when a variable has the wrong value, check each layer in order before editing anything: work from the bottom upward, find the lowest layer holding the value you expected, then look at each layer above it until you find the one that replaced it; that is the layer to change, editing any other layer changes nothing'. Analogy 'transparent sheets: where the top sheet has writing you read it, where it is blank the sheet below shows through'. Bottom bar: 'Find the layer that replaced it'.",
+  "anchor": "### Variable precedence (summary)",
+  "alt": "Two worked precedence scenarios for nvidia_driver_branch, where the group value 550 beats a role default and a command-line extra var beats everything, with the bottom-up debugging method.",
+  "cap": "The group value beats the role default, extra vars beat both, and the layer to edit is the one that replaced the expected value."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-group-by-add-host",
+  "title": "group_by versus add_host: two ways to change the inventory during a run",
+  "spec": "Two panels with the chapter's example. Panel 'group_by: for hosts that already exist': play 1 'hosts: all, gather_facts true; group_by key \"gpu_model_{{ gpu_model | default(none) | lower | replace(space, underscore) }}\" parents gpu_by_model' computes the group name per host, lowercase and underscores: a host with an H100 model lands in gpu_model_h100 and a host with no model lands in gpu_model_none; play 2 'hosts: gpu_model_h100' reads that group by name and runs debug H100 here. Panel 'add_host: for hosts that are new' (orange): play 3 'hosts: localhost; add_host name \"{{ new_vm_ip }}\" groups new_nodes ansible_user automation': does not contact the new machine, it only records the name, the group and the user in memory so a later play can reach it. Strip 'both change only the current run; to re-read inventory sources partway through a run use meta: refresh_inventory'. Story strip 'a cloud job creates three new VMs mid-play; the inventory was read at the start, so it does not know about them; sticky notes added to a whiteboard during a meeting'. Branch use 'branch plays on facts such as OS family or GPU model'. Bottom bar: 'group_by for existing hosts, add_host for new ones'.",
+  "anchor": "## 4. Runtime grouping: add_host and group_by",
+  "alt": "Two panels showing group_by computing groups such as gpu_model_h100 from facts for existing hosts and add_host recording a newly provisioned VM in memory for a later play, plus meta refresh_inventory.",
+  "cap": "group_by builds groups from facts for existing hosts, add_host records new hosts in memory, and both last only for the current run."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-plugin-config-annotated",
+  "title": "The GCP inventory plugin config, line by line",
+  "spec": "Annotated config 'inventories/gcp/gcp.gcp_compute.yml' (the file name must end with the plugin's required suffix). 'plugin: google.cloud.gcp_compute'. 'projects: [my-ai-project], zones: [us-central1-a, us-central1-b]'. 'auth_kind: application: use ADC or workload identity, not key files'. 'filters: labels.env = prod, status = RUNNING: narrows the query on the server side'. 'hostnames: [name]'. 'compose: ansible_host: networkInterfaces[0].networkIP: sets ansible_host from the network interface'. 'keyed_groups: key labels.role prefix role gives role_gpu, role_login; key zone prefix zone'. 'groups: gpu_a3: \"machineType.endswith(a3-highgpu-8g)\": a group from a Jinja condition'. Right a short AWS comparison 'aws_ec2.yml: plugin amazon.aws.aws_ec2, regions [us-east-1], filters instance-state-name running and tag:Env prod, keyed_groups tags.Role prefix role and instance_type prefix type, compose ansible_host: private_ip_address'. Orange on 'filters'. Bottom bar: 'The plugin asks the cloud, so keep secrets out of the config'.",
+  "anchor": "## 5. Dynamic inventory",
+  "alt": "An annotated GCP inventory plugin config with projects, zones, workload identity auth, server-side filters, compose for ansible_host, keyed_groups from labels and zone and a machine-type group, beside the AWS equivalent.",
+  "cap": "filters narrow the query at the cloud, compose sets ansible_host, and keyed_groups and groups turn attributes into groups."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-plugin-settings",
+  "title": "Five plugin settings, and the plugins grouped by purpose",
+  "spec": "Left a five row table 'Setting', 'What it does'. 'keyed_groups' / 'builds groups from attributes such as tags, labels, zone or instance type'. 'groups' / 'builds groups from Jinja conditions'. 'compose' / 'computes variables, including ansible_host'. 'filters' / 'makes the server return fewer items, which keeps large queries fast'. 'cache' (orange) / 'keeps API responses on disk so repeated commands do not call the API each time; turn on with cache: true, cache_plugin: jsonfile, cache_timeout: 300'. Right 'Plugins by purpose': 'cloud providers: google.cloud.gcp_compute, amazon.aws.aws_ec2, azure_rm, VMware, OpenStack, Foreman'; 'container platforms: kubernetes.core.k8s for pods and nodes, community.docker.docker_containers'; 'derive from data you already have: ansible.builtin.constructed (needs no cloud account; derives groups and variables from the variables of existing hosts)'; 'source of truth: netbox.netbox.nb_inventory reads sites, racks, roles, tags and custom fields; cloud.terraform.terraform_state'; 'built-in formats: ansible.builtin.yaml, ini, script, host_list, auto'. Command strip 'ansible-doc -t inventory -l lists what your installation provides'. Bottom bar: 'Return to the table whenever a config file needs one of these five jobs'.",
+  "anchor": "## 5. Dynamic inventory",
+  "alt": "A five row table of inventory plugin settings keyed_groups, groups, compose, filters and cache, beside the inventory plugins grouped by cloud, container, constructed, source of truth and built-in format.",
+  "cap": "Five settings do most of the work, and plugins group into cloud, container, constructed, source-of-truth and built-in formats."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-mixed-sources",
+  "title": "Combining static and dynamic sources in one inventory directory",
+  "spec": "A diagram with an inventory directory 'inventory/' set as the default with 'inventory = inventory' in ansible.cfg (so no -i flag on every command). Inside: 'vagrant.py', 'aws_ec2.yml (plugin: aws_ec2)', 'gcp.yml (plugin: gcp_compute)', 'azure_rm.yml (plugin: azure_rm, plain_host_names: true)', 'group_vars/', 'host_vars/', and static files. Arrow 'Ansible runs and merges every static file, dynamic script and inventory plugin in that directory into one unified inventory' to a box 'one list the playbooks can target'. Example panel 'a cluster that runs most GPUs on premises and rents extra capacity from a cloud during peaks: a static inventory for on-prem hardware plus a cloud plugin for burst capacity (orange); a constructed plugin derives uniform groups such as gpu and login whatever the source'. Auth strip 'workload identity, instance profiles or environment credentials; keep plugin configs free of secrets'. Analogy 'a static file is a printed phone directory, accurate the day it was printed; a dynamic inventory is a clerk who looks up the roster each time'. Bottom bar: 'The work moves from keeping a file correct to keeping the source correct'.",
+  "anchor": "## 5. Dynamic inventory",
+  "alt": "An inventory directory mixing a vagrant script, AWS, GCP and Azure plugin configs and static files with group_vars, merged by Ansible into one inventory, set as default in ansible.cfg.",
+  "cap": "Point ansible.cfg at an inventory directory and Ansible merges every static file, script and plugin into one list."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-script-sinfo",
+  "title": "The sinfo inventory script: what --list returns and why _meta matters",
+  "spec": "A flow. 'ansible runs slurm_inventory.py --list' to 'sinfo -N -h -o \"%N|%P|%G\" gives node, partition and GRES per line' to 'for each line: add the node to slurm_nodes and to a part_ group named after its partition; store slurm_partition and slurm_gres in _meta.hostvars' to 'print json.dumps(inventory)'. Callouts 'rstrip(\"*\") removes the star Slurm adds to the default partition name so part_gpu does not appear as part_gpu*'. JSON shape box '{ _meta: { hostvars: {...} }, all: { children: [slurm_nodes] }, slurm_nodes: { hosts: [...] }, part_X: { hosts: [...] } }'. Right panel 'Why _meta' (orange): 'it lets Ansible skip the per-host --host call, a major speed difference on a large inventory; like reading a full card catalogue once instead of walking to the shelf for every single book; the --host path just prints an empty JSON object'. Rules strip 'executable (chmod +x), deterministic (same API state gives the same output so two runs can be compared line by line), prints nothing else on stdout, exits non-zero when an API call fails'. Note 'scripts are the older way; the recommended extension is an inventory plugin: a Python class subclassing BaseInventoryPlugin, optionally Constructable and Cacheable, shipped in a collection'. Bottom bar: 'Return _meta and fail loudly'.",
+  "anchor": "### Script and custom plugins",
+  "alt": "The flow of an inventory script calling sinfo, grouping nodes by partition and returning JSON with _meta hostvars so Ansible skips per-host calls, with the rules for executable, deterministic and non-zero exit.",
+  "cap": "The script builds groups from sinfo and returns _meta.hostvars so Ansible never needs a per-host call."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-vagrant-py-walk",
+  "title": "The vagrant.py script: the two calls every inventory script must answer",
+  "spec": "Two steps. Step '--list' : 'list_running_hosts() runs vagrant status --machine-readable through subprocess.check_output'; 'each line is a comma-separated record: (timestamp, host, key, value) = line.split(,)[:4]'; 'keep every host where key == state and value == running'; result '{\"vagrant\": [\"vagrant1\", \"vagrant2\", \"vagrant3\"]}'. Step '--host (connection details)': 'get_host_details(host) runs vagrant ssh-config host and parses the OpenSSH block with paramiko.SSHConfig()'; mappings 'c[hostname] to ansible_host', 'int(c[port]) to ansible_port', 'c[user] to ansible_user', 'c[identityfile][0] to ansible_private_key_file' (orange). Side note 'it turns a laptop's running VMs into an inventory; a good model for any script because it shows the two calls every script must answer: --list and --host <name>'. Source label 'Ansible: Up and Running chapter 4; code/part04/ansible_inventory_model_lab.py tests this logic'. Bottom bar: 'List the machines, then give each its address card'.",
+  "anchor": "### Script and custom plugins",
+  "alt": "The two steps of the vagrant.py inventory script: --list filtering running machines from machine-readable status, and --host mapping ssh-config fields to ansible_host, port, user and key file.",
+  "cap": "--list returns the running machines and --host maps ssh-config fields onto Ansible connection variables."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-source-of-truth",
+  "title": "Who owns the list of machines: the source of truth",
+  "spec": "A hub and spoke. Centre 'inventory (generated)'. Spokes: 'NetBox or Nautobot: devices, interfaces, IPs, racks, cables and tags'; 'NVIDIA Base Command Manager (BCM): node categories and provisioning data'; 'the scheduler: Slurm node definitions'; 'cloud or Terraform state: the cloud side'. Story 'a node pulled for RMA last week: the spreadsheet still lists it as healthy, so a driver rollout sends it a job it cannot run; the inventory says gpu77 exists but it was RMA'd' (orange). Benefits 'a generated inventory does not drift from the fleet; after a rack is re-cabled and two nodes swap switch ports, a generated inventory reflects the new cabling after its next sync; enables cabling-aware automation such as checking which rail each NIC connects to'. Code rule 'treat the inventory source as code: review its changes, validate it for unique names and required fields, and write tests that fail the build when a host lacks a role or rack; a generator that quietly writes an empty rack field looks fine, and the test is the only thing that catches it before the rollout'. Bottom bar: 'The difference is who keeps the list true'.",
+  "anchor": "### Source of truth for GPU fleets",
+  "alt": "A generated inventory fed by NetBox or Nautobot, Base Command Manager, the Slurm scheduler and cloud or Terraform state, with the RMA node story and the rule to test the inventory source like code.",
+  "cap": "Generate the inventory from NetBox, BCM, the scheduler or Terraform state so it cannot drift, and test the generator like code."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-four-axes",
+  "title": "Model the cluster on four independent axes",
+  "spec": "A table 'Axis', 'Question it answers', 'Example groups', 'Used for'. 'Role' / 'what does the host run?' / 'login, gpu, slurm_controller, slurm_db, storage_client, monitoring, bmc, switch_leaf, switch_spine' / 'what software and config the host runs'. 'Hardware trait' / 'what hardware does it carry?' / 'gpu_h100, gpu_a100, gpu_gb200, nic_cx7, nic_bf3, cpu_amd, cpu_intel' / 'driver branch, NCCL tuning, kernel params'. 'Location or topology' / 'where is it physically?' / 'site_dc1, pod_a, rack_r07, rail_0 to rail_7, fabric_ib1' / 'rolling update batches, topology-aware Slurm config, failure domains'. 'Lifecycle' / 'where is it in its change cycle?' / 'canary, maint_window_sat, retired' / 'safe rollout and exclusions'. Variable example strip 'group_vars/gpu_h100.yml sets gpu_clocks, nccl_env and nvidia_driver_branch for H100 hosts; group_vars/rack_r07.yml sets values for rack r07 alone: a value describing the room belongs on the rack group, a value describing the chip on the chip's group'. BMC strip 'bmc group hosts connect with ansible_connection local or httpapi, or through the redfish modules with baseuri \"{{ bmc_address }}\"'. Agreement strip (orange) 'settle the axes first so every playbook targets the same slices: a driver, Slurm and firmware playbook all use the same names; otherwise a rack one playbook calls r07 another calls rack7'. Bottom bar: 'A host answers all four questions at once'.",
+  "anchor": "## 6. Designing inventory for GPU clusters",
+  "alt": "A table of four inventory axes of role, hardware trait, location and lifecycle with the question, example groups and use for each, plus where H100 and rack variables live and the need for shared group names.",
+  "cap": "Role, hardware, location and lifecycle groups let a playbook target any slice, and every team must use the same group names."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-host-labels-scale",
+  "title": "The labels every host should carry, and what changes at thousands of hosts",
+  "spec": "Two panels. Panel 'Per-host labels': nine tiles 'ansible_host', 'bmc_address', 'rack', 'u_position', 'gpu_count', 'ib_hcas (a list of HCA device names)', 'mgmt_mac', 'serial_number', 'asset_tag'. Caption 'each label answers a question asked during an incident: which rack, which BMC address, which serial number'. Guard (orange) 'check them at the start of every run with an argument spec or an assert play: assert that rack is defined and gpu_count | int > 0'. Panel 'At thousands of hosts': 'return _meta to avoid per-host --host script calls'; 'use keyed_groups and caching'; 'split the inventory into several sources'; 'raise forks'; 'choose strategy: free or serial on purpose (chapter 4.14)'; 'when a host belongs to many groups set ansible_group_priority and use consistent names so the result stays unambiguous'. Story strip 'each shortcut that was harmless at fifty hosts becomes a slow run'. Bottom bar: 'A small cluster forgives a messy layout, thousands of hosts do not'.",
+  "anchor": "## 6. Designing inventory for GPU clusters",
+  "alt": "Nine per-host labels such as rack, bmc_address and gpu_count with an assert guard, beside the scale measures of _meta, keyed_groups, caching, several sources, forks and group priority.",
+  "cap": "Give every host rack, BMC and GPU labels checked by an assert play, and use _meta, caching and priorities at scale."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-debug-table",
+  "title": "Inventory and variable symptoms, likely cause and check",
+  "spec": "An eight row table 'Symptom', 'Likely cause', 'Check'. 'no hosts matched' / 'pattern typo, empty group, wrong inventory path, --limit too narrow' / '--list-hosts, ansible-inventory --graph'. 'Variable has the wrong value' (orange) / 'precedence: role vars/ or -e overrides; sibling groups conflict' / 'ansible-inventory --host, debug: var=..., -vvv; search all layers with grep -r'. 'Variable undefined for some hosts' / 'defined on a group the host is not in, or loaded from the adjacent dir of the wrong inventory' / '--graph --vars; check group_vars placement beside the inventory in use'. 'group_vars ignored' / 'file not next to inventory or playbook; wrong name (gpu.yaml vs group gpu-nodes); invalid group name characters' / 'name must match group exactly'. 'Dict overrides lose keys' / 'dicts replaced not merged' / 'combine(recursive=True)'. 'Dynamic inventory slow' / 'no _meta, no cache, large unfiltered queries' / 'add cache, filters, _meta'. 'Plugin not used' / 'config filename does not end with the required suffix; plugin not enabled in ansible.cfg (enable_plugins)' / 'ansible-inventory -vvv, ansible-doc -t inventory name'. 'Wrong host connection' / 'ansible_host missing or incorrect; bastion args' / 'ansible -m debug -a var=ansible_host, -vvvv'. Footer 'start with ansible-inventory, it shows the same merged view that Ansible uses'. Bottom bar: 'Start from what you observe'.",
+  "anchor": "## 7. Debugging inventory and variable problems",
+  "alt": "A table of eight inventory symptoms including no hosts matched, wrong variable value, undefined variable, ignored group_vars, lost dictionary keys, slow dynamic inventory, unused plugin and wrong connection, with causes and checks.",
+  "cap": "Match the symptom to its row, then run ansible-inventory to see the same merged view Ansible uses."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "05",
+  "name": "p4-0405-mistake-list",
+  "title": "Inventory mistakes are quiet: a shortlist to check against your own repo",
+  "spec": "Two groups of cards. Group 'Habits': 'a giant flat inventory repeats the same variables on every host, so host_vars sprawls'; 'variables in role vars/ are hard to override, so people reach for -e to patch precedence problems'; 'plaintext secrets in inventory files, or ansible_password in vars, leak to everyone who can read the repository'; 'a branch per environment instead of an inventory directory per environment lets environments drift apart'; 'static inventories nobody updates after RMAs and expansions go stale; a dynamic inventory with no cache hammers the API'. Group 'Smaller errors': 'group names with hyphens or spaces, or names that collide with variables, cause warnings'; 'expecting localhost to be part of all: it is implicit and is not'; 'dictionaries replace rather than merge across layers, which surprises almost everyone once'; 'no validation of required host data, so a playbook fails halfway across the fleet'. Story strip (orange) 'a green dashboard after a rollout and one rack never received the new driver: nothing failed because nothing was asked to run there; count the hosts a run targets before you start it'. Bottom bar: 'Read the list with one question: which host did this miss?'.",
+  "anchor": "## 9. Common mistakes",
+  "alt": "Five common inventory habits and four smaller errors, with the green-dashboard story of a rack that never received the driver and the habit of counting targeted hosts before a run.",
+  "cap": "Count the hosts a run targets before starting it, because inventory mistakes are quiet and the run can still report success."
+ }
+]

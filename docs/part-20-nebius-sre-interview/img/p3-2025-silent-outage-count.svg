@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1070" width="1600" height="1070">
+  <title>One of four pods crashed and both alerts stayed quiet</title>
+  <desc>Infographic explaining silent monitoring failure when a pod crashes without firing error ratio or absent alerts</desc>
+
+  
+  <rect width="1600" height="1070" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">One of four pods crashed and both alerts stayed quiet</text>
+
+  
+  <g id="setup-box">
+    <rect x="50" y="105" width="1500" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(80, 127)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="24" height="24" rx="4" fill="#207448" fill-opacity="0.15" />
+      <rect x="30" y="0" width="24" height="24" rx="4" fill="#207448" fill-opacity="0.15" />
+      <rect x="0" y="30" width="24" height="24" rx="4" fill="#207448" fill-opacity="0.15" />
+      <rect x="30" y="30" width="24" height="24" rx="4" stroke-dasharray="3 3" />
+      <line x1="34" y1="34" x2="50" y2="50" stroke="#db8129" stroke-width="3" />
+      <line x1="50" y1="34" x2="34" y2="50" stroke="#db8129" stroke-width="3" />
+    </g>
+    <text x="160" y="164" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">one of four vLLM pods crashes at night; requests moved to other pods</text>
+  </g>
+
+  
+  <g id="alert-row-1">
+    <rect x="50" y="225" width="1500" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(80, 245)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M14 36 A14 14 0 0 1 42 36 L46 44 L10 44 Z" />
+      <path d="M28 12 V18" />
+      <path d="M24 48 A4 4 0 0 0 32 48" />
+      <line x1="10" y1="12" x2="46" y2="48" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="160" y="281" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Error ratio alert: quiet, and correctly so, no errors exist in the traffic that is still arriving</text>
+  </g>
+
+  
+  <g id="alert-row-2">
+    <rect x="50" y="340" width="1500" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(80, 360)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="8" />
+      <path d="M12 44 A24 24 0 0 1 44 12" />
+      <path d="M6 50 A34 34 0 0 1 50 6" />
+      <line x1="28" y1="36" x2="28" y2="52" />
+    </g>
+    <text x="160" y="396" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan font-family="ui-monospace, monospace" font-weight="bold">absent(up{job="vllm"})</tspan><tspan font-weight="bold"> alert: quiet because three pods still report</tspan>
+    </text>
+  </g>
+
+  
+  <g id="missing-coverage-box">
+    <rect x="50" y="455" width="1500" height="105" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(80, 480)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M28 8 L52 48 L4 48 Z" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="41" r="1.5" fill="#db8129" />
+    </g>
+    <text x="160" y="519" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">neither alert was written to notice a shrinking fleet</text>
+  </g>
+
+  
+  <g id="fix-list">
+    <rect x="50" y="580" width="1500" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(80, 645)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M38 12 A14 14 0 0 0 18 32 L8 42 A4 4 0 0 0 14 48 L24 38 A14 14 0 0 0 44 18 L34 22 L30 18 Z" />
+    </g>
+    <text x="160" y="628" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0">add <tspan font-family="ui-monospace, monospace">up == 0</tspan> for two minutes (target exists but cannot be scraped);</tspan>
+      <tspan x="160" dy="36">add a count below four (counts what should be there: the chapter test deletes one of</tspan>
+      <tspan x="160" dy="36">two pods and shows <tspan font-family="ui-monospace, monospace">absent</tspan> empty and the count returning 1);</tspan>
+      <tspan x="160" dy="36"><tspan font-family="ui-monospace, monospace">absent</tspan> stays for the total blackout</tspan>
+    </text>
+  </g>
+
+  
+  <g id="second-note">
+    <rect x="50" y="795" width="1500" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(80, 815)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M10 42 A22 22 0 1 1 46 42" />
+      <line x1="28" y1="34" x2="40" y2="20" />
+      <circle cx="28" cy="34" r="3" fill="#207448" />
+    </g>
+    <text x="160" y="852" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">also alert on lost capacity: the loss shows up as saturation on the survivors (chapter 20.18)</text>
+  </g>
+
+  
+  <g id="footer-bar">
+    <rect x="50" y="910" width="1500" height="120" rx="12" fill="#207448" />
+    
+    <g transform="translate(80, 942)" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M28 8 L48 16 V30 C48 42 28 50 28 50 C28 50 8 42 8 30 V16 Z" />
+      <path d="M18 28 L25 35 L38 22" />
+    </g>
+    <text x="160" y="958" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="160" dy="0">pair every no-data risk with a count or an absent alert and test it by deleting the series; a vanished</tspan>
+      <tspan x="160" dy="36">series does not return zero, it returns nothing, so errors &gt; 0 cannot fire</tspan>
+    </text>
+  </g>
+</svg>

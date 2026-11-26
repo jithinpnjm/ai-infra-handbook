@@ -70,14 +70,9 @@ An engineer runs a create call, gets a 201, and sends a request one second later
 
 The control plane changes configuration. It has one common base URL, `https://api.tokenfactory.nebius.com`, and the paths start with `/v0/dedicated_endpoints` [official]. The data plane serves inference and has a regional base URL under `/v1`. For `eu-north1` the data-plane URL is the same host as the control plane. For `eu-west1` and `us-central1` the docs show their own hosts [official]. The API schema, version 20261105, lists sixteen region values, while the docs table lists three [official]. Do not assume all sixteen are orderable. Ask the template call.
 
-```mermaid
-flowchart LR
-  A["Your app"] -->|"POST /v0/dedicated_endpoints"| C["Control plane<br/>common base URL"]
-  C -->|"endpoint_id + routing_key"| A
-  A -->|"model = routing_key"| D["Data plane<br/>regional /v1"]
-  D --> R["Replicas<br/>GPU workers"]
-  C -.->|"desired state"| R
-```
+![Control plane, data plane and the routing key](./img/m20-32-1.svg)
+
+*Figure 20.32.1. Control plane, data plane and the routing key, as a diagram.*
 
 Read the flowchart as loops that meet at the replicas. The control loop tells the replicas what to be. The data loop sends them traffic.
 

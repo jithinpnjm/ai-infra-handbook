@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>A batch header that does not depend on cluster defaults</title>
+  <desc>Infographic explaining the five required sbatch header dimensions and why relying on cluster defaults leads to silent training failures.</desc>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">A batch header that does not depend on cluster defaults</text>
+
+  
+  <g id="sbatch-header-panel">
+    <rect x="40" y="120" width="720" height="760" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(65, 145)">
+      <path d="M10,0 L36,0 L50,14 L50,54 L10,54 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M36,0 L36,14 L50,14" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="18" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="40" x2="34" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    
+    <text x="135" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="135" dy="0">Annotated sbatch header with</tspan>
+      <tspan x="135" dy="36">five dimensions the script must state</tspan>
+    </text>
+
+    
+    <g transform="translate(65, 240)">
+      <rect x="0" y="0" width="670" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 27)">
+        <rect x="0" y="0" width="50" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+        <line x1="0" y1="17" x2="50" y2="17" stroke="#207448" stroke-width="3"/>
+        <line x1="0" y1="34" x2="50" y2="34" stroke="#207448" stroke-width="3"/>
+        <circle cx="10" cy="8.5" r="2.5" fill="#207448"/>
+        <circle cx="10" cy="25.5" r="2.5" fill="#207448"/>
+        <circle cx="10" cy="42.5" r="2.5" fill="#207448"/>
+      </g>
+      <text x="95" y="62" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">--nodes</text>
+    </g>
+
+    
+    <g transform="translate(65, 365)">
+      <rect x="0" y="0" width="670" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 27)">
+        <rect x="5" y="5" width="40" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+        <rect x="14" y="14" width="22" height="22" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+        <line x1="15" y1="0" x2="15" y2="5" stroke="#207448" stroke-width="3"/>
+        <line x1="25" y1="0" x2="25" y2="5" stroke="#207448" stroke-width="3"/>
+        <line x1="35" y1="0" x2="35" y2="5" stroke="#207448" stroke-width="3"/>
+        <line x1="15" y1="45" x2="15" y2="50" stroke="#207448" stroke-width="3"/>
+        <line x1="25" y1="45" x2="25" y2="50" stroke="#207448" stroke-width="3"/>
+        <line x1="35" y1="45" x2="35" y2="50" stroke="#207448" stroke-width="3"/>
+        <line x1="0" y1="15" x2="5" y2="15" stroke="#207448" stroke-width="3"/>
+        <line x1="0" y1="25" x2="5" y2="25" stroke="#207448" stroke-width="3"/>
+        <line x1="0" y1="35" x2="5" y2="35" stroke="#207448" stroke-width="3"/>
+        <line x1="45" y1="15" x2="50" y2="15" stroke="#207448" stroke-width="3"/>
+        <line x1="45" y1="25" x2="50" y2="25" stroke="#207448" stroke-width="3"/>
+        <line x1="45" y1="35" x2="50" y2="35" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="95" y="48" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">
+        <tspan x="95" dy="0">--gres</tspan>
+        <tspan x="95" dy="34" font-size="24" font-weight="normal" fill="#303a36">(or --gpus-per-node)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(65, 490)">
+      <rect x="0" y="0" width="670" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 27)">
+        <rect x="6" y="6" width="38" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+        <line x1="25" y1="13" x2="25" y2="37" stroke="#207448" stroke-width="3"/>
+        <line x1="13" y1="25" x2="37" y2="25" stroke="#207448" stroke-width="3"/>
+        <line x1="16" y1="0" x2="16" y2="6" stroke="#207448" stroke-width="3"/>
+        <line x1="34" y1="0" x2="34" y2="6" stroke="#207448" stroke-width="3"/>
+        <line x1="16" y1="44" x2="16" y2="50" stroke="#207448" stroke-width="3"/>
+        <line x1="34" y1="44" x2="34" y2="50" stroke="#207448" stroke-width="3"/>
+        <line x1="0" y1="16" x2="6" y2="16" stroke="#207448" stroke-width="3"/>
+        <line x1="0" y1="34" x2="6" y2="34" stroke="#207448" stroke-width="3"/>
+        <line x1="44" y1="16" x2="50" y2="16" stroke="#207448" stroke-width="3"/>
+        <line x1="44" y1="34" x2="50" y2="34" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="95" y="48" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">
+        <tspan x="95" dy="0">--cpus-per-task</tspan>
+        <tspan x="95" dy="34" font-size="24" font-weight="normal" fill="#303a36">(or --cpus-per-gpu)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(65, 615)">
+      <rect x="0" y="0" width="670" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 27)">
+        <rect x="2" y="10" width="46" height="28" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+        <rect x="8" y="16" width="7" height="12" fill="#207448"/>
+        <rect x="21" y="16" width="7" height="12" fill="#207448"/>
+        <rect x="34" y="16" width="7" height="12" fill="#207448"/>
+        <line x1="6" y1="38" x2="20" y2="38" stroke="#207448" stroke-width="3"/>
+        <line x1="28" y1="38" x2="44" y2="38" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="95" y="48" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">
+        <tspan x="95" dy="0">--mem</tspan>
+        <tspan x="95" dy="34" font-size="24" font-weight="normal" fill="#303a36">(or --mem-per-cpu or --mem-per-gpu)</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(65, 740)">
+      <rect x="0" y="0" width="670" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      
+      <g transform="translate(20, 27)">
+        <circle cx="25" cy="25" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+        <line x1="25" y1="25" x2="25" y2="12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+        <line x1="25" y1="25" x2="36" y2="25" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <text x="95" y="62" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#207448">--time</text>
+    </g>
+  </g>
+
+  
+  
+  <g transform="translate(800, 120)">
+    <rect x="0" y="0" width="760" height="310" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(25, 30)">
+      <path d="M26,3 L51,47 L1,47 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="26" y1="18" x2="26" y2="33" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="26" cy="40" r="2.5" fill="#db8129"/>
+    </g>
+    
+    <text x="96" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">clusters set very different defaults, such as 1 CPU</tspan>
+      <tspan x="96" dy="36">core or 2 GiB of host RAM per task; with those</tspan>
+      <tspan x="96" dy="36">PyTorch DataLoader workers with num_workers</tspan>
+      <tspan x="96" dy="36">greater than 0 starve or are killed silently, a</tspan>
+      <tspan x="96" dy="36">common cause of silent training failures when a</tspan>
+      <tspan x="96" dy="36">script moves from a lab cluster to a shared</tspan>
+      <tspan x="96" dy="36">production cluster</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(800, 470)">
+    <rect x="0" y="0" width="760" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 35)">
+      <circle cx="26" cy="26" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M26,5 L26,12 M26,40 L26,47 M5,26 L12,26 M40,26 L47,26 M11,11 L16,16 M36,36 L41,41 M11,41 L16,36 M36,16 L41,11" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="96" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">partition DefCpuPerGPU and DefMemPerGPU fill</tspan>
+      <tspan x="96" dy="38">the blanks for users who type only --gres=gpu:1</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(800, 640)">
+    <rect x="0" y="0" width="760" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(25, 40)">
+      <path d="M4,10 L26,2 L48,10 L48,32 C48,46 26,54 26,54 C26,54 4,46 4,32 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="26" cy="27" r="5" fill="#207448"/>
+    </g>
+    
+    <text x="96" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">--exclusive for large multi-node training: no</tspan>
+      <tspan x="96" dy="36">other jobs share your allocated nodes, removing</tspan>
+      <tspan x="96" dy="36">interference from PCIe, NUMA memory bandwidth</tspan>
+      <tspan x="96" dy="36">and the shared filesystem page cache even if</tspan>
+      <tspan x="96" dy="36">you do not request every CPU core</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 920)">
+    <rect x="0" y="0" width="1520" height="80" rx="16" fill="#207448"/>
+    <text x="760" y="49" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">write all five dimensions in the header before moving a script to another cluster</text>
+  </g>
+</svg>

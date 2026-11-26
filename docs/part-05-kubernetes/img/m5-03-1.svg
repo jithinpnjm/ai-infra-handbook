@@ -1,0 +1,243 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The big picture</title>
+  <desc>Visual infographic explaining Kubernetes architecture with the control plane, worker node components, and their communication paths.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-start" viewBox="0 0 12 12" refX="2" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 11 2 L 2 6 L 11 10 z" fill="#207448" />
+    </marker>
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="112%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#000000" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The big picture</text>
+
+  
+  <g id="node-U" filter="url(#shadow)">
+    <rect x="520" y="76" width="560" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="542" y="85" width="54" height="54" rx="8" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 552 103 L 564 112 L 552 121 M 568 121 L 584 121" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="614" y="122" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">kubectl, CI, operators, dashboards</text>
+  </g>
+
+  
+  <rect x="60" y="165" width="1480" height="465" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  <text x="90" y="198" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Control plane (one or more nodes)</text>
+
+  
+  <g id="node-SCH" filter="url(#shadow)">
+    <rect x="80" y="215" width="340" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="120" cy="255" r="22" fill="none" stroke="#207448" stroke-width="3.5" />
+    <polyline points="120,242 120,255 132,255" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="156" y="263" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">kube-scheduler</text>
+    <text x="96" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">(binds pending pods</tspan>
+      <tspan x="96" dy="28">to nodes)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-CM" filter="url(#shadow)">
+    <rect x="80" y="380" width="360" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="118" cy="418" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 118 396 L 118 402 M 118 434 L 118 440 M 96 418 L 102 418 M 134 418 L 140 418 M 102 402 L 106 406 M 130 430 L 134 434 M 102 434 L 106 430 M 130 406 L 134 402" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="146" y="426" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">kube-controller-manager</text>
+    <text x="96" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">(many controllers: node,</tspan>
+      <tspan x="96" dy="28">deployment, replicaset,</tspan>
+      <tspan x="96" dy="28">endpoints, job, namespace,</tspan>
+      <tspan x="96" dy="28">SA ...)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-API" filter="url(#shadow)">
+    <rect x="610" y="215" width="380" height="225" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    
+    <polygon points="650,240 670,228 690,240 690,264 670,276 650,264" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <circle cx="670" cy="252" r="6" fill="#db8129" />
+    <text x="708" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">kube-apiserver</text>
+    <text x="626" y="300" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="626" dy="0">(REST + watch,</tspan>
+      <tspan x="626" dy="28">authn/authz/admission,</tspan>
+      <tspan x="626" dy="28">only component that</tspan>
+      <tspan x="626" dy="28">talks to etcd)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-ETCD" filter="url(#shadow)">
+    <rect x="1170" y="215" width="350" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <ellipse cx="1208" cy="246" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1186 246 L 1186 268 A 22 8 0 0 0 1230 268 L 1230 246" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1186 268 L 1186 290 A 22 8 0 0 0 1230 290 L 1230 268" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="1244" y="263" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">etcd</text>
+    <text x="1184" y="318" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1184" dy="0">(Raft-replicated</tspan>
+      <tspan x="1184" dy="28">key-value store)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-CCM" filter="url(#shadow)">
+    <rect x="1160" y="390" width="360" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <path d="M 1186 430 A 12 12 0 0 1 1204 416 A 16 16 0 0 1 1230 422 A 12 12 0 0 1 1230 442 L 1186 442 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <text x="1176" y="472" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">cloud-controller-manager</text>
+    <text x="1176" y="512" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1176" dy="0">(load balancers, routes,</tspan>
+      <tspan x="1176" dy="28">node lifecycle with</tspan>
+      <tspan x="1176" dy="28">the cloud)</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="60" y="695" width="1480" height="475" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  <text x="90" y="728" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Worker node</text>
+
+  
+  <g id="node-DP" filter="url(#shadow)">
+    <rect x="80" y="750" width="370" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="96" y="766" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="90" y1="774" x2="96" y2="774" stroke="#207448" stroke-width="3" />
+    <line x1="90" y1="784" x2="96" y2="784" stroke="#207448" stroke-width="3" />
+    <line x1="90" y1="794" x2="96" y2="794" stroke="#207448" stroke-width="3" />
+    <line x1="104" y1="802" x2="104" y2="808" stroke="#207448" stroke-width="3" />
+    <line x1="114" y1="802" x2="114" y2="808" stroke="#207448" stroke-width="3" />
+    <line x1="124" y1="802" x2="124" y2="808" stroke="#207448" stroke-width="3" />
+    <text x="142" y="794" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">device plugins /</text>
+    <text x="96" y="834" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="96" dy="0">DRA driver</tspan>
+      <tspan x="96" dy="28">(GPU, RDMA)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-KL" filter="url(#shadow)">
+    <rect x="690" y="750" width="220" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <path d="M 714 772 L 736 764 L 758 772 L 758 794 C 758 812 736 824 736 824 C 736 824 714 812 714 794 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <text x="772" y="810" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">kubelet</text>
+  </g>
+
+  
+  <g id="node-KP" filter="url(#shadow)">
+    <rect x="1060" y="750" width="450" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="1088" cy="797" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="1126" cy="780" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="1126" cy="814" r="8" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="1096" y1="793" x2="1118" y2="783" stroke="#207448" stroke-width="3" />
+    <line x1="1096" y1="801" x2="1118" y2="811" stroke="#207448" stroke-width="3" />
+    <text x="1144" y="809" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">kube-proxy (or eBPF CNI)</text>
+  </g>
+
+  
+  <g id="node-RT" filter="url(#shadow)">
+    <rect x="580" y="905" width="440" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="600" y="925" width="46" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="612" y1="925" x2="612" y2="967" stroke="#207448" stroke-width="2" />
+    <line x1="624" y1="925" x2="624" y2="967" stroke="#207448" stroke-width="2" />
+    <line x1="634" y1="925" x2="634" y2="967" stroke="#207448" stroke-width="2" />
+    <text x="656" y="948" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">container runtime</text>
+    <text x="656" y="984" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(containerd/CRI-O)</text>
+  </g>
+
+  
+  <g id="node-CNI" filter="url(#shadow)">
+    <rect x="1180" y="905" width="340" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="1200" y="933" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="1206" y1="925" x2="1206" y2="933" stroke="#207448" stroke-width="3" />
+    <line x1="1218" y1="925" x2="1218" y2="933" stroke="#207448" stroke-width="3" />
+    <path d="M 1212 957 L 1212 973" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="1234" y="968" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">CNI plugin (agent)</text>
+  </g>
+
+  
+  <g id="node-PODS" filter="url(#shadow)">
+    <rect x="710" y="1065" width="180" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <rect x="728" y="1085" width="32" height="40" rx="16" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="744" cy="1105" r="5" fill="#207448" />
+    <text x="774" y="1118" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pods</text>
+  </g>
+
+  
+
+   API: "HTTPS (REST)" -->
+  <line x1="800" y1="150" x2="800" y2="215" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="705" y="165" width="190" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="189" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">HTTPS (REST)</text>
+
+   ETCD: bidirectional -->
+  <line x1="990" y1="265" x2="1170" y2="265" stroke="#207448" stroke-width="2.5" marker-start="url(#arrow-start)" marker-end="url(#arrow)" />
+
+   API: "watch pods, nodes; write bindings" -->
+  <line x1="420" y1="265" x2="610" y2="265" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="424" y="217" width="182" height="92" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="515" y="243" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="515" dy="0">watch pods,</tspan>
+    <tspan x="515" dy="28">nodes; write</tspan>
+    <tspan x="515" dy="28">bindings</tspan>
+  </text>
+
+   API: "watch/write" -->
+  <path d="M 440 500 L 660 500 L 660 440" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="475" y="482" width="145" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="547" y="508" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">watch/write</text>
+
+   API: "watch/write" -->
+  <path d="M 1160 500 L 940 500 L 940 440" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="980" y="482" width="145" height="36" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1052" y="508" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">watch/write</text>
+
+   API: "watch pods for its node; update status, leases" -->
+  <line x1="740" y1="750" x2="740" y2="440" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="580" y="540" width="320" height="68" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="740" y="567" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="740" dy="0">watch pods for its node;</tspan>
+    <tspan x="740" dy="28">update status, leases</tspan>
+  </text>
+
+   API: "watch Services/EndpointSlices" -->
+  <path d="M 1140 750 L 1140 645 L 860 645 L 860 440" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="940" y="627" width="200" height="66" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1040" y="653" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1040" dy="0">watch Services/</tspan>
+    <tspan x="1040" dy="28">EndpointSlices</tspan>
+  </text>
+
+   RT: "CRI gRPC" -->
+  <line x1="800" y1="845" x2="800" y2="905" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="735" y="857" width="130" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="881" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CRI gRPC</text>
+
+   DP: "device plugin gRPC" -->
+  <line x1="690" y1="800" x2="450" y2="800" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="460" y="783" width="220" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="570" y="807" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">device plugin gRPC</text>
+
+   CNI: "CNI exec" -->
+  <line x1="1020" y1="955" x2="1180" y2="955" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+  <rect x="1040" y="938" width="120" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1100" y="962" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CNI exec</text>
+
+   PODS -->
+  <line x1="800" y1="1010" x2="800" y2="1065" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)" />
+
+</svg>

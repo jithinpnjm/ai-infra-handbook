@@ -1,0 +1,225 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Bottom-up: from a hardware symptom to the application, and which direction to choose</title>
+  <desc>Ascending ladder of network diagnostic questions and tools with guidelines on choosing top-down or bottom-up troubleshooting direction.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    <tspan x="50" dy="0">Bottom-up: from a hardware symptom</tspan>
+    <tspan x="50" dy="48">to the application, and which direction to choose</tspan>
+  </text>
+
+  
+  <line x1="38" y1="1010" x2="38" y2="128" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
+  <path d="M 28 144 L 38 120 L 48 144" fill="none" stroke="#207448" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <line x1="972" y1="1010" x2="972" y2="128" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
+  <path d="M 962 144 L 972 120 L 982 144" fill="none" stroke="#207448" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <line x1="38" y1="160" x2="50" y2="160" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="160" x2="972" y2="160" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="250" x2="50" y2="250" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="250" x2="972" y2="250" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="340" x2="50" y2="340" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="340" x2="972" y2="340" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="430" x2="50" y2="430" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="430" x2="972" y2="430" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="520" x2="50" y2="520" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="520" x2="972" y2="520" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="610" x2="50" y2="610" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="610" x2="972" y2="610" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="700" x2="50" y2="700" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="700" x2="972" y2="700" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="790" x2="50" y2="790" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="790" x2="972" y2="790" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="880" x2="50" y2="880" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="880" x2="972" y2="880" stroke="#207448" stroke-width="4"/>
+  <line x1="38" y1="970" x2="50" y2="970" stroke="#207448" stroke-width="4"/>
+  <line x1="960" y1="970" x2="972" y2="970" stroke="#207448" stroke-width="4"/>
+
+  
+  <g>
+    <rect x="50" y="120" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="160" r="24" fill="#207448"/>
+    <text x="85" y="168" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">10</text>
+    
+    <rect x="122" y="142" width="36" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="122" y1="152" x2="158" y2="152" stroke="#207448" stroke-width="3"/>
+    <circle cx="130" cy="147" r="1.5" fill="#207448"/>
+    <circle cx="136" cy="147" r="1.5" fill="#207448"/>
+    <text x="175" y="154" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is the application reading its data?:</text>
+    <text x="175" y="186" font-family="monospace" font-size="24" fill="#207448">ss Recv-Q</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="210" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="250" r="24" fill="#207448"/>
+    <text x="85" y="258" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">9</text>
+    
+    <path d="M 152 240 A 14 14 0 1 0 152 260" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 148 232 L 158 240 L 148 246" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="175" y="244" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Are TCP retransmits rising?:</text>
+    <text x="175" y="276" font-family="monospace" font-size="24" fill="#207448">nstat, tcpretrans</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="300" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="340" r="24" fill="#207448"/>
+    <text x="85" y="348" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+    
+    <rect x="122" y="324" width="36" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="122" y="336" width="36" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="122" y="348" width="36" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="175" y="334" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What do the IP-layer counters show?:</text>
+    <text x="175" y="366" font-family="monospace" font-size="24" fill="#207448">nstat</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="390" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="430" r="24" fill="#207448"/>
+    <text x="85" y="438" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    
+    <path d="M 122 414 L 158 414 L 146 430 L 146 446 L 134 446 L 134 430 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <text x="175" y="424" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Are qdisc drops occurring?:</text>
+    <text x="175" y="456" font-family="monospace" font-size="24" fill="#207448">tc -s qdisc</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="480" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="520" r="24" fill="#207448"/>
+    <text x="85" y="528" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <circle cx="140" cy="520" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 140 504 L 140 508 M 140 532 L 140 536 M 124 520 L 128 520 M 152 520 L 156 520 M 129 509 L 132 512 M 148 528 L 151 531 M 129 531 L 132 528 M 148 512 L 151 509" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="175" y="514" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is there a known driver or firmware issue?:</text>
+    <text x="175" y="546" font-family="monospace" font-size="24" fill="#207448">ethtool -i</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="570" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="610" r="24" fill="#207448"/>
+    <text x="85" y="618" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <rect x="127" y="597" width="26" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="133" y1="591" x2="133" y2="597" stroke="#207448" stroke-width="3"/>
+    <line x1="147" y1="591" x2="147" y2="597" stroke="#207448" stroke-width="3"/>
+    <line x1="133" y1="623" x2="133" y2="629" stroke="#207448" stroke-width="3"/>
+    <line x1="147" y1="623" x2="147" y2="629" stroke="#207448" stroke-width="3"/>
+    <line x1="121" y1="603" x2="127" y2="603" stroke="#207448" stroke-width="3"/>
+    <line x1="121" y1="617" x2="127" y2="617" stroke="#207448" stroke-width="3"/>
+    <line x1="153" y1="603" x2="159" y2="603" stroke="#207448" stroke-width="3"/>
+    <line x1="153" y1="617" x2="159" y2="617" stroke="#207448" stroke-width="3"/>
+    <text x="175" y="604" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is an IRQ or CPU saturated?:</text>
+    <text x="175" y="636" font-family="monospace" font-size="24" fill="#207448">mpstat -P ALL 1, /proc/interrupts, softirqs</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="660" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="700" r="24" fill="#207448"/>
+    <text x="85" y="708" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <circle cx="140" cy="700" r="16" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6 4"/>
+    <circle cx="140" cy="700" r="6" fill="#207448"/>
+    <text x="175" y="694" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Are the ring buffers dropping?:</text>
+    <text x="175" y="726" font-family="monospace" font-size="24" fill="#207448">ethtool -S, ethtool -g</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="750" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="790" r="24" fill="#207448"/>
+    <text x="85" y="798" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <path d="M 140 768 L 158 804 L 122 804 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="140" y1="778" x2="140" y2="792" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="140" cy="798" r="1.5" fill="#207448"/>
+    <text x="175" y="784" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Are errors rising?:</text>
+    <text x="175" y="816" font-family="monospace" font-size="24" fill="#207448">ip -s link, ethtool -S</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="840" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="880" r="24" fill="#207448"/>
+    <text x="85" y="888" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <path d="M 124 892 A 16 16 0 1 1 156 892" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="140" y1="886" x2="150" y2="876" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="175" y="874" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Are speed and FEC correct?:</text>
+    <text x="175" y="906" font-family="monospace" font-size="24" fill="#207448">ethtool, ethtool --show-fec</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="930" width="910" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="970" r="24" fill="#207448"/>
+    <text x="85" y="978" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <rect x="126" y="958" width="20" height="24" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="131" y1="952" x2="131" y2="958" stroke="#207448" stroke-width="3"/>
+    <line x1="141" y1="952" x2="141" y2="958" stroke="#207448" stroke-width="3"/>
+    <line x1="136" y1="982" x2="136" y2="990" stroke="#207448" stroke-width="3"/>
+    <text x="175" y="964" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Is the link up?:</text>
+    <text x="175" y="996" font-family="monospace" font-size="24" fill="#207448">ip -br link, ethtool</text>
+  </g>
+
+  
+  <g>
+    <rect x="1000" y="120" width="550" height="890" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <rect x="1000" y="120" width="550" height="64" rx="12" fill="#207448"/>
+    <text x="1275" y="163" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Choose the direction</text>
+
+    
+    <rect x="1025" y="200" width="500" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1275" y="236" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1275" dy="0">if the application reports</tspan>
+      <tspan x="1275" dy="32" fill="#207448">the failure, go top-down</tspan>
+    </text>
+
+    
+    <rect x="1025" y="304" width="500" height="88" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+    <text x="1275" y="340" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1275" dy="0">if the counters are already</tspan>
+      <tspan x="1275" dy="32" fill="#db8129">rising, go bottom-up</tspan>
+    </text>
+
+    
+    <rect x="1025" y="410" width="500" height="580" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4"/>
+    <text x="1045" y="456" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1045" dy="0">process listening? ss -tulpn</tspan>
+      <tspan x="1045" dy="38">and the accept queue in Recv-Q;</tspan>
+      <tspan x="1045" dy="38">local connect then peer connect</tspan>
+      <tspan x="1045" dy="38">with nc -zv;</tspan>
+      <tspan x="1045" dy="38">refusal or timeout;</tspan>
+      <tspan x="1045" dy="38">DNS and proxy variables;</tspan>
+      <tspan x="1045" dy="38">ip route get and ip rule;</tspan>
+      <tspan x="1045" dy="38">firewall and conntrack;</tspan>
+      <tspan x="1045" dy="38">ip neigh FAILED or INCOMPLETE;</tspan>
+      <tspan x="1045" dy="38">interface health;</tspan>
+      <tspan x="1045" dy="38">capture at both ends</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="1024" width="1500" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="1053" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">Loopback tests never reach the NIC: the kernel short-circuits local traffic,</tspan>
+      <tspan x="800" dy="28">so they do not prove external reachability</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="1108" width="1500" height="70" rx="8" fill="#207448"/>
+    <text x="800" y="1152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Both directions end at the same place</text>
+  </g>
+</svg>

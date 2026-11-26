@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What each __init__.py does on the way into dir1.dir2.mod</title>
+  <desc>Visual explanation of execution sequence during import dir1.dir2.mod, namespace facts, contrast with single-directory import, four roles of init files, and reload behavior.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">What each __init__.py does on the way into dir1.dir2.mod</text>
+
+  
+
+  
+  <rect x="40" y="100" width="840" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="70" y="125" width="780" height="56" rx="10" fill="#207448" />
+  <text x="460" y="163" font-family="monospace" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">import dir1.dir2.mod</text>
+
+  
+  <line x1="460" y1="181" x2="460" y2="204" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="70" y="205" width="780" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="112" cy="252" r="24" fill="#207448" />
+  <text x="112" y="260" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(150, 227)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 4 12 L 18 12 L 24 18 L 44 18 A 3 3 0 0 1 47 21 L 47 41 A 3 3 0 0 1 44 44 L 4 44 A 3 3 0 0 1 1 41 L 1 15 A 3 3 0 0 1 4 12 Z" />
+    <line x1="12" y1="28" x2="36" y2="28" />
+    <line x1="12" y1="35" x2="28" y2="35" />
+  </g>
+  <text x="215" y="244" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="215" dy="0">dir1/__init__.py runs: prints</tspan>
+    <tspan x="215" dy="30">Running dir1.__init__.py; var = Python</tspan>
+  </text>
+
+  
+  <line x1="460" y1="300" x2="460" y2="324" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="70" y="325" width="780" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="112" cy="372" r="24" fill="#207448" />
+  <text x="112" y="380" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(150, 347)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 2 10 L 14 10 L 20 16 L 36 16 A 3 3 0 0 1 39 19 L 39 36 A 3 3 0 0 1 36 39 L 2 39 Z" />
+    <path d="M 12 20 L 24 20 L 30 26 L 46 26 A 3 3 0 0 1 49 29 L 49 46 A 3 3 0 0 1 46 49 L 12 49 Z" fill="#ffffff" />
+  </g>
+  <text x="215" y="364" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="215" dy="0">dir1/dir2/__init__.py runs: prints</tspan>
+    <tspan x="215" dy="30">Running dir1.dir2.__init__.py; var = 3.12</tspan>
+  </text>
+
+  
+  <line x1="460" y1="420" x2="460" y2="444" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="70" y="445" width="780" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="112" cy="492" r="24" fill="#207448" />
+  <text x="112" y="500" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(150, 467)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 6 6 L 32 6 L 44 18 L 44 46 A 3 3 0 0 1 41 49 L 9 49 A 3 3 0 0 1 6 46 Z" />
+    <polyline points="32,6 32,18 44,18" />
+    <line x1="14" y1="28" x2="36" y2="28" />
+    <line x1="14" y1="36" x2="28" y2="36" />
+  </g>
+  <text x="215" y="484" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="215" dy="0">dir1/dir2/mod.py runs: prints</tspan>
+    <tspan x="215" dy="30">Loading dir1.dir2.mod; var = code</tspan>
+  </text>
+
+  
+  <line x1="460" y1="540" x2="460" y2="564" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="70" y="565" width="780" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(100, 622)" stroke="#207448" stroke-width="3.5" fill="none">
+    <rect x="2" y="2" width="56" height="52" rx="6" />
+    <polyline points="14,20 24,28 14,36" />
+    <line x1="30" y1="36" x2="44" y2="36" />
+  </g>
+  <text x="195" y="612" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">dir1.var == Python</text>
+  <text x="195" y="658" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">dir1.dir2.var == 3.12</text>
+  <text x="195" y="704" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">dir1.dir2.mod.var == code</text>
+
+  
+  <rect x="40" y="785" width="840" height="295" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(75, 825)" stroke="#db8129" stroke-width="4" fill="none">
+    <path d="M 28 4 L 54 48 A 4 4 0 0 1 50 54 L 6 54 A 4 4 0 0 1 2 48 Z" stroke-linejoin="round" />
+    <line x1="28" y1="20" x2="28" y2="34" stroke-linecap="round" />
+    <circle cx="28" cy="43" r="2" fill="#db8129" />
+  </g>
+  <text x="155" y="860" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">import dir1 alone does not load submodules:</tspan>
+    <tspan x="155" dy="48" font-family="monospace">dir1.dir2.mod.var raises AttributeError:</tspan>
+    <tspan x="155" dy="46" font-family="monospace">module dir1 has no attribute dir2</tspan>
+  </text>
+
+  
+
+  
+  <rect x="920" y="100" width="640" height="700" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(950, 120)" stroke="#207448" stroke-width="3.5" fill="none">
+    <circle cx="22" cy="22" r="18" />
+    <circle cx="22" cy="22" r="8" />
+  </g>
+  <text x="1008" y="150" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Four roles of __init__.py</text>
+
+  
+  <rect x="945" y="175" width="590" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(965, 215)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 10 32 L 24 18 M 18 12 L 28 22 M 20 6 L 36 22" />
+  </g>
+  <text x="1020" y="212" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1020" dy="0">1 initialisation hook, runs the</tspan>
+    <tspan x="1020" dy="32">first time Python imports through</tspan>
+    <tspan x="1020" dy="32">that directory</tspan>
+  </text>
+
+  
+  <rect x="945" y="310" width="590" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(965, 360)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="4" y="6" width="34" height="34" rx="4" />
+    <circle cx="21" cy="23" r="6" />
+  </g>
+  <text x="1020" y="348" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1020" dy="0">2 fills the namespace of the</tspan>
+    <tspan x="1020" dy="30">directory's module object; can</tspan>
+    <tspan x="1020" dy="30">hold __version__ or re-export</tspan>
+    <tspan x="1020" dy="30">public names</tspan>
+  </text>
+
+  
+  <rect x="945" y="475" width="590" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(965, 535)" stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 6 12 L 21 4 L 36 12 L 36 28 C 36 38 21 44 21 44 C 21 44 6 38 6 28 Z" />
+  </g>
+  <text x="1020" y="515" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1020" dy="0">3 its presence marks a regular</tspan>
+    <tspan x="1020" dy="32">package and gives the directory</tspan>
+    <tspan x="1020" dy="32">priority over same-named</tspan>
+    <tspan x="1020" dy="32">directories later on sys.path</tspan>
+  </text>
+
+  
+  <rect x="945" y="665" width="590" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(965, 700)" stroke="#207448" stroke-width="3" fill="none">
+    <polygon points="6,8 36,8 24,24 24,38 18,34 18,24" />
+  </g>
+  <text x="1020" y="708" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1020" dy="0">4 __all__ = [mod] controls from</tspan>
+    <tspan x="1020" dy="34">package import *</tspan>
+  </text>
+
+  
+  <rect x="920" y="825" width="640" height="255" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(955, 915)" stroke="#207448" stroke-width="4" fill="none">
+    <path d="M 44 26 A 18 18 0 1 0 38 38" />
+    <polyline points="46,14 46,26 34,26" />
+    <polyline points="30,44 42,42 36,32" />
+  </g>
+  <text x="1035" y="890" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1035" dy="0">reload(dir1) reloads only</tspan>
+    <tspan x="1035" dy="36">dir1/__init__.py, not dir1.dir2</tspan>
+    <tspan x="1035" dy="36">or dir1.dir2.mod;</tspan>
+    <tspan x="1035" dy="36">use a transitive reloader</tspan>
+  </text>
+
+  
+  <rect x="40" y="1115" width="1520" height="60" rx="10" fill="#207448" />
+  <text x="800" y="1152" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Package __init__.py files are unrelated to the __init__ constructor methods of classes</text>
+
+</svg>

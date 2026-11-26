@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Which knob moves which bill</title>
+  <desc>Table of cost drivers and levers per signal, with worked example and budget note.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which knob moves which bill</text>
+
+  
+  <g id="table-headers">
+    <rect x="40" y="98" width="1520" height="66" rx="8" fill="#207448"/>
+    <line x1="320" y1="98" x2="320" y2="164" stroke="#ffffff" stroke-width="2" stroke-opacity="0.3"/>
+    <line x1="800" y1="98" x2="800" y2="164" stroke="#ffffff" stroke-width="2" stroke-opacity="0.3"/>
+    <text x="180" y="141" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Signal</text>
+    <text x="560" y="141" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Cost driver</text>
+    <text x="1180" y="141" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Cheapest levers</text>
+  </g>
+
+  
+  <g id="row-metrics">
+    <rect x="40" y="170" width="1520" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+    <line x1="320" y1="182" x2="320" y2="258" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+    <line x1="800" y1="182" x2="800" y2="258" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+
+    
+    <g transform="translate(60, 192)">
+      <path d="M 8 46 L 48 46 M 8 46 L 8 6" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 12 38 L 22 24 L 32 32 L 44 14" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="44" cy="14" r="3.5" fill="#207448"/>
+    </g>
+    <text x="135" y="231" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Metrics</text>
+
+    
+    <text x="345" y="215" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="345" dy="0">active series</tspan>
+      <tspan x="345" dy="32">times retention</tspan>
+    </text>
+
+    
+    <text x="825" y="215" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="825" dy="0">fewer labels, fewer buckets, recording rules,</tspan>
+      <tspan x="825" dy="32">drop raw series upstream</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-logs">
+    <rect x="40" y="282" width="1520" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+    <line x1="320" y1="294" x2="320" y2="370" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+    <line x1="800" y1="294" x2="800" y2="370" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+
+    
+    <g transform="translate(60, 304)">
+      <rect x="10" y="4" width="36" height="48" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="18" y1="16" x2="38" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="26" x2="38" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="36" x2="30" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="135" y="343" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Logs</text>
+
+    
+    <text x="345" y="327" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="345" dy="0">bytes ingested</tspan>
+      <tspan x="345" dy="32">and retained</tspan>
+    </text>
+
+    
+    <text x="825" y="327" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="825" dy="0">sample successes, shorter retention,</tspan>
+      <tspan x="825" dy="32">drop debug</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-traces">
+    <rect x="40" y="394" width="1520" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+    <line x1="320" y1="406" x2="320" y2="482" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+    <line x1="800" y1="406" x2="800" y2="482" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+
+    
+    <g transform="translate(60, 416)">
+      <rect x="8" y="8" width="38" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="16" y="22" width="28" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="24" y="36" width="22" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="14" y1="16" x2="14" y2="24" stroke="#207448" stroke-width="2"/>
+      <line x1="22" y1="30" x2="22" y2="38" stroke="#207448" stroke-width="2"/>
+    </g>
+    <text x="135" y="455" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Traces</text>
+
+    
+    <text x="345" y="451" font-family="sans-serif" font-size="25" fill="#303a36">spans retained</text>
+
+    
+    <text x="825" y="451" font-family="sans-serif" font-size="25" fill="#303a36">tail sampling policy, shorter retention</text>
+  </g>
+
+  
+  <g id="row-query">
+    <rect x="40" y="506" width="1520" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-opacity="0.35"/>
+    <line x1="320" y1="518" x2="320" y2="594" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+    <line x1="800" y1="518" x2="800" y2="594" stroke="#207448" stroke-width="1.5" stroke-opacity="0.25"/>
+
+    
+    <g transform="translate(60, 528)">
+      <circle cx="22" cy="22" r="14" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="32" y1="32" x2="44" y2="44" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="15" y1="22" x2="29" y2="22" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+    </g>
+    <text x="135" y="567" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Query</text>
+
+    
+    <text x="345" y="551" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="345" dy="0">fan-out and</tspan>
+      <tspan x="345" dy="32">high-cardinality selects</tspan>
+    </text>
+
+    
+    <text x="825" y="563" font-family="sans-serif" font-size="25" fill="#303a36">rollups, query limits, downsampling</text>
+  </g>
+
+  
+  <g id="worked-example-baseline">
+    <rect x="40" y="650" width="1520" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(60, 677)">
+      <ellipse cx="26" cy="12" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 6 12 v 24 c 0 4 9 7 20 7 s 20 -3 20 -7 v -24" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 6 24 c 0 4 9 7 20 7 s 20 -3 20 -7" fill="none" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="145" y="696" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="145" dy="0">49,200 series at a 30 second interval for 15 days = 43,200 samples per series,</tspan>
+      <tspan x="145" dy="34">at 1 to 2 bytes per sample is about 2.1 to 4.3 GB</tspan>
+    </text>
+  </g>
+
+  
+  <g id="worked-example-explosion">
+    <rect x="40" y="780" width="1520" height="110" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(60, 807)">
+      <polygon points="26,6 48,46 4,46" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+      <line x1="26" y1="19" x2="26" y2="33" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="26" cy="40" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="145" y="826" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="145" dy="0">with a tenant label on every gateway metric about 3 million series</tspan>
+      <tspan x="145" dy="34">needs about 130 to 261 GB</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="930" width="1520" height="110" rx="10" fill="#207448"/>
+    <text x="800" y="976" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">logs and traces depend on traffic, which moves,</tspan>
+      <tspan x="800" dy="34">so set a budget in bytes and spans per day and alert on the trend</tspan>
+    </text>
+  </g>
+</svg>

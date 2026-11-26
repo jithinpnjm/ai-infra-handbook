@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "x19-averages-hide-the-tail",
+  "title": "The average looks fine while one user in twenty waits eight seconds",
+  "spec": "A horizontal latency axis running from 0 s to 8 s, with tick labels 0 s, 2 s, 4 s, 6 s and 8 s at the bottom. Two groups of requests drawn as stacked dot strips above the axis. Left group: a tall green cluster of dots at the 0.4 s position, labelled '950 requests' and 'start streaming after 0.4 s'. Right group: a short orange cluster of dots at the 8 s position, labelled '50 requests' and 'wait 8 s after queueing behind a long prompt'. A vertical dashed green line at the 1 s position labelled '1 s limit'. A vertical solid green line at the 0.78 s position labelled 'Mean 0.78 s' sitting left of the 1 s line, with a small note 'the average is under the limit'. A thin green bracket under the right cluster labelled '5% of users'. A small clock icon near the axis labelled 'latency'. Title: 'The average looks fine while one user in twenty waits eight seconds'. Under the figure a single line of sans text: 'Total 1,000 requests. Mean = (950 x 0.4 + 50 x 8) / 1,000 = 0.78 s.' No arrows other than the axis.",
+  "anchor": "### 3. Why averages lie",
+  "alt": "A latency axis from 0 to 8 seconds shows 950 requests clustered at 0.4 seconds and 50 requests at 8 seconds. A dashed line marks the 1 second limit and a solid line marks the mean at 0.78 seconds, which sits under the limit while 5 percent of users wait eight seconds.",
+  "cap": "The mean hides the slow tail. Nine hundred and fifty fast requests pull the average under the limit while fifty users wait eight seconds."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "x19-two-windows-clear-fast",
+  "title": "Why the short window lets the page clear within minutes",
+  "spec": "A horizontal timeline from 0 minutes to 60 minutes with minute tick marks at 0, 5, 10, 30 and 60. Above the timeline, a green shaded band from 0 to 5 minutes labelled 'Five-minute full outage'. Two lane rows below the timeline. Lane one labelled '5 minute window' is a line that rises to above the threshold during the outage and falls back below after minute 5, marked with a small label 'drops quickly after recovery'. Lane two labelled '1 hour window' is a line that rises slowly and is still above the threshold at minute 60, marked with a label '1 hour ratio still above 1.44%'. A horizontal dashed line labelled 'Threshold 1.44%' across both lanes. A green box labelled 'Alert fires' placed at the 5 minute mark where both windows are above the threshold. An orange box labelled 'Alert cleared' placed at the 60 minute mark where the alert is no longer firing. Each lane is a grid row with the same time scale. A small clock icon at the left labelled 'Time in minutes'. Title: 'Why the short window clears the alert within minutes'. Takeaway bar at the bottom in green: 'The long window proves the problem is real and the short window proves it is still happening.'",
+  "anchor": "### 6. Burn rate and the multiwindow alert",
+  "alt": "A timeline from 0 to 60 minutes shows a five-minute full outage. The five-minute window falls back below the threshold quickly after recovery, while the one-hour window is still above the threshold at 60 minutes, so the alert has already cleared.",
+  "cap": "The short window makes the alert clear fast. The long window alone would keep the page firing for most of an hour after the errors stopped."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "19",
+  "name": "x19-scenario1-rollout-timeline",
+  "title": "A bad rollout, from first failed request to the rollback",
+  "spec": "A vertical sequence of seven numbered steps from top to bottom, each step a row with a green number circle (r=24, white number) at left, a small outline icon beside the step title, a sans step title in bold and one sans line of detail. Steps: 1 'Rollout starts', detail 'A rollout breaks the model for 12 minutes and all requests fail.'; 2 'First failing requests reach the gateway', detail 'The error ratio is 100 percent.'; 3 'Fast burn short window goes above the threshold', detail 'The 5 minute window has enough data and is above 1.44 percent.'; 4 'Long window is still catching up', detail 'The page waits until both windows agree.'; 5 'Page fires in about 52 seconds', detail 'Both windows are above the threshold, so the on-call engineer is paged.' (this row is the single orange highlight); 6 'On-call engineer rolls back', detail 'The error ratio drops once the bad release is removed.'; 7 'Short window clears first', detail 'The alert clears within minutes of the rollback, before the long window.' Connect steps with thin vertical green arrows from step to step, arrowheads about 18 px. At the right side, a box titled 'Budget spent' with the numbers '12 / 43.2 = 27.8%' written in monospace and the sans line 'of a 30 day 99.9 percent budget'. A thin dashed line from step 5 to the budget box. A small timer icon labelled 'clock' near step 5. Title: 'A bad rollout, from first failed request to the rollback'. Takeaway bar at the bottom in green: 'Tie the freeze decision to the written error budget policy and do not improvise it.'",
+  "anchor": "### Scenario 1: A deploy takes a dedicated endpoint down",
+  "alt": "A seven step sequence shows a 12 minute failed rollout. The fast burn window goes above the threshold, the page fires about 52 seconds in, the on-call engineer rolls back, and the short window clears first. The outage uses 27.8 percent of a 30 day 99.9 percent budget.",
+  "cap": "Walk the rollout in order to see why the page fires only when both windows agree and why the short window clears first after the rollback."
+ }
+]

@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p2-2026-first-two-minutes",
+  "title": "The first two minutes: a timed opening script",
+  "spec": "A horizontal timeline with five markers left to right, each marker a circle with the time and a speech chip below. Marker 0:00 'Confirming impact: who, how bad, since when?'. Marker 0:30 'Can I see the golden-signals dashboard?' with a small note 'Rate, errors, latency and saturation'. Marker 1:00 'Declaring SEV2. I am commander and ops. Comms updates every ten minutes.' with a note 'Roles and cadence set early'. Marker 1:30 'What changed in the last day?' with a note 'Recent change is the cheapest hypothesis'. Marker 2:00 'My first mitigation options are rollback or traffic shift, pending what I see.' with a note 'Shows you think about users first'. Above the timeline a box 'Silence is not a plan: say what you will do'. Orange outline on the 1:30 marker as the cheapest hypothesis. Bottom note: 'Commander, operations, communication and planning: you play all four, and only operations changes the system.'",
+  "anchor": "### 1. Take control in the first two minutes",
+  "alt": "A timed opening for an incident: confirm impact, open the golden-signals dashboard, declare the severity and roles, check recent changes, and name the first mitigation options.",
+  "cap": "The first two minutes of an incident follow a timed script: confirm impact, check the golden signals, declare the severity and roles, check recent changes, and name mitigation options."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p2-2026-mitigate-first",
+  "title": "Mitigate first with a reversible, cheap action",
+  "spec": "Two columns with a divider. Left column titled 'Find the root cause first' with a stopwatch icon, a stack of log files, and a red note 'Customers keep seeing errors while you read logs'. Three anti-method chips struck through: 'Streetlight', 'Random change', 'Blame someone else'. Right column titled 'Mitigate first' with a green shield icon, and a list of reversible actions as chips: 'Rollback', 'Drain a bad zone', 'Cap one tenant', 'Flip a feature flag', 'Shed load on purpose'. A test card at the bottom with the question 'If the move is wrong, can you undo it in seconds?' and two checkboxes 'Cheap' and 'Reversible'. A graph chip under the test card 'Name the graph that will confirm it'. Orange outline on the Rollback chip. Caption: 'Pick the lowest-risk reversible action, and name the graph that confirms it.'",
+  "anchor": "### 2. Mitigate before you find the root cause",
+  "alt": "Mitigate before finding the root cause by choosing a cheap, reversible action such as rollback or shedding load, instead of reading logs while customers see errors.",
+  "cap": "Mitigate first by choosing a cheap, reversible action such as rollback, a zone drain or load shedding, and name the graph that confirms it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p2-2026-status-cadence",
+  "title": "A status update has four parts, on a fixed cadence",
+  "spec": "A vertical timeline of updates along a clock from left to right, with markers at 'First five minutes' and then a repeating marker every ten minutes labelled 'Every ten minutes'. Under each marker a four-part update card with four labelled rows: 'Impact now', 'What you know', 'What you are doing', 'When the next update comes'. An example card filled in with the phrase 'Impact: chat p99 TTFT is 4 seconds, no errors. We know it began with the 13:50 deploy. We are rolling back now. Next update in ten minutes.' Left side a small silent-channel icon with the note 'A quiet channel gets guesses, and guesses are worse than the truth'. Orange outline on the 'When the next update comes' row as the promise that keeps the channel calm. Caption: 'The commander who fixes things forgets to tell anyone, so communication is its own role.'",
+  "anchor": "### 4. Communicate status on a cadence",
+  "alt": "Incident status updates arrive on a cadence of five minutes then every ten minutes, each with impact, what is known, what is being done and when the next update comes.",
+  "cap": "Incident status updates run on a cadence and each has four parts: impact now, what is known, what is being done and when the next update comes."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p2-2026-rollback-decision",
+  "title": "Roll back when the symptom follows a change",
+  "spec": "A decision flow with a start box 'Symptom began right after a change?' and two outcomes. Yes branch: 'Is the rollback tested and cheap, and do you not yet know the cause?' with a yes arrow to a green box 'Roll back: kubectl rollout undo deployment/name' and a follow-up chip 'kubectl rollout status'. No branch: 'Keep investigating with the evidence still in place'. A separate red-outlined box at the bottom labelled 'Destructive traps that look like fixes': chips 'Restart every replica at once', 'Defragment a live etcd member', 'Send EU traffic to a US region', 'Edit live config that GitOps will overwrite'. Orange outline on the red trap box. A small timing clue card 'The timing is the strongest clue in the room'.",
+  "anchor": "### 5. Know when to roll back, and avoid the destructive command",
+  "alt": "A rollback decision: roll back when a symptom begins right after a change and the rollback is tested and cheap, while destructive commands are avoided.",
+  "cap": "Roll back when a symptom starts right after a change and the rollback is cheap and tested, and avoid destructive commands that look like fixes."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p2-2026-df-du-gap",
+  "title": "df says 100 GB used, du finds about 40 GB: the deleted-open file",
+  "spec": "A left-to-right reasoning chain of four boxes with arrows, then a branch. Box 1 'df: 100 GB size, 100 GB used, 0 available, 100 percent' with a full disk bar. Box 2 'du of /var: /var/log/pods 18 GB, /var/lib/containerd 22 GB, about 40 GB' with a shorter bar. A gap bracket between the two bars labelled 'About 60 GB unexplained by du'. Box 3 'lsof +L1: the engine process holds a deleted log file open, 58 GB' with an orange outline. Box 4 'A cleanup cron removed the file at 02:00 but the process still writes to it'. Below the chain a fix row of four chips: 'Cordon the node first', 'Free the file: restart its holder or truncate through /proc', 'Turn debug logging off', 'Add a disk alert and fix the cleanup job'. A warning card 'Do not wipe images or the model cache that running replicas use'. Caption: 'The gap between df and du is the clue.'",
+  "anchor": "### Incident 6: Disk full on a GPU node",
+  "alt": "A full disk where df reports 100 GB used but du finds about 40 GB, explained by a deleted log file still held open by the engine process.",
+  "cap": "df reports 100 GB used while du finds about 40 GB, and a deleted 58 GB log held open by the engine explains the gap."
+ }
+]

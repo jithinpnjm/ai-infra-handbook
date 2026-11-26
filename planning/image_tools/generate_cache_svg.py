@@ -1,0 +1,139 @@
+import re
+import xml.etree.ElementTree as ET
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>A prompt-cache or KV-cache tier [my addition]</title>
+  <desc>Flowchart of a prompt-cache or KV-cache tier routing requests via prefix hash and cache-aware router to GPU KV, host RAM, and NVMe cache tiers.</desc>
+
+  <defs>
+    <!-- Arrowhead Green (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A prompt-cache or </tspan>
+    <tspan x="800" dy="54">KV-cache tier [my addition]</tspan>
+  </text>
+
+  <!-- ==================== FLOW ARROWS ==================== -->
+  <!-- 1. R to H -->
+  <line x1="500" y1="310" x2="590" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- 2. H to RT -->
+  <line x1="1010" y1="310" x2="1100" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- 3. RT to G -->
+  <line x1="1310" y1="440" x2="1310" y2="570" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- 4. G to M -->
+  <line x1="1100" y1="700" x2="1010" y2="700" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- 5. M to N -->
+  <line x1="590" y1="700" x2="500" y2="700" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== NODE 1: Request ==================== -->
+  <g id="node-request">
+    <rect x="80" y="180" width="420" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Request / Document outline icon (56px) -->
+    <g transform="translate(262, 225)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="6" width="40" height="44" rx="6" />
+      <line x1="16" y1="18" x2="36" y2="18" stroke-width="3" />
+      <line x1="16" y1="28" x2="36" y2="28" stroke-width="3" />
+      <polyline points="20,38 28,34 20,30" stroke-width="3.5" />
+    </g>
+    <text x="290" y="365" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Request</text>
+  </g>
+
+  <!-- ==================== NODE 2: Prefix hash + tenant ==================== -->
+  <g id="node-prefix-hash">
+    <rect x="590" y="180" width="420" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Hash outline icon (56px) -->
+    <g transform="translate(772, 225)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="18" y1="10" x2="14" y2="46" />
+      <line x1="38" y1="10" x2="34" y2="46" />
+      <line x1="10" y1="22" x2="46" y2="22" />
+      <line x1="8" y1="34" x2="44" y2="34" />
+    </g>
+    <text x="800" y="365" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Prefix hash + tenant</text>
+  </g>
+
+  <!-- ==================== NODE 3: Cache-aware router ==================== -->
+  <g id="node-router">
+    <rect x="1100" y="180" width="420" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Router / Switch outline icon (56px) -->
+    <g transform="translate(1282, 225)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="28" y1="12" x2="28" y2="44" />
+      <line x1="12" y1="28" x2="44" y2="28" />
+      <polyline points="22,18 28,12 34,18" stroke-width="3" />
+      <polyline points="22,38 28,44 34,38" stroke-width="3" />
+      <polyline points="18,22 12,28 18,34" stroke-width="3" />
+      <polyline points="38,22 44,28 38,34" stroke-width="3" />
+    </g>
+    <text x="1310" y="365" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cache-aware router</text>
+  </g>
+
+  <!-- ==================== NODE 4: GPU KV: hot (Orange Highlight) ==================== -->
+  <g id="node-gpu-kv">
+    <rect x="1100" y="570" width="420" height="260" rx="16" fill="#fffaf3" stroke="#db8129" stroke-width="3" />
+    <!-- GPU Chip Icon (56px) in Orange -->
+    <g transform="translate(1282, 615)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="#fffaf3" stroke-width="3" />
+      <line x1="18" y1="4" x2="18" y2="10" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="38" y1="4" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="52" />
+      <line x1="28" y1="46" x2="28" y2="52" />
+      <line x1="38" y1="46" x2="38" y2="52" />
+      <line x1="4" y1="18" x2="10" y2="18" />
+      <line x1="4" y1="28" x2="10" y2="28" />
+      <line x1="4" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="52" y2="18" />
+      <line x1="46" y1="28" x2="52" y2="28" />
+      <line x1="46" y1="38" x2="52" y2="38" />
+    </g>
+    <text x="1310" y="755" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU KV: hot</text>
+  </g>
+
+  <!-- ==================== NODE 5: Host RAM: warm ==================== -->
+  <g id="node-host-ram">
+    <rect x="590" y="570" width="420" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- RAM DIMM module outline icon (56px) -->
+    <g transform="translate(772, 615)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="14" width="44" height="28" rx="3" />
+      <rect x="12" y="20" width="8" height="12" rx="1" stroke-width="2.5" />
+      <rect x="24" y="20" width="8" height="12" rx="1" stroke-width="2.5" />
+      <rect x="36" y="20" width="8" height="12" rx="1" stroke-width="2.5" />
+      <line x1="10" y1="42" x2="14" y2="42" stroke-width="3" />
+      <line x1="18" y1="42" x2="22" y2="42" stroke-width="3" />
+      <line x1="26" y1="42" x2="30" y2="42" stroke-width="3" />
+      <line x1="34" y1="42" x2="38" y2="42" stroke-width="3" />
+      <line x1="42" y1="42" x2="46" y2="42" stroke-width="3" />
+    </g>
+    <text x="800" y="755" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host RAM: warm</text>
+  </g>
+
+  <!-- ==================== NODE 6: NVMe: cold ==================== -->
+  <g id="node-nvme">
+    <rect x="80" y="570" width="420" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Storage Cylinder Icon (56px) -->
+    <g transform="translate(262, 615)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8" />
+      <path d="M 6 14 L 6 42 A 22 8 0 0 0 50 42 L 50 14" />
+      <path d="M 6 28 A 22 8 0 0 0 50 28" />
+    </g>
+    <text x="290" y="755" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NVMe: cold</text>
+  </g>
+</svg>"""
+
+with open("test_run_cache.svg", "w") as f:
+    f.write(svg_content)
+
+print("Saved test_run_cache.svg")

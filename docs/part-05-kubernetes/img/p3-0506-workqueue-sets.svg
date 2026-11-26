@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Work queue: dirty and processing keep one worker per key</title>
+  <desc>Step diagram illustrating Kubernetes client-go workqueue synchronization with queue, dirty, and processing sets.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Work queue: dirty and processing keep one worker per key</text>
+
+  
+  
+  <g id="box-dirty">
+    <rect x="60" y="100" width="460" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(85, 132)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="8" />
+      <path d="M 14 18 L 42 18" />
+      <path d="M 20 28 L 36 28" />
+      <path d="M 24 38 L 32 38" />
+    </g>
+    
+    <text x="160" y="172" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">dirty</text>
+    
+    <g transform="translate(370, 138)" stroke="#207448" stroke-width="2.5" fill="none" opacity="0.75">
+      <path d="M 12 6 C 4 6 4 18 0 20 C 4 22 4 34 12 34" />
+      <circle cx="26" cy="20" r="4" fill="#207448" />
+      <circle cx="42" cy="20" r="4" fill="#207448" />
+      <circle cx="58" cy="20" r="4" fill="#207448" />
+      <path d="M 72 6 C 80 6 80 18 84 20 C 80 22 80 34 72 34" />
+    </g>
+  </g>
+
+  
+  <g id="box-queue">
+    <rect x="570" y="100" width="460" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(595, 132)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="6" width="56" height="44" rx="6" />
+      <path d="M 18 6 L 18 50" />
+      <path d="M 38 6 L 38 50" />
+      <path d="M 6 28 L 12 28" />
+      <path d="M 44 28 L 50 28" />
+    </g>
+    
+    <text x="670" y="172" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">queue</text>
+    
+    <g transform="translate(875, 142)" stroke="#207448" stroke-width="2" fill="none" opacity="0.75">
+      <rect x="0" y="4" width="22" height="24" rx="3" fill="#ffffff" />
+      <rect x="28" y="4" width="22" height="24" rx="3" fill="#ffffff" />
+      <rect x="56" y="4" width="22" height="24" rx="3" fill="#ffffff" />
+      <path d="M 86 16 L 102 16 M 98 10 L 104 16 L 98 22" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  <g id="box-processing">
+    <rect x="1080" y="100" width="460" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1105, 132)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14" />
+      <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28" />
+      <path d="M 11 11 L 16 16 M 40 40 L 45 45 M 11 45 L 16 40 M 40 16 L 45 11" />
+    </g>
+    
+    <text x="1180" y="172" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">processing</text>
+    
+    <g transform="translate(1390, 136)" stroke="#207448" stroke-width="2.5" fill="none" opacity="0.75">
+      <rect x="0" y="0" width="80" height="48" rx="8" stroke-dasharray="4 3" />
+      <circle cx="40" cy="18" r="8" />
+      <path d="M 24 38 C 24 30 32 28 40 28 C 48 28 56 30 56 38" />
+    </g>
+  </g>
+
+  
+  
+  <g id="step-1">
+    <rect x="60" y="250" width="1420" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="110" cy="307" r="24" fill="#207448" />
+    <text x="110" y="316" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="160" y="293" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">Add </tspan><tspan font-family="monospace" font-weight="bold" fill="#207448">default/web</tspan><tspan font-weight="bold" fill="#303a36">: key goes into dirty and is appended to queue;</tspan>
+      <tspan x="160" dy="35" font-weight="normal">adding it again while in dirty does nothing (deduplication)</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 770 365 L 770 395" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-2">
+    <rect x="60" y="395" width="1420" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="110" cy="445" r="24" fill="#207448" />
+    <text x="110" y="454" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="160" y="453" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">Worker 1 </tspan><tspan font-family="monospace" font-weight="bold" fill="#207448">Get</tspan><tspan font-weight="bold" fill="#303a36">: </tspan><tspan font-weight="normal">key leaves dirty, moves into processing</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 770 495 L 770 525" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-3">
+    <rect x="60" y="525" width="1420" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="110" cy="585" r="24" fill="#207448" />
+    <text x="110" y="594" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="160" y="568" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan font-weight="bold" fill="#303a36">Another watch event for </tspan><tspan font-family="monospace" font-weight="bold" fill="#207448">default/web</tspan><tspan font-weight="bold" fill="#303a36"> arrives while Worker 1 runs </tspan><tspan font-family="monospace" font-weight="bold" fill="#207448">Reconcile</tspan><tspan font-weight="bold" fill="#303a36">:</tspan>
+      <tspan x="160" dy="35" font-weight="normal">key goes back into dirty but is not appended to queue, because it is in processing</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 770 645 L 770 675" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step-4">
+    <rect x="60" y="675" width="1420" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="110" cy="735" r="24" fill="#207448" />
+    <text x="110" y="744" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <text x="160" y="718" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">Worker 1 </tspan><tspan font-weight="bold" fill="#303a36">calls </tspan><tspan font-family="monospace" font-weight="bold" fill="#207448">Done</tspan><tspan font-weight="bold" fill="#303a36">: queue sees the key in dirty</tspan>
+      <tspan x="160" dy="35" font-weight="normal">and re-appends it for one more sequential pass</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 770 795 L 770 825" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1480 735 L 1530 735 Q 1550 735 1550 715 L 1550 245 Q 1550 230 1530 230 L 800 230 L 800 222" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linejoin="round" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="step-5">
+    <rect x="60" y="825" width="1420" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="110" cy="875" r="24" fill="#207448" />
+    <text x="110" y="884" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <text x="160" y="883" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">Result: </tspan><tspan font-family="monospace" font-weight="bold" fill="#207448">Forget</tspan><tspan font-weight="normal"> on success, </tspan><tspan font-family="monospace" font-weight="bold" fill="#207448">AddRateLimited</tspan><tspan font-weight="normal"> on error (exponential backoff)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="note-panel">
+    <rect x="60" y="955" width="1420" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+    
+    <g transform="translate(86, 987)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="24" cy="24" r="22" />
+      <line x1="24" y1="20" x2="24" y2="34" stroke-linecap="round" stroke-width="3.5" />
+      <circle cx="24" cy="13" r="2" fill="#207448" />
+    </g>
+    <text x="160" y="998" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">Reconcile</tspan><tspan font-weight="normal"> gets only the </tspan><tspan font-family="monospace">namespace/name</tspan><tspan font-weight="normal"> key,</tspan>
+      <tspan x="160" dy="35" font-weight="normal">then reads the latest object from the lister cache</tspan>
+    </text>
+  </g>
+</svg>

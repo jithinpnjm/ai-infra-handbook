@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Submission pattern per AI workload</title>
+  <desc>Visual table mapping AI training and inference workloads to their corresponding Slurm job submission patterns, resource flags, and orchestration commands.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Submission pattern per AI workload</text>
+  <text x="40" y="98" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Table workload to pattern</text>
+
+  
+
+  
+  <g>
+    <rect x="40" y="125" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(64, 145)">
+      <rect x="10" y="10" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="19" y="19" width="14" height="14" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="16" y1="2" x2="16" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="26" y1="2" x2="26" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="36" y1="2" x2="36" y2="10" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="16" y1="42" x2="16" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="26" y1="42" x2="26" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="36" y1="42" x2="36" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="16" x2="10" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="26" x2="10" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="36" x2="10" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="16" x2="50" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="26" x2="50" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="36" x2="50" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="132" y="169" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Single-GPU</text>
+    <text x="132" y="203" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">experiment:</text>
+    <line x1="64" y1="217" x2="496" y2="217" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    <text x="64" y="253" font-size="24" fill="#303a36"><tspan font-family="monospace">--gpus=1 --cpus-per-gpu=8</tspan></text>
+    <text x="64" y="287" font-size="24" fill="#303a36"><tspan font-family="monospace">--mem-per-gpu,</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> short time,</tspan></text>
+    <text x="64" y="321" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">debug or interactive</tspan></text>
+    <text x="64" y="355" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">partition</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="125" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(584, 145)">
+      <rect x="4" y="6" width="44" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="10" y="12" width="12" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="30" y="12" width="12" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="10" y="28" width="12" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="30" y="28" width="12" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="652" y="169" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Multi-GPU</text>
+    <text x="652" y="203" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">single node:</text>
+    <line x1="584" y1="217" x2="1016" y2="217" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    <text x="584" y="251" font-size="24" fill="#303a36"><tspan font-family="monospace">--gpus-per-node=8</tspan></text>
+    <text x="584" y="283" font-size="24" fill="#303a36"><tspan font-family="monospace">--ntasks-per-node=8</tspan></text>
+    <text x="584" y="315" font-size="24" fill="#303a36"><tspan font-family="monospace">--exclusive, torchrun</tspan></text>
+    <text x="584" y="347" font-size="24" fill="#303a36"><tspan font-family="monospace">--standalone</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> or </tspan><tspan font-family="monospace">srun</tspan></text>
+    <text x="584" y="379" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">per GPU</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="1080" y="125" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(1104, 145)">
+      <rect x="4" y="4" width="20" height="14" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
+      <rect x="28" y="4" width="20" height="14" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
+      <rect x="16" y="34" width="20" height="14" rx="2" fill="none" stroke="#db8129" stroke-width="3" />
+      <line x1="14" y1="18" x2="14" y2="26" stroke="#db8129" stroke-width="3" />
+      <line x1="38" y1="18" x2="38" y2="26" stroke="#db8129" stroke-width="3" />
+      <line x1="14" y1="26" x2="38" y2="26" stroke="#db8129" stroke-width="3" />
+      <line x1="26" y1="26" x2="26" y2="34" stroke="#db8129" stroke-width="3" />
+    </g>
+    <text x="1172" y="169" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Multi-node</text>
+    <text x="1172" y="203" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">DDP or FSDP:</text>
+    <line x1="1104" y1="217" x2="1536" y2="217" stroke="#db8129" stroke-opacity="0.3" stroke-width="1.5" />
+    <text x="1104" y="251" font-size="24" fill="#303a36"><tspan font-family="monospace">--nodes=N</tspan></text>
+    <text x="1104" y="283" font-size="24" fill="#303a36"><tspan font-family="monospace">--ntasks-per-node=8,</tspan></text>
+    <text x="1104" y="315" font-size="24" fill="#303a36"><tspan font-family="monospace">srun</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> or </tspan><tspan font-family="monospace">torchrun</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> with</tspan></text>
+    <text x="1104" y="347" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">rendezvous from</tspan></text>
+    <text x="1104" y="379" font-size="24" fill="#303a36"><tspan font-family="monospace">scontrol show hostnames</tspan></text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="40" y="480" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(64, 500)">
+      <line x1="8" y1="14" x2="44" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="20" cy="14" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="8" y1="26" x2="44" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="34" cy="26" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="8" y1="38" x2="44" y2="38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="16" cy="38" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="132" y="524" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Hyperparameter</text>
+    <text x="132" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">sweep:</text>
+    <line x1="64" y1="572" x2="496" y2="572" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    <text x="64" y="612" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">job array with a</tspan></text>
+    <text x="64" y="650" font-size="24" fill="#303a36"><tspan font-family="monospace">%throttle,</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> one config</tspan></text>
+    <text x="64" y="688" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">per index</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="480" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(584, 500)">
+      <circle cx="26" cy="26" r="18" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="26,14 26,26 34,26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 44,14 A 23,23 0 0,1 46,36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <polyline points="42,38 47,38 47,33" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="652" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Long run:</text>
+    <line x1="584" y1="572" x2="1016" y2="572" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    <text x="584" y="608" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">checkpoints every K minutes,</tspan></text>
+    <text x="584" y="644" font-size="24" fill="#303a36"><tspan font-family="monospace">--requeue,</tspan></text>
+    <text x="584" y="680" font-size="24" fill="#303a36"><tspan font-family="monospace">--signal=B:USR1@...,</tspan></text>
+    <text x="584" y="716" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">dependency chain</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="1080" y="480" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1104, 500)">
+      <ellipse cx="26" cy="12" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 8,12 L 8,24 A 18,6 0 0,0 44,24 L 44,12" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 8,24 L 8,36 A 18,6 0 0,0 44,36 L 44,24" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="1172" y="524" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Data</text>
+    <text x="1172" y="558" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">preprocessing:</text>
+    <line x1="1104" y1="572" x2="1536" y2="572" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    <text x="1104" y="608" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">CPU array jobs on a</tspan></text>
+    <text x="1104" y="644" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">cpu partition,</tspan></text>
+    <text x="1104" y="680" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">sharded outputs, later</tspan></text>
+    <text x="1104" y="716" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">GPU job reads them</tspan></text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="40" y="835" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(64, 855)">
+      <rect x="10" y="10" width="32" height="38" rx="3" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 18,10 L 18,6 L 34,6 L 34,10" fill="none" stroke="#207448" stroke-width="3" />
+      <polyline points="18,28 24,34 35,21" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="132" y="879" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Evaluation</text>
+    <text x="132" y="913" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">after training:</text>
+    <line x1="64" y1="927" x2="496" y2="927" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    <text x="64" y="967" font-size="24" fill="#303a36"><tspan font-family="monospace">--dependency=afterok:$TRAIN</tspan></text>
+    <text x="64" y="1007" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">or triggered from the</tspan></text>
+    <text x="64" y="1047" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">training script</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="835" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(584, 855)">
+      <rect x="6" y="8" width="40" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="14" cy="16" r="2.5" fill="#207448" />
+      <circle cx="22" cy="16" r="2.5" fill="#207448" />
+      <rect x="6" y="28" width="40" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="14" cy="36" r="2.5" fill="#207448" />
+      <circle cx="22" cy="36" r="2.5" fill="#207448" />
+      <line x1="34" y1="16" x2="40" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="34" y1="36" x2="40" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="652" y="879" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Inference server</text>
+    <text x="652" y="913" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">batch:</text>
+    <line x1="584" y1="927" x2="1016" y2="927" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    <text x="584" y="961" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">one job per replica,</tspan></text>
+    <text x="584" y="993" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">health endpoint, service</tspan></text>
+    <text x="584" y="1025" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">discovery via a shared file</tspan></text>
+    <text x="584" y="1057" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">or the Slurm nodelist, or</tspan></text>
+    <text x="584" y="1089" font-size="24" fill="#303a36"><tspan font-family="system-ui, -apple-system, sans-serif">move serving to Kubernetes</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="1080" y="835" width="480" height="310" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(1104, 855)">
+      <rect x="6" y="6" width="40" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <polyline points="14,18 22,25 14,32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="26" y1="32" x2="36" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="1172" y="879" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Debugging</text>
+    <text x="1172" y="913" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">a hang:</text>
+    <line x1="1104" y1="927" x2="1536" y2="927" stroke="#207448" stroke-opacity="0.25" stroke-width="1.5" />
+    <text x="1104" y="967" font-size="24" fill="#303a36"><tspan font-family="monospace">salloc</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> same shape,</tspan></text>
+    <text x="1104" y="1007" font-size="24" fill="#303a36"><tspan font-family="monospace">srun --pty, py-spy,</tspan></text>
+    <text x="1104" y="1047" font-size="24" fill="#303a36"><tspan font-family="monospace">NCCL_DEBUG=INFO</tspan></text>
+  </g>
+</svg>

@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Where GPU usage is recorded, capped and billed</title>
+  <desc>Four-lane architecture diagram detailing Slurm GPU recording, capping, billing, and reality check monitoring.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where GPU usage is recorded, capped and billed</text>
+
+  
+  <g id="lane-record">
+    <rect x="50" y="120" width="1500" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(75, 202)">
+      <ellipse cx="28" cy="12" rx="22" ry="7" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="6" y1="12" x2="6" y2="44" stroke="#207448" stroke-width="4"/>
+      <line x1="50" y1="12" x2="50" y2="44" stroke="#207448" stroke-width="4"/>
+      <path d="M 6 28 A 22 7 0 0 0 50 28" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 6 44 A 22 7 0 0 0 50 44" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    
+    <text x="150" y="242" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Record:</text>
+
+    
+    <line x1="440" y1="140" x2="440" y2="320" stroke="#207448" stroke-width="2" stroke-opacity="0.3"/>
+
+    
+    <text x="475" y="180" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">AccountingStorageTRES=gres/gpu</tspan>
+      <tspan font-family="sans-serif"> plus typed variants such as </tspan>
+      <tspan font-family="monospace" font-weight="bold">gres/gpu:h100;</tspan>
+    </text>
+    <text x="475" y="230" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">check with </tspan>
+      <tspan font-family="monospace" font-weight="bold">sacct -X --format=JobID,AllocTRES%60;</tspan>
+    </text>
+    <text x="475" y="280" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">makes GPU usage appear in </tspan>
+      <tspan font-family="monospace" font-weight="bold">sacct</tspan>
+      <tspan font-family="sans-serif"> and </tspan>
+      <tspan font-family="monospace" font-weight="bold">sreport</tspan>
+    </text>
+  </g>
+
+  
+  <g id="lane-cap">
+    <rect x="50" y="365" width="1500" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(75, 447)">
+      <path d="M 6 8 L 28 2 L 50 8 C 50 30 28 50 28 50 C 28 50 6 30 6 8 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="16" y1="22" x2="40" y2="22" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="150" y="487" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Cap:</text>
+
+    
+    <line x1="440" y1="385" x2="440" y2="565" stroke="#207448" stroke-width="2" stroke-opacity="0.3"/>
+
+    
+    <text x="475" y="425" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">GrpTRES=gres/gpu=64</tspan>
+      <tspan font-family="sans-serif"> on accounts; </tspan>
+    </text>
+    <text x="475" y="475" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">MaxTRESPerUser=gres/gpu=32</tspan>
+      <tspan font-family="sans-serif"> on QOS (6.9); </tspan>
+    </text>
+    <text x="475" y="525" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">typed TRES allow per-model limits and reports</tspan>
+    </text>
+  </g>
+
+  
+  <g id="lane-bill">
+    <rect x="50" y="610" width="1500" height="220" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(75, 692)">
+      <line x1="28" y1="4" x2="28" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="14" y1="50" x2="42" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="6" y1="14" x2="50" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M 6 14 L 0 30 L 16 30 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <path d="M 50 14 L 40 30 L 56 30 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="150" y="732" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Bill:</text>
+
+    
+    <line x1="440" y1="630" x2="440" y2="810" stroke="#207448" stroke-width="2" stroke-opacity="0.3"/>
+
+    
+    <text x="475" y="670" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">TRESBillingWeights=GRES/gpu=10,...</tspan>
+      <tspan font-family="sans-serif"> on the partition; </tspan>
+    </text>
+    <text x="475" y="720" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">PriorityFlags=MAX_TRES_GRES</tspan>
+      <tspan font-family="sans-serif"> needs Slurm 25.05 or later; </tspan>
+    </text>
+    <text x="475" y="770" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">GPU hours then dominate cost and fair-share</tspan>
+    </text>
+  </g>
+
+  
+  <g id="lane-reality-check">
+    <rect x="50" y="855" width="1500" height="300" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(75, 977)">
+      <path d="M 28 3 L 53 47 L 3 47 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="28" y1="17" x2="28" y2="32" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="40" r="2.5" fill="#db8129"/>
+    </g>
+
+    
+    <text x="150" y="1017" font-family="sans-serif" font-size="34" font-weight="bold" fill="#db8129">Reality check:</text>
+
+    
+    <line x1="440" y1="875" x2="440" y2="1135" stroke="#db8129" stroke-width="2" stroke-opacity="0.3"/>
+
+    
+    <text x="475" y="905" font-family="sans-serif" font-size="24" fill="#303a36">the database counts allocated time, not useful work;</text>
+    <text x="475" y="945" font-family="sans-serif" font-size="24" fill="#303a36">an idle job holding a GPU looks identical to one training hard;</text>
+    <text x="475" y="985" font-family="sans-serif" font-size="24" fill="#303a36">pair accounting with utilisation monitoring: DCGM from Part 17,</text>
+    <text x="475" y="1025" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">and </tspan>
+      <tspan font-family="monospace" font-weight="bold">sstat</tspan>
+      <tspan font-family="sans-serif"> and </tspan>
+      <tspan font-family="monospace" font-weight="bold">sacct</tspan>
+      <tspan font-family="sans-serif"> GPU usage fields when</tspan>
+    </text>
+    <text x="475" y="1065" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">AccountingStorageTRES</tspan>
+      <tspan font-family="sans-serif"> includes </tspan>
+      <tspan font-family="monospace" font-weight="bold">gres/gpuutil</tspan>
+      <tspan font-family="sans-serif"> or </tspan>
+      <tspan font-family="monospace" font-weight="bold">gres/gpumem</tspan>
+    </text>
+    <text x="475" y="1105" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">enabled by </tspan>
+      <tspan font-family="monospace" font-weight="bold">JobAcctGatherParams</tspan>
+    </text>
+  </g>
+</svg>

@@ -28,18 +28,15 @@ Think of the posting as a long paragraph with no headings, the way many job ads 
 
 It has no headings for duties and requirements. The responsibilities and requirements run as prose paragraphs. I split them into numbered lines so that we can refer to them. R is a responsibility and Q is a requirement or a preference. A requirement is something the posting asks for, and a preference is something it welcomes without making it a condition. The lines fall into three families: seeing the system, scaling the system and responding when it breaks. Those three families are a useful way to remember the whole posting, because every line fits into one of them.
 
-```mermaid
-flowchart TB
-  P["Own reliability, performance and observability of the inference stack"]
-  P --> S["See it<br/>R2 telemetry, Q3 alerts and SLOs"]
-  P --> G["Scale it<br/>R3 autoscaling, R4 Terraform, R5 routing, R8 cost"]
-  P --> F["Fix it<br/>R6 runbooks, R7 post-mortems, Q4 failure modes, Q7 debugging"]
-  S --> C1["20.15, 20.19, 20.25"]
-  G --> C2["20.12, 20.20, 20.21, 20.24"]
-  F --> C3["20.18, 20.26, 20.27, 20.3 to 20.6"]
-```
+![The posting in one picture](./img/m20-02-1.svg)
+
+*Figure 20.2.1. The posting in one picture, as a diagram.*
 
 ### 2. Responsibilities, line by line
+
+![A grid that sorts the eight responsibility lines of the job posting into see it, scale it and fix it, with the handbook chapters for each line.](./img/p2-2002-responsibility-map.svg)
+
+*Figure 20.2.2. The eight responsibility lines of the posting, grouped into see it, scale it and fix it, each pointed at its chapters in this volume.*
 
 Think of each row below as a question the interviewer could ask you. Each quote is under 15 words and comes from the fetched posting on 2026-11-09. Where a quote is cut, the posting continues. The last two columns point to the chapters of this volume and the earlier handbook parts that cover the topic. Earlier parts are listed as part and chapter, for example 5.23 is Part 5, chapter 23.
 
@@ -59,6 +56,10 @@ The posting continues R8 with cost and reliability targets. The summary I fetche
 Decide now which of these eight lines you can back with a real story from your own work. Those are your strongest openings. A story is strongest when it has a start, a problem, a change you made and a result you can measure. If you cannot find one for a line, that line belongs in your gap list rather than in your answers.
 
 ### 3. What each responsibility likely means day to day
+
+![Two cases compared: a healthy service hides a transient failure with a retry, while in a partial outage repeated retries multiply the load on the service.](./img/p2-2002-retry-amplification.svg)
+
+*Figure 20.2.3. Retries hide a transient failure in a healthy system but multiply load during a partial outage, which is why retry logic needs hardening.*
 
 Consider a new colleague on their first week, reading this posting and trying to guess what Monday will look like. That is roughly the position of anyone preparing for this role. Everything in this section is [inference], because Nebius has not published how the team works. I describe what such a job usually involves, using the posting's own verbs, so that you can test your picture against the questions in the room.
 
@@ -127,6 +128,10 @@ Fill the table in one sitting, without looking things up. Your first honest answ
 
 ### 6. What Token Factory is, from public sources only
 
+![Token Factory split into a control plane for managing endpoints and a regional data plane that serves requests, with dedicated endpoint settings.](./img/p2-2002-token-factory-planes.svg)
+
+*Figure 20.2.4. Token Factory separates a control plane, used to manage endpoints, from a regional data plane, where requests are served.*
+
 Imagine the moment an interviewer asks what you know about the product. You want to answer with facts and not with a guess about the internals. Token Factory is the inference platform within Nebius Cloud. Inference is the step where a trained model answers a request, as opposed to the training step where the model learns. The posting says it serves text, vision, audio and multimodal foundation models at large scale. [official] A foundation model is a large model trained on broad data that many tasks can build on, and multimodal means it handles more than one kind of input, such as text and images. Beyond that, what follows is from Nebius marketing and documentation as recorded in the volume plan, and I did not re-fetch those pages today. [vendor]
 
 It offers serverless endpoints and dedicated endpoints, with an OpenAI-compatible API and the full set of vLLM parameters. An endpoint is the address your application calls to reach a model. An OpenAI-compatible API accepts the same request shape as the OpenAI interface, so client code written for that interface can often be reused. The control plane, which handles create, update, enable, disable and delete, is separate from a region-specific data plane. The control plane is where you manage endpoints, and the data plane is where requests are served. For a dedicated endpoint you choose the GPU type from L40, H100, H200 and B200, the number of GPUs per replica, the minimum and maximum replicas, and the region, either EU or US, which is a data-residency choice. Data residency is the question of which country or region your data is stored and processed in. There are two flavors, base and fast. Fast uses smaller batches and speculative decoding. A batch is a group of requests processed together on the GPU, and speculative decoding is a technique where a small model proposes tokens that a larger model then checks. The listed optimisations include KV cache, paged attention, flash attention, quantisation, continuous batching, context caching and speculative decoding. [vendor]
@@ -140,6 +145,10 @@ Nebius states the current hardware as B200 and has announced Vera Rubin NVL72 an
 What is not public: the autoscaling signals and thresholds, the router algorithm, the targets for time per output token and the probe settings. [gap] When asked about these, say: "Nebius has not published this. A reasonable design is ...", and then give your reasoning. Chapter 20.30 maps the public architecture further. Saying "not published" is not a weakness. It shows that you know where public knowledge stops and your own design begins.
 
 ### 7. The gap tracker: turning the table into a study order
+
+![A worked ranking of three skills using the priority formula, where low confidence across three posting lines ranks first and an unevidenced high rating triggers a warning.](./img/p2-2002-priority-worked.svg)
+
+*Figure 20.2.5. A worked example of the gap-tracker formula, showing how confidence and posting lines set the study order and trigger a warning.*
 
 Suppose a Friday afternoon with the filled table open and a long list of chapters in front of you. You cannot read thirty chapters evenly before the call, so you need an order. Reading all 30 chapters evenly is a poor plan. The tracker ranks skills by how much confidence you lack and by how many posting lines the skill touches. The priority of a skill is five minus confidence, multiplied by the number of posting lines. A skill rated 2 that maps to three lines scores 9. A skill rated 4 that maps to one line scores 1.
 
@@ -448,6 +457,10 @@ Read it in order. Kubernetes autoscaling comes first because it appears in three
 Imagine the interviewer leaning back and saying: "You have not run vLLM in production. Why should we consider you?" Q5 is desirable, so you have room. Answer in three parts. State the truth: "I have not run it in production." Show the nearest evidence: "I have run GPU workloads on Kubernetes and I read its metrics on a test server." State the plan: "I read the metrics design and I know the three places a request waits, which are the waiting queue, the running batch and the KV cache." Chapter 20.18 teaches those three places. That answer uses a gap as proof of how you learn.
 
 ### Scenario 3. Explaining "tune autoscalers for GPU efficiency"
+
+![Two engines both show busy GPUs, but only the one with a growing waiting queue is drowning, so queue depth is a better scaling signal than utilisation alone.](./img/p2-2002-gpu-signals.svg)
+
+*Figure 20.2.6. Busy GPUs can look the same for a healthy engine and a drowning one, so queue depth and waiting time are better autoscaling signals.*
 
 Think of the interviewer asking, with a slight smile, what that phrase means to you. Start with the problem: GPUs are expensive and idle capacity costs money, while too little capacity makes users wait. Say that scaling on GPU utilisation alone can mislead, because a drowning engine and a healthy one can both look busy. Say you would prefer signals such as queue depth and time spent waiting, and that you would add headroom because a new GPU replica takes minutes to be ready. State that Nebius has not published its signals, so this is your design. Chapter 20.20 gives the full argument and the sources.
 

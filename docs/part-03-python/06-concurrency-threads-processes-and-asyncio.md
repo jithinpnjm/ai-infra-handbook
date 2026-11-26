@@ -60,9 +60,13 @@ One habit will save you more debugging time than any API detail. Shared state is
 
 ### The Global Interpreter Lock
 
+![Three columns showing when the GIL is released, when it is held and what compound operations still race, with the free-threaded and subinterpreter roadmap and the prefork production pattern.](./img/p3-0306-gil-releases.svg)
+
+*Figure 3.6.2. The GIL is released for blocking I/O and native work, held for pure-Python computation, and never makes x += 1 safe.*
+
 ![The Global Interpreter Lock](./img/s06-gil.svg)
 
-*Figure 3.6.2. The GIL: one thread runs Python bytecode at a time, but threads overlap while they wait on I/O.*
+*Figure 3.6.3. The GIL: one thread runs Python bytecode at a time, but threads overlap while they wait on I/O.*
 
 Here is the mistake to clear up first, because almost everyone makes it once. A colleague wraps a slow number-crunching script in four threads and watches it get slower, not faster. The explanation is a lock inside the interpreter.
 
@@ -77,6 +81,10 @@ Third, individual bytecode operations are atomic-ish, but compound operations ar
 Since Python 3.2, contributed by Antoine Pitrou, the interpreter switches threads on a time slice. A time slice is the short turn one thread gets before the interpreter pauses it and hands the CPU to another. That interval is `sys.getswitchinterval()`, which defaults to `0.005`s, or `5 ms`.
 
 ### A ten-minute experiment
+
+![Eight CPU-bound hash jobs run sequentially, on four threads that take turns under one GIL and on four processes with separate GILs, with the sleep variant where threads win.](./img/p3-0306-experiment-three-runs.svg)
+
+*Figure 3.6.4. Threads match the sequential time on CPU-bound work because of the GIL, processes are faster, and a sleep job reverses the result.*
 
 Reading about the GIL is less convincing than watching it. The script below runs the same CPU-bound job three ways: one after another, on four threads, and on four processes. Each job chains 1,000,000 small SHA-256 hashes, which keeps the work inside the interpreter.
 
@@ -118,9 +126,13 @@ Other options exist too, and they are worth knowing about. Processes have separa
 
 ### Choosing a model
 
+![A table giving the pool size rule for threads, processes and asyncio, with the reasons unbounded fan-out exhausts targets, descriptors and memory.](./img/p3-0306-pool-sizing.svg)
+
+*Figure 3.6.5. Size thread pools by what the remote can tolerate, process pools by real cores, and asyncio by a semaphore, and set the limit before the loop.*
+
 ![Choosing threads, processes or asyncio](./img/s06-choosemodel.svg)
 
-*Figure 3.6.3. Choosing a model: processes for CPU-bound work, asyncio for many async connections, threads for blocking I/O.*
+*Figure 3.6.6. Choosing a model: processes for CPU-bound work, asyncio for many async connections, threads for blocking I/O.*
 
 The table is a lookup, not a sermon. Find your workload in the first column and read across to the model that fits it. Notice that blocking libraries point you toward threads, while async libraries point you toward asyncio.
 
@@ -145,6 +157,10 @@ Threads are the easiest model to reach for, and for the right jobs they are the 
 
 ### Basics
 
+![A five-thread lifecycle from creation with daemon and name through start, sleep and join with timeout, with rules on daemon threads, lost exceptions and cooperative cancellation.](./img/p3-0306-thread-basics.svg)
+
+*Figure 3.6.7. Join with a timeout to detect stuck threads, capture thread errors with futures or excepthook, and stop threads with an Event rather than a kill.*
+
 Start with the simplest case: five threads that each wait and then report. The code joins them with a timeout, so a stuck thread shows up instead of freezing your script.
 
 ```python
@@ -167,6 +183,14 @@ An exception raised inside a thread does not reach the main thread. The thread p
 No code can kill a thread from outside. Design cooperative cancellation instead: give the workers a `threading.Event` to check, and bound every blocking call with a socket timeout or `queue.get(timeout=)`. Use `threading.local()` for state that belongs to one thread, and `contextvars` for context that follows tasks and threads.
 
 ### Synchronisation primitives
+
+![Two threads each holding one lock and waiting for the other, with the three fixes of lock ordering, timeouts and a single lock, plus the table of threading primitives.](./img/p3-0306-deadlock-fixes.svg)
+
+*Figure 3.6.8. A deadlock is a cycle of waits, and a global lock order, acquire timeouts or holding one lock break it.*
+
+![Two threads interleaving the load, add and store steps of counter += 1 so one update is lost, beside the locked version that protects the three steps as one unit.](./img/p3-0306-lost-update.svg)
+
+*Figure 3.6.9. Two threads can both load 5 and both store 6, and the lock turns load, add and store into one protected unit.*
 
 Threads share memory, and sharing is where the bugs are born. So you need tools to coordinate them. The table lists each primitive and what it is for. Notice that `Lock` guards data, while `Event` and `Condition` signal between threads.
 
@@ -202,9 +226,13 @@ Whatever the trap, the habits are the same. Keep critical sections tiny and free
 
 ### Producer/consumer with a bounded queue
 
+![A producer filling a queue bounded at 100, consumers calling task_done in a finally block and one sentinel per consumer ending each loop, with the asyncio equivalent.](./img/p3-0306-sentinel-shutdown.svg)
+
+*Figure 3.6.10. Put one sentinel for each consumer after the last item, and let task_done and join tell you when the work is finished.*
+
 ![Producer consumer with a bounded queue](./img/s06-queue.svg)
 
-*Figure 3.6.4. A bounded queue: when it fills, put() blocks the producers, so memory stays bounded.*
+*Figure 3.6.11. A bounded queue: when it fills, put() blocks the producers, so memory stays bounded.*
 
 Two roles appear in nearly every pipeline: a producer that creates work, and consumers that handle it. A bounded queue sits between them and stops a fast producer from flooding memory. When the queue is full, `put()` waits until the consumers catch up, and that waiting is the backpressure the code comment mentions. The sentinel object tells each consumer that no work is left.
 
@@ -230,9 +258,13 @@ def consumer():
 
 ### `concurrent.futures`
 
+![Two timelines for 20 hosts with a slow second host, where pool.map holds back hosts 3 to 20 while as_completed reports each result as it finishes and maps errors back to hosts.](./img/p3-0306-map-vs-as-completed.svg)
+
+*Figure 3.6.12. pool.map yields in input order so one slow host freezes progress, while as_completed with a future-to-host dictionary reports live and tags each error.*
+
 ![Executors and futures](./img/s06-futures.svg)
 
-*Figure 3.6.5. concurrent.futures: submit returns a Future at once, and result() waits for the value or raises the error.*
+*Figure 3.6.13. concurrent.futures: submit returns a Future at once, and result() waits for the value or raises the error.*
 
 Managing raw `Thread` objects gets tiring fast. `concurrent.futures` is the high-level API for pools: you submit callables and get `Future` objects back. A future is a stand-in for a result that is not ready yet.
 
@@ -267,6 +299,10 @@ A `Future` gives you `Future.result(timeout)`, `.exception()`, `.add_done_callba
 
 ### Backpressure with executors (avoiding the "10 million futures" OOM)
 
+![A bounded map seeds max_inflight futures, waits for some to finish, yields their results, and refills the same number, so memory stays bounded.](./img/p2-0306-bounded-map.svg)
+
+*Figure 3.6.14. A bounded map submits only a fixed number of futures at a time, refilling as they finish, so memory stays at a fixed size however large the input.*
+
 Here is a failure you will meet on real jobs: a script lists 10 million S3 keys, submits one future per key, and runs out of memory before the first result arrives. A loop that calls `pool.submit(...)` for every item in a huge iterable creates all the futures at once and holds them. Memory grows before any work has started. The helper below feeds the pool in a bounded way instead.
 
 ```python
@@ -289,6 +325,10 @@ The helper keeps at most `max_inflight` futures alive. Each time some of them fi
 
 ### Thread safety of common objects
 
+![A table of objects and whether threads may share them, including queue, logging, boto3 client versus session, requests Session, paramiko SSHClient and sqlite3, with the threading.local fallback.](./img/p3-0306-client-thread-safety.svg)
+
+*Figure 3.6.15. Queues and logging are safe to share, SSH clients are not, and one client per thread with threading.local is the fallback.*
+
 Some objects are safe to share between threads, and some are not. `queue.Queue`, `logging`, single `list.append` and `pop` calls, and single `dict` operations are safe. Compound operations are not. Never assume a client object is safe to share between threads.
 
 The clients you use every day deserve a check before you share them. Among common clients, only the low-level `boto3` client is documented as thread-safe, while `boto3` sessions and resources are not. A `requests.Session` is mostly safe for simple use, but its documentation makes no strong guarantee. A single paramiko `SSHClient` is not designed for concurrent use from several threads, so open one connection per worker.
@@ -300,6 +340,18 @@ Database drivers differ, and they say how. The DB-API `threadsafety` attribute o
 The colleague with the slow number-crunching script needs a different answer. While the GIL stands, threads cannot give pure-Python CPU work more than one core. Processes get around the GIL, because each one runs its own interpreter with its own lock. The example below hashes large files in a pool of worker processes, so the hashing can use several cores at once.
 
 ### `multiprocessing` and `ProcessPoolExecutor`
+
+![A container with a two CPU limit where os.cpu_count reports the host while sched_getaffinity or cpu.max gives the real count, with the throttling chain and the nested BLAS parallelism warning.](./img/p3-0306-container-cpus.svg)
+
+*Figure 3.6.16. os.cpu_count reports host CPUs, so use sched_getaffinity or the cgroup limit, and watch throttling in cpu.stat.*
+
+![A parent and worker connected by a pickle channel, listing what cannot be pickled, how to share large data with SharedMemory and memmap and how worker failures and BrokenProcessPool surface.](./img/p3-0306-process-boundary.svg)
+
+*Figure 3.6.17. Arguments and results are pickled, so send paths instead of large objects, and use SharedMemory for zero-copy sharing.*
+
+![Three columns comparing fork, spawn and forkserver on how they start workers, which are safe with threads and CUDA and which are the defaults on Linux, macOS and Windows.](./img/p3-0306-start-methods.svg)
+
+*Figure 3.6.18. fork is fast but unsafe with threads and CUDA, spawn is safe but needs picklable arguments, and forkserver is the Linux default from Python 3.14.*
 
 ```python
 from concurrent.futures import ProcessPoolExecutor
@@ -342,19 +394,39 @@ Size your pools to the cores your container really gets, and keep the tasks coar
 
 ### GPUs and data loading
 
+![GPU ranks each run as one process started by a launcher, with DataLoader worker processes for decoding and threads inside a rank used only for I/O, linked by NCCL.](./img/p3-0306-gpu-one-process.svg)
+
+*Figure 3.6.19. Run one process per GPU, use DataLoader workers for decoding, and keep threads inside a rank for I/O only.*
+
 PyTorch's `DataLoader(num_workers=N)` uses worker processes to decode and augment data. Tune `num_workers`, `prefetch_factor`, `pin_memory` and `persistent_workers`. Avoid forking after CUDA is initialised, and watch for memory duplication. Training launchers such as `torchrun`, accelerate, DeepSpeed, `mpirun` and Slurm `srun` give each GPU its own process. Concurrency here means one process per GPU, with NCCL handling communication, as Part 14 covers. Threads inside a rank, meaning one process of the distributed job, are for I/O, such as prefetching, not for compute. Keep one process per GPU, and let threads handle only the I/O.
 
 ## 4. asyncio
 
 ### Why asyncio
 
+![An event loop where one task makes a blocking call and stalls the others, with the routing of blocking and CPU-bound work to to_thread or executors and the debug-mode tools.](./img/p3-0306-blocking-loop-fix.svg)
+
+*Figure 3.6.20. A blocking call in a coroutine stalls every task, so route it to to_thread or a process pool and use debug mode to find the slow callbacks.*
+
 Now scale the fan-out up to the 5,000-BMC poll from the exercises. Threads are heavy. Each one has its own stack and is scheduled by the kernel, so you can run only thousands of them. asyncio takes another route. It runs many tasks cooperatively on one thread, using an event loop and non-blocking I/O through epoll or kqueue. An event loop is a scheduler that lives on a single thread and switches between tasks at their `await` points. A task runs until it hits an `await` on something that is not ready. Then it yields control, so tens of thousands of concurrent connections cost very little. The price is that all code on the loop must be non-blocking, libraries must be async-aware, and any CPU-bound or blocking call stalls every task.
 
 ### Core concepts
 
+![A table of async for, async with, async generators and PEP 530 comprehensions with the rule that async for is sequential, plus to_thread, drain and create_subprocess_exec bridges.](./img/p3-0306-async-protocol-map.svg)
+
+*Figure 3.6.21. async for waits for each item in turn, so use gather or TaskGroup for concurrency and to_thread for blocking calls.*
+
+![The steps of task.cancel from CancelledError at the current await to finally cleanup and re-raise, with the swallowing bug, shield, wait_for and timeout and the async primitives.](./img/p3-0306-cancel-timeout.svg)
+
+*Figure 3.6.22. cancel raises CancelledError at the current await, so clean up in finally and re-raise, and put a timeout on every network await.*
+
+![gather with return_exceptions False or True compared with a TaskGroup where a failure cancels the siblings and raises an ExceptionGroup handled by except star.](./img/p3-0306-gather-vs-taskgroup.svg)
+
+*Figure 3.6.23. gather lets other tasks keep running after a failure, while TaskGroup cancels the siblings and raises an ExceptionGroup.*
+
 ![The asyncio event loop](./img/s06-asyncio.svg)
 
-*Figure 3.6.6. asyncio: tasks share one thread, and each await hands control back to the event loop.*
+*Figure 3.6.24. asyncio: tasks share one thread, and each await hands control back to the event loop.*
 
 Here is the shape of a real async fan-out. The example below fetches many health endpoints through a semaphore, so no more than 100 requests run at once.
 
@@ -428,6 +500,10 @@ Run `asyncio.run(main(), debug=True)`, or set `PYTHONASYNCIODEBUG=1`, to switch 
 
 ### A worker-pool template
 
+![A bounded asyncio queue feeding fifty workers with per-item timeouts and error isolation, a stop event set by signal handlers, then join, cancel and gather to shut down cleanly.](./img/p3-0306-pool-template-flow.svg)
+
+*Figure 3.6.25. The template bounds memory and concurrency, isolates errors per item and cancels workers cleanly after join or a signal.*
+
 You now have every piece, so here is the loop you will actually ship. This template ties the earlier pieces together: a bounded queue, a fixed set of workers, per-item timeouts, and clean shutdown on signals.
 
 ```python
@@ -472,6 +548,14 @@ The template has bounded memory, bounded concurrency, per-item timeouts and erro
 
 ### Retries, backoff and jitter
 
+![A table of the retry helper with base 0.5 and cap 20 showing each attempt's random delay ceiling of 0.5, 1, 2 and 4 seconds and the final re-raise, with the retry rules.](./img/p3-0306-retry-arithmetic.svg)
+
+*Figure 3.6.26. Each failed attempt waits a random time up to the smaller of the cap and base times two to the attempt, and the last attempt re-raises.*
+
+![Fixed backoff makes many clients retry on the same ticks, while full jitter scatters each retry across a random range.](./img/p2-0306-jitter-retry.svg)
+
+*Figure 3.6.27. Fixed backoff makes many clients retry on the same ticks and cause a storm, while full jitter spreads each retry over a random range.*
+
 Targets fail, and a fleet tool that cannot fail gracefully is not finished. Retry only idempotent operations and transient errors, such as timeouts, connection resets, 429 or 503 responses. Idempotent means safe to repeat: doing it twice leaves the same result as doing it once. Use exponential backoff with **full jitter**, so that retries from many clients do not synchronise into a storm. Cap the total time, honour `Retry-After`, and log each attempt.
 
 ```python
@@ -495,11 +579,15 @@ Libraries such as `tenacity` and `backoff` implement this for you. HTTP clients 
 
 ![Circuit breaker states](./img/s06-breaker.svg)
 
-*Figure 3.6.7. A circuit breaker stops calling a failing service, then probes it before trusting it again.*
+*Figure 3.6.28. A circuit breaker stops calling a failing service, then probes it before trusting it again.*
 
 Protect the targets, and protect yourself. A token bucket, from `aiolimiter` or from an asyncio semaphore plus a sleep, limits the rate. Per-host concurrency limits, with one semaphore per host, rack or BMC network, keep any single target from being overloaded. A circuit breaker stops calling a failing dependency for a cool-down period, which gives it time to recover. Handle `Retry-After` too, and consider adaptive concurrency, such as AIMD, the approach TCP uses. For BMC and Redfish fleets, limit concurrency per rack, so the management switches are not overwhelmed.
 
 ### Aggregating results
+
+![Two panels listing target protections such as token buckets, per-rack limits and circuit breakers, and the Result record fields and summary of an aggregated fleet report.](./img/p3-0306-protect-targets.svg)
+
+*Figure 3.6.29. Limit rate and concurrency per target, break the circuit on failure, and finish every fleet run with a per-item Result summary.*
 
 A fleet run should end with a report, not with a crash. Return a `Result(host, ok, value|error, duration)` for each item. Summarise at the end with the success and failure counts, the slowest items and the error classes. Exit non-zero if a critical failure occurred, and keep the raw errors for diagnosis. Do not let one exception abort everything unless you mean it to. Use `return_exceptions=True`, or catch errors inside the worker.
 
@@ -509,9 +597,17 @@ Big listings arrive one page at a time, and pipelines let you work on each page 
 
 ### Scheduling and periodic tasks
 
+![A page producer feeding a bounded queue and parallel consumers, beside a periodic loop that waits on a stop event with a timeout and computes the next deadline from monotonic time.](./img/p3-0306-pipeline-and-schedule.svg)
+
+*Figure 3.6.30. A bounded queue keeps paged pipelines flat in memory, and waiting on a stop event with a timeout makes the periodic loop interruptible.*
+
 Many agents need to run on a schedule, and a naive sleep is where the drift starts. A simple periodic loop looks like `while not stop.is_set(): await run_once(); await asyncio.wait_for(stop.wait(), timeout=interval)`. The wait is interruptible, so a stop signal ends the loop without waiting out the full interval. Use `time.monotonic()` for intervals that do not drift. For cron-style schedules, prefer systemd timers, Kubernetes CronJobs or APScheduler. Compute the next deadline rather than sleeping a fixed amount, so the drift does not build up.
 
 ### Combining models
+
+![Three boxes for the asyncio loop, thread pool and process pool joined by run_in_executor, to_thread and run_coroutine_threadsafe, with multiprocess servers and distributed options.](./img/p3-0306-combine-models.svg)
+
+*Figure 3.6.31. Models connect through run_in_executor, to_thread and run_coroutine_threadsafe, and distributed work needs idempotency, checkpoints and at-least-once first.*
 
 The three models are not rivals, and real services combine them.
 
@@ -526,6 +622,14 @@ FastAPI `BackgroundTasks` suit short fire-and-forget work. For durable work, use
 When one machine is not enough, you move to Slurm job arrays and `srun`, Kubernetes Jobs with `completions`, `parallelism` and indexed jobs, Ray remote functions and actors, Dask, or Celery and RQ workers. At that scale, idempotency, checkpointing and at-least-once semantics, meaning a task may run more than once but must never be silently lost, matter more than the in-process model. Design for those three first, before you choose the framework.
 
 ## 6. Pitfalls and diagnosis
+
+![A table pairing diagnosis questions with faulthandler, py-spy, thread and task listings, ss and lsof, strace and perf, tracemalloc and the metrics worth tracking.](./img/p3-0306-diagnosis-tools.svg)
+
+*Figure 3.6.32. faulthandler and py-spy show where a live process is stuck, and in-flight tasks, queue depth and latency percentiles are the metrics to track.*
+
+![A table mapping seventeen concurrency symptoms to their likely cause and remedy, from stalled tasks and hangs to OOM, deadlocks, fork problems and RuntimeError in notebooks.](./img/p3-0306-symptom-ladder.svg)
+
+*Figure 3.6.33. Most symptoms trace back to a missing timeout, an unbounded queue or pool, or a blocking call on the loop.*
 
 It is late, the fleet loop has gone quiet, and the logs say nothing. Concurrency bugs almost always show up as a symptom first. Start from the symptom you see, then read across the row to its likely cause and remedy. If your service hangs, for instance, begin with the rows about timeouts and blocked loops.
 
@@ -578,6 +682,10 @@ Then, on any machine with Python 3.11 or later, work through these exercises you
 13. Clean up.
 
 ## 8. Common mistakes
+
+![A grouped table of concurrency mistakes in tool choice, unbounded work, error handling, shared state, process setup, retries and pool sizing, each with its fix.](./img/p3-0306-mistake-groups.svg)
+
+*Figure 3.6.34. Check that every pool and queue has a limit and every await has a timeout before shipping.*
 
 Most of these mistakes come from picking the wrong tool for the job. Threads for CPU-bound pure Python is the classic. asyncio with blocking libraries that never get offloaded is another. Treating async as faster by default is a third, and for a handful of requests the overhead is not worth it.
 

@@ -1,0 +1,201 @@
+import xml.etree.ElementTree as ET
+import re
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Plain Job versus gang admission for 16-node training</title>
+  <desc>Comparison of Plain Kubernetes Job causing deadlock on partial allocation versus JobSet, MPIJob or PyTorchJob using Kueue or Volcano gang admission for 16-node distributed training, with an indexed job example and track analogy.</desc>
+
+  <defs>
+    <!-- Arrowhead Green -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <!-- Arrowhead Red -->
+    <marker id="arrow-red" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#c53030" />
+    </marker>
+    <!-- Arrowhead Orange -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="64" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Plain Job versus gang admission for 16-node training</text>
+
+  <!-- ==================== LANE 1: Plain Job (Red tone / deadlock) ==================== -->
+  <g id="lane-1">
+    <!-- Lane Container -->
+    <rect x="40" y="98" width="730" height="677" rx="16" fill="#fdf4f4" stroke="#c53030" stroke-width="2.5" />
+
+    <!-- Lane 1 Header Icon: Alert shield -->
+    <g transform="translate(68, 122)" stroke="#c53030" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 16 V 32 C 50 44 28 52 28 52 C 28 52 6 44 6 32 V 16 Z" />
+      <line x1="28" y1="20" x2="28" y2="34" />
+      <circle cx="28" cy="42" r="2" fill="#c53030" stroke="none" />
+    </g>
+
+    <!-- Lane 1 Header Title (30px bold) -->
+    <text x="142" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#c53030">
+      <tspan x="142" dy="0">Plain Job parallelism 16</tspan>
+      <tspan x="142" dy="38">with only 12 free GPU nodes</tspan>
+    </text>
+
+    <!-- Step 1 Box: 12 pods start and wait at barrier -->
+    <g id="lane1-step1">
+      <rect x="68" y="215" width="674" height="135" rx="12" fill="#ffffff" stroke="#c53030" stroke-width="2" />
+      <!-- GPU Chip / Barrier Icon -->
+      <g transform="translate(90, 252)" stroke="#c53030" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="8" width="40" height="40" rx="6" />
+        <rect x="18" y="18" width="20" height="20" rx="3" />
+        <path d="M 18 0 v 8 M 38 0 v 8 M 18 48 v 8 M 38 48 v 8 M 0 18 h 8 M 0 38 h 8 M 48 18 h 8 M 48 38 h 8" />
+      </g>
+      <text x="165" y="255" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="165" dy="0">12 pods start at once and wait at the</tspan>
+        <tspan x="165" dy="32">c10d or NCCL rendezvous barrier</tspan>
+        <tspan x="165" dy="32">burning 96 H100 GPUs</tspan>
+      </text>
+    </g>
+
+    <!-- Arrow Step 1 -> Step 2 -->
+    <line x1="405" y1="350" x2="405" y2="378" stroke="#c53030" stroke-width="3" marker-end="url(#arrow-red)" />
+
+    <!-- Step 2 Box: 4 pods stay Pending -->
+    <g id="lane1-step2">
+      <rect x="68" y="380" width="674" height="95" rx="12" fill="#ffffff" stroke="#c53030" stroke-width="2" />
+      <!-- Pending Clock Icon -->
+      <g transform="translate(90, 400)" stroke="#c53030" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22" />
+        <polyline points="28,14 28,28 38,28" />
+      </g>
+      <text x="165" y="438" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">4 pods stay Pending</text>
+    </g>
+
+    <!-- Arrow Step 2 -> Step 3 (Orange arrow for deadlock trap) -->
+    <line x1="405" y1="475" x2="405" y2="508" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+    <!-- Step 3 Box: Deadlock forever (Highlighted in Orange) -->
+    <g id="lane1-step3">
+      <rect x="68" y="510" width="674" height="145" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3.5" />
+      <!-- Deadlock / Interlocked Padlock Icon -->
+      <g transform="translate(90, 552)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="22" width="40" height="28" rx="6" />
+        <path d="M 16 22 V 14 C 16 7 40 7 40 14 V 22" />
+        <circle cx="28" cy="36" r="3" fill="#db8129" />
+      </g>
+      <text x="165" y="552" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="165" dy="0">if a second 16-node job takes</tspan>
+        <tspan x="165" dy="34">the remaining 4 nodes,</tspan>
+        <tspan x="165" dy="34" fill="#db8129">both deadlock forever</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== LANE 2: Gang Admission (Green tone / success) ==================== -->
+  <g id="lane-2">
+    <!-- Lane Container -->
+    <rect x="830" y="98" width="730" height="677" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Lane 2 Header Icon: Coordinated cluster gear icon -->
+    <g transform="translate(858, 122)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="12" />
+      <path d="M 28 4 V 12 M 28 44 V 52 M 4 28 H 12 M 44 28 H 52 M 11 11 L 17 17 M 39 39 L 45 45 M 11 45 L 17 39 M 39 17 L 45 11" />
+    </g>
+
+    <!-- Lane 2 Header Title (30px bold) -->
+    <text x="932" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="932" dy="0">JobSet, MPIJob or PyTorchJob</tspan>
+      <tspan x="932" dy="34">with Kueue or Volcano</tspan>
+      <tspan x="932" dy="34">gang admission</tspan>
+    </text>
+
+    <!-- Step 1 Box: Job created suspended (suspend true) -->
+    <g id="lane2-step1">
+      <rect x="858" y="238" width="674" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <!-- Pause / Suspended Icon -->
+      <g transform="translate(880, 263)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22" />
+        <line x1="22" y1="18" x2="22" y2="38" stroke-width="5" />
+        <line x1="34" y1="18" x2="34" y2="38" stroke-width="5" />
+      </g>
+      <text x="955" y="300" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Job created suspended (suspend true)</text>
+    </g>
+
+    <!-- Arrow Step 1 -> Step 2 -->
+    <line x1="1195" y1="343" x2="1195" y2="376" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    <!-- Step 2 Box: admitted only when quota exists for all 16 -->
+    <g id="lane2-step2">
+      <rect x="858" y="378" width="674" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <!-- Quota Gate / Key Shield Icon -->
+      <g transform="translate(880, 405)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="40" rx="6" />
+        <polyline points="16,28 24,36 40,20" />
+      </g>
+      <text x="955" y="428" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+        <tspan x="955" dy="0">admitted only when quota</tspan>
+        <tspan x="955" dy="32">exists for all 16</tspan>
+      </text>
+    </g>
+
+    <!-- Arrow Step 2 -> Step 3 -->
+    <line x1="1195" y1="488" x2="1195" y2="523" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    <!-- Step 3 Box: all 16 pods scheduled together -->
+    <g id="lane2-step3">
+      <rect x="858" y="525" width="674" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <!-- Multi-node Parallel Launch Icon -->
+      <g transform="translate(880, 552)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="20" height="18" rx="3" />
+        <rect x="32" y="6" width="20" height="18" rx="3" />
+        <rect x="4" y="32" width="20" height="18" rx="3" />
+        <rect x="32" y="32" width="20" height="18" rx="3" />
+        <line x1="24" y1="15" x2="32" y2="15" />
+        <line x1="24" y1="41" x2="32" y2="41" />
+        <line x1="14" y1="24" x2="14" y2="32" />
+        <line x1="42" y1="24" x2="42" y2="32" />
+      </g>
+      <text x="955" y="590" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">all 16 pods scheduled together</text>
+    </g>
+  </g>
+
+  <!-- ==================== BOTTOM ROW: Analogy Card ==================== -->
+  <g id="panel-analogy">
+    <rect x="40" y="805" width="1520" height="145" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Running Track / Relay Baton Icon -->
+    <g transform="translate(68, 845)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="12" r="6" />
+      <path d="M 12 30 L 22 22 L 28 32 L 38 24 L 46 28" />
+      <path d="M 22 22 L 28 14 L 34 22" />
+      <path d="M 20 48 L 24 38 L 34 40 L 40 50" />
+      <line x1="42" y1="16" x2="52" y2="24" stroke="#db8129" stroke-width="5" />
+    </g>
+    <text x="142" y="865" font-family="sans-serif" font-size="25" fill="#303a36">
+      <tspan x="142" dy="0">plain Job = runners who start when they reach the track;</tspan>
+      <tspan x="142" dy="38">gang = relay team that starts only when every runner is on the track</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM ROW: Indexed Job Example Card ==================== -->
+  <g id="panel-indexed-job">
+    <rect x="40" y="975" width="1520" height="160" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Terminal / Code Config Icon -->
+    <g transform="translate(68, 1025)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="42" rx="6" />
+      <polyline points="14,20 22,27 14,34" />
+      <line x1="26" y1="34" x2="38" y2="34" stroke-width="4" />
+    </g>
+    <text x="142" y="1038" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="142" dy="0">completions 16, parallelism 16, backoffLimitPerIndex 2, maxFailedIndexes 1;</tspan>
+      <tspan x="142" dy="38">podFailurePolicy Ignore on DisruptionTarget, FailJob on exit code 42</tspan>
+    </text>
+  </g>
+</svg>"""
+
+with open("candidate_plain_job_gang.svg", "w") as f:
+    f.write(svg_content)
+
+print("Regenerated candidate_plain_job_gang.svg")

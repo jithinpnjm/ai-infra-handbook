@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>A cold-start download that the startup probe always cuts short</title>
+  <desc>Visual infographic explaining why a container download fails when the startup probe cuts it short, creating a restart loop.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="60" dy="0">A cold-start download that the</tspan>
+    <tspan x="60" dy="55">startup probe always cuts short</tspan>
+  </text>
+
+  
+  
+  <path d="M 70 196 L 70 202 L 190 202 L 190 196" fill="none" stroke="#207448" stroke-width="2"/>
+  <text x="70" y="155" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="70" dy="0">Time the startup probe</tspan>
+    <tspan x="70" dy="28">allows: 10 minutes</tspan>
+  </text>
+
+  
+  
+  <rect x="70" y="206" width="120" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="190" y="206" width="1320" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="850" y="238" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    Time to download 140 GB at <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">20 MB per second</tspan>: about 2 hours
+  </text>
+
+  
+  <line x1="190" y1="190" x2="190" y2="305" stroke="#db8129" stroke-width="4"/>
+  <circle cx="190" cy="305" r="5" fill="#db8129"/>
+  <text x="205" y="295" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Probe fails, container restarts</text>
+
+  
+  
+  <g id="box-1">
+    <rect x="50" y="370" width="300" height="360" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 175 440 L 175 450 L 225 450 L 225 440" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="200" y1="410" x2="200" y2="438" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 188 428 L 200 440 L 212 428" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+    
+    <text x="200" y="495" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="200" dy="0">Download</tspan>
+      <tspan x="200" dy="38" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24">shard 12 of 30</tspan>
+    </text>
+
+    
+    <text x="200" y="595" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="200" dy="0">Then nothing</tspan>
+      <tspan x="200" dy="30">for minutes</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="350" y1="550" x2="388" y2="550" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="box-2">
+    <rect x="390" y="370" width="300" height="360" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="515" y="410" width="50" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="530" y1="420" x2="550" y2="440" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="550" y1="420" x2="530" y2="440" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+    
+    <text x="540" y="495" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="540" dy="0">Container</tspan>
+      <tspan x="540" dy="36">killed</tspan>
+    </text>
+
+    
+    <text x="540" y="590" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="540" dy="0">Startup probe</tspan>
+      <tspan x="540" dy="30">failed, container</tspan>
+      <tspan x="540" dy="30">will be restarted</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="690" y1="550" x2="728" y2="550" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="box-3">
+    <rect x="730" y="370" width="300" height="360" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="880" cy="415" rx="25" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 855 427 C 855 432 905 432 905 427" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 855 439 C 855 444 905 444 905 439" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="855" y1="415" x2="855" y2="439" stroke="#207448" stroke-width="4"/>
+    <line x1="905" y1="415" x2="905" y2="439" stroke="#207448" stroke-width="4"/>
+
+    
+    <text x="880" y="505" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="880" dy="0">Log starts</tspan>
+      <tspan x="880" dy="36">again at</tspan>
+      <tspan x="880" dy="40" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" fill="#207448">shard 1</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 880 730 L 880 805 L 200 805 L 200 734" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+  <text x="540" y="845" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Download starts over</text>
+
+  
+  <g id="panel-fix-order">
+    <rect x="1070" y="370" width="480" height="500" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1100" y="420" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Fix order</text>
+
+    
+    <rect x="1090" y="445" width="440" height="125" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="1110" y="480" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">1 </tspan><tspan>Protect the four ready</tspan>
+      <tspan x="1110" dy="30">replicas with shedding</tspan>
+      <tspan x="1110" dy="30">or per-tenant limits</tspan>
+    </text>
+
+    
+    <rect x="1090" y="585" width="440" height="110" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="1110" y="625" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">2 </tspan><tspan>Give the startup probe</tspan>
+      <tspan x="1110" dy="32">enough time</tspan>
+    </text>
+
+    
+    <rect x="1090" y="710" width="440" height="110" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+    <text x="1110" y="750" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold" fill="#207448">3 </tspan><tspan>Add a pre-pulled or</tspan>
+      <tspan x="1110" dy="32">shared weights volume</tspan>
+    </text>
+  </g>
+</svg>

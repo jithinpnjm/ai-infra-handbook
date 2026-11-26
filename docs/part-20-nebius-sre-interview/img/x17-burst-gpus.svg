@@ -1,0 +1,323 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>A 3x burst needs three times the GPUs, so the design must queue and shed</title>
+  <desc>Horizontal bar chart showing Peak (28 GPUs), N+1 spare (29 GPUs), and a 3x burst (84 GPUs), illustrating the queue and shed design requirement.</desc>
+
+  <defs>
+    
+    <g id="gpu-chip-green">
+      <rect x="0" y="5" width="7" height="40" rx="1.5" fill="#207448" />
+      <rect x="1.5" y="12" width="4" height="26" rx="1" fill="#e8f1ea" opacity="0.7" />
+    </g>
+
+    
+    <g id="gpu-chip-orange">
+      <rect x="0" y="5" width="7" height="40" rx="1.5" fill="#db8129" />
+      <rect x="1.5" y="12" width="4" height="26" rx="1" fill="#fff4eb" opacity="0.8" />
+    </g>
+
+    
+    <g id="icon-gpu-56-green">
+      <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="16" y="16" width="24" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="2" x2="14" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="2" x2="28" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="2" x2="42" y2="6" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="50" x2="14" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="50" x2="28" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="50" x2="42" y2="54" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="14" x2="6" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="28" x2="6" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="42" x2="6" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="14" x2="54" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="42" x2="54" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <g id="icon-gpu-56-orange">
+      <rect x="6" y="6" width="44" height="44" rx="8" fill="none" stroke="#db8129" stroke-width="4" />
+      <rect x="16" y="16" width="24" height="24" rx="4" fill="#fff4eb" stroke="#db8129" stroke-width="3" />
+      <line x1="14" y1="2" x2="14" y2="6" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="2" x2="28" y2="6" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="2" x2="42" y2="6" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="50" x2="14" y2="54" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="50" x2="28" y2="54" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="42" y1="50" x2="42" y2="54" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="14" x2="6" y2="14" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="28" x2="6" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="2" y1="42" x2="6" y2="42" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="14" x2="54" y2="14" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="28" x2="54" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="50" y1="42" x2="54" y2="42" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <g id="icon-filter-56-green">
+      <rect x="4" y="4" width="48" height="48" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M14 16 L42 16 L31 29 L31 40 L25 36 L25 29 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    </g>
+
+    
+    <g id="icon-formula-56-green">
+      <rect x="4" y="4" width="48" height="48" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="14" y1="22" x2="24" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="19" y1="17" x2="19" y2="27" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="32" y1="22" x2="42" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="36" x2="24" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="32" y1="33" x2="42" y2="33" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="32" y1="39" x2="42" y2="39" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+
+    
+    <g id="icon-takeaway-56-white">
+      <path d="M28 10 C19 10 12 17 12 26 C12 32 16 37 19 41 L19 44 L37 44 L37 41 C40 37 44 32 44 26 C44 17 37 10 28 10 Z" fill="none" stroke="#ffffff" stroke-width="4" stroke-linejoin="round" />
+      <line x1="22" y1="48" x2="34" y2="48" stroke="#ffffff" stroke-width="4" stroke-linecap="round" />
+    </g>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">A 3x burst needs three times the GPUs,</tspan>
+    <tspan x="800" dy="55">so the design must queue and shed</tspan>
+  </text>
+
+  
+  <rect x="60" y="160" width="1480" height="745" rx="16" fill="#ffffff" stroke="#c4d6c8" stroke-width="2" />
+
+  
+  <g transform="translate(85, 185)">
+    <use href="#icon-gpu-56-green" />
+  </g>
+  <text x="160" y="215" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Peak</text>
+  <text x="160" y="250" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">300 requests per second times 300 output tokens = 90,000 tokens/s,</tspan>
+    <tspan x="160" dy="30">needs 28 GPUs at a planning rate of 3,217 tokens/s per GPU (0.6 times 5,361)</tspan>
+  </text>
+
+  
+  <rect x="160" y="305" width="840" height="50" rx="8" fill="#f0f4f1" />
+  <rect x="160" y="305" width="280" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(160, 305)">
+    <use href="#gpu-chip-green" x="0" />
+    <use href="#gpu-chip-green" x="10" />
+    <use href="#gpu-chip-green" x="20" />
+    <use href="#gpu-chip-green" x="30" />
+    <use href="#gpu-chip-green" x="40" />
+    <use href="#gpu-chip-green" x="50" />
+    <use href="#gpu-chip-green" x="60" />
+    <use href="#gpu-chip-green" x="70" />
+    <use href="#gpu-chip-green" x="80" />
+    <use href="#gpu-chip-green" x="90" />
+    <use href="#gpu-chip-green" x="100" />
+    <use href="#gpu-chip-green" x="110" />
+    <use href="#gpu-chip-green" x="120" />
+    <use href="#gpu-chip-green" x="130" />
+    <use href="#gpu-chip-green" x="140" />
+    <use href="#gpu-chip-green" x="150" />
+    <use href="#gpu-chip-green" x="160" />
+    <use href="#gpu-chip-green" x="170" />
+    <use href="#gpu-chip-green" x="180" />
+    <use href="#gpu-chip-green" x="190" />
+    <use href="#gpu-chip-green" x="200" />
+    <use href="#gpu-chip-green" x="210" />
+    <use href="#gpu-chip-green" x="220" />
+    <use href="#gpu-chip-green" x="230" />
+    <use href="#gpu-chip-green" x="240" />
+    <use href="#gpu-chip-green" x="250" />
+    <use href="#gpu-chip-green" x="260" />
+    <use href="#gpu-chip-green" x="270" />
+  </g>
+
+  
+  <rect x="250" y="375" width="400" height="42" rx="21" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="450" y="404" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">what you can add in minutes</text>
+
+  
+  <g transform="translate(85, 435)">
+    <use href="#icon-gpu-56-green" />
+  </g>
+  <text x="160" y="470" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">With one spare (N+1): 28 + 1 = 29 GPUs</text>
+
+  
+  <rect x="160" y="495" width="840" height="50" rx="8" fill="#f0f4f1" />
+  <rect x="160" y="495" width="290" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(160, 495)">
+    <use href="#gpu-chip-green" x="0" />
+    <use href="#gpu-chip-green" x="10" />
+    <use href="#gpu-chip-green" x="20" />
+    <use href="#gpu-chip-green" x="30" />
+    <use href="#gpu-chip-green" x="40" />
+    <use href="#gpu-chip-green" x="50" />
+    <use href="#gpu-chip-green" x="60" />
+    <use href="#gpu-chip-green" x="70" />
+    <use href="#gpu-chip-green" x="80" />
+    <use href="#gpu-chip-green" x="90" />
+    <use href="#gpu-chip-green" x="100" />
+    <use href="#gpu-chip-green" x="110" />
+    <use href="#gpu-chip-green" x="120" />
+    <use href="#gpu-chip-green" x="130" />
+    <use href="#gpu-chip-green" x="140" />
+    <use href="#gpu-chip-green" x="150" />
+    <use href="#gpu-chip-green" x="160" />
+    <use href="#gpu-chip-green" x="170" />
+    <use href="#gpu-chip-green" x="180" />
+    <use href="#gpu-chip-green" x="190" />
+    <use href="#gpu-chip-green" x="200" />
+    <use href="#gpu-chip-green" x="210" />
+    <use href="#gpu-chip-green" x="220" />
+    <use href="#gpu-chip-green" x="230" />
+    <use href="#gpu-chip-green" x="240" />
+    <use href="#gpu-chip-green" x="250" />
+    <use href="#gpu-chip-green" x="260" />
+    <use href="#gpu-chip-green" x="270" />
+    <use href="#gpu-chip-green" x="280" />
+  </g>
+
+  
+  <g transform="translate(85, 565)">
+    <use href="#icon-gpu-56-orange" />
+  </g>
+  <text x="160" y="600" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">3x burst for 5 minutes: 270,000 / 3,217 = 84 GPUs</text>
+
+  
+  <rect x="160" y="625" width="840" height="50" rx="8" fill="#fff4eb" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(160, 625)">
+    
+    <use href="#gpu-chip-orange" x="0" />
+    <use href="#gpu-chip-orange" x="10" />
+    <use href="#gpu-chip-orange" x="20" />
+    <use href="#gpu-chip-orange" x="30" />
+    <use href="#gpu-chip-orange" x="40" />
+    <use href="#gpu-chip-orange" x="50" />
+    <use href="#gpu-chip-orange" x="60" />
+    <use href="#gpu-chip-orange" x="70" />
+    <use href="#gpu-chip-orange" x="80" />
+    <use href="#gpu-chip-orange" x="90" />
+    <use href="#gpu-chip-orange" x="100" />
+    <use href="#gpu-chip-orange" x="110" />
+    <use href="#gpu-chip-orange" x="120" />
+    <use href="#gpu-chip-orange" x="130" />
+    <use href="#gpu-chip-orange" x="140" />
+    <use href="#gpu-chip-orange" x="150" />
+    <use href="#gpu-chip-orange" x="160" />
+    <use href="#gpu-chip-orange" x="170" />
+    <use href="#gpu-chip-orange" x="180" />
+    <use href="#gpu-chip-orange" x="190" />
+    <use href="#gpu-chip-orange" x="200" />
+    <use href="#gpu-chip-orange" x="210" />
+    <use href="#gpu-chip-orange" x="220" />
+    <use href="#gpu-chip-orange" x="230" />
+    <use href="#gpu-chip-orange" x="240" />
+    <use href="#gpu-chip-orange" x="250" />
+    <use href="#gpu-chip-orange" x="260" />
+    <use href="#gpu-chip-orange" x="270" />
+    <use href="#gpu-chip-orange" x="280" />
+    
+    <use href="#gpu-chip-orange" x="290" />
+    <use href="#gpu-chip-orange" x="300" />
+    <use href="#gpu-chip-orange" x="310" />
+    <use href="#gpu-chip-orange" x="320" />
+    <use href="#gpu-chip-orange" x="330" />
+    <use href="#gpu-chip-orange" x="340" />
+    <use href="#gpu-chip-orange" x="350" />
+    <use href="#gpu-chip-orange" x="360" />
+    <use href="#gpu-chip-orange" x="370" />
+    <use href="#gpu-chip-orange" x="380" />
+    <use href="#gpu-chip-orange" x="390" />
+    <use href="#gpu-chip-orange" x="400" />
+    <use href="#gpu-chip-orange" x="410" />
+    <use href="#gpu-chip-orange" x="420" />
+    <use href="#gpu-chip-orange" x="430" />
+    <use href="#gpu-chip-orange" x="440" />
+    <use href="#gpu-chip-orange" x="450" />
+    <use href="#gpu-chip-orange" x="460" />
+    <use href="#gpu-chip-orange" x="470" />
+    <use href="#gpu-chip-orange" x="480" />
+    <use href="#gpu-chip-orange" x="490" />
+    <use href="#gpu-chip-orange" x="500" />
+    <use href="#gpu-chip-orange" x="510" />
+    <use href="#gpu-chip-orange" x="520" />
+    <use href="#gpu-chip-orange" x="530" />
+    <use href="#gpu-chip-orange" x="540" />
+    <use href="#gpu-chip-orange" x="550" />
+    <use href="#gpu-chip-orange" x="560" />
+    <use href="#gpu-chip-orange" x="570" />
+    <use href="#gpu-chip-orange" x="580" />
+    <use href="#gpu-chip-orange" x="590" />
+    <use href="#gpu-chip-orange" x="600" />
+    <use href="#gpu-chip-orange" x="610" />
+    <use href="#gpu-chip-orange" x="620" />
+    <use href="#gpu-chip-orange" x="630" />
+    <use href="#gpu-chip-orange" x="640" />
+    <use href="#gpu-chip-orange" x="650" />
+    <use href="#gpu-chip-orange" x="660" />
+    <use href="#gpu-chip-orange" x="670" />
+    <use href="#gpu-chip-orange" x="680" />
+    <use href="#gpu-chip-orange" x="690" />
+    <use href="#gpu-chip-orange" x="700" />
+    <use href="#gpu-chip-orange" x="710" />
+    <use href="#gpu-chip-orange" x="720" />
+    <use href="#gpu-chip-orange" x="730" />
+    <use href="#gpu-chip-orange" x="740" />
+    <use href="#gpu-chip-orange" x="750" />
+    <use href="#gpu-chip-orange" x="760" />
+    <use href="#gpu-chip-orange" x="770" />
+    <use href="#gpu-chip-orange" x="780" />
+    <use href="#gpu-chip-orange" x="790" />
+    <use href="#gpu-chip-orange" x="800" />
+    <use href="#gpu-chip-orange" x="810" />
+    <use href="#gpu-chip-orange" x="820" />
+    <use href="#gpu-chip-orange" x="830" />
+  </g>
+
+  
+  <line x1="450" y1="417" x2="450" y2="760" stroke="#db8129" stroke-width="3" stroke-dasharray="8,6" />
+
+  
+  <rect x="470" y="695" width="520" height="75" rx="10" fill="#fff4eb" stroke="#db8129" stroke-width="2" />
+  <text x="730" y="728" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="730" dy="0">you cannot buy 55 more GPUs</tspan>
+    <tspan x="730" dy="28">in five minutes</tspan>
+  </text>
+
+  
+  <g transform="translate(1040, 520)">
+    
+    <rect x="0" y="0" width="470" height="345" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <use href="#icon-filter-56-green" x="25" y="18" />
+
+    
+    <rect x="20" y="85" width="430" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="40" y="126" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">queue within a bound</text>
+
+    
+    <rect x="20" y="168" width="430" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="40" y="209" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">shed on purpose</text>
+
+    
+    <rect x="20" y="251" width="430" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="40" y="292" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">prioritise by traffic class</text>
+  </g>
+
+  
+  <g transform="translate(60, 925)">
+    <rect x="0" y="0" width="1480" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <use href="#icon-formula-56-green" x="25" y="10" />
+    <text x="100" y="47" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">GPUs = demand tokens/s divided by per-GPU planning rate, rounded up</text>
+  </g>
+
+  
+  <g transform="translate(60, 1020)">
+    <rect x="0" y="0" width="1480" height="80" rx="12" fill="#207448" />
+    <use href="#icon-takeaway-56-white" x="25" y="12" />
+    <text x="740" y="50" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Say the 3x burst number aloud and choose shed or buy.</text>
+  </g>
+</svg>

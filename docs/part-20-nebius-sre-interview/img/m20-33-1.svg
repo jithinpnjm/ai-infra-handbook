@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Pattern A: a managed Dedicated Endpoint behind your own gateway</title>
+  <desc>Architecture infographic illustrating Pattern A: a managed Dedicated Endpoint behind your own gateway with authentication, regional token factory, failover endpoint, and observability telemetry.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Pattern A: a managed Dedicated Endpoint</text>
+  <text x="800" y="138" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">behind your own gateway</text>
+
+  
+
+  
+  <path d="M 325 420 L 378 420" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 730 420 L 783 420" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1085 420 L 1138 420" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1340 320 V 225 Q 1340 210 1325 210 H 570 Q 555 210 555 225 V 318" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 430 520 L 430 678" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 650 520 V 590 Q 650 600 660 600 H 840 Q 850 600 850 610 V 678" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1340 520 L 1340 678" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g>
+    <rect x="45" y="320" width="280" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="185" cy="368" r="16" stroke="#207448" stroke-width="3.5" fill="none" />
+    <path d="M 160 406 C 160 390 210 390 210 406" stroke="#207448" stroke-width="3.5" stroke-linecap="round" fill="none" />
+    <line x1="185" y1="352" x2="185" y2="344" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="185" cy="341" r="2.5" fill="#207448" />
+    
+    <text x="185" y="470" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">User or agent</text>
+  </g>
+
+  
+  <g>
+    <rect x="380" y="320" width="350" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 533 358 L 555 350 L 577 358 V 378 C 577 394 555 404 555 404 C 555 404 533 394 533 378 Z" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" fill="none" />
+    <path d="M 547 386 V 372 C 547 367 563 367 563 372 V 386" stroke="#207448" stroke-width="2.5" stroke-linecap="round" fill="none" />
+    
+    <text x="555" y="445" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Your gateway</text>
+    <text x="555" y="485" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">auth, quotas, retries</text>
+  </g>
+
+  
+  <g>
+    <rect x="785" y="320" width="300" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 915 398 V 374 L 927 382 V 374 L 941 382 V 364 H 949 V 398 Z" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" fill="none" />
+    <rect x="923" y="386" width="8" height="12" stroke="#207448" stroke-width="2.5" fill="none" />
+    <circle cx="945" cy="356" r="3" stroke="#207448" stroke-width="2.5" fill="none" />
+    <circle cx="951" cy="350" r="2" stroke="#207448" stroke-width="2" fill="none" />
+    
+    <text x="935" y="445" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Token Factory</text>
+    <text x="935" y="485" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">regional API</text>
+  </g>
+
+  
+  <g>
+    <rect x="1140" y="320" width="400" height="200" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <rect x="1318" y="358" width="44" height="44" rx="6" stroke="#db8129" stroke-width="3.5" fill="none" />
+    <rect x="1328" y="368" width="24" height="24" rx="3" stroke="#db8129" stroke-width="2.5" fill="none" />
+    
+    <line x1="1326" y1="358" x2="1326" y2="351" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1340" y1="358" x2="1340" y2="351" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1354" y1="358" x2="1354" y2="351" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1326" y1="402" x2="1326" y2="409" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1340" y1="402" x2="1340" y2="409" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1354" y1="402" x2="1354" y2="409" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1318" y1="366" x2="1311" y2="366" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1318" y1="380" x2="1311" y2="380" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1318" y1="394" x2="1311" y2="394" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1362" y1="366" x2="1369" y2="366" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1362" y1="380" x2="1369" y2="380" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="1362" y1="394" x2="1369" y2="394" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1340" y="470" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Dedicated endpoint</text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="260" y="680" width="340" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="408" y="715" width="44" height="40" rx="4" stroke="#207448" stroke-width="2.5" fill="none" />
+    <path d="M 412 735 H 420 L 425 723 L 431 747 L 437 729 L 442 735 H 448" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    
+    <text x="430" y="810" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="430" dy="0">Your traces,</tspan>
+      <tspan x="430" dy="38">tenant metrics</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="660" y="680" width="380" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="828" y="716" width="44" height="16" rx="3" stroke="#207448" stroke-width="3" fill="none" />
+    <circle cx="836" cy="724" r="2.5" fill="#207448" />
+    <circle cx="844" cy="724" r="2.5" fill="#207448" />
+    <line x1="854" y1="724" x2="866" y2="724" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <rect x="828" y="738" width="44" height="16" rx="3" stroke="#207448" stroke-width="3" fill="none" />
+    <circle cx="836" cy="746" r="2.5" fill="#207448" />
+    <circle cx="844" cy="746" r="2.5" fill="#207448" />
+    <line x1="854" y1="746" x2="866" y2="746" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    
+    <text x="850" y="810" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Alternate endpoint</text>
+    <text x="850" y="850" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">same legal region</text>
+  </g>
+
+  
+  <g>
+    <rect x="1160" y="680" width="360" height="200" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 1319 722 V 756 H 1361" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <line x1="1329" y1="756" x2="1329" y2="744" stroke="#207448" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="1340" y1="756" x2="1340" y2="732" stroke="#207448" stroke-width="4.5" stroke-linecap="round" />
+    <line x1="1351" y1="756" x2="1351" y2="725" stroke="#207448" stroke-width="4.5" stroke-linecap="round" />
+    
+    <text x="1340" y="830" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Endpoint metrics</text>
+  </g>
+</svg>

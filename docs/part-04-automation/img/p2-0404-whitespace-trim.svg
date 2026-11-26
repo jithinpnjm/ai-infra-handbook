@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080">
+  <title>Block tags leave blank lines unless you trim them, and the diff shows the damage</title>
+  <desc>Visual comparison showing how default Jinja2 block tags introduce unwanted blank lines, and how trim_blocks and lstrip_blocks eliminate them.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Block tags leave blank lines unless you trim them,</tspan>
+    <tspan x="800" dy="58">and the diff shows the damage</tspan>
+  </text>
+
+  
+  <g id="left-panel">
+    
+    <rect x="40" y="170" width="740" height="785" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+
+    
+    <g transform="translate(65, 198)">
+      <rect x="0" y="0" width="54" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="14" x2="54" y2="14" stroke="#207448" stroke-width="3"/>
+      <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="18" cy="7" r="2.5" fill="#207448"/>
+      <line x1="12" y1="26" x2="42" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="12" y1="34" x2="32" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="135" y="234" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Default rendering</text>
+
+    
+    <rect x="65" y="270" width="690" height="175" rx="10" fill="#e8f1ea" stroke="#c0d4c5" stroke-width="1.5"/>
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" fill="#303a36">
+      <tspan x="95" y="322">{% if gpus %}</tspan>
+      <tspan x="95" y="368">Gres=gpu:8</tspan>
+      <tspan x="95" y="414">{% endif %}</tspan>
+    </text>
+
+    
+    <rect x="65" y="475" width="690" height="215" rx="10" fill="#ffffff" stroke="#c0d4c5" stroke-width="1.5"/>
+    
+    
+    <rect x="85" y="495" width="650" height="42" rx="6" fill="#f5f8f5"/>
+    <line x1="105" y1="516" x2="715" y2="516" stroke="#9aa8a0" stroke-width="3" stroke-dasharray="10 8"/>
+
+    
+    <text x="95" y="594" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">Gres=gpu:8</text>
+
+    
+    <rect x="85" y="628" width="650" height="42" rx="6" fill="#f5f8f5"/>
+    <line x1="105" y1="649" x2="715" y2="649" stroke="#9aa8a0" stroke-width="3" stroke-dasharray="10 8"/>
+
+    
+    <rect x="65" y="720" width="690" height="205" rx="10" fill="#fdf4f4" stroke="#c93b2b" stroke-width="2.5"/>
+    <text x="410" y="805" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="410" dy="0">Blank lines added by every block tag.</tspan>
+      <tspan x="410" dy="48">A diff now shows changes that mean nothing.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-panel">
+    
+    <rect x="820" y="170" width="740" height="785" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(845, 198)">
+      <rect x="0" y="0" width="54" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="14" x2="54" y2="14" stroke="#207448" stroke-width="3"/>
+      <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="18" cy="7" r="2.5" fill="#207448"/>
+      <polyline points="14,31 24,39 42,23" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="915" y="234" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Trimmed rendering</text>
+
+    
+    <rect x="845" y="270" width="690" height="225" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="865" y="318">#jinja2: trim_blocks:True, lstrip_blocks:True</tspan>
+      <tspan x="865" y="362">{% if gpus %}</tspan>
+      <tspan x="865" y="406">Gres=gpu:8</tspan>
+      <tspan x="865" y="450">{% endif %}</tspan>
+    </text>
+
+    
+    <rect x="845" y="525" width="690" height="165" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="865" y="616" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">Gres=gpu:8</text>
+
+    
+    <rect x="845" y="720" width="690" height="205" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1190" y="830" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">{%- strips before a tag, -%} strips after it</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="985" width="1520" height="65" rx="10" fill="#207448"/>
+    <text x="800" y="1027" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Always render the template and read the output.</text>
+  </g>
+</svg>

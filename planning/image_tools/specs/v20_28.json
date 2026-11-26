@@ -1,0 +1,43 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "x28-dossier-nine-parts",
+  "title": "The one-page dossier: nine parts in the order a good story is told",
+  "spec": "A two-row grid of nine equal boxes, read left to right, top row first, with thin arrows between consecutive boxes to show story order. Each box has a green number circle (r=24, white number) at its top-left, numbered 1 to 9, a small outline icon and a title with a one-line sub-text. Box 1 'Context' with sub-text 'Why the project existed'. Box 2 'My role and the team' with sub-text 'What I owned and who else mattered'. Box 3 'Constraints' with sub-text 'Time, budget, risk limit, fixed things'. Box 4 'Numbers' with sub-text 'Scale, normal and peak load, availability, cost'. Box 5 'Architecture' with sub-text 'One request or deploy, start to end'. Row 2: Box 6 'Decisions' with sub-text 'Chosen, alternatives, why, cost accepted'. Box 7 'Failures' with sub-text 'What broke, detection, root cause, what changed, what I got wrong'. Box 8 'What I would change' with sub-text 'One change, its evidence, what I would leave alone'. Box 9 'Metrics of success' with sub-text 'Before, after, same unit, same method'. Orange only on Box 6 Decisions and Box 7 Failures, the two parts that decide how the round goes; use a thin orange outline on those two boxes, not a fill. Below the grid, a green strip with the text 'Write the dossier before you rehearse'.",
+  "anchor": "### 3. The one-page dossier",
+  "alt": "Nine parts of a one-page project dossier in story order, with decisions and failures marked as the two parts that decide the round",
+  "cap": "Project dossier: nine parts in the order a story is told, with decisions and failures as the two parts that most shape the deep dive."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "x28-five-level-ladder",
+  "title": "The five-level ladder: one decision, questioned down to the bottom",
+  "spec": "A vertical staircase of five steps going down from top to bottom, each step a rounded box with a green number circle (r=24, white number) at its left, numbered 1 to 5. Step 1 question box: 'Why did you pick YOUR CHOICE?' with sub-text 'Give the constraint and the option'. Step 2: 'What else did you consider?' with sub-text 'Name two alternatives'. Step 3: 'How did you know it would work?' with sub-text 'A test, a benchmark or a pilot, with a number'. Step 4: 'What went wrong with it?' with sub-text 'Tell the failure story'. Step 5: 'Would you pick it again?' with sub-text 'Yes or no, and the condition'. Arrows go down between the steps. Beside Step 3, a side branch with a dashed arrow to a box 'No test? Say the gap: I did not test it, I decided on my reason, and the risk was my risk.' The side box sits to the right so the staircase arrows stay clear. Orange only on Step 3, because a level three gap is the one to close. Monospace is not needed on this figure.",
+  "anchor": "### Scenario 3: a five-level ladder on one decision",
+  "alt": "Five-step ladder of follow-up questions on one decision, with an honest side branch when no test was run",
+  "cap": "Five-level ladder: each follow-up digs one level deeper, and a missing test is named as a gap rather than covered with an invented figure."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "x28-tradeoff-sentence-parts",
+  "title": "The four-part trade-off sentence",
+  "spec": "A left-to-right chain of four connected boxes with arrows, each box a light green panel with a number circle (r=24, white number) at its top-left, numbered 1 to 4. Box 1 title 'Given this constraint' with sub-text 'The limit that shaped the choice'. Box 2 title 'I chose A over B' with sub-text 'The option picked and the one rejected'. Box 3 title 'Accepting this cost' with sub-text 'The price you knowingly paid'. Box 4 title 'I would revisit if this condition changed' with sub-text 'The point where the decision expires'. Under the chain, a monospace example line in a grey box: 'Given a two-week deadline, I chose YOUR CHOICE over YOUR ALTERNATIVE, accepting YOUR COST, and I would revisit when load passes YOUR NUMBER'. Use a monospace font only for the example line. Orange only on Box 3, the cost, because the cost is the sentence an interviewer listens for. Keep the example line inside its grey box with padding.",
+  "anchor": "### 5. Talking about trade-offs and mistakes honestly",
+  "alt": "Four parts of a trade-off sentence: the constraint, the choice over the alternative, the accepted cost, and the condition that would revisit it",
+  "cap": "Trade-off sentence: name the constraint, the choice over the alternative, the cost you accepted, and the condition that would make you revisit."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "x28-first-90-days",
+  "title": "The first 90 days: learn, then small wins, then one owned improvement",
+  "spec": "A left-to-right timeline with three large stage boxes connected by arrows, each stage with a number circle (r=24, white number) and a clock icon. Stage 1, labelled 'Month one', title 'Listen and map' with sub-text 'Shadow on-call, read recent post-mortems, learn the SLOs and the paging alerts, draw the request path for a token API from edge to GPU' and a bottom line 'Fix nothing big yet'. Stage 2, labelled 'Month two', title 'Ship small safe improvements' with sub-text 'Fix a noisy alert, tighten one runbook or add a missing dashboard panel' and a metric line 'Pages per week before and after'. Stage 3, labelled 'Month three', title 'Own one reliability improvement' with sub-text 'Pick from the posting with the team, based on the biggest toil or risk' and a metric line 'Name the metric and the review date'. Below the three stages, a thin grey panel titled 'What I would not do' with the example 'Rewrite alerting in week two or change production outside the team process'. Orange only on Stage 3's metric line. Monospace for the month labels is not needed."
+  ,
+  "anchor": "### 9. The first-90-days answer",
+  "alt": "Three stages of a first-90-days plan: listen and map in month one, small safe improvements in month two, and one owned reliability improvement with a number in month three",
+  "cap": "First 90 days: learn before changing anything, then ship small measured fixes, then own one reliability improvement with a target."
+ }
+]

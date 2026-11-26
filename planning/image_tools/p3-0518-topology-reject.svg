@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Scheduled, then rejected: scheduler and kubelet disagree</title>
+  <desc>Sequence diagram showing kube-scheduler binding a pod without NUMA awareness and kubelet Topology Manager rejecting it at admission with TopologyAffinityError, along with fixes and topology lines.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- ==================== TITLE ==================== -->
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Scheduled, then rejected:</tspan>
+    <tspan x="800" dy="56">scheduler and kubelet disagree</tspan>
+  </text>
+
+  <!-- ==================== SEQUENCE LIFELINES ==================== -->
+  <line x1="270" y1="405" x2="270" y2="705" stroke="#a9c4b3" stroke-width="3" stroke-dasharray="8 8"/>
+  <line x1="770" y1="405" x2="770" y2="705" stroke="#a9c4b3" stroke-width="3" stroke-dasharray="8 8"/>
+
+  <!-- ==================== ACTOR 1: KUBE-SCHEDULER ==================== -->
+  <rect x="40" y="145" width="460" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <!-- Gear / Service icon (48px) -->
+  <g transform="translate(246, 158)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="9"/>
+    <path d="M 24 7 L 24 12 M 24 36 L 24 41 M 7 24 L 12 24 M 36 24 L 41 24 M 12 12 L 15.5 15.5 M 32.5 32.5 L 36 36 M 12 36 L 15.5 32.5 M 32.5 15.5 L 36 12"/>
+  </g>
+  <text x="270" y="245" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="270" dy="0" font-weight="bold" font-size="30">kube-scheduler:</tspan>
+    <tspan x="270" dy="37">sees requests, labels,</tspan>
+    <tspan x="270" dy="36">allocatable; not</tspan>
+    <tspan x="270" dy="36">NUMA alignment</tspan>
+  </text>
+
+  <!-- ==================== ACTOR 2: KUBELET TOPOLOGY MANAGER ==================== -->
+  <rect x="540" y="145" width="460" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <!-- Chip / Hardware icon (48px) -->
+  <g transform="translate(746, 158)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="9" y="9" width="30" height="30" rx="4"/>
+    <line x1="16" y1="4" x2="16" y2="9"/>
+    <line x1="24" y1="4" x2="24" y2="9"/>
+    <line x1="32" y1="4" x2="32" y2="9"/>
+    <line x1="16" y1="39" x2="16" y2="44"/>
+    <line x1="24" y1="39" x2="24" y2="44"/>
+    <line x1="32" y1="39" x2="32" y2="44"/>
+    <line x1="4" y1="16" x2="9" y2="16"/>
+    <line x1="4" y1="24" x2="9" y2="24"/>
+    <line x1="4" y1="32" x2="9" y2="32"/>
+    <line x1="39" y1="16" x2="44" y2="16"/>
+    <line x1="39" y1="24" x2="44" y2="24"/>
+    <line x1="39" y1="32" x2="44" y2="32"/>
+  </g>
+  <text x="770" y="235" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="770" dy="0" font-weight="bold" font-size="30">kubelet</tspan>
+    <tspan x="770" dy="33" font-weight="bold" font-size="30">Topology Manager:</tspan>
+    <tspan x="770" dy="34">at admission tries to align</tspan>
+    <tspan x="770" dy="32">CPU, memory and devices</tspan>
+    <tspan x="770" dy="32">on one NUMA node</tspan>
+  </text>
+
+  <!-- ==================== MESSAGE 1 (ARROW 1) ==================== -->
+  <text x="520" y="445" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="520" dy="0">places a pod on a node</tspan>
+    <tspan x="520" dy="32">(bind)</tspan>
+  </text>
+  <line x1="270" y1="505" x2="752" y2="505" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- ==================== MESSAGE 2 (ARROW 2 - ORANGE) ==================== -->
+  <text x="520" y="555" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="520" dy="0">rejects with</tspan>
+    <tspan x="520" dy="32">TopologyAffinityError</tspan>
+    <tspan x="520" dy="32">because no aligned set exists</tspan>
+  </text>
+  <path d="M 770 645 L 288 645" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  <!-- ==================== OUTCOME BOX ==================== -->
+  <rect x="170" y="705" width="700" height="95" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <!-- Alert / Shield Icon (48px) -->
+  <g transform="translate(198, 728)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="24,5 45,41 3,41"/>
+    <line x1="24" y1="18" x2="24" y2="29"/>
+    <circle cx="24" cy="35" r="2" fill="#207448"/>
+  </g>
+  <text x="545" y="763" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Pod ends failed after binding</text>
+
+  <!-- ==================== FIXES COLUMN (RIGHT) ==================== -->
+  <rect x="1050" y="145" width="500" height="655" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  <!-- Fix 1 Card -->
+  <rect x="1070" y="165" width="460" height="200" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- NFD / Topology Node Icon (48px) -->
+  <g transform="translate(1276, 180)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="36" height="12" rx="3"/>
+    <rect x="6" y="28" width="36" height="12" rx="3"/>
+    <line x1="24" y1="20" x2="24" y2="28"/>
+    <circle cx="14" cy="14" r="2" fill="#207448"/>
+    <circle cx="14" cy="34" r="2" fill="#207448"/>
+  </g>
+  <text x="1300" y="265" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1300" dy="0" font-weight="bold">NodeResourceTopology (NFD)</tspan>
+    <tspan x="1300" dy="32">so the scheduler</tspan>
+    <tspan x="1300" dy="32">sees NUMA zones</tspan>
+  </text>
+
+  <!-- Fix 2 Card -->
+  <rect x="1070" y="385" width="460" height="195" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Policy / Checklist Icon (48px) -->
+  <g transform="translate(1276, 400)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="36" height="36" rx="4"/>
+    <line x1="14" y1="16" x2="34" y2="16"/>
+    <line x1="14" y1="24" x2="28" y2="24"/>
+    <line x1="14" y1="32" x2="32" y2="32"/>
+  </g>
+  <text x="1300" y="485" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1300" dy="0" font-weight="bold">align kubelet policy with</tspan>
+    <tspan x="1300" dy="35">NUMA-aware scheduling</tspan>
+  </text>
+
+  <!-- Fix 3 Card -->
+  <rect x="1070" y="600" width="460" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- DRA / Sliders Icon (48px) -->
+  <g transform="translate(1276, 618)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="8" y1="12" x2="40" y2="12"/>
+    <line x1="8" y1="24" x2="40" y2="24"/>
+    <line x1="8" y1="36" x2="40" y2="36"/>
+    <circle cx="18" cy="12" r="3.5" fill="#207448"/>
+    <circle cx="30" cy="24" r="3.5" fill="#207448"/>
+    <circle cx="16" cy="36" r="3.5" fill="#207448"/>
+  </g>
+  <text x="1300" y="715" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">DRA with attributes</text>
+
+  <!-- ==================== RELATED LINES CONTAINER (BOTTOM) ==================== -->
+  <rect x="40" y="845" width="1520" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  <!-- Related 1 Card -->
+  <rect x="60" y="865" width="480" height="275" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Tag / Label Icon (40px) -->
+  <g transform="translate(280, 875)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 22 L 22 8 L 38 8 L 38 24 L 24 38 Z"/>
+    <circle cx="31" cy="15" r="2.5" fill="#207448"/>
+  </g>
+  <text x="300" y="956" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="300" dy="0">label nodes</tspan>
+    <tspan x="300" dy="32" font-family="monospace">topology.example.com/block,</tspan>
+    <tspan x="300" dy="32" font-family="monospace">/rack, /leaf, /nvlink-domain</tspan>
+    <tspan x="300" dy="32">or use cloud</tspan>
+    <tspan x="300" dy="32" font-family="monospace">topology.kubernetes.io labels</tspan>
+  </text>
+
+  <!-- Related 2 Card -->
+  <rect x="560" y="865" width="480" height="275" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Rack Bandwidth / Loss Icon (40px) -->
+  <g transform="translate(780, 875)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="32" height="11" rx="2"/>
+    <rect x="8" y="25" width="32" height="11" rx="2"/>
+    <line x1="24" y1="19" x2="24" y2="25" stroke-dasharray="2 2"/>
+  </g>
+  <text x="800" y="960" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">a job spread over wrong racks</tspan>
+    <tspan x="800" dy="34">loses bandwidth on every</tspan>
+    <tspan x="800" dy="34">all-reduce and nothing in</tspan>
+    <tspan x="800" dy="34">the logs shows an error</tspan>
+  </text>
+
+  <!-- Related 3 Card -->
+  <rect x="1060" y="865" width="480" height="275" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Rack-Scale Domain Icon (40px) -->
+  <g transform="translate(1280, 875)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="4" width="36" height="40" rx="3"/>
+    <line x1="6" y1="14" x2="42" y2="14"/>
+    <line x1="6" y1="24" x2="42" y2="24"/>
+    <line x1="6" y1="34" x2="42" y2="34"/>
+    <circle cx="12" cy="9" r="1.5" fill="#207448"/>
+    <circle cx="12" cy="19" r="1.5" fill="#207448"/>
+    <circle cx="12" cy="29" r="1.5" fill="#207448"/>
+    <circle cx="12" cy="39" r="1.5" fill="#207448"/>
+  </g>
+  <text x="1300" y="960" text-anchor="middle" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1300" dy="0" font-weight="bold">NVL72 domain is a</tspan>
+    <tspan x="1300" dy="34" font-weight="bold">rack-scale unit:</tspan>
+    <tspan x="1300" dy="34">schedule whole-domain</tspan>
+    <tspan x="1300" dy="34">jobs onto one domain</tspan>
+  </text>
+</svg>

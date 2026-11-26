@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>import_tasks is read at parse time, include_tasks at run time</title>
+  <desc>Imports are read when the playbook is parsed and includes are read when the run reaches them, so a file name that depends on runtime facts needs an include.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 18 9 L 0 16 z" fill="#207448" />
+    </marker>
+    <symbol id="icon-lock" viewBox="0 0 56 56">
+      <rect x="10" y="22" width="36" height="28" rx="6" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M 18 22 V 14 A 10 10 0 0 1 38 14 V 22" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="33" r="3" fill="#207448"/>
+      <path d="M 28 36 V 42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </symbol>
+    <symbol id="icon-gear" viewBox="0 0 56 56">
+      <path d="M 24 4 H 32 L 34 11 L 40 13 L 46 9 L 51 15 L 47 21 L 49 27 L 56 30 L 54 38 L 47 39 L 44 45 L 47 52 L 40 56 L 35 51 L 28 52 L 24 58 L 16 55 L 16 48 L 10 44 L 3 46 L 0 38 L 6 33 L 5 27 L 0 22 L 4 14 L 11 16 L 16 12 L 16 5 Z" transform="translate(0 -3)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+      <circle cx="28" cy="28" r="9" fill="none" stroke="#207448" stroke-width="4"/>
+    </symbol>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">import_tasks is read at parse time,</tspan>
+    <tspan x="800" dy="58">include_tasks at run time</tspan>
+  </text>
+
+  <g id="timeline">
+    <line x1="140" y1="205" x2="1460" y2="205" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="420" cy="205" r="16" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <circle cx="420" cy="205" r="8" fill="#207448" />
+    <text x="420" y="172" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Parse time, the playbook is read</text>
+
+    <circle cx="1180" cy="205" r="16" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <circle cx="1180" cy="205" r="8" fill="#207448" />
+    <text x="1180" y="172" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Run time, each task is reached in order</text>
+  </g>
+
+  <g id="panel-import">
+    <rect x="80" y="255" width="680" height="510" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <use href="#icon-lock" x="392" y="275" width="56" height="56" />
+    <text x="420" y="370" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+      <tspan x="420" dy="0">import_tasks / import_role /</tspan>
+      <tspan x="420" dy="38">import_playbook</tspan>
+    </text>
+    <text x="420" y="450" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Static, at parse time</text>
+
+    <rect x="110" y="480" width="620" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="138" cy="518" r="6" fill="#207448" />
+    <text x="162" y="510" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="162" dy="0">visible to </tspan>
+      <tspan font-family="monospace">--list-tasks</tspan>
+      <tspan>, </tspan>
+      <tspan font-family="monospace">--tags</tspan>
+      <tspan x="162" dy="30">and </tspan>
+      <tspan font-family="monospace">--start-at-task</tspan>
+    </text>
+
+    <rect x="110" y="572" width="620" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="138" cy="610" r="6" fill="#207448" />
+    <text x="162" y="602" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="162" dy="0"><tspan font-family="monospace">when</tspan> is applied to</tspan>
+      <tspan x="162" dy="30">every imported task</tspan>
+    </text>
+
+    <rect x="110" y="664" width="620" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="138" cy="702" r="6" fill="#207448" />
+    <text x="162" y="710" font-family="sans-serif" font-size="24px" fill="#303a36"><tspan font-family="monospace">loop</tspan> is not supported</text>
+  </g>
+
+  <g id="panel-include">
+    <rect x="840" y="255" width="680" height="510" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <use href="#icon-gear" x="1152" y="275" width="56" height="56" />
+    <text x="1180" y="370" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+      <tspan x="1180" dy="0">include_tasks /</tspan>
+      <tspan x="1180" dy="38">include_role</tspan>
+    </text>
+    <text x="1180" y="450" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36">Dynamic, at runtime when reached</text>
+
+    <rect x="870" y="480" width="620" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="898" cy="518" r="6" fill="#207448" />
+    <text x="922" y="510" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="922" dy="0">included tasks are not listed</tspan>
+      <tspan x="922" dy="30">by <tspan font-family="monospace">--list-tasks</tspan></tspan>
+    </text>
+
+    <rect x="870" y="572" width="620" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="898" cy="610" r="6" fill="#207448" />
+    <text x="922" y="602" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="922" dy="0"><tspan font-family="monospace">loop</tspan> is supported,</tspan>
+      <tspan x="922" dy="30">one include per item</tspan>
+    </text>
+
+    <rect x="870" y="664" width="620" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="898" cy="702" r="6" fill="#207448" />
+    <text x="922" y="694" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="922" dy="0">the filename can use facts,</tspan>
+      <tspan x="922" dy="30" font-family="monospace">ansible_facts['os_family'] .yml</tspan>
+    </text>
+  </g>
+
+  <g id="decision">
+    <rect x="180" y="805" width="1240" height="105" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <text x="800" y="848" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">Can the file name or its existence change</tspan>
+      <tspan x="800" dy="36">based on something the run discovers?</tspan>
+    </text>
+
+    <path d="M 440 910 L 440 990" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <text x="415" y="955" text-anchor="end" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">no</text>
+
+    <path d="M 1160 910 L 1160 990" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <text x="1185" y="955" text-anchor="start" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">yes</text>
+
+    <rect x="300" y="990" width="280" height="72" rx="14" fill="#fff6ee" stroke="#db8129" stroke-width="3" />
+    <text x="440" y="1036" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#db8129">import</text>
+
+    <rect x="1020" y="990" width="280" height="72" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1160" y="1036" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">include</text>
+  </g>
+
+  <g id="takeaway-bar">
+    <rect x="50" y="1100" width="1500" height="70" rx="14" fill="#207448" />
+    <text x="800" y="1144" text-anchor="middle" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#ffffff">Choose an import by default, and switch to an include only when runtime data forces your hand.</text>
+  </g>
+</svg>

@@ -1,0 +1,132 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-scheduler-paperwork",
+  "title": "The scheduler works from paperwork, not the floor",
+  "spec": "Two-panel contrast for one node. Panel 'What the scheduler sees': Node allocatable, minus the sum of requests of pods already assigned (including pods still starting), equals room left; NodeResourcesFit compares the new pod requests with that. Rules list: 'limits are ignored for fit unless requests default to limits', 'BestEffort pod with no requests counts as 0, so it can overload a node (passenger with no ticket)', 'effective pod request = max(largest init container, sum of app containers) plus sidecar contributions plus RuntimeClass overhead', 'extended resources such as nvidia.com/gpu, rdma/*, hugepages are integers advertised by device plugins in allocatable, requested in limits where requests equal limits; counted by number, not identity'. Panel 'What the scheduler does not see': 'actual utilisation, GPU health, actual CPU or memory use unless a plugin adds it'. Bottom: 'one pod at a time on a snapshot of the cluster; no idea of a job made of many pods'. Text at least 24px.",
+  "anchor": "## 2. Resource fit and accounting",
+  "alt": "A node is shown with allocatable minus requested resources as the scheduler sees it, next to what it cannot see.",
+  "cap": "Fit is decided by requests and allocatable, never by what pods are actually using."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-affinity-anatomy",
+  "title": "Reading a node affinity block: AND, OR, hard, soft",
+  "spec": "Annotated YAML. 'nodeSelector nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3: simple equality, all pairs AND'. 'requiredDuringSchedulingIgnoredDuringExecution: hard rule, acts as a filter'. 'nodeSelectorTerms: terms are OR'd'. 'matchExpressions inside one term are AND'd: key topology.kubernetes.io/zone In [us-central1-a, us-central1-b] AND key node.kubernetes.io/instance-type NotIn [a3-edgegpu-8g]'. 'preferredDuringSchedulingIgnoredDuringExecution: soft rule, acts as a score; weight 80 for example.com/nvlink-domain In [domain-3]'. Result strip: 'node must be an H100, in one of the two zones, and not the edge type; among those, domain-3 nodes score higher'. Footer: 'operators In, NotIn, Exists, DoesNotExist, Gt, Lt; IgnoredDuringExecution means a running pod is not evicted when node labels change (a rule applied at the door only)'. Text at least 24px.",
+  "anchor": "### nodeSelector and node affinity",
+  "alt": "An annotated node affinity block showing AND across expressions, OR across terms and hard versus soft rules.",
+  "cap": "Terms are alternatives, expressions inside a term all must hold, and preferred rules only add score."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-taint-effects",
+  "title": "Taint effects and the failover timer",
+  "spec": "Table of taint key=value:effect. Commands: 'kubectl taint nodes gpu-node-1 nvidia.com/gpu=present:NoSchedule', same with trailing minus to remove, 'kubectl taint nodes gpu-node-2 maintenance=true:NoExecute'. Rows: 'NoSchedule: stops new pods from being scheduled onto the node'; 'PreferNoSchedule: only a soft preference'; 'NoExecute: also evicts running pods that do not tolerate it'. Toleration examples: 'key nvidia.com/gpu operator Exists effect NoSchedule' and 'key node.kubernetes.io/unreachable operator Exists effect NoExecute tolerationSeconds 60: faster failover than the default 300, at the cost of moving pods sooner on a brief network blip'. Side list 'system-added taints: not-ready, unreachable, memory-pressure, disk-pressure, pid-pressure, network-unavailable, unschedulable (cordoned node)'. Footer: 'ExtendedResourceToleration admission plugin can add the nvidia.com/gpu toleration automatically; a dedicated pool still needs a node label and nodeSelector or affinity because a toleration only permits'. Text at least 24px.",
+  "anchor": "### Taints and tolerations",
+  "alt": "A table lists the three taint effects with example commands and the tolerationSeconds failover setting.",
+  "cap": "NoExecute is the effect that evicts running pods and tolerationSeconds sets how long they may stay."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-failedscheduling-anatomy",
+  "title": "Reading a FailedScheduling event",
+  "spec": "Annotated message: '0/20 nodes are available: 8 Insufficient nvidia.com/gpu, 6 node(s) had untolerated taint {nvidia.com/gpu: present}, 6 node(s) didn't match Pod's node affinity/selector. preemption: 0/20 nodes are available: ...'. Three bars sized 8, 6 and 6 summing to 20 nodes, each pointing to a next check: 'Insufficient GPU: kubectl describe node n and read Allocated resources (requests vs allocatable); check the device plugin; fragmentation', 'untolerated taint: add the toleration or enable ExtendedResourceToleration', 'node affinity or selector: kubectl get nodes -L nvidia.com/gpu.product,topology.kubernetes.io/zone; check GFD or NFD labels'. Tail piece: 'preemption: ... PostFilter DefaultPreemption tried and found no victims'. Side warning 'counts are per reason and may overlap'. Command strip: 'kubectl describe pod p, events section', 'kubectl get events -A --field-selector reason=FailedScheduling --sort-by=.lastTimestamp', 'kubectl logs -n kube-system -l component=kube-scheduler --tail=200 (-v=4 for filter and score traces)'. Text at least 24px.",
+  "anchor": "## 8. Debugging scheduling",
+  "alt": "A FailedScheduling message is split into three reasons with counts and the next check for each.",
+  "cap": "Each count in the event names a reason and points to one command to run next."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-pending-symptom-table",
+  "title": "Pending pod symptoms and their fixes",
+  "spec": "Three-column table symptom, likely cause, fix. 'Insufficient nvidia.com/gpu but GPUs free: terminating or other-namespace pods, device plugin not updated, fragmentation, node cordoned: describe node allocated, check plugin, defrag, uncordon'. 'didn't match node affinity/selector: labels missing (GFD not running) or typos: check labels, NFD and GFD DaemonSets'. 'didn't satisfy existing pods anti-affinity or topology spread: too strict required rules: relax to preferred, add capacity or domains, adjust maxSkew'. 'volume node affinity conflict: PV zone differs from schedulable nodes: WaitForFirstConsumer, same-zone capacity'. 'Pending forever with Kueue: not admitted, quota, flavor mismatch, wrong queue label, suspend: kubectl describe workload, ClusterQueue status'. 'Scheduled then TopologyAffinityError: kubelet topology policy rejects: align policy, NUMA-aware scheduling or DRA'. 'Training job partially running: no gang control: use Kueue, Volcano or PodGroup'. 'DRA claim pending: no matching ResourceSlice attributes or driver not running: get resourceslices, driver pods, CEL expression'. Text at least 24px.",
+  "anchor": "## 12. Interview angles",
+  "alt": "A table maps eight pending-pod symptoms to likely causes and fixes.",
+  "cap": "Translate the scheduler's terse reason into one question and one check."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-kueue-objects",
+  "title": "Kueue objects from team quota to a running Job",
+  "spec": "Chain of boxes with the chapter's names. 'ResourceFlavor h100-ondemand: nodeLabels nvidia.com/gpu.product NVIDIA-H100-80GB-HBM3 and pool h100-ondemand, plus the nvidia.com/gpu toleration, injected into admitted workloads'. Arrow to 'ClusterQueue research: cohortName gpu-fleet, queueingStrategy BestEffortFIFO, namespaceSelector team research, quota per flavor'. 'LocalQueue research-gpu in namespace research-ns, clusterQueue research' points to the ClusterQueue. 'Job pretrain-llama in research-ns: labels kueue.x-k8s.io/queue-name research-gpu and priority-class training-normal; spec.suspend true, parallelism 8, completions 8, 8-GPU pods'. Steps: '1 Job created suspended, so no pods exist; 2 Kueue builds a Workload; 3 quota available in the flavor admits the whole Workload; 4 Kueue unsuspends the Job and injects node labels and tolerations; 5 kube-scheduler places the pods'. Analogy: 'Kueue is the admissions office, the scheduler is the registrar assigning classrooms'. Note 'for a Pending Kueue job start with kubectl describe workload: until admitted, the pods do not exist'. Text at least 24px.",
+  "anchor": "### Kueue",
+  "alt": "A chain of Kueue objects from flavor and cluster queue to a suspended Job that is admitted as a whole.",
+  "cap": "Kueue admits the whole Workload against quota before the scheduler sees any pod."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-kueue-quota-numbers",
+  "title": "Borrowing and lending quota inside a cohort",
+  "spec": "Worked example with the chapter's numbers for ClusterQueue research, flavor h100-ondemand, resource nvidia.com/gpu: nominalQuota 128, borrowingLimit 64, lendingLimit 32; cpu nominalQuota 1024, memory nominalQuota 8Ti. Draw a bar of 128 GPUs owned by research; a dashed extension of up to 64 GPUs borrowed from idle quota of other ClusterQueues in cohort gpu-fleet; a marked slice of 32 GPUs that research may lend out when idle. Preemption settings: 'reclaimWithinCohort Any: take back lent quota from borrowers', 'borrowWithinCohort policy LowerPriority with maxPriorityThreshold 100', 'withinClusterQueue LowerPriority'. Story: 'Team A borrows idle quota; Team B submits a job and reclaims its own quota through preemption; watch Workload conditions'. Footer: 'WorkloadPriorityClass sets queueing priority independent of pod priority'. Text at least 24px.",
+  "anchor": "## 5. Why default scheduling fails for distributed jobs",
+  "alt": "A bar shows 128 owned GPUs, up to 64 borrowable and 32 lendable inside a cohort.",
+  "cap": "Quota is owned, borrowable up to a limit and reclaimable through preemption."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-gang-tools-compare",
+  "title": "Kueue, Volcano and coscheduling compared",
+  "spec": "Comparison table. 'Kueue (SIG Scheduling): complements the default scheduler; admits suspended Jobs against quota; objects ResourceFlavor, ClusterQueue, LocalQueue, Cohort, Workload, WorkloadPriorityClass, AdmissionCheck; job types Job, JobSet, MPIJob, PyTorchJob, TFJob, RayJob, RayCluster and more; topology-aware scheduling places pods at a block or rack'. 'Volcano (CNCF): runs its own scheduler binary and CRDs Queue, PodGroup with minMember and minResources, Job (vcjob); pods set schedulerName volcano; replaces kube-scheduler for batch pods, richer batch policy but more intrusive'. 'Coscheduling plugin (scheduler-plugins): PodGroup CRD plus a Permit plugin holding pods until minMember can be placed; runs in the same scheduler'. 'JobSet (SIG Apps/Batch): groups of Jobs, startup order, success and failure policies, DNS via headless Service; integrates with Kueue'. Footer: 'Kubeflow Training Operator, MPI Operator v2 and KubeRay use PodGroup or Kueue integration; Slurm on Kubernetes via Slinky, SUNK or Soperator'. Text at least 24px.",
+  "anchor": "### Other gang mechanisms",
+  "alt": "A table compares Kueue, Volcano, the coscheduling plugin and JobSet by how they add all-or-nothing admission.",
+  "cap": "Choose Kueue to add to the default scheduler or Volcano to replace it for batch pods."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-device-plugin-vs-dra",
+  "title": "Counting GPUs versus describing them",
+  "spec": "Two-panel contrast. Left 'Device plugin: I have 8 GPUs': node advertises nvidia.com/gpu: 8 as an integer; pod asks for a count; scheduler cannot tell which GPUs share a PCIe root or NVLink domain. Right 'DRA: describe the shape': drivers publish ResourceSlice objects with attributes product, memory, MIG profile, PCI root, NVLink domain; pod references a ResourceClaimTemplate four-gpus-same-root with deviceClassName gpu.nvidia.com, count 4, a CEL selector device.attributes productName == NVIDIA H100 80GB HBM3, and constraint matchAttribute resource.kubernetes.io/pcieRoot; scheduler matches a request for a shape of hardware. Footer: 'attribute names and API versions differ by driver and release, verify them; choose the topology key first, then apply it with node affinity, Kueue TAS or a DRA claim'. Text at least 24px.",
+  "anchor": "## 6. Topology-aware and device-aware scheduling",
+  "alt": "Two panels contrast a device plugin that counts GPUs with DRA claims that select GPUs by attributes.",
+  "cap": "DRA lets a pod ask for four GPUs sharing one PCIe root instead of just four GPUs."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-topology-reject",
+  "title": "Scheduled, then rejected: scheduler and kubelet disagree",
+  "spec": "Sequence with two actors. 'kube-scheduler: sees requests, labels, allocatable; not NUMA alignment' places a pod on a node (bind). 'kubelet Topology Manager: at admission tries to align CPU, memory and devices on one NUMA node' rejects with TopologyAffinityError because no aligned set exists. Pod ends failed after binding. Fixes column: 'NodeResourceTopology (NFD) so the scheduler sees NUMA zones', 'align kubelet policy with NUMA-aware scheduling', 'DRA with attributes'. Related lines: 'label nodes topology.example.com/block, /rack, /leaf, /nvlink-domain or use cloud topology.kubernetes.io labels', 'a job spread over wrong racks loses bandwidth on every all-reduce and nothing in the logs shows an error', 'NVL72 domain is a rack-scale unit: schedule whole-domain jobs onto one domain'. Text at least 24px.",
+  "anchor": "## 6. Topology-aware and device-aware scheduling",
+  "alt": "A sequence shows the scheduler binding a pod and the kubelet later rejecting it with TopologyAffinityError.",
+  "cap": "The scheduler does not know NUMA alignment, so make it visible or the kubelet rejects pods after binding."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-preemption-pitfalls",
+  "title": "How preemption goes wrong for training jobs",
+  "spec": "Three small diagrams. 1 Cascade: 'high-priority pod preempts victim A; A is rescheduled and may preempt B, which may preempt C (row of dominoes)'. 2 Multi-pod waste: 'one pod of a 4-pod training job is evicted; the other pods sit idle until the operator restarts them all; progress of the whole job is wasted'. 3 Priority inversion: 'low-priority pods hold resources; the high-priority pod cannot preempt them because of PDBs or affinity'. Victim choice strip: 'scheduler simulates first; picks the node needing the fewest victims, ranked by fewest PDB violations, lowest highest-victim priority, fewest victims, latest start time; sets status.nominatedNodeName and deletes victims'. Mitigations: 'preemptionPolicy Never for training-low, non-preemptible or equal priority within a tier, queue-level preemption with Kueue, avoid priority inflation where everything is critical, ResourceQuota scopes on PriorityClass'. Text at least 24px.",
+  "anchor": "### PriorityClass",
+  "alt": "Three diagrams show preemption cascading, wasting a multi-pod job and causing priority inversion, with mitigations.",
+  "cap": "Preempting a single pod of a gang wastes the whole job, so protect training with queue-level control."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-profile-binpack",
+  "title": "Two scheduler profiles side by side",
+  "spec": "One kube-scheduler box containing two profiles from KubeSchedulerConfiguration (percentageOfNodesToScore 50, parallelism 16). Profile 'default-scheduler': NodeResourcesFit strategy LeastAllocated by default, spreads load. Profile 'gpu-binpack': NodeResourcesFit scoringStrategy MostAllocated with resources nvidia.com/gpu weight 5, cpu weight 1, memory weight 1, and NodeResourcesBalancedAllocation disabled in score. A pod chooses with schedulerName gpu-binpack. Consequence strip: 'MostAllocated packs pods onto already-busy nodes so whole nodes stay free for 8-GPU jobs'. Warning: 'profiles inside one scheduler share its cache; separate schedulers over overlapping nodes without coordination race'. Pipeline reminder: 'Filter removes nodes that cannot run the pod, Score ranks feasible nodes 0 to 100, Reserve records the choice, Permit can hold pods for gang plugins, Bind writes spec.nodeName'. Text at least 24px.",
+  "anchor": "## 1. The scheduler's job and model",
+  "alt": "One scheduler hosts a default spreading profile and a gpu-binpack profile that pods select by name.",
+  "cap": "Profiles let one scheduler spread inference pods and bin-pack GPU jobs without a second scheduler."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p3-0518-gpu-platform-layers",
+  "title": "Reference GPU platform in six layers",
+  "spec": "Stack of six layers, each with its key choices from the chapter. '1 Pools: gpu-h100-training tainted and labelled homogeneous 8-GPU nodes, gpu-l4-inference, cpu-system, spot-experiment'. '2 Admission: all batch jobs through Kueue LocalQueues; ClusterQueue per team with nominal quota, cohort borrowing, preemption policy; inference as Deployments with a high PriorityClass and a reserved pool'. '3 Placement: MostAllocated bin-packing on GPU pools so whole nodes stay free; topology constraints for training; topologySpreadConstraints across zones or racks for inference'. '4 Resilience: PDBs for inference; training checkpoint-aware with SIGTERM handling and terminationGracePeriodSeconds; node health taints from NPD or DCGM-based remediation'. '5 Visibility: pending reasons, queue wait time, GPU allocation versus utilisation, fragmentation (largest placeable GPU block), preemption counts, admission latency, per-team usage'. '6 Governance: ResourceQuota, LimitRange defaults, admission policy requiring queue labels and allow-listed priority classes, namespaces mapped to teams via GitOps'. Text at least 24px.",
+  "anchor": "## 9. Reference patterns for a GPU platform",
+  "alt": "A six-layer stack from node pools to governance describes a GPU platform scheduling design.",
+  "cap": "Pools come first, since queues, quotas and placement rules all refer to them."
+ }
+]

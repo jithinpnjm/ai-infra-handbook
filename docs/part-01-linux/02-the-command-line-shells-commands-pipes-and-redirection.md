@@ -532,6 +532,10 @@ Three of these pay for themselves in a single day. `Ctrl-R` finds a command you 
 
 ### Shell tricks that save hours on clusters
 
+![Four rows of file descriptor tables showing how the three redirections swap standard output and standard error so that only errors reach the pipe.](./img/p3-0102-fd-swap.svg)
+
+*Figure 1.2.12. Each redirection is applied left to right: fd 3 saves the pipe, fd 1 moves to the terminal, and fd 2 ends up on the pipe.*
+
 Administering hundreds of nodes means repeating the same operation many times, so small habits add up. The tricks below work in bash and mostly in zsh. A few of them do not work in plain `sh`, so check before you put one in a script.
 
 - **Brace expansion generates lists and variants.** `cp config{,.bak}` expands to `cp config config.bak`. The empty first alternative gives the plain name. `for n in gpu-{1,2}-{a,b}; do echo $n; done` visits four combinations. Ranges work too, as in `echo {1..15}`. Brace ranges do not keep leading zeros, though. For names such as `node-001` to `node-100`, use `seq` instead: `for i in $(seq -w 1 100); do ssh node-$i true; done`. The `-w` option pads each number to equal width. The remote command `true` prints nothing, so only the nodes that fail to answer show an error. That is a fast way to find the dead node in a rack.
@@ -547,6 +551,10 @@ Administering hundreds of nodes means repeating the same operation many times, s
 Pick two of these habits and make them automatic, because you will use them every day on a cluster.
 
 ## 10. Understanding error messages
+
+![An error message split into program name, attempted action and errno text, with a flow from the kernel errno code to the text and six common errors with their first checks.](./img/p3-0102-error-anatomy.svg)
+
+*Figure 1.2.13. The text after the last colon is the standard description of an errno code, so learning a few codes lets you diagnose any program.*
 
 An error message looks cryptic until you see its fixed shape. Once you do, every program on the machine speaks the same small language.
 

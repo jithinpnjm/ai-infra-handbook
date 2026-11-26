@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "x18-kv-budget",
+  "title": "The KV budget left after weights sets how many tokens and requests fit",
+  "spec": "A top-to-bottom budget stack with numbered steps in green circles, drawn as a tall vertical bar split into blocks. Top block labelled 24 GB GPU, the total, with a chip icon. Step 1 splits off a block labelled Weights, Llama-2-7B FP16, 14 GB, in grey. The remaining block labelled Free for KV cache, 10 GB, in green. Step 2 box beside it: 0.5 MB per token, so 10 x 1024 / 0.5 = 20,480 tokens of cache. Step 3 box: about 5 requests that each reach 4,096 tokens. A right-hand panel showing a burst of 16 request boxes, each labelled 3,000 prompt tokens and 1,000 output tokens, with the first six boxes drawn as admitted in green and the other ten drawn as waiting in grey, and an orange marker on the cache bar reading KV full, newest request preempted. Formula line at the bottom: KV bytes per token = 2 x 32 layers x 32 heads x 128 x 2 bytes = 524,288 bytes. Green takeaway bar: The answer comes from the memory left after the weights, not from the model size alone.",
+  "anchor": "### 3. KV-cache exhaustion and preemption",
+  "alt": "On a 24 GB GPU with 14 GB of weights, 10 GB remains for cache, enough for about five requests of 4,096 tokens, so a burst of 16 cannot all run.",
+  "cap": "The KV cache is a fixed pool left after the weights, so a burst of long requests fills it and forces preemption."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "x18-herd-load",
+  "title": "When replicas load together from one source, each one waits longer",
+  "spec": "A vertical bar chart of load time in seconds for a 70 billion parameter FP16 model, 140 GB, pulled from one 14 GB/s source. Three bars with labels: 1 replica, 10 s; 8 replicas, 80 s each; 32 replicas, 320 s each. Bars grow in height from left to right, with the 32 replica bar drawn in orange. Each bar has a stack of small replica icons below it, 1, 8 and 32 icons, shown as small squares. A horizontal line across the chart labelled one shared source at 14 GB/s, split equally between replicas. Numbered steps 1 to 3 along the bottom: 1 all replicas start together, 2 the source bandwidth is shared equally, 3 each replica waits longer. Formula line: load time = weights x replicas / source bandwidth = 140 x replicas / 14. Green takeaway bar: If many replicas load together, fix the rollout order and the weight source, not the engine.",
+  "anchor": "### 7. Slow weight load, cold start and thundering herd on restart",
+  "alt": "A 140 GB model pulled from one 14 GB per second source takes 10 seconds for one replica and 320 seconds each when 32 replicas start together.",
+  "cap": "A thundering herd splits one shared source across every replica that starts at once, so load time grows with the number of replicas."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "x18-liveness-loop",
+  "title": "A tight liveness probe can start a restart loop that shrinks the pool",
+  "spec": "A circular feedback loop drawn as four boxes arranged in a ring, with curved or orthogonal arrows connecting them clockwise, each box with a numbered step circle in green. Box 1: Busy worker answers slowly, a window icon. Arrow to box 2: Liveness probe times out, a clock icon with the note timeoutSeconds 1 by default. Arrow to box 3: Kubernetes restarts a healthy pod, dropping in-flight requests and starting a fresh weight load. Arrow to box 4: Survivors take all traffic, queue time rises, and more probes fail, drawn in orange. An arrow from box 4 back to box 1 closes the ring with the label more restarts. A side box attached to box 3, labelled Ready below desired, silent shrink, with a small cylinder icon showing fewer pods. A side note under the ring: the health route reads a flag and does not wait behind generation, so a busy engine alone is not the cause unless the API server is starved. Green takeaway bar: Liveness answers should this process be killed, readiness answers should it get traffic.",
+  "anchor": "### 8. Probes that hurt: liveness kills and silent pool shrink [vendor]",
+  "alt": "A short liveness timeout restarts healthy busy workers, the survivors take more load, more probes fail, and the pool shrinks silently.",
+  "cap": "A liveness probe that restarts healthy workers creates a feedback loop, so liveness must stay local and tolerant."
+ }
+]

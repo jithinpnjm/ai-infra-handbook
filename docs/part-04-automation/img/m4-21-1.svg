@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Renders: &quot;neo, trinity, morpheus&quot;</title>
+  <desc>Decision flowchart for repeating and gating in HCL: count versus for_each, dynamic blocks, for expressions, and string template directives.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Renders: &quot;neo, trinity, morpheus&quot;</text>
+
+  
+  
+  <path d="M 330 180 L 330 265" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  
+  <path d="M 90 180 L 90 625 L 120 625" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  
+  <path d="M 50 180 L 50 895 L 120 895" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  
+  
+  <path d="M 540 320 L 660 320 L 660 280 L 970 280" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="815" y="248" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes: Interchangeable N</text>
+  <text x="815" y="274" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">or 0/1 toggle</text>
+
+  
+  <path d="M 540 390 L 660 390 L 660 440 L 970 440" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="815" y="408" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes: Distinct</text>
+  <text x="815" y="434" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">keyed items</text>
+
+  
+  <path d="M 540 625 L 970 625" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="755" y="615" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes</text>
+
+  
+  <path d="M 540 860 L 660 860 L 660 812 L 970 812" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="815" y="802" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">List / Map value</text>
+
+  
+  <path d="M 540 930 L 660 930 L 660 972 L 970 972" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <text x="815" y="962" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Inside string / heredoc</text>
+
+  
+  <rect x="120" y="90" width="1450" height="90" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(150, 107)">
+    <circle cx="28" cy="14" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 22 L 28 34 M 28 34 L 14 46 M 28 34 L 42 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="14" cy="46" r="4" fill="#207448"/>
+    <circle cx="42" cy="46" r="4" fill="#207448"/>
+  </g>
+  <text x="230" y="147" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">What are you repeating or gating in HCL?</text>
+
+  
+  <rect x="120" y="265" width="420" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(302, 285)">
+    <rect x="4" y="6" width="22" height="20" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="30" y="6" width="22" height="20" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="17" y="30" width="22" height="20" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="330" y="380" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Multiple Resources</text>
+  <text x="330" y="418" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">or Modules?</text>
+
+  
+  <rect x="120" y="535" width="420" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(302, 555)">
+    <rect x="4" y="4" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="16" y="16" width="24" height="24" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="330" y="650" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Repeated Nested</text>
+  <text x="330" y="688" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Blocks inside a Resource?</text>
+
+  
+  <rect x="120" y="805" width="420" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(302, 825)">
+    <path d="M 6 12 L 50 12 L 34 32 L 34 48 L 22 48 L 22 32 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="330" y="920" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Transforming Lists/Maps</text>
+  <text x="330" y="958" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">or Rendering Strings?</text>
+
+  
+  <rect x="970" y="210" width="600" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1504, 226)">
+    <circle cx="24" cy="24" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="24" y="32" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">#</text>
+  </g>
+  <text x="995" y="248" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">count = N (or cond ? 1 : 0)</text>
+  <text x="995" y="286" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Address: type.name[0]</text>
+  <text x="995" y="324" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Outputs: one(type.name[*].id)</text>
+
+  
+  <rect x="970" y="370" width="600" height="140" rx="16" fill="#fff8f0" stroke="#db8129" stroke-width="3.5"/>
+  <g transform="translate(1504, 386)">
+    <circle cx="16" cy="24" r="10" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 26 24 L 44 24 M 36 24 L 36 32 M 42 24 L 42 30" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="995" y="408" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">for_each = map or toset(list)</text>
+  <text x="995" y="446" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Address: type.name[&quot;key&quot;]</text>
+  <text x="995" y="484" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Outputs: values(type.name)[*].id</text>
+
+  
+  <rect x="970" y="530" width="600" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1504, 546)">
+    <circle cx="24" cy="24" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 24 4 L 24 10 M 24 38 L 24 44 M 4 24 L 10 24 M 38 24 L 44 24" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="995" y="570" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">dynamic &quot;block_name&quot; {</text>
+  <text x="995" y="606" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">&#160;&#160;for_each = ...</text>
+  <text x="995" y="642" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">&#160;&#160;content { ... }</text>
+  <text x="995" y="678" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">}</text>
+
+  
+  <rect x="970" y="745" width="600" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1504, 760)">
+    <rect x="6" y="8" width="36" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 16 24 L 32 24 M 26 18 L 32 24 L 26 30" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="995" y="790" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">[for x in xs : ...] /</text>
+  <text x="995" y="835" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">{for k, v in m : k =&gt; v if cond}</text>
+
+  
+  <rect x="970" y="905" width="600" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(1246, 918)">
+    <path d="M 10 4 L 38 4 L 46 14 L 46 44 L 10 44 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 38 4 L 38 14 L 46 14" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="1270" y="1000" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">%{~ for i, x in xs ~}...%{ endfor ~}</text>
+</svg>

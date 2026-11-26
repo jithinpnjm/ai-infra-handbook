@@ -1,0 +1,274 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>One gRPC call through HAProxy: from TLS to the chosen backend</title>
+  <desc>Visual explanation of an end-to-end gRPC call through HAProxy including TLS termination, HTTP/2 multiplexing, ACL routing, leastconn balancing, health check branching, and comparisons with web, database, Nginx, and Envoy configurations.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">One gRPC call through HAProxy: from TLS to the chosen backend</text>
+
+  
+  
+  
+
+  
+  <g id="step1">
+    <rect x="40" y="120" width="730" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="78" cy="182.5" r="24" fill="#207448" />
+    
+    <g transform="translate(116, 158.5)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 4 L 42 10 C 42 28 24 42 24 42 C 24 42 6 28 6 10 Z" />
+      <circle cx="24" cy="22" r="4" fill="#207448" />
+      <path d="M 24 26 L 24 32" stroke-width="3" />
+    </g>
+    
+    <text font-family="sans-serif" font-size="24">
+      <tspan x="78" y="191" text-anchor="middle" font-weight="bold" fill="#ffffff">1</tspan>
+      <tspan x="180" y="156" font-weight="bold" fill="#303a36"> HAProxy accepts the TLS connection</tspan>
+      <tspan x="180" y="188" font-family="monospace" fill="#303a36">(bind :443 ssl crt ...</tspan>
+      <tspan x="180" y="220" font-family="monospace" fill="#303a36">alpn h2,http/1.1)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="405" y1="245" x2="405" y2="280" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step2">
+    <rect x="40" y="280" width="730" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="78" cy="342.5" r="24" fill="#207448" />
+    
+    <g transform="translate(116, 318.5)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="36" height="36" rx="6" />
+      <line x1="14" y1="18" x2="34" y2="18" />
+      <line x1="14" y1="26" x2="26" y2="26" />
+      <circle cx="32" cy="32" r="8" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+      <line x1="38" y1="38" x2="44" y2="44" stroke-width="3.5" />
+    </g>
+    
+    <text font-family="sans-serif" font-size="24">
+      <tspan x="78" y="351" text-anchor="middle" font-weight="bold" fill="#ffffff">2</tspan>
+      <tspan x="180" y="332" font-weight="bold" fill="#303a36"> reads the content type of the first request: </tspan>
+      <tspan x="180" y="368" font-family="monospace" fill="#303a36">application/grpc</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="405" y1="405" x2="405" y2="440" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step3">
+    <rect x="40" y="440" width="730" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="78" cy="502.5" r="24" fill="#207448" />
+    
+    <g transform="translate(116, 478.5)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="6" y1="24" x2="18" y2="24" />
+      <circle cx="22" cy="24" r="4" fill="#207448" />
+      <path d="M 26 24 L 42 12" />
+      <path d="M 26 24 L 42 36" stroke-dasharray="3 3" />
+      <circle cx="42" cy="12" r="3" fill="#207448" />
+    </g>
+    
+    <text font-family="sans-serif" font-size="24">
+      <tspan x="78" y="511" text-anchor="middle" font-weight="bold" fill="#ffffff">3</tspan>
+      <tspan x="180" y="492" font-weight="bold" fill="#303a36"> ACL is_grpc matches, </tspan>
+      <tspan x="180" y="528" font-family="monospace" fill="#303a36">so use_backend be_infer</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="405" y1="565" x2="405" y2="595" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step4">
+    <rect x="40" y="595" width="730" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="78" cy="667.5" r="24" fill="#207448" />
+    
+    <g transform="translate(116, 643.5)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="24" y1="6" x2="24" y2="40" />
+      <line x1="8" y1="14" x2="40" y2="14" />
+      <path d="M 8 14 L 4 30 L 16 30 Z" />
+      <path d="M 40 14 L 34 24 L 46 24 Z" />
+      <line x1="14" y1="40" x2="34" y2="40" />
+    </g>
+    
+    <text font-family="sans-serif" font-size="24">
+      <tspan x="78" y="676" text-anchor="middle" font-weight="bold" fill="#ffffff">4</tspan>
+      <tspan x="180" y="642" font-weight="bold" fill="#303a36"> backend be_infer balances with leastconn: </tspan>
+      <tspan x="180" y="674" fill="#303a36">picks the server with</tspan>
+      <tspan x="180" y="706" fill="#303a36">the fewest connections</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="405" y1="740" x2="405" y2="770" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step5">
+    <rect x="40" y="770" width="730" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="78" cy="832.5" r="24" fill="#207448" />
+    
+    <g transform="translate(116, 808.5)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="36" height="32" rx="4" />
+      <line x1="6" y1="20" x2="42" y2="20" />
+      <line x1="6" y1="28" x2="42" y2="28" />
+      <polyline points="28,14 34,14 34,10" />
+      <polyline points="14,24 20,24 20,22" />
+    </g>
+    
+    <text font-family="sans-serif" font-size="24">
+      <tspan x="78" y="841" text-anchor="middle" font-weight="bold" fill="#ffffff">5</tspan>
+      <tspan x="180" y="822" font-weight="bold" fill="#303a36"> opens a stream over HTTP/2 to it </tspan>
+      <tspan x="180" y="858" font-family="monospace" fill="#303a36">(proto h2)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="405" y1="895" x2="405" y2="930" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="step6">
+    <rect x="40" y="930" width="730" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="78" cy="997.5" r="24" fill="#207448" />
+    
+    <g transform="translate(116, 973.5)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 40 16 L 14 16 L 22 8" />
+      <circle cx="36" cy="32" r="5" fill="#207448" />
+      <circle cx="22" cy="32" r="5" fill="#207448" />
+      <circle cx="8" cy="32" r="5" fill="#207448" />
+    </g>
+    
+    <text font-family="sans-serif" font-size="24">
+      <tspan x="78" y="1006" text-anchor="middle" font-weight="bold" fill="#ffffff">6</tspan>
+      <tspan x="180" y="986" font-weight="bold" fill="#303a36"> each following token travels back </tspan>
+      <tspan x="180" y="1022" fill="#303a36">through the same connection</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+
+  
+  <g id="contrast-box">
+    <rect x="830" y="120" width="730" height="445" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="850" y="140" width="690" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(870, 211)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="40" height="36" rx="4" />
+      <line x1="4" y1="16" x2="44" y2="16" />
+      <circle cx="12" cy="11" r="2" fill="#207448" />
+      <circle cx="18" cy="11" r="2" fill="#207448" />
+      <circle cx="24" cy="30" r="7" />
+      <circle cx="22" cy="28" r="1.5" fill="#207448" />
+      <circle cx="26" cy="32" r="1.5" fill="#207448" />
+    </g>
+    
+    <text x="935" y="185" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="935" dy="0">be_web: balance roundrobin;</tspan>
+      <tspan x="935" dy="36">cookie SRV insert indirect nocache;</tspan>
+      <tspan x="935" dy="36">server web1 ... check cookie w1</tspan>
+    </text>
+
+    
+    <rect x="850" y="350" width="690" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(870, 421)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="24" cy="10" rx="18" ry="6" />
+      <path d="M 6 10 L 6 24 C 6 30 42 30 42 24 L 42 10" />
+      <path d="M 6 24 L 6 38 C 6 44 42 44 42 38 L 42 24" />
+    </g>
+    
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="935" y="420">fe_pg: mode tcp, port 5432, </tspan>
+      <tspan x="935" y="460" font-family="sans-serif">balance leastconn: L4 for PostgreSQL</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="770" y1="667.5" x2="830" y2="667.5" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="branch-box">
+    <rect x="830" y="595" width="730" height="145" rx="10" fill="#fef8f3" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(855, 643.5)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 24 L 14 24 L 18 10 L 26 38 L 32 18 L 36 26 L 44 26" />
+      <line x1="34" y1="6" x2="44" y2="16" stroke-width="3.5" />
+      <line x1="44" y1="6" x2="34" y2="16" stroke-width="3.5" />
+    </g>
+    
+    <text x="920" y="632" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" dy="0">If health checks mark the server down:</tspan>
+      <tspan x="920" dy="28">new calls go elsewhere, but the stream</tspan>
+      <tspan x="920" dy="28">already in progress stays on its server</tspan>
+      <tspan x="920" dy="28">until the timeouts end it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-column">
+    <rect x="830" y="760" width="730" height="305" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <text x="850" y="798" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Same job in other proxies</text>
+
+    
+    <rect x="850" y="815" width="690" height="105" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(868, 843.5)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="24,4 42,14 42,34 24,44 6,34 6,14" />
+      <polyline points="15,30 15,18 33,30 33,18" />
+    </g>
+    
+    <text x="930" y="845" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="930" dy="0">nginx: grpc_pass grpc://triton_grpc</tspan>
+      <tspan x="930" dy="30">with least_conn and keepalive 32;</tspan>
+      <tspan x="930" dy="30" font-family="sans-serif">stream block for L4</tspan>
+    </text>
+
+    
+    <rect x="850" y="930" width="690" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(868, 966)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 6 L 42 16 L 42 36 L 24 46 L 6 36 L 6 16 Z" />
+      <line x1="24" y1="6" x2="24" y2="46" />
+      <line x1="6" y1="16" x2="42" y2="36" />
+      <line x1="6" y1="36" x2="42" y2="16" />
+    </g>
+    
+    <text x="930" y="955" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="930" dy="0">Envoy: lb_policy LEAST_REQUEST (P2C),</tspan>
+      <tspan x="930" dy="28">STRICT_DNS cluster, http2_protocol_options,</tspan>
+      <tspan x="930" dy="28">grpc_health_check, outlier_detection,</tspan>
+      <tspan x="930" dy="28">circuit_breakers</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1100" width="1520" height="65" rx="10" fill="#207448" />
+    <text x="800" y="1141" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">The backend picks per request here, not per connection, because HAProxy reads the request</text>
+  </g>
+</svg>

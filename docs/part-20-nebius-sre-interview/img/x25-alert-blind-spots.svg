@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Three alert checks, each covering a different kind of silent failure</title>
+  <desc>Comparison of three Prometheus alert checks for silent failures: up == 0, count(up) &lt; 2, and absent(up), with test procedure.</desc>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three alert checks, each covering a different kind of silent failure</text>
+
+  
+  <rect x="60" y="160" width="460" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <circle cx="290" cy="160" r="24" fill="#207448"/>
+  <text x="290" y="169" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+    <path d="M 144,248 L 166,256 C 166,278 156,293 144,298 C 132,293 122,278 122,256 Z"/>
+    <path d="M 144,258 L 144,288"/>
+  </g>
+  <text x="184" y="258" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36"><tspan x="184" dy="0">Target exists but</tspan><tspan x="184" dy="38"> cannot be scraped</tspan></text>
+
+  
+  <rect x="85" y="345" width="410" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="290" y="394" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">up == 0</text>
+
+  
+  <text x="290" y="488" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="290" dy="0">Catches a target that is</tspan><tspan x="290" dy="34"> present but not scrapable</tspan></text>
+
+  
+  <rect x="570" y="160" width="460" height="430" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  <circle cx="800" cy="160" r="24" fill="#db8129"/>
+  <text x="800" y="169" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="622" y="252" width="30" height="30" rx="4"/>
+    <line x1="629" y1="245" x2="629" y2="252"/>
+    <line x1="637" y1="245" x2="637" y2="252"/>
+    <line x1="645" y1="245" x2="645" y2="252"/>
+    <line x1="629" y1="282" x2="629" y2="289"/>
+    <line x1="637" y1="282" x2="637" y2="289"/>
+    <line x1="645" y1="282" x2="645" y2="289"/>
+    <line x1="615" y1="259" x2="622" y2="259"/>
+    <line x1="615" y1="267" x2="622" y2="267"/>
+    <line x1="615" y1="275" x2="622" y2="275"/>
+    <line x1="652" y1="259" x2="659" y2="259"/>
+    <line x1="652" y1="267" x2="659" y2="267"/>
+    <line x1="652" y1="275" x2="659" y2="275"/>
+  </g>
+  <text x="677" y="275" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Some series vanished</text>
+
+  
+  <rect x="595" y="345" width="410" height="80" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <text x="800" y="394" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">count(up{job="vllm"}) &lt; 2</text>
+
+  
+  <text x="800" y="488" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="800" dy="0">Counts what should be there,</tspan><tspan x="800" dy="34"> so it sees partial loss</tspan></text>
+
+  
+  <rect x="1080" y="160" width="460" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <circle cx="1310" cy="160" r="24" fill="#207448"/>
+  <text x="1310" y="169" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1208" cy="266" r="18"/>
+    <polyline points="1208,255 1208,266 1217,266"/>
+  </g>
+  <text x="1242" y="275" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Total blackout</text>
+
+  
+  <rect x="1105" y="345" width="410" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1310" y="394" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">absent(up{job="vllm"})</text>
+
+  
+  <text x="1310" y="488" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="1310" dy="0">Fires only when every</tspan><tspan x="1310" dy="34"> vllm target is gone</tspan></text>
+
+  
+  <rect x="60" y="640" width="1480" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="800" y="705" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Test it by deleting the series</text>
+  <text x="800" y="760" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">One of two pods disappears: absent stays empty, the count returns 1</text>
+</svg>

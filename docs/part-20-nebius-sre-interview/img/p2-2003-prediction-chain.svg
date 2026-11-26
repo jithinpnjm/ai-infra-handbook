@@ -1,0 +1,203 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>A hypothesis lives or dies by its prediction</title>
+  <desc>Horizontal chain illustrating how a hypothesis requires a testable prediction, followed by testing, result evaluation, and outcomes.</desc>
+
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 2 L 11 7 L 2 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 2 2 L 11 7 L 2 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">A hypothesis lives or dies by its prediction</text>
+
+  
+  <g id="card-1">
+    <rect x="65" y="130" width="330" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="115" cy="182" r="24" fill="#207448" />
+    <text x="115" y="182" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">1</text>
+    
+    
+    <path d="M 215 192 A 18 18 0 1 1 245 192 C 242 200 239 204 239 210 L 221 210 C 221 204 218 200 215 192 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <line x1="224" y1="215" x2="236" y2="215" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="226" y1="219" x2="234" y2="219" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+
+    
+    <text x="230" y="260" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle" font-family="sans-serif">Hypothesis</text>
+    
+    
+    <line x1="95" y1="285" x2="365" y2="285" stroke="#b8d1bf" stroke-width="1.5" />
+
+    
+    <text x="230" y="340" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="230" dy="0">Noisy neighbours</tspan>
+      <tspan x="230" dy="36">cause slow queries</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="395" y1="305" x2="445" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="card-2">
+    <rect x="445" y="130" width="330" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="495" cy="182" r="24" fill="#207448" />
+    <text x="495" y="182" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">2</text>
+    
+    
+    <ellipse cx="610" cy="170" rx="22" ry="7" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 588 170 V 184 C 588 188 598 191 610 191 C 622 191 632 188 632 184 V 170" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 588 184 V 198 C 588 202 598 205 610 205 C 622 205 632 202 632 198 V 184" fill="none" stroke="#207448" stroke-width="3.5" />
+
+    
+    <text x="610" y="260" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle" font-family="sans-serif">Prediction</text>
+    
+    
+    <line x1="475" y1="285" x2="745" y2="285" stroke="#b8d1bf" stroke-width="1.5" />
+
+    
+    <text x="610" y="330" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="610" dy="0">File system</tspan>
+      <tspan x="610" dy="34">time dominates</tspan>
+      <tspan x="610" dy="34">query time</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="775" y1="305" x2="825" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="card-3">
+    <rect x="825" y="130" width="330" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="875" cy="182" r="24" fill="#207448" />
+    <text x="875" y="182" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">3</text>
+    
+    
+    <rect x="962" y="160" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="962" y1="174" x2="1018" y2="174" stroke="#207448" stroke-width="2" />
+    <circle cx="972" cy="167" r="2.5" fill="#207448" />
+    <circle cx="979" cy="167" r="2.5" fill="#207448" />
+    <path d="M 970 193 L 980 193 L 985 183 L 993 200 L 999 189 L 1004 193 L 1010 193" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="990" y="260" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle" font-family="sans-serif">Test</text>
+    
+    
+    <line x1="855" y1="285" x2="1125" y2="285" stroke="#b8d1bf" stroke-width="1.5" />
+
+    
+    <text x="990" y="340" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="990" dy="0">Trace the</tspan>
+      <tspan x="990" dy="36">slow queries</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1155" y1="305" x2="1205" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="card-4">
+    <rect x="1205" y="130" width="330" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <circle cx="1255" cy="182" r="24" fill="#207448" />
+    <text x="1255" y="182" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central" font-family="sans-serif">4</text>
+    
+    
+    <path d="M 1342 198 A 24 24 0 1 1 1398 198" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="1370" y1="198" x2="1352" y2="182" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="1370" cy="198" r="4" fill="#207448" />
+
+    
+    <text x="1370" y="260" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle" font-family="sans-serif">Result</text>
+    
+    
+    <line x1="1235" y1="285" x2="1505" y2="285" stroke="#b8d1bf" stroke-width="1.5" />
+
+    
+    <text x="1370" y="330" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="1370" dy="0">Tracing showed</tspan>
+      <tspan x="1370" dy="34">under 5 percent</tspan>
+      <tspan x="1370" dy="34">in the file system</tspan>
+    </text>
+  </g>
+
+  
+  
+  <line x1="610" y1="480" x2="610" y2="620" stroke="#8aa895" stroke-width="2" stroke-dasharray="6,4" />
+
+  <g id="note-card-2">
+    <rect x="445" y="620" width="330" height="200" rx="14" fill="#ffffff" stroke="#8aa895" stroke-width="2" stroke-dasharray="6,4" />
+    
+    
+    <path d="M 598 644 H 616 L 624 652 V 674 H 598 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <path d="M 616 644 V 652 H 624" fill="none" stroke="#207448" stroke-width="2" />
+    <line x1="604" y1="658" x2="614" y2="658" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    <line x1="604" y1="664" x2="618" y2="664" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+
+    
+    <text x="610" y="710" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="610" dy="0">A hypothesis that</tspan>
+      <tspan x="610" dy="34">predicts nothing</tspan>
+      <tspan x="610" dy="34">cannot be tested.</tspan>
+    </text>
+  </g>
+
+  
+  
+  <line x1="990" y1="480" x2="990" y2="620" stroke="#207448" stroke-width="3" stroke-dasharray="6,4" />
+
+  <g id="outcome-green-box">
+    <rect x="825" y="620" width="330" height="200" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <path d="M 980 650 A 13 13 0 1 1 975 665" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="972,646 980,650 980,658" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="990" y="710" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="990" dy="0">Reverse any change</tspan>
+      <tspan x="990" dy="34">before the next</tspan>
+      <tspan x="990" dy="34">hypothesis</tspan>
+    </text>
+  </g>
+
+  
+  
+  <line x1="1370" y1="480" x2="1370" y2="545" stroke="#207448" stroke-width="4" />
+  <circle cx="1370" cy="545" r="5" fill="#207448" />
+
+  
+  <line x1="1370" y1="545" x2="1370" y2="620" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 1370 545 H 1175 V 720 H 1155" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="outcome-orange-box">
+    <rect x="1205" y="620" width="330" height="200" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    
+    
+    <path d="M 1358 670 V 652 C 1358 648 1362 645 1368 645 H 1384" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <polyline points="1378,639 1385,645 1378,651" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+
+    
+    <text x="1370" y="710" font-size="24" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+      <tspan x="1370" dy="0">That rules it out,</tspan>
+      <tspan x="1370" dy="34">move to the</tspan>
+      <tspan x="1370" dy="34">next branch</tspan>
+    </text>
+  </g>
+</svg>

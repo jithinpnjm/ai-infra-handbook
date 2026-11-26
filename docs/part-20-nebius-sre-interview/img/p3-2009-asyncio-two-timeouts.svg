@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 920" width="1600" height="920">
+  <title>Fan-out to five backends with a per-call and an overall timeout</title>
+  <desc>SVG infographic showing fan-out to five backends with per-call timeouts and an overall timeout wrapper using asyncio.</desc>
+
+  <defs>
+    <marker id="green-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="orange-arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="920" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Fan-out to five backends with a per-call and an overall timeout</text>
+
+  
+  <g id="fetch-all-node">
+    <rect x="50" y="315" width="320" height="416" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(182, 340)">
+      <circle cx="28" cy="10" r="8" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="10" cy="48" r="7" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="48" r="7" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="46" cy="48" r="7" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 28 18 L 28 34 M 28 34 L 10 41 M 28 34 L 46 41" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="76" y="455">fetch_all(</tspan>
+      <tspan x="76" y="495">fns, </tspan>
+      <tspan x="76" y="535">per_call_timeout, </tspan>
+      <tspan x="76" y="575">overall_timeout)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="fan-out-arrows">
+    <path d="M 370 523 C 405 523 410 349 444 349" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#green-arrow)" />
+    <path d="M 370 523 C 405 523 410 436 444 436" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#green-arrow)" />
+    <path d="M 370 523 L 444 523" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#green-arrow)" />
+    <path d="M 370 523 C 405 523 410 610 444 610" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#green-arrow)" />
+    <path d="M 370 523 C 405 523 410 697 444 697" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#green-arrow)" />
+  </g>
+
+  
+  <g id="outer-box">
+    <rect x="420" y="115" width="620" height="630" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(440, 142)">
+      <circle cx="28" cy="28" r="24" fill="#ffffff" stroke="#207448" stroke-width="4" />
+      <polyline points="28,14 28,28 38,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="510" y="152">asyncio.wait_for(</tspan>
+      <tspan x="510" y="184">asyncio.gather(...), </tspan>
+      <tspan x="510" y="216">overall_timeout)</tspan>
+    </text>
+
+    
+    <rect x="440" y="235" width="580" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="456" y="262">one(fn): </tspan>
+      <tspan x="456" y="290">wait_for(fn(), per_call_timeout)</tspan>
+    </text>
+
+    
+    <rect x="440" y="315" width="580" height="68" rx="10" fill="#ffffff" stroke="#a5c9b4" stroke-width="1.5" />
+    <rect x="452" y="325" width="120" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="512" y="357" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">call 1</text>
+    <rect x="620" y="325" width="200" height="48" rx="24" fill="#e8f7ee" stroke="#207448" stroke-width="2" />
+    <text x="720" y="357" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">(ok, value)</text>
+
+    
+    <rect x="440" y="402" width="580" height="68" rx="10" fill="#ffffff" stroke="#a5c9b4" stroke-width="1.5" />
+    <rect x="452" y="412" width="120" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="512" y="444" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">call 2</text>
+    <rect x="620" y="412" width="260" height="48" rx="24" fill="#fef3e7" stroke="#db8129" stroke-width="2" />
+    <text x="750" y="444" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#db8129">(err, timeout)</text>
+
+    
+    <rect x="440" y="489" width="580" height="68" rx="10" fill="#ffffff" stroke="#a5c9b4" stroke-width="1.5" />
+    <rect x="452" y="499" width="120" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="512" y="531" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">call 3</text>
+    <rect x="620" y="499" width="340" height="48" rx="24" fill="#fdf0ed" stroke="#c0392b" stroke-width="2" />
+    <text x="790" y="531" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#c0392b">(err, ExceptionName)</text>
+
+    
+    <rect x="440" y="576" width="580" height="68" rx="10" fill="#ffffff" stroke="#a5c9b4" stroke-width="1.5" />
+    <rect x="452" y="586" width="120" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="512" y="618" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">call 4</text>
+    <line x1="620" y1="610" x2="960" y2="610" stroke="#a5c9b4" stroke-width="3" stroke-dasharray="8 8" />
+
+    
+    <rect x="440" y="663" width="580" height="68" rx="10" fill="#ffffff" stroke="#a5c9b4" stroke-width="1.5" />
+    <rect x="452" y="673" width="120" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="512" y="705" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">call 5</text>
+    <line x1="620" y1="697" x2="960" y2="697" stroke="#a5c9b4" stroke-width="3" stroke-dasharray="8 8" />
+  </g>
+
+  
+  <path d="M 1040 485 L 1072 485" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#orange-arrow)" />
+
+  
+  
+  <g id="side-note-panel">
+    <rect x="1080" y="115" width="470" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1104" y="148">gather returns results in the </tspan>
+      <tspan x="1104" y="178">order submitted. If one raises </tspan>
+      <tspan x="1104" y="208">and return_exceptions is false, </tspan>
+      <tspan x="1104" y="238">the exception propagates </tspan>
+      <tspan x="1104" y="268">immediately and the other </tspan>
+      <tspan x="1104" y="298">awaitables keep running, </tspan>
+      <tspan x="1104" y="328">so each call is wrapped.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="orange-cancel-panel">
+    <rect x="1080" y="385" width="470" height="200" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1104" y="430">overall budget spent: cancels </tspan>
+      <tspan x="1104" y="468">whatever is still running, </tspan>
+      <tspan x="1104" y="506">every result becomes </tspan>
+      <tspan x="1104" y="544" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" fill="#db8129">(err, overall_timeout)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="python-note-panel">
+    <rect x="1080" y="615" width="470" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1104" y="655">Python 3.11 added </tspan>
+      <tspan x="1104" y="688">asyncio.timeout and </tspan>
+      <tspan x="1104" y="721">asyncio.TaskGroup.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="785" width="1500" height="85" rx="12" fill="#207448" stroke="#1b5e3a" stroke-width="2" />
+    <text x="800" y="838" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">per-call timeout clears a slow table alone, the overall timeout closes the room at a fixed time.</text>
+  </g>
+</svg>

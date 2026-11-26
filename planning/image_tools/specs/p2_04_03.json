@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p2-0403-tiers",
+  "title": "Four pieces make up Ansible, and each one is pinned separately",
+  "anchor": "### Components and versions",
+  "spec": "Nested boxes drawn from the outside in. Outer box, grey label 'Execution environment: container image built with ansible-builder, run with ansible-navigator or AWX'. Inside it, a box 'Collections: namespace.name, such as ansible.posix, community.general, kubernetes.core', with a note 'pin in collections/requirements.yml'. Inside that, a box 'ansible-core 2.x: the engine, CLI tools and ansible.builtin modules' in green. Beside the nested boxes, a separate box 'ansible community package 9.x or 10.x: ansible-core plus a bundle of collections, convenient but large'. Under the nested boxes, a monospace note: 'Always use the FQCN, such as ansible.builtin.copy, never copy alone.' Orange outline on the ansible-core box with the label 'pin the core version range'. Caption: 'Pin each layer, so every laptop and CI job runs the same toolchain.'",
+  "alt": "Ansible is layered from the ansible-core engine through collections to execution environments, with the community package as a bundle, and each layer is pinned.",
+  "cap": "Ansible has a core engine, collections of modules, and execution environments, and each layer is pinned to keep runs the same everywhere."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p2-0403-cmd-shell-raw",
+  "title": "Pick the execution module by what the command needs: a pipe needs a shell",
+  "anchor": "### Command, shell, raw and idempotency",
+  "spec": "A four-column comparison, one column per module, with a header row. Column 'command': a box 'runs the binary directly, no shell', a red-outline cross beside 'pipes and redirects do not work'. Column 'shell': a box 'runs through /bin/sh -c', a green tick 'pipes, redirects and globs work', a note 'quote variables to avoid injection'. Column 'raw': a box 'plain SSH command, no module, no Python on the target', note 'bootstraps Python on minimal systems'. Column 'script': a box 'copies a local script to the target and runs it', note 'runs the file you wrote'. Under the table, a monospace example line 'dmesg | grep -i xid | tail -5' with arrows showing that it works under shell and breaks under command. Bottom note, orange outline: 'Prefer purpose-built modules such as package, service and file, because they are idempotent.' Caption: 'The pipe decides the module.'",
+  "alt": "The command module runs without a shell and fails on pipes, while shell accepts pipes, raw bootstraps minimal hosts, and script runs a local file on the target.",
+  "cap": "The command module runs without a shell so pipes fail there, while shell accepts pipes, raw bootstraps minimal hosts, and script runs a local file."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p2-0403-sudo-random-path",
+  "title": "Locked-down sudo rules fail because Ansible's temporary script path changes every task",
+  "anchor": "### Privilege escalation (become)",
+  "spec": "A flow with three stages left to right. Stage 1 box: 'Ansible uploads AnsiballZ_package.py to ~/.ansible/tmp/ansible-tmp-<random>/'. Stage 2 box: 'Runs python on that path through sudo'. Stage 3 box, red outline: 'A sudoers rule for one fixed binary cannot match the random path, so the run fails'. Above stage 3, a rule box with the text 'allow only fixed binaries such as /usr/bin/apt-get'. Beside it, a green box with the fix: '%ansible ALL=(ALL) NOPASSWD: ALL in /etc/sudoers.d/ansible, then visudo -cf'. Under the flow, a warning strip: 'Granting the automation account full sudo is a privileged decision: keep the account dedicated, key-only and audited.' Caption: 'Scope become to the tasks that need root.'",
+  "alt": "Ansible uploads a module to a randomly named temporary path and runs it through sudo, so a sudoers rule for one fixed binary cannot match and the run fails.",
+  "cap": "Because Ansible runs modules from a random temporary path, a sudoers rule that allows one fixed binary cannot match and the run fails."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p2-0403-host-patterns",
+  "title": "Host patterns select machines by union, intersection, exclusion and regex",
+  "anchor": "## 5. Inventory basics (preview)",
+  "spec": "Four small panels in a two-by-two grid, each with a pattern in monospace and a diagram of two overlapping circles labelled 'gpu' and 'rack1' with hosts as dots. Panel 1: pattern 'gpu:login' with the union shaded as all of both circles, label 'either group'. Panel 2: pattern 'gpu:&rack1' with only the overlap shaded, label 'both groups'. Panel 3, orange outline: pattern 'gpu:!gpu02' with the circle shaded except one dot marked gpu02, label 'this group without one host'. Panel 4: pattern '~gpu0[1-4]' with a row of host names gpu01 to gpu04 highlighted, label 'regular expression on names'. Bottom note: 'Test a pattern with --list-hosts before a change. A pattern that matches the wrong hosts reaches machines it should not.' Caption: 'Read the host list before you change a group.'",
+  "alt": "Host patterns can take a union of groups, an intersection, an exclusion of one host, or a regex, and each one selects a different set of machines.",
+  "cap": "Host patterns select the union of groups, their intersection, a group minus one host, or a regex, so check the list before changing anything."
+ },
+ {
+  "part": "part-04-automation",
+  "ch": "03",
+  "name": "p2-0403-idempotent-runs",
+  "title": "The first run changes the host, and the second run finds nothing to change",
+  "anchor": "### Idempotency and check mode",
+  "spec": "Two columns side by side with a timeline arrow across the top. Left column, heading 'Run 1': a box 'package: chrony, state present' with a status chip 'CHANGED' in orange outline, and a note 'the module installs chrony'. Right column, heading 'Run 2': the same box with a status chip 'SUCCESS, changed: false' in green, and a note 'the module finds chrony already present and does nothing'. Below the columns, a row of two smaller boxes: '--check: simulates the run, reports what would change' and '--diff: shows content changes like a Git diff'. A grey limit box: 'Check mode can lie when a task needs an earlier change, such as a package that does not exist yet.' Caption: 'Idempotent means the second run reports no change.'",
+  "alt": "The first run of a package task reports changed, and the second run reports success with no change, while check mode can mislead when tasks depend on earlier changes.",
+  "cap": "The first run of an idempotent package task reports a change and the second run reports none, and check mode can mislead when tasks depend on earlier changes."
+ }
+]

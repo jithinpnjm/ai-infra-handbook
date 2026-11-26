@@ -1,0 +1,183 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which credential for which caller</title>
+  <desc>A visual comparison table showing recommended Kubernetes authentication credentials for humans, cluster machines, robot users, and cloud IAM.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Which credential for which caller</text>
+  <text x="800" y="105" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Table of callers to methods with a verdict</text>
+
+  
+  <g>
+    <rect x="40" y="130" width="1520" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 140 A 10 10 0 0 1 50 130 L 480 130 L 480 275 L 50 275 A 10 10 0 0 1 40 265 Z" fill="#e8f1ea"/>
+    <line x1="480" y1="130" x2="480" y2="275" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="93" cy="188" r="14"/>
+      <path d="M 72 226 C 72 210 82 206 93 206 C 104 206 114 210 114 226"/>
+    </g>
+    
+    <text x="145" y="213" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Humans</text>
+    
+    <text x="510" y="170" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" dy="0">OIDC SSO with MFA and short-lived tokens via an IdP</tspan>
+      <tspan x="510" dy="32">such as Dex, Keycloak, Okta or Entra; id_token claims map</tspan>
+      <tspan x="510" dy="32">to username and groups; <tspan font-family="monospace">kubelogin</tspan> or <tspan font-family="monospace">kubectl oidc-login</tspan>;</tspan>
+    </text>
+    
+    <rect x="1300" y="174" width="230" height="58" rx="8" fill="#db8129"/>
+    <text x="1415" y="211" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">RECOMMENDED</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="290" width="1520" height="98" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 300 A 10 10 0 0 1 50 290 L 480 290 L 480 388 L 50 388 A 10 10 0 0 1 40 378 Z" fill="#e8f1ea"/>
+    <line x1="480" y1="290" x2="480" y2="388" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="75" y="321" width="36" height="36" rx="4"/>
+      <line x1="84" y1="313" x2="84" y2="321"/>
+      <line x1="102" y1="313" x2="102" y2="321"/>
+      <line x1="84" y1="357" x2="84" y2="365"/>
+      <line x1="102" y1="357" x2="102" y2="365"/>
+      <line x1="67" y1="330" x2="75" y2="330"/>
+      <line x1="67" y1="348" x2="75" y2="348"/>
+      <line x1="111" y1="330" x2="119" y2="330"/>
+      <line x1="111" y1="348" x2="119" y2="348"/>
+    </g>
+    
+    <text x="145" y="333" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">Machines in</tspan>
+      <tspan x="145" dy="34">the cluster</tspan>
+    </text>
+    
+    <text x="510" y="347" font-family="sans-serif" font-size="24" fill="#303a36">ServiceAccount tokens or workload identities</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="403" width="1520" height="108" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 413 A 10 10 0 0 1 50 403 L 480 403 L 480 511 L 50 511 A 10 10 0 0 1 40 501 Z" fill="#e8f1ea"/>
+    <line x1="480" y1="403" x2="480" y2="511" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="93" y1="433" x2="93" y2="441"/>
+      <rect x="73" y="441" width="40" height="34" rx="6"/>
+      <circle cx="83" cy="454" r="3" fill="#207448"/>
+      <circle cx="103" cy="454" r="3" fill="#207448"/>
+      <line x1="84" y1="465" x2="102" y2="465"/>
+    </g>
+    
+    <text x="145" y="450" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">Robot users tied to</tspan>
+      <tspan x="145" dy="34">central accounts</tspan>
+    </text>
+    
+    <text x="510" y="448" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" dy="0">write a <tspan font-family="monospace">kubectl</tspan> authentication plug-in;</tspan>
+      <tspan x="510" dy="32">token verified by the webhook token authenticator</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="526" width="1520" height="108" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 536 A 10 10 0 0 1 50 526 L 480 526 L 480 634 L 50 634 A 10 10 0 0 1 40 624 Z" fill="#e8f1ea"/>
+    <line x1="480" y1="526" x2="480" y2="634" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 75 554 L 102 554 L 111 563 L 111 604 L 75 604 Z"/>
+      <path d="M 102 554 L 102 563 L 111 563"/>
+      <circle cx="93" cy="587" r="7"/>
+      <line x1="82" y1="568" x2="96" y2="568"/>
+    </g>
+    
+    <text x="145" y="573" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">Robot accounts needing</tspan>
+      <tspan x="145" dy="34">no central management</tspan>
+    </text>
+    
+    <text x="510" y="571" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" dy="0">certificate-based authentication,</tspan>
+      <tspan x="510" dy="32">you manage issuance and rotation</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="649" width="1520" height="108" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 659 A 10 10 0 0 1 50 649 L 480 649 L 480 757 L 50 757 A 10 10 0 0 1 40 747 Z" fill="#e8f1ea"/>
+    <line x1="480" y1="649" x2="480" y2="757" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="85" cy="703" r="11"/>
+      <path d="M 96 703 L 115 703 L 115 711 M 106 703 L 106 710"/>
+    </g>
+    
+    <text x="145" y="711" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Simplest robot option</text>
+    
+    <text x="510" y="694" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" dy="0">a ServiceAccount token;</tspan>
+      <tspan x="510" dy="32">copy to a secure location for tools outside the cluster</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="772" width="1520" height="108" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 782 A 10 10 0 0 1 50 772 L 480 772 L 480 880 L 50 880 A 10 10 0 0 1 40 870 Z" fill="#e8f1ea"/>
+    <line x1="480" y1="772" x2="480" y2="880" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 75 836 C 70 836 66 832 66 827 C 66 822 70 818 75 818 C 76 812 81 807 88 807 C 95 807 100 811 102 816 C 105 814 109 814 112 816 C 117 818 120 823 120 828 C 120 833 116 836 111 836 Z"/>
+      <path d="M 93 822 L 93 830 M 89 830 L 97 830"/>
+    </g>
+    
+    <text x="145" y="834" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Cloud IAM</text>
+    
+    <text x="510" y="817" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" dy="0">webhook token authentication such as</tspan>
+      <tspan x="510" dy="32"><tspan font-family="monospace">aws-iam-authenticator</tspan> or <tspan font-family="monospace">gke-gcloud-auth-plugin</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="895" width="1520" height="108" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 905 A 10 10 0 0 1 50 895 L 480 895 L 480 1003 L 50 1003 A 10 10 0 0 1 40 993 Z" fill="#e8f1ea"/>
+    <line x1="480" y1="895" x2="480" y2="1003" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="93" cy="949" r="21"/>
+      <line x1="78" y1="934" x2="108" y2="964"/>
+    </g>
+    
+    <text x="145" y="957" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Avoid</text>
+    
+    <text x="510" y="940" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="510" dy="0">static token and password files: plain text, never expire,</tspan>
+      <tspan x="510" dy="32">any change needs an API server restart</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1022" width="1520" height="138" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 75 1060 L 93 1052 L 111 1060 C 111 1079 93 1093 93 1097 C 93 1093 75 1079 75 1060 Z"/>
+      <line x1="93" y1="1070" x2="93" y2="1081"/>
+      <circle cx="93" cy="1064" r="2" fill="#207448"/>
+    </g>
+    
+    <text x="145" y="1063" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Footer facts</text>
+    
+    <text x="145" y="1102" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">Kubernetes has no User or Group object; the authenticating method decides the name;</tspan>
+      <tspan x="145" dy="32">certificate <tspan font-family="monospace">CN</tspan> is the user and <tspan font-family="monospace">O</tspan> is the group</tspan>
+    </text>
+  </g>
+</svg>

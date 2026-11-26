@@ -1,0 +1,82 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p3-0505-url-anatomy",
+  "title": "Reading an API URL: group, version, resource, subresource",
+  "spec": "Two annotated URLs stacked. Top: '/api/v1/namespaces/default/pods' with segments labelled 'core group (empty name), legacy path', 'version v1', 'namespace default', 'resource pods (lowercase plural)'. Bottom: '/apis/apps/v1/namespaces/default/deployments/web/status' with segments 'named group apps', 'version v1', 'resource deployments', 'object web', 'subresource /status'. Right side filing-cabinet analogy: 'Kind = label on a type of folder (Deployment)', 'Resource = the drawer (deployments)', 'Subresource = sticky note on one folder (/status, /scale, /binding, /eviction, /log, /exec)'. Footnote: 'PUT .../status updates only .status and does not increment metadata.generation'. Text at least 24px.",
+  "anchor": "### Groups, versions, kinds, resources",
+  "alt": "Two API URLs are split into group, version, resource, object and subresource parts.",
+  "cap": "Core group objects live under api v1 and named groups under apis, with subresources hanging off one object."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p3-0505-webhook-deadlock",
+  "title": "How a webhook with failurePolicy Fail can deadlock a cluster",
+  "spec": "Cycle diagram with numbered boxes: 1 'Webhook pods crash or become unreachable during a node roll'; 2 'kube-apiserver cannot reach the webhook; failurePolicy is Fail so every matching write is rejected'; 3 'Replacement webhook pods, kube-system DaemonSets and coredns cannot be created'; 4 'The webhook never comes back' with arrow returning to 1 (red label 'deadlock'). Right side green box 'Safeguards': 'tight timeoutSeconds (2 to 5 s instead of 10 s)', 'namespaceSelector excludes kube-system and the webhook namespace', 'failurePolicy Ignore for non-critical mutations', 'two or more replicas across zones with a PodDisruptionBudget and system-cluster-critical PriorityClass', 'ValidatingAdmissionPolicy (CEL) runs in process, no webhook pod'. Footer metric: 'apiserver_admission_webhook_rejection_count'. Text at least 24px.",
+  "anchor": "## 2. The request pipeline",
+  "alt": "A failing Fail-policy webhook blocks its own replacement pods, with five safeguards listed beside it.",
+  "cap": "A webhook that blocks the pods needed to restart itself deadlocks the cluster, so scope it, time-limit it and replicate it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p3-0505-list-watch-410",
+  "title": "List, watch, 410 Gone and bookmarks",
+  "spec": "Left panel 'LIST by resourceVersion': three rows. 'unset: quorum read from etcd, most recent state, expensive', 'resourceVersion=0: served from the watch cache, cheap, may be stale', 'resourceVersion=N with NotOlderThan or Exact'. Right panel timeline of revisions: client watches from resourceVersion 1000; a bar shows 'compaction window about 5 minutes'; revision 1000 falls outside it; arrow 'server returns 410 Gone, too old resource version'; arrow 'client must relist (informers do this)'. Second timeline below: 'allowWatchBookmarks=true: periodic BOOKMARK events carry only the current head resourceVersion', result 'reconnect stays inside the window, no 410'. Footer: 'Pagination: limit=500 returns a continue token valid for about 5 minutes'. Text at least 24px.",
+  "anchor": "## 3. resourceVersion, generation and concurrency",
+  "alt": "Timeline shows a stale watch getting 410 Gone and bookmarks keeping the resume point fresh.",
+  "cap": "Bookmarks keep a watch client's resume point inside the compaction window so it avoids 410 Gone and a full relist."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p3-0505-three-counters",
+  "title": "resourceVersion versus generation versus observedGeneration",
+  "spec": "Worked example as a table of four events down the left (spec edit, label edit, status write by controller, controller finishes reconcile) and three columns: 'metadata.resourceVersion', 'metadata.generation', 'status.observedGeneration'. Cell logic from the chapter: resourceVersion changes on every write (metadata, spec or status); generation increments only when spec changes; observedGeneration is written by the controller to record the generation it last reconciled. Use the chapter's numbers: generation 7 with observedGeneration 6 shown in red as 'controller has not caught up'; when equal, green 'status reflects the latest spec'. Side notes: 'resourceVersion is opaque, compare only for equality, derived from the etcd mod_revision', 'uid identifies one instance; a recreated object gets a new uid', 'kubectl rollout status uses this'. Text at least 24px.",
+  "anchor": "## 3. resourceVersion, generation and concurrency",
+  "alt": "A table shows which of three counters changes on each kind of write.",
+  "cap": "resourceVersion changes on every write, generation only on spec changes, and observedGeneration shows how far the controller has caught up."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p3-0505-apply-managers",
+  "title": "Server-side apply: who owns replicas, Argo CD or the HPA",
+  "spec": "Center box 'Deployment spec.replicas' with a label 'managedFields records one owner per field'. Left actor 'Argo CD (manager: argocd)' with arrow 'applies manifest that sets replicas'. Right actor 'HPA' with arrow 'scales spec.replicas'. Red marker between them: '409 field conflict when a second manager changes a field another owns (unless --force-conflicts)'. Bottom green box 'Clean fix: leave replicas out of the manifest so the HPA is the single owner'. Small comparison strip: 'create = insert, fails if exists', 'update PUT = replace whole object, needs resourceVersion', 'patch = partial change', 'apply server-side = send the fields you own', 'client-side kubectl apply = three-way merge with last-applied-configuration annotation'. Command: 'kubectl get deploy x -o yaml --show-managed-fields'. Text at least 24px.",
+  "anchor": "## 4. Writing objects: create, update, patch, apply",
+  "alt": "Argo CD and the HPA both touch replicas, and leaving the field out of the manifest gives one owner.",
+  "cap": "Server-side apply tracks field owners, so removing replicas from the manifest avoids a fight with the HPA."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p3-0505-nospace-recovery",
+  "title": "etcd NOSPACE alarm and the safe member replacement order",
+  "spec": "Left: ladder with four numbered steps and a header 'database exceeds --quota-backend-bytes (default 2 GiB, up to 8 GiB recommended): NOSPACE alarm, cluster read-only, error mvcc: database space exceeded'. Steps: 1 'rev=$(etcdctl endpoint status -w json | jq .[0].Status.header.revision)', 2 'etcdctl compact $rev', 3 'etcdctl defrag, one member at a time (briefly blocks that member)', 4 'etcdctl alarm disarm'. Right: two-lane worked example with members cp1 cp2 cp3 where cp3 is dead. Lane 'Wrong: add cp4 first': 4 members, quorum 3, only 2 alive, red 'quorum lost'. Lane 'Right: member remove cp3 first': 2 of 2 alive, then 'member add cp4 as learner, promote when caught up', green. Text at least 24px.",
+  "anchor": "### MVCC, revisions, compaction, defrag",
+  "alt": "A four-step NOSPACE recovery ladder beside a wrong and right order for replacing a dead etcd member.",
+  "cap": "Compact, defragment and disarm to clear NOSPACE, and always remove a dead member before adding its replacement."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p3-0505-saturation-ladder",
+  "title": "API server is slow: a diagnosis ladder",
+  "spec": "Vertical ladder, top to bottom, each rung a box with an arrow down. 1 'Symptom: kubectl slow or timing out, 429s, or Pods Pending with free nodes'. 2 'Check apiserver_request_duration_seconds by verb (LIST high?), apiserver_flowcontrol_rejected_requests_total, API server CPU and memory'. 3 'Check etcd: WAL fsync p99 above 10 ms (etcd_disk_wal_fsync_duration_seconds), leader changes, DB size'. 4 'Find the client: audit log or sum by (client, verb, resource) (rate(apiserver_request_total[5m])), User-Agent and IP'. 5 'Mitigate: give the noisy ServiceAccount a low-concurrency level via FlowSchema, or restrict with RBAC'. 6 'Fix the client: informers, PartialObjectMetadata, field selectors, limit=500 pagination, streaming lists'. Side note: 'One slow disk can look like slow kubectl, leader flapping and webhook timeouts at once: fix the disk first'. Text at least 24px.",
+  "anchor": "## 9. Diagnosing control-plane saturation",
+  "alt": "A six-rung ladder from slow kubectl symptom to fixing the noisy client.",
+  "cap": "Start from the user symptom, confirm with metrics, find the noisy client in the audit log, then fix it at the source."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "05",
+  "name": "p3-0505-encryption-rotation",
+  "title": "Secret encryption: provider order and key rotation",
+  "spec": "Three stacked panels showing the providers list in EncryptionConfiguration. Panel 1 'Correct': providers [secretbox key secret-key-1, identity] with rule 'encryption always uses the first entry; identity (plain text) goes last'. Panel 2 'Wrong': identity first, result 'Secrets are not encrypted'. Panel 3 'Rotation': providers [secret-key-2, secret-key-1] with labels 'new writes use secret-key-2' and 'secret-key-1 stays to decrypt existing Secrets'; red note 'remove secret-key-1 too early: unable to transform key, no matching key was found'. Right side etcd value check: 'k8s:enc:secretbox:v1:secret-key-1:' prefix means encrypted; login1 created before the key shows readable text, only new or altered Secrets use the active key. Text at least 24px.",
+  "anchor": "### Encrypting Secrets in etcd",
+  "alt": "Provider order decides whether Secrets are encrypted and old keys must stay for decryption.",
+  "cap": "The first provider encrypts, later providers only decrypt, so keep old keys until every Secret is rewritten."
+ }
+]

@@ -40,22 +40,9 @@ Picture an on-call engineer, the person who gets the alert when something breaks
 
 The diagram below shows the modern shape. Telemetry collectors on the left send their numbers into a time-series store, which is a database built for values that change over time and carry a timestamp. Dashboards, alerts and usage reports then read from that store. Read the diagram from left to right. The store sits in the middle, so every consumer reads the same numbers.
 
-```mermaid
-flowchart LR
-  subgraph Collectors["1. Telemetry Collectors"]
-    DCGM["dcgm-exporter (:9400)<br/>Xid, ECC, Tensor/DRAM, Temp"]
-    Node["node_exporter + lm_sensors<br/>CPU, RAM, IB, /tmp, IPMI"]
-    Slurm["slurm_exporter (:9341)<br/>Node states, Drain reasons, Queue"]
-    Fac["SNMP / NUT / apcupsd<br/>PDUs, CDUs, Switches, UPS"]
-  end
-  subgraph Store["2. TSDB & Analytics"]
-    Prom["Prometheus / VictoriaMetrics"]
-    XDMoD["Open XDMoD + SUPReMM<br/>Per-Job Efficiency & Chargeback"]
-  end
-  Collectors --> Prom
-  Prom --> Graf["3. Grafana Dashboards &<br/>Alertmanager (Runbooks / Drain)"]
-  Prom --> XDMoD
-```
+![The tool landscape](./img/m6-26-1.svg)
+
+*Figure 6.26.1. The tool landscape, as a diagram.*
 
 *Supercomputers for Linux SysAdmins* surveys the generations of these tools in chapter 19, "Cluster Status Monitoring Systems". Read the table from top to bottom, since the rows roughly follow the history. Each row shows what the tool does and whether you still meet it today.
 

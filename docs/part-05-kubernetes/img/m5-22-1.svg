@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Tenancy models and trust levels</title>
+  <desc>Visual architecture of multi-tenant onboarding, GitOps level-triggered reconciliation, and child object isolation across identity, compute fairness, network/storage boundaries, and observability.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  
+  <text x="50" y="68" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#207448">Tenancy models and trust levels</text>
+
+  
+
+  
+  <g id="node-pr">
+    <rect x="50" y="120" width="570" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="50" y="120" width="570" height="8" rx="4" fill="#207448" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 82 148 L 110 148 L 122 160 L 122 194 C 122 196 120 198 118 198 L 82 198 C 80 198 78 196 78 194 L 78 152 C 78 150 80 148 82 148 Z" />
+      <path d="M 110 148 L 110 160 L 122 160" />
+      <line x1="88" y1="168" x2="104" y2="168" />
+      <line x1="88" y1="177" x2="112" y2="177" />
+      <line x1="88" y1="186" x2="108" y2="186" />
+    </g>
+    
+    <text x="144" y="180" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448">Tenant Onboarding Spec</text>
+    
+    <text x="76" y="245" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="76" dy="0">(tenants/team-a.yaml or</tspan>
+      <tspan x="76" dy="36">Team / AcmeNamespace CR)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-op">
+    <rect x="50" y="470" width="570" height="250" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3.5" />
+    <rect x="50" y="470" width="570" height="8" rx="4" fill="#db8129" />
+    
+    <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 122 516 A 20 20 0 0 0 86 505" />
+      <polyline points="84 497 86 505 94 505" />
+      <path d="M 82 526 A 20 20 0 0 0 118 537" />
+      <polyline points="120 545 118 537 110 537" />
+      <circle cx="102" cy="521" r="5" fill="#db8129" />
+    </g>
+    
+    <text x="144" y="525" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+      <tspan x="144" dy="0">GitOps /</tspan>
+      <tspan x="144" dy="36">Namespace Operator</tspan>
+    </text>
+    
+    <text x="76" y="628" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="76" dy="0">(Level-triggered reconciliation</tspan>
+      <tspan x="76" dy="34">of child objects)</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 335 350 L 335 470" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g id="node-ns">
+    <rect x="720" y="120" width="830" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="720" y="120" width="830" height="6" rx="3" fill="#207448" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 775 145 L 795 153 C 795 175 775 188 775 188 C 775 188 755 175 755 153 Z" />
+      <circle cx="775" cy="162" r="3.5" fill="#207448" />
+      <path d="M 775 166 L 775 174" />
+    </g>
+    <text x="825" y="180" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448">1. Namespace &amp; Identity</text>
+    <text x="750" y="235" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">Labels (team, cost-center, PSA baseline/restricted)</text>
+    <text x="750" y="275" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" fill="#303a36">+ OIDC RoleBindings</text>
+  </g>
+
+  
+  <g id="node-quota">
+    <rect x="720" y="345" width="830" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="720" y="345" width="830" height="6" rx="3" fill="#207448" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="760" y="378" width="30" height="30" rx="4" />
+      <rect x="767" y="385" width="16" height="16" rx="2" fill="#207448" fill-opacity="0.2" />
+      <line x1="766" y1="371" x2="766" y2="378" />
+      <line x1="775" y1="371" x2="775" y2="378" />
+      <line x1="784" y1="371" x2="784" y2="378" />
+      <line x1="766" y1="408" x2="766" y2="415" />
+      <line x1="775" y1="408" x2="775" y2="415" />
+      <line x1="784" y1="408" x2="784" y2="415" />
+      <line x1="753" y1="385" x2="760" y2="385" />
+      <line x1="753" y1="393" x2="760" y2="393" />
+      <line x1="753" y1="401" x2="760" y2="401" />
+      <line x1="790" y1="385" x2="797" y2="385" />
+      <line x1="790" y1="393" x2="797" y2="393" />
+      <line x1="790" y1="401" x2="797" y2="401" />
+    </g>
+    <text x="825" y="405" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448">2. Compute &amp; GPU Fairness</text>
+    <text x="750" y="460" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" fill="#303a36">ResourceQuota (requests.nvidia.com/gpu, count/*)</text>
+    <text x="750" y="500" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" fill="#303a36">+ LimitRange + Kueue LocalQueue/ClusterQueue</text>
+  </g>
+
+  
+  <g id="node-net">
+    <rect x="720" y="570" width="830" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="720" y="570" width="830" height="6" rx="3" fill="#207448" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="775" cy="603" rx="18" ry="6" />
+      <path d="M 757 603 L 757 623 C 757 627 765 630 775 630 C 785 630 793 627 793 623 L 793 603" />
+      <path d="M 757 613 C 757 617 765 620 775 620 C 785 620 793 617 793 613" />
+    </g>
+    <text x="825" y="630" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448">3. Network &amp; Storage Isolation</text>
+    <text x="750" y="685" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" fill="#303a36">default-deny-all + allow-dns NetworkPolicy</text>
+    <text x="750" y="725" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" fill="#303a36">+ per-tenant StorageClass / CSI subPathExpr</text>
+  </g>
+
+  
+  <g id="node-obs">
+    <rect x="720" y="795" width="830" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="720" y="795" width="830" height="6" rx="3" fill="#207448" />
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="756" y="824" width="38" height="38" rx="5" />
+      <line x1="765" y1="852" x2="765" y2="844" />
+      <line x1="775" y1="852" x2="775" y2="835" />
+      <line x1="785" y1="852" x2="785" y2="840" />
+    </g>
+    <text x="825" y="855" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="30" font-weight="bold" fill="#207448">4. Observability &amp; Showback</text>
+    <text x="750" y="910" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">Fluent Bit / Loki tenant log routing</text>
+    <text x="750" y="950" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, monospace" font-size="24" fill="#303a36">+ Grafana Folder + OpenCost + DCGM GPU-hours</text>
+  </g>
+
+  
+  
+
+  
+  <path d="M 620 515 L 655 515 L 655 215 L 720 215" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 620 565 L 685 565 L 685 440 L 720 440" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 620 625 L 685 625 L 685 665 L 720 665" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 620 675 L 655 675 L 655 890 L 720 890" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+</svg>

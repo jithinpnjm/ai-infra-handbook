@@ -1,0 +1,132 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-status-where",
+  "title": "HTTP status codes as a map of where the failure happened",
+  "spec": "Three horizontal zones left to right: 'Client', 'Proxy or load balancer or ingress', 'Upstream (model server)'. Under each zone the status codes that point to it. Client zone: '401 the caller is unauthenticated', '403 the caller is unauthorised', '413 body larger than a proxy limit, common with big prompts or uploads', '429 rate limited', '499 (nginx) the client went away'. Proxy zone: '502 bad gateway', '503 unavailable', '504 gateway timeout'. Upstream zone (orange): 'a 502, 503 or 504 from a load balancer or ingress points to the upstream, not to the client; a 504 is an upstream timeout: the model server may be slow, or the proxy timeout may be shorter than the inference time'. Left strip 'status classes: 1xx informational, 2xx success (200, 201, 204), 3xx redirection (301, 302, 307, 308, 304 Not Modified), 4xx client error, 5xx server error'. Right strip 'method safety: GET, PUT, DELETE are idempotent so a retry is safe; POST is not'. Bottom bar: 'The first line of each message matters most, so read it first when you debug'.",
+  "anchor": "## 1. HTTP in practice",
+  "alt": "HTTP status codes placed on a client, proxy and upstream line, with 401, 403, 413, 429 and 499 near the client and 502, 503 and 504 pointing to the upstream.",
+  "cap": "A 502, 503 or 504 from a load balancer points to the upstream, while 401, 403, 413, 429 and 499 point to the client side."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-idle-mismatch",
+  "title": "Why a pooled connection resets: idle timeouts that do not line up",
+  "spec": "A timeline with two bars. Bar 'Load balancer closes idle connections after 60 s' ending at 60 s with an X. Bar 'Client pool keeps connections for 120 s' running to 120 s. The overlap region from 60 s to 120 s shaded orange and labelled 'the pool hands out connections that are already closed'. Then 'next request fails with a connection reset'. Right panel 'Fix the timing': 'the server's idle timeout must be longer than the client's idle period, or shorter than the client's pool lifetime' (as the chapter states it) and 'clients reuse sessions through connection pools, requests.Session or gRPC channels because reuse saves the TCP and TLS handshake costs, 1 RTT + 1 RTT'. Examples strip 'nginx keepalive_timeout 75 s', 'cloud load balancers 60 to 350 s'. Version note 'HTTP/1.0 opened one TCP connection per request; HTTP/1.1 added keep-alive, the Host header, chunked encoding and caching controls; still one request in flight per connection, so browsers open several connections'. Bottom bar: 'Stale connections are not reused only when the timers line up'.",
+  "anchor": "### Connections and versions",
+  "alt": "A 60 second load balancer idle timeout against a 120 second client pool lifetime, showing the overlap where the pool hands out closed connections and the next request resets.",
+  "cap": "A load balancer that closes idle connections at 60 s paired with a client pool that keeps them for 120 s hands out dead connections."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-stream-buffer",
+  "title": "Streaming answers: where a proxy can hold the words back",
+  "spec": "A left to right path 'Model server' to 'Proxy or ingress' to 'Client'. Upper lane 'Proxy does not buffer, read timeout raised': tokens drawn as small boxes 'word 1', 'word 2', 'word 3' flowing straight through, the client sees each word as it is produced, plus heartbeats between messages. Lower lane 'Proxy buffers the response' (orange): words pile up inside the proxy box, the client sees nothing for a long time and then everything at once. A third lane 'Proxy read timeout shorter than the generation': the connection is cut with 'a 504 on long generations'. Right panel 'Long-lived connections': 'WebSocket, Server-Sent Events (SSE) and token streams need care', 'proxies must not buffer the stream', 'raise their read timeouts', 'heartbeats keep the connection alive between messages', 'chunked transfer encoding or SSE for token streams'. Inference checklist 'terminate TLS at the gateway; keep HTTP/2 or gRPC connections warm; align idle timeouts across the path; generous read timeouts; disable response buffering for streaming; authenticate with API keys or JWT and OIDC in addition to TLS'. Bottom bar: 'A chatbot that streams word by word looks frozen if a proxy holds the words back'.",
+  "anchor": "### Connections and versions",
+  "alt": "A model server, proxy and client path showing streamed words passing through an unbuffered proxy versus piling up in a buffering proxy, and a short read timeout causing a 504.",
+  "cap": "A buffering proxy hides a streamed answer until it is complete, and a read timeout shorter than the generation produces a 504."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-trace-ascii",
+  "title": "Reading curl --trace-ascii: markers, offsets and the blank line",
+  "spec": "The trace shown in monospace on the left with colour bands. Band 'curl's own notes, marked ==': '== Info: Trying 93.184.216.34...', '== Info: TCP_NODELAY set', '== Info: Connected to www.example.org (93.184.216.34) port 80 (#0)'. Band 'request sent, marked =>': '=> Send header, 79 bytes (0x4f)', then 'GET / HTTP/1.1', 'Host: www.example.org', 'User-Agent: curl/7.58.0', 'Accept: */*', a blank line. Band 'reply received, marked <=': '<= Recv header, 17 bytes', 'HTTP/1.1 200 OK', 'Accept-Ranges: bytes', 'Age: 17629', 'Content-Length: 1256', a blank line, '<= Recv data, 1256 bytes (0x4e8)', then the HTML. Right side callouts. 'The hex numbers such as 0000: are offsets curl adds to track how many bytes moved; they are not part of the data'. 'curl does not count headers toward the offsets, so offsets restart at zero after the headers'. 'A blank line marks the end of the headers; everything after it is the requested document' (orange). 'The operating system and network handle headers and document identically; the split exists only inside the user-space curl program'. Command 'curl --trace-ascii trace_file http://www.example.org/'. Bottom bar: 'Read it from the top: notes, then the request, then the reply'.",
+  "anchor": "### Reading a protocol trace",
+  "alt": "A curl trace-ascii log divided into curl notes marked with equals signs, the request marked with an arrow right, and the reply marked with an arrow left, with notes on offsets and the blank line ending headers.",
+  "cap": "In a curl trace, double equals lines are curl's notes, the right arrow marks what it sent, the left arrow marks the reply, and a blank line ends the headers."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-forward-secrecy",
+  "title": "Why forward secrecy matters: static RSA key transport versus ephemeral Diffie-Hellman",
+  "spec": "Two lanes. Upper lane 'Old RSA key transport (TLS 1.2 option)': client picks a random pre-master secret, encrypts it under the server's public key, sends it; an attacker records the traffic; later 'steals the server key' and 'decrypts recorded sessions' (orange). Lower lane 'Ephemeral Diffie-Hellman (TLS 1.3 requires it)': both sides send key shares, each session's keys are made fresh and thrown away, session keys cannot be derived from the server's long-term key; later 'server key leaks' and 'recorded traffic still cannot be decrypted'. Centre note 'Hybrid use: slow careful public-key courier delivers the agreement, fast symmetric safe (AES-GCM, ChaCha20-Poly1305) carries the data'. Right panel 'What TLS 1.3 removed': 'static-RSA key transport', 'compression', 'renegotiation', and 'left a reduced set of strong AEAD cipher suites; certificate and handshake messages after ServerHello are encrypted'. Footer 'Hashes alone give integrity only against accidental change; against an active attacker you need a MAC or a signature; encryption hides data but does not prove who sent it, a signature proves who sent it but hides nothing, so TLS needs both'. Bottom bar: 'Ephemeral means fresh keys per session, then thrown away'.",
+  "anchor": "## 2. Security goals and cryptographic building blocks",
+  "alt": "Two lanes comparing RSA key transport where a later stolen server key decrypts recorded sessions, with ephemeral Diffie-Hellman where recorded traffic stays safe.",
+  "cap": "With ephemeral Diffie-Hellman a later stolen server key cannot decrypt recorded traffic, unlike old RSA key transport."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-mitm-defence",
+  "title": "Man in the middle: how traffic gets redirected and how the peer's key gets authenticated",
+  "spec": "Centre: client and server with an attacker in the middle holding two sessions 'session 1 with the client' and 'session 2 with the server', labelled 'can read everything in between if the client cannot tell the server's key is not the real one'. Above, the ways in 'DNS spoofing', 'ARP spoofing', 'rogue Wi-Fi', 'BGP hijack', 'compromised proxy'. Below, three ways to authenticate the peer's key as three cards. Card 'Hierarchical PKI': 'certificates and the CA system (section 4)'. Card 'Web of trust': 'PGP, users vouch for each other's keys directly'. Card 'Pinned or pre-shared keys': 'SSH known_hosts, WireGuard keys'. Orange note 'Encryption alone is not enough: you must authenticate the peer's key'. Side panel 'Metadata still leaks': 'who talks to whom, when and how much (traffic analysis)', 'destination names through SNI and DNS', 'mitigations: encrypted SNI and ECH, DoT and DoH', 'Wi-Fi MAC-address randomisation', 'onion routing: entry node knows the source but not the destination, exit node the reverse', 'in a data centre, treat metadata exposure in multi-tenant networks and logs as the practical concern'. Four problems list 'prove data was not altered', 'stop others reading it', 'prove who you are talking to', 'protect privacy from traffic analysis'. Bottom bar: 'Transport security exists for networks where an attacker controls the path'.",
+  "anchor": "## 2. Security goals and cryptographic building blocks",
+  "alt": "An attacker holding two sessions between a client and server, the ways traffic is redirected, and three ways to authenticate the peer's key: PKI, web of trust and pinned keys.",
+  "cap": "A man in the middle holds two sessions, and the defence is to authenticate the server's key through PKI, a web of trust or pinned keys."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-tls-extras",
+  "title": "SNI, ALPN, resumption, stapling and mTLS: what each handshake extra does",
+  "spec": "A grid of five cards. Card 'SNI (Server Name Indication)': 'the client names the host in ClientHello so one IP address can serve many certificates (virtual hosting) and load balancers route on that name; testing an IP address without SNI often returns a default certificate; use curl --resolve or openssl -servername; Encrypted ClientHello can hide it'. Card 'ALPN': 'negotiates the application protocol inside the handshake: h2, http/1.1 or h3'. Card 'Session tickets or PSKs': 'a returning client skips the full handshake, lowering latency and CPU; 0-RTT early data can be replayed, so use it only for idempotent requests; check with openssl s_client -reconnect (Reused or New)'. Card 'OCSP stapling': 'the server attaches a signed, recent revocation status to the handshake; check with s_client -status'. Card 'Mutual TLS (mTLS)' (orange): 'in ordinary TLS only the server proves who it is; here the server also requests and verifies a client certificate; used by service meshes, the Kubernetes API and kubelet, etcd, Prometheus targets; client certificate has extendedKeyUsage=clientAuth'. Bottom strip 'Cost: CPU mainly at the handshake where public-key operations run, per byte small because AES-NI; terminating at load balancers concentrates the handshakes; disable TLS 1.0, 1.1 and SSLv3, prefer TLS 1.3 with TLS 1.2 fallback, Mozilla intermediate profile, enable HSTS, re-check with testssl.sh or nmap --script ssl-enum-ciphers'. Round trips line 'TCP + TLS 1.2 = 3 RTTs, TCP + TLS 1.3 = 2 RTTs, QUIC 1 or 0'. Bottom bar: 'Start with openssl s_client against your own endpoint'.",
+  "anchor": "### The handshake (TLS 1.3)",
+  "alt": "Five cards for SNI, ALPN, session tickets with 0-RTT replay risk, OCSP stapling and mutual TLS, with TLS cost notes and round trip counts.",
+  "cap": "SNI picks the certificate, ALPN picks the protocol, tickets skip the handshake, stapling carries revocation status and mTLS adds a client certificate."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-cert-fields",
+  "title": "Inside an X.509 certificate: the fields that matter and what each is checked for",
+  "spec": "A certificate drawn as a card with labelled rows. 'Subject: who it is for', 'Issuer: the CA that signed it', 'Validity: notBefore and notAfter, checked against the client's own clock', 'Public key', 'Subject Alternative Names (SAN): the DNS names or IPs the certificate is valid for; browsers and modern libraries ignore the old CN field' (orange), 'Key usage and extended key usage: serverAuth, clientAuth', 'Basic constraints: whether this is a CA', 'Authority and subject key identifiers', 'CRL and OCSP URLs', 'Issuer's signature'. Arrows from the card to the checks in a right column: 'chain built from leaf to trusted root using the intermediates the server presents', 'each signature', 'validity dates', 'key usage and basic constraints', 'name against the SAN', 'revocation status if enabled'. Command strip 'openssl x509 -in cert.pem -noout -text', 'openssl x509 -noout -subject -issuer -dates -ext subjectAltName,basicConstraints,keyUsage,extendedKeyUsage', 'openssl x509 -noout -checkend 2592000 (non-zero exit if it expires within 30 days)', 'openssl verify -CAfile ca.pem -untrusted intermediate.pem leaf.pem'. Analogy line 'a passport: a trusted office vouches that this photograph belongs to this name'. Bottom bar: 'Each validation step can fail for a different reason'.",
+  "anchor": "## 4. Certificates and public-key infrastructure",
+  "alt": "An X.509 certificate with subject, issuer, validity, public key, SAN, key usage, basic constraints and signature, and the checks a client performs against each field.",
+  "cap": "A client checks the chain, signatures, validity dates, key usage, the name against the SAN and revocation, and each can fail separately."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-trust-stores",
+  "title": "Which trust store does this program use? And the missing intermediate trap",
+  "spec": "Left: a table of trust stores. 'OS bundle: /etc/ssl/certs/ca-certificates.crt', 'Java: cacerts', 'Python: certifi', 'other language-specific bundles', 'the Kubernetes service-account CA', 'container images: update-ca-certificates', 'containerd registry CA: /etc/containerd/certs.d/<registry>/hosts.toml', 'Docker registry CA: /etc/docker/certs.d/<registry>/ca.crt', 'RHEL family: /etc/pki/ca-trust/source/anchors/ and update-ca-trust', 'Debian and Ubuntu: copy ca.pem to /usr/local/share/ca-certificates/lab-root.crt and run update-ca-certificates'. Right: the intermediate trap as two lanes. Lane 'server sends leaf only': 'browsers fetch the missing intermediate through Authority Information Access (AIA) and work; curl, Java and Go fail' (orange). Lane 'server sends leaf plus intermediate (everything except the root)': 'all clients work'. Error line 'x509: certificate signed by unknown authority appears in ctr, crictl and kubelet events when a private CA is missing from the runtime'. Footer 'unknown authority usually means a private CA is missing from the relevant store, or the server left out its intermediate'. Bottom bar: 'Who is trusted depends on the trust store a given program has decided to believe'.",
+  "anchor": "## 4. Certificates and public-key infrastructure",
+  "alt": "A table of trust store locations for the OS, Java, Python, Kubernetes, containerd and Docker, and a comparison of a server sending only the leaf versus the leaf plus intermediate.",
+  "cap": "Each program has its own trust store, and a server that omits the intermediate works in browsers but fails in curl, Java and Go."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-private-ca",
+  "title": "Building a private CA by hand: the seven steps and why each is there",
+  "spec": "A numbered flow. Step 1 'Make the CA key and self-signed root: openssl req -x509 ... -subj /CN=Lab Root CA -addext basicConstraints=critical,CA:TRUE -addext keyUsage=critical,keyCertSign,cRLSign -keyout ca.key -out ca.pem (10 years)'. Step 2 'Make the server key and CSR: openssl req -newkey ec ... -subj /CN=api.lab.internal -keyout srv.key -out srv.csr; a CSR carries only the public key and the requested names, the application form you send to the CA, never the secret'. Step 3 'Write the extension file srv.ext: subjectAltName=DNS:api.lab.internal,DNS:*.lab.internal,IP:10.0.0.5; extendedKeyUsage=serverAuth; basicConstraints=CA:FALSE'. Step 4 'Sign: openssl x509 -req -in srv.csr -CA ca.pem -CAkey ca.key -CAcreateserial -days 90 -extfile srv.ext -out srv.pem'. Step 5 'Verify: openssl verify -CAfile ca.pem srv.pem'. Step 6 'Trust the CA on the client (update-ca-certificates)'. Step 7 'Serve it with nginx: ssl_certificate, ssl_certificate_key, ssl_protocols TLSv1.2 TLSv1.3, http2 on'. Right panel 'Real use' (orange): 'prefer step-ca or Vault PKI; keep the root offline and issue from intermediates; name constraints, short lifetimes, automated rotation; distribute the root to all trust stores through configuration management; keys generated on the server or in an HSM, TPM or KMS, never emailed, mode 0600, one machine per key; a client certificate is built the same way with extendedKeyUsage=clientAuth'. Public CA strip 'Let's Encrypt, DigiCert, Google Trust Services check control of the domain (DV) with a DNS or HTTP challenge; OV and EV add organisation checks; ACME (RFC 8555) automates renewal through certbot, acme.sh, Caddy, cert-manager; Let's Encrypt lasts 90 days; CT logs every public certificate; CAA records restrict which CAs may issue'. Bottom bar: 'Building one by hand once is the best way to understand what the tools do for you'.",
+  "anchor": "### Generating certificates (labs and private CAs)",
+  "alt": "Seven steps to build a private CA and server certificate: CA root, server CSR, SAN extension file, signing, verifying, trusting the CA and serving with nginx.",
+  "cap": "A private CA signs a server's CSR with a SAN extension file, and the client must then trust the CA for verification to succeed."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-revocation-expiry",
+  "title": "Revocation is hard, so shorten lifetimes and watch expiry",
+  "spec": "Left: revocation mechanisms as four cards. 'CRL: large lists of cancelled certificates'. 'OCSP: online status checks, raises privacy and availability problems'. 'OCSP stapling: the server attaches a signed recent status, helps with those problems'. 'CRLite and pushed sets in browsers'. Orange arrow 'The modern answer: short-lived certificates with automated renewal, so revocation matters less'. Middle: lifetimes 'Let's Encrypt 90 days', 'the industry is moving toward even shorter lifetimes, so automation is mandatory', 'kubeadm cluster certificates mostly 1 year: a cluster that ran a year can stop answering on the anniversary of installation'. Right: monitoring panel. 'Prometheus x509-certificate-exporter', 'blackbox exporter probe_ssl_earliest_cert_expiry', 'alert at 21, 7 and 3 days: the first alert at 21 days leaves three weeks to renew', 'kubeadm certs check-expiration', 'kubeadm certs renew all', 'kubelet client certificates rotate automatically if rotateCertificates is enabled and CSRs are approved', 'cron or shell loop with openssl x509 -checkend and a threshold'. Footer 'Clock skew also breaks certificates: a node a day ahead may call a good certificate expired; install and monitor NTP or chrony (chapter 1.16); BMC, Redfish and switch certificates often ship self-signed: replace with CA-issued certificates or pin fingerprints, avoid blanket verify=False; Kubernetes Secrets are only base64: use encryption at rest, Vault or cloud KMS, short lifetimes and RBAC'. Bottom bar: 'Check the expiry dates of the cluster certificates now'.",
+  "anchor": "### Revocation and lifetimes",
+  "alt": "Revocation mechanisms CRL, OCSP, stapling and CRLite, the move to short-lived certificates, and expiry monitoring with alerts at 21, 7 and 3 days and kubeadm checks.",
+  "cap": "Revocation is hard, so use short-lived automated certificates and alert at 21, 7 and 3 days before expiry."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-certmanager-modes",
+  "title": "cert-manager flow and the three ways an ingress handles TLS",
+  "spec": "Top flow left to right. 'Issuer or ClusterIssuer: ACME with Let's Encrypt (HTTP-01 or DNS-01), Vault, a private CA, or self-signed' then 'Certificate object: declares the names and renewal windows' then 'cert-manager controller issues and renews' then 'Secret object' then 'consumed by Ingress, Gateway or pods'. Note in orange 'DNS-01 is needed for wildcards and for clusters the Internet cannot reach'. Bottom three lanes 'Client to ingress to backend'. Lane 'Terminate at the edge': TLS ends at the ingress, 'simple, but the traffic is plaintext inside'. Lane 'Re-encrypt to the backends': TLS ends at the ingress and a second TLS session runs to the backend. Lane 'Pass through at layer 4': the ingress forwards encrypted bytes and the backend terminates, 'needed for end-to-end mTLS'. Side panel 'Service meshes (Istio, Linkerd, Cilium)': 'sidecars or per-node proxies issue short-lived workload certificates with SPIFFE identities and enforce mTLS and authorization policies; watch CPU overhead and latency, especially for token streaming and large payloads'. Cluster side strip 'kubeadm creates the cluster CA, API server serving certificate, kubelet client and serving certificates, an etcd CA with peer certificates, in /etc/kubernetes/pki'. Bottom bar: 'cert-manager takes the repetitive job of asking for and renewing certificates off people'.",
+  "anchor": "## 5. TLS and PKI in Kubernetes and AI platforms",
+  "alt": "A cert-manager flow from Issuer to Certificate to Secret consumed by an ingress, and three TLS modes of terminate at the edge, re-encrypt, and pass through at layer 4 for end to end mTLS.",
+  "cap": "cert-manager turns an Issuer and Certificate into a Secret that ingress uses, and TLS can terminate at the edge, be re-encrypted, or pass through for end to end mTLS."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "10",
+  "name": "p3-0210-tls-ladder",
+  "title": "When you cannot tell which layer fails: work up the stack",
+  "spec": "A four-rung ladder from bottom to top. Rung 1 'DNS: dig' with 'does the name resolve?'. Rung 2 'TCP: nc -zv or ss' with 'does the port answer?'. Rung 3 'TLS: openssl s_client -servername' with 'does the handshake and chain verify?'. Rung 4 'HTTP: curl -v' with 'what status and headers come back?'. Above the ladder in orange 'Only then look at the application'. Right panel 'Known-good comparisons': 'compare against a known-good client', 'capture with tcpdump and Wireshark', 'the TLS 1.3 handshake is encrypted after the ServerHello, so export SSLKEYLOGFILE to decrypt it in Wireshark in labs', 'curl --resolve api.example.com:443:10.0.0.5 bypasses DNS to test a specific backend with the correct SNI and Host', 'curl -k works only while verification is the problem; never leave -k, verify=False or InsecureSkipVerify in production', 'curl --cacert ca.pem --cert client.pem --key client.key for mTLS', 'curl -x http://proxy:3128 via a proxy'. Message chips row 'expired or not yet valid: check dates and clock', 'unable to get local issuer: missing intermediate or CA', 'hostname mismatch: SAN, SNI, IP versus name', 'self-signed in chain: private CA not trusted', 'handshake failure: version or cipher mismatch', 'bad certificate: mTLS client cert', 'works with -k only: verification', 'large upload fails: client_max_body_size, MTU and MSS'. Bottom bar: 'Work through the layers in order, rather than guessing at the application you run'.",
+  "anchor": "## 6. Troubleshooting TLS and HTTP",
+  "alt": "A four rung ladder of dig, nc or ss, openssl s_client and curl -v for DNS, TCP, TLS and HTTP, with the common error messages and what each points to.",
+  "cap": "Work up the stack with dig, nc or ss, openssl s_client and curl -v before looking at the application, and read the error message first."
+ }
+]

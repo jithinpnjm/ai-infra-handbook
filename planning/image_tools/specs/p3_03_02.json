@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-gamod-lookup",
+  "title": "Module __getattr__ and __dir__: which lookups reach the hook",
+  "spec": "A decision flow for gamod.py. Start 'client asks for gamod.name or from gamod import name'. Question 'is name in gamod.__dict__?'. Yes branch: 'returned directly: var is a real attribute (var = 2)'; also 'an outside assignment gamod.hack = \"real\" creates a real key, so later reads skip __getattr__'. No branch (orange): 'Python calls def __getattr__(name)' with a match: 'test returns name * var, so gamod.test is testtest', 'hack or code returns name.upper(), so gamod.hack is HACK and gamod.code is CODE', 'anything else raises AttributeError(name is undefined)'. Side box 'Inside the module, a bare global lookup does not call __getattr__: print(test) inside gamod.py raises NameError'. Second box 'def __dir__() returns [var, test, hack, code], and that is what dir(gamod) reports'. Footnote 'arrived in Python 3.7 through PEP 562; replaces the older trick of swapping sys.modules[__name__] for a class instance; a module-level __setattr__ was rejected by the steering committee'. Bottom bar: 'Real names come straight from the dictionary, everything else falls through to __getattr__'.",
+  "anchor": "### Data hiding (`_X`, `__all__`, `__getattr__`, `__dir__`), `__future__`, and `__name__ == '__main__'`",
+  "alt": "A flow showing a lookup on gamod checking __dict__ first and falling through to __getattr__ for test, hack and code, with the NameError case inside the module and the __dir__ list.",
+  "cap": "Only names missing from the module dictionary reach __getattr__, and a bare global lookup inside the module never does."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-toplevel-order",
+  "title": "Top-level code runs in order, a def body runs only when called",
+  "spec": "A timeline of the forward-reference example. Four numbered lines of the module: '1 func1()  would raise NameError: func1 not yet assigned', '2 def func1(): print(func2())  binds the name func1; the body does not run', '3 func1() here raises NameError: func2 not yet assigned when func1 runs', '4 def func2(): return \"Hello\"', '5 func1() works: both names assigned, prints Hello' (orange). A side column 'names assigned so far' after each step: none; func1; func1; func1, func2; func1, func2. Rule box 'when Python first imports or reloads a module it runs top-level statements from top to bottom, so top-level code cannot use names assigned lower down; a def body can refer to a name defined later as long as it exists by the time of the call'. Extra strip 'Keep import-time work small: no network calls, config file reads, thread starts or heavy imports at the top of a module; in command-line tools move a heavy import into the function that needs it; measure with python -X importtime; module with print(\"util loaded\") shows side effects at import time: avoid in libraries'. Bottom bar: 'The name must exist by the time of the call, not by the time of the def'.",
+  "anchor": "### Data hiding (`_X`, `__all__`, `__getattr__`, `__dir__`), `__future__`, and `__name__ == '__main__'`",
+  "alt": "A five step timeline of func1 and func2 showing which calls raise NameError and which print Hello, with the names assigned after each step.",
+  "cap": "A def only binds a name when it runs, so func1 can call func2 later, but calling func1 before func2 is assigned fails."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-init-roles",
+  "title": "What each __init__.py does on the way into dir1.dir2.mod",
+  "spec": "A top to bottom sequence for 'import dir1.dir2.mod' with printed lines. Step 1 'dir1/__init__.py runs: prints Running dir1.__init__.py; var = Python'. Step 2 'dir1/dir2/__init__.py runs: prints Running dir1.dir2.__init__.py; var = 3.12'. Step 3 'dir1/dir2/mod.py runs: prints Loading dir1.dir2.mod; var = code'. Result facts 'dir1.var == Python', 'dir1.dir2.var == 3.12', 'dir1.dir2.mod.var == code'. Contrast panel (orange) 'import dir1 alone does not load submodules: dir1.dir2.mod.var raises AttributeError: module dir1 has no attribute dir2'. Right panel 'Four roles of __init__.py': '1 initialisation hook, runs the first time Python imports through that directory', '2 fills the namespace of the directory's module object; can hold __version__ or re-export public names', '3 its presence marks a regular package and gives the directory priority over same-named directories later on sys.path', '4 __all__ = [mod] controls from package import *'. Reload note 'reload(dir1) reloads only dir1/__init__.py, not dir1.dir2 or dir1.dir2.mod; use a transitive reloader'. Bottom bar: 'Package __init__.py files are unrelated to the __init__ constructor methods of classes'.",
+  "anchor": "### Dotted package walkthrough (`dir0/dir1/dir2/mod.py`), `__init__.py` roles, and `__main__.py`",
+  "alt": "The order in which dir1 and dir1.dir2 __init__.py files and mod.py run on a dotted import, the AttributeError after a bare import dir1, and the four roles of __init__.py.",
+  "cap": "A dotted import runs each folder's __init__.py in order, while importing the root package alone does not load its submodules."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-shadowing",
+  "title": "Shadowing: your json.py wins because the script's folder is first on sys.path",
+  "spec": "A vertical sys.path list in search order with the match marked. Row 1 'home directory of the script (or empty string for the REPL, -c and -m): contains json.py, random.py, requests.py or test.py' marked orange 'your file is found first'. Row 2 'PYTHONPATH directories'. Row 3 'standard-library directories, including python312.zip'. Row 4 'site-packages'. Row 5 'directories listed in .pth files'. An arrow from 'import json' to row 1 labelled 'first match wins; the real json is never reached'. Right panel 'Symptoms': 'baffling AttributeError: module x has no attribute ...', 'circular import errors because the traceback names a module you never wrote'. Fixes 'name your files carefully', 'never run Python from a folder containing such files', 'python -I isolated mode', 'check python -c \"import json, sys; print(json.__file__)\"', 'remove __pycache__'. Warning 'the same risk applies to untrusted download folders, because Python runs whatever it imports'. Side note 'path entries come from the environment, so a script that imports a library in your terminal can fail under cron: only where Python looked changed'. Bottom bar: 'The environment quietly decides what your code imports'.",
+  "anchor": "### How imports work (3 steps) and the 5-component module search path",
+  "alt": "The five sys.path entries in search order with the script directory first, where a local json.py shadows the standard library, with symptoms and fixes.",
+  "cap": "The script's own folder is searched first, so a local file named like a standard module silently replaces it."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-wheel-name",
+  "title": "Reading a wheel filename and deciding between wheel and sdist",
+  "spec": "The filename 'numpy-1.26.4-cp311-cp311-manylinux_2_17_x86_64.whl' split into five pieces with labels: 'numpy: name', '1.26.4: version', 'cp311: Python tag (CPython 3.11)', 'cp311: ABI tag', 'manylinux_2_17_x86_64: platform tag (x86_64 Linux, glibc-compatible)'. Format line 'name-version-pythontag-abitag-platformtag'. Variants strip 'py3-none-any: pure Python, installs anywhere'; 'manylinux: runs on most Linux distributions with a compatible glibc'; 'musllinux: Alpine, which uses musl instead'; 'abi3: the stable ABI'; '+cu121: local version label (PEP 440) marking a CUDA build, used by PyTorch index wheels'; 'aarch64: Grace and other ARM hosts, some packages have no wheels'. Decision flow: 'pip finds a compatible wheel?' yes 'unzip, no build step, fast' ; no (orange) 'builds from the sdist: needs compilers and headers; the usual reason an install takes 10 minutes or fails in a slim container'. Tool line 'python -m build makes dist/myops-0.3.1.tar.gz (sdist) and dist/myops-0.3.1-py3-none-any.whl (wheel)'; 'python -m pip debug --verbose lists the supported tags'; early check 'pip download --only-binary=:all: --platform manylinux2014_aarch64 ...'. Bottom bar: 'Check the tags of every wheel you plan to ship against the machines that will install it'.",
+  "alt": "A wheel filename split into name, version, Python tag, ABI tag and platform tag, with other tag examples and the wheel or sdist fallback flow.",
+  "cap": "The filename tags tell you which interpreter, ABI and platform a wheel fits, and a missing match falls back to a slow source build.",
+  "anchor": "### Building, installing, publishing"
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-index-confusion",
+  "title": "Dependency confusion: --index-url versus --extra-index-url",
+  "spec": "Two panels. Panel '--extra-index-url' (orange): pip asks the public index and the private index (https://pypi.example.com/simple) for 'internal-lib'; 'a public package with the same name and a higher version can win'; risk 'dependency confusion'; also 'typosquatting, where a misspelled name catches careless installs'. Panel '--index-url alone, or a private mirror': one index only; 'install from a vetted mirror such as Artifactory, Nexus or devpi'; 'mirror the public packages you depend on'; 'authenticate with tokens, using keyring helpers, rather than passwords in files'; 'point clients at it through pip.conf, PIP_INDEX_URL or the uv index settings'. Lower strip 'Integrity and provenance': 'pip install --require-hashes -r requirements.txt', 'pip-compile --generate-hashes', 'PyPI trusted publishing uses OIDC from GitHub Actions, so no long-lived tokens', 'Sigstore attestations', 'pip-audit or safety for known vulnerabilities', 'SBOM with cyclonedx-py or syft'. Bottom bar: 'Unpinned transitive dependencies can change between a CI run and a production rollout'.",
+  "anchor": "### Declaring dependencies: libraries vs applications",
+  "alt": "Two panels contrasting an extra index URL that lets a public package with a higher version beat a private name with a single vetted index, plus hash, signing and audit measures.",
+  "cap": "An extra index lets a public package outrank a private one, so use a single vetted index and hashed requirements."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-gpu-install-failures",
+  "title": "Why pip install broke torch, and the other GPU packaging failures",
+  "spec": "A table of causes with the error text and the prevention. 'pip replaces the tuned PyTorch in an NGC container with a generic wheel (the classic pip install broke torch incident)' / 'build a constraints file from pip freeze inside the image: nvcr.io/nvidia/pytorch:24.xx-py3 bundles Python, PyTorch, CUDA, cuDNN, NCCL, Apex, TransformerEngine' (orange). 'CUDA driver version is insufficient' / 'the wheel's CUDA runtime is newer than the host driver; a newer driver runs older runtimes, not the reverse; upgrade the driver or use an older wheel such as cu118; check torch.version.cuda, torch.cuda.is_available(), nvidia-smi'. 'LD_LIBRARY_PATH points at a different CUDA' / 'loads the wrong libcudart, libcublas or libnccl; prefer wheel-bundled libraries or the NGC stack'. 'module compiled using NumPy 1.x cannot be run in NumPy 2.x' / 'NumPy 2.x changed the C ABI; pin versions consistently, rebuild extensions, run pip check'. 'No wheels on aarch64 (Grace Hopper, Blackwell hosts, Apple silicon)' / 'source builds are slow; check wheel availability early'. 'flash-attn, apex, xformers or a custom CUDA extension build' / 'needs matching nvcc, compatible GCC, TORCH_CUDA_ARCH_LIST such as 9.0 for Hopper, MAX_JOBS sized to RAM; tens of minutes; cache built wheels with pip wheel, a wheelhouse/ or an internal index'. Bottom bar: 'Check the driver and the CUDA runtime first, because a mismatch there breaks the install on every node'.",
+  "anchor": "## 7. Python packaging on GPU and ML systems",
+  "alt": "A table of GPU packaging failures, such as pip replacing torch, an insufficient CUDA driver, a wrong LD_LIBRARY_PATH, a NumPy ABI break, aarch64 gaps and long extension builds, with the prevention for each.",
+  "cap": "Most GPU packaging failures come from a mismatch between the wheel, the driver and the shared libraries, and constraints files from the NGC image prevent the worst one."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-cluster-install",
+  "title": "Getting a Python environment onto many nodes without pip at job start",
+  "spec": "A decision ladder by situation. 'Slurm or Kubernetes job' / 'bake environments into images or shared read-only locations and pin them by digest; avoid pip install at job start (network dependency, rate limits, results that differ between runs)'. 'HPC with Lmod' / 'load compilers, MPI and CUDA through environment modules; create venvs or conda environments on shared file systems with care: metadata-heavy import storms on Lustre or NFS slow startup because each import is a network round trip; copy the environment to node-local NVMe, or use zipimport or container images; keep large packages such as torch in a squashfs or container image; set PYTHONDONTWRITEBYTECODE on read-only paths' (orange). 'Offline or air-gapped cluster' / 'pip download -r requirements.txt -d wheelhouse; mirror the indexes; pip install --no-index --find-links wheelhouse'. 'Tool to 500 servers' / 'zipapp python -m zipapp myapp -m myops.cli:main, shiv or pex bundle dependencies, Python must still be installed; PyInstaller and Nuitka build standalone binaries'. 'Stock host script' / 'distribution packages python3-yaml, python3-requests, python3-psutil; else ship a venv or zipapp'. Pointer 'find slow imports with python -X importtime'. Bottom bar: 'Bake the environment before the job starts, not during it'.",
+  "anchor": "## 8. Containers and system integration",
+  "alt": "A ladder of deployment situations, Slurm and Kubernetes, HPC with Lmod, air-gapped clusters, tools for many servers and stock hosts, each with the recommended way to ship Python code.",
+  "cap": "Bake and pin the environment ahead of time, and use a wheelhouse for offline clusters and node-local copies to avoid import storms."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-service-python",
+  "title": "Why a script works in the shell but fails under cron or systemd",
+  "spec": "Two lanes. Lane 'Your shell' : 'source .venv/bin/activate puts .venv/bin at the front of PATH and sets VIRTUAL_ENV', 'python resolves to the venv interpreter', 'import works'. Lane 'cron, systemd or CI' (orange): 'no activation, a different PATH', 'bare python3 resolves to the system interpreter', 'ModuleNotFoundError: No module named x'. Fix box 'call the interpreter by absolute path: /path/to/.venv/bin/python -m pip install requests; systemd ExecStart=/opt/myops/.venv/bin/myops with Environment=PYTHONUNBUFFERED=1, a dedicated user and ProtectSystem= hardening from chapter 1.15; log sys.executable'. Checks strip 'which python', 'python -m pip show x', 'python -c \"import sys; print(sys.prefix, sys.base_prefix)\" (they differ inside a venv)', 'python -m site shows sys.path, user site and whether a venv is active'. Rules strip 'python -m pip, not bare pip; one environment per project; recreate rather than repair; rebuild after upgrading the base Python since a venv borrows its interpreter; never sudo pip install: PEP 668 externally-managed-environment, use venv, pipx or distribution packages; --system-site-packages weakens isolation'. Bottom bar: 'Activation only changes the shell you are sitting in'.",
+  "anchor": "## 3. Virtual environments",
+  "alt": "A shell with an activated venv versus cron or systemd with bare python3, with the absolute interpreter path fix and the checks that show which Python is running.",
+  "cap": "Activation only changes the PATH of your shell, so services must call the venv interpreter by absolute path."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "02",
+  "name": "p3-0302-error-ladder",
+  "title": "Import and install errors: symptom, likely cause, first fix",
+  "spec": "A three column table of the twelve rows from section 9. 'ModuleNotFoundError: No module named x' / 'wrong interpreter or venv, not installed, typo, wrong directory' / 'which python, python -m pip show x, activate venv, print sys.path'. 'ImportError: cannot import name y from x' / 'version mismatch, circular import or shadowing' / 'check x.__file__ and version, look for local x.py'. 'AttributeError: module x has no attribute' / 'shadowed module (random.py, requests.py) or old version' / 'rename file, remove __pycache__'. 'attempted relative import with no known parent package' / 'running a package file as a script' / 'python -m pkg.module'. 'externally-managed-environment' / 'PEP 668 on system Python' / 'venv, pipx, distribution package'. 'ResolutionImpossible' / 'conflicting constraints' / 'read the chain, relax pins, pip install -vv, separate environments'. 'Works in shell, fails in cron or systemd' / 'different PATH, interpreter or env' / 'absolute venv python path, Environment=, log sys.executable'. 'GLIBC_2.xx not found or illegal instruction' / 'wheel built for newer glibc or CPU' / 'matching manylinux tag or container, build from source'. 'CUDA driver version is insufficient' / 'wheel CUDA runtime newer than driver' / 'upgrade driver or use cu118'. 'numpy.core.multiarray failed to import' / 'NumPy 1 and 2 mismatch' / 'align versions, rebuild extensions'. 'Slow imports or startup' / 'heavy top-level imports, network filesystem' / '-X importtime, lazy imports, local copy, container'. 'Different behaviour on two nodes' / 'unpinned dependency drift' / 'lockfile, hashes, image digests, pip freeze diff'. Deeper tools strip 'pip debug --verbose, pipdeptree, pip index versions pkg, ldd on torch libraries, strace -f -e trace=openat python -c import x'. Bottom bar: 'Read the error line first, then find the matching row'.",
+  "anchor": "## 9. Troubleshooting imports and environments",
+  "alt": "A table of twelve import and install errors with their likely cause and first fix, plus deeper diagnostic commands.",
+  "cap": "Match the exact error text to a row for the likely cause, then use the deeper tools only if the first fix fails."
+ }
+]

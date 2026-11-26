@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Negotiating a Friday release with the budget in minutes</title>
+  <desc>Infographic explaining error budget calculations, release trade-offs, reliability levers, workbook policy constraints, and decision rules for Friday releases.</desc>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Negotiating a Friday release with the budget in minutes</text>
+
+  
+  <rect x="50" y="100" width="720" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(75, 118)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="0" y="0" width="46" height="56" rx="6"/>
+    <rect x="8" y="8" width="30" height="12" rx="2"/>
+    <circle cx="13" cy="28" r="2" fill="#207448"/>
+    <circle cx="23" cy="28" r="2" fill="#207448"/>
+    <circle cx="33" cy="28" r="2" fill="#207448"/>
+    <circle cx="13" cy="40" r="2" fill="#207448"/>
+    <circle cx="23" cy="40" r="2" fill="#207448"/>
+    <circle cx="33" cy="40" r="2" fill="#207448"/>
+  </g>
+  <text x="140" y="156" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Worked arithmetic</text>
+
+  
+  <rect x="75" y="185" width="670" height="98" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="95" y="217" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">99.9 percent SLO over 30 days:</tspan>
+    <tspan x="95" dy="30">0.1 percent of 43,200 minutes =</tspan>
+    <tspan x="95" dy="30">43.2 minutes of budget</tspan>
+  </text>
+
+  
+  <rect x="75" y="293" width="670" height="74" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="95" y="324" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">A fictional 40-minute incident uses</tspan>
+    <tspan x="95" dy="30">40 / 43.2 = 92.6 percent</tspan>
+  </text>
+
+  
+  <rect x="75" y="377" width="670" height="58" rx="10" fill="#fff5eb" stroke="#db8129" stroke-width="2.5"/>
+  <text x="95" y="415" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Remaining budget is 3.2 minutes</text>
+
+  
+  <rect x="800" y="100" width="750" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(825, 118)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="28" y1="8" x2="28" y2="48"/>
+    <line x1="16" y1="48" x2="40" y2="48"/>
+    <line x1="8" y1="16" x2="48" y2="16"/>
+    <path d="M 4 32 Q 10 40 16 32 Z"/>
+    <line x1="10" y1="16" x2="4" y2="32"/>
+    <line x1="10" y1="16" x2="16" y2="32"/>
+    <path d="M 40 32 Q 46 40 52 32 Z"/>
+    <line x1="46" y1="16" x2="40" y2="32"/>
+    <line x1="46" y1="16" x2="52" y2="32"/>
+  </g>
+  <text x="895" y="142" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="895" dy="0">Two option boxes offered</tspan>
+    <tspan x="895" dy="34">to the product engineer</tspan>
+  </text>
+
+  
+  <rect x="825" y="200" width="700" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="850" y="244" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="850" dy="0">spend the remaining 3.2 minutes of risk</tspan>
+    <tspan x="850" dy="34">on the Friday release</tspan>
+  </text>
+
+  
+  <rect x="825" y="320" width="700" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="850" y="377" font-family="sans-serif" font-size="24" fill="#303a36">hold it until the budget recovers</text>
+
+  
+  <rect x="50" y="475" width="640" height="410" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(75, 495)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 28 4 L 50 12 C 50 38 28 52 28 52 C 28 52 6 38 6 12 Z"/>
+    <path d="M 18 27 L 25 34 L 38 18"/>
+  </g>
+  <text x="145" y="533" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Cheap reliability to offer</text>
+
+  
+  <rect x="75" y="565" width="590" height="295" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="100" y="625" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="100" dy="0">canary gates, feature flags and</tspan>
+    <tspan x="100" dy="36">rollbacks; ask what latency or error</tspan>
+    <tspan x="100" dy="36">figure users notice and set the</tspan>
+    <tspan x="100" dy="36">SLO from that</tspan>
+  </text>
+
+  
+  <rect x="720" y="475" width="830" height="410" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(745, 495)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 8 4 L 36 4 L 48 16 L 48 52 L 8 52 Z"/>
+    <path d="M 36 4 L 36 16 L 48 16"/>
+    <line x1="16" y1="24" x2="32" y2="24"/>
+    <line x1="16" y1="34" x2="40" y2="34"/>
+    <line x1="16" y1="44" x2="30" y2="44"/>
+  </g>
+  <text x="815" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="815" dy="0">Policy panel from the</tspan>
+    <tspan x="815" dy="34">workbook example</tspan>
+  </text>
+
+  
+  <rect x="745" y="565" width="780" height="295" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="765" y="598" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="765" dy="0">if the service exceeds its budget over the</tspan>
+    <tspan x="765" dy="28">preceding four weeks, changes and releases stop</tspan>
+    <tspan x="765" dy="28">except P0 issues and security fixes until it is</tspan>
+    <tspan x="765" dy="28">back within its SLO; the team must work on</tspan>
+    <tspan x="765" dy="28">reliability if a code bug or process error caused</tspan>
+    <tspan x="765" dy="28">the overrun; it may continue feature work if a</tspan>
+    <tspan x="765" dy="28">company-wide network problem caused it; disputes</tspan>
+    <tspan x="765" dy="28">go to a named escalation path; SRE needs</tspan>
+    <tspan x="765" dy="28">authority to stop launches</tspan>
+  </text>
+
+  
+  <rect x="50" y="910" width="1500" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(75, 925)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="18" y="8" width="28" height="14" rx="3" transform="rotate(-30 32 15)"/>
+    <line x1="26" y1="24" x2="12" y2="46"/>
+    <line x1="20" y1="50" x2="48" y2="50"/>
+  </g>
+  <text x="145" y="960" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Rule</text>
+
+  
+  <rect x="75" y="980" width="1450" height="155" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="95" y="1025" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">say the number first, offer a choice, let the policy make the decision;</tspan>
+    <tspan x="95" dy="38">if the budget is exhausted so often that launches stall, loosen the SLO;</tspan>
+    <tspan x="95" dy="38">if a VP overrides, record the risk and escalate through the agreed policy, not around it</tspan>
+  </text>
+</svg>

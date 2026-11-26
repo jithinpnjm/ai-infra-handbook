@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "p3-2004-permission-layers",
+  "title": "Eight permission layers to check in order when a file will not open",
+  "spec": "A vertical ladder of eight numbered rows, top to bottom, each row a box with the layer name in bold on the left and the evidence command in monospace on the right, an arrow down between rows. Row 1 'Path: search permission on each directory' with 'namei -l PATH, strace -e trace=%file'. Row 2 'Identity: effective user, group, supplementary groups' with '/proc/PID/status'. Row 3 'Mode class: first matching class only' with 'stat -c %U %G %a'. Row 4 'ACL: named entries limited by the mask' with 'getfacl'. Row 5 'Mount: ro, noexec, nosuid' with '/proc/self/mountinfo, findmnt'. Row 6 'Inode flags: immutable, append-only' with 'lsattr'. Row 7 'MAC: SELinux, AppArmor policy' with 'ausearch -m avc, dmesg'. Row 8 'Capabilities, userns: bypass rights, ID mapping' with 'CapEff, /proc/PID/uid_map'. On the left a tall bracket arrow labelled 'cheapest and most common first' pointing down to 'needs more privilege or host knowledge'. At the top a box 'File is mode 666 but open() fails' with the orange outline on Row 1 'Path'. Takeaway bar: 'Say the layers in this order, and say which one the errno points to.'",
+  "anchor": "### 6. Permission checks beyond the mode bits",
+  "alt": "A ladder of eight layers, path, identity, mode class, ACL, mount, inode flags, mandatory access control, and capabilities, each with the command that shows the evidence.",
+  "cap": "The mode bits are one layer of eight; work down the ladder only when the layers above come back clean."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "p3-2004-acl-mask",
+  "title": "Why chmod 640 silently cut a user's ACL write right",
+  "spec": "Three panels left to right joined by arrows, numbered 1 2 3. Panel 1 'Deploy script grants write': monospace box 'user:12345:rw-' and 'mask::rw-', result label 'effective: rw-'. Arrow labelled 'chmod 640' to Panel 2 'After the hardening job': 'ls -l shows -rw-r-----+', 'user:12345:rw-    #effective:r--', 'mask::r--' with the 'mask::r--' line in orange; label 'The group bits of the mode are the mask'. Arrow labelled 'setfacl -m m::rw FILE' to Panel 3 'After the fix': 'mask::rw-'. Under panel 2 a small funnel or gate drawing: the named entry 'rw-' passing through a gate 'mask r--' and coming out as 'r--'. Takeaway bar: 'The named entry is intact but the mask is r--, so the effective right is read-only.'",
+  "anchor": "### Scenario 5: the ACL that a chmod cancelled",
+  "alt": "A named ACL entry says rw- but the mask became r-- after chmod 640, so the effective right is read-only until setfacl sets the mask to rw.",
+  "cap": "The mask is the most any named entry can receive, so chmod 640 lowered the effective right to read-only."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "p3-2004-ptrace-cost",
+  "title": "Why strace slows a process and what to try first",
+  "spec": "Left half: a swimlane of three lanes 'Program', 'Kernel', 'strace (tracer)'. Numbered arrows top to bottom: 1 Program to Kernel 'system call entry', 2 Kernel to strace 'breakpoint: program stopped, tracer runs', 3 strace to Kernel 'resume', 4 Kernel to strace 'breakpoint on exit', 5 strace to Program 'result returned'. A note 'Even with -e filters, every call stops' beside it. Orange outline on the breakpoint arrows. Right half: a three-rung ladder titled 'Safe answer' with rungs 'Prefer /proc, lsof and logs', 'If you must trace: attach to one process briefly with -p PID, write to a file with -o', 'System-wide: perf trace, Ftrace, BCC or bpftrace tools such as opensnoop'. Above the ladder a callout 'Book example: dd slowed by a factor of 73'. Includes the three-command box in monospace: 'strace -f -e trace=%file -e status=failed -o /tmp/gw.trace -p PID'.",
+  "anchor": "### 4. strace: how to read what it prints",
+  "alt": "strace stops the program at the entry and exit of every system call and hands control to the tracer, which is why a dd run slowed by a factor of 73, so read proc and lsof first.",
+  "cap": "strace uses ptrace breakpoints on every system call, so prefer proc, lsof and logs first and trace one process briefly."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "p3-2004-pod-denied-ladder",
+  "title": "Pod works locally, Permission denied in the cluster: five questions in order",
+  "spec": "A vertical ladder of five numbered boxes with arrows down. 1 'Which errno?' with two outputs: 'EACCES: Permission denied' and 'EROFS: Read-only file system'. 2 'Is the root read-only?' with 'readOnlyRootFilesystem: true' and fix 'write to an emptyDir volume'. 3 'Which user and groups inside the container?' with 'read /proc/self/status, ls -ln shows numbers' and 'hostUsers: false: IDs are mapped, 65534 is the overflow ID'. 4 'Does the volume owner match fsGroup?' with 'fsGroup changes ownership at mount time, fsGroupChangePolicy: OnRootMismatch skips it when the root already matches'. 5 'Capabilities dropped or policy profile applied?' with 'drop: ALL removes CAP_DAC_OVERRIDE, so even root follows the mode bits; AppArmor or SELinux'. Orange outline on box 1. Left small tag 'EROFS beats the mode bits: the mount check runs first'. Takeaway bar: 'Four pod settings turn Linux rules into container rules.'",
+  "anchor": "### 7. Containers and Kubernetes change the answer",
+  "alt": "Five ordered questions for a pod file failure: which errno, is the root read-only, which user and groups, does the volume owner match fsGroup, are capabilities dropped or a policy profile applied.",
+  "cap": "Ask five questions in order when a pod fails to read or write a file."
+ }
+]

@@ -48,15 +48,9 @@ You will need 5.10, 5.11, and the HTTP/TLS fundamentals in 2.10 and 2.20 before 
 
 A request passes through several layers before it reaches your model. Each layer makes a different kind of decision, so knowing which layer acted tells you where to look. The diagram shows that path.
 
-```mermaid
-flowchart LR
-  C["Clients (Internet / corp / apps)"] --> EDGE["Edge: DNS → external L4 LB or anycast/VIP\n(cloud NLB, MetalLB, hardware LB)"]
-  EDGE --> GW["L7 gateway pods in cluster\n(ingress-nginx / Envoy / Traefik / Cilium Gateway)"]
-  GW -->|"route by host/path/header,\nTLS termination, auth, rate limit"| SVC["Service (ClusterIP / headless)"]
-  SVC --> P1["Pod A (model v1)"]
-  SVC --> P2["Pod B (model v1)"]
-  GW -.->|"canary 5%"| SVC2["Service model-v2"]
-```
+![Layers of load balancing](./img/m5-12-1.svg)
+
+*Figure 5.12.1. Layers of load balancing, as a diagram.*
 
 Notice that the 5% canary branch leaves the gateway for a separate Service, model-v2. Think of the edge as a building's security desk. The outer door only checks that someone is entering. The reception desk reads the name on the visitor's badge and sends them to the right office.
 

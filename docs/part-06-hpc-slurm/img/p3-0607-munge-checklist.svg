@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Munge: four rules and two test commands</title>
+  <desc>Checklist of four munge rules alongside a two-step test ladder, failure diagnostics, and note on auth/slurm.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Munge: four rules and two test commands</text>
+  <text x="800" y="98" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Checklist and ladder</text>
+
+  
+
+  
+  <g id="rule-1">
+    <rect x="40" y="125" width="740" height="235" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(62, 140)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="18" cy="18" r="12"/>
+      <path d="M 27 27 L 48 48 M 40 40 L 46 34 M 45 45 L 51 39"/>
+    </g>
+    <text x="135" y="175" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">Rule 1</text>
+
+    <text x="65" y="222" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">one shared key: identical</tspan>
+      <tspan x="65" dy="32"><tspan font-family="monospace">/etc/munge/munge.key</tspan> on controller, compute,</tspan>
+      <tspan x="65" dy="32">login and database hosts; owned by <tspan font-family="monospace">munge</tspan>,</tspan>
+      <tspan x="65" dy="32">mode <tspan font-family="monospace">0400</tspan>; create once and distribute securely</tspan>
+    </text>
+  </g>
+
+  
+  <g id="rule-2">
+    <rect x="40" y="380" width="740" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(62, 395)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="27" cy="16" r="10"/>
+      <path d="M 11 44 C 11 32 17 28 27 28 C 37 28 43 32 43 44"/>
+    </g>
+    <text x="135" y="430" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Rule 2</text>
+
+    <text x="65" y="477" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">consistent identities: <tspan font-family="monospace">munge</tspan> transports</tspan>
+      <tspan x="65" dy="32">numbers, so UID and GID must mean the same</tspan>
+      <tspan x="65" dy="32">everywhere; LDAP or SSSD or configuration</tspan>
+      <tspan x="65" dy="32">management so alice is UID 1042 on all nodes</tspan>
+    </text>
+  </g>
+
+  
+  <g id="rule-3">
+    <rect x="40" y="635" width="740" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(62, 650)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="27" cy="27" r="18"/>
+      <polyline points="27,15 27,27 36,27"/>
+    </g>
+    <text x="135" y="685" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Rule 3</text>
+
+    <text x="65" y="732" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">synchronised time: credentials carry a</tspan>
+      <tspan x="65" dy="32">timestamp with a short validity window,</tspan>
+      <tspan x="65" dy="32">five minutes by default; run <tspan font-family="monospace">chrony</tspan> or</tspan>
+      <tspan x="65" dy="32"><tspan font-family="monospace">ntpd</tspan> and monitor skew</tspan>
+    </text>
+  </g>
+
+  
+  <g id="rule-4">
+    <rect x="40" y="890" width="740" height="235" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(62, 905)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="38" height="34" rx="4"/>
+      <line x1="16" y1="22" x2="22" y2="22"/>
+      <line x1="32" y1="22" x2="38" y2="22"/>
+      <line x1="18" y1="32" x2="36" y2="32"/>
+      <line x1="27" y1="44" x2="27" y2="50"/>
+    </g>
+    <text x="135" y="940" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Rule 4</text>
+
+    <text x="65" y="992" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">running <tspan font-family="monospace">munged</tspan> and the right socket:</tspan>
+      <tspan x="65" dy="36"><tspan font-family="monospace">/run/munge/munge.socket.2</tspan> with correct</tspan>
+      <tspan x="65" dy="36">permissions and ownership</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="test-ladder">
+    <rect x="820" y="125" width="740" height="365" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(845, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="14" y1="6" x2="14" y2="48"/>
+      <line x1="40" y1="6" x2="40" y2="48"/>
+      <line x1="14" y1="16" x2="40" y2="16"/>
+      <line x1="14" y1="27" x2="40" y2="27"/>
+      <line x1="14" y1="38" x2="40" y2="38"/>
+    </g>
+    <text x="915" y="175" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Test ladder</text>
+
+    
+    <rect x="845" y="205" width="690" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="885" cy="255" r="24" fill="#207448"/>
+    <text x="885" y="264" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="925" y="243" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">munge -n | unmunge:</text>
+    <text x="925" y="278" font-family="sans-serif" font-size="24" fill="#303a36">local encode and decode</text>
+
+    
+    <line x1="885" y1="305" x2="885" y2="335" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="1500" y1="305" x2="1500" y2="335" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+    
+    <rect x="845" y="335" width="690" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <circle cx="885" cy="390" r="24" fill="#207448"/>
+    <text x="885" y="399" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="925" y="375" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">munge -n | ssh node1 unmunge:</text>
+    <text x="925" y="414" font-family="sans-serif" font-size="24" fill="#303a36">cross-node, proves key and clocks agree</text>
+  </g>
+
+  
+  <g id="failure-reading">
+    <rect x="820" y="510" width="740" height="325" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(845, 525)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 27 8 L 49 46 L 5 46 Z"/>
+      <line x1="27" y1="20" x2="27" y2="32"/>
+      <circle cx="27" cy="40" r="1.5" fill="#207448"/>
+    </g>
+    <text x="915" y="560" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Failure reading</text>
+
+    <text x="845" y="612" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">Invalid authentication credential or</tspan>
+      <tspan x="845" dy="34">Unable to contact slurm controller; logs</tspan>
+      <tspan x="845" dy="34">show Rewound credential or Invalid</tspan>
+      <tspan x="845" dy="34">credential; if the cross-node test fails</tspan>
+      <tspan x="845" dy="34">check the key checksum first then time sync</tspan>
+    </text>
+  </g>
+
+  
+  <g id="note">
+    <rect x="820" y="855" width="740" height="270" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(845, 870)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 8 L 34 8 L 44 18 L 44 48 L 12 48 Z"/>
+      <polyline points="34,8 34,18 44,18"/>
+      <line x1="18" y1="28" x2="38" y2="28"/>
+      <line x1="18" y1="36" x2="32" y2="36"/>
+    </g>
+    <text x="915" y="905" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Note</text>
+
+    <text x="845" y="960" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">newer Slurm (around 23.11) offers</tspan>
+      <tspan x="845" dy="36"><tspan font-family="monospace">auth/slurm</tspan> with the <tspan font-family="monospace">sackd</tspan> daemon;</tspan>
+      <tspan x="845" dy="36"><tspan font-family="monospace">munge</tspan> is still most common</tspan>
+    </text>
+  </g>
+</svg>

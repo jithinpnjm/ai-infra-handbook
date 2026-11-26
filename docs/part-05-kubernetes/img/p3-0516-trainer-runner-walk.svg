@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Reading the trainer-runner Role and its binding</title>
+  <desc>Worked example showing Kubernetes Role trainer-runner in team-a, RoleBinding team-a-researchers, and evaluation test rows.</desc>
+
+  <defs>
+    <marker id="orange-arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="50" y="82" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">Reading the trainer-runner Role and its binding</text>
+
+  
+  <rect x="1330" y="44" width="220" height="48" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1440" y="76" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Worked example</text>
+
+  
+  <g id="panel-rolebinding">
+    <rect x="50" y="120" width="650" height="480" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(75, 145)">
+      <rect x="4" y="4" width="48" height="48" rx="10" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 20 28 L 36 28 M 28 20 L 28 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+
+    
+    <text x="148" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="148" dy="0">RoleBinding team-a-researchers</tspan>
+      <tspan x="148" dy="36">in team-a</tspan>
+    </text>
+
+    
+    <rect x="75" y="235" width="600" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 250)">
+      <circle cx="16" cy="12" r="8" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 4 36 C 4 26 28 26 28 36" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="32" cy="14" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 26 36 C 26 28 42 28 42 36" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="155" y="280" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Group oidc:team-a-researchers</text>
+
+    
+    <rect x="75" y="324" width="600" height="84" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 342)">
+      <rect x="6" y="8" width="32" height="30" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="16" cy="22" r="3" fill="#207448" />
+      <circle cx="28" cy="22" r="3" fill="#207448" />
+      <line x1="22" y1="2" x2="22" y2="8" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="155" y="358" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="155" dy="0">ServiceAccount ci-runner</tspan>
+      <tspan x="155" dy="28">from namespace ci</tspan>
+    </text>
+
+    
+    <rect x="75" y="423" width="600" height="74" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(95, 438)">
+      <circle cx="16" cy="22" r="10" fill="none" stroke="#db8129" stroke-width="3" />
+      <path d="M 24 16 L 38 16 L 38 28 L 32 28" fill="none" stroke="#db8129" stroke-width="3" />
+    </g>
+    <text x="155" y="468" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">roleRef Role trainer-runner</text>
+  </g>
+
+  
+  <path d="M 675 460 L 788 460" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#orange-arrow)" />
+
+  
+  <g id="panel-role">
+    <rect x="790" y="120" width="760" height="480" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(815, 145)">
+      <path d="M 28 6 L 48 14 L 48 28 C 48 40 28 50 28 50 C 28 50 8 40 8 28 L 8 14 Z" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="28" cy="24" r="5" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 28 29 L 28 37" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <text x="888" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="888" dy="0">Role trainer-runner</tspan>
+      <tspan x="888" dy="36">in namespace team-a</tspan>
+    </text>
+
+    
+    <rect x="815" y="235" width="710" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(830, 248)">
+      <rect x="6" y="8" width="34" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="6" y1="18" x2="40" y2="18" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="885" y="266" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="885" dy="0" font-family="monospace" font-weight="bold">pods and pods/log: get list watch</tspan>
+      <tspan x="885" dy="28">(debug a stuck run)</tspan>
+    </text>
+
+    
+    <rect x="815" y="321" width="710" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(830, 332)">
+      <rect x="6" y="6" width="34" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="23" cy="22" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="885" y="362" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">batch jobs: get list watch create delete</text>
+
+    
+    <rect x="815" y="399" width="710" height="76" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(830, 412)">
+      <circle cx="14" cy="14" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="34" cy="14" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="24" cy="34" r="6" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="18" y1="18" x2="22" y2="29" stroke="#207448" stroke-width="2" />
+      <line x1="30" y1="18" x2="26" y2="29" stroke="#207448" stroke-width="2" />
+    </g>
+    <text x="885" y="430" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="885" dy="0" font-family="monospace" font-weight="bold">kubeflow.org pytorchjobs:</tspan>
+      <tspan x="885" dy="28">verb * (everything)</tspan>
+    </text>
+
+    
+    <rect x="815" y="487" width="710" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(830, 508)">
+      <path d="M 8 6 L 30 6 L 38 14 L 38 40 L 8 40 Z" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="14" y1="20" x2="28" y2="20" stroke="#207448" stroke-width="2" />
+      <line x1="14" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="2" />
+    </g>
+    <text x="885" y="522" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="885" dy="0" font-family="monospace" font-weight="bold">configmaps with resourceNames trainer-config:</tspan>
+      <tspan x="885" dy="28">get only (one named object)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-test-rows">
+    <rect x="50" y="630" width="1500" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+    
+    <g transform="translate(75, 650)">
+      <rect x="6" y="8" width="44" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="18" y="2" width="20" height="8" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="16" y1="22" x2="40" y2="22" stroke="#207448" stroke-width="3" />
+      <line x1="16" y1="34" x2="34" y2="34" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <text x="148" y="688" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Test rows</text>
+
+    
+    <rect x="75" y="720" width="1450" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 735)">
+      <circle cx="22" cy="22" r="18" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+      <path d="M 14 22 L 20 28 L 30 16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="155" y="766" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">researcher deletes a Job in team-a: allowed</text>
+
+    
+    <rect x="75" y="806" width="1450" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 821)">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#303a36" stroke-width="3" />
+      <line x1="10" y1="10" x2="34" y2="34" stroke="#303a36" stroke-width="4" />
+    </g>
+    <text x="155" y="852" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">researcher reads a different ConfigMap: not allowed (resourceNames)</text>
+
+    
+    <rect x="75" y="892" width="1450" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(95, 907)">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#303a36" stroke-width="3" />
+      <line x1="13" y1="13" x2="31" y2="31" stroke="#303a36" stroke-width="4" />
+      <line x1="31" y1="13" x2="13" y2="31" stroke="#303a36" stroke-width="4" />
+    </g>
+    <text x="155" y="938" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">researcher in team-b namespace: no binding there, denied</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="1020" width="1500" height="76" rx="12" fill="#207448" />
+    <text x="800" y="1066" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">a Role does nothing until a binding hands it to someone; the binding can name a ServiceAccount from another namespace</text>
+  </g>
+</svg>

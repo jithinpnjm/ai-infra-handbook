@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Burn rate arithmetic and the three alerts, one row checked by hand</title>
+  <desc>Infographic explaining burn rate formulas, intuition, three multi-window alert tiers, hand checks, and window sizing rules.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" y="65">Burn rate arithmetic and the three alerts, </tspan>
+    <tspan x="800" y="118">one row checked by hand</tspan>
+  </text>
+
+  
+  
+  <g id="formula-1">
+    <rect x="40" y="155" width="486" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 65 215 A 25 25 0 1 1 115 215"/>
+      <line x1="90" y1="215" x2="105" y2="195"/>
+      <circle cx="90" cy="215" r="4" fill="#207448"/>
+    </g>
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="135" y="210">burn_rate = </tspan>
+      <tspan x="135" y="248">error_ratio / (1 - SLO)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="formula-2">
+    <rect x="556" y="155" width="486" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="581" y="185" width="46" height="30" rx="4"/>
+      <line x1="627" y1="195" x2="627" y2="205"/>
+      <line x1="593" y1="193" x2="593" y2="207"/>
+      <line x1="603" y1="193" x2="603" y2="207"/>
+      <line x1="613" y1="193" x2="613" y2="207"/>
+    </g>
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="645" y="200">budget_consumed = </tspan>
+      <tspan x="645" y="235">burn_rate x alert_window </tspan>
+      <tspan x="645" y="270">/ SLO_period</tspan>
+    </text>
+  </g>
+
+  
+  <g id="formula-3">
+    <rect x="1072" y="155" width="486" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="1122" cy="200" r="22"/>
+      <polyline points="1122,187 1122,200 1134,208"/>
+    </g>
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="1160" y="200">hours_to_empty = </tspan>
+      <tspan x="1160" y="238">SLO_period_hours / </tspan>
+      <tspan x="1160" y="276">burn_rate</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="meaning-card">
+    <rect x="40" y="330" width="1520" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 80 375 A 16 16 0 1 1 106 375 C 102 385 101 388 101 393 L 85 393 C 85 388 84 385 80 375 Z"/>
+      <line x1="88" y1="398" x2="98" y2="398"/>
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" y="368">burn rate 1 uses exactly the whole budget by the end of the window; </tspan>
+      <tspan x="135" y="400">2 uses it in half the time; </tspan>
+      <tspan x="135" y="432">99.9 percent SLO with 1 percent errors is burn 10, empties a 30-day budget in 72 hours</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="alert-1">
+    <rect x="40" y="465" width="486" height="270" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 85 500 A 15 15 0 0 1 115 500 L 119 520 L 81 520 Z"/>
+      <path d="M 96 520 A 4 4 0 0 0 104 520"/>
+      <line x1="75" y1="492" x2="80" y2="497"/>
+      <line x1="125" y1="492" x2="120" y2="497"/>
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" y="515" font-size="30" font-weight="bold">Page | </tspan>
+      <tspan x="65" y="558">1 h long, 5 min short | </tspan>
+      <tspan x="65" y="596">burn 14.4 | </tspan>
+      <tspan x="65" y="634">threshold 0.0144 | </tspan>
+      <tspan x="65" y="672">2 percent of budget | </tspan>
+      <tspan x="65" y="710">50 hours to empty</tspan>
+    </text>
+  </g>
+
+  
+  <g id="alert-2">
+    <rect x="556" y="465" width="486" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 601 500 A 15 15 0 0 1 631 500 L 635 520 L 597 520 Z"/>
+      <path d="M 612 520 A 4 4 0 0 0 620 520"/>
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="655" y="515" font-size="30" font-weight="bold">Page | </tspan>
+      <tspan x="581" y="558">6 h long, 30 min short | </tspan>
+      <tspan x="581" y="596">burn 6 | </tspan>
+      <tspan x="581" y="634">0.006 | </tspan>
+      <tspan x="581" y="672">5 percent | </tspan>
+      <tspan x="581" y="710">120 hours</tspan>
+    </text>
+  </g>
+
+  
+  <g id="alert-3">
+    <rect x="1072" y="465" width="486" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1097" y="488" width="36" height="42" rx="4"/>
+      <line x1="1106" y1="502" x2="1124" y2="502"/>
+      <line x1="1106" y1="512" x2="1124" y2="512"/>
+      <line x1="1106" y1="522" x2="1118" y2="522"/>
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1155" y="515" font-size="30" font-weight="bold">Ticket | </tspan>
+      <tspan x="1097" y="558">3 days long, 6 h short | </tspan>
+      <tspan x="1097" y="596">burn 1 | </tspan>
+      <tspan x="1097" y="634">0.001 | </tspan>
+      <tspan x="1097" y="672">10 percent | </tspan>
+      <tspan x="1097" y="710">720 hours</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="check-1">
+    <rect x="40" y="760" width="365" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="82" cy="802" r="18"/>
+      <polyline points="74,802 80,808 92,794"/>
+    </g>
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="115" y="808" font-weight="bold">row 1: </tspan>
+      <tspan x="60" y="855">14.4 x 1 / 720 = </tspan>
+      <tspan x="60" y="900">0.02 = 2 percent</tspan>
+    </text>
+  </g>
+
+  
+  <g id="check-2">
+    <rect x="425" y="760" width="365" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="467" cy="802" r="18"/>
+      <polyline points="459,802 465,808 477,794"/>
+    </g>
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="500" y="808" font-weight="bold">row 2: </tspan>
+      <tspan x="445" y="855">6 x 6 / 720 = </tspan>
+      <tspan x="445" y="900">5 percent</tspan>
+    </text>
+  </g>
+
+  
+  <g id="check-3">
+    <rect x="810" y="760" width="365" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="852" cy="802" r="18"/>
+      <polyline points="844,802 850,808 862,794"/>
+    </g>
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="885" y="808" font-weight="bold">row 3: </tspan>
+      <tspan x="830" y="855">1 x 72 / 720 = </tspan>
+      <tspan x="830" y="900">10 percent</tspan>
+    </text>
+  </g>
+
+  
+  <g id="check-4">
+    <rect x="1195" y="760" width="365" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="1237" cy="802" r="18"/>
+      <line x1="1237" y1="780" x2="1237" y2="788"/>
+      <line x1="1237" y1="816" x2="1237" y2="824"/>
+      <line x1="1215" y1="802" x2="1223" y2="802"/>
+      <line x1="1251" y1="802" x2="1259" y2="802"/>
+    </g>
+    
+    <text font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, monospace" font-size="24" fill="#303a36">
+      <tspan x="1270" y="808" font-weight="bold">threshold = </tspan>
+      <tspan x="1215" y="865">burn rate x 0.001</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="note-bar">
+    <rect x="40" y="975" width="1520" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="70" y="1010" width="40" height="46" rx="4"/>
+      <line x1="80" y1="1024" x2="100" y2="1024"/>
+      <line x1="80" y1="1034" x2="100" y2="1034"/>
+      <line x1="80" y1="1044" x2="94" y2="1044"/>
+    </g>
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+      <tspan x="135" y="1035">short window is a rule of thumb of one twelfth of the long window; </tspan>
+      <tspan x="135" y="1075">no for: clause because the two windows already do the pending delay</tspan>
+    </text>
+  </g>
+</svg>

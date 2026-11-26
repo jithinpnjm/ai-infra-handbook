@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>USE for software resources: file descriptors, pinned memory, threads and NCCL</title>
+  <desc>Infographic matrix showing Utilisation, Saturation, and Errors for software resources including file descriptors, pinned memory, threads, and NCCL.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">USE for software resources:</tspan>
+    <tspan x="800" dy="54">file descriptors, pinned memory, threads and NCCL</tspan>
+  </text>
+
+  
+  
+  <rect x="360" y="135" width="405" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(395, 170)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M-18 10 A20 20 0 1 1 18 10" />
+    <line x1="0" y1="0" x2="8" y2="-10" />
+    <circle cx="0" cy="0" r="3" fill="#207448" />
+  </g>
+  <text x="430" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Utilisation</text>
+
+  
+  <rect x="775" y="135" width="365" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(810, 170)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M-12 -16 L12 -16 L-12 16 L12 16 Z" />
+    <line x1="-15" y1="-16" x2="15" y2="-16" />
+    <line x1="-15" y1="16" x2="15" y2="16" />
+  </g>
+  <text x="845" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Saturation</text>
+
+  
+  <rect x="1150" y="135" width="410" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1185, 170)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M0 -18 L18 15 L-18 15 Z" />
+    <line x1="0" y1="-6" x2="0" y2="4" />
+    <circle cx="0" cy="9" r="1.5" fill="#207448" stroke="none" />
+  </g>
+  <text x="1220" y="180" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Errors</text>
+
+  
+  
+  <rect x="40" y="215" width="310" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(75, 267)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M-14 -20 L6 -20 L16 -10 L16 22 L-14 22 Z" />
+    <path d="M6 -20 L6 -10 L16 -10" />
+    <line x1="-6" y1="-2" x2="8" y2="-2" />
+    <line x1="-6" y1="6" x2="8" y2="6" />
+    <line x1="-6" y1="14" x2="4" y2="14" />
+  </g>
+  <text x="110" y="258" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="110" dy="0">File</tspan>
+    <tspan x="110" dy="34">descriptors</tspan>
+  </text>
+  
+  <rect x="360" y="215" width="405" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="378" y="256" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+    <tspan x="378" dy="0">ls /proc/PID/fd | wc -l</tspan>
+    <tspan x="378" dy="32">versus ulimit -n</tspan>
+  </text>
+  
+  <rect x="775" y="215" width="365" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="795" y="274" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">waits on allocation</text>
+  
+  <rect x="1150" y="215" width="410" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="1170" y="274" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">EMFILE or ENFILE errors</text>
+
+  
+  
+  <rect x="40" y="330" width="310" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(75, 382)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="-14" y="-5" width="28" height="24" rx="3" />
+    <path d="M-8 -5 L-8 -14 A8 8 0 0 1 8 -14 L8 -5" />
+    <circle cx="0" cy="5" r="2.5" fill="#207448" />
+  </g>
+  <text x="110" y="373" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="110" dy="0">Pinned memory</tspan>
+    <tspan x="110" dy="34">and memlock</tspan>
+  </text>
+  
+  <rect x="360" y="330" width="405" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="378" y="371" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="378" dy="0">locked pages</tspan>
+    <tspan x="378" dy="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">versus ulimit -l</tspan>
+  </text>
+  
+  <rect x="775" y="330" width="365" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="795" y="389" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">allocation stalls</text>
+  
+  <rect x="1150" y="330" width="410" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="1170" y="371" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1170" dy="0">failed pinning</tspan>
+    <tspan x="1170" dy="32" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">(cudaHostAlloc errors)</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="445" width="310" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(75, 497)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="-14" y="-14" width="28" height="28" rx="4" />
+    <line x1="-8" y1="-20" x2="-8" y2="-14" />
+    <line x1="8" y1="-20" x2="8" y2="-14" />
+    <line x1="-8" y1="14" x2="-8" y2="20" />
+    <line x1="8" y1="14" x2="8" y2="20" />
+    <circle cx="0" cy="0" r="4" fill="#207448" />
+  </g>
+  <text x="110" y="488" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="110" dy="0">Threads</tspan>
+    <tspan x="110" dy="34">and PIDs</tspan>
+  </text>
+  
+  <rect x="360" y="445" width="405" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="378" y="486" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+    <tspan x="378" dy="0">cgroup pids.current</tspan>
+    <tspan x="378" dy="32">versus pids.max</tspan>
+  </text>
+  
+  <rect x="775" y="445" width="365" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="795" y="504" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">fork waits</text>
+  
+  <rect x="1150" y="445" width="410" height="105" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="1170" y="486" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1170" dy="0">Resource temporarily</tspan>
+    <tspan x="1170" dy="32">unavailable, cannot fork</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="560" width="310" height="145" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(75, 632)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="-12" cy="12" r="6" />
+    <circle cx="12" cy="12" r="6" />
+    <circle cx="0" cy="-14" r="6" />
+    <line x1="-8" y1="8" x2="8" y2="8" />
+    <line x1="-10" y1="7" x2="-3" y2="-9" />
+    <line x1="10" y1="7" x2="3" y2="-9" />
+  </g>
+  <text x="110" y="623" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="110" dy="0">NCCL and</tspan>
+    <tspan x="110" dy="34">communication</tspan>
+  </text>
+  
+  <rect x="360" y="560" width="405" height="145" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="378" y="592" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="378" dy="0">NCCL logs with</tspan>
+    <tspan x="378" dy="28" font-family="ui-monospace, SFMono-Regular, Menlo, monospace">NCCL_DEBUG=INFO,</tspan>
+    <tspan x="378" dy="28"><tspan font-family="ui-monospace, SFMono-Regular, Menlo, monospace">nccl-tests</tspan> bus bandwidth</tspan>
+    <tspan x="378" dy="28">versus expected</tspan>
+  </text>
+  
+  <rect x="775" y="560" width="365" height="145" rx="8" fill="#fffbf5" stroke="#db8129" stroke-width="3" />
+  <text x="795" y="605" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#db8129">
+    <tspan x="795" dy="0" font-weight="bold">stragglers</tspan>
+    <tspan x="795" dy="32">(a rank late to</tspan>
+    <tspan x="795" dy="32">a collective)</tspan>
+  </text>
+  
+  <rect x="1150" y="560" width="410" height="145" rx="8" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5" />
+  <text x="1170" y="621" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1170" dy="0">NCCL errors,</tspan>
+    <tspan x="1170" dy="32">timeouts, watchdog</tspan>
+  </text>
+
+  
+  <rect x="40" y="725" width="1520" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 785)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="0" cy="0" r="10" />
+    <path d="M-4 -20 L4 -20 L5 -14 L9 -12 L15 -16 L20 -11 L16 -5 L18 -1 L24 0 L24 6 L18 7 L16 11 L20 17 L15 22 L9 18 L5 20 L4 26 L-4 26 L-5 20 L-9 18 L-15 22 L-20 17 L-16 11 L-18 7 L-24 6 L-24 0 L-18 -1 L-16 -5 L-20 -11 L-15 -16 L-9 -12 L-5 -14 Z" />
+  </g>
+  <text x="140" y="760" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0"><tspan font-size="28" font-weight="bold" fill="#207448">RED for services:</tspan> request rate, errors and duration (use percentiles for duration; an average hides the users who waited).</tspan>
+    <tspan x="140" dy="40" font-weight="600">USE describes machine health, RED describes user health</tspan>
+  </text>
+
+  
+  <rect x="40" y="865" width="1520" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 922)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="0" y1="-18" x2="0" y2="18" />
+    <line x1="-14" y1="18" x2="14" y2="18" />
+    <line x1="-20" y1="-12" x2="20" y2="-12" />
+    <path d="M-20 -12 L-26 4 L-14 4 Z" />
+    <path d="M20 -12 L14 4 L26 4 Z" />
+  </g>
+  <text x="140" y="900" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0" font-size="28" font-weight="bold" fill="#207448">Load or architecture?</tspan>
+    <tspan x="140" dy="36">Same load with rising duration points to architecture or resources; more load with it points to a load problem</tspan>
+  </text>
+
+  
+  <rect x="40" y="1000" width="1520" height="65" rx="8" fill="#207448" />
+  <text x="800" y="1042" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">A sweep that skips software resources is not a sweep</text>
+</svg>

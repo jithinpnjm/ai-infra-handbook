@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Every failure is a story about three places where a request can wait</title>
+  <desc>Flowchart showing request progression through waiting queue, running batch, KV cache, token generation, and the preemption loop when cache is full.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="16" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 8 L 0 14 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="16" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 8 L 0 14 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Every failure is a story about</tspan>
+    <tspan x="800" dy="58">three places where a request can wait</tspan>
+  </text>
+
+  
+  <g id="node-p">
+    <rect x="820" y="200" width="340" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 1012 254 A 20 20 0 1 0 982 272"/>
+      <path d="M 978 260 L 982 272 L 994 270"/>
+      <line x1="990" y1="242" x2="990" y2="252"/>
+    </g>
+
+    <text x="990" y="318" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Preempt newest:</text>
+    <text x="990" y="364" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">recompute later</text>
+  </g>
+
+  
+  
+  <g id="node-c">
+    <rect x="50" y="480" width="310" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="178" y="524" width="54" height="26" rx="5"/>
+      <line x1="190" y1="524" x2="182" y2="504"/>
+      <line x1="220" y1="524" x2="228" y2="504"/>
+      <circle cx="192" cy="537" r="2" fill="#207448"/>
+      <circle cx="205" cy="537" r="2" fill="#207448"/>
+      <circle cx="218" cy="537" r="2" fill="#207448"/>
+    </g>
+
+    <text x="205" y="605" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client / router</text>
+  </g>
+
+  
+  <g id="node-w">
+    <rect x="420" y="480" width="340" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="562" y1="512" x2="618" y2="512"/>
+      <line x1="562" y1="544" x2="618" y2="544"/>
+      <rect x="568" y="518" width="10" height="20" rx="2" fill="#207448" fill-opacity="0.2"/>
+      <rect x="585" y="518" width="10" height="20" rx="2" fill="#207448" fill-opacity="0.2"/>
+      <rect x="602" y="518" width="10" height="20" rx="2" fill="#207448" fill-opacity="0.2"/>
+    </g>
+
+    <text x="590" y="596" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Waiting queue</text>
+    <text x="590" y="642" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">num_requests_waiting</text>
+  </g>
+
+  
+  <g id="node-r">
+    <rect x="820" y="480" width="340" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="970" y="508" width="40" height="40" rx="4"/>
+      <rect x="976" y="514" width="11" height="11" rx="1" fill="#207448" fill-opacity="0.25"/>
+      <rect x="993" y="514" width="11" height="11" rx="1" fill="#207448" fill-opacity="0.25"/>
+      <rect x="976" y="531" width="11" height="11" rx="1" fill="#207448" fill-opacity="0.25"/>
+      <rect x="993" y="531" width="11" height="11" rx="1" fill="#207448" fill-opacity="0.25"/>
+      <line x1="978" y1="502" x2="978" y2="508"/>
+      <line x1="1002" y1="502" x2="1002" y2="508"/>
+      <line x1="978" y1="548" x2="978" y2="554"/>
+      <line x1="1002" y1="548" x2="1002" y2="554"/>
+    </g>
+
+    <text x="990" y="596" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Running batch</text>
+    <text x="990" y="642" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">num_requests_running</text>
+  </g>
+
+  
+  <g id="node-k">
+    <rect x="1220" y="480" width="330" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1362" y="506" width="46" height="42" rx="4"/>
+      <line x1="1362" y1="520" x2="1408" y2="520"/>
+      <line x1="1362" y1="534" x2="1408" y2="534"/>
+      <line x1="1385" y1="506" x2="1385" y2="548"/>
+      <rect x="1365" y="509" width="17" height="8" rx="1" fill="#207448" fill-opacity="0.3"/>
+      <rect x="1388" y="509" width="17" height="8" rx="1" fill="#207448" fill-opacity="0.3"/>
+      <rect x="1365" y="523" width="17" height="8" rx="1" fill="#207448" fill-opacity="0.3"/>
+      <rect x="1388" y="523" width="17" height="8" rx="1" fill="#207448" fill-opacity="0.3"/>
+    </g>
+
+    <text x="1385" y="596" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">KV cache</text>
+    <text x="1385" y="642" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">kv_cache_usage_perc</text>
+  </g>
+
+  
+  <g id="node-t">
+    <rect x="820" y="770" width="340" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 970 804 L 964 804 L 964 838 L 970 838"/>
+      <rect x="972" y="810" width="14" height="22" rx="3" fill="#207448" fill-opacity="0.25"/>
+      <rect x="992" y="810" width="14" height="22" rx="3" fill="#207448" fill-opacity="0.25"/>
+      <path d="M 1012 815 L 1018 821 L 1012 827"/>
+    </g>
+
+    <text x="990" y="886" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Tokens out</text>
+    <text x="990" y="932" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">generation_tokens</text>
+  </g>
+
+  
+  
+  <path d="M 360 585 L 420 585" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 760 585 L 820 585" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1160 585 L 1220 585" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 1385 480 L 1385 325 Q 1385 305 1365 305 L 1160 305" stroke="#db8129" stroke-width="3.5" fill="none" marker-end="url(#arrow-orange)"/>
+  
+  
+  <rect x="1232" y="277" width="72" height="38" rx="8" fill="#f5f8f5" stroke="#db8129" stroke-width="2.5"/>
+  <text x="1268" y="304" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">full</text>
+
+  
+  <path d="M 820 305 L 610 305 Q 590 305 590 325 L 590 480" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 990 690 L 990 770" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)"/>
+</svg>

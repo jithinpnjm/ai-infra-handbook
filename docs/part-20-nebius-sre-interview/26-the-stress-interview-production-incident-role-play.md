@@ -30,6 +30,10 @@ Picture a senior engineer standing at a whiteboard with the alert open on a lapt
 
 ### 1. Take control in the first two minutes
 
+![A timed opening for an incident: confirm impact, open the golden-signals dashboard, declare the severity and roles, check recent changes, and name the first mitigation options.](./img/p2-2026-first-two-minutes.svg)
+
+*Figure 20.26.1. The first two minutes of an incident follow a timed script: confirm impact, check the golden signals, declare the severity and roles, check recent changes, and name mitigation options.*
+
 The interviewer finishes speaking and waits. That silence feels long, and it is tempting to fill it with a command. Typing first shows you are busy, and asking what the interviewer wants shows you are waiting to be told. Both lose the room, because the room needs someone who is running the incident. So fill the first two minutes with the fixed script in the table below.
 
 The Google SRE book chapter Managing Incidents splits the work into incident command, operations, communication and planning, and only operations should change the system. You play all four, so say "I am commander and ops, and I will post updates as comms". The split matters because a person who is typing commands loses track of time and of the people waiting for news. Incident command keeps the overall picture. Operations changes the system. Communication tells people what is going on, and planning looks ahead. In a drill one candidate holds all four roles, and saying so out loud shows the interviewer that you know the roles are separate even when one person carries them.
@@ -44,23 +48,17 @@ The same chapter says to declare an incident if you need a second team, customer
 | 1:30 | "What changed in the last day?" | Recent change is the cheapest hypothesis |
 | 2:00 | "My first mitigation options are rollback or traffic shift, pending what I see." | Shows you think about users first |
 
-```mermaid
-flowchart TD
-  A["Alert fires"] --> B["Confirm impact"]
-  B --> C["Open dashboard"]
-  C --> D["Declare severity and roles"]
-  D --> E["Ask what changed"]
-  E --> F{"Safe mitigation known?"}
-  F -- "yes" --> G["Mitigate"]
-  F -- "no" --> H["Rank hypotheses, test cheapest"]
-  H --> F
-  G --> I["Verify on the dashboard"]
-  I --> J["Status update, then root cause"]
-```
+![Take control in the first two minutes](./img/m20-26-1.svg)
+
+*Figure 20.26.2. Take control in the first two minutes, as a diagram.*
 
 Before you touch a keyboard, say the impact, severity and roles. Read the table as a timeline, not a checklist. Each row is a sentence you can say at its minute.
 
 ### 2. Mitigate before you find the root cause
+
+![Mitigate before finding the root cause by choosing a cheap, reversible action such as rollback or shedding load, instead of reading logs while customers see errors.](./img/p2-2026-mitigate-first.svg)
+
+*Figure 20.26.3. Mitigate first by choosing a cheap, reversible action such as rollback, a zone drain or load shedding, and name the graph that confirms it.*
 
 Picture a checkout page that is throwing errors for paying customers while you are still reading the logs. The customers do not care what the cause is yet. They care that the page works again.
 
@@ -82,6 +80,10 @@ Rank by likelihood and cost to test. Ranking is two questions asked together. Ho
 
 ### 4. Communicate status on a cadence
 
+![Incident status updates arrive on a cadence of five minutes then every ten minutes, each with impact, what is known, what is being done and when the next update comes.](./img/p2-2026-status-cadence.svg)
+
+*Figure 20.26.4. Incident status updates run on a cadence and each has four parts: impact now, what is known, what is being done and when the next update comes.*
+
 Picture a support channel that goes quiet for most of an hour while the engineers are busy. The support team starts answering customers with guesses, and the guesses are usually worse than the truth.
 
 The SRE chapter makes communication its own role, because the commander who is fixing things forgets to tell anyone. In the drill, post an update in the first five minutes and then every ten. That cadence is the drill's choice, not a Nebius rule.
@@ -89,6 +91,10 @@ The SRE chapter makes communication its own role, because the commander who is f
 An update has four parts: impact now, what you know, what you are doing, and when the next update comes. "Impact: eu-north chat p99 TTFT is 4 seconds, no errors. We know it began with the 13:50 deploy. We are rolling back now. Next update at 14:25." Each part answers a question the reader is already asking. The first asks whether it is bad. The second asks what you know. The third asks what happens next, and the fourth asks when they will hear again. In the example, the deploy time is a fact you have checked, and the rollback is what you are doing right now. Never post a guess as a fact. If you suspect something, write the word suspected.
 
 ### 5. Know when to roll back, and avoid the destructive command
+
+![A rollback decision: roll back when a symptom begins right after a change and the rollback is tested and cheap, while destructive commands are avoided.](./img/p2-2026-rollback-decision.svg)
+
+*Figure 20.26.5. Roll back when a symptom starts right after a change and the rollback is cheap and tested, and avoid destructive commands that look like fixes.*
 
 Picture a change that landed at lunchtime, and a symptom that began within minutes of it. The timing is the strongest clue in the room, and it is also the easiest one to ignore when everyone wants a deeper explanation.
 
@@ -360,6 +366,10 @@ Picture a Thursday practice session with a study partner and a stack of incident
 
 ### Incident 1: TTFT spike after a deploy
 
+![Evidence pointing from slow first tokens and a collapsed prefix cache hit ratio to a lost prefix-aware routing setting.](./img/p3-2026-ttft-evidence-map.svg)
+
+*Figure 20.26.6. Flat inter-token latency and a collapsed hit ratio point to routing, not traffic or memory.*
+
 Picture the chat team pasting a slow-response graph into the incident channel. The model is running, but users wait a long time before the first word arrives, and the error panel shows nothing unusual.
 
 **Interviewer opens.** "At 14:05 the p99 time-to-first-token alert fired for the chat endpoint in eu-north. Users say the model 'thinks' for several seconds before it starts to answer. You are on call. Go."
@@ -386,6 +396,10 @@ Picture the chat team pasting a slow-response graph into the incident channel. T
 
 ### Incident 2: GPU pool shrinking silently
 
+![Loop in which a tight liveness probe restarts busy workers that never rejoin the router, with the three steps of the fix beside it](./img/x26-liveness-loop-workers.svg)
+
+*Figure 20.26.7. Liveness loop: a tight probe restarts busy workers, and the restarted workers never rejoin the router even though Kubernetes reports them ready.*
+
 Picture a customer writing in about slowness that has crept up for days, while the monitoring says every pod is healthy. No alert fired, so the only signal in the room is the person complaining.
 
 **Interviewer opens.** "No alert fired. A customer on a dedicated endpoint says latency has crept up for three days and one request in fifty now times out. Your Kubernetes dashboard says everything is healthy. Go."
@@ -410,6 +424,10 @@ Picture a customer writing in about slowness that has crept up for days, while t
 **Scoring.** Must ask: `impact`, `dashboard`, `pods`, `probe`, `router`. Points: reregister 10, relax_probe 6, alert 4. Risky: restarting or deleting the whole pool removes the five serving workers. Strong: ready and registered are two facts. Loosen liveness, keep readiness. Keep the two facts apart when you speak. Ready means Kubernetes thinks the pod can take traffic. Registered means the router has the pod in its own list.
 
 ### Incident 3: KV-cache pressure and a 429 storm
+
+![KV arithmetic showing one 28,000-token request holding about 14 GB, with preemptions and retries behind a 22 percent 429 rate.](./img/p3-2026-429-storm-math.svg)
+
+*Figure 20.26.8. Cap by tokens or concurrent long requests, because the pool is full of memory, not requests.*
 
 Picture a product manager in the room asking for a quick fix: raise the rate limits so the errors stop. The request sounds reasonable, and your job is to find out whether it would help before anyone changes a number.
 
@@ -436,6 +454,10 @@ Picture a product manager in the room asking for a quick fix: raise the rate lim
 
 ### Incident 4: Regional partial outage with retry amplification
 
+![Chain of user request, SDK client, gateway and router, each retrying three times, so one request reaches the worker up to 64 times](./img/x26-retry-multiplication-layers.svg)
+
+*Figure 20.26.9. Retry amplification: each layer makes its first try plus three retries, so the layers multiply to 64 attempts unless a retry budget caps them.*
+
 Picture the gateway CPU graphs climbing to three times their normal level while the user traffic line stays flat. The system is doing far more work for the same people, and the cause is not more users.
 
 **Interviewer opens.** "Error rate on the eu-west regional endpoint is 15% and climbing. User traffic is flat. Gateways are at three times their normal CPU. Upstream request rate is four times the user request rate. Go."
@@ -461,6 +483,10 @@ Picture the gateway CPU graphs climbing to three times their normal level while 
 
 ### Incident 5: Model weights download stuck at cold start
 
+![Timeline comparing the ten minute startup probe window with a two hour download, and the restart loop that starts the download again at shard 1](./img/x26-cold-start-download-race.svg)
+
+*Figure 20.26.10. Cold-start loop: a 140 GB download at 20 MB per second takes about two hours, far longer than the ten-minute startup probe, so each restart begins at shard 1.*
+
 Picture the autoscaler adding pods on a busy morning. The new pods sit at zero ready for minutes at a time, and the pods that are already running get hotter with every minute.
 
 **Interviewer opens.** "The autoscaler added four replicas of a 70B model 25 minutes ago because the existing four are saturated. None is Ready. The new pods show 0/1 and a rising restart count. Go."
@@ -483,6 +509,10 @@ Picture the autoscaler adding pods on a busy morning. The new pods sit at zero r
 
 **Scoring.** Must ask: `impact`, `dashboard`, `logs`, `events`, `cache`. Points: stop_loop 7, protect 7, warm_cache 6. Risky: deleting a pod restarts the download. Strong: do the arithmetic, and say why more replicas make it worse. More pods means more downloads competing for the same object store, which is already sending throttle responses. That is why adding replicas makes the wait longer, not shorter.
 ### Incident 6: Disk full on a GPU node
+
+![A full disk where df reports 100 GB used but du finds about 40 GB, explained by a deleted log file still held open by the engine process.](./img/p2-2026-df-du-gap.svg)
+
+*Figure 20.26.11. df reports 100 GB used while du finds about 40 GB, and a deleted 58 GB log held open by the engine explains the gap.*
 
 Picture an alert named DiskPressure on one node, evicted pods, and a restarted replica that crashes with a message about no space left on the device. The replica cannot start until the disk has room again.
 
@@ -508,6 +538,10 @@ Picture an alert named DiskPressure on one node, evicted pods, and a restarted r
 
 ### Incident 7: Certificate expiry
 
+![A 90-day timeline from certificate issue and token rotation through 30 days of failed renewal to the 09:00 expiry.](./img/p3-2026-cert-expiry-timeline.svg)
+
+*Figure 20.26.12. The token changed in one place and the cluster kept the old copy, so name the second expiring certificate too.*
+
 Picture the support queue filling at one fixed time in the morning, with the same message from client after client. The internal dashboards load normally, which is what makes the problem confusing at first.
 
 **Interviewer opens.** "At 09:00 UTC the support queue fills with 'certificate has expired' from clients calling the public API. Your internal dashboards load fine. Go."
@@ -531,6 +565,10 @@ Picture the support queue filling at one fixed time in the morning, with the sam
 **Scoring.** Must ask: `impact`, `dashboard`, `cert`, `renew`, `why`. Points: fix_and_renew 10, manual_cert 4, verify 3, others 3. Risky: telling clients to skip verification, or deleting the Secret. Strong: check the second certificate that expires in six days. Telling clients to skip verification is a tempting shortcut, but it switches off the very check the clients need. A second certificate with its own near deadline tends to disappear once the first incident is closed, so name it while you are still on the call.
 
 ### Incident 8: DNS: intermittent resolution failures
+
+![A resolver with ndots 5 sending failed suffix queries before the real name, multiplying load on throttled CoreDNS.](./img/p3-2026-ndots-amplification.svg)
+
+*Figure 20.26.13. The new external lookup multiplied DNS load, and the naming fix cuts queries for every later lookup.*
 
 Picture gateway logs filling with name-resolution errors on about one request in twenty, while the inference path keeps working. The errors are small and steady, which makes them easy to dismiss until the failures spread.
 
@@ -556,6 +594,10 @@ Picture gateway logs filling with name-resolution errors on about one request in
 
 ### Incident 9: etcd latency
 
+![A causal chain from a 40 GB backup on member 2's disk to 180 ms fsync, leader elections and an 8 second kubectl get.](./img/p3-2026-etcd-fsync.svg)
+
+*Figure 20.26.14. Stop the source first and wait for fsync and leader changes to settle before anything else.*
+
 Picture a simple command that used to answer at once now taking seconds to return, and a rollout that has stopped moving. Nothing is failing for the users yet, but the control plane is slowly losing its ability to change anything.
 
 **Interviewer opens.** "kubectl get takes eight seconds. Rollouts and the autoscaler are stalling. The API server logs 'etcdserver: request timed out'. Inference traffic is still being served. Go."
@@ -579,6 +621,10 @@ Picture a simple command that used to answer at once now taking seconds to retur
 **Scoring.** Must ask: `impact`, `dashboard`, `change`, `logs`, `disk`. Points: stop_job 10, verify 4, follow_up 6. Risky: defragmenting a live member, or restarting or removing members. Strong: running pods keep serving but nothing can change, so autoscaling stalls. A useful way to say it is that the data plane still works while the control plane cannot record new decisions.
 
 ### Incident 10: Bad config push
+
+![Ordered steps for a bad config push: pause the sync, revert to the last known good commit, verify the 503 rate in each region, then add validation and a canary](./img/x26-config-push-stop-spread.svg)
+
+*Figure 20.26.15. Bad config push: pause the sync first so the change stops spreading, then revert through the pipeline and verify region by region.*
 
 Picture a gateway returning errors everywhere at once, minutes after an automatic sync reported success. The sync is the change, and the team is asking whether anyone has noticed it is still spreading.
 

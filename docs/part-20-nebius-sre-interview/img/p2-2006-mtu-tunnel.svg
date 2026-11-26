@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="960" viewBox="0 0 1600 960">
+  <title>A VXLAN tunnel quietly cuts the usable MTU</title>
+  <desc>Visual explanation of how a VXLAN encapsulation header reduces the usable MTU from 1,500 bytes to 1,450 bytes, causing full-size packets to drop silently while handshakes pass.</desc>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">A VXLAN tunnel quietly cuts the usable MTU</text>
+
+  
+  <rect x="50" y="120" width="800" height="780" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <line x1="798" y1="150" x2="798" y2="620" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.45"/>
+
+  
+  
+  <g transform="translate(75, 177)">
+    <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M16 48 L16 36 M24 48 L24 36 M32 48 L32 36 M40 48 L40 36" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="28" cy="22" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <rect x="150" y="170" width="670" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="485" y="214" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Underlay link MTU: 1,500 bytes</text>
+
+  
+  
+  <g transform="translate(75, 297)">
+    <rect x="12" y="18" width="32" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M18 18 V10 C18 4 22 0 28 0 C34 0 38 4 38 10 V18" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="31" r="3" fill="#207448"/>
+  </g>
+  <rect x="150" y="290" width="648" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <path d="M798 290 H812 Q820 290 820 298 V352 Q820 360 812 360 H798 Z" fill="#164e32" stroke="#164e32" stroke-width="2"/>
+  <text x="474" y="334" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">VXLAN adds 50 bytes</text>
+
+  
+  
+  <g transform="translate(75, 417)">
+    <polygon points="28,4 6,46 50,46" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="18" x2="28" y2="30" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="38" r="2.5" fill="#db8129"/>
+  </g>
+  <rect x="150" y="410" width="670" height="70" rx="8" fill="#fdf2e9" stroke="#db8129" stroke-width="4"/>
+  <text x="485" y="454" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Full-size 1,500 packet: dropped silently</text>
+
+  
+  
+  <g transform="translate(75, 537)">
+    <path d="M28 4 L50 16 L50 40 L28 52 L6 40 L6 16 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M28 4 L28 52 M28 28 L50 16 M28 28 L6 16" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <rect x="150" y="530" width="648" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="474" y="574" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Pod MTU after tunnel: 1,450 bytes</text>
+
+  
+  <rect x="90" y="655" width="720" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(115, 682)">
+    <path d="M28 4 C42 4 48 10 48 22 C48 40 34 50 28 54 C22 50 8 40 8 22 C8 10 14 4 28 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M20 28 L26 34 L38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="470" y="702" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="470" dy="0">The handshake and health checks are small,</tspan>
+    <tspan x="470" dy="34">so they still pass.</tspan>
+  </text>
+
+  
+  <rect x="890" y="120" width="660" height="780" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1192, 160)">
+    <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="18" y="18" width="20" height="20" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M16 0 V8 M28 0 V8 M40 0 V8 M16 48 V56 M28 48 V56 M40 48 V56 M0 16 H8 M0 28 H8 M0 40 H8 M48 16 H56 M48 28 H56 M48 40 H56" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <rect x="915" y="270" width="610" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1220" y="348" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1220" dy="0">IPv4 header 20, TCP header 20:</tspan>
+    <tspan x="1220" dy="44">largest TCP payload at 1,500 = 1,460</tspan>
+  </text>
+
+  
+  <rect x="915" y="520" width="610" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1220" y="598" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1220" dy="0">ICMP header 8:</tspan>
+    <tspan x="1220" dy="44">largest ping payload at 1,500 = 1,472</tspan>
+  </text>
+</svg>

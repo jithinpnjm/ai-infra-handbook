@@ -89,24 +89,9 @@ When you need the main loop, start with `clusterpolicy_controller.go`, which dep
 
 The `ClusterPolicy` reconciler is the loop that deploys every operand, so it helps to see the whole loop in one picture before you read the code. The diagram shows what wakes the loop and what it does with each state. Start at the top left with the ClusterPolicy and follow the arrows. Notice that a state marked not ready leads back into the loop, not out of it.
 
-```mermaid
-flowchart TB
-  CP[(ClusterPolicy CR)] --> RC[ClusterPolicyReconciler.Reconcile]
-  N[(Node events:<br/>gpu.present, workload config,<br/>OS label, upgrade labels)] --> RC
-  DS[(Owned DaemonSets)] --> RC
-  RC --> S{Singleton?<br/>oldest CR wins}
-  S -- other CR --> IG[Mark Ignored]
-  S -- active --> INIT[init: discover GPU nodes,<br/>runtime, OS, load states]
-  INIT --> LOOP[For each state in order]
-  LOOP --> ST[step: run control funcs<br/>ServiceAccount, Role, ConfigMap,<br/>DaemonSet, Service, ...]
-  ST --> RDY{ready?}
-  RDY -- yes or disabled --> LOOP
-  RDY -- no --> MARK[remember not ready<br/>continue to next state]
-  MARK --> LOOP
-  LOOP -- done --> OUT{any not ready?}
-  OUT -- yes --> RQ[Set NotReady,<br/>RequeueAfter 5s]
-  OUT -- no --> OK[Set Ready condition]
-```
+![The ClusterPolicy flow](./img/m5-33-1.svg)
+
+*Figure 5.33.1. The ClusterPolicy flow, as a diagram.*
 
 As you read the diagram, you will see that a state which is not ready does not stop the loop. The reconciler records the problem and keeps going. That choice is deliberate. If a slow driver blocked every later state, the device plugin and the monitoring would never start, and you would have no visibility into why. Here is what each part of the flow does, as the code shows it.
 
@@ -155,23 +140,9 @@ If you want to see the order on one node, open `assets/state-device-plugin/0500_
 
 The validator writes those files. You can find its code in `cmd/nvidia-validator/main.go`, and its constants include `driver-ready`, `toolkit-ready`, `plugin-ready`, `cuda-ready`, `nvidia-fs-ready`, `nvidia-peermem-ready` and `mofed-ready`. Each name is a marker that says one step is finished. The real order on a node is shown below. Read it from top to bottom, and notice that every step begins by waiting for the marker written by the step before it.
 
-```mermaid
-sequenceDiagram
-  participant Drv as driver pod
-  participant Val as validator pod
-  participant Tk as toolkit pod
-  participant DP as device-plugin pod
-  participant Kubelet
-  Drv->>Drv: build and load nvidia kernel modules
-  Val->>Val: driver-validation init loops until driver works
-  Val->>Val: write driver-ready in run-nvidia-validations
-  Tk->>Tk: init waits for driver-ready
-  Tk->>Tk: install container toolkit and configure runtime
-  Val->>Val: write toolkit-ready
-  DP->>DP: init waits for toolkit-ready and live nvidia module
-  DP->>Kubelet: register nvidia.com/gpu
-  Val->>Val: run CUDA workload validation then write plugin-ready and cuda-ready
-```
+![Node gating and the validator chain](./img/m5-33-2.svg)
+
+*Figure 5.33.2. Node gating and the validator chain, as a diagram.*
 
 Read the diagram as a chain, where each step waits for the file the step before it writes. The chain is the reason the device plugin does not advertise GPUs too early. If the plugin registered before the driver and the container toolkit were ready, Pods would be scheduled onto a GPU that cannot yet run them. This is the path to follow when `nvidia.com/gpu` is 0 on a node. Start with the driver pod logs, then the validator init container logs, the toolkit pod, and the device plugin init container. The message "waiting for nvidia container stack to be setup" is one you will see at that last stop. It means the plugin is still in its init loop, waiting for the stack below it. The chain ends with the plugin's registration with the kubelet, covered in 5.8 and Part 11.
 
@@ -235,23 +206,9 @@ The design is more abstract here. A `State` has a `Name`, a `Description`, a `Sy
 
 The diagram below shows how a policy change moves through the reconciler, so you can follow it state by state. Start at the NicClusterPolicy on the left. The InfoCatalog is the bag of facts about the cluster that every state receives, and the state manager then runs each state against it.
 
-```mermaid
-flowchart TB
-  NCP[(NicClusterPolicy)] --> R[NicClusterPolicyReconciler.Reconcile]
-  Nodes[(Node events:<br/>Mellanox label, taint,<br/>readiness)] -- map to the single policy key --> R
-  R --> CAT[Build InfoCatalog:<br/>cluster type, static config,<br/>DOCA driver images]
-  CAT --> SM[state manager: SyncState]
-  SM --> S1[state OFED driver]
-  SM --> S2[state Multus]
-  SM --> S3[state RDMA shared device plugin]
-  SM --> S4[state SR-IOV device plugin]
-  SM --> S5[state NV-IPAM and others]
-  S1 --> OBJ[render manifests, create or update, check readiness]
-  SM --> ST[update CR status]
-  R --> WL[Update mofed.wait labels on nodes]
-  WL --> RQ{not ready?}
-  RQ -- yes --> RQE[requeue with delay]
-```
+![The Network Operator reconcile and State interface](./img/m5-33-3.svg)
+
+*Figure 5.33.3. The Network Operator reconcile and State interface, as a diagram.*
 
 As you read `Reconcile`, pay attention to these details. It first waits on a migration channel before doing anything, so a one-time data migration finishes before reconciliation begins. A channel here is Go's way of making one part of the program wait for a signal from another. A policy that is not named with the expected singleton name is rejected by `handleUnsupportedInstance`. Both checks run before any real work, so a bad start does no harm.
 

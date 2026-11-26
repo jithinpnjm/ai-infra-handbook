@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Common YAML and template mistakes: what the reviewer sees and what the parser does</title>
+  <desc>Visual reference table comparing common YAML and template mistakes with their proper fixes across Area, Mistake, and Fix categories.</desc>
+
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="56" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Common YAML and template mistakes:</text>
+  <text x="800" y="108" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">what the reviewer sees and what the parser does</text>
+
+  
+  <rect x="40" y="130" width="1520" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="163" font-family="sans-serif" font-size="25" font-weight="600" fill="#303a36" text-anchor="middle">reviewers read intent, the mistakes live in what the parser or renderer does with the text</text>
+
+  
+  <rect x="40" y="195" width="250" height="46" rx="6" fill="#207448"/>
+  <text x="165" y="228" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Area</text>
+
+  <rect x="300" y="195" width="850" height="46" rx="6" fill="#207448"/>
+  <text x="725" y="228" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Mistake</text>
+
+  <rect x="1160" y="195" width="400" height="46" rx="6" fill="#207448"/>
+  <text x="1360" y="228" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Fix</text>
+
+  
+  <rect x="40" y="250" width="250" height="130" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="58" y="291" width="38" height="48" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="68" y1="305" x2="84" y2="305" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="74" y1="315" x2="88" y2="315" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="74" y1="325" x2="84" y2="325" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="120" y="325" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">YAML</text>
+
+  <rect x="300" y="250" width="850" height="130" rx="6" fill="#ffffff" stroke="#c4d7c8" stroke-width="1.5"/>
+  <text x="330" y="288" font-family="sans-serif" font-size="24" fill="#303a36">tabs and uneven indentation; mixing list styles;</text>
+  <text x="330" y="320" font-family="sans-serif" font-size="24" fill="#303a36">unquoted NO, 1.10, yes, times and leading-zero values;</text>
+  <text x="330" y="352" font-family="sans-serif" font-size="24" fill="#303a36">an unquoted {{ var }} at the start of a value</text>
+
+  <rect x="1160" y="250" width="400" height="130" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1360" y="296" font-family="sans-serif" font-size="24" font-weight="600" fill="#207448" text-anchor="middle">spaces only, quote</text>
+  <text x="1360" y="328" font-family="sans-serif" font-size="24" font-weight="600" fill="#207448" text-anchor="middle">anything that must</text>
+  <text x="1360" y="360" font-family="sans-serif" font-size="24" font-weight="600" fill="#207448" text-anchor="middle">stay text</text>
+
+  
+  <rect x="40" y="390" width="250" height="270" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 148 435 C 138 435 138 447 138 453 C 138 459 130 463 130 463 C 130 463 138 467 138 473 C 138 479 138 491 148 491" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 182 435 C 192 435 192 447 192 453 C 192 459 200 463 200 463 C 200 463 192 467 192 473 C 192 479 192 491 182 491" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="165" y="550" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Templates</text>
+
+  <rect x="300" y="390" width="850" height="270" rx="6" fill="#ffffff" stroke="#c4d7c8" stroke-width="1.5"/>
+  <text x="330" y="430" font-family="sans-serif" font-size="24" fill="#303a36">when: "{{ var }}" double-templates a condition</text>
+  <text x="330" y="462" font-family="sans-serif" font-size="24" fill="#303a36">(when: var is correct); undefined variables that</text>
+  <text x="330" y="494" font-family="sans-serif" font-size="24" fill="#303a36">quietly render as empty strings; heavy logic and</text>
+  <text x="330" y="526" font-family="sans-serif" font-size="24" fill="#303a36">nested loops nobody can review; templates that</text>
+  <text x="330" y="558" font-family="sans-serif" font-size="24" fill="#303a36">generate other templates; whitespace bugs when</text>
+  <text x="330" y="590" font-family="sans-serif" font-size="24" fill="#303a36">nobody inspects the output; forgetting {% raw %}</text>
+  <text x="330" y="622" font-family="sans-serif" font-size="24" fill="#303a36">for Go-template or Jinja-in-Jinja content</text>
+
+  <rect x="1160" y="390" width="400" height="270" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1360" y="500" font-family="sans-serif" font-size="24" font-weight="600" fill="#207448" text-anchor="middle">StrictUndefined,</text>
+  <text x="1360" y="532" font-family="sans-serif" font-size="24" font-weight="600" fill="#207448" text-anchor="middle">simple templates,</text>
+  <text x="1360" y="564" font-family="sans-serif" font-size="24" font-weight="600" fill="#207448" text-anchor="middle">inspect output</text>
+
+  
+  <rect x="40" y="670" width="250" height="110" rx="6" fill="#fdf2e9" stroke="#db8129" stroke-width="3"/>
+  
+  <path d="M 75 698 L 94 706 C 94 723 86 736 75 743 C 64 736 56 723 56 706 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="75" cy="717" r="3.5" fill="#db8129"/>
+  <path d="M 73.5 720 L 76.5 720 L 77.5 728 L 72.5 728 Z" fill="#db8129"/>
+  <text x="115" y="733" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Security</text>
+
+  <rect x="300" y="670" width="850" height="110" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="330" y="716" font-family="sans-serif" font-size="24" fill="#303a36">yaml.load on untrusted data;</text>
+  <text x="330" y="750" font-family="sans-serif" font-size="24" fill="#303a36">rendering untrusted strings as templates</text>
+
+  <rect x="1160" y="670" width="400" height="110" rx="6" fill="#fdf2e9" stroke="#db8129" stroke-width="2"/>
+  <text x="1360" y="718" font-family="sans-serif" font-size="24" font-weight="600" fill="#db8129" text-anchor="middle">safe_load,</text>
+  <text x="1360" y="750" font-family="sans-serif" font-size="24" font-weight="600" fill="#db8129" text-anchor="middle">never template user input</text>
+
+  
+  <rect x="40" y="790" width="250" height="165" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 165 808 L 190 821 L 190 848 L 165 861 L 140 848 L 140 821 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="165" y1="821" x2="165" y2="861" stroke="#207448" stroke-width="3"/>
+  <line x1="165" y1="821" x2="190" y2="808" stroke="#207448" stroke-width="3"/>
+  <line x1="165" y1="821" x2="140" y2="808" stroke="#207448" stroke-width="3"/>
+  <text x="165" y="895" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Reuse and</text>
+  <text x="165" y="927" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">delivery</text>
+
+  <rect x="300" y="790" width="850" height="165" rx="6" fill="#ffffff" stroke="#c4d7c8" stroke-width="1.5"/>
+  <text x="330" y="835" font-family="sans-serif" font-size="24" fill="#303a36">anchors across files (not supported);</text>
+  <text x="330" y="867" font-family="sans-serif" font-size="24" fill="#303a36">overused merge keys hide the effective</text>
+  <text x="330" y="899" font-family="sans-serif" font-size="24" fill="#303a36">configuration; deploying rendered output</text>
+  <text x="330" y="931" font-family="sans-serif" font-size="24" fill="#303a36">that was never validated</text>
+
+  <rect x="1160" y="790" width="400" height="165" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1360" y="862" font-family="sans-serif" font-size="24" font-weight="600" fill="#207448" text-anchor="middle">one file per anchor,</text>
+  <text x="1360" y="896" font-family="sans-serif" font-size="24" font-weight="600" fill="#207448" text-anchor="middle">validate before deploy</text>
+
+  
+  <rect x="40" y="970" width="1520" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+  <text x="800" y="1004" font-family="sans-serif" font-size="24" font-style="italic" fill="#303a36" text-anchor="middle">open the rendered file before you open the diff of the template:</text>
+  <text x="800" y="1034" font-family="sans-serif" font-size="24" font-style="italic" fill="#303a36" text-anchor="middle">the rendered file shows what the target will receive</text>
+
+  
+  <rect x="40" y="1065" width="1520" height="55" rx="8" fill="#207448"/>
+  <text x="800" y="1101" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Check by rendering and reading the output, not by trusting the source</text>
+</svg>

@@ -1,0 +1,180 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The one-page checklist: a question and a sentence per step</title>
+  <desc>An infographic checklist with eight steps showing questions to ask and sentences to say aloud for system design.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" font-size="48" font-weight="bold" font-family="sans-serif" fill="#303a36" text-anchor="middle">The one-page checklist: a question and a sentence per step</text>
+
+  
+  <g id="row-1">
+    <rect x="60" y="110" width="1480" height="116" rx="14" fill="#e8f1ea" stroke="#c4d9cb" stroke-width="1.5"/>
+    <circle cx="98" cy="168" r="22" fill="#207448"/>
+    <text x="98" y="176" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <rect x="138" y="146" width="36" height="44" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 148,146 L 148,141 Q 148,138 152,138 L 160,138 Q 164,138 164,141 L 164,146" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="146" y1="158" x2="166" y2="158" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="146" y1="168" x2="166" y2="168" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="146" y1="178" x2="158" y2="178" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="196" y="178" font-size="30" font-weight="bold" font-family="sans-serif" fill="#303a36">Requirements</text>
+    
+    <text x="430" y="176" font-size="24" font-family="sans-serif" fill="#5c6c64">Who, what load, what target?</text>
+    
+    <path d="M 915,140 A 16 16 0 0 1 931,124 L 1500,124 A 16 16 0 0 1 1516,140 L 1516,196 A 16 16 0 0 1 1500,212 L 931,212 A 16 16 0 0 1 915,196 L 915,178 L 898,168 L 915,158 Z" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="161" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="945" dy="0">Here is what I will build</tspan>
+      <tspan x="945" dy="30">and what I will leave out.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="60" y="242" width="1480" height="116" rx="14" fill="#e8f1ea" stroke="#c4d9cb" stroke-width="1.5"/>
+    <circle cx="98" cy="300" r="22" fill="#207448"/>
+    <text x="98" y="308" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <path d="M 136,314 A 20 20 0 1 1 176,314" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="156" y1="310" x2="168" y2="294" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="156" cy="310" r="3" fill="#207448"/>
+    
+    <text x="196" y="310" font-size="30" font-weight="bold" font-family="sans-serif" fill="#303a36">Estimate</text>
+    
+    <text x="430" y="308" font-size="24" font-family="sans-serif" fill="#5c6c64">Which number decides the design?</text>
+    
+    <path d="M 915,272 A 16 16 0 0 1 931,256 L 1500,256 A 16 16 0 0 1 1516,272 L 1516,328 A 16 16 0 0 1 1500,344 L 931,344 A 16 16 0 0 1 915,328 L 915,310 L 898,300 L 915,290 Z" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="293" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="945" dy="0">The number that matters</tspan>
+      <tspan x="945" dy="30">is X because...</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="60" y="374" width="1480" height="116" rx="14" fill="#e8f1ea" stroke="#c4d9cb" stroke-width="1.5"/>
+    <circle cx="98" cy="432" r="22" fill="#207448"/>
+    <text x="98" y="440" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <path d="M 147,416 L 137,432 L 147,448" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 165,416 L 175,432 L 165,448" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="159" y1="414" x2="153" y2="450" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="196" y="442" font-size="30" font-weight="bold" font-family="sans-serif" fill="#303a36">API</text>
+    
+    <text x="430" y="440" font-size="24" font-family="sans-serif" fill="#5c6c64">What does the client call?</text>
+    
+    <path d="M 915,404 A 16 16 0 0 1 931,388 L 1500,388 A 16 16 0 0 1 1516,404 L 1516,460 A 16 16 0 0 1 1500,476 L 931,476 A 16 16 0 0 1 915,460 L 915,442 L 898,432 L 915,422 Z" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="440" font-size="24" font-family="sans-serif" fill="#303a36">Three calls: submit, status, result.</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="60" y="506" width="1480" height="116" rx="14" fill="#e8f1ea" stroke="#c4d9cb" stroke-width="1.5"/>
+    <circle cx="98" cy="564" r="22" fill="#207448"/>
+    <text x="98" y="572" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <ellipse cx="156" cy="550" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 138,550 v 14 a 18 7 0 0 0 36 0 v -14" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 138,564 v 14 a 18 7 0 0 0 36 0 v -14" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="196" y="574" font-size="30" font-weight="bold" font-family="sans-serif" fill="#303a36">Data</text>
+    
+    <text x="430" y="557" font-size="24" font-family="sans-serif" fill="#5c6c64">
+      <tspan x="430" dy="0">What is stored, where,</tspan>
+      <tspan x="430" dy="30">for how long?</tspan>
+    </text>
+    
+    <path d="M 915,536 A 16 16 0 0 1 931,520 L 1500,520 A 16 16 0 0 1 1516,536 L 1516,592 A 16 16 0 0 1 1500,608 L 931,608 A 16 16 0 0 1 915,592 L 915,574 L 898,564 L 915,554 Z" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="557" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="945" dy="0">State lives here, and it is</tspan>
+      <tspan x="945" dy="30">rebuilt from there.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="60" y="638" width="1480" height="116" rx="14" fill="#e8f1ea" stroke="#c4d9cb" stroke-width="1.5"/>
+    <circle cx="98" cy="696" r="22" fill="#207448"/>
+    <text x="98" y="704" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <rect x="138" y="700" width="8" height="14" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="150" y="690" width="8" height="24" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="162" y="680" width="8" height="34" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 138,686 L 168,674 M 158,674 L 168,674 L 168,684" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="196" y="706" font-size="30" font-weight="bold" font-family="sans-serif" fill="#303a36">Scaling</text>
+    
+    <text x="430" y="704" font-size="24" font-family="sans-serif" fill="#5c6c64">What breaks at 10x?</text>
+    
+    <path d="M 915,668 A 16 16 0 0 1 931,652 L 1500,652 A 16 16 0 0 1 1516,668 L 1516,724 A 16 16 0 0 1 1500,740 L 931,740 A 16 16 0 0 1 915,724 L 915,706 L 898,696 L 915,686 Z" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="704" font-size="24" font-family="sans-serif" fill="#303a36">The first bottleneck is...</text>
+  </g>
+
+  
+  <g id="row-6">
+    <rect x="60" y="770" width="1480" height="116" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    <circle cx="98" cy="828" r="22" fill="#207448"/>
+    <text x="98" y="836" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <polygon points="156,808 136,846 176,846" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="156" y1="820" x2="156" y2="832" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="156" cy="840" r="1.8" fill="#207448"/>
+    
+    <text x="196" y="838" font-size="30" font-weight="bold" font-family="sans-serif" fill="#303a36">Failure</text>
+    
+    <text x="430" y="821" font-size="24" font-family="sans-serif" fill="#5c6c64">
+      <tspan x="430" dy="0">What fails, how do we know,</tspan>
+      <tspan x="430" dy="30">what do we do?</tspan>
+    </text>
+    
+    <path d="M 915,800 A 16 16 0 0 1 931,784 L 1500,784 A 16 16 0 0 1 1516,800 L 1516,856 A 16 16 0 0 1 1500,872 L 931,872 A 16 16 0 0 1 915,856 L 915,838 L 898,828 L 915,818 Z" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="821" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="945" dy="0">Detect by..., mitigate by...,</tspan>
+      <tspan x="945" dy="30">fix by...</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-7">
+    <rect x="60" y="902" width="1480" height="116" rx="14" fill="#e8f1ea" stroke="#c4d9cb" stroke-width="1.5"/>
+    <circle cx="98" cy="960" r="22" fill="#207448"/>
+    <text x="98" y="968" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">7</text>
+    
+    <path d="M 156,940 L 174,948 v 14 c 0 14 -18 22 -18 22 c 0 0 -18 -8 -18 -22 v -14 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <circle cx="156" cy="958" r="3" fill="#207448"/>
+    <path d="M 154,961 L 158,961 L 159,968 L 153,968 Z" fill="#207448"/>
+    
+    <text x="196" y="970" font-size="30" font-weight="bold" font-family="sans-serif" fill="#303a36">Security</text>
+    
+    <text x="430" y="968" font-size="24" font-family="sans-serif" fill="#5c6c64">Who may do what to whose data?</text>
+    
+    <path d="M 915,932 A 16 16 0 0 1 931,916 L 1500,916 A 16 16 0 0 1 1516,932 L 1516,988 A 16 16 0 0 1 1500,1004 L 931,1004 A 16 16 0 0 1 915,988 L 915,970 L 898,960 L 915,950 Z" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="968" font-size="24" font-family="sans-serif" fill="#303a36">Tenant isolation is enforced at...</text>
+  </g>
+
+  
+  <g id="row-8">
+    <rect x="60" y="1034" width="1480" height="116" rx="14" fill="#e8f1ea" stroke="#c4d9cb" stroke-width="1.5"/>
+    <circle cx="98" cy="1092" r="22" fill="#207448"/>
+    <text x="98" y="1100" font-size="26" font-weight="bold" font-family="sans-serif" fill="#ffffff" text-anchor="middle">8</text>
+    
+    <circle cx="156" cy="1092" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 156,1074 v 4 M 156,1106 v 4 M 138,1092 h 4 M 170,1092 h 4 M 143,1079 l 3 3 M 166,1102 l 3 3 M 143,1105 l 3 -3 M 166,1082 l 3 -3" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="196" y="1102" font-size="30" font-weight="bold" font-family="sans-serif" fill="#303a36">Operations</text>
+    
+    <text x="430" y="1085" font-size="24" font-family="sans-serif" fill="#5c6c64">
+      <tspan x="430" dy="0">How is it deployed, watched</tspan>
+      <tspan x="430" dy="30">and rolled back?</tspan>
+    </text>
+    
+    <path d="M 915,1064 A 16 16 0 0 1 931,1048 L 1500,1048 A 16 16 0 0 1 1516,1064 L 1516,1120 A 16 16 0 0 1 1500,1136 L 931,1136 A 16 16 0 0 1 915,1120 L 915,1102 L 898,1092 L 915,1082 Z" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="945" y="1085" font-size="24" font-family="sans-serif" fill="#303a36">
+      <tspan x="945" dy="0">SLO, alert, canary,</tspan>
+      <tspan x="945" dy="30">rollback trigger.</tspan>
+    </text>
+  </g>
+</svg>

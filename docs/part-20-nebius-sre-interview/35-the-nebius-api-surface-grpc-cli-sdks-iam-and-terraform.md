@@ -28,15 +28,9 @@ A colleague asks you how to add a set of machines, and you realise the command l
 
 Everything starts from `.proto` files. The repository README says they define the gRPC API, and it recommends the CLI, the Terraform provider and the Go and Python SDKs [source-code]. The REST docs say REST is generated from the same service definitions and exposes the same resources, operations and versions [official]. REST here means the familiar HTTP style of calls, with URLs and JSON bodies. The provider changelog says its releases track a Go SDK version, so Terraform sits on top of the Go SDK [source-code]. An SDK is a software development kit, a library that wraps the raw calls in functions your language can use.
 
-```mermaid
-flowchart LR
-  P["nebius/api .proto files"] --> G["gRPC {service}.api.nebius.cloud:443"]
-  P --> R["REST api.nebius.cloud"]
-  G --> S["Go / Python / JS SDKs"]
-  S --> T["Terraform provider"]
-  C["nebius CLI"] --> G
-  S --> A["Your automation"]
-```
+![One API, several front doors](./img/m20-35-1.svg)
+
+*Figure 20.35.1. One API, several front doors, as a diagram.*
 
 The diagram explains a useful habit. When a client misbehaves, you can ask which layer produced the behaviour. If the SDK adds a retry, that is the SDK. If the server sends an error, that is the API. Because every front door sits on the same definitions, the lowest layer you can reach tells you the most.
 

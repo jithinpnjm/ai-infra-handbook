@@ -1,0 +1,205 @@
+import xml.etree.ElementTree as ET
+import re
+
+svg_code = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What an engine upgrade silently changes</title>
+  <desc>Visual infographic explaining what changes silently during an engine upgrade and illustrating a four-part rollout plan with surge and rollback strategies.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Main Title -->
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">What an engine upgrade silently changes</text>
+
+  <!-- ==================== LEFT COLUMN: things that move with the version ==================== -->
+  <rect x="50" y="100" width="720" height="1060" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  <!-- Left Container Header Icon (56x56 outline) -->
+  <g transform="translate(75, 120)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="14" />
+    <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" />
+  </g>
+  <text x="145" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">things that move with the version</text>
+
+  <!-- Card L1: Compile cache -->
+  <rect x="75" y="190" width="670" height="235" rx="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <g transform="translate(90, 215)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Chip / cache icon (56x56) -->
+    <rect x="10" y="10" width="36" height="36" rx="6" />
+    <rect x="18" y="18" width="20" height="20" rx="3" />
+    <line x1="18" y1="4" x2="18" y2="10" />
+    <line x1="28" y1="4" x2="28" y2="10" />
+    <line x1="38" y1="4" x2="38" y2="10" />
+    <line x1="18" y1="46" x2="18" y2="52" />
+    <line x1="28" y1="46" x2="28" y2="52" />
+    <line x1="38" y1="46" x2="38" y2="52" />
+    <line x1="4" y1="18" x2="10" y2="18" />
+    <line x1="4" y1="28" x2="10" y2="28" />
+    <line x1="4" y1="38" x2="10" y2="38" />
+    <line x1="46" y1="18" x2="52" y2="18" />
+    <line x1="46" y1="28" x2="52" y2="28" />
+    <line x1="46" y1="38" x2="52" y2="38" />
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" y="234">compile cache invalidated by any</tspan>
+    <tspan x="165" dy="32">change to the model, config, relevant</tspan>
+    <tspan x="165" dy="32">VLLM_ environment variables, the</tspan>
+    <tspan x="165" dy="32">torch build or the GPU model, so the</tspan>
+    <tspan x="165" dy="32">first start after an upgrade is</tspan>
+    <tspan x="165" dy="32">slow again</tspan>
+  </text>
+
+  <!-- Card L2: sha256 prefix hashes -->
+  <rect x="75" y="440" width="670" height="175" rx="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <g transform="translate(90, 460)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Hash / routing icon (56x56) -->
+    <line x1="18" y1="8" x2="14" y2="48" />
+    <line x1="38" y1="8" x2="34" y2="48" />
+    <line x1="8" y1="22" x2="48" y2="22" />
+    <line x1="6" y1="36" x2="46" y2="36" />
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" y="485">sha256 prefix hashes may differ across</tspan>
+    <tspan x="165" dy="33">Python or vLLM versions, so cache</tspan>
+    <tspan x="165" dy="33">contents and hash-based routing</tspan>
+    <tspan x="165" dy="33">are not portable</tspan>
+  </text>
+
+  <!-- Card L3: Defaults move -->
+  <rect x="75" y="630" width="670" height="160" rx="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <g transform="translate(90, 652)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Sliders / settings knobs icon (56x56) -->
+    <line x1="8" y1="16" x2="48" y2="16" />
+    <circle cx="20" cy="16" r="6" fill="#ffffff" />
+    <line x1="8" y1="40" x2="48" y2="40" />
+    <circle cx="36" cy="40" r="6" fill="#ffffff" />
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" y="678">defaults move: V1 has chunked prefill</tspan>
+    <tspan x="165" dy="34">on by default and recompute as the</tspan>
+    <tspan x="165" dy="34">preemption mode</tspan>
+  </text>
+
+  <!-- Card L4: Ray Serve LLM -->
+  <rect x="75" y="806" width="670" height="225" rx="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <g transform="translate(90, 828)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Package / dependency box icon (56x56) -->
+    <path d="M 28 6 L 48 16 L 48 38 L 28 48 L 8 38 L 8 16 Z" />
+    <line x1="28" y1="26" x2="28" y2="48" />
+    <line x1="28" y1="26" x2="48" y2="16" />
+    <line x1="28" y1="26" x2="8" y2="16" />
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" y="858">Ray Serve LLM installed with pip</tspan>
+    <tspan x="165" dy="33">install ray[llm] pulls in vLLM, so the</tspan>
+    <tspan x="165" dy="33">engine version is chosen by the Ray</tspan>
+    <tspan x="165" dy="33">release and your pin, not only the</tspan>
+    <tspan x="165" dy="33">image tag: record both</tspan>
+  </text>
+
+
+  <!-- ==================== RIGHT COLUMN: Four-part rollout plan ==================== -->
+  <rect x="830" y="100" width="720" height="1060" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+  <!-- Step 1 -->
+  <rect x="855" y="125" width="670" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Tag / pin icon (56x56) -->
+    <path d="M 12 28 L 28 12 L 46 12 L 46 30 L 30 46 Z" />
+    <circle cx="38" cy="20" r="3" fill="#207448" />
+  </g>
+  <text x="950" y="177" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">1 pin by tag or digest</text>
+
+  <!-- Arrow Step 1 -> Step 2 -->
+  <line x1="1190" y1="210" x2="1190" y2="238" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Step 2 -->
+  <rect x="855" y="238" width="670" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 262)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Download / container layer icon (56x56) -->
+    <rect x="8" y="10" width="40" height="16" rx="4" />
+    <path d="M 28 26 L 28 46 M 18 36 L 28 46 L 38 36" />
+  </g>
+  <text font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="950" y="282">2 pre-pull the image and</tspan>
+    <tspan x="950" dy="36">warm the compile cache</tspan>
+  </text>
+
+  <!-- Arrow Step 2 -> Step 3 -->
+  <line x1="1190" y1="343" x2="1190" y2="371" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Step 3 -->
+  <rect x="855" y="371" width="670" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 415)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Metrics / split slice gauge icon (56x56) -->
+    <path d="M 8 44 A 20 20 0 0 1 48 44" />
+    <line x1="28" y1="44" x2="38" y2="24" />
+    <circle cx="28" cy="44" r="4" fill="#207448" />
+  </g>
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="950" y="420">3 canary on a small slice and</tspan>
+    <tspan x="950" dy="34">compare latency percentiles,</tspan>
+    <tspan x="950" dy="34">preemptions and finish_reason shares</tspan>
+  </text>
+
+  <!-- Arrow Step 3 -> Step 4 -->
+  <line x1="1190" y1="516" x2="1190" y2="544" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Step 4 -->
+  <rect x="855" y="544" width="670" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 570)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Pods / shield keeper icon (56x56) -->
+    <path d="M 28 6 L 48 14 C 48 34 28 48 28 48 C 28 48 8 34 8 14 Z" />
+    <line x1="20" y1="26" x2="36" y2="26" />
+  </g>
+  <text font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="950" y="592">4 keep the old version pods</tspan>
+    <tspan x="950" dy="36">until the new ones pass</tspan>
+  </text>
+
+  <!-- Arrow Step 4 -> Rollback line -->
+  <line x1="1190" y1="654" x2="1190" y2="682" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Rollback Line Card -->
+  <rect x="855" y="682" width="670" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 708)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <!-- Return / version control branch icon (56x56) -->
+    <path d="M 44 14 L 20 14 C 13 14 8 19 8 26 C 8 33 13 38 20 38 L 44 38" />
+    <polyline points="34,6 44,14 34,22" />
+    <circle cx="44" cy="38" r="4" fill="#207448" />
+  </g>
+  <text font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    <tspan x="950" y="728">old image plus old flags</tspan>
+    <tspan x="950" dy="32">in version control</tspan>
+  </text>
+
+  <!-- Surge note (ORANGE highlight - single most important item) -->
+  <g stroke="#db8129">
+    <rect x="855" y="804" width="670" height="336" rx="14" fill="#fef8f2" stroke-width="3" />
+    <g transform="translate(875, 828)" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <!-- Warning / stall triangle icon (56x56) -->
+      <polygon points="28,6 50,48 6,48" />
+      <line x1="28" y1="20" x2="28" y2="34" />
+      <line x1="28" y1="40" x2="28" y2="43" stroke-width="5" stroke-linecap="round" />
+    </g>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="950" y="848">maxUnavailable 0 and maxSurge 1</tspan>
+    <tspan x="950" dy="34">keeps all serving pods while the new</tspan>
+    <tspan x="950" dy="34">one starts, but needs a spare GPU or</tspan>
+    <tspan x="950" dy="34">the surge pod stays Pending and the</tspan>
+    <tspan x="950" dy="34">roll stalls; with no spare GPU use</tspan>
+    <tspan x="950" dy="34">maxUnavailable 1 and maxSurge 0</tspan>
+    <tspan x="950" dy="34">and accept lower capacity</tspan>
+    <tspan x="950" dy="34">(author's reasoning)</tspan>
+  </text>
+</svg>'''
+
+with open("test_engine_upgrade.svg", "w") as f:
+    f.write(svg_code)

@@ -198,22 +198,9 @@ Each row is a capability, the evidence, the source, the tag, what an SRE must op
 
 Read the diagram from left to right, as a request would travel. Clients send OpenAI-compatible requests to a regional URL. The gateway checks auth, limits and tiers. The router sends the request to an engine replica, and the engine uses its KV tiers and drafter as the request needs them. The control plane and the GPU pool sit to the side, and the metrics path runs from the gateway and the replicas to storage.
 
-```mermaid
-flowchart TB
-  C["Clients (OpenAI-compatible)"] --> E["Regional data-plane URL"]
-  E --> G["Gateway: auth, limits, tiers (official: headers, 429)"]
-  G --> R["Router (vendor: cache-aware, falls back on load)"]
-  R --> P1["Engine replica A (vLLM or TensorRT-LLM)"]
-  R --> P2["Engine replica B"]
-  R -.-> PD["Prefill and decode workers (vendor: one case study)"]
-  P1 --> K["KV tiers: HBM, host, external (official: local and external hits)"]
-  P1 --> D["Drafter (official: spec decoding, Fast, custom)"]
-  CP["Control plane /v0/dedicated_endpoints (official)"] -.->|"desired state"| P1
-  CP --> POOL["On-demand GPU pool (official)"]
-  G --> M["Metrics: dedicated only (official)"]
-  P1 --> M
-  M --> S["Stored in eu-north (official)"]
-```
+![A reconstructed data plane, clearly labelled as inference](./img/m20-38-1.svg)
+
+*Figure 20.38.1. A reconstructed data plane, clearly labelled as inference, as a diagram.*
 
 Components, and the signals you would watch for each. The signals come from [20.18](./18-how-llm-serving-fails.md) for failures, [20.19](./19-slis-slos-and-alerts-for-token-apis.md) for SLIs, [20.20](./20-autoscaling-gpu-inference.md) for scaling and [20.21](./21-request-routing-retries-and-overload-control.md) for routing. Metric names for each engine are in [20.22](./22-operating-vllm-triton-ray-and-tensorrt-llm.md). Use the table as a list of questions for a design review, not as a description of Nebius's internals.
 

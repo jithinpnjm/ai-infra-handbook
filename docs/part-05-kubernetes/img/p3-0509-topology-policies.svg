@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Topology Manager: pick the policy by pod shape</title>
+  <desc>Visual explanation of Kubernetes Topology Manager hint sources, policy choices, scope settings, and pod pool selection rules.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Topology Manager: pick the policy by pod shape</text>
+
+  
+  
+  <rect x="40" y="95" width="440" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(65, 122)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <rect x="18" y="18" width="20" height="20" rx="2" fill="#207448" fill-opacity="0.15"/>
+    <line x1="18" y1="2" x2="18" y2="10"/>
+    <line x1="28" y1="2" x2="28" y2="10"/>
+    <line x1="38" y1="2" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="54"/>
+    <line x1="28" y1="46" x2="28" y2="54"/>
+    <line x1="38" y1="46" x2="38" y2="54"/>
+    <line x1="2" y1="18" x2="10" y2="18"/>
+    <line x1="2" y1="28" x2="10" y2="28"/>
+    <line x1="2" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="54" y2="18"/>
+    <line x1="46" y1="28" x2="54" y2="28"/>
+    <line x1="46" y1="38" x2="54" y2="38"/>
+  </g>
+  <text x="140" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU Manager</text>
+
+  
+  <rect x="520" y="95" width="440" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(545, 122)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="14" width="48" height="28" rx="3"/>
+    <line x1="14" y1="20" x2="22" y2="20"/>
+    <line x1="28" y1="20" x2="36" y2="20"/>
+    <line x1="14" y1="28" x2="22" y2="28"/>
+    <line x1="28" y1="28" x2="36" y2="28"/>
+    <line x1="10" y1="42" x2="10" y2="48"/>
+    <line x1="18" y1="42" x2="18" y2="48"/>
+    <line x1="26" y1="42" x2="26" y2="48"/>
+    <line x1="34" y1="42" x2="34" y2="48"/>
+    <line x1="42" y1="42" x2="42" y2="48"/>
+  </g>
+  <text x="615" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Memory Manager</text>
+
+  
+  <rect x="1000" y="95" width="560" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1025, 122)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="34" rx="3"/>
+    <line x1="2" y1="4" x2="2" y2="48"/>
+    <line x1="14" y1="42" x2="14" y2="48"/>
+    <line x1="22" y1="42" x2="22" y2="48"/>
+    <line x1="30" y1="42" x2="30" y2="48"/>
+    <circle cx="28" cy="25" r="9"/>
+  </g>
+  <text x="1095" y="144" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1095" dy="0">Device Manager with GPU</tspan>
+    <tspan x="1095" dy="36">and NIC NUMA locations</tspan>
+  </text>
+
+  
+  <line x1="260" y1="205" x2="260" y2="242" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="740" y1="205" x2="740" y2="242" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="1280" y1="205" x2="1280" y2="242" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="40" y="245" width="1520" height="78" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(65, 256)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="16"/>
+    <circle cx="28" cy="28" r="6" fill="#207448"/>
+    <line x1="28" y1="4" x2="28" y2="12"/>
+    <line x1="28" y1="44" x2="28" y2="52"/>
+    <line x1="4" y1="28" x2="12" y2="28"/>
+    <line x1="44" y1="28" x2="52" y2="28"/>
+  </g>
+  <text x="135" y="294" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Topology Manager (broker): intersects NUMA hints and enforces a policy</text>
+
+  
+  <rect x="40" y="340" width="1520" height="395" rx="12" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
+
+  
+  <rect x="60" y="356" width="1480" height="52" rx="8" fill="#f5f8f5" stroke="#d5e2d8" stroke-width="1.5"/>
+  <text x="85" y="391" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">none:</tspan> no alignment (default)
+  </text>
+
+  
+  <rect x="60" y="420" width="1480" height="52" rx="8" fill="#f5f8f5" stroke="#d5e2d8" stroke-width="1.5"/>
+  <text x="85" y="455" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">best-effort:</tspan> prefer aligned, admit anyway
+  </text>
+
+  
+  <rect x="60" y="484" width="1480" height="82" rx="8" fill="#f5f8f5" stroke="#d5e2d8" stroke-width="1.5"/>
+  <text x="85" y="516" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">restricted:</tspan> admit only if the minimal number of NUMA nodes is achieved, else TopologyAffinityError
+    <tspan x="85" dy="32">(a 2-GPU pod needs 1 NUMA node, an 8-GPU pod on a dual-socket server needs 2)</tspan>
+  </text>
+
+  
+  <rect x="60" y="578" width="1480" height="52" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="2.5"/>
+  <text x="85" y="613" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#db8129">single-numa-node:</tspan> admit only if everything fits on one NUMA node
+  </text>
+
+  
+  <rect x="60" y="642" width="1480" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 653)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="40" height="36" rx="4"/>
+    <line x1="6" y1="20" x2="46" y2="20"/>
+    <circle cx="16" cy="32" r="3" fill="#207448"/>
+    <circle cx="36" cy="32" r="3" fill="#207448"/>
+  </g>
+  <text x="145" y="687" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="monospace" font-weight="bold" fill="#207448">container</tspan> aligns each container alone, <tspan font-family="monospace" font-weight="bold" fill="#207448">pod</tspan> aligns all containers together
+  </text>
+
+  
+  
+  <rect x="40" y="755" width="740" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(70, 775)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="6"/>
+    <rect x="14" y="16" width="10" height="10" rx="1" fill="#207448" fill-opacity="0.2"/>
+    <rect x="32" y="16" width="10" height="10" rx="1" fill="#207448" fill-opacity="0.2"/>
+    <rect x="14" y="30" width="10" height="10" rx="1" fill="#207448" fill-opacity="0.2"/>
+    <rect x="32" y="30" width="10" height="10" rx="1" fill="#207448" fill-opacity="0.2"/>
+  </g>
+  <text x="145" y="812" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">1 to 4 GPU inference pool:</text>
+  <text x="70" y="870" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0" font-weight="bold">single-numa-node, scope pod;</tspan>
+    <tspan x="70" dy="40">CPUs, memory, GPU and NIC share</tspan>
+    <tspan x="70" dy="40">one NUMA node and PCIe root</tspan>
+  </text>
+
+  
+  <rect x="820" y="755" width="740" height="295" rx="12" fill="#ffffff" stroke="#ccd9d0" stroke-width="2"/>
+  <g transform="translate(850, 775)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="22" height="44" rx="4"/>
+    <rect x="30" y="6" width="22" height="44" rx="4"/>
+    <line x1="26" y1="18" x2="30" y2="18"/>
+    <line x1="26" y1="38" x2="30" y2="38"/>
+  </g>
+  <text x="925" y="812" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">8-GPU training pool:</text>
+  <text x="850" y="870" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="850" dy="0" font-weight="bold">restricted or best-effort;</tspan>
+    <tspan x="850" dy="40">the pod spans both sockets by design,</tspan>
+    <tspan x="850" dy="40">single-numa-node would reject it every time</tspan>
+  </text>
+
+  
+  <rect x="40" y="1075" width="1520" height="95" rx="10" fill="#207448"/>
+  <g transform="translate(68, 1098)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="20"/>
+    <line x1="24" y1="14" x2="24" y2="26"/>
+    <circle cx="24" cy="33" r="2" fill="#ffffff"/>
+  </g>
+  <text x="135" y="1116" font-family="sans-serif" font-size="24" fill="#ffffff">
+    <tspan x="135" dy="0" font-weight="bold">rejection happens after scheduling because the default scheduler is not topology-aware;</tspan>
+    <tspan x="135" dy="34">use NFD, NodeResourceTopology plugin or DRA</tspan>
+  </text>
+</svg>

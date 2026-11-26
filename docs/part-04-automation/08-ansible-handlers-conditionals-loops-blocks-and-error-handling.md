@@ -41,6 +41,10 @@ This chapter builds on 4.6 and 4.7. By the end, you will be able to:
 
 ## 1. Handlers
 
+![A changed config task queues a restart, a later task fails and the handler is skipped, and the second run reports ok so no restart happens.](./img/a08-handler-lost.svg)
+
+*Figure 4.8.1. A handler can be lost when a later task fails in the same run, because the next run sees an unchanged file and never notifies it.*
+
 A template changes the nginx config on three web servers. The new config is correct, but nginx keeps serving the old settings until someone restarts it. Handlers exist for exactly that moment. A handler runs once, at the end of the play, and only when a task reports a change. The restart happens when it is needed, and never when it is not.
 
 Suppose you update the DCGM exporter configuration on a GPU node. DCGM is NVIDIA's data center GPU manager, and its exporter publishes GPU health numbers that monitoring reads. The service has to restart before it can read the new file. Restarting it on every run, though, is unnecessary, and it briefly interrupts the metrics that your dashboards depend on. A handler solves this. A handler is a task that runs only when another task reports `changed`. It also runs once per play, at the end of the current section, even when many tasks notify it.
@@ -104,18 +108,17 @@ Handlers in roles live in `roles/x/handlers/main.yml`. The play and the other ro
 
 The flowchart below shows the drain, change and return sequence that section 6 builds in code. Read it from top to bottom. The left branch is the happy path, and the right branch is what happens when the change fails. Both branches end with the node in a state you can explain to the next person on call.
 
-```mermaid
-flowchart TD
-    Drain["1. Drain node from Slurm / ELB<br/>(delegate_to controller/localhost)"] --> Block["2. block: Apply driver/config changes<br/>& run nvidia-smi / smoke validation"]
-    Block -->|All tasks succeed| AlwaysOk["3a. always: Collect journalctl diagnostics"]
-    Block -->|Any task fails| Rescue["3b. rescue: Log ansible_failed_task,<br/>rollback driver/snapshot, & fail loudly"]
-    Rescue --> AlwaysFail["4b. always: Collect journalctl diagnostics<br/>(Node stays DRAINED for investigation)"]
-    AlwaysOk --> Resume["4a. Return healthy node to service<br/>(scontrol State=RESUME)"]
-```
+![Handlers](./img/m4-08-1.svg)
+
+*Figure 4.8.2. Handlers, as a diagram.*
 
 For each handler, check that the task notifying it reports `changed` only when something real has changed. A quick test helps here. Run the playbook twice in a row with nothing edited between the runs. The second run should report `ok` for the notifying task and should not restart anything. If it still restarts, the notifying task is not idempotent, and the handler is doing work it should not.
 
 ## 2. Conditionals: when
+
+![Two lanes showing a string false passed with -e being treated as true and the bool filter fixing it.](./img/p4-0408-when-string-trap.svg)
+
+*Figure 4.8.3. The bool filter turns the string false into a real false so the condition evaluates as intended.*
 
 A driver install should run on GPU nodes and be skipped on login nodes. A `when` clause states that condition beside the task, so a reader can see the rule without tracing the whole play. If the condition is false, Ansible reports the task as skipped, and the recap shows it. A skipped task is not a failure. It is the play saying that this task does not apply to this host.
 
@@ -224,6 +227,10 @@ A command fails on one node out of forty. Should the whole play stop, or should 
 
 ### Default behaviour
 
+![In a play with four hosts, one host with a failed task leaves the rest of the play while the other three continue to the end.](./img/p2-0408-host-leaves-play.svg)
+
+*Figure 4.8.4. A host whose task fails leaves the rest of the play while the other hosts keep running, and the recap records the failure.*
+
 Suppose a task fails on one host while the rest of the play is still running. By default, that host leaves the rest of the play, and the other hosts carry on. Think of a relay race where one runner drops out, but the other runners keep going with their own legs. The exception is when `any_errors_fatal` or `max_fail_percentage` stops the play. The play recap reports `failed`, and the exit code is non-zero (2). `unreachable` hosts behave similarly, but the recap counts them separately, with exit 3. The separate count matters, because a host you could not reach is a different problem from a host where a command failed.
 
 ### Overriding judgement
@@ -251,6 +258,10 @@ Sometimes Ansible's verdict is wrong. `grep` returns 1 when nothing matches, and
 The first example accepts exit codes 0 and 1, and it never reports a change. The `changed_when: false` line matters, because a search does not alter anything on the host, and reporting a change would make every run look like it did work. The second fails when the output contains `ERROR`, even if the exit code is 0. That catches tools that print an error and still exit cleanly. The last example, with `ignore_errors`, continues after a failure but still records it, so it shows as 'ignored' in the recap. `ignore_errors` is a blunt tool, because it hides the failure from the decision, so prefer a precise `failed_when` that names the acceptable cases. The comment on the last line shows the matching option for hosts that cannot be reached at all.
 
 ### Blocks: rescue and always
+
+![A block runs the driver change tasks, a failed task hands control to rescue for rollback and a clear failure, and always collects diagnostics in every case.](./img/p2-0408-block-rescue.svg)
+
+*Figure 4.8.5. A block runs the driver change, rescue rolls back and fails the host clearly if a task breaks, and always collects diagnostics either way.*
 
 A block groups tasks, so that a failure inside the group can trigger a cleanup or a rollback. Think of it as a `try` with a `finally`, written in YAML. The block holds the change, the rescue holds the recovery, and the always section runs whether or not anything failed. In plain terms, the block says what to try, the rescue says what to do if the attempt breaks, and the always says what must happen no matter what.
 
@@ -307,6 +318,14 @@ A `rescue` that swallows errors is a common cause of runs that look green but le
 
 ### Stopping the play and fleet-level policies
 
+![A grouped comparison of meta end_host, end_play, clear_host_errors and fail showing which are clean exits and which stop the run.](./img/p4-0408-meta-exits.svg)
+
+*Figure 4.8.6. Meta exits are planned and clean, fail is an explicit stop, and clearing host errors hides the reason for a failure.*
+
+![Fleet changes pass five layers of defence: input validation, a serial canary, a post-change health check, a failure limit, and rollback with an alert.](./img/p2-0408-fleet-defence.svg)
+
+*Figure 4.8.7. A fleet change is protected by five layers, from input assertions and a canary to a health check, a failure limit and a rollback with an alert.*
+
 A single flaky host should not halt a whole fleet. One dangerous global step, though, should stop everything at once. The keywords and tasks below set those policies. Read the play from the top. The first three lines decide how far a failure may spread, and the tasks below them decide when a host or the whole play should stop on purpose.
 
 ```yaml
@@ -344,6 +363,10 @@ Services take time to come up after a start or a reboot, so the playbook has to 
 
 ## 5. Imports versus includes
 
+![Imports are read when the playbook is parsed and includes are read when the run reaches them, so a file name that depends on runtime facts needs an include.](./img/a08-import-include.svg)
+
+*Figure 4.8.8. An import is fixed when the playbook is read, while an include is decided when the run reaches it, so the choice depends on whether the file name can change at runtime.*
+
 Two ways to bring tasks into a play look alike but behave differently. An import is resolved when the playbook is read, and an include is resolved when the play runs. That difference decides whether tags, conditionals and loops apply the way you expect, so it is worth checking before you rely on either one.
 
 Ansible can pull tasks or roles into a play in two ways. An import is read at parse time, which means before the first task runs, while an include is read when execution reaches it. Parse time is like reading a whole recipe before you start cooking, so you know every step in advance. Runtime is like reading each step as you reach it, which lets the next step depend on what the last one produced. The table shows what that difference changes.
@@ -366,6 +389,14 @@ Choose an import by default, and switch to an include only when runtime data for
 Most operational work follows a small number of shapes, and the most common one is drain, change, validate, return. The patterns below are reusable skeletons for those shapes. Using them means you do not have to invent the ordering under pressure, when a wrong order is the easiest mistake to make. A skeleton is a starting point you fill in with your own commands, and the order of its steps is the part that keeps a node safe.
 
 ### Drain → change → validate → return
+
+![A flow showing one node drained, waited empty, changed and validated, then resumed, with a failure path that leaves the node drained.](./img/p4-0408-drain-node-path.svg)
+
+*Figure 4.8.9. The failure path leaves the node drained, and only full success reaches the resume step.*
+
+![The serial list runs a one-node canary first, then 10 percent and 25 percent slices, with a failure limit of 5 percent.](./img/a08-serial-batches.svg)
+
+*Figure 4.8.10. The serial list starts with a single-node canary and then works through larger slices of the fleet, with a failure limit that stops the run.*
 
 Taking a GPU node out of service is a sequence. You drain it, wait for its jobs to finish, change it, check it, and only then return it to service. Drain means "stop new work from arriving, but let the work already running finish". The play below does that in batches that start at one node, so the first change is always small enough to watch.
 
@@ -413,6 +444,10 @@ The same shape fits Kubernetes, with `kubectl drain` and uncordon, and load-bala
 
 ### Idempotent restart-if-needed
 
+![Two columns comparing a handler notification that can be lost after a failure with a state check that compares process start time to config file time.](./img/p4-0408-handler-vs-state-check.svg)
+
+*Figure 4.8.11. A state check stays true after a failure that would erase a handler's notification.*
+
 Handlers can miss a restart after an earlier failure, as section 1 showed. This task checks the running service instead of trusting a notification. It asks systemd when the current process started. A process that started before the config file was last written is still running the old settings. Comparing the two timestamps tells you whether a restart is owed, even when no handler remembers to ask for one.
 
 ```yaml
@@ -426,6 +461,10 @@ Handlers can miss a restart after an earlier failure, as section 1 showed. This 
 When handler semantics are not enough, because a partial failure leaves services stale, replace handler-only logic with state checks. You can also run `meta: flush_handlers` immediately after the config change. The rule of thumb is simple. A handler says "something changed, so restart". A state check says "the thing that is running must match the thing on disk", and the second statement stays true even after a failure has wiped out the first.
 
 ### Waiting for the world
+
+![After a reboot the host answers before the NVIDIA modules load, so the reboot task waits for a GPU test command to pass or the timeout to expire.](./img/p2-0408-wait-gpus.svg)
+
+*Figure 4.8.12. After a reboot, the task waits through a short delay and repeats the GPU test until it passes or the timeout expires.*
 
 A reboot can look finished before the GPUs are ready. The operating system answers on the network, and the login prompt appears, but the NVIDIA modules may still be loading. A task that moves on at that point would find no GPUs and fail in a confusing way.
 
@@ -442,6 +481,10 @@ What matters here is `test_command`. It checks the GPUs rather than trusting tha
 After any reboot, test the thing you need, such as the GPUs, before you return the node to service.
 
 ## 7. Debugging control flow
+
+![A table of control-flow symptoms with their likely causes and fixes.](./img/p4-0408-control-flow-symptoms.svg)
+
+*Figure 4.8.13. Start from the symptom, check the likely cause, and use -vv or the debug strategy to see which branch ran.*
 
 A task is skipped, or a handler never runs, and the playbook looks correct. Control-flow bugs are about which path the run took. The steps below show how to read the run output and find the branch that surprised you, without guessing at the cause. Each symptom in the table points to one kind of cause, so you can check the likely cause first.
 

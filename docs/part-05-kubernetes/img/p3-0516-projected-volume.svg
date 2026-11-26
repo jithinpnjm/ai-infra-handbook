@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>One projected volume, three sources, one directory</title>
+  <desc>A pod box with a single projected volume creds fanning in three source boxes into one directory.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="10" markerHeight="10" refX="7" refY="3.5" orient="auto">
+      <polygon points="0 0, 10 3.5, 0 7" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#207448">One projected volume, three sources, one directory</text>
+
+  
+  <rect x="60" y="120" width="1480" height="880" rx="20" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="10 6" />
+
+  
+  <g transform="translate(80, 140)">
+    
+    <polygon points="28 2, 54 17, 54 47, 28 62, 2 47, 2 17" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <line x1="28" y1="17" x2="28" y2="47" stroke="#207448" stroke-width="3" />
+    <line x1="28" y1="32" x2="2" y2="17" stroke="#207448" stroke-width="3" />
+    <line x1="28" y1="32" x2="54" y2="17" stroke="#207448" stroke-width="3" />
+    <text x="75" y="44" font-family="sans-serif" font-size="34px" font-weight="bold" fill="#207448">Pod</text>
+  </g>
+
+  
+  <g transform="translate(100, 225)">
+    <rect width="680" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 44 20 L 72 20 C 72 48 44 64 44 64 C 44 64 16 48 16 20 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="44" cy="35" r="4" fill="#207448" />
+    <line x1="44" y1="39" x2="44" y2="49" stroke="#207448" stroke-width="3" />
+    <text x="88" y="48" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Source 1</text>
+    <text x="24" y="98" font-family="monospace" font-size="24px" fill="#303a36">
+      <tspan x="24" dy="0">serviceAccountToken: path sa-token,</tspan>
+      <tspan x="24" dy="34">audience vault, expirationSeconds 3600;</tspan>
+      <tspan x="24" dy="34" font-family="sans-serif">the kubelet refreshes it before expiry;</tspan>
+      <tspan x="24" dy="34" font-family="sans-serif">proves who the pod is</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(100, 485)">
+    <rect width="680" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="20" y="16" width="46" height="54" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="30" y1="30" x2="56" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="30" y1="42" x2="56" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="43" cy="54" r="5" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="88" y="48" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Source 2</text>
+    <text x="24" y="105" font-family="monospace" font-size="24px" fill="#303a36">
+      <tspan x="24" dy="0">configMap ca-bundle, key ca.crt to</tspan>
+      <tspan x="24" dy="36">path ca.crt; <tspan font-family="sans-serif">lets the pod trust</tspan></tspan>
+      <tspan x="24" dy="36" font-family="sans-serif">the server it talks to</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(100, 745)">
+    <rect width="680" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 22 42 L 44 20 L 66 20 L 66 42 L 44 64 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="54" cy="32" r="4" fill="#207448" />
+    <text x="88" y="48" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Source 3</text>
+    <text x="24" y="105" font-family="monospace" font-size="24px" fill="#303a36">
+      <tspan x="24" dy="0">downwardAPI: path labels from</tspan>
+      <tspan x="24" dy="36">fieldRef metadata.labels;</tspan>
+      <tspan x="24" dy="36" font-family="sans-serif">describes the pod itself</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 780 340 C 855 340, 855 450, 928 450" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead)" />
+  <path d="M 780 600 L 928 600" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead)" />
+  <path d="M 780 860 C 855 860, 855 750, 928 750" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrowhead)" />
+
+  
+  <g transform="translate(930, 270)">
+    <rect width="570" height="660" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    
+    <path d="M 32 36 L 56 36 L 68 48 L 96 48 C 100 48 104 52 104 56 L 104 88 C 104 92 100 96 96 96 L 32 96 C 28 96 24 92 24 88 L 24 44 C 24 40 28 36 32 36 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    
+    
+    <text x="120" y="58" font-family="sans-serif" font-size="34px" font-weight="bold" fill="#207448">Output</text>
+    
+    
+    <text x="120" y="94" font-family="monospace" font-size="24px" font-weight="bold" fill="#db8129">volume named creds of type projected</text>
+
+    
+    <g transform="translate(24, 130)">
+      <rect width="522" height="490" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      
+      
+      <text x="24" y="60" font-family="sans-serif" font-size="24px" fill="#303a36">
+        <tspan x="24" dy="0" font-family="monospace">files sa-token, ca.crt and labels</tspan>
+        <tspan x="24" dy="38">in one directory;</tspan>
+        <tspan x="24" dy="48">the application reads everything</tspan>
+        <tspan x="24" dy="38">from one place</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

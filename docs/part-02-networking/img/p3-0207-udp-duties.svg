@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Choosing UDP means doing TCP's jobs yourself, and what the kernel does not tell you</title>
+  <desc>Visual infographic comparing when UDP fits, what application layers must implement, and kernel-level silent behaviors.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Choosing UDP means doing TCP's jobs yourself,</tspan>
+    <tspan x="800" dy="56">and what the kernel does not tell you</tspan>
+  </text>
+
+  
+  <g id="panel-left">
+    <rect x="40" y="145" width="480" height="805" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(62, 166)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="8" fill="#207448"/>
+      <path d="M 28 4 L 28 20 M 28 36 L 28 52 M 4 28 L 20 28 M 36 28 L 52 28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="135" y="206" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">When UDP fits</text>
+
+    
+    <rect x="58" y="240" width="444" height="95" rx="10" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+    <text x="76" y="276" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="76" dy="0">small request and response:</tspan>
+      <tspan x="76" dy="32">DNS, NTP, DHCP, SNMP, syslog</tspan>
+    </text>
+
+    
+    <rect x="58" y="350" width="444" height="125" rx="10" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+    <text x="76" y="386" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="76" dy="0">latency-critical real-time</tspan>
+      <tspan x="76" dy="32">media such as RTP, where a</tspan>
+      <tspan x="76" dy="32">late packet is useless</tspan>
+    </text>
+
+    
+    <rect x="58" y="490" width="444" height="95" rx="10" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+    <text x="76" y="526" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="76" dy="0">multicast and broadcast</tspan>
+      <tspan x="76" dy="32">discovery</tspan>
+    </text>
+
+    
+    <rect x="58" y="600" width="444" height="330" rx="10" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+    <text x="76" y="638" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="76" dy="0">carrier for protocols that bring</tspan>
+      <tspan x="76" dy="32">their own reliability and</tspan>
+      <tspan x="76" dy="32">congestion control: QUIC,</tspan>
+      <tspan x="76" dy="32">RoCE v2 (NIC implements</tspan>
+      <tspan x="76" dy="32">reliability), WireGuard,</tspan>
+      <tspan x="76" dy="32">VXLAN and Geneve, game</tspan>
+      <tspan x="76" dy="32">networking, StatsD</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-middle">
+    <rect x="560" y="145" width="480" height="805" rx="14" fill="#fcf6ed" stroke="#db8129" stroke-width="3"/>
+
+    
+    <g transform="translate(580, 160)">
+      <rect x="4" y="8" width="48" height="42" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+      <line x1="4" y1="20" x2="52" y2="20" stroke="#db8129" stroke-width="3"/>
+      <circle cx="12" cy="14" r="2" fill="#db8129"/>
+      <circle cx="18" cy="14" r="2" fill="#db8129"/>
+      <circle cx="28" cy="35" r="7" fill="none" stroke="#db8129" stroke-width="3"/>
+      <path d="M 28 24 L 28 28 M 28 42 L 28 46 M 17 35 L 21 35 M 35 35 L 39 35" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="650" y="193" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+      <tspan x="650" dy="0">What the application</tspan>
+      <tspan x="650" dy="34">must supply</tspan>
+    </text>
+
+    
+    <rect x="578" y="250" width="444" height="56" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="596" y="287" font-family="sans-serif" font-size="24" fill="#303a36">retries and timeouts</text>
+
+    
+    <rect x="578" y="320" width="444" height="56" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="596" y="357" font-family="sans-serif" font-size="24" fill="#303a36">sequence numbers</text>
+
+    
+    <rect x="578" y="390" width="444" height="56" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="596" y="427" font-family="sans-serif" font-size="24" fill="#303a36">rate limiting</text>
+
+    
+    <rect x="578" y="460" width="444" height="56" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="596" y="497" font-family="sans-serif" font-size="24" fill="#303a36">congestion control</text>
+
+    
+    <rect x="578" y="530" width="444" height="400" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="596" y="572" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="596" dy="0">keep datagrams under the path</tspan>
+      <tspan x="596" dy="34">MTU: a single lost fragment</tspan>
+      <tspan x="596" dy="34">loses the whole datagram;</tspan>
+      <tspan x="596" dy="34">DNS used 512 bytes</tspan>
+      <tspan x="596" dy="34">historically, EDNS(0)</tspan>
+      <tspan x="596" dy="34">negotiates larger, QUIC aims</tspan>
+      <tspan x="596" dy="34">for 1200 bytes or more</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-right">
+    <rect x="1080" y="145" width="480" height="805" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(1102, 166)">
+      <path d="M 4 28 C 12 14, 44 14, 52 28 C 44 42, 12 42, 4 28 Z" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="28" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="8" y1="8" x2="48" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="1175" y="206" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Silent things</text>
+
+    
+    <rect x="1098" y="240" width="444" height="230" rx="10" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+    <text x="1116" y="276" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1116" dy="0">a full socket receive buffer</tspan>
+      <tspan x="1116" dy="32">silently drops datagrams:</tspan>
+      <tspan x="1116" dy="32" font-family="monospace">netstat -su</tspan> receive buffer
+      <tspan x="1116" dy="32">errors, <tspan font-family="monospace">nstat UdpRcvbufErrors;</tspan></tspan>
+      <tspan x="1116" dy="32">fix with <tspan font-family="monospace">net.core.rmem_max</tspan></tspan>
+      <tspan x="1116" dy="32">and <tspan font-family="monospace">SO_RCVBUF; ss -u -a -m</tspan></tspan>
+    </text>
+
+    
+    <rect x="1098" y="485" width="444" height="230" rx="10" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+    <text x="1116" y="521" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1116" dy="0">a datagram to a closed port</tspan>
+      <tspan x="1116" dy="32">draws ICMP port unreachable;</tspan>
+      <tspan x="1116" dy="32">only a connected UDP socket</tspan>
+      <tspan x="1116" dy="32">reports it as ECONNREFUSED</tspan>
+      <tspan x="1116" dy="32">on its next call, otherwise</tspan>
+      <tspan x="1116" dy="32">the sender never finds out</tspan>
+    </text>
+
+    
+    <rect x="1098" y="730" width="444" height="200" rx="10" fill="#ffffff" stroke="#c4dcce" stroke-width="1.5"/>
+    <text x="1116" y="768" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1116" dy="0">firewalls and NATs track UDP</tspan>
+      <tspan x="1116" dy="32">flows by timeout, typically</tspan>
+      <tspan x="1116" dy="32">30 to 180 seconds: long-idle</tspan>
+      <tspan x="1116" dy="32">sessions such as VPNs and</tspan>
+      <tspan x="1116" dy="32">QUIC need keepalives</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer">
+    <rect x="40" y="975" width="1520" height="118" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(60, 1004)">
+      <rect x="4" y="6" width="48" height="42" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 14 18 L 24 27 L 14 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="28" y1="36" x2="40" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="135" y="1012" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0"><tspan font-family="monospace">iperf3 -c 10.0.0.5 -u -b 1G -l 1400 -t 10</tspan> reports loss and jitter at the receiver;</tspan>
+      <tspan x="135" dy="32">0 percent in the lab but over 1 percent in production usually points at a policer,</tspan>
+      <tspan x="135" dy="32">a shallow buffer or an unexpected bottleneck link</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1115" width="1520" height="65" rx="10" fill="#207448"/>
+    <text x="800" y="1156" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Unbounded UDP senders can overwhelm a network, which is why some operators rate-limit UDP</text>
+  </g>
+</svg>

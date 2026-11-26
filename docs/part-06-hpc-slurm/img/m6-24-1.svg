@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1020" viewBox="0 0 1600 1020">
+  <title>Account synchronisation: the problem and the options</title>
+  <desc>Flowchart depicting user provisioning from validated inventory to LDAP, SlurmDBD, and shared storage, with synchronization to compute nodes via SSSD cache.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Account synchronisation: the problem and the options</text>
+
+  
+  
+  <path d="M 330 520 C 370 520, 370 260, 410 260" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 330 560 L 410 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 330 600 C 370 600, 370 860, 410 860" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 790 260 L 1180 260" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="832" y="222" width="306" height="76" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="985" y="254" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="985" dy="0">LDAPS +</tspan>
+    <tspan x="985" dy="30">SSSD Cache (5400s)</tspan>
+  </text>
+
+  
+  <g transform="translate(40, 430)">
+    <rect width="290" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(145, 42)">
+      <path d="M -16 -22 L 8 -22 L 18 -12 L 18 22 L -16 22 Z" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <path d="M 8 -22 L 8 -12 L 18 -12" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <path d="M -8 2 L -2 8 L 10 -4" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </g>
+    
+    <text x="145" y="112" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="145" dy="0">Validated User</tspan>
+      <tspan x="145" dy="36">Inventory</tspan>
+    </text>
+    
+    <rect x="18" y="172" width="254" height="64" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+    <text x="145" y="212" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">(identity_gen.py)</text>
+  </g>
+
+  
+  <g transform="translate(410, 130)">
+    <rect width="380" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(190, 40)">
+      <circle cx="0" cy="-14" r="8" stroke="#207448" stroke-width="4" fill="none" />
+      <path d="M 0 -6 L 0 6 M -20 6 L 20 6 M -20 6 L -20 14 M 20 6 L 20 14" stroke="#207448" stroke-width="4" stroke-linecap="round" fill="none" />
+      <circle cx="-20" cy="20" r="6" stroke="#207448" stroke-width="4" fill="none" />
+      <circle cx="20" cy="20" r="6" stroke="#207448" stroke-width="4" fill="none" />
+    </g>
+    
+    <text x="190" y="108" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="190" dy="0">1. LDAP / FreeIPA</tspan>
+      <tspan x="190" dy="36">Directory</tspan>
+    </text>
+    
+    <rect x="18" y="160" width="344" height="84" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+    <text x="190" y="186" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="190" dy="0">posixAccount,</tspan>
+      <tspan x="190" dy="25">posixGroup,</tspan>
+      <tspan x="190" dy="25">sshPublicKey</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(410, 430)">
+    <rect width="380" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(190, 42)">
+      <ellipse cx="0" cy="-14" rx="22" ry="7" stroke="#207448" stroke-width="4" fill="none" />
+      <path d="M -22 -14 L -22 2 C -22 7, 22 7, 22 2 L 22 -14" stroke="#207448" stroke-width="4" fill="none" />
+      <path d="M -22 2 L -22 18 C -22 23, 22 23, 22 18 L 22 2" stroke="#207448" stroke-width="4" fill="none" />
+    </g>
+    
+    <text x="190" y="112" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="190" dy="0">2. SlurmDBD</tspan>
+      <tspan x="190" dy="36">Accounting</tspan>
+    </text>
+    
+    <rect x="18" y="166" width="344" height="74" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+    <text x="190" y="197" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="190" dy="0">sacctmgr add</tspan>
+      <tspan x="190" dy="28">account &amp; user</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(410, 730)">
+    <rect width="380" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(190, 42)">
+      <ellipse cx="0" cy="-14" rx="24" ry="8" stroke="#207448" stroke-width="4" fill="none" />
+      <path d="M -24 -14 L -24 20 C -24 26, 24 26, 24 20 L 24 -14" stroke="#207448" stroke-width="4" fill="none" />
+      <path d="M -24 3 C -24 9, 24 9, 24 3" stroke="#207448" stroke-width="4" fill="none" />
+      <line x1="-10" y1="14" x2="10" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="190" y="112" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="190" dy="0">3. Shared Storage</tspan>
+      <tspan x="190" dy="36">Server</tspan>
+    </text>
+    
+    <rect x="18" y="166" width="344" height="74" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+    <text x="190" y="197" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="190" dy="0">install -d /home/user</tspan>
+      <tspan x="190" dy="28">+ lfs setquota</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1180, 130)">
+    <rect width="380" height="260" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(190, 40)">
+      <rect x="-18" y="-18" width="36" height="36" rx="4" stroke="#207448" stroke-width="4" fill="none" />
+      <rect x="-8" y="-8" width="16" height="16" rx="2" stroke="#207448" stroke-width="3" fill="none" />
+      <line x1="-10" y1="-24" x2="-10" y2="-18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="0" y1="-24" x2="0" y2="-18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="10" y1="-24" x2="10" y2="-18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-10" y1="18" x2="-10" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="0" y1="18" x2="0" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="10" y1="18" x2="10" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-24" y1="-10" x2="-18" y2="-10" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-24" y1="0" x2="-18" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-24" y1="10" x2="-18" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="18" y1="-10" x2="24" y2="-10" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="18" y1="0" x2="24" y2="0" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="18" y1="10" x2="24" y2="10" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="190" y="108" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="190" dy="0">Login &amp;</tspan>
+      <tspan x="190" dy="36">Compute Nodes</tspan>
+    </text>
+    
+    <rect x="14" y="166" width="352" height="74" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+    <text x="190" y="197" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="190" dy="0">NSS, PAM,</tspan>
+      <tspan x="190" dy="28">sss_ssh_authorizedkeys</tspan>
+    </text>
+  </g>
+</svg>

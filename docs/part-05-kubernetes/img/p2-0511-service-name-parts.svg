@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1030" viewBox="0 0 1600 1030">
+  <title>Anatomy of alpaca-prod.default.svc.cluster.local</title>
+  <desc>Visual breakdown of a Kubernetes fully qualified service domain name, namespace scoping, and DNS resolution.</desc>
+
+  
+  <rect width="1600" height="1030" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Anatomy of alpaca-prod.default.svc.cluster.local</text>
+
+  
+  <g>
+    <text x="800" y="112" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Fully qualified name</text>
+    <path d="M 55 145 L 55 128 L 788 128 L 800 118 L 812 128 L 1545 128 L 1545 145" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <g>
+    <text x="442.5" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Short form across namespaces: alpaca-prod.default</text>
+    <path d="M 55 212 L 55 192 L 430 192 L 442.5 182 L 455 192 L 830 192 L 830 212" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  
+  <rect x="55" y="230" width="370" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="240" y="280" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">alpaca-prod</text>
+
+  
+  <text x="442.5" y="280" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">.</text>
+
+  
+  <rect x="460" y="230" width="370" height="80" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="4"/>
+  <text x="645" y="280" font-family="monospace" font-size="32" font-weight="bold" fill="#db8129" text-anchor="middle">default</text>
+
+  
+  <text x="845" y="280" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">.</text>
+
+  
+  <rect x="860" y="230" width="310" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="1015" y="280" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">svc</text>
+
+  
+  <text x="1185" y="280" font-family="monospace" font-size="36" font-weight="bold" fill="#303a36" text-anchor="middle">.</text>
+
+  
+  <rect x="1200" y="230" width="345" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <text x="1372.5" y="280" font-family="monospace" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">cluster.local.</text>
+
+  
+  <line x1="240" y1="310" x2="240" y2="350" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 4"/>
+  <line x1="645" y1="310" x2="645" y2="350" stroke="#db8129" stroke-width="2.5" stroke-dasharray="4 4"/>
+  <line x1="1015" y1="310" x2="1015" y2="350" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 4"/>
+  <line x1="1372.5" y1="310" x2="1372.5" y2="350" stroke="#207448" stroke-width="2.5" stroke-dasharray="4 4"/>
+
+  
+  
+  <g>
+    <rect x="55" y="350" width="370" height="305" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(212, 375)">
+      <rect x="0" y="0" width="56" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="2"/>
+      <circle cx="10" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="18" cy="7" r="2.5" fill="#207448"/>
+      <circle cx="26" cy="7" r="2.5" fill="#207448"/>
+      <polyline points="18,34 26,26 18,18" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="30" y1="34" x2="40" y2="34" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    </g>
+    <text x="240" y="495" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="240" dy="0">Name of the</tspan>
+      <tspan x="240" dy="38">Service</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="460" y="350" width="370" height="305" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+    
+    <g transform="translate(617, 372)">
+      <rect x="0" y="0" width="56" height="50" rx="8" fill="none" stroke="#db8129" stroke-width="3.5"/>
+      <path d="M 0 16 L 24 16 L 30 22 L 56 22" fill="none" stroke="#db8129" stroke-width="2"/>
+      <rect x="12" y="28" width="32" height="14" rx="3" fill="none" stroke="#db8129" stroke-width="2" stroke-dasharray="3 3"/>
+    </g>
+    <text x="645" y="465" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="645" dy="0">Namespace the</tspan>
+      <tspan x="645" dy="34">Service lives in</tspan>
+    </text>
+    
+    <rect x="475" y="525" width="340" height="110" rx="10" fill="#fff3e6" stroke="#db8129" stroke-width="2"/>
+    <text x="645" y="558" font-family="sans-serif" font-size="24" font-weight="bold" fill="#b35b00" text-anchor="middle">
+      <tspan x="645" dy="0">Write the namespace</tspan>
+      <tspan x="645" dy="30">into every cross-</tspan>
+      <tspan x="645" dy="30">namespace reference.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="860" y="350" width="310" height="305" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(987, 372)">
+      <circle cx="28" cy="25" r="13" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <path d="M 28 6 L 28 12 M 28 38 L 28 44 M 9 25 L 15 25 M 41 25 L 47 25 M 15 12 L 19 16 M 37 34 L 41 38 M 15 38 L 19 34 M 37 16 L 41 12" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="1015" y="480" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1015" dy="0">Says this is a</tspan>
+      <tspan x="1015" dy="34">Service, room for</tspan>
+      <tspan x="1015" dy="34">other object types</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1200" y="350" width="345" height="305" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1344.5, 372)">
+      <circle cx="28" cy="25" r="23" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <ellipse cx="28" cy="25" rx="12" ry="23" fill="none" stroke="#207448" stroke-width="2"/>
+      <line x1="5" y1="25" x2="51" y2="25" stroke="#207448" stroke-width="2"/>
+      <line x1="9" y1="15" x2="47" y2="15" stroke="#207448" stroke-width="1.8"/>
+      <line x1="9" y1="35" x2="47" y2="35" stroke="#207448" stroke-width="1.8"/>
+    </g>
+    <text x="1372.5" y="480" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1372.5" dy="0">Base domain, default,</tspan>
+      <tspan x="1372.5" dy="34">administrators can</tspan>
+      <tspan x="1372.5" dy="34">change it</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="180" y="695" width="1240" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <text x="800" y="742" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">alpaca-prod.default.svc.cluster.local. 30 IN A 10.115.245.13</text>
+  </g>
+
+  
+  <g>
+    <text x="1171" y="852" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">The Service cluster IP</text>
+    <line x1="1171" y1="824" x2="1171" y2="784" stroke="#207448" stroke-width="3.5"/>
+    <polygon points="1171,772 1162,786 1180,786" fill="#207448"/>
+  </g>
+
+  
+  <g>
+    <rect x="55" y="905" width="1490" height="75" rx="12" fill="#207448"/>
+    <text x="800" y="952" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Inside your own namespace, the short name alpaca-prod is enough.</text>
+  </g>
+</svg>

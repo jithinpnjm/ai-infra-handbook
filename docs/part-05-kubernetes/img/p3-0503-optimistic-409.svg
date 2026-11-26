@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Two writers and a 409 Conflict</title>
+  <desc>Sequence diagram showing two writers attempting concurrent updates against kube-apiserver and etcd resulting in an HTTP 409 Conflict error and cache retry.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 10" refX="10" refY="5" markerWidth="12" markerHeight="10" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 10" refX="10" refY="5" markerWidth="12" markerHeight="10" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-size="48" font-family="sans-serif" font-weight="bold" fill="#303a36" text-anchor="middle">Two writers and a 409 Conflict</text>
+
+  
+  <line x1="160" y1="195" x2="160" y2="975" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+  <line x1="800" y1="195" x2="800" y2="975" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+  <line x1="1440" y1="195" x2="1440" y2="975" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+
+  
+  <rect x="50" y="95" width="220" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="135" y="107" width="50" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="135" y1="117" x2="185" y2="117" stroke="#207448" stroke-width="2" />
+  <circle cx="142" cy="112" r="1.5" fill="#207448" />
+  <circle cx="148" cy="112" r="1.5" fill="#207448" />
+  <circle cx="154" cy="112" r="1.5" fill="#207448" />
+  <path d="M 143 125 L 148 129 L 143 133 M 151 133 L 158 133" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <text x="160" y="172" font-size="30" font-family="sans-serif" font-weight="bold" fill="#303a36" text-anchor="middle">Client A</text>
+
+  
+  <rect x="560" y="95" width="480" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <ellipse cx="800" cy="113" rx="24" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 776 113 v 11 c 0 3.5 10.7 6 24 6 s 24 -2.5 24 -6 v -11" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 776 124 v 11 c 0 3.5 10.7 6 24 6 s 24 -2.5 24 -6 v -11" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="800" y="172" font-size="30" font-family="sans-serif" font-weight="bold" fill="#303a36" text-anchor="middle">kube-apiserver / etcd</text>
+
+  
+  <rect x="1330" y="95" width="220" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <rect x="1415" y="107" width="50" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="1415" y1="117" x2="1465" y2="117" stroke="#207448" stroke-width="2" />
+  <circle cx="1422" cy="112" r="1.5" fill="#207448" />
+  <circle cx="1428" cy="112" r="1.5" fill="#207448" />
+  <circle cx="1434" cy="112" r="1.5" fill="#207448" />
+  <path d="M 1423 125 L 1428 129 L 1423 133 M 1431 133 L 1438 133" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+  <text x="1440" y="172" font-size="30" font-family="sans-serif" font-weight="bold" fill="#303a36" text-anchor="middle">Client B</text>
+
+  
+  <rect x="190" y="220" width="580" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="225" cy="267" r="22" fill="#207448" />
+  <text x="225" y="275" font-size="26" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="265" y="255" font-size="24" font-family="sans-serif" fill="#303a36">
+    <tspan x="265" dy="0">Client A reads object at</tspan>
+    <tspan x="265" dy="32" font-family="monospace">resourceVersion 5012.</tspan>
+  </text>
+  
+  <line x1="160" y1="335" x2="788" y2="335" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="830" y="360" width="580" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="865" cy="407" r="22" fill="#207448" />
+  <text x="865" y="415" font-size="26" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="905" y="395" font-size="24" font-family="sans-serif" fill="#303a36">
+    <tspan x="905" dy="0">Client B reads the same object</tspan>
+    <tspan x="905" dy="32">at <tspan font-family="monospace">resourceVersion 5012.</tspan></tspan>
+  </text>
+  
+  <line x1="1440" y1="475" x2="812" y2="475" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="830" y="500" width="580" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="865" cy="557" r="22" fill="#207448" />
+  <text x="865" y="565" font-size="26" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="905" y="533" font-size="24" font-family="sans-serif" fill="#303a36">
+    <tspan x="905" dy="0">Client B writes its change;</tspan>
+    <tspan x="905" dy="30">server accepts; object now at</tspan>
+    <tspan x="905" dy="30" font-family="monospace">resourceVersion 5013.</tspan>
+  </text>
+  
+  <line x1="1440" y1="635" x2="812" y2="635" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="190" y="660" width="580" height="115" rx="12" fill="#fff5f5" stroke="#c83232" stroke-width="2.5" />
+  <circle cx="225" cy="717" r="22" fill="#c83232" />
+  <text x="225" y="725" font-size="26" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="265" y="693" font-size="24" font-family="sans-serif" fill="#303a36">
+    <tspan x="265" dy="0">Client A writes its change</tspan>
+    <tspan x="265" dy="30">based on 5012; server rejects</tspan>
+    <tspan x="265" dy="30">with <tspan font-family="monospace" font-weight="bold" fill="#c83232">HTTP 409 Conflict</tspan></tspan>
+  </text>
+  
+  <line x1="160" y1="795" x2="788" y2="795" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="190" y="820" width="580" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="225" cy="877" r="22" fill="#207448" />
+  <text x="225" y="885" font-size="26" font-family="sans-serif" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  <text x="265" y="853" font-size="24" font-family="sans-serif" fill="#303a36">
+    <tspan x="265" dy="0">Client A re-reads the latest</tspan>
+    <tspan x="265" dy="30">version from its informer cache,</tspan>
+    <tspan x="265" dy="30">re-applies its change and retries</tspan>
+  </text>
+  
+  <line x1="160" y1="955" x2="788" y2="955" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="80" y="995" width="690" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="125" cy="1042" r="13" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 134 1051 L 152 1069 M 144 1061 L 149 1056 M 149 1066 L 154 1061" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="175" y="1043" font-size="24" font-family="sans-serif" fill="#303a36">
+    <tspan x="175" dy="0"><tspan font-family="monospace">resourceVersion</tspan> maps to the</tspan>
+    <tspan x="175" dy="32">etcd key <tspan font-family="monospace">mod_revision</tspan></tspan>
+  </text>
+
+  
+  <rect x="830" y="995" width="690" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 865 1032 L 885 1025 L 905 1032 C 905 1052 885 1069 885 1069 C 885 1069 865 1052 865 1032 Z" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 876 1045 L 882 1051 L 894 1039" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="925" y="1043" font-size="24" font-family="sans-serif" fill="#303a36">
+    <tspan x="925" dy="0">Server-side apply tracks field</tspan>
+    <tspan x="925" dy="32">ownership in <tspan font-family="monospace">managedFields</tspan></tspan>
+  </text>
+</svg>

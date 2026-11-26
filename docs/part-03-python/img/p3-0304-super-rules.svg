@@ -1,0 +1,151 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Cooperative super(): the D to B to C to A chain and how one missing call breaks it</title>
+  <desc>SVG infographic explaining cooperative inheritance in Python, C3 MRO resolution order, and rules for super()</desc>
+
+  <defs>
+    <marker id="mro-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#207448">
+    <tspan x="40" dy="0">Cooperative super(): the D to B to C to A chain</tspan>
+    <tspan x="40" dy="50">and how one missing call breaks it</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="130" width="800" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="440" y="169" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">D.__mro__ = (D, B, C, A, object)</text>
+
+  
+  <rect x="240" y="210" width="400" height="95" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 265 235 L 290 225 L 315 235 L 315 265 C 315 285 290 295 290 295 C 290 295 265 285 265 265 Z" fill="none" stroke="#207448" stroke-width="4"/>
+  <text x="330" y="252" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">A</text>
+  <text x="330" y="286" font-family="monospace" font-size="24" fill="#303a36">A.f returns A</text>
+
+  
+  <rect x="45" y="345" width="365" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="65" y="375" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="65" y1="388" x2="113" y2="388" stroke="#207448" stroke-width="2"/>
+  <circle cx="75" cy="381" r="2" fill="#207448"/>
+  <circle cx="83" cy="381" r="2" fill="#207448"/>
+  <text x="130" y="380" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">B(A)</text>
+  <text x="130" y="415" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="130" dy="0">B.f returns B> +</tspan>
+    <tspan x="130" dy="28">super().f()</tspan>
+  </text>
+
+  
+  <rect x="470" y="345" width="365" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="89" cy="396" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 514 380 L 514 412 M 498 396 L 530 396 M 503 385 L 525 407 M 503 407 L 525 385" stroke="#207448" stroke-width="4"/>
+  <circle cx="514" cy="396" r="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="555" y="380" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">C(A)</text>
+  <text x="555" y="415" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="555" dy="0">C.f returns C> +</tspan>
+    <tspan x="555" dy="28">super().f()</tspan>
+  </text>
+
+  
+  <rect x="210" y="495" width="460" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="230" y="525" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="242" y1="517" x2="242" y2="525" stroke="#207448" stroke-width="3"/>
+  <line x1="262" y1="517" x2="262" y2="525" stroke="#207448" stroke-width="3"/>
+  <line x1="242" y1="569" x2="242" y2="577" stroke="#207448" stroke-width="3"/>
+  <line x1="262" y1="569" x2="262" y2="577" stroke="#207448" stroke-width="3"/>
+  <text x="295" y="530" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">D(B, C)</text>
+  <text x="295" y="565" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="295" dy="0">D.f returns D> +</tspan>
+    <tspan x="295" dy="28">super().f()</tspan>
+  </text>
+
+  
+  
+  <path d="M 250 495 L 200 455" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#mro-arrow)"/>
+  <circle cx="205" cy="485" r="20" fill="#207448"/>
+  <text x="205" y="493" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <path d="M 410 400 L 470 400" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#mro-arrow)"/>
+  <circle cx="440" cy="370" r="20" fill="#207448"/>
+  <text x="440" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <path d="M 570 345 L 525 305" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#mro-arrow)"/>
+  <circle cx="565" cy="315" r="20" fill="#207448"/>
+  <text x="565" y="323" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <rect x="180" y="625" width="520" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="440" y="661" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">D().f() returns D>B>C>A</text>
+
+  
+  <rect x="45" y="705" width="790" height="165" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="70" y="750" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">super() returns a proxy to the next class in the</tspan>
+    <tspan x="70" dy="38">instance's MRO after the class that contains the</tspan>
+    <tspan x="70" dy="38">call, which is not always the direct parent</tspan>
+  </text>
+
+  
+  <rect x="45" y="890" width="790" height="215" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="70" y="938" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">children before parents, parents keep the order</tspan>
+    <tspan x="70" dy="40">you declared, each class appears once; in a diamond</tspan>
+    <tspan x="70" dy="40">the shared base is reached once after all its</tspan>
+    <tspan x="70" dy="40">subclasses</tspan>
+  </text>
+
+  
+  <rect x="880" y="130" width="680" height="975" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="910" y="176" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Three rules for cooperative inheritance</text>
+
+  
+  <rect x="905" y="200" width="630" height="260" rx="8" fill="#fffdfa" stroke="#db8129" stroke-width="3"/>
+  <text x="925" y="238" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0" font-weight="bold" fill="#db8129">1 universal deployment: every class that</tspan>
+    <tspan x="925" dy="35">implements the method before the anchor</tspan>
+    <tspan x="925" dy="35">must call super().method(); the first</tspan>
+    <tspan x="925" dy="35">class that omits it stops the chain; if</tspan>
+    <tspan x="925" dy="35">class C(B, A) calls super().act() and</tspan>
+    <tspan x="925" dy="35">B.act does not, A.act is never reached</tspan>
+  </text>
+
+  
+  <rect x="905" y="480" width="630" height="340" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="925" y="516" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0" font-weight="bold" fill="#207448">2 anchors: the chain must end at a class</tspan>
+    <tspan x="925" dy="33">that defines the method without calling</tspan>
+    <tspan x="925" dy="33">super() again; object is the anchor for</tspan>
+    <tspan x="925" dy="33">__init__; for a custom act(self),</tspan>
+    <tspan x="925" dy="33">super().act() in the last class before</tspan>
+    <tspan x="925" dy="33">object raises AttributeError:</tspan>
+    <tspan x="925" dy="33">super object has no attribute act; a</tspan>
+    <tspan x="925" dy="33">common base with its own act must</tspan>
+    <tspan x="925" dy="33">sit before object</tspan>
+  </text>
+
+  
+  <rect x="905" y="840" width="630" height="245" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="925" y="876" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0" font-weight="bold" fill="#207448">3 compatible signatures: each</tspan>
+    <tspan x="925" dy="35">implementation consumes its own keyword</tspan>
+    <tspan x="925" dy="35">arguments and forwards **kwargs;</tspan>
+    <tspan x="925" dy="35">object.__init__ accepts nothing beyond</tspan>
+    <tspan x="925" dy="35">self, so TypeError: object.__init__()</tspan>
+    <tspan x="925" dy="35">takes exactly one argument</tspan>
+  </text>
+
+  
+  <rect x="40" y="1130" width="1520" height="55" rx="8" fill="#207448"/>
+  <text x="800" y="1166" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Check __mro__ before you trust a super() chain</text>
+</svg>

@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Timing helpers and why the minimum beats the average</title>
+  <desc>Visual explanation of Python timing helpers built on time.perf_counter() and why the minimum elapsed time reflects true code speed by eliminating background system noise.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Timing helpers and why the minimum beats the average</text>
+  <text x="50" y="92" font-family="sans-serif" font-size="24" fill="#556b62">Learning Python chapter 21, timer.py and timer2.py</text>
+
+  
+  <rect x="50" y="110" width="860" height="565" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="85" cy="148" r="16"/>
+    <path d="M85 132 v-6 M81 126 h8 M85 148 l8 -8"/>
+  </g>
+  <text x="120" y="156" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">built on time.perf_counter()</text>
+
+  
+  <rect x="75" y="175" width="810" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="115" cy="217" r="20"/>
+    <path d="M115 203 v14 l9 6"/>
+  </g>
+  <text x="160" y="210" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">once(func, *pargs, **kargs):<tspan font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36" dx="12">times a single call</tspan></text>
+
+  
+  <rect x="75" y="275" width="810" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="115" cy="317" r="20"/>
+    <path d="M106 310 h18 l-12 10 12 10 h-18"/>
+  </g>
+  <text x="160" y="310" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">total(func, *pargs, _reps=1000, **kargs):<tspan font-family="sans-serif" font-size="24" font-weight="normal" fill="#303a36" dx="12">sums _reps calls</tspan></text>
+
+  
+  <rect x="75" y="375" width="810" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="115" cy="425" r="20"/>
+    <path d="M103 433 a16 16 0 1 1 24 0"/>
+    <path d="M115 425 l-10 -7"/>
+  </g>
+  <text x="160" y="405" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">bestof(func, *pargs, _reps=5, **kargs):</text>
+  <text x="160" y="437" font-family="monospace" font-size="24" fill="#207448">min(once(...) for i in range(_reps));</text>
+  <text x="160" y="468" font-family="sans-serif" font-size="24" fill="#303a36">tuples compare left to right so (elapsed, result)</text>
+  <text x="160" y="496" font-family="sans-serif" font-size="24" fill="#303a36">pairs pick the lowest time</text>
+
+  
+  <rect x="75" y="525" width="810" height="135" rx="8" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+  <g stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="115" cy="575" r="20"/>
+    <path d="M102 575 a13 13 0 0 1 26 0 a13 13 0 0 1 -26 0"/>
+    <path d="M115 575 l-8 -6"/>
+    <path d="M115 558 v-4 M115 596 v-4"/>
+  </g>
+  <text x="160" y="555" font-family="monospace" font-size="25" font-weight="bold" fill="#db8129">bestoftotal(func, *pargs, _reps1=50, _reps=1000, **kargs):</text>
+  <text x="160" y="590" font-family="sans-serif" font-size="24" fill="#303a36">the minimum across _reps1 totals of _reps calls each</text>
+
+  
+  <rect x="940" y="110" width="610" height="565" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="970" y="132" width="36" height="36" rx="4"/>
+    <path d="M979 132 v-6 M988 132 v-6 M997 132 v-6"/>
+    <path d="M979 168 v6 M988 168 v6 M997 168 v6"/>
+    <path d="M970 141 h-6 M970 150 h-6 M970 159 h-6"/>
+    <path d="M1006 141 h6 M1006 150 h6 M1006 159 h6"/>
+  </g>
+  <text x="1025" y="159" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Why the minimum</text>
+
+  
+  <text x="970" y="215" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="970" dy="0">background interrupts and context</tspan>
+    <tspan x="970" dy="34">switches can only inflate a run's</tspan>
+    <tspan x="970" dy="34">elapsed time, so the minimum shows</tspan>
+    <tspan x="970" dy="34">the code's true speed, free of</tspan>
+    <tspan x="970" dy="34">system noise</tspan>
+  </text>
+
+  
+  <rect x="970" y="390" width="550" height="260" rx="8" fill="#ffffff" stroke="#b5cdbe" stroke-width="1.5"/>
+  
+  
+  <rect x="1000" y="420" width="220" height="36" rx="4" fill="#207448"/>
+  <rect x="1225" y="420" width="210" height="36" rx="4" fill="#e8a87c" stroke="#db8129" stroke-width="2" stroke-dasharray="6,4"/>
+  <path d="M1330 405 l-10 12 h12 l-8 14" stroke="#db8129" stroke-width="2" fill="none"/>
+
+  
+  <rect x="1000" y="475" width="220" height="36" rx="4" fill="#207448"/>
+  <rect x="1225" y="475" width="130" height="36" rx="4" fill="#e8a87c" stroke="#db8129" stroke-width="2" stroke-dasharray="6,4"/>
+  <path d="M1290 460 l-10 12 h12 l-8 14" stroke="#db8129" stroke-width="2" fill="none"/>
+
+  
+  <rect x="1000" y="530" width="220" height="42" rx="4" fill="#207448" stroke="#db8129" stroke-width="3"/>
+  <circle cx="1255" cy="551" r="14" fill="#207448"/>
+  <path d="M1248 551 l5 5 10 -10" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <rect x="1000" y="590" width="220" height="36" rx="4" fill="#207448"/>
+  <rect x="1225" y="590" width="265" height="36" rx="4" fill="#e8a87c" stroke="#db8129" stroke-width="2" stroke-dasharray="6,4"/>
+  <path d="M1355 575 l-10 12 h12 l-8 14" stroke="#db8129" stroke-width="2" fill="none"/>
+
+  
+  <rect x="50" y="695" width="1500" height="425" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="75" y="716" width="38" height="28" rx="4"/>
+    <path d="M75 726 h38 M83 734 l4 4 -4 4 M93 738 h8"/>
+  </g>
+  <text x="125" y="740" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">timeit</text>
+
+  
+  <rect x="75" y="760" width="1450" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="100" y="798" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">python3 -m timeit -n 1000 -r 5 -s &quot;L = list(range(1000))&quot; &quot;[x ** 2 for x in L]&quot;</text>
+  <text x="100" y="845" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">or</text>
+  <text x="145" y="845" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">min(timeit.repeat(stmt=..., setup=..., number=1000, repeat=5))</text>
+
+  
+  
+  <rect x="75" y="890" width="460" height="210" rx="8" fill="#ffffff" stroke="#b5cdbe" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="115" cy="928" r="14"/>
+    <path d="M115 908 v6 M115 942 v6 M95 928 h6 M129 928 h6 M101 914 l4 4 M125 938 l4 4 M101 942 l4 -4 M125 918 l4 -4"/>
+  </g>
+  <text x="100" y="990" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="100" dy="0">-s keeps one-time setup</tspan>
+    <tspan x="100" dy="32">out of the timed loop</tspan>
+  </text>
+
+  
+  <rect x="555" y="890" width="490" height="210" rx="8" fill="#ffffff" stroke="#b5cdbe" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="595" cy="928" r="16"/>
+    <path d="M590 920 v16 M600 920 v16"/>
+  </g>
+  <text x="580" y="975" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="580" dy="0">timeit disables garbage</tspan>
+    <tspan x="580" dy="30">collection while timing;</tspan>
+    <tspan x="580" dy="30">gc.enable() inside setup</tspan>
+    <tspan x="580" dy="30">turns it back on</tspan>
+  </text>
+
+  
+  <rect x="1065" y="890" width="460" height="210" rx="8" fill="#ffffff" stroke="#b5cdbe" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1100" cy="920" r="10"/>
+    <circle cx="1120" cy="938" r="10"/>
+    <path d="M1100 930 v12 h10"/>
+  </g>
+  <text x="1090" y="980" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1090" dy="0">measure across the Python</tspan>
+    <tspan x="1090" dy="30">versions you target,</tspan>
+    <tspan x="1090" dy="30">such as CPython and PyPy</tspan>
+  </text>
+
+  
+  <rect x="50" y="1135" width="1500" height="50" rx="8" fill="#207448"/>
+  <text x="800" y="1169" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Measure instead of guessing</text>
+</svg>

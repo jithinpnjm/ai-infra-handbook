@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "p3-0501-four-questions",
+  "title": "Four questions every container answers: see, use, reach, store",
+  "spec": "Centre box 'Container = a process started by the kernel' with a chip icon. Four boxes around it, each with a question as its title and the mechanisms as rows. Box 1 'What can it see?' rows: 'PID namespace: own process tree, app is PID 1', 'Mount namespace + pivot_root: own filesystem view', 'Network namespace: own interfaces, IPs, ports', 'UTS and IPC namespaces: own hostname, own IPC', 'User namespace: root inside is unprivileged outside', 'Cgroup namespace'. Box 2 'How much can it use?' rows: 'cgroups v2: CPU, memory, I/O, PIDs, devices', 'flags: --cpus, --cpu-shares, --memory, --memory-swap, --pids-limit'. Box 3 'What can it reach?' rows: 'Capabilities: --cap-drop ALL --cap-add NET_BIND_SERVICE', 'seccomp: default profile blocks about 40 risky calls', 'AppArmor or SELinux profiles'. Box 4 'Where do its files come from?' rows: 'overlayfs: read-only image layers plus a writable upper layer, copy-on-write', 'writes vanish with the container'. Orange outline on the centre box. Bottom strip: 'One shared host kernel: kernel version, sysctls, loaded modules, dmesg and the GPU driver belong to the host. Escape = kernel or runtime vulnerability, not a hypervisor escape.' Takeaway bar: 'Ask first: does the problem live in the image or in the host kernel the container shares?'",
+  "anchor": "## 1. What a container is",
+  "alt": "The kernel mechanisms behind a container grouped by the question they answer: namespaces for what it can see, cgroups for how much it can use, capabilities seccomp and MAC for what it can reach, and overlayfs for where files come from.",
+  "cap": "Every container has all four answers, even when you never typed a flag for them."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "p3-0501-cache-order",
+  "title": "Layer order decides how much a code edit rebuilds",
+  "spec": "Two vertical stacks side by side labelled with a red 'Careless order' and a green 'Cache-friendly order'. Careless stack, bottom to top: 'FROM base', 'COPY . .', 'RUN pip install' ; after an arrow 'edit one line of code' the COPY layer and the install layer turn orange and are labelled 'rebuilt: every commit forces a full dependency reinstall (a 10-minute reinstall in the checkpoint example)'. Green stack, bottom to top: 'FROM base' cached, 'COPY requirements.lock' cached, 'RUN pip install' cached, 'COPY src/' ; after 'edit one line of code' only the top layer is orange 'rebuilt in about 1 second' and the layers beneath are labelled 'cache hit, digest matches'. A domino row at the bottom: rarely changing pieces first, so a change near the front is the only one that knocks the rest down. Right sidebar: 'Same idea in the Node.js example: COPY package*.json, RUN npm install, then COPY . . so editing server.js rebuilds only the last layer'. Footnote 'Layers match RUN, COPY and ADD; ENV, LABEL and CMD change only metadata.' Takeaway bar: 'Copy the lockfile before the source.'",
+  "anchor": "### Dockerfile mechanics",
+  "alt": "Two Dockerfile orders compared: copying all source before installing dependencies rebuilds the dependency install on every code change, while copying the lockfile first keeps the install cached and rebuilds only the last layer.",
+  "cap": "Order layers from least to most frequently changing, because a change invalidates the cache for every layer built on top of it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "p3-0501-exec-vs-shell",
+  "title": "Shell form hides your app from SIGTERM; exec form does not",
+  "spec": "Two horizontal lanes. Top lane red-bordered 'Shell form: ENTRYPOINT python app.py': boxes in a process tree 'PID 1: /bin/sh -c python app.py' with a child box 'python app'. An arrow 'SIGTERM' from the left stops at the shell, labelled 'the shell does not forward it'. Then a clock icon box 'waits the full terminationGracePeriodSeconds (30 seconds by default in Kubernetes, 10 seconds for docker stop)' then an orange arrow 'SIGKILL' to the child with note 'in-flight requests or checkpoints can be corrupted'. Bottom lane green-bordered 'Exec form: ENTRYPOINT [python, app.py]': single box 'PID 1: python app' with arrow 'SIGTERM' straight in, labelled 'graceful shutdown'. Footer row: 'App forks children? Add tini or --init: a tiny init that forwards signals and reaps zombies'. Small side note: 'Exit codes: 143 = SIGTERM with no handler, 137 = SIGKILL'.",
+  "anchor": "### Runtime user and pinned packages",
+  "alt": "With shell form ENTRYPOINT the shell is PID 1 and does not forward SIGTERM so the pod waits the full grace period before SIGKILL, while exec form runs the app as PID 1 and receives SIGTERM directly.",
+  "cap": "Use the exec form of ENTRYPOINT and CMD so signals reach your process, and add tini or --init when the app forks children."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "p3-0501-gpu-image-host-split",
+  "title": "GPU container: what the image brings, what the host brings, and which error means what",
+  "spec": "Two big panels joined by an arrow labelled 'NVIDIA Container Toolkit injects at start'. Left panel 'Host' with chip icon rows: 'NVIDIA kernel module nvidia.ko', 'device nodes /dev/nvidia*', 'libcuda.so, libnvidia-ml.so, nvidia-smi'. Right panel 'Container image' rows: 'CUDA runtime libcudart', 'cuBLAS, cuDNN, NCCL', 'PyTorch, TensorRT, vLLM'. A numbered strip below the arrow: '1 runtime is asked for GPU access (--gpus all or CDI)', '2 toolkit hook lists host GPUs before the app starts', '3 adds /dev/nvidia* and bind-mounts host driver libraries', '4 your code loads libcudart from the image, which calls the host libcuda'. Bottom two error boxes. Box A 'CUDA driver version is insufficient for CUDA runtime version' arrow to 'host driver older than the image CUDA needs: upgrade the driver, or use cuda-compat'. Box B 'no kernel image is available for execution on the device' arrow to 'binary not compiled for the GPU compute capability: rebuild, set TORCH_CUDA_ARCH_LIST (sm_80 A100, sm_90 H100, sm_100 B200); a driver upgrade does not help'. Third small box 'bash: nvidia-smi: not found' arrow 'toolkit or runtime not configured, NVIDIA_DRIVER_CAPABILITIES lacks utility'. Orange outline on the arrow between panels. Note: 'Newer drivers support older CUDA runtimes.'",
+  "anchor": "## 6. GPU containers",
+  "alt": "The host provides the kernel driver, device nodes and libcuda, the image provides the CUDA runtime, cuDNN and NCCL, and two different error messages point to a driver version problem or a compute capability problem.",
+  "cap": "The image brings the tools and the host brings the engine; the error message tells you which side to fix."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "p3-0501-exit-code-map",
+  "title": "Reading how a container exited",
+  "spec": "A vertical decision table with a header row 'Exit code' | 'Meaning' | 'First check'. Rows: '137 (128 + 9 = SIGKILL) with State.OOMKilled true' | 'the cgroup memory controller killed it at memory.max' | 'docker inspect .State.OOMKilled, dmesg, raise the limit or fix the leak' (orange outline); '143 (128 + 15 = SIGTERM)' | 'graceful termination signal, no handler' | 'handle SIGTERM'; '139 (128 + 11 = SIGSEGV)' | 'segmentation fault' | 'docker logs'; '135 (128 + 7 = SIGBUS)' | 'bus error, often on /dev/shm which is 64 MiB by default in Docker' | 'raise --shm-size or --ipc=host, in Kubernetes a memory emptyDir at /dev/shm'; '1 or 2' | 'application error or syntax error' | 'docker logs container'. Above the table a small formula box 'exit code = 128 + signal number'. Below the table a second mini-table 'Startup failures': 'exec format error: wrong CPU architecture (arm64 image on amd64) or a script with no #! shebang or CRLF line endings; check docker image inspect Architecture and crane manifest platforms', 'container exits immediately: PID 1 finished; docker logs, docker inspect .State, run with sh'. Takeaway: 'Run the check before you change anything.'",
+  "anchor": "## 8. Troubleshooting images and containers",
+  "alt": "A decision table from container exit code to likely cause: 137 with OOMKilled true is a memory limit kill, 143 is SIGTERM, 139 is a segmentation fault, 135 is a bus error on shared memory, and 1 or 2 is an application error.",
+  "cap": "An exit code of 128 plus N means the process died of signal N, and State.OOMKilled separates a memory kill from other SIGKILLs."
+ }
+]

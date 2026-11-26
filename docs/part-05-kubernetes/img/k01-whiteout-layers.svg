@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Deleting a file in a later layer hides it</title>
+  <desc>Infographic explaining how deleting a file in a later container layer creates a whiteout marker that hides the file in the merged view while earlier layers retain their copies on disk and in the registry.</desc>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Deleting a file in a later layer hides it</text>
+
+  
+  <rect x="60" y="115" width="680" height="865" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(95, 142)">
+    <path d="M 4 28 C 14 14, 38 14, 48 28 C 38 42, 14 42, 4 28 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="26" cy="28" r="8" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="165" y="180" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">the merged view</text>
+
+  
+  <g transform="translate(95, 215)">
+    <rect width="610" height="350" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    <circle cx="50" cy="50" r="24" fill="#207448"/>
+    <text x="50" y="58" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="90" y="59" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Step 1</text>
+
+    
+    <g transform="translate(525, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+      <path d="M 6 4 H 28 L 42 18 V 48 H 6 Z"/>
+      <path d="M 28 4 V 18 H 42"/>
+    </g>
+
+    
+    <rect x="30" y="110" width="550" height="205" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="305" y="190" text-anchor="middle" fill="#303a36">
+      <tspan x="305" dy="0"><tspan font-family="monospace" font-size="26" font-weight="bold" fill="#207448">config.yaml</tspan><tspan font-family="sans-serif" font-size="26"> with the new setting</tspan></tspan>
+      <tspan x="305" dy="44" font-family="sans-serif" font-size="26">because the top layer wins</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(95, 600)">
+    <rect width="610" height="350" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    <circle cx="50" cy="50" r="24" fill="#207448"/>
+    <text x="50" y="58" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="90" y="59" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Step 2</text>
+
+    
+    <g transform="translate(525, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+      <path d="M 6 4 H 28 L 42 18 V 48 H 6 Z" stroke-dasharray="6 4"/>
+      <line x1="14" y1="38" x2="34" y2="16" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <rect x="30" y="110" width="550" height="205" rx="10" fill="#ffffff" stroke="#8a968f" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="305" y="195" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#58635e">
+      <tspan x="305" dy="0">the file gone</tspan>
+      <tspan x="305" dy="44">after the whiteout</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="790" y="115" width="750" height="865" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <g transform="translate(825, 138)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M 6 12 L 46 12"/>
+    <path d="M 6 24 L 46 24"/>
+    <path d="M 6 36 L 46 36"/>
+  </g>
+  <text x="890" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="890" dy="0">Three stacked layer sheets,</tspan>
+    <tspan x="890" dy="36">bottom to top</tspan>
+  </text>
+
+  
+  <g transform="translate(825, 215)">
+    <rect width="680" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(25, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="38" height="34" rx="4"/>
+      <line x1="12" y1="23" x2="34" y2="23" stroke-width="4"/>
+    </g>
+
+    <text x="85" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 3 (top)</text>
+    <text x="85" y="98" font-size="26" fill="#303a36">
+      <tspan x="85" dy="0" font-family="sans-serif">whiteout marker that deletes </tspan>
+      <tspan x="85" dy="34" font-family="monospace" font-weight="bold" fill="#207448">config.yaml</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(825, 385)">
+    <rect width="680" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(25, 20)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 6 H 26 L 38 18 V 40 H 6 Z"/>
+      <path d="M 26 6 V 18 H 38"/>
+    </g>
+
+    <text x="85" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 2</text>
+    <text x="85" y="98" font-size="26" fill="#303a36">
+      <tspan x="85" dy="0" font-family="monospace" font-weight="bold" fill="#207448">config.yaml</tspan>
+      <tspan x="85" dy="34" font-family="sans-serif">with the changed setting (new)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(825, 555)">
+    <rect width="680" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(25, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+      <ellipse cx="24" cy="12" rx="18" ry="7"/>
+      <path d="M 6 12 V 32 C 6 36, 42 36, 42 32 V 12"/>
+    </g>
+
+    <text x="85" y="45" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 1 (bottom)</text>
+    <text x="85" y="88" font-size="26" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#207448">config.yaml</tspan><tspan font-family="sans-serif"> with one setting (old)</tspan>
+    </text>
+
+    
+    <rect x="25" y="125" width="630" height="98" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(45, 150)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <circle cx="18" cy="18" r="16"/>
+      <line x1="18" y1="10" x2="18" y2="20"/>
+      <circle cx="18" cy="26" r="1.5" fill="#db8129"/>
+    </g>
+    <text x="95" y="162" font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">
+      <tspan x="95" dy="0">deleting a file later</tspan>
+      <tspan x="95" dy="34">does not make the image smaller</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(825, 820)">
+    <rect width="680" height="130" rx="12" fill="#207448" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(25, 34)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linejoin="round">
+      <ellipse cx="22" cy="12" rx="18" ry="6"/>
+      <path d="M 4 12 V 26 C 4 30, 40 30, 40 26 V 12"/>
+      <path d="M 4 26 V 40 C 4 44, 40 44, 40 40 V 26"/>
+    </g>
+
+    <text x="85" y="60" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">
+      <tspan x="85" dy="0">layers 1 and 2 still hold their copies</tspan>
+      <tspan x="85" dy="36">on disk and in the registry</tspan>
+    </text>
+  </g>
+
+</svg>

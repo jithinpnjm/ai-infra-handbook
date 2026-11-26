@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Same retries, two queue depths, opposite outcomes</title>
+  <desc>Infographic comparing retry amplification, success rates, and wasted work between short and deep queues under replica failure.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Same retries, two queue depths, opposite outcomes</text>
+
+  
+  <g id="setup-group">
+    <rect x="40" y="105" width="1520" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(64, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="8" />
+      <line x1="14" y1="18" x2="42" y2="18" />
+      <line x1="14" y1="28" x2="42" y2="28" />
+      <line x1="14" y1="38" x2="42" y2="38" />
+      <circle cx="22" cy="18" r="3" fill="#207448" />
+      <circle cx="34" cy="28" r="3" fill="#207448" />
+      <circle cx="26" cy="38" r="3" fill="#207448" />
+    </g>
+    <text x="140" y="145" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Setup</text>
+    <text x="140" y="182" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">eight replicas, 4 slots each, 0.5 s service time = 64 requests per second capacity; users send 52 per second;</tspan>
+      <tspan x="140" dy="32">seconds 30 to 70 two of eight replicas fail fast; 2 s attempt timeout; simulator output</tspan>
+    </text>
+  </g>
+
+  
+  <g id="tables-group">
+    <text x="40" y="280" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Two small tables</text>
+
+    
+    <rect x="40" y="305" width="740" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <path d="M 40,317 A 12,12 0 0,1 52,305 L 768,305 A 12,12 0 0,1 780,317 L 780,365 L 40,365 Z" fill="#e8f1ea" />
+    
+    <g transform="translate(56, 312)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18" />
+      <polyline points="24,14 24,24 30,28" />
+    </g>
+    <text x="115" y="344" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Short queue (rejects fast)</text>
+
+    <text x="65" y="400" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">no_retry amplification 1.0,</tspan>
+      <tspan x="65" dy="28">success during 0.748, after 0.992</tspan>
+    </text>
+    <line x1="65" y1="440" x2="755" y2="440" stroke="#e8f1ea" stroke-width="2" />
+
+    <text x="65" y="468" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">naive 4 immediate 1.8, 0.914, 1.0,</tspan>
+      <tspan x="65" dy="28">peak 144 attempts per second</tspan>
+    </text>
+    <line x1="65" y1="508" x2="755" y2="508" stroke="#e8f1ea" stroke-width="2" />
+
+    <text x="65" y="538" font-family="sans-serif" font-size="24" fill="#303a36">full_jitter_4 1.892, 0.917</text>
+    <line x1="65" y1="554" x2="755" y2="554" stroke="#e8f1ea" stroke-width="2" />
+
+    <text x="65" y="590" font-family="sans-serif" font-size="24" fill="#303a36">full_jitter_4_budget10 1.104, 0.81, peak 74</text>
+
+    
+    <rect x="820" y="305" width="740" height="320" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <path d="M 820,317 A 12,12 0 0,1 832,305 L 1548,305 A 12,12 0 0,1 1560,317 L 1560,365 L 820,365 Z" fill="#fdf3e8" />
+    
+    <g transform="translate(836, 312)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24,8 L 44,40 L 4,40 Z" />
+      <line x1="24" y1="20" x2="24" y2="28" />
+      <circle cx="24" cy="34" r="1.5" fill="#db8129" />
+    </g>
+    <text x="895" y="344" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">Deep queue (waits pass the timeout)</text>
+
+    <text x="845" y="400" font-family="sans-serif" font-size="24" fill="#303a36">no_retry 1.0, 0.75, 0.973, 72 wasted</text>
+    <line x1="845" y1="422" x2="1535" y2="422" stroke="#fdf3e8" stroke-width="2" />
+
+    <text x="845" y="452" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">naive_4_immediate 3.442, 0.223, after 0.026,</tspan>
+      <tspan x="845" dy="28">peak 326, 4,923 wasted</tspan>
+    </text>
+    <line x1="845" y1="492" x2="1535" y2="492" stroke="#fdf3e8" stroke-width="2" />
+
+    <text x="845" y="524" font-family="sans-serif" font-size="24" fill="#303a36">full_jitter_4 3.445, 0.222, 0.017</text>
+    <line x1="845" y1="544" x2="1535" y2="544" stroke="#fdf3e8" stroke-width="2" />
+
+    <text x="845" y="576" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">full_jitter_4_budget10 1.109, 0.75, 0.993,</tspan>
+      <tspan x="845" dy="28">237 wasted</tspan>
+    </text>
+  </g>
+
+  
+  <g id="verdicts-group">
+    <text x="40" y="670" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Verdicts</text>
+
+    
+    <rect x="40" y="695" width="740" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(60, 715)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6,26 L 18,38 L 44,12" />
+    </g>
+    <text x="125" y="735" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="125" dy="0">Short queue: retries help, success 0.75 to</tspan>
+      <tspan x="125" dy="32">0.91 at 1.8 times the load; the budget</tspan>
+      <tspan x="125" dy="32">gives up some success to hold load at</tspan>
+      <tspan x="125" dy="32">1.1 times</tspan>
+    </text>
+
+    
+    <rect x="820" y="695" width="740" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(840, 715)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="20" />
+      <line x1="16" y1="16" x2="36" y2="36" />
+      <line x1="36" y1="16" x2="16" y2="36" />
+    </g>
+    <text x="905" y="728" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="905" dy="0">Deep queue: attempts time out while replicas</tspan>
+      <tspan x="905" dy="30">still complete them later (wasted work); the</tspan>
+      <tspan x="905" dy="30">service stays broken after the fault is gone,</tspan>
+      <tspan x="905" dy="30">only 2 percent succeed; jitter changes</tspan>
+      <tspan x="905" dy="30">almost nothing, the budget does</tspan>
+    </text>
+  </g>
+
+  
+  <g id="note-group">
+    <rect x="40" y="905" width="1520" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(64, 932)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="4" width="36" height="46" rx="4" />
+      <line x1="16" y1="16" x2="36" y2="16" />
+      <line x1="16" y1="26" x2="36" y2="26" />
+      <line x1="16" y1="36" x2="28" y2="36" />
+    </g>
+    <text x="135" y="945" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Note</text>
+    <text x="135" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">a budget of 0.5 left the deep-queue service down at 8 percent success, so a generous budget is not a budget</tspan>
+    </text>
+  </g>
+
+  
+  <g id="rule-group">
+    <rect x="40" y="1040" width="1520" height="120" rx="12" fill="#207448" />
+    <g transform="translate(64, 1072)" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 26,4 L 46,14 L 46,28 C 46,39 37,48 26,52 C 15,48 6,39 6,28 L 6,14 Z" />
+      <path d="M 18,27 L 24,33 L 34,21" />
+    </g>
+    <text x="135" y="1082" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Rule</text>
+    <text x="135" y="1124" font-family="sans-serif" font-size="24" fill="#ffffff">
+      <tspan x="135" dy="0">keep queues short enough that a request cannot wait longer than its timeout, then add a budget</tspan>
+    </text>
+  </g>
+</svg>

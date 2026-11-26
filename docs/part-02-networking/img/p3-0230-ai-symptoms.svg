@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>AI fabric symptoms: the first move for each</title>
+  <desc>A troubleshooting matrix for AI fabric symptoms and their primary first-check diagnostics.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">AI fabric symptoms: the first move for each</text>
+
+  
+  <rect x="40" y="112" width="480" height="50" rx="8" fill="#207448"/>
+  <text x="60" y="147" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Symptom</text>
+
+  <rect x="535" y="112" width="1025" height="50" rx="8" fill="#207448"/>
+  <text x="560" y="147" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">First checks</text>
+
+  
+  <g>
+    <rect x="40" y="175" width="1520" height="138" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 183 Q 40 175 48 175 L 520 175 L 520 313 L 48 313 Q 40 313 40 305 Z" fill="#e8f1ea"/>
+    <line x1="520" y1="175" x2="520" y2="313" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="86" cy="244" r="22" stroke="#207448" stroke-width="4" fill="none" stroke-dasharray="105 35" stroke-dashoffset="-18"/>
+    <circle cx="86" cy="244" r="3" fill="#207448"/>
+    <line x1="86" y1="244" x2="73" y2="251" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+    
+    <text x="135" y="233" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">One rank slow in</tspan>
+      <tspan x="135" dy="38">all-reduce</tspan>
+    </text>
+
+    
+    <text x="555" y="217" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" dy="0">per-rail NIC counters, optics DOM, ECMP or AR imbalance,</tspan>
+      <tspan x="555" dy="32">PFC pauses from and to that host, CPU, NUMA and IRQ on that node,</tspan>
+      <tspan x="555" dy="32">thermal or power throttling</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="327" width="1520" height="138" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 335 Q 40 327 48 327 L 520 327 L 520 465 L 48 465 Q 40 465 40 457 Z" fill="#e8f1ea"/>
+    <line x1="520" y1="327" x2="520" y2="465" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="86" cy="396" r="22" stroke="#db8129" stroke-width="4" fill="none"/>
+    <line x1="80" y1="388" x2="80" y2="404" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="92" y1="388" x2="92" y2="404" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+
+    
+    <text x="135" y="385" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">Job hangs at init</tspan>
+      <tspan x="135" dy="38">or NCCL timeout</tspan>
+    </text>
+
+    
+    <text x="555" y="363" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" dy="0">NCCL_DEBUG=INFO (interfaces, GID, transport chosen),</tspan>
+      <tspan x="555" dy="26">firewall or security group between nodes, MTU,</tspan>
+      <tspan x="555" dy="26">wrong NCCL_SOCKET_IFNAME or NCCL_IB_HCA,</tspan>
+      <tspan x="555" dy="26">DNS or hostname resolution, time skew, subnet manager state</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="479" width="1520" height="138" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 487 Q 40 479 48 479 L 520 479 L 520 617 L 48 617 Q 40 617 40 609 Z" fill="#e8f1ea"/>
+    <line x1="520" y1="479" x2="520" y2="617" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="66" y="528" width="40" height="40" rx="6" stroke="#207448" stroke-width="4" fill="none"/>
+    <line x1="86" y1="528" x2="86" y2="568" stroke="#207448" stroke-width="4"/>
+    <line x1="76" y1="540" x2="76" y2="556" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+    
+    <text x="135" y="537" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">Throughput half</tspan>
+      <tspan x="135" dy="38">of expected</tspan>
+    </text>
+
+    
+    <text x="555" y="521" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" dy="0">link speed or FEC negotiated down, PCIe width, NUMA mismatch,</tspan>
+      <tspan x="555" dy="32">MTU 1500 on one hop, PFC or ECN misconfiguration,</tspan>
+      <tspan x="555" dy="32">oversubscribed tier, ECMP collision</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="631" width="1520" height="138" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 639 Q 40 631 48 631 L 520 631 L 520 769 L 48 769 Q 40 769 40 761 Z" fill="#e8f1ea"/>
+    <line x1="520" y1="631" x2="520" y2="769" stroke="#207448" stroke-width="2"/>
+
+    
+    <path d="M 64 700 L 71 700 L 75 686 L 79 714 L 83 700 L 93 700 L 97 686 L 101 714 L 105 700 L 108 700" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+
+    
+    <text x="135" y="689" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">Periodic stalls</tspan>
+      <tspan x="135" dy="38">(seconds)</tspan>
+    </text>
+
+    
+    <text x="555" y="673" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" dy="0">PFC storm, RTO events, BGP or BFD flap,</tspan>
+      <tspan x="555" dy="32">congestion from a competing job,</tspan>
+      <tspan x="555" dy="32">checkpoint write incast on the storage network</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="783" width="1520" height="138" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 791 Q 40 783 48 783 L 520 783 L 520 921 L 48 921 Q 40 921 40 913 Z" fill="#e8f1ea"/>
+    <line x1="520" y1="783" x2="520" y2="921" stroke="#207448" stroke-width="2"/>
+
+    
+    <path d="M 86 830 L 108 868 L 64 868 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none"/>
+    <line x1="86" y1="843" x2="86" y2="854" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="86" cy="861" r="2" fill="#207448"/>
+
+    
+    <text x="135" y="841" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="135" dy="0">Errors rising</tspan>
+      <tspan x="135" dy="38">without link flap</tspan>
+    </text>
+
+    
+    <text x="555" y="825" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" dy="0">CRC and FEC counters,</tspan>
+      <tspan x="555" dy="32">dirty or failing optics (DOM Rx power low),</tspan>
+      <tspan x="555" dy="32">bad cable, switch ASIC issue</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="935" width="1520" height="138" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 943 Q 40 935 48 935 L 520 935 L 520 1073 L 48 1073 Q 40 1073 40 1065 Z" fill="#e8f1ea"/>
+    <line x1="520" y1="935" x2="520" y2="1073" stroke="#207448" stroke-width="2"/>
+
+    
+    <path d="M 75 993 C 71 990 71 984 75 980 C 78 977 83 977 86 980 L 89 983 L 84 988 L 88 992 L 93 987 L 96 990 C 99 993 99 998 96 1001 C 92 1005 86 1005 83 1001 L 73 1011 C 71 1013 67 1013 65 1011 C 63 1009 63 1005 65 1003 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none"/>
+
+    
+    <text x="135" y="1013" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">After maintenance</text>
+
+    
+    <text x="555" y="977" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" dy="0">config drift,</tspan>
+      <tspan x="555" dy="32">wrong cable or rail mapping (LLDP versus plan),</tspan>
+      <tspan x="555" dy="32">firmware mismatch, forgotten drain</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1100" width="1520" height="65" rx="8" fill="#207448"/>
+    <text x="800" y="1141" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Ordinary faults break a connection, AI fabric faults often slow a whole job while every link stays up</text>
+  </g>
+</svg>

@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Case 2: benchmark the benchmarker, a ramp and a fixed-rate test</title>
+  <desc>Infographic explaining load generator bottlenecks, ramp tests, fixed-rate tests, active benchmarking, and complementary performance experiments.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Case 2: benchmark the benchmarker, a ramp and a fixed-rate test</text>
+
+  
+  <g id="top-panel">
+    <rect x="40" y="100" width="1010" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <path d="M 68 148 A 18 18 0 1 1 104 148" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="86" y1="148" x2="98" y2="134" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="120" y="145" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Ramp test, load generator single-threaded</text>
+
+    
+    <rect x="65" y="170" width="435" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <line x1="90" y1="265" x2="475" y2="265" stroke="#9bbba3" stroke-width="2" stroke-linecap="round" />
+    <line x1="90" y1="265" x2="90" y2="185" stroke="#9bbba3" stroke-width="2" stroke-linecap="round" />
+    
+    <line x1="90" y1="215" x2="475" y2="215" stroke="#db8129" stroke-width="2" stroke-dasharray="6,6" />
+    
+    <path d="M 95 260 C 140 255 180 215 260 215 L 475 215" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="320" y="205" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">700 samples/s</text>
+
+    
+    <rect x="525" y="170" width="500" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="542" y="181" width="30" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="550" y1="176" x2="550" y2="181" stroke="#207448" stroke-width="2.5" />
+    <line x1="564" y1="176" x2="564" y2="181" stroke="#207448" stroke-width="2.5" />
+    <line x1="550" y1="211" x2="550" y2="216" stroke="#207448" stroke-width="2.5" />
+    <line x1="564" y1="211" x2="564" y2="216" stroke="#207448" stroke-width="2.5" />
+    <text x="590" y="205" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">one CPU saturated</text>
+
+    
+    <rect x="525" y="233" width="500" height="52" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <rect x="540" y="243" width="34" height="13" rx="2" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <rect x="540" y="260" width="34" height="13" rx="2" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="566" cy="249" r="2" fill="#db8129" />
+    <circle cx="566" cy="266" r="2" fill="#db8129" />
+    <text x="590" y="268" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">server resources idle</text>
+
+    
+    <rect x="65" y="298" width="960" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="545" y="333" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">a plateau with an idle server means the test is hiding something</text>
+  </g>
+
+  
+  <g id="middle-panel">
+    <rect x="40" y="450" width="1010" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="86" cy="488" r="18" fill="none" stroke="#207448" stroke-width="4" />
+    <polyline points="86,476 86,488 97,488" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="120" y="497" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Fixed-rate test at 700/s on both versions</text>
+
+    
+    
+    <rect x="65" y="525" width="440" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="65" y="525" width="130" height="52" rx="8" fill="#c3dbc8" />
+    <text x="85" y="560" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">old version 20% CPU</text>
+
+    
+    <rect x="65" y="590" width="440" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="65" y="590" width="195" height="52" rx="8" fill="#a4cbb0" />
+    <text x="85" y="625" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">new version 30% CPU</text>
+
+    
+    <line x1="515" y1="584" x2="545" y2="584" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="555" y="525" width="470" height="117" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 590 598 L 606 565 L 622 598 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <line x1="606" y1="577" x2="606" y2="587" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="606" cy="592" r="1.5" fill="#207448" />
+    <text x="640" y="593" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">regression: 50% more CPU per sample</text>
+  </g>
+
+  
+  <g id="bottom-panel">
+    <rect x="40" y="730" width="1010" height="375" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <circle cx="72" cy="768" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="98" cy="755" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="98" cy="781" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="78" y1="765" x2="92" y2="757" stroke="#207448" stroke-width="2" />
+    <line x1="78" y1="771" x2="92" y2="779" stroke="#207448" stroke-width="2" />
+
+    <text x="120" y="765" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="120" dy="0">Fix the generator: run it in parallel on several clients,</tspan>
+      <tspan x="120" dy="32">which drives server CPU to 100%</tspan>
+    </text>
+
+    
+    <rect x="65" y="830" width="455" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="65" y="830" width="310" height="52" rx="8" fill="#c3dbc8" />
+    <text x="85" y="865" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">old version 3,500/s</text>
+
+    <rect x="570" y="830" width="455" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="570" y="830" width="205" height="52" rx="8" fill="#a4cbb0" />
+    <text x="590" y="865" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">new version 2,300/s</text>
+
+    
+    <rect x="255" y="904" width="580" height="38" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <line x1="545" y1="885" x2="545" y2="904" stroke="#207448" stroke-width="3" />
+    <text x="545" y="931" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">matches the CPU-per-sample finding</text>
+    <line x1="545" y1="942" x2="545" y2="966" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="65" y="972" width="960" height="112" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 98 1045 C 90 1032 96 1018 105 1008 C 113 1022 122 1026 122 1038 C 122 1048 114 1055 105 1055 C 97 1055 93 1049 98 1045 Z" fill="none" stroke="#207448" stroke-width="3.5" />
+    <text x="145" y="1022" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">CPU-profile the new version with a flame graph</tspan>
+      <tspan x="145" dy="32">to find where the extra cycles go</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="right-strip-lessons">
+    <rect x="1080" y="100" width="480" height="490" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1120" cy="145" r="16" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="1114" y1="164" x2="1126" y2="164" stroke="#207448" stroke-width="3.5" />
+    <line x1="1116" y1="169" x2="1124" y2="169" stroke="#207448" stroke-width="3.5" />
+
+    <text x="1105" y="210" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1105" dy="0" fill="#207448">Lessons: benchmark the</tspan>
+      <tspan x="1105" dy="36">benchmarker; use two</tspan>
+      <tspan x="1105" dy="36">complementary experiments,</tspan>
+      <tspan x="1105" dy="36">a ramp and a fixed-rate test;</tspan>
+      <tspan x="1105" dy="36">convert results to resource</tspan>
+      <tspan x="1105" dy="36">per request; record what</tspan>
+      <tspan x="1105" dy="36">you did not test, such as</tspan>
+      <tspan x="1105" dy="36">varied workloads</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-strip-active-benchmarking">
+    <rect x="1080" y="615" width="480" height="490" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 1102 660 Q 1122 642 1142 660 Q 1122 678 1102 660 Z" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="1122" cy="660" r="5" fill="#207448" />
+
+    <text x="1105" y="725" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1105" dy="0" fill="#207448">Active benchmarking: watch</tspan>
+      <tspan x="1105" dy="36">the server while the test runs</tspan>
+      <tspan x="1105" dy="36">rather than reading a report</tspan>
+      <tspan x="1105" dy="36">afterwards; the generator</tspan>
+      <tspan x="1105" dy="36">matched the average of the</tspan>
+      <tspan x="1105" dy="36">real workload but not its</tspan>
+      <tspan x="1105" dy="36">variance, and she noted</tspan>
+      <tspan x="1105" dy="36">that gap</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1130" width="1520" height="55" rx="8" fill="#207448" />
+    <text x="800" y="1166" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">A plateau with an idle server is a clue about the test, not the system</text>
+  </g>
+</svg>

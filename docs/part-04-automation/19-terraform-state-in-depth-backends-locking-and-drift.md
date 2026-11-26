@@ -85,13 +85,9 @@ Yevgeniy Brikman details why this fails in Chapter 3 of *Terraform: Up and Runni
 
 Remote state is the baseline for anything shared. Remote means the file lives in a storage service that every runner can reach, and the service adds the locking and access control that Git cannot.
 
-```mermaid
-flowchart LR
-    Runner["CI Runner / Engineer<br/>(terraform plan -out=tfplan / apply)"] -->|"1. Acquire Lock (LockID / .tflock)"| Lock["State Lock<br/>(S3 .tflock / DynamoDB LockID /<br/>GCS object lock / Azure lease)"]
-    Runner -->|"2. Read & Verify lineage + serial"| Bucket[("Remote State Bucket<br/>(S3 / GCS / Azure Blob)<br/>KMS Encrypted + Versioned +<br/>Public Access Blocked")]
-    Runner -->|"3. Mutate Cloud Resources"| Cloud["Cloud APIs<br/>(VPC, GKE/EKS, GPU Pools)"]
-    Cloud -->|"4. Write serial + 1 & Release Lock"| Bucket
-```
+![Local state and its limits](./img/m4-19-1.svg)
+
+*Figure 4.19.1. Local state and its limits, as a diagram.*
 
 Read the diagram from top to bottom, so you see the order of each step. The runner takes the lock first, so no other run can start a change. It then reads and verifies the state, checking that the lineage and serial match what it expects, and only then changes the cloud resources. Finally it writes the new serial and releases the lock. If the runner crashes between steps three and four, the lock stays held, which is the situation section 4 deals with.
 

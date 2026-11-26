@@ -1,0 +1,137 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Changing an immutable ConfigMap by versioning the name</title>
+  <desc>Visual explanation of changing an immutable Kubernetes ConfigMap by versioning its name, rolling updates via Deployment, side benefits of immutability, and contrast with mutable ConfigMaps.</desc>
+
+  <defs>
+    <marker id="arrowhead-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#db8129"/>
+    </marker>
+    <marker id="arrowhead-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Changing an immutable ConfigMap by versioning the name</text>
+
+  
+
+  
+  <rect x="60" y="130" width="450" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="110" cy="180" r="24" fill="#207448"/>
+  <text x="110" y="189" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  
+  <g transform="translate(155, 155)">
+    <path d="M 0 0 L 26 0 L 38 12 L 38 46 L 0 46 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <rect x="10" y="24" width="18" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 14 24 V 18 A 5 5 0 0 1 24 18 V 24" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="215" y="191" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">State 1</text>
+  <line x1="85" y1="225" x2="485" y2="225" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <text x="85" y="270" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">ConfigMap trainer-config</tspan>
+    <tspan x="85" dy="36">immutable true with</tspan>
+    <tspan x="85" dy="36">LOG_LEVEL info;</tspan>
+    <tspan x="85" dy="36">Deployment points at</tspan>
+    <tspan x="85" dy="36">trainer-config</tspan>
+  </text>
+
+  
+  <line x1="510" y1="320" x2="570" y2="320" stroke="#db8129" stroke-width="4" marker-end="url(#arrowhead-orange)"/>
+
+  
+  <rect x="575" y="130" width="450" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="625" cy="180" r="24" fill="#207448"/>
+  <text x="625" y="189" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  
+  <g transform="translate(670, 155)">
+    <path d="M 0 0 L 26 0 L 38 12 L 38 46 L 0 46 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 12 28 H 26 M 19 21 V 35" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="730" y="191" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">State 2</text>
+  <line x1="600" y1="225" x2="1000" y2="225" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <text x="600" y="275" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">create trainer-config-v2</tspan>
+    <tspan x="600" dy="40">with LOG_LEVEL debug;</tspan>
+    <tspan x="600" dy="40">point the Deployment at</tspan>
+    <tspan x="600" dy="40">trainer-config-v2</tspan>
+  </text>
+
+  
+  <line x1="1025" y1="320" x2="1085" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead-green)"/>
+
+  
+  <rect x="1090" y="130" width="450" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="1140" cy="180" r="24" fill="#207448"/>
+  <text x="1140" y="189" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  
+  <g transform="translate(1185, 155)">
+    <path d="M 8 10 A 18 18 0 0 1 36 14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 32 6 L 38 14 L 30 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 36 34 A 18 18 0 0 1 8 30" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 12 38 L 6 30 L 14 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1245" y="191" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">State 3</text>
+  <line x1="1115" y1="225" x2="1515" y2="225" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  <text x="1115" y="275" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0">rolling update replaces old</tspan>
+    <tspan x="1115" dy="40">pods with pods reading v2;</tspan>
+    <tspan x="1115" dy="40">the old ConfigMap can be</tspan>
+    <tspan x="1115" dy="40">removed once no pod uses it</tspan>
+  </text>
+
+  
+  <rect x="60" y="540" width="1480" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="90" y="575" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Side benefits</text>
+
+  
+  <rect x="90" y="595" width="540" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(115, 626)">
+    <path d="M 22 0 L 44 8 V 24 C 44 37 22 46 22 46 C 22 46 0 37 0 24 V 8 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 13 23 L 19 29 L 31 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="180" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">protects from accidental edits</text>
+
+  
+  <rect x="660" y="595" width="850" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(685, 626)">
+    <rect x="0" y="0" width="46" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="10" cy="9" r="2.5" fill="#207448"/>
+    <rect x="0" y="24" width="46" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="10" cy="33" r="2.5" fill="#207448"/>
+  </g>
+  <text x="755" y="643" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="755" dy="0">kubelets stop watching the object so</tspan>
+    <tspan x="755" dy="34">API server load drops at scale</tspan>
+  </text>
+
+  
+  <rect x="60" y="760" width="1480" height="290" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(90, 780)">
+    <path d="M 0 10 H 32 M 24 2 L 34 10 L 24 18" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 34 26 H 2 M 10 18 L 0 26 L 10 34" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="140" y="802" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Contrast row</text>
+
+  
+  <rect x="90" y="820" width="1420" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="125" y="865" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">mutable ConfigMap: env vars keep the old value until the pod restarts,</tspan>
+    <tspan x="125" dy="38">a directory volume updates in about 1 to 2 minutes via an atomic ..data symlink swap,</tspan>
+    <tspan x="125" dy="38">subPath mounts never update; a hash annotation on the pod template</tspan>
+    <tspan x="125" dy="38">makes every config change a visible rollout in Git</tspan>
+  </text>
+</svg>

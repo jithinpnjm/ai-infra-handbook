@@ -1,0 +1,242 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+  <title>Method</title>
+  <desc>Systematic troubleshooting method flowchart: intake and scoping to layer-by-layer isolation, hypothesis testing, and resolution.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1170" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Method</text>
+
+  
+  <rect x="50" y="85" width="450" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="82" cy="118" r="20" fill="#207448" />
+  <text x="82" y="126" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(115, 96)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 4 22 L 12 22 L 18 10 L 26 34 L 32 22 L 40 22" />
+  </g>
+  
+  <text x="170" y="127" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Symptom</text>
+  <text x="82" y="170" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="82" dy="0">(what, who, since when,</tspan>
+    <tspan x="82" dy="32">scope)</tspan>
+  </text>
+
+  
+  <line x1="500" y1="157" x2="538" y2="157" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="540" y="85" width="530" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="572" cy="118" r="20" fill="#207448" />
+  <text x="572" y="126" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(605, 96)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="16" />
+    <circle cx="22" cy="22" r="7" />
+    <line x1="22" y1="2" x2="22" y2="8" />
+    <line x1="22" y1="36" x2="22" y2="42" />
+    <line x1="2" y1="22" x2="8" y2="22" />
+    <line x1="36" y1="22" x2="42" y2="22" />
+  </g>
+  
+  <text x="660" y="127" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Define scope:</text>
+  <text x="572" y="162" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="572" dy="0">one pod / one node /</tspan>
+    <tspan x="572" dy="30">one namespace / cluster-wide?</tspan>
+    <tspan x="572" dy="30">one version / one zone?</tspan>
+  </text>
+
+  
+  <line x1="1070" y1="157" x2="1108" y2="157" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="1110" y="85" width="440" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1142" cy="118" r="20" fill="#207448" />
+  <text x="1142" y="126" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(1175, 96)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="16" />
+    <polyline points="22,12 22,22 28,26" />
+    <path d="M 6 14 A 18 18 0 0 1 38 14" stroke-dasharray="3 3" />
+  </g>
+  
+  <text x="1230" y="127" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Recent changes:</text>
+  <text x="1142" y="170" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1142" dy="0">deploys, config, upgrades,</tspan>
+    <tspan x="1142" dy="32">node events, certs, quotas</tspan>
+  </text>
+
+  
+  <path d="M 1250 230 L 1250 245 L 800 245 L 800 258" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="680" y="260" width="240" height="64" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="715" cy="292" r="18" fill="#207448" />
+  <text x="715" y="299" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(745, 275)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linejoin="round">
+    <polygon points="17,3 32,10 17,17 2,10" />
+    <polyline points="2,16 17,23 32,16" />
+    <polyline points="2,22 17,29 32,22" />
+  </g>
+  <text x="792" y="303" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Layer</text>
+
+  
+  
+  <path d="M 800 324 L 800 338 L 120 338 L 120 816" fill="none" stroke="#207448" stroke-width="3" />
+
+  
+  <path d="M 120 384 L 358 384" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="140" y="374" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">app</text>
+
+  
+  <path d="M 120 456 L 358 456" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="140" y="446" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">pod/runtime</text>
+
+  
+  <path d="M 120 528 L 358 528" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="140" y="518" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">scheduling</text>
+
+  
+  <path d="M 120 600 L 358 600" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="140" y="590" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">network</text>
+
+  
+  <path d="M 120 672 L 358 672" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="140" y="662" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">storage</text>
+
+  
+  <path d="M 120 744 L 358 744" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="140" y="734" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">node</text>
+
+  
+  <path d="M 120 816 L 358 816" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="140" y="806" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">control plane</text>
+
+  
+  
+  <rect x="360" y="355" width="1060" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(376, 368)" stroke="#207448" stroke-width="2.5" fill="none">
+    <rect x="0" y="0" width="34" height="28" rx="4" />
+    <line x1="0" y1="8" x2="34" y2="8" />
+    <circle cx="6" cy="4" r="1.5" fill="#207448" />
+    <circle cx="12" cy="4" r="1.5" fill="#207448" />
+  </g>
+  <text x="430" y="392" font-family="sans-serif" font-size="24" fill="#303a36">Logs, probes, exit codes, resource limits, config, dependencies</text>
+
+  
+  <rect x="360" y="427" width="1060" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(376, 440)" stroke="#207448" stroke-width="2.5" fill="none">
+    <polygon points="17,2 32,9 32,24 17,31 2,24 2,9" />
+    <polyline points="2,9 17,16 32,9" />
+    <line x1="17" y1="16" x2="17" y2="31" />
+  </g>
+  <text x="430" y="464" font-family="sans-serif" font-size="24" fill="#303a36">Events, describe, crictl, cgroups, mounts, namespaces</text>
+
+  
+  <rect x="360" y="499" width="1060" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(376, 512)" stroke="#207448" stroke-width="2.5" fill="none">
+    <line x1="17" y1="3" x2="17" y2="28" />
+    <line x1="6" y1="10" x2="28" y2="10" />
+    <polygon points="6,10 1,22 11,22" />
+    <polygon points="28,10 23,22 33,22" />
+    <line x1="10" y1="28" x2="24" y2="28" />
+  </g>
+  <text x="430" y="536" font-family="sans-serif" font-size="24" fill="#303a36">FailedScheduling reasons, quotas, queues, taints, capacity</text>
+
+  
+  <rect x="360" y="571" width="1060" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(376, 584)" stroke="#207448" stroke-width="2.5" fill="none">
+    <circle cx="6" cy="7" r="4" />
+    <circle cx="28" cy="7" r="4" />
+    <circle cx="17" cy="25" r="4" />
+    <line x1="9" y1="9" x2="15" y2="22" />
+    <line x1="25" y1="9" x2="19" y2="22" />
+    <line x1="10" y1="7" x2="24" y2="7" />
+  </g>
+  <text x="430" y="608" font-family="monospace" font-size="24" fill="#303a36">DNS → Service → endpoints → CNI → node → underlay (ip, tcpdump)</text>
+
+  
+  <rect x="360" y="643" width="1060" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(376, 655)" stroke="#207448" stroke-width="2.5" fill="none">
+    <ellipse cx="17" cy="8" rx="14" ry="5" />
+    <path d="M 3 8 L 3 24 A 14 5 0 0 0 31 24 L 31 8" />
+    <path d="M 3 16 A 14 5 0 0 0 31 16" />
+  </g>
+  <text x="430" y="680" font-family="sans-serif" font-size="24" fill="#303a36">PVC/PV, CSI, mount, fs, I/O latency</text>
+
+  
+  <rect x="360" y="715" width="1060" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(376, 727)" stroke="#207448" stroke-width="2.5" fill="none">
+    <rect x="5" y="5" width="24" height="24" rx="4" />
+    <rect x="11" y="11" width="12" height="12" />
+    <line x1="17" y1="1" x2="17" y2="5" />
+    <line x1="17" y1="29" x2="17" y2="33" />
+    <line x1="1" y1="17" x2="5" y2="17" />
+    <line x1="29" y1="17" x2="33" y2="17" />
+  </g>
+  <text x="430" y="752" font-family="sans-serif" font-size="24" fill="#303a36">kubelet, runtime, kernel, hardware, GPU/NIC health</text>
+
+  
+  <rect x="360" y="787" width="1060" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(376, 799)" stroke="#207448" stroke-width="2.5" fill="none">
+    <circle cx="17" cy="16" r="13" />
+    <circle cx="17" cy="16" r="5" />
+    <line x1="17" y1="3" x2="17" y2="11" />
+    <line x1="17" y1="21" x2="17" y2="29" />
+    <line x1="4" y1="16" x2="12" y2="16" />
+    <line x1="22" y1="16" x2="30" y2="16" />
+  </g>
+  <text x="430" y="824" font-family="sans-serif" font-size="24" fill="#303a36">API latency, etcd, controllers, webhooks, certs</text>
+
+  
+  <line x1="1420" y1="384" x2="1480" y2="384" stroke="#207448" stroke-width="3" />
+  <line x1="1420" y1="456" x2="1480" y2="456" stroke="#207448" stroke-width="3" />
+  <line x1="1420" y1="528" x2="1480" y2="528" stroke="#207448" stroke-width="3" />
+  <line x1="1420" y1="600" x2="1480" y2="600" stroke="#207448" stroke-width="3" />
+  <line x1="1420" y1="672" x2="1480" y2="672" stroke="#207448" stroke-width="3" />
+  <line x1="1420" y1="744" x2="1480" y2="744" stroke="#207448" stroke-width="3" />
+  <line x1="1420" y1="816" x2="1480" y2="816" stroke="#207448" stroke-width="3" />
+  
+  <path d="M 1480 384 L 1480 875 L 800 875 L 800 896" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  
+  <rect x="250" y="908" width="1100" height="76" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+  <circle cx="292" cy="946" r="20" fill="#db8129" />
+  <text x="292" y="954" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g transform="translate(325, 926)" stroke="#db8129" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 20 C 5 16, 5 9, 13 4 C 21 0, 29 7, 26 15 C 24 18, 22 19, 21 23 L 13 23 Z" />
+    <line x1="13" y1="27" x2="21" y2="27" />
+    <line x1="15" y1="31" x2="19" y2="31" />
+  </g>
+  <text x="375" y="955" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Form hypothesis → cheapest discriminating test</text>
+
+  
+  <line x1="800" y1="984" x2="800" y2="1016" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="250" y="1028" width="1100" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="292" cy="1066" r="20" fill="#207448" />
+  <text x="292" y="1074" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+  
+  <g transform="translate(325, 1046)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 27 5 A 8 8 0 0 1 31 16 L 14 33 L 5 33 L 5 24 L 22 7 A 8 8 0 0 1 27 5 Z" />
+    <polyline points="20,24 24,28 34,18" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="375" y="1075" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fix or mitigate → verify → document</text>
+</svg>

@@ -1,0 +1,139 @@
+#!/usr/bin/env python3
+import re
+import xml.etree.ElementTree as ET
+
+def generate_svg():
+    svg = '''<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="980" viewBox="0 0 1600 980">
+  <title>BGP unnumbered step by step</title>
+  <desc>Visual explanation of BGP unnumbered configuration, automated discovery, and route exchange.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="40" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">BGP unnumbered step by step</text>
+
+  <!-- Top Context Section -->
+  <!-- Left Panel: Switch Cable Connection & Monospace Config Chip -->
+  <rect x="40" y="110" width="940" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <!-- Switch 1 Icon -->
+  <rect x="70" y="132" width="60" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <line x1="80" y1="145" x2="88" y2="145" stroke="#207448" stroke-width="2"/>
+  <line x1="94" y1="145" x2="102" y2="145" stroke="#207448" stroke-width="2"/>
+  <line x1="108" y1="145" x2="116" y2="145" stroke="#207448" stroke-width="2"/>
+  <circle cx="85" cy="160" r="3" fill="#207448"/>
+  <circle cx="98" cy="160" r="3" fill="#207448"/>
+  <circle cx="111" cy="160" r="3" fill="#207448"/>
+
+  <!-- Cable between switches (no arrowheads) -->
+  <line x1="130" y1="153" x2="200" y2="153" stroke="#207448" stroke-width="4"/>
+
+  <!-- Switch 2 Icon -->
+  <rect x="200" y="132" width="60" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <line x1="210" y1="145" x2="218" y2="145" stroke="#207448" stroke-width="2"/>
+  <line x1="224" y1="145" x2="232" y2="145" stroke="#207448" stroke-width="2"/>
+  <line x1="238" y1="145" x2="246" y2="145" stroke="#207448" stroke-width="2"/>
+  <circle cx="215" cy="160" r="3" fill="#207448"/>
+  <circle cx="228" cy="160" r="3" fill="#207448"/>
+  <circle cx="241" cy="160" r="3" fill="#207448"/>
+
+  <!-- Context Label -->
+  <text x="290" y="152" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="290" dy="0">Two switches cabled together,</tspan>
+    <tspan x="290" dy="32">no IP typed on either end</tspan>
+  </text>
+
+  <!-- Monospace Config Chip -->
+  <rect x="70" y="206" width="880" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="96" y="249" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">neighbor swp1 interface remote-as external</text>
+
+  <!-- Right Panel: Orange Side Stat -->
+  <rect x="1020" y="110" width="540" height="175" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+  
+  <!-- Scale Icon (Orange) -->
+  <g transform="translate(1048, 142)">
+    <rect x="0" y="0" width="48" height="48" rx="8" fill="none" stroke="#db8129" stroke-width="3"/>
+    <line x1="12" y1="14" x2="36" y2="14" stroke="#db8129" stroke-width="3"/>
+    <line x1="24" y1="14" x2="24" y2="34" stroke="#db8129" stroke-width="3"/>
+    <line x1="14" y1="34" x2="34" y2="34" stroke="#db8129" stroke-width="3"/>
+  </g>
+
+  <!-- Orange Stat Label -->
+  <text x="1116" y="162" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1116" dy="0">32 leaves x 16 spines =</tspan>
+    <tspan x="1116" dy="36">512 links to address by hand</tspan>
+  </text>
+
+  <!-- Step 1 Card -->
+  <rect x="40" y="320" width="1520" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Number Circle 1 -->
+  <circle cx="85" cy="377" r="24" fill="#207448"/>
+  <text x="85" y="386" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <!-- Step 1 Icon: Network interface / Port -->
+  <g transform="translate(135, 349)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 14 18 L 42 18 L 42 38 L 34 38 L 34 44 L 22 44 L 22 38 L 14 38 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <!-- Step 1 Text -->
+  <text x="220" y="386" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">each interface gets an automatic link-local address fe80::/64</text>
+
+  <!-- Step 2 Card -->
+  <rect x="40" y="465" width="1520" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Number Circle 2 -->
+  <circle cx="85" cy="532" r="24" fill="#207448"/>
+  <text x="85" y="541" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <!-- Step 2 Icon: Radio waves / Discovery broadcast -->
+  <g transform="translate(135, 504)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="36" r="4" fill="#207448"/>
+    <path d="M 18 26 A 14 14 0 0 1 38 26" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 11 19 A 24 24 0 0 1 45 19" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <!-- Step 2 Text -->
+  <text x="220" y="522" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="220" dy="0">each side sends IPv6 Router Advertisements and Neighbour Discovery;</tspan>
+    <tspan x="220" dy="36">FRR learns the neighbour link-local address and MAC</tspan>
+  </text>
+
+  <!-- Step 3 Card -->
+  <rect x="40" y="630" width="1520" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Number Circle 3 -->
+  <circle cx="85" cy="687" r="24" fill="#207448"/>
+  <text x="85" y="696" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <!-- Step 3 Icon: Two connected sockets / TCP session -->
+  <g transform="translate(135, 659)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="20" cy="28" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="36" cy="28" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="27" y1="28" x2="29" y2="28" stroke="#207448" stroke-width="3"/>
+    <line x1="7" y1="28" x2="13" y2="28" stroke="#207448" stroke-width="3"/>
+    <line x1="43" y1="28" x2="49" y2="28" stroke="#207448" stroke-width="3"/>
+  </g>
+  <!-- Step 3 Text -->
+  <text x="220" y="696" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">TCP session starts to port 179</text>
+
+  <!-- Step 4 Card -->
+  <rect x="40" y="775" width="1520" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Number Circle 4 -->
+  <circle cx="85" cy="842" r="24" fill="#207448"/>
+  <text x="85" y="851" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <!-- Step 4 Icon: Router / Cross routing engine -->
+  <g transform="translate(135, 814)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="20" y1="20" x2="36" y2="36" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="20" x2="20" y2="36" stroke="#207448" stroke-width="3"/>
+  </g>
+  <!-- Step 4 Text -->
+  <text x="220" y="832" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="220" dy="0">OPEN carries Extended Next Hop Encoding capability (RFC 8950),</tspan>
+    <tspan x="220" dy="36">so IPv4 routes work on a link with no IPv4 address</tspan>
+  </text>
+</svg>'''
+    return svg
+
+if __name__ == "__main__":
+    with open("candidate_bgp_unnumbered.svg", "w", encoding="utf-8") as f:
+        f.write(generate_svg())
+    print("Wrote candidate_bgp_unnumbered.svg")

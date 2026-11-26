@@ -1,0 +1,246 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Walking a 502 on one route after a change</title>
+  <desc>Visual troubleshooting ladder for a 502 error on a specific route after a configuration change, accompanied by a symptom reference table, diagnostics strip, and key takeaway.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1,2 L 16,9 L 1,16 Z" fill="#207448" />
+    </marker>
+    <filter id="shadow" x="-2%" y="-2%" width="104%" height="106%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1b382b" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Walking a 502 on one route after a change</text>
+
+  
+
+  
+  <g transform="translate(40, 100)" filter="url(#shadow)">
+    <rect width="670" height="142" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="70" cy="42" r="22" fill="#207448" />
+    <text x="70" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(42, 74)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="20" />
+      <path d="M 28,15 L 28,28 L 38,28" />
+      <path d="M 24,3 L 32,3 M 28,3 L 28,8" />
+    </g>
+    
+    <text x="145" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0" font-weight="bold">Start at the troubleshooting row:</tspan>
+      <tspan x="145" dy="32">backend timeouts shorter than</tspan>
+      <tspan x="145" dy="32">the balancer's</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="242" x2="375" y2="260" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(40, 262)" filter="url(#shadow)">
+    <rect width="670" height="142" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="70" cy="42" r="22" fill="#207448" />
+    <text x="70" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(42, 74)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="28" y1="8" x2="28" y2="48" />
+      <line x1="16" y1="48" x2="40" y2="48" />
+      <line x1="8" y1="16" x2="48" y2="16" />
+      <path d="M 8,16 L 2,32 L 14,32 Z" />
+      <path d="M 48,16 L 42,32 L 54,32 Z" />
+    </g>
+    
+    <text x="145" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0" font-weight="bold">Compare the balancer's read</tspan>
+      <tspan x="145" dy="32">timeout with the backend's own</tspan>
+      <tspan x="145" dy="32">deadline for the same route</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="404" x2="375" y2="422" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(40, 424)" filter="url(#shadow)">
+    <rect width="670" height="142" rx="10" fill="#fdf6ee" stroke="#db8129" stroke-width="3.5" />
+    
+    <polygon points="70,18 92,42 70,66 48,42" fill="#db8129" />
+    <text x="70" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">!</text>
+    
+    <g transform="translate(42, 74)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28,6 L 50,46 L 6,46 Z" />
+      <line x1="28" y1="20" x2="28" y2="32" />
+      <circle cx="28" cy="40" r="1.5" fill="#db8129" />
+    </g>
+    
+    <text x="145" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0" font-weight="bold">If the balancer gives up first,</tspan>
+      <tspan x="145" dy="32">it returns the 502 while</tspan>
+      <tspan x="145" dy="32">the backend is still working</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="566" x2="375" y2="584" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(40, 586)" filter="url(#shadow)">
+    <rect width="670" height="182" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="70" cy="46" r="22" fill="#207448" />
+    <text x="70" y="54" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(42, 94)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6,28 L 20,28 M 20,18 L 20,38" />
+      <line x1="20" y1="23" x2="28" y2="23" />
+      <line x1="20" y1="33" x2="28" y2="33" />
+      <path d="M 36,16 L 36,40 L 44,40 L 44,16 Z" />
+      <line x1="44" y1="28" x2="52" y2="28" />
+    </g>
+    
+    <text x="145" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0" font-weight="bold">Check the keepalive setting</tspan>
+      <tspan x="145" dy="30">on both sides: a backend that</tspan>
+      <tspan x="145" dy="30">closes an idle connection the</tspan>
+      <tspan x="145" dy="30">balancer still holds causes</tspan>
+      <tspan x="145" dy="30">the same error</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="375" y1="768" x2="375" y2="786" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(40, 788)" filter="url(#shadow)">
+    <rect width="670" height="142" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="70" cy="42" r="22" fill="#207448" />
+    <text x="70" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(42, 74)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="16" x2="48" y2="16" />
+      <circle cx="36" cy="16" r="5" fill="#207448" />
+      <line x1="8" y1="36" x2="48" y2="36" />
+      <circle cx="20" cy="36" r="5" fill="#207448" />
+    </g>
+    
+    <text x="145" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0" font-weight="bold">Only then change one timer,</tspan>
+      <tspan x="145" dy="32">and retest the same route</tspan>
+      <tspan x="145" dy="32">with the same request</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(745, 100)">
+    
+    <rect width="815" height="830" rx="12" fill="#e8f1ea" stroke="#b8d4be" stroke-width="2" />
+
+    
+    <g transform="translate(16, 14)">
+      <rect width="783" height="86" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">one backend hot: L4 pinning, hash affinity,</tspan>
+        <tspan x="24" dy="26">no slow start, stale weights;</tspan>
+        <tspan x="24" dy="26">switch to L7, max_connection_age</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 108)">
+      <rect width="783" height="74" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">streams cut during deploy: reload without drain;</tspan>
+        <tspan x="24" dy="30">hot reload, drain, larger grace</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 190)">
+      <rect width="783" height="86" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">client IP missing in logs: SNAT or proxy;</tspan>
+        <tspan x="24" dy="26">X-Forwarded-For, PROXY protocol, DSR,</tspan>
+        <tspan x="24" dy="26">externalTrafficPolicy Local</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 284)">
+      <rect width="783" height="74" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">resets after N seconds idle: LB or NAT idle timeout;</tspan>
+        <tspan x="24" dy="30">keepalives below the timeout</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 366)">
+      <rect width="783" height="74" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">new backend gets no traffic: health check failing,</tspan>
+        <tspan x="24" dy="30">wrong port or path, readiness false, not registered</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 448)">
+      <rect width="783" height="74" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">existing connections break after LB change:</tspan>
+        <tspan x="24" dy="30">ECMP rehash without consistent hashing</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 530)">
+      <rect width="783" height="74" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">source port exhaustion at LB:</tspan>
+        <tspan x="24" dy="30">more SNAT IPs, connection reuse, DSR</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 612)">
+      <rect width="783" height="86" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="28" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">high p99 on some requests: HTTP/1.1 head-of-line</tspan>
+        <tspan x="24" dy="26">blocking, slow backend not ejected, retry storms;</tspan>
+        <tspan x="24" dy="26">outlier detection, per-try timeouts</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(16, 706)">
+      <rect width="783" height="74" rx="8" fill="#ffffff" stroke="#d0ded3" stroke-width="1.5" />
+      <text x="24" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0" font-weight="bold">health flapping: aggressive interval;</tspan>
+        <tspan x="24" dy="30">tune rise and fall, lighter check</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 960)" filter="url(#shadow)">
+    <rect width="1520" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="32" y="38" font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="32" dy="0">ss -s, ss -tni, conntrack -L, ipvsadm -Ln --stats; HAProxy show stat and show servers state;</tspan>
+      <tspan x="32" dy="36">Envoy /clusters and /stats; nginx stub_status and $upstream_ variables; curl -w;</tspan>
+      <tspan x="32" dy="36">tcpdump on LB and backend; load tests with wrk, hey, ghz, vegeta</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 1120)">
+    <rect width="1520" height="56" rx="8" fill="#207448" />
+    <text x="800" y="36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Start with the row that matches your symptom, and only then change the configuration</text>
+  </g>
+</svg>

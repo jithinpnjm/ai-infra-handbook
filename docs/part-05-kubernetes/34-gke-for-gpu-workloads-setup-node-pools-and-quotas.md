@@ -63,13 +63,9 @@ Serious multi-node training with RDMA-class networking, reservations and compact
 
 The diagram below shows the order of the decisions in this chapter. Each box depends on the one before it, so a problem in an early box looks like a problem in a later one. Quota is first because it limits everything after it.
 
-```mermaid
-flowchart TD
-    Quota["1. Quota & Capacity Model<br/>Verify Regional GPU/CPU/SSD Quota;<br/>Reservation / Flex-Start / Spot"] --> Cluster["2. GKE Standard Cluster<br/>CPU-only system pool (e2-standard-4);<br/>Dataplane V2 + Workload Identity + DCGM"]
-    Cluster --> Pool["3. Dedicated GPU Node Pool(s)<br/>a3-highgpu-8g / a2-highgpu-8g / g2-standard;<br/>gpu-driver-version=default|latest + gVNIC"]
-    Pool --> Net["4. Multi-Node Training Fabric<br/>--placement-type COMPACT + Multi-Networking<br/>(--additional-node-network / network-profile)"]
-    Net --> Sched["5. Scheduling & Sub-GPU Sharing<br/>nvidia.com/gpu=present:NoSchedule + Kueue;<br/>Whole 8-GPU training vs MIG / Time-Sharing"]
-```
+![Standard vs Autopilot](./img/m5-34-1.svg)
+
+*Figure 5.34.1. Standard vs Autopilot, as a diagram.*
 
 ## 2. GPU machine families and accelerators
 

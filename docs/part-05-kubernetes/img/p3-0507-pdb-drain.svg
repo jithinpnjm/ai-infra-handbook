@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>A PodDisruptionBudget and a node drain</title>
+  <desc>Infographic showing PodDisruptionBudget allowing drain when minAvailable is 2 and blocking drain when minAvailable is 3</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#c62828"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A PodDisruptionBudget and a node drain</text>
+
+  
+  <rect x="50" y="100" width="1500" height="355" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="80" y="125" width="320" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="240" y="161" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">minAvailable 2</text>
+
+  <rect x="420" y="125" width="350" height="52" rx="10" fill="#207448"/>
+  <text x="595" y="160" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">DisruptionsAllowed 1</text>
+
+  
+  <rect x="80" y="195" width="230" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
+  
+  <g transform="translate(167, 215)">
+    <rect x="0" y="8" width="56" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 0 L 28 32 M 16 12 L 28 0 L 40 12" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="195" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="195" dy="0">drain evicts</tspan>
+    <tspan x="195" dy="32">one replica</tspan>
+  </text>
+
+  
+  <rect x="335" y="187" width="390" height="251" rx="14" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+
+  
+  <rect x="350" y="195" width="170" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(407, 220)">
+    <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="12" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <rect x="540" y="195" width="170" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(597, 220)">
+    <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="12" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <rect x="390" y="382" width="280" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="530" y="414" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">two still serve</text>
+
+  
+  <line x1="735" y1="312" x2="815" y2="312" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="825" y="195" width="695" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1144, 220)">
+    <circle cx="28" cy="28" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 16 28 L 24 36 L 40 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1172" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="1172" dy="0">drain proceeds</tspan>
+    <tspan x="1172" dy="38">one at a time</tspan>
+  </text>
+
+  
+  <rect x="50" y="480" width="1500" height="355" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="80" y="505" width="820" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="490" y="541" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">minAvailable 3 or maxUnavailable 0 on 3 replicas</text>
+
+  <rect x="920" y="505" width="350" height="52" rx="10" fill="#ffebee" stroke="#c62828" stroke-width="2"/>
+  <text x="1095" y="540" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#c62828" text-anchor="middle">DisruptionsAllowed 0</text>
+
+  
+  <rect x="80" y="575" width="150" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(127, 620)">
+    <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 18 24 L 18 16 C 18 10 38 10 38 16 L 38 24" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="14" y="24" width="28" height="24" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  <rect x="250" y="575" width="150" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(297, 620)">
+    <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 18 24 L 18 16 C 18 10 38 10 38 16 L 38 24" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="14" y="24" width="28" height="24" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  <rect x="420" y="575" width="150" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(467, 620)">
+    <rect x="0" y="0" width="56" height="56" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 18 24 L 18 16 C 18 10 38 10 38 16 L 38 24" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="14" y="24" width="28" height="24" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <line x1="580" y1="692" x2="640" y2="692" stroke="#c62828" stroke-width="3" marker-end="url(#arrow-red)"/>
+
+  
+  <rect x="650" y="575" width="510" height="235" rx="12" fill="#ffffff" stroke="#c62828" stroke-width="2"/>
+  <g transform="translate(877, 595)">
+    <circle cx="28" cy="28" r="26" fill="none" stroke="#c62828" stroke-width="4"/>
+    <line x1="12" y1="12" x2="44" y2="44" stroke="#c62828" stroke-width="4"/>
+  </g>
+  <text x="905" y="682" font-family="ui-monospace, monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="905" dy="0">Cannot evict pod</tspan>
+    <tspan x="905" dy="32">as it would violate</tspan>
+    <tspan x="905" dy="32">the pod's disruption</tspan>
+    <tspan x="905" dy="32">budget</tspan>
+  </text>
+
+  
+  <line x1="1170" y1="692" x2="1235" y2="692" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1245" y="575" width="275" height="235" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(1354, 605)">
+    <polygon points="18,0 38,0 56,18 56,38 38,56 18,56 0,38 0,18" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="14" y1="28" x2="42" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1382" y="715" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129" text-anchor="middle">
+    <tspan x="1382" dy="0">node upgrade</tspan>
+    <tspan x="1382" dy="38">blocked</tspan>
+  </text>
+
+  
+  <rect x="50" y="855" width="1500" height="265" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="75" y="873" width="1450" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(95, 881)">
+    <path d="M 28 4 L 48 14 L 48 32 C 48 46 28 54 28 54 C 28 54 8 46 8 32 L 8 14 Z" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="175" y="904" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">PDBs limit voluntary disruptions via the Eviction API:</tspan>
+    <tspan x="175" dy="30">drains, upgrades, autoscaler scale-down</tspan>
+  </text>
+
+  
+  <rect x="75" y="957" width="1450" height="64" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(95, 961)">
+    <polygon points="28,4 52,48 4,48" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="42" r="2" fill="#207448"/>
+  </g>
+  <text x="175" y="998" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">they do not stop crashes or OOM kills</text>
+
+  
+  <rect x="75" y="1033" width="1450" height="72" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(95, 1041)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 16 28 L 24 36 L 40 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="175" y="1064" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">keep minAvailable below replicas, or maxUnavailable at 1 or more,</tspan>
+    <tspan x="175" dy="30">and keep spare capacity so replacements can be placed</tspan>
+  </text>
+</svg>

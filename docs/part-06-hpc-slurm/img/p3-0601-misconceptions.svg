@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five beliefs and what is actually true</title>
+  <desc>Infographic contrasting five common beliefs about supercomputing and AI infrastructure against what is actually true.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Five beliefs and what is actually true</text>
+
+  
+  
+  <rect x="40" y="110" width="530" height="194" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g>
+    <rect x="68" y="183" width="48" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="77" cy="192" r="2.5" fill="#207448"/>
+    <line x1="86" y1="192" x2="108" y2="192" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <rect x="68" y="213" width="48" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="77" cy="222" r="2.5" fill="#207448"/>
+    <line x1="86" y1="222" x2="108" y2="222" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="92" y1="201" x2="92" y2="213" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="140" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="140" dy="0">A supercomputer is</tspan>
+    <tspan x="140" dy="38">one giant computer:</tspan>
+  </text>
+  
+  <rect x="594" y="110" width="966" height="194" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="630" y="161" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="630" dy="0">physically hundreds or thousands of separate Linux servers;</tspan>
+    <tspan x="630" dy="33">the fabric, parallel file system and scheduler make them</tspan>
+    <tspan x="630" dy="33">behave as one; a job on two nodes passes messages through</tspan>
+    <tspan x="630" dy="33">the fabric and every message costs time</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="324" width="530" height="194" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g>
+    <rect x="74" y="403" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="83" y="412" width="18" height="18" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+    <line x1="81" y1="395" x2="81" y2="403" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="92" y1="395" x2="92" y2="403" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="103" y1="395" x2="103" y2="403" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="81" y1="439" x2="81" y2="447" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="92" y1="439" x2="92" y2="447" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="103" y1="439" x2="103" y2="447" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="66" y1="410" x2="74" y2="410" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="66" y1="421" x2="74" y2="421" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="66" y1="432" x2="74" y2="432" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="110" y1="410" x2="118" y2="410" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="110" y1="421" x2="118" y2="421" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="110" y1="432" x2="118" y2="432" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="140" y="409" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="140" dy="0">More FLOPS means</tspan>
+    <tspan x="140" dy="38">my job runs faster:</tspan>
+  </text>
+  
+  <rect x="594" y="324" width="966" height="194" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="630" y="388" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="630" dy="0">only if your code uses the precision the headline assumes</tspan>
+    <tspan x="630" dy="33">and is not held back by memory bandwidth, network latency</tspan>
+    <tspan x="630" dy="33">or storage I/O</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="538" width="530" height="194" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g>
+    <path d="M74,612 L110,612 L106,634 C104,644 88,644 86,634 Z" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M74,617 C64,617 64,629 75,629" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M110,617 C120,617 120,629 109,629" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="92" y1="643" x2="92" y2="652" stroke="#207448" stroke-width="3.5"/>
+    <line x1="78" y1="653" x2="106" y2="653" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="140" y="623" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="140" dy="0">A TOP500 rank proves</tspan>
+    <tspan x="140" dy="38">AI capability:</tspan>
+  </text>
+  
+  <rect x="594" y="538" width="966" height="194" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="630" y="602" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="630" dy="0">TOP500 measures FP64 dense LU factorization on HPL;</tspan>
+    <tspan x="630" dy="33">evaluate AI clusters with MLPerf, NCCL tests</tspan>
+    <tspan x="630" dy="33">and your real workload</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="752" width="530" height="194" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g>
+    <path d="M75,856 C67,856 65,842 74,840 C73,828 87,821 95,827 C101,819 115,824 114,836 C121,838 121,856 112,856 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <rect x="84" y="839" width="16" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="140" y="811" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="140" dy="0">Cloud VMs are</tspan>
+    <tspan x="140" dy="38">identical to a</tspan>
+    <tspan x="140" dy="38">supercomputer:</tspan>
+  </text>
+  
+  <rect x="594" y="752" width="966" height="194" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="630" y="816" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="630" dy="0">only bare-metal or passthrough GPU instances in a compact</tspan>
+    <tspan x="630" dy="33">placement group with RDMA fabrics; ordinary unplaced VMs on</tspan>
+    <tspan x="630" dy="33">a shared TCP network suffer severe latency penalties</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="966" width="530" height="194" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  
+  <g>
+    <rect x="68" y="1041" width="48" height="18" rx="3" fill="none" stroke="#db8129" stroke-width="3"/>
+    <circle cx="77" cy="1050" r="2.5" fill="#db8129"/>
+    <line x1="86" y1="1050" x2="108" y2="1050" stroke="#db8129" stroke-width="2" stroke-linecap="round"/>
+    <path d="M92,1065 L106,1085 L78,1085 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="92" y1="1071" x2="92" y2="1077" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="92" cy="1081" r="1.5" fill="#db8129"/>
+  </g>
+  <text x="140" y="1051" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="140" dy="0">A slightly slower</tspan>
+    <tspan x="140" dy="38">spare is fine for now:</tspan>
+  </text>
+  
+  <rect x="594" y="966" width="966" height="194" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="2.5"/>
+  <text x="630" y="1030" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="630" dy="0">in a tightly coupled cluster one node with less RAM</tspan>
+    <tspan x="630" dy="33">or a slower link drags down every multi-node job</tspan>
+    <tspan x="630" dy="33">that lands on it</tspan>
+  </text>
+</svg>

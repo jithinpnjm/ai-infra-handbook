@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a manual gres.conf line</title>
+  <desc>Visual guide to manual Slurm gres.conf configuration line syntax and field callouts.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="56" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Reading a manual gres.conf line</text>
+
+  
+  <rect x="40" y="80" width="1520" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="64" y="96" width="40" height="30" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <polyline points="72,106 78,111 72,116" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="82" y1="116" x2="94" y2="116" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="118" y="120" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Annotated lines.</text>
+
+  
+  <rect x="60" y="142" width="1480" height="52" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="75" y="176" font-family="monospace" font-size="24" fill="#303a36">NodeName=gpu[01-16] Name=gpu Type=h100 File=/dev/nvidia[0-3] Cores=0-31 Links=-1,18,18,18,0,0,0,0</text>
+
+  
+  <rect x="60" y="206" width="1480" height="52" rx="8" fill="#ffffff" stroke="#c8dcd0" stroke-width="1.5"/>
+  <text x="75" y="240" font-family="monospace" font-size="24" fill="#303a36">NodeName=gpu[01-16] Name=gpu Type=h100 File=/dev/nvidia[4-7] Cores=32-63</text>
+
+  
+  
+  <rect x="40" y="315" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M72,339 L92,339 L104,351 L88,367 L68,347 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <circle cx="78" cy="345" r="3" fill="#207448"/>
+  <text x="124" y="360" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Name and Type:</text>
+  <text x="64" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">resource name and model label such as h100,</tspan>
+    <tspan x="64" dy="32">a100, l40s; keep type strings short and stable</tspan>
+    <tspan x="64" dy="32">because they appear in accounting and scripts;</tspan>
+    <tspan x="64" dy="32">users then ask --gres=gpu:h100:4</tspan>
+  </text>
+
+  
+  <rect x="820" y="315" width="740" height="230" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  <rect x="820" y="315" width="740" height="8" rx="4" fill="#db8129"/>
+  <path d="M866,337 L886,345 L886,361 C886,373 866,381 866,381 C866,381 846,373 846,361 L846,345 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+  <text x="904" y="360" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">File:</text>
+  <text x="844" y="405" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="844" dy="0">device files; required for the cgroup device</tspan>
+    <tspan x="844" dy="32">constraint and for CUDA_VISIBLE_DEVICES; a</tspan>
+    <tspan x="844" dy="32">missing or wrong File is the most common</tspan>
+    <tspan x="844" dy="32">reason isolation fails</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="585" width="740" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="70" y="611" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <rect x="78" y="619" width="16" height="16" fill="none" stroke="#207448" stroke-width="2"/>
+  <line x1="76" y1="605" x2="76" y2="611" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="86" y1="605" x2="86" y2="611" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="96" y1="605" x2="96" y2="611" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="76" y1="643" x2="76" y2="649" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="86" y1="643" x2="86" y2="649" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="96" y1="643" x2="96" y2="649" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="64" y1="617" x2="70" y2="617" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="64" y1="627" x2="70" y2="627" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="64" y1="637" x2="70" y2="637" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="102" y1="617" x2="108" y2="617" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="102" y1="627" x2="108" y2="627" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="102" y1="637" x2="108" y2="637" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="124" y="630" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Cores:</text>
+  <text x="64" y="675" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">logical core indices close to the device (as</tspan>
+    <tspan x="64" dy="32">lstopo -l Core L#, not OS numbering); whole</tspan>
+    <tspan x="64" dy="32">sockets must be specified together because</tspan>
+    <tspan x="64" dy="32">Slurm co-allocates GRES and CPUs at socket</tspan>
+    <tspan x="64" dy="32">granularity</tspan>
+  </text>
+
+  
+  <rect x="820" y="585" width="740" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="854" cy="617" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="886" cy="617" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="870" cy="641" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="860" y1="617" x2="880" y2="617" stroke="#207448" stroke-width="2.5"/>
+  <line x1="857" y1="622" x2="867" y2="636" stroke="#207448" stroke-width="2.5"/>
+  <line x1="883" y1="622" x2="873" y2="636" stroke="#207448" stroke-width="2.5"/>
+  <text x="904" y="630" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Links:</text>
+  <text x="844" y="675" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="844" dy="0">connection counts to other devices of the same</tspan>
+    <tspan x="844" dy="32">name, -1 self, 0 none, used to prefer</tspan>
+    <tspan x="844" dy="32">well-connected GPUs; one entry per device;</tspan>
+    <tspan x="844" dy="32">/dev/nvidiaN minor number may differ from the</tspan>
+    <tspan x="844" dy="32">GPU index, which is sorted by PCI bus ID</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="895" width="740" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="68" y="919" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="80" cy="932" r="4" fill="none" stroke="#207448" stroke-width="2"/>
+  <line x1="88" y1="928" x2="98" y2="928" stroke="#207448" stroke-width="2.5"/>
+  <line x1="88" y1="935" x2="96" y2="935" stroke="#207448" stroke-width="2.5"/>
+  <text x="124" y="940" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">UUID with Flags=env_uuid</text>
+  <text x="64" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="64" dy="0">makes CUDA_VISIBLE_DEVICES carry UUIDs</tspan>
+  </text>
+
+  
+  <rect x="820" y="895" width="740" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <line x1="852" y1="917" x2="852" y2="949" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <polygon points="852,919 880,929 852,939" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <text x="904" y="940" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Flags CountOnly, explicit</text>
+  <text x="844" y="985" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="844" dy="0">(not allocated to whole-node jobs unless</tspan>
+    <tspan x="844" dy="32">explicitly requested)</tspan>
+  </text>
+
+  
+  <rect x="40" y="1095" width="1520" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="79" cy="1125" r="14" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <circle cx="79" cy="1119" r="2" fill="#207448"/>
+  <line x1="79" y1="1124" x2="79" y2="1132" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  <text x="108" y="1133" font-family="sans-serif" font-size="24" fill="#303a36">the example is illustrative</text>
+</svg>

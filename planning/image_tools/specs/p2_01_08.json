@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p2-0108-thread-tree",
+  "title": "One PyTorch job is a tree of processes and threads",
+  "spec": "A top-down tree. At the top, a box 'PyTorch job' with a gear icon. Below it, a box 'Launcher' with an arrow labelled 'starts one process per GPU' to a row of two boxes, 'Process per GPU' and 'Process per GPU'. Inside each process box, two stacked sub-boxes: 'Main thread: runs the Python interpreter' and 'Extra threads: CUDA callbacks, NCCL and autograd'. From one process box, an orange-outlined arrow labelled 'forks' goes down to a box 'DataLoader with num_workers=N' that holds 'N more processes' for data loading. Note under the tree: 'Processes, not threads: Python's global interpreter lock limits CPU parallelism in threads.' Small caption at the bottom: 'Threads share one process. Processes are started for data loading.'",
+  "anchor": "### Threads",
+  "alt": "A PyTorch launcher starts one process per GPU, each with a main thread and extra threads, and each DataLoader forks more worker processes.",
+  "cap": "A PyTorch job is a tree: a launcher starts one process per GPU, and each DataLoader forks worker processes."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p2-0108-escalate",
+  "title": "Escalate from SIGTERM to SIGKILL, with time to shut down in between",
+  "spec": "A left-to-right flow with numbered circles 1, 2 and 3. Step 1 box, gear icon, orange outline: 'kill 1234 (SIGTERM)' with the text 'Polite request to terminate'. Arrow to a diamond 'Program responds?'. A 'yes' arrow goes up to a green box 'Clean exit: flushes buffers, saves a checkpoint, closes files, removes lock files'. A 'no' arrow goes to step 2 box 'Give it time to shut down'. Arrow from step 2 to step 3 box, power-button icon: 'kill -9 1234 (SIGKILL)' with the text 'Last resort, cannot be caught'. Below step 3, a grey box: 'No cleanup: lock files, half-written files and orphaned children can remain. GPU memory may need the driver to reclaim it.' A bottom grey note: 'A signal handled by a process in D state takes effect only when the process leaves that state.' Caption: 'Escalate in order.'",
+  "anchor": "### Sending signals",
+  "alt": "Escalation runs from SIGTERM to a wait for clean shutdown, and only if the program does not respond it moves to SIGKILL, which gives no cleanup.",
+  "cap": "Send SIGTERM first and give the program time to clean up, and use SIGKILL only when it does not respond."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p2-0108-job-states",
+  "title": "Ctrl-Z stops a job, and bg and fg move it between the background and the foreground",
+  "spec": "Three large boxes in a row with arrows between them. Left box, green heading 'Foreground', text 'Holds the keyboard: Ctrl-C and Ctrl-Z reach it'. Middle box, orange outline, heading 'Stopped', text 'Suspended, waiting for a signal to continue'. Right box, heading 'Background', text 'Runs while the prompt returns'. Arrow from Foreground to Stopped labelled 'Ctrl-Z (sends SIGTSTP)'. Arrow from Stopped to Background labelled 'bg %1'. Arrow from Background back to Foreground labelled 'fg %1'. Under the Background box, a grey note: 'A background job that reads the terminal gets SIGTTIN and shows Stopped (tty input).' Under the row, a small monospace strip: 'jobs -l' with the caption 'List suspended and background jobs'.",
+  "anchor": "### Job control: useful, but easy to get lost in",
+  "alt": "Ctrl-Z stops the foreground job, bg resumes it in the background, and fg brings it back to the foreground.",
+  "cap": "Ctrl-Z suspends the foreground job, bg resumes it in the background, and fg brings it back to the foreground."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p2-0108-vmstat-tree",
+  "title": "Read the vmstat columns to classify the bottleneck",
+  "spec": "A decision tree. Top root box, green: 'Run vmstat 2 and start at line 2' with a note 'Line 1 is the average since boot'. Below, seven branch boxes in two columns, each with an arrow from the root and a short label. Branch 1: 'All idle: id about 99, si and so at 0' leading to a green box 'Healthy'. Branch 2: 'High us, low wa' leading to 'CPU-bound compute'. Branch 3: 'High wa and b' leading to 'I/O-bound work: look at iostat'. Branch 4, orange outline: 'Growing so, falling free or cache' leading to 'Memory exhausted: kernel is paging out'. Branch 5: 'High r with high us plus sy' leading to 'CPU contention'. Branch 6: 'High sy and cs' leading to 'Many system calls or lock contention'. Branch 7: 'High st' leading to 'Noisy neighbours on a shared VM'. Caption at the bottom: 'Read the trend across several lines, not one number.'",
+  "anchor": "### `vmstat`: the whole machine in one line per interval",
+  "alt": "A decision tree maps vmstat column patterns to a bottleneck, such as CPU-bound, I/O-bound, memory exhaustion or noisy neighbours.",
+  "cap": "Reading vmstat columns in patterns tells you whether the machine is CPU-bound, I/O-bound, out of memory or sharing a VM with noisy neighbours."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p2-0108-k8s-stop",
+  "title": "Why a pod ignores SIGTERM for 30 seconds: the shell wrapper is PID 1",
+  "spec": "Two horizontal rows, labelled 'Shell wrapper entrypoint' (top, orange outline) and 'exec entrypoint' (bottom, green). Top row, in order with numbered circles: 1 box 'kubectl delete pod: Kubernetes sends SIGTERM to PID 1'; 2 box 'sh script as PID 1: does not forward the signal'; 3 box 'python train.py never hears SIGTERM'; 4 box 'After terminationGracePeriodSeconds, default 30 s'; 5 box 'SIGKILL, exit code 137'. Bottom row, numbered 1 to 3: 1 box 'SIGTERM to PID 1'; 2 box 'exec python train.py: Python is PID 1'; 3 box 'Python handles SIGTERM and exits'. Grey note under the bottom row: 'Or use tini or --init together with exec.' Grey note under the top row: 'Inside a PID namespace, PID 1 with no SIGTERM handler ignores SIGTERM.' Caption: 'Exit code 137 equals 128 plus 9, which means SIGKILL.'",
+  "anchor": "## 10. AI-infrastructure patterns",
+  "alt": "A shell wrapper as PID 1 never forwards SIGTERM, so Kubernetes kills the pod with SIGKILL after 30 seconds, while exec lets Python handle SIGTERM.",
+  "cap": "When the shell wrapper stays PID 1 the training job never gets SIGTERM and is killed after 30 seconds, but exec fixes it."
+ }
+]

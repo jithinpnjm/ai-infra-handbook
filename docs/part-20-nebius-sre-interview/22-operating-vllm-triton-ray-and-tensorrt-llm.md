@@ -34,6 +34,10 @@ Every number in the rest of the chapter belongs to one of these versions. When y
 
 ### 1. Four tools, three layers: engine, server, orchestrator
 
+![Four serving tools placed on three layers: orchestrators such as Ray Serve LLM and Kubernetes, servers such as Triton, and engines such as vLLM, TensorRT-LLM and SGLang.](./img/p2-2022-three-layers.svg)
+
+*Figure 20.22.1. Serving tools sit on three layers, with orchestrators such as Ray Serve LLM above servers such as Triton, which wrap engines such as vLLM.*
+
 A colleague says the team wants to move the chat service to Triton, and asks whether that makes it faster. Before you compare anything, place each tool on its layer. An engine runs the model on the GPU. It batches requests, manages the KV cache (the memory that holds attention keys and values for each token, so they do not have to be computed again) and launches kernels, which are the small programs that run the math on the GPU.
 
 A server wraps engines or models in an API, a model repository, and health and metrics endpoints. An orchestrator decides how many copies run, where they run, and how requests reach them.
@@ -42,14 +46,9 @@ Sort the four tools now. vLLM, TensorRT-LLM and SGLang are engines. The book Han
 
 Triton is the older general inference server. The same chapter lists it among the frameworks built before the LLM era, and the book says TensorRT-LLM integrates tightly with Triton and Dynamo. Ray Serve LLM is an orchestrator. Its documentation says it builds on Ray Serve and runs vLLM or SGLang as the engine.
 
-```mermaid
-flowchart TB
-  C["Client / gateway"] --> O["Orchestrator<br/>Ray Serve LLM, Kubernetes"]
-  O --> S["Server layer<br/>vllm serve, trtllm-serve, Triton"]
-  S --> E["Engine<br/>vLLM, TensorRT-LLM, SGLang"]
-  E --> G["GPUs: weights + KV cache"]
-  O -.->|"autoscale, route"| S
-```
+![Four tools, three layers: engine, server, orchestrator](./img/m20-22-1.svg)
+
+*Figure 20.22.2. Four tools, three layers: engine, server, orchestrator, as a diagram.*
 
 The layers matter because the tool you operate changes with them, and so does the person who gets paged. With Ray Serve LLM you operate Ray and an engine, so the on-call engineer reads a Ray view and an engine log. With Triton you operate a model repository and a backend, so the first place to look is the configuration of each model. With `vllm serve` you operate one process tree, which means one log stream and one set of flags.
 
@@ -86,6 +85,14 @@ The book Generative AI on Kubernetes, chapter 1, adds that Ray brings its own or
 **Pick the tool by the problem it was built for: engines for tokens per second, servers for many model types, orchestrators for fleets.**
 
 ### 3. The knobs that decide memory
+
+![Four boxes for gpu_memory_utilization, max_model_len, max_num_seqs and kv_cache_memory_bytes with their effects and risks.](./img/p3-2022-memory-knobs.svg)
+
+*Figure 20.22.3. Size the cache first, then set the sequence cap and length limit to fit the real average request.*
+
+![A stacked bar shows one 80 GB card. Utilisation 0.90 gives 72 GB usable. Weights take 16 GB and overhead takes 5 GB, which leaves 51 GB for the KV cache. Divided by 131,072 bytes per token, that is about 389,100 tokens, or about 3,040 tokens per request when 128 requests run.](./img/x22-memory-budget-stack.svg)
+
+*Figure 20.22.4. The KV cache is the memory left after the weights and overhead. Dividing it by the cost of one token gives the number of tokens the card can hold.*
 
 An alert fires a few minutes after the rollout starts. The new pod crash-loops with an out-of-memory error at start, which means the process ran out of GPU memory before it could serve any request. You need to know which flags move GPU memory, and four of them do most of the work.
 
@@ -128,6 +135,10 @@ Put those together and you get the point where the cache fills. With the cap at 
 
 ### 4. The knobs that decide latency: token budget and chunked prefill
 
+![A slider from small token budgets favouring inter-token latency to large budgets favouring first-token time, with the chunked prefill trap.](./img/p3-2022-token-budget-dial.svg)
+
+*Figure 20.22.5. Turn the budget down to protect streaming users and up to help users waiting for a first token.*
+
 Users complain that streaming stutters whenever someone pastes a long document. The cause is prefill work competing with decode work for the same step. Prefill is the step that reads the whole pasted prompt. Decode is the step that writes the next token for every user already streaming.
 
 When a long prefill lands in the same step, the streams that are already running wait for it, and the stutter is what they feel.
@@ -145,6 +156,10 @@ A short way to remember the trap: with chunked prefill off, a prompt longer than
 **Treat the token budget as a latency-versus-throughput dial that you set from your objectives and then confirm with a load test.**
 
 ### 5. Parallelism: tensor, pipeline, data and expert
+
+![Four parallelism kinds, tensor, pipeline, data and expert, each with what it splits, when to use it, and its cost.](./img/p2-2022-parallelism-cost.svg)
+
+*Figure 20.22.6. Tensor, pipeline, data and expert parallelism each split work differently, and each trades memory, throughput or latency against communication cost.*
 
 Picture a model that is too large for one card. Its weights fill the GPU, and nothing is left for the KV cache, so the engine cannot hold a useful batch. Or the model fits on one GPU but leaves so little room for cache that throughput is poor. You must split it. Each split has a different cost, and the cost is mostly communication, which means the GPUs must pass data to each other on every step.
 
@@ -171,6 +186,14 @@ The second risk is the network. Cross-node tensor parallel moves per-layer traff
 
 ### 6. Quantisation, prefix caching and speculative decoding
 
+![A prompt split into hashed blocks with a tenant salt and notes on sha256 versus xxhash and version portability.](./img/p3-2022-prefix-cache-keys.svg)
+
+*Figure 20.22.7. The cache hash choice matters for privacy and for any router that depends on it.*
+
+![A comparison of full precision and 4-bit AWQ showing weights falling from 27.5 to 9.36 GiB and cache tokens rising from 72,064 to 191,056.](./img/p3-2022-quantisation-example.svg)
+
+*Figure 20.22.8. Smaller weights leave more memory for KV cache, but quality and hardware support need checking.*
+
 A teammate wants to switch on three features before Friday's release, because each one promises more tokens per second. Each of these three can raise throughput. Each can also change your answers or your latency tail, which is the slowest slice of requests. Treat them as changes with a canary, meaning a small slice of traffic gets the change first.
 
 Quantisation stores each number with fewer bits, which makes the weights smaller and sometimes the KV cache smaller too. The book Hands-On LLM Serving and Optimization, chapter 9, ran Qwen3-14B and its 4-bit AWQ form on one GPU. Weights fell from 27.5 GiB to 9.36 GiB, and the KV cache grew from 11.00 GiB to 29.15 GiB.
@@ -193,18 +216,17 @@ Model-based methods give the best reduction. N-gram and suffix methods give mode
 
 ### 7. Start-up: what takes the time
 
+![Six start-up phases from image pull to the API opening, each with the remedy that shortens it.](./img/p3-2022-startup-remedies.svg)
+
+*Figure 20.22.9. Each remedy attacks a different phase, so measure the phases first.*
+
 A pod is `Running` but not ready for ten minutes, and the autoscaler's new replica never helps. You need to know what the engine does between `exec` and the first token. Read the start-up as a sequence of phases, because each phase can be slow for a different reason.
 
 The book Generative AI on Kubernetes, chapter 4, splits start-up into six steps. The image is pulled. The model is fetched and mounted. The runtime starts, which the book says takes a second or less. The weights are loaded into GPU memory. The engine warms up by allocating the KV pool, profiling and capturing CUDA graphs. A CUDA graph is a recorded list of GPU work that the engine can replay quickly, which saves launch overhead on each step. Then the API opens.
 
-```mermaid
-flowchart LR
-  A["Pull image"] --> B["Fetch + mount model"]
-  B --> C["Start runtime"]
-  C --> D["Load weights to GPU"]
-  D --> E["Profile memory,<br/>compile, capture graphs"]
-  E --> F["API opens:<br/>/health 200"]
-```
+![Start-up: what takes the time](./img/m20-22-2.svg)
+
+*Figure 20.22.10. Start-up: what takes the time, as a diagram.*
 
 The arrows show order only. The boxes are not drawn to scale, so measure how long each phase takes on your own cluster before you decide where to spend effort.
 
@@ -219,6 +241,14 @@ There are two quick-start switches, and both trade speed for risk. `--enforce-ea
 **Measure each start-up phase once, write the numbers in the runbook, and size probes and autoscaling from them.**
 
 ### 8. Health endpoints: what they prove and what they do not
+
+![A table of health endpoints for vLLM, Triton, TensorRT-LLM, SGLang and Ray Serve and what each proves.](./img/p3-2022-health-per-engine.svg)
+
+*Figure 20.22.11. Decide what each probe may kill before wiring it to Kubernetes.*
+
+![Nested boxes show what health checks prove. The innermost box is the engine client being alive, checked by vLLM /health. The middle box is one-token generation, checked by SGLang and TensorRT-LLM. The outer box lists what no health endpoint proves, such as good tokens, a short queue and free cache. A separate column shows Triton's live, ready and per-model ready endpoints.](./img/x22-health-what-each-proves.svg)
+
+*Figure 20.22.12. A health endpoint proves only the slice of the engine it checks. Use the forgiving checks for restarts and keep load judgement in readiness.*
 
 A load balancer says the pod is healthy while users get timeouts. Both facts can be true. The question is what the endpoint actually checks, because a check that passes is not the same as a service that answers well.
 
@@ -242,6 +272,10 @@ Ray Serve has two levels. The proxy answers `/-/healthz`, which is non-OK while 
 
 ### 9. Upgrades and version skew
 
+![Things an engine upgrade changes silently beside a four-part rollout plan and the surge versus spare GPU choice.](./img/p3-2022-upgrade-changes.svg)
+
+*Figure 20.22.13. Never upgrade without a canary, a way back and a budget for a slow first start.*
+
 A new vLLM release fixes a bug you hit. You deploy it, and p99 time to first token moves. Version changes are risky because many things depend on the version at once, and the first symptom you see may come from a part you did not change.
 
 The vLLM guide lists what invalidates the compile cache: any change to the model, config, relevant `VLLM_*` environment variables, the torch build, or the GPU model. So the first start after an upgrade is slow again. The prefix-caching page says `sha256` hashes may differ across Python or vLLM versions, so cache contents and any hash-based routing are not portable across versions.
@@ -261,6 +295,10 @@ Think of the surge setting as a question about spare room. A surge pod is an ext
 **Never upgrade an engine without a canary and a way back, and budget for a slow first start.**
 
 ### 10. Reading each engine's metrics
+
+![A question by engine table of queue, wait, cache and failure metrics for vLLM, Triton and Ray Serve LLM.](./img/p3-2022-metrics-by-question.svg)
+
+*Figure 20.22.14. The on-call person should read the same four answers whichever engine sits behind the endpoint.*
 
 During an incident you have ten seconds to read the engine, and the page is already open in front of you. Know which numbers answer "is the queue growing, is the cache full, is the engine alive". Those three questions cover most of the first minute.
 
@@ -326,6 +364,10 @@ Three short cases follow. Each one starts from a symptom you could see on call, 
 
 ### Scenario A. The command line that passes review and still preempts
 
+![Three steps showing a 389,100 token cache and a 128 request cap preempting when the average request is 4,000 tokens.](./img/p3-2022-cap-vs-cache.svg)
+
+*Figure 20.22.15. Divide the cache by the real average request length to choose the sequence cap.*
+
 Picture this. A team hands you a command that works, and the reviewer passes it without complaint. Yet the dashboards show preemptions climbing every afternoon. Your task is to explain why a clean review does not mean a healthy afternoon. The command is `--max-model-len=16384 --max-num-seqs=128 --max-num-batched-tokens=8192 --gpu-memory-utilization=0.90` on one H100 serving Llama 3.1 8B.
 
 Step 1. Read the start-up log for "GPU KV cache size". With the section 3 inputs, the cache holds about 389,100 tokens.
@@ -337,6 +379,10 @@ Step 3. Compare with traffic. If the afternoon average prompt plus output is 4,0
 Answer. Lower `max-num-seqs` to what the cache holds at the real average length. Here 389,100 divided by 4,000 is about 97, so a cap near 90 leaves some margin for the requests that run longer than average. Or quantise to grow the cache. The reviewer prints this as information when you give it the log's token count, as the lab shows.
 
 ### Scenario B. Slow rollout, pods killed during start
+
+![A time axis shows an engine that takes 400 seconds to start. A probe budget that ends before 400 seconds kills the container before it is ready. A raised budget of 900 seconds, from a 10 second period and 90 failures, covers the start with room to spare.](./img/x22-startup-probe-budget-timeline.svg)
+
+*Figure 20.22.16. A startup probe that gives up before the engine is ready makes the kubelet restart a healthy engine. The budget must exceed the measured start time.*
 
 A rollout of eight replicas shows pods restarting, and `kubectl get events` says "Container vllm failed startup probe, will be restarted". The log of the dying container ends with "KeyboardInterrupt: terminated". The on-call engineer sees a healthy image and wonders whether the engine itself is broken.
 

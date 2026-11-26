@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Nine troubleshooting habits that cost hours, each with its counter-habit</title>
+  <desc>A table comparing nine ineffective troubleshooting habits with effective counter-habits.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="48" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="50" dy="0">Nine troubleshooting habits that cost hours,</tspan>
+    <tspan x="50" dy="52">each with its counter-habit</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="118" width="680" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="88" cy="148" r="20" stroke="#207448" stroke-width="4" fill="none"/>
+  <polyline points="88 135 88 148 99 148" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="126" y="158" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Habit</text>
+
+  
+  <rect x="760" y="118" width="790" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 798 130 L 818 130 C 818 152 808 162 798 166 C 788 162 778 152 778 130 Z" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round"/>
+  <polyline points="789 146 795 152 807 139" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <text x="836" y="158" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Counter-habit</text>
+
+  
+  
+  <g id="row-1">
+    <rect x="50" y="188" width="680" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="223" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">Start with tools before knowing the purpose</tspan>
+      <tspan x="74" dy="29">or a measurable symptom</tspan>
+    </text>
+    <rect x="760" y="188" width="790" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="237" font-family="sans-serif" font-size="24" fill="#303a36">write the purpose and a measurable symptom first</text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="50" y="280" width="680" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="329" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">Narrow too fast and fixate on the first</tspan>
+      <tspan x="74" dy="29">plausible cause, such as it is always DNS</tspan>
+    </text>
+    <rect x="760" y="280" width="790" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="315" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="784" dy="0">write down two other causes that would produce the</tspan>
+      <tspan x="784" dy="28">same symptom before you run anything; if you cannot</tspan>
+      <tspan x="784" dy="28">name two, you have not looked widely enough</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="50" y="400" width="680" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="435" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">Trust a single instrument: an ohmmeter</tspan>
+      <tspan x="74" dy="28">cannot see an inductor failure, link-up</tspan>
+      <tspan x="74" dy="28">lights do not show BER</tspan>
+    </text>
+    <rect x="760" y="400" width="790" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="463" font-family="sans-serif" font-size="24" fill="#303a36">know what your tool cannot see</text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="50" y="520" width="680" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="555" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">Change several things at once, with no</tspan>
+      <tspan x="74" dy="29">rollback and no notes</tspan>
+    </text>
+    <rect x="760" y="520" width="790" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="569" font-family="sans-serif" font-size="24" fill="#303a36">one change at a time, revert failed experiments</text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="50" y="612" width="680" height="60" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="649" font-family="sans-serif" font-size="24" fill="#303a36">Treat correlation as cause</text>
+    <rect x="760" y="612" width="790" height="60" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="649" font-family="sans-serif" font-size="24" fill="#303a36">manipulate one variable</text>
+  </g>
+
+  
+  <g id="row-6">
+    <rect x="50" y="678" width="680" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="713" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">Stop at the immediate fix and skip the</tspan>
+      <tspan x="74" dy="29">review</tspan>
+    </text>
+    <rect x="760" y="678" width="790" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="727" font-family="sans-serif" font-size="24" fill="#303a36">record debt, review, update the what model</text>
+  </g>
+
+  
+  <g id="row-7">
+    <rect x="50" y="770" width="680" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="805" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">No baselines, so abnormal cannot be</tspan>
+      <tspan x="74" dy="29">recognised</tspan>
+    </text>
+    <rect x="760" y="770" width="790" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="819" font-family="sans-serif" font-size="24" fill="#303a36">write the baseline down</text>
+  </g>
+
+  
+  <g id="row-8">
+    <rect x="50" y="862" width="680" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="74" y="897" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">Debug the network when the application,</tspan>
+      <tspan x="74" dy="28">host or storage is the real bottleneck, or</tspan>
+      <tspan x="74" dy="28">the other way round</tspan>
+    </text>
+    <rect x="760" y="862" width="790" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="925" font-family="sans-serif" font-size="24" fill="#303a36">half-split across the whole path</text>
+  </g>
+
+  
+  <g id="row-9">
+    <rect x="50" y="982" width="680" height="114" rx="6" fill="#fff6ed" stroke="#db8129" stroke-width="3.5"/>
+    <text x="74" y="1031" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">Do not capture evidence before the symptom</tspan>
+      <tspan x="74" dy="29">disappears, for example by rebooting first</tspan>
+    </text>
+    <rect x="760" y="982" width="790" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="784" y="1017" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="784" dy="0">capture first; a reboot erases evidence in memory</tspan>
+      <tspan x="784" dy="28">and counters; a minute spent saving a file saves</tspan>
+      <tspan x="784" dy="28">the afternoon</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="50" y="1106" width="1500" height="68" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="74" y="1119" width="46" height="42" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+  <line x1="74" y1="1131" x2="120" y2="1131" stroke="#207448" stroke-width="3"/>
+  <polyline points="84 1140 89 1145 84 1150" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="94" y1="1150" x2="108" y2="1150" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="138" y="1149" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">Keep the first three questions on a checklist beside the terminal</text>
+</svg>

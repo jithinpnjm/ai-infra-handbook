@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>Methodology (Systems Performance, chapter 12)</title>
+  <desc>Five-stage benchmarking methodology flow: Characterize &amp; Design, Execute &amp; Ramp Load, Active Benchmarking, Sanity Check &amp; Stats, Acceptance &amp; Regression.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#207448">Methodology (Systems Performance, chapter 12)</text>
+
+  
+
+  
+  <g id="node1">
+    <rect x="65" y="140" width="450" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="290" cy="193" r="24" stroke="#207448" stroke-width="3.5" fill="none"/>
+    <circle cx="290" cy="193" r="12" stroke="#207448" stroke-width="3" fill="none"/>
+    <line x1="260" y1="193" x2="274" y2="193" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="306" y1="193" x2="320" y2="193" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="290" y1="163" x2="290" y2="177" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="290" y1="209" x2="290" y2="223" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="290" cy="193" r="2.5" fill="#207448"/>
+    
+    <text x="290" y="260" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+      <tspan x="290" dy="0">1. Characterize &amp;</tspan>
+      <tspan x="290" dy="38">Design</tspan>
+    </text>
+    
+    <text x="290" y="365" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="290" dy="0">Question, Working Set,</tspan>
+      <tspan x="290" dy="34">Bounds</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="515" y1="295" x2="575" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node2">
+    <rect x="575" y="140" width="450" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 776 211 A 26 26 0 1 1 824 211" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="800" cy="204" r="4" fill="#207448"/>
+    <line x1="800" y1="204" x2="817" y2="183" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="778" y1="193" x2="784" y2="195" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="800" y1="171" x2="800" y2="178" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="822" y1="193" x2="816" y2="195" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="800" y="260" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">2. Execute &amp;</tspan>
+      <tspan x="800" dy="38">Ramp Load</tspan>
+    </text>
+    
+    <text x="800" y="365" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24px" fill="#303a36">
+      <tspan x="800" dy="0">STREAM, HPL/HPCG,</tspan>
+      <tspan x="800" dy="34">IOR/gdsio, nccl-tests</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1025" y1="295" x2="1085" y2="295" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node3">
+    <rect x="1085" y="140" width="450" height="310" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    <path d="M 1310 167 C 1318 180 1328 190 1328 203 C 1328 214 1320 221 1310 221 C 1300 221 1292 214 1292 203 C 1292 195 1297 188 1302 183 C 1303 192 1308 197 1314 197 C 1314 187 1310 178 1310 167 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="1288" y1="223" x2="1332" y2="223" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="1310" y="260" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#db8129">
+      <tspan x="1310" dy="0">3. Active</tspan>
+      <tspan x="1310" dy="38">Benchmarking</tspan>
+    </text>
+    
+    <text x="1310" y="365" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1310" dy="0">USE, bpftrace,</tspan>
+      <tspan x="1310" dy="34">Flame Graphs, Nsight</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 1310 450 L 1310 486 Q 1310 510 1286 510 L 484 510 Q 460 510 460 534 L 460 570" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+
+  
+  <g id="node4">
+    <rect x="200" y="570" width="520" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="460" y1="601" x2="460" y2="643" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="446" y1="643" x2="474" y2="643" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="438" y1="611" x2="482" y2="611" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="460" cy="611" r="3" fill="#207448"/>
+    <path d="M 438 611 L 431 627 M 438 611 L 445 627" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+    <path d="M 428 627 Q 438 634 448 627 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 482 611 L 475 627 M 482 611 L 489 627" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+    <path d="M 472 627 Q 482 634 492 627 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="460" y="690" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+      <tspan x="460" dy="0">4. Sanity Check &amp;</tspan>
+      <tspan x="460" dy="38">Stats</tspan>
+    </text>
+    
+    <text x="460" y="795" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="460" dy="0">Physics Limits,</tspan>
+      <tspan x="460" dy="34">Mean/CV/95% CI</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="720" y1="725" x2="880" y2="725" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node5">
+    <rect x="880" y="570" width="520" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1140 599 L 1162 607 C 1162 625 1152 641 1140 647 C 1128 641 1118 625 1118 607 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <path d="M 1130 622 L 1137 629 L 1151 615" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="1140" y="690" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#207448">
+      <tspan x="1140" dy="0">5. Acceptance &amp;</tspan>
+      <tspan x="1140" dy="38">Regression</tspan>
+    </text>
+    
+    <text x="1140" y="795" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="1140" dy="0">Why not double?</tspan>
+      <tspan x="1140" dy="34">Did it error?</tspan>
+    </text>
+  </g>
+</svg>

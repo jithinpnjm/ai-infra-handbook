@@ -1,0 +1,107 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Three command tasks, three guard styles</title>
+  <desc>An infographic illustrating three command tasks and their guard patterns: directory creation with creates, DCGM profiling status with changed_when and failed_when, and MIG enablement with when condition and changed_when.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="85" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold" font-size="48" fill="#303a36">Three command tasks, three guard styles</text>
+
+  
+  <rect x="40" y="140" width="1520" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <ellipse cx="98" cy="180" rx="22" ry="8"/>
+    <path d="M 76 195 C 76 203 120 203 120 195"/>
+    <path d="M 76 210 C 76 218 120 218 120 210"/>
+    <line x1="76" y1="180" x2="76" y2="210"/>
+    <line x1="120" y1="180" x2="120" y2="210"/>
+  </g>
+
+  
+  <text x="150" y="190">
+    <tspan font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold" font-size="30" fill="#303a36">Create the scratch dir once: </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" fill="#207448">command mkdir -p /scratch, args creates /scratch</tspan>
+  </text>
+
+  
+  <g>
+    <rect x="150" y="225" width="430" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="175" y="257" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">skipped if /scratch exists</text>
+
+    <rect x="610" y="225" width="430" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="635" y="257" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">the file module is better</text>
+  </g>
+
+  
+  <rect x="40" y="340" width="1520" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="80" y="380" width="36" height="36" rx="4"/>
+    <rect x="90" y="390" width="16" height="16" rx="2" stroke-width="3"/>
+    <line x1="88" y1="372" x2="88" y2="380" stroke-width="3"/>
+    <line x1="98" y1="372" x2="98" y2="380" stroke-width="3"/>
+    <line x1="108" y1="372" x2="108" y2="380" stroke-width="3"/>
+    <line x1="88" y1="416" x2="88" y2="424" stroke-width="3"/>
+    <line x1="98" y1="416" x2="98" y2="424" stroke-width="3"/>
+    <line x1="108" y1="416" x2="108" y2="424" stroke-width="3"/>
+    <line x1="72" y1="388" x2="80" y2="388" stroke-width="3"/>
+    <line x1="72" y1="398" x2="80" y2="398" stroke-width="3"/>
+    <line x1="72" y1="408" x2="80" y2="408" stroke-width="3"/>
+    <line x1="116" y1="388" x2="124" y2="388" stroke-width="3"/>
+    <line x1="116" y1="398" x2="124" y2="398" stroke-width="3"/>
+    <line x1="116" y1="408" x2="124" y2="408" stroke-width="3"/>
+  </g>
+
+  
+  <text x="150" y="386" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold" font-size="30" fill="#303a36">Read the current DCGM profiling mode (read-only, never changed):</text>
+  <text x="150" y="430" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">command dcgmi profile --status, register prof, changed_when false,</text>
+  <text x="150" y="472" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">failed_when prof.rc != 0 and not supported not in prof.stderr</text>
+
+  
+  <rect x="40" y="550" width="1520" height="330" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+
+  
+  <g stroke="#db8129" stroke-width="4" fill="none">
+    <path d="M 98 580 L 118 590 C 118 610 98 624 98 628 C 98 624 78 610 78 590 Z" stroke-linejoin="round"/>
+    <path d="M 90 604 L 96 610 L 108 598" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="150" y="594" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold" font-size="30" fill="#303a36">Enable MIG only if currently disabled:</text>
+  <text x="150" y="634" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">command nvidia-smi -i 0 -mig 1, when Disabled in mig_state.stdout,</text>
+  <text x="150" y="670" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">register mig_set, changed_when Enabled in mig_set.stdout</text>
+
+  
+  <rect x="130" y="695" width="1400" height="165" rx="8" fill="#fff4e8" stroke="#db8129" stroke-width="2"/>
+  <text x="156" y="734" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="156" dy="0">checks when against the mig_state registered by an earlier task; if MIG is already</tspan>
+    <tspan x="156" dy="34">enabled the task is skipped and nothing is sent to the GPU; if disabled the command</tspan>
+    <tspan x="156" dy="34">runs and changed_when reads the output to decide whether the state really changed;</tspan>
+    <tspan x="156" dy="34">without that last line the task would report changed every time it ran</tspan>
+  </text>
+
+  
+  <rect x="40" y="920" width="1520" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="84" y="955" width="28" height="36" rx="3"/>
+    <line x1="92" y1="949" x2="104" y2="949" stroke-linecap="round"/>
+    <line x1="92" y1="967" x2="104" y2="967" stroke-width="3" stroke-linecap="round"/>
+    <line x1="92" y1="976" x2="104" y2="976" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="150" y="966" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="150" dy="0">ask whether a second run would report a change;</tspan>
+    <tspan x="150" dy="36">if yes, ask which part of the task keeps changing</tspan>
+  </text>
+
+  
+  <rect x="40" y="1070" width="1520" height="80" rx="12" fill="#207448"/>
+  <text x="800" y="1120" text-anchor="middle" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold" font-size="28" fill="#ffffff">If a module can express the state you want, use the module</text>
+</svg>

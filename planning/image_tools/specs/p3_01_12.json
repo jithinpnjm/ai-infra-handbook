@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "p3-0112-alignment-math",
+  "title": "Is this partition aligned? Divide the start sector by 8",
+  "spec": "Top: a strip of flash pages, each 4,096 bytes, each drawn as a box holding eight small 512-byte sector cells. Two rows below the strip. Row A 'Start sector 2048 (1 MiB)': 2048 / 8 = 256, a whole number, remainder 0; the partition boundary line sits exactly on a page edge; verdict 'aligned'. Row B 'cat /sys/block/sdf/sdf2/start prints 1953126': 1953126 / 8 = 244140.75, remainder 6; the partition boundary line falls inside a page, six sectors in; a single 4 KiB read straddles two physical pages; verdict 'NOT aligned' (orange outline, the key lesson). Left note box 'Why 8: eight 512-byte sectors make one 4,096-byte page'. Right box 'Check with a tool: parted /dev/sdb align-check optimal 1 prints 1 aligned'. Bottom bar: 'Existing partitions are not realigned by the tools, so check them yourself'.",
+  "anchor": "### Alignment (*How Linux Works* Section 4.1.6)",
+  "alt": "Flash pages split into eight sectors, showing a partition starting at sector 2048 aligned on a page edge and one at 1953126 landing inside a page.",
+  "cap": "A start sector divisible by 8 sits on a 4 KiB page edge, while 1953126 leaves a remainder of 6 and so straddles two pages."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "p3-0112-disk-full-ladder",
+  "title": "No space left on device: seven checks, one command each",
+  "spec": "A top symptom box 'No space left on device (ENOSPC)' with the note 'one failed write proves only that one write failed'. Below it a vertical table of seven rows, each with a number circle, a cause, the check in monospace and the fix. 1 'Data blocks exhausted': 'df -h', 'Delete or move data; grow the filesystem'. 2 'Inodes exhausted': 'df -i', 'Delete files; recreate with more inodes; prefer XFS or bundled shards'. 3 'Mounted read-only': 'mount | grep \" ro,\"' and 'dmesg', 'Find the I/O error cause; repair; remount'. 4 'Quota reached': 'quota -u', 'xfs_quota', 'repquota', 'Raise the quota or clean up'. 5 'Wrong place, not mounted': 'findmnt -T /path' and 'df /path', 'Mount it properly; move the stray data'. 6 'Deleted files still open': 'lsof +L1', 'Restart the holder, or truncate through /proc/PID/fd/N'. 7 'Reserved blocks for root': 'tune2fs -l | grep Reserved', 'Lower the reservation on data disks'. Orange outline on row 2 (inodes: df -h looks fine). Bottom bar: 'Check bytes, inodes, read-only, quota, mount point, open files and reserved blocks before you delete anything'.",
+  "anchor": "### Capacity: `df`, `du`, inodes, reserved blocks",
+  "alt": "A table of seven causes of the no space left on device error, each with the command that proves it and the usual fix.",
+  "cap": "One ENOSPC error has at least seven possible causes, and each has its own check command and fix."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "p3-0112-deleted-open",
+  "title": "Why df shows 100% while du finds nothing: the deleted file is still open",
+  "spec": "Four numbered steps left to right on a timeline. 1 'Process opens a huge log file; inode link count is 1 and one process holds it open'. 2 'Log rotation runs rm: the directory entry is removed and the link count drops to 0'. 3 'A process still has the file open, so the inode and its blocks are NOT freed' (orange). 4 'Process exits or restarts: now the inode and blocks are freed'. Under the timeline two result boxes side by side. Left 'df -h: 100% used (counts the blocks)'. Right 'du: finds nothing (walks directory names, and the name is gone)'. Below, a find panel: 'sudo lsof +L1 lists deleted files still held open' and 'ls -l /proc/PID/fd shows the (deleted) marker' and 'fix: restart the holder, or truncate through /proc/PID/fd/N'. Rule box: 'Blocks are freed only when the link count is zero AND no process has the file open'.",
+  "anchor": "## 6. Inside a traditional filesystem",
+  "alt": "A timeline where a log file is deleted while still open, so df still counts its blocks but du cannot see it, with the lsof command that finds it.",
+  "cap": "Space is freed only when the link count is zero and no process holds the file open, so df and du can disagree."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "p3-0112-fstab-anatomy",
+  "title": "Anatomy of an fstab line, and the safe edit routine",
+  "spec": "Left: the line 'UUID=3f2a...  /scratch  xfs  defaults,noatime,nofail  0  2' in monospace, with six brackets underneath numbered 1 to 6. 1 'Source: UUID, LABEL=, PARTUUID=, /dev/mapper name or server:/path'. 2 'Mount point'. 3 'Type (swap for swap)'. 4 'Options: defaults = rw,suid,dev,exec,auto,nouser,async; nofail = do not drop to emergency mode if absent; _netdev = wait for the network'. 5 'dump flag: obsolete backup tool, always 0'. 6 'fsck pass: 1 root, 2 other local filesystems, 0 skip (network, swap, XFS)'. Right: a vertical routine of five steps with arrows: 'sudo cp /etc/fstab /etc/fstab.bak', 'sudoedit /etc/fstab', 'sudo findmnt --verify --verbose', 'sudo mount -a (errors appear now, not at 3 a.m.)', 'sudo systemctl daemon-reload'. Orange on the 'mount -a' step. Bottom bar: 'A bad fstab can stop a machine from booting, so verify before you reboot'.",
+  "anchor": "### `/etc/fstab`: mounts at boot",
+  "alt": "An fstab line with its six fields labelled, next to the five step routine of backup, edit, verify, mount all and reload.",
+  "cap": "Each fstab line has six fields, and mount dash a catches mistakes now instead of at the next boot."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "p3-0112-logical-physical",
+  "title": "Logical I/O is not physical I/O: what shrinks it and what inflates it",
+  "spec": "Centre: two stacked bars. Top bar 'Logical I/O: what the application asked for (system calls)'. Bottom bar 'Physical I/O: what reaches the disk'. Left side a column 'Deflated (less than requested)' with arrows pointing to shrink: 'Cache hits', 'Write cancellation (same bytes rewritten before flush)', 'Compression', 'Coalescing neighbours', 'In-memory filesystems'. Right side a column 'Inflated (more than requested)' with arrows pointing to grow: 'Metadata updates', 'Record or block size rounding (a 1-byte write may read and rewrite a whole 128 KiB record)' in orange, 'Journaling (data or metadata written twice)', 'RAID parity read-modify-write', 'Mirroring'. A third strip at the bottom 'Not from your application at all': 'Unrelated (other tenants, RAID rebuilds, backups, scrubs)', 'Indirect (prefetch, write-back bursts nobody waits on)', 'Implicit (mmap loads and stores that fault)'. Bottom bar: 'Do not assume the disk saw what the application sent'.",
+  "anchor": "### Metadata, and logical versus physical I/O",
+  "alt": "Logical I/O above physical I/O, with causes that deflate it on the left and causes that inflate it on the right, plus I/O not from the application.",
+  "cap": "Cache hits and coalescing make physical I/O smaller than requested, while metadata, journaling and rounding make it larger."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "p3-0112-iostat-read",
+  "title": "Reading iostat on NVMe: percent util alone misleads",
+  "spec": "Top: the two chapter lines in monospace: 'Device r/s w/s rkB/s wkB/s await aqu-sz %util' and 'nvme0n1 42.0 980.0 5376.0 62720 8.20 4.10 97.5', with each column header labelled by a short definition: '%util = share of time with at least one request outstanding', 'aqu-sz = average queue length', 'await = queue time plus service time, the latency you care about'. Below a decision tree. Diamond 'Is %util near 100%?'. Branch to diamond 'Is aqu-sz below about 4 and bandwidth far below spec?'. Yes leads to orange box 'The application I/O pattern is the limit: synchronous single-threaded I/O. Fix: more threads or io_uring'. No leads to box 'Drive is genuinely busy; check await and bandwidth'. A second branch 'High await with moderate util' leads to box 'Queueing or backend latency: noisy neighbour on a shared disk or congested network storage path'. Side note: 'On a single rotational disk, 100% means saturated; on NVMe and arrays running many requests in parallel it does not'. Bottom bar: 'Pair %util with aqu-sz, bandwidth and IOPS'.",
+  "anchor": "## 11. Methodology and tools",
+  "alt": "An iostat sample line with column meanings and a decision tree that separates a busy drive from a single threaded I/O pattern and from queueing latency.",
+  "cap": "A device at 100 percent util with a small queue and low bandwidth means the application I/O pattern is the limit, not the drive."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "12",
+  "name": "p3-0112-transaction-cost",
+  "title": "How much can filesystem tuning buy? Look at the share of the request",
+  "spec": "Two worked cards side by side, each with a horizontal bar of one request. Card A 'A request takes 200 ms': bar split into '180 ms blocked in file I/O (90%)' in orange and '20 ms other work'. Verdict 'The filesystem is 90% of the time: removing its latency could give up to a 10x speedup'. Card B 'Same request, only 2 ms in file I/O (1%)': bar almost entirely 'other work 198 ms' with a tiny '2 ms file I/O' sliver. Verdict 'The filesystem is irrelevant: look elsewhere'. Above the cards the instruction 'Measure the time of file operations at the layer you can reach: application metrics, strace -T, perf trace, or VFS and filesystem tracing'. Beside it 'Prefer histograms to averages: cache hits dominate averages and hide outliers'. Bottom bar: 'If you can measure only one thing, measure how long the application spends in file operations'.",
+  "anchor": "## Exercises",
+  "alt": "Two worked bars of a 200 millisecond request, one spending 180 milliseconds in file I/O for a possible tenfold speedup and one spending 2 milliseconds.",
+  "cap": "If 180 of 200 ms is blocked in file I/O the filesystem could give up to a 10x speedup, but at 2 ms it is irrelevant."
+ }
+]

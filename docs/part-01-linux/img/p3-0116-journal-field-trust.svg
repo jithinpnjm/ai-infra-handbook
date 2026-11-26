@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Journal fields: the underscore fields are trusted, the others are the sender's claim</title>
+  <desc>Infographic illustrating systemd journal trusted fields with leading underscores versus unverified sender-claimed fields, along with practical journalctl filter queries.</desc>
+
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Journal fields: the underscore fields are trusted,</tspan>
+    <tspan x="800" dy="58">the others are the sender's claim</tspan>
+  </text>
+
+  
+  <rect x="40" y="165" width="760" height="755" rx="12" fill="#ffffff" stroke="#c8d8cb" stroke-width="2"/>
+
+  
+  <rect x="60" y="185" width="720" height="375" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(80, 205)">
+    <path d="M 28 4 L 50 14 C 50 36 28 50 28 50 C 28 50 6 36 6 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 18 26 L 25 33 L 38 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="150" y="222" font-family="sans-serif" font-size="24" fill="#207448">
+    <tspan x="150" dy="0" font-weight="bold">Trusted fields (leading underscore):</tspan>
+    <tspan x="150" dy="30">added by journald from kernel-verified credentials,</tspan>
+    <tspan x="150" dy="30">the client cannot forge them</tspan>
+  </text>
+
+  
+  <g transform="translate(80, 315)">
+    <rect x="0" y="0" width="680" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="32" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">_SYSTEMD_UNIT=sshd.service</text>
+  </g>
+  <g transform="translate(80, 375)">
+    <rect x="0" y="0" width="680" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="32" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">_PID=484</text>
+  </g>
+  <g transform="translate(80, 435)">
+    <rect x="0" y="0" width="680" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="32" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">_UID=1000</text>
+  </g>
+  <g transform="translate(80, 495)">
+    <rect x="0" y="0" width="680" height="48" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="32" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">_HOSTNAME=duplex</text>
+  </g>
+
+  
+  <rect x="60" y="580" width="720" height="320" rx="8" fill="#fdfaf6" stroke="#db8129" stroke-width="2"/>
+
+  
+  <g transform="translate(80, 600)">
+    <path d="M 28 6 L 50 48 L 6 48 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="22" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="42" r="2.5" fill="#db8129"/>
+  </g>
+
+  
+  <text x="150" y="626" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="150" dy="0" font-weight="bold" fill="#db8129">Sender fields (no underscore):</tspan>
+    <tspan x="150" dy="32">the sender's claim, not fact</tspan>
+  </text>
+
+  
+  <g transform="translate(80, 685)">
+    <rect x="0" y="0" width="680" height="48" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="20" y="32" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">MESSAGE=...</text>
+  </g>
+  <g transform="translate(80, 745)">
+    <rect x="0" y="0" width="680" height="48" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="20" y="32" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">SYSLOG_IDENTIFIER=gpu-health</text>
+  </g>
+  <g transform="translate(80, 805)">
+    <rect x="0" y="0" width="680" height="48" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="20" y="32" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">PRIORITY=3</text>
+  </g>
+
+  
+
+  
+  <rect x="840" y="165" width="720" height="395" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(865, 185)">
+    <rect x="0" y="0" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 10 12 L 18 20 L 10 28" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="22" y1="28" x2="36" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <g transform="translate(865, 245)">
+    <rect x="0" y="0" width="670" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="35" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">journalctl _PID=8792</text>
+  </g>
+  <g transform="translate(865, 315)">
+    <rect x="0" y="0" width="670" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="35" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">journalctl _UID=1000</text>
+  </g>
+  <g transform="translate(865, 385)">
+    <rect x="0" y="0" width="670" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="35" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">journalctl _COMM=python</text>
+  </g>
+  <g transform="translate(865, 455)">
+    <rect x="0" y="0" width="670" height="54" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="20" y="35" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">journalctl _SYSTEMD_UNIT=x.service</text>
+  </g>
+
+  
+  <rect x="840" y="580" width="720" height="205" rx="8" fill="#fdfaf6" stroke="#db8129" stroke-width="2"/>
+
+  
+  <g transform="translate(865, 595)">
+    <rect x="0" y="0" width="48" height="40" rx="4" fill="none" stroke="#db8129" stroke-width="3"/>
+    <path d="M 10 12 L 18 20 L 10 28" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="22" y1="28" x2="36" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <g transform="translate(865, 650)">
+    <rect x="0" y="0" width="670" height="54" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="20" y="35" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">journalctl SYSLOG_IDENTIFIER=gpu-health</text>
+  </g>
+  <g transform="translate(865, 715)">
+    <rect x="0" y="0" width="670" height="54" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="20" y="35" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">journalctl -p err (PRIORITY)</text>
+  </g>
+
+  
+  <rect x="840" y="805" width="720" height="115" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(865, 835)">
+    <circle cx="24" cy="24" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="38" y1="38" x2="48" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="16" y1="24" x2="32" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="935" y="848" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="935" dy="0">List field names: journalctl -N;</tspan>
+    <tspan x="935" dy="36">list values: journalctl -F FIELD</tspan>
+  </text>
+
+  
+  <rect x="40" y="955" width="1520" height="65" rx="8" fill="#207448"/>
+  <text x="800" y="997" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Filter on trusted fields when you need to be sure who wrote the line</text>
+</svg>

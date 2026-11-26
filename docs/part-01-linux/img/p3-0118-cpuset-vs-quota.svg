@@ -1,0 +1,229 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Linux cgroups CPU controls overview</title>
+  <desc>Visual comparison of cpuset placement, cpu.max quota ceilings, and cpu.weight proportional sharing.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">cpuset says where, quota says how much, weight says how fairly</text>
+
+  
+  <g id="col-cpuset">
+    <rect x="40" y="105" width="480" height="870" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(252, 120)">
+      <rect x="8" y="8" width="40" height="40" rx="6" fill="#fdf6ed" stroke="#db8129" stroke-width="4"/>
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="#db8129"/>
+      <line x1="16" y1="2" x2="16" y2="8" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="2" x2="28" y2="8" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="40" y1="2" x2="40" y2="8" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="16" y1="48" x2="16" y2="54" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="48" x2="28" y2="54" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="40" y1="48" x2="40" y2="54" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="2" y1="16" x2="8" y2="16" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="2" y1="28" x2="8" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="2" y1="40" x2="8" y2="40" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="16" x2="54" y2="16" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="28" x2="54" y2="28" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+      <line x1="48" y1="40" x2="54" y2="40" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="280" y="196" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="280" dy="0">cpuset:</tspan>
+      <tspan x="280" dy="36">where may it run?</tspan>
+    </text>
+
+    
+    <rect x="56" y="250" width="448" height="135" rx="10" fill="#fdf6ed" stroke="#f2c99d" stroke-width="1.5"/>
+    <text x="280" y="282" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="280" dy="0">cpuset.cpus and cpuset.mems</tspan>
+      <tspan x="280" dy="28">(effective values in</tspan>
+      <tspan x="280" dy="28">cpuset.cpus.effective and</tspan>
+      <tspan x="280" dy="28">cpuset.mems.effective)</tspan>
+    </text>
+
+    
+    <rect x="56" y="400" width="448" height="155" rx="10" fill="#fdf6ed" stroke="#f2c99d" stroke-width="1.5"/>
+    
+    <rect x="76" y="415" width="94" height="58" rx="8" fill="#eef3ee" stroke="#c8d8ca" stroke-width="2"/>
+    <text x="123" y="452" font-family="sans-serif" font-size="24" font-weight="bold" fill="#66776e" text-anchor="middle">0</text>
+
+    <rect x="182" y="415" width="94" height="58" rx="8" fill="#eef3ee" stroke="#c8d8ca" stroke-width="2"/>
+    <text x="229" y="452" font-family="sans-serif" font-size="24" font-weight="bold" fill="#66776e" text-anchor="middle">1</text>
+
+    <rect x="288" y="415" width="94" height="58" rx="8" fill="#eef3ee" stroke="#c8d8ca" stroke-width="2"/>
+    <text x="335" y="452" font-family="sans-serif" font-size="24" font-weight="bold" fill="#66776e" text-anchor="middle">2</text>
+
+    <rect x="394" y="415" width="94" height="58" rx="8" fill="#eef3ee" stroke="#c8d8ca" stroke-width="2"/>
+    <text x="441" y="452" font-family="sans-serif" font-size="24" font-weight="bold" fill="#66776e" text-anchor="middle">3</text>
+
+    
+    <rect x="76" y="483" width="94" height="58" rx="8" fill="#db8129" stroke="#b66518" stroke-width="2.5"/>
+    <text x="123" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+
+    <rect x="182" y="483" width="94" height="58" rx="8" fill="#db8129" stroke="#b66518" stroke-width="2.5"/>
+    <text x="229" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+
+    <rect x="288" y="483" width="94" height="58" rx="8" fill="#db8129" stroke="#b66518" stroke-width="2.5"/>
+    <text x="335" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+
+    <rect x="394" y="483" width="94" height="58" rx="8" fill="#db8129" stroke="#b66518" stroke-width="2.5"/>
+    <text x="441" y="520" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+
+    
+    <rect x="56" y="570" width="448" height="155" rx="10" fill="#fdf6ed" stroke="#f2c99d" stroke-width="1.5"/>
+    <text x="280" y="608" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="280" dy="0">a hard allow-list,</tspan>
+      <tspan x="280" dy="30">no throttling; an empty</tspan>
+      <tspan x="280" dy="30">cpuset.cpus inherits</tspan>
+      <tspan x="280" dy="30">the parent's</tspan>
+    </text>
+
+    
+    <rect x="56" y="740" width="448" height="215" rx="10" fill="#fdf6ed" stroke="#f2c99d" stroke-width="1.5"/>
+    <text x="280" y="776" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="280" dy="0">a job that must run</tspan>
+      <tspan x="280" dy="30">on cores 4 to 7;</tspan>
+      <tspan x="280" dy="30">Slurm task/cgroup and</tspan>
+      <tspan x="280" dy="30">the Kubernetes CPU</tspan>
+      <tspan x="280" dy="30">Manager use cpusets</tspan>
+      <tspan x="280" dy="30">for exclusive cores</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-quota">
+    <rect x="560" y="105" width="480" height="870" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(772, 120)">
+      <circle cx="28" cy="28" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+      <polyline points="28,14 28,28 38,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="800" y="196" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">quota (cpu.max):</tspan>
+      <tspan x="800" dy="36">how much time?</tspan>
+    </text>
+
+    
+    <rect x="576" y="250" width="448" height="135" rx="10" fill="#e8f1ea" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="800" y="282" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">cpu.max = $MAX $PERIOD</tspan>
+      <tspan x="800" dy="28">in microseconds</tspan>
+      <tspan x="800" dy="28">(200000 100000 =</tspan>
+      <tspan x="800" dy="28">2 CPUs worth)</tspan>
+    </text>
+
+    
+    <rect x="576" y="400" width="448" height="235" rx="10" fill="#e8f1ea" stroke="#c2d6c6" stroke-width="1.5"/>
+    
+    
+    <g transform="translate(800, 480)">
+      <path d="M -60,0 A 60,60 0 0,1 60,0" fill="none" stroke="#c2d6c6" stroke-width="10" stroke-linecap="round"/>
+      <path d="M -60,0 A 60,60 0 0,1 0,-60" fill="none" stroke="#207448" stroke-width="10" stroke-linecap="round"/>
+      <circle cx="0" cy="0" r="7" fill="#303a36"/>
+      <line x1="0" y1="0" x2="-50" y2="0" stroke="#303a36" stroke-width="4" stroke-linecap="round"/>
+      <path d="M 22,-36 L 36,-36 L 36,-14 L 22,-14 Z M 36,-30 L 42,-26 L 42,-16" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <rect x="606" y="565" width="388" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="607" y="566" width="193" height="40" rx="6" fill="#207448"/>
+    <rect x="800" y="566" width="193" height="40" rx="6" fill="#f5f8f5"/>
+    <line x1="830" y1="566" x2="815" y2="606" stroke="#c2d6c6" stroke-width="2"/>
+    <line x1="860" y1="566" x2="845" y2="606" stroke="#c2d6c6" stroke-width="2"/>
+    <line x1="890" y1="566" x2="875" y2="606" stroke="#c2d6c6" stroke-width="2"/>
+    <line x1="920" y1="566" x2="905" y2="606" stroke="#c2d6c6" stroke-width="2"/>
+    <line x1="950" y1="566" x2="935" y2="606" stroke="#c2d6c6" stroke-width="2"/>
+    <line x1="980" y1="566" x2="965" y2="606" stroke="#c2d6c6" stroke-width="2"/>
+    
+    <line x1="800" y1="556" x2="800" y2="616" stroke="#303a36" stroke-width="3"/>
+    <polygon points="800,562 794,552 806,552" fill="#303a36"/>
+
+    
+    <rect x="576" y="650" width="448" height="305" rx="10" fill="#e8f1ea" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="800" y="775" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">a job that may run on</tspan>
+      <tspan x="800" dy="38">any cores as long as it</tspan>
+      <tspan x="800" dy="38">gets 4 CPUs worth of time</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-weight">
+    <rect x="1080" y="105" width="480" height="870" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1292, 115)">
+      <line x1="28" y1="12" x2="28" y2="44" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="14" y1="44" x2="42" y2="44" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="8" y1="16" x2="48" y2="16" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <polyline points="8,16 4,28 16,28 12,16" fill="none" stroke="#207448" stroke-width="2"/>
+      <path d="M 2,28 Q 10,34 18,28 Z" fill="#207448"/>
+      <polyline points="48,16 44,32 56,32 52,16" fill="none" stroke="#207448" stroke-width="2"/>
+      <path d="M 42,32 Q 50,38 58,32 Z" fill="#207448"/>
+    </g>
+
+    
+    <text x="1320" y="185" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1320" dy="0">weight (cpu.weight):</tspan>
+      <tspan x="1320" dy="34">how fairly</tspan>
+      <tspan x="1320" dy="34">under contention?</tspan>
+    </text>
+
+    
+    <rect x="1096" y="270" width="448" height="115" rx="10" fill="#e8f1ea" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="1320" y="304" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1320" dy="0">cpu.weight 1 to 10000,</tspan>
+      <tspan x="1320" dy="30">default 100; v1</tspan>
+      <tspan x="1320" dy="30">cpu.shares default 1024</tspan>
+    </text>
+
+    
+    <rect x="1096" y="400" width="448" height="195" rx="10" fill="#e8f1ea" stroke="#c2d6c6" stroke-width="1.5"/>
+    
+    
+    <g transform="translate(1120, 425)">
+      <rect x="0" y="0" width="90" height="54" rx="8" fill="#d3e7d6" stroke="#207448" stroke-width="2"/>
+      <text x="45" y="36" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">100</text>
+      <text x="120" y="36" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">25%</text>
+    </g>
+
+    
+    <g transform="translate(1120, 505)">
+      <rect x="0" y="0" width="270" height="54" rx="8" fill="#207448" stroke="#165132" stroke-width="2"/>
+      <text x="135" y="36" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">300</text>
+      <text x="300" y="36" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">75%</text>
+    </g>
+
+    
+    <rect x="1096" y="610" width="448" height="345" rx="10" fill="#e8f1ea" stroke="#c2d6c6" stroke-width="1.5"/>
+    <text x="1320" y="680" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1320" dy="0">invisible on an idle</tspan>
+      <tspan x="1320" dy="34">machine, never wastes</tspan>
+      <tspan x="1320" dy="34">capacity, never limits</tspan>
+      <tspan x="1320" dy="34">alone; Kubernetes CPU</tspan>
+      <tspan x="1320" dy="34">request becomes shares</tspan>
+      <tspan x="1320" dy="34">or weight</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-strip">
+    <rect x="40" y="995" width="1520" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="1038" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">v2 partitions: cpuset.cpus.partition set to root or isolated makes a</tspan>
+      <tspan x="800" dy="32">group with exclusive CPUs, a runtime alternative to isolcpus</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1110" width="1520" height="60" rx="10" fill="#207448"/>
+    <text x="800" y="1150" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Choose placement, ceiling or proportion by what the job needs</text>
+  </g>
+</svg>

@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p2-0607-daemon-roles",
+  "title": "Slurm's cooperating daemons and the commands that reach them",
+  "spec": "Three zones drawn as stacked panels, top to bottom. Top panel titled 'Login and submit nodes' with a row of command chips 'sbatch', 'srun', 'salloc', 'squeue', 'sinfo', 'scancel', and a second row of chips 'sacct', 'sacctmgr', 'sreport' labelled 'Accounting queries'. Middle panel titled 'Control plane' containing a large box 'slurmctld: controller, port 6817, queue, scheduler, node and job state' in orange outline, a dashed box 'Backup slurmctld (optional): shared StateSaveLocation', a box 'slurmdbd: accounting daemon, port 6819', a cylinder 'MariaDB or MySQL: accounting database', and a dashed box 'slurmrestd (optional): REST API'. Bottom panel titled 'Compute nodes' with boxes 'slurmd on each node'. Arrows: from the login-node commands down to slurmctld; from slurmctld to slurmdbd; from slurmdbd to the database; from slurmctld down to slurmd boxes. Caption at the bottom: 'When a job is stuck, the first question is which daemon is involved.'",
+  "anchor": "## 2. The daemons",
+  "alt": "Slurm's daemons: the controller slurmctld holds the queue and state, slurmdbd records accounting into a database, and slurmd runs on each compute node.",
+  "cap": "Slurm's daemons split work between slurmctld, which holds queue and state, slurmdbd for accounting, and slurmd on each compute node."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p2-0607-job-life",
+  "title": "Following one two-node job through the daemons",
+  "spec": "A numbered sequence of eight steps laid out in a horizontal flow in two rows of four. Row 1: step 1 'User runs sbatch job.sh, RPC with munge credential' (user icon); step 2 'slurmctld authenticates, runs job_submit plugin, checks limits'; step 3 'Returns Submitted batch job 4217'; step 4 'Job PENDING: scheduler and backfill evaluate it'. Row 2: step 5 'Resources found: allocate nodes A and B, state RUNNING'; step 6 'Launch batch step on node A via RPC tree fan-out; prolog on node B'; step 7 'Node A runs the batch script; srun starts steps on both nodes'; step 8 'Epilog and cleanup, job complete RPC, slurmdbd records times, resources and exit code'. A return arrow from step 8 to step 4 labelled 'Free nodes A and B, schedule again'. Orange outline on step 5 as the allocation moment. Caption at the bottom: 'Each arrow is one message between two daemons.'",
+  "anchor": "## 3. The life of a job",
+  "alt": "One two-node batch job goes from submission through pending, allocation of nodes A and B, the batch script and srun steps, cleanup and accounting.",
+  "cap": "A two-node batch job moves from submission to pending, allocation, running steps, cleanup and accounting, with each arrow a message between daemons."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p2-0607-controller-failover",
+  "title": "Active and passive controllers share one state directory",
+  "spec": "Left: two server boxes 'ctl1 (primary, active)' and 'ctl2 (backup, passive)' drawn side by side. A solid arrow from ctl1 to a shared cylinder 'StateSaveLocation: /shared/slurm/state' labelled 'Writes state continuously'. A dashed arrow from ctl2 to the same cylinder labelled 'Reads the same state'. A dashed heartbeat arrow from ctl2 to ctl1 labelled 'Checks in regularly'. Right: a timeline of three steps: 'Primary does not answer for SlurmctldTimeout seconds', 'Backup takes control and reads the state', 'Clients pause briefly, then continue, and running jobs keep running'. Under the shared cylinder a red warning note 'A single point of failure unless the storage is highly available'. Orange outline on the shared state cylinder. Caption: 'Like a second pilot who reads the same checklist.'",
+  "anchor": "### High availability of the controller",
+  "alt": "Two Slurm controllers share a state directory, with the backup taking control when the primary stops answering for the timeout.",
+  "cap": "Two Slurm controllers share one state directory, and the backup takes control when the primary stops answering for SlurmctldTimeout seconds."
+ }
+]

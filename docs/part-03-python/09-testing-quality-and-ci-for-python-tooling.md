@@ -39,15 +39,19 @@ Treat this list as your checklist for the rest of the chapter.
 
 ## 1. Test strategy for infrastructure code
 
+![Seven degraded conditions infrastructure tests must cover, the deterministic and hermetic rules and how a GPU tool is tested with recorded output, a fake NVML module and a small gpu-marked tier.](./img/p3-0309-degraded-conditions.svg)
+
+*Figure 3.9.1. Cover timeouts, partial output and empty results, keep tests hermetic, and test GPU tools with recorded output and fakes.*
+
 ![The test pyramid](./img/s09-pyramid.svg)
 
-*Figure 3.9.1. Test strategy: many fast unit tests, fewer integration tests, and very few end-to-end tests.*
+*Figure 3.9.2. Test strategy: many fast unit tests, fewer integration tests, and very few end-to-end tests.*
 
 Start your test strategy with a question: what does this code meet in the wild? Infrastructure code mostly runs in degraded conditions. A node answers slowly, or answers halfway. The cases you will meet most often are timeouts, partial outputs, `[N/A]` fields, empty lists, 500s and permission errors. Your test strategy has to cover them, not only the happy path. The diagram shows the layers, from fast unit tests at the base to a few end-to-end tests at the top.
 
 ![Test strategy for infrastructure code](./img/m3-09-1.svg)
 
-*Figure 3.9.2. Test strategy for infrastructure code, as a diagram.*
+*Figure 3.9.3. Test strategy for infrastructure code, as a diagram.*
 
 Read the diagram from the bottom up. Unit tests are the cheapest, so you will write thousands of them, and each one runs in milliseconds. End-to-end tests run against a real cluster, and there are only a few, because they are slow and prone to flakiness.
 
@@ -58,6 +62,14 @@ Test the failure paths as carefully as the success paths. Every error handler de
 A GPU tool still needs tests on a machine with no GPU. Parse recorded `nvidia-smi` and `dcgmi` outputs, and simulate NVML with a fake module. Keep a small set of hardware-in-the-loop tests, marked `gpu`, that run only on labelled runners. Decide which tier a new test belongs to before you write it.
 
 ## 2. pytest essentials
+
+![Three panels covering pytest markers and selection, an annotated pyproject pytest configuration with strict markers and filterwarnings error, and the flags for selecting, stopping, parallelism and ordering.](./img/p3-0309-markers-config-flags.svg)
+
+*Figure 3.9.4. Register markers, make warnings fail, and use -k, -x, --lf, -n auto and --durations to run the suite quickly.*
+
+![A parametrize decorator with four temperature and expected pairs fanning out to four generated cases with the boundary at 85 and 86, beside the healthy, missing GPU and bad input tests.](./img/p3-0309-parametrize-anatomy.svg)
+
+*Figure 3.9.5. Each row of the parametrize list becomes a separate test, and the boundary rows 85 and 86 pin the threshold.*
 
 Suppose you paste the same test four times, changing only the temperature in each copy. The example below shows the fix, and the notes after it explain each mechanism it uses.
 
@@ -110,6 +122,10 @@ A few flags do most of the work when you run the suite. `-k expr` selects tests 
 
 ### Fixtures that clean up and avoid leaked state
 
+![A test receiving fixtures by parameter name, the four fixture scopes from function to session, three example fixtures that clean up after themselves and the module-level dictionary leak story.](./img/p3-0309-fixture-scopes.svg)
+
+*Figure 3.9.6. Fixtures arrive by parameter name, use the narrowest scope, and clean up through monkeypatch and yield teardown even when a test fails.*
+
 Fixtures are the usual way to keep one test from leaking state into the next. The example below shows three of them, each cleaning up after itself.
 
 ```python
@@ -139,13 +155,21 @@ The classic leak is quieter than a crash. A test mutates a module-level dict or 
 
 ## 3. Isolating dependencies: fakes, stubs and mocks
 
+![A table of stub, fake, mock and spy with what each does and what it asserts on, with the advice to prefer fakes and stubs and the smell of ten patches.](./img/p3-0309-test-doubles.svg)
+
+*Figure 3.9.7. A stub returns canned answers, a fake works in a light way, a mock records calls and a spy wraps the real object, so prefer fakes and stubs.*
+
 Suppose a test calls a real API. The test is slow, it depends on the network, and it can fail for reasons that have nothing to do with your code. Isolating the dependency fixes all three problems: the test talks to a stand-in instead. The words for the stand-ins are easy to mix up, so here they are in plain terms. A **stub** returns canned answers. A **fake** is a working, lightweight implementation, such as an in-memory repository. A **mock** records calls so you can assert on the interactions. A **spy** wraps the real thing. Prefer fakes and stubs over heavy mocking. Fakes and stubs let tests assert on outcomes, while mocks tend to assert on implementation, and those tests break whenever you refactor.
 
 ### Dependency injection beats patching
 
+![A step-by-step run of the Drainer test where a fake pod sequence and a fake clock stepping by five seconds let the loop finish instantly, with the timeout branch covered by a clock that jumps past the deadline.](./img/p3-0309-drainer-timeline.svg)
+
+*Figure 3.9.8. A fake clock stepping by 5 and a no-op sleep let the drain loop run through three passes instantly, and a clock past 600 covers the timeout.*
+
 ![Dependency injection in tests](./img/s09-di.svg)
 
-*Figure 3.9.3. Dependency injection: pass a fake client in tests instead of patching module internals.*
+*Figure 3.9.9. Dependency injection: pass a fake client in tests instead of patching module internals.*
 
 Give the code its collaborators as arguments, and the tests can swap them out. This habit is called dependency injection, and it is the gentlest way to test code with dependencies. The `Drainer` below takes its Kubernetes client, its clock and its sleep function from the caller.
 
@@ -176,6 +200,10 @@ In the test, `FakeKube` returns pod lists from a fixed sequence, and the fake cl
 
 ### unittest.mock and pytest-mock
 
+![A mocker.patch test where the first call raises ConnectError and the second returns 200, with the patch-where-looked-up and autospec rules and the respx two-page alternative at the transport boundary.](./img/p3-0309-patch-rules.svg)
+
+*Figure 3.9.10. Patch where the name is looked up, use autospec, and prefer HTTP-level fakes so the real client code still runs.*
+
 Sometimes you do need `mocker.patch`. The test below replaces `httpx` with a mock that fails once and then succeeds.
 
 ```python
@@ -205,6 +233,10 @@ In this test, respx serves two pages. The client must follow the `next_page_toke
 
 ### Subprocess, filesystem and environment
 
+![A table of techniques for faking subprocess calls, a fake executable in PATH, tmp_path and a root parameter for proc readers, environment, time, randomness and async code.](./img/p3-0309-fake-the-edges.svg)
+
+*Figure 3.9.11. Take the root, clock, sleep and seed as parameters so tests can fake the filesystem, time, randomness and subprocess output.*
+
 For subprocess code, test the parser with recorded output. Test the wrapper by patching `subprocess.run` so it returns `CompletedProcess(args, 0, stdout=..., stderr=...)`. Include `subprocess.TimeoutExpired` and non-zero exit cases. A tiny fake executable, written to `tmp_path` by the test and placed first in `PATH`, exercises the real `subprocess` path from start to finish.
 
 For filesystem code, use `tmp_path`. For `/proc` and `/sys` readers, take the root as a parameter, such as `root=Path("/")`, and point it at a fixture tree. When necessary, pyfakefs can fake the whole filesystem. Never let a test read a real home directory. Set environment variables with `monkeypatch.setenv`. For time, inject clocks or use freezegun or time-machine. For randomness, seed explicitly or inject `random.Random(1)`.
@@ -219,9 +251,13 @@ A parser you trust passes every example in its test file. Then someone feeds it 
 
 ### Property-based testing with Hypothesis
 
+![Two Hypothesis tests for a round trip of render and parse and for only raising ValueError, beside the four property kinds of round trip, idempotence, invariants and reference comparison.](./img/p3-0309-hypothesis-properties.svg)
+
+*Figure 3.9.12. State a property that must hold for all inputs and let Hypothesis search, shrink and remember the failures.*
+
 ![Property-based testing](./img/s09-hypothesis.svg)
 
-*Figure 3.9.4. Hypothesis generates many inputs, finds a failure, and shrinks it to a minimal example.*
+*Figure 3.9.13. Hypothesis generates many inputs, finds a failure, and shrinks it to a minimal example.*
 
 You state a property that must hold for all inputs, and Hypothesis searches for counterexamples. A property is a rule about behaviour, not one hand-picked example. When Hypothesis finds a counterexample, it shrinks the input to a minimal case, which is much easier to debug. This works well for parsers, serialisers, validators and arithmetic on units.
 
@@ -243,6 +279,10 @@ Common properties include round-trip, which encodes and then decodes, and idempo
 
 ### Golden files and snapshot tests
 
+![A table comparing golden snapshot tests, contract tests and integration tests by what they cover, the tools used and the cautions such as small snapshots, sanitised fixtures and bounded polling.](./img/p3-0309-beyond-examples-table.svg)
+
+*Figure 3.9.14. Snapshots pin rendered text, contracts pin the API shape, and containerised integration tests run real dependencies with bounded polling.*
+
 Tools that render text need a different kind of test. Config generators, Jinja templates, tabular output and Kubernetes manifests all produce text, and there is no single input to argue about. Compare that output with a reviewed expected file, using syrupy, pytest-regressions or your own helper. Updating the snapshot is a deliberate, reviewed act, run with `--snapshot-update`. Keep snapshots small and meaningful, because large ones invite reviewers to approve diffs without reading them.
 
 ### Contract tests
@@ -254,6 +294,10 @@ Services and their clients drift apart over time, quietly. A contract test pins 
 Run real PostgreSQL, Redis, Prometheus, Kafka or an S3 stand-in in containers. You can use testcontainers-python or docker-compose for this. Mark these tests `integration`, and run them in CI. For Kubernetes, use kind or k3d clusters, created and deleted by a pytest fixture as shown earlier. You can also use envtest-style API servers. pytest-kind and the Kubernetes client wrappers exist for this job. Keep each test independent, with unique namespaces or names and cleanup in teardown. Use generous but bounded waits. Poll with tenacity, and never `sleep(30)`.
 
 ### Testing CLIs
+
+![A CliRunner test that checks exit code 0 and pure JSON on stdout and another that expects usage error 2, with argparse capsys and subprocess smoke test alternatives.](./img/p3-0309-clirunner-checks.svg)
+
+*Figure 3.9.15. CliRunner checks exit code and output in-process, so pin exit codes, pure JSON on stdout and the usage error code 2.*
 
 The `CliRunner` from Click runs a command in-process and returns its exit code and output, so one test can check both.
 
@@ -273,6 +317,10 @@ For argparse tools, call `main([...])` and use `capsys`. For end-to-end behaviou
 
 ### Mutation testing and test quality
 
+![Mutation testing where a flipped comparison is either killed by a failing test or survives to reveal a weak test, beside the causes and handling of flaky tests.](./img/p3-0309-mutation-flaky.svg)
+
+*Figure 3.9.16. A surviving mutant exposes a weak test even at high coverage, and a flaky test is quarantined and fixed at its root cause.*
+
 Coverage tells you which lines ran, not whether your assertions are meaningful. Mutation testing with mutmut or cosmic-ray changes the code, for example by flipping `>` to `>=` or by removing a branch, and then checks that the tests fail. Each changed copy is called a mutant. A mutant that survives points to a weak test. Use mutation testing on the critical core, such as parsers, rules and planners, rather than the whole repository.
 
 ### Flaky tests
@@ -280,6 +328,14 @@ Coverage tells you which lines ran, not whether your assertions are meaningful. 
 A flaky test is a defect, not a nuisance. Treat it that way. The usual causes are shared state, test ordering, real time, real network, resource contention and race conditions. Quarantine a flaky test with a marker and an issue. Do not silently retry everything with pytest-rerunfailures. To reproduce a flake, use `-p randomly` seeds, `pytest --count` loops or pytest-xdist stress runs. Then fix the root cause, and fail the build on any new flake.
 
 ## 5. Static quality gates
+
+![Annotated pyproject sections for ruff rules, strict mypy and branch coverage with fail_under 85, beside the pre-commit hooks for ruff, mypy and file checks, with the typing advice.](./img/p3-0309-config-annotated.svg)
+
+*Figure 3.9.17. Configure ruff, strict mypy and branch coverage in pyproject, and run the same pre-commit hooks in CI so they cannot be bypassed.*
+
+![A table of ruff, formatters, mypy, bandit, pip-audit, vulture, radon, coverage, pre-commit and linters for prose, YAML, shell and Dockerfiles, with what each catches.](./img/p3-0309-gate-tools.svg)
+
+*Figure 3.9.18. Each static tool catches one class of problem, and black and ruff format should not both be used.*
 
 Picture the review comment that keeps repeating itself: a security smell on one pull request, a formatting argument on the next. Static gates catch problems before any test runs. Each tool reads the code and reports what it finds, so whole classes of bugs die before the tests even start. The table below lists the tools, what each one checks and what to remember about it.
 
@@ -354,11 +410,19 @@ Here is how a weak pipeline hurts. A broken commit merges on Friday, and Monday'
 
 ![Pipeline architecture](./img/m3-09-2.svg)
 
-*Figure 3.9.5. Pipeline architecture, as a diagram.*
+*Figure 3.9.19. Pipeline architecture, as a diagram.*
 
 Order the jobs from cheap to expensive. Run independent jobs in parallel, and cache dependencies. Make the required checks branch-protected, so nothing merges while it is red.
 
 ### GitHub Actions example
+
+![Four panels on CI hardening for least privilege and fork pull requests, reproducible builds with hashes and caching, wheel smoke tests and signed releases, and GPU runners and nightly runs.](./img/p3-0309-ci-hardening.svg)
+
+*Figure 3.9.20. Give workflows least privilege, pin everything, smoke-test the built wheel, and run GPU tests only on controlled labelled runners.*
+
+![A dependency graph of the CI workflow from lint to a test matrix of three Python versions on two operating systems, then integration and build, ending in a tag-only trusted publish job.](./img/p3-0309-workflow-jobs.svg)
+
+*Figure 3.9.21. lint gates the test matrix, test gates integration and build, and publish runs only on a v tag with an OIDC token.*
 
 The workflow below follows that shape, from lint through to publish.
 
@@ -444,6 +508,22 @@ GitLab CI has the same ideas under different keywords: stages, `needs`, `cache`,
 
 ## 7. Testing the infrastructure code around Python
 
+![Two bar groups of timings on range 10,000 where map wins for the built-in abs at 0.144 seconds and the list comprehension wins for x plus 10 at 0.244 seconds, with generator forms slowest.](./img/p3-0309-iteration-timings.svg)
+
+*Figure 3.9.22. map beats a comprehension for a built-in C function, but a comprehension beats map with a lambda, and generators are slower in both.*
+
+![The four timing helpers once, total, bestof and bestoftotal, with the reason the minimum is used rather than the mean and the timeit command line with setup and gc notes.](./img/p3-0309-benchmark-method.svg)
+
+*Figure 3.9.23. Take the minimum of repeated runs because system noise can only add time, and keep setup out of the timed loop.*
+
+![The Molecule lifecycle of create, converge, idempotence, verify and destroy, with the Testinfra assertions for the openssh package, sshd service, key file mode and sshd user.](./img/p3-0309-molecule-lifecycle.svg)
+
+*Figure 3.9.24. Molecule creates, converges, checks idempotence, verifies with Testinfra and destroys the test host.*
+
+![A table mapping Ansible, Molecule, Terraform, Kubernetes and Helm, Dockerfiles, shell, Jinja network templates and config YAML to the checkers that test each.](./img/p3-0309-iac-testing-map.svg)
+
+*Figure 3.9.25. Each infrastructure file type has its own linter or validator, and each should be a required CI step.*
+
 Many repositories mix Python with declarative infrastructure, and those layers need tests too. A green Python suite says nothing about the playbooks, the manifests or the templates beside it. When you work in such a repository, you test those layers with their own tools. Start with Ansible. This material comes from *Ansible: Up and Running*, chapter 14, *Quality Assurance with Molecule*. Run `yamllint .` and `ansible-lint`, plus `ansible-later` configured through `.later.yml`. Then run `ansible-playbook --syntax-check`, and `--check --diff` against a staging host.
 
 For full role lifecycle testing, use Molecule. Create a scenario with `molecule init scenario -r ssh --driver-name docker`. Then run `molecule create`, `molecule converge`, `molecule idempotence`, `molecule verify` and `molecule destroy`. Molecule works across Docker, Podman, Vagrant or VirtualBox, and cloud drivers. Pair it with Testinfra, which checks the real state of the host. A Testinfra check starts with `testinfra.utils.ansible_runner.AnsibleRunner(os.environ['MOLECULE_INVENTORY_FILE']).get_hosts('all')`. It then asserts on `host.package("openssh-server").is_installed`, `host.service("sshd").is_running`, `host.file("/etc/ssh/ssh_host_ed25519_key.pub").mode == 0o644` and `host.user("sshd").exists`. The file `code/part03/python_testing_quality_ci.py` models these checks. You can also use Goss, with `goss -g test_sshd.yml validate`.
@@ -472,6 +552,10 @@ Jinja templates for network configs need a check of their own. Render them with 
 
 ## 8. Observability of the tests themselves
 
+![Five tiles for tracking test duration, flake rate, diff coverage, time to green and the ten-minute pipeline budget, with artefacts and reproduction commands.](./img/p3-0309-test-suite-health.svg)
+
+*Figure 3.9.26. Track duration, flakes, diff coverage and time-to-green, and keep PR feedback under about ten minutes.*
+
 Test suites need monitoring too, and you should keep an eye on them. A suite that nobody watches creeps. Track how long the tests take over time, how often they flake, and how much of the changed code they cover, using diff-cover. Track time-to-green as well. Fail slow tests loudly with `--durations`, and parallelise with xdist when isolation allows it. Keep the pipeline under about ten minutes for PR feedback, or split and shard it. Keep logs and JUnit reports as artefacts, and print reproduction commands for failing tests, including seed values and `pytest -k` hints.
 
 ## 9. Lab
@@ -499,6 +583,10 @@ Next, move to any machine with Python 3.11 or later. You can work through these 
 13. Clean up.
 
 ## 10. Common mistakes
+
+![A five row table of testing mistakes from reaching outside the sandbox and over-mocking to coverage chasing, CI gaps and untested CLI exit codes or stale fixtures, each with its fix.](./img/p3-0309-mistake-groups.svg)
+
+*Figure 3.9.27. Most testing mistakes come from tests reaching the outside world, over-mocking, trusting coverage alone, weak CI and stale fixtures.*
 
 Read this list before your next pull request, because these traps catch everyone. Many of these mistakes come from tests that reach into the outside world. Tests that call real networks, clocks or hardware are slow and unreliable, and so are tests that depend on execution order or leak global state. A `sleep(10)` has the same problem, so poll with a timeout or use an injected clock instead. If you see a test that behaves differently on one machine than on another, check this group first.
 

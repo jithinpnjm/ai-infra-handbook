@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "p2-0501-manifest-chain",
+  "title": "From index to manifest to config and layers by digest",
+  "spec": "Top to bottom chain of four boxes connected by downward arrows, each arrow labelled with the word 'digest'. Box 1 at the top: 'Image index' with the note 'One entry per platform, like a menu with one entry per kitchen'. Arrow to box 2: 'Image manifest for amd64/linux' with the note 'Lists config and layers, every entry is a digest and a size'. Box 2 has two downward arrows: arrow to box 3 'Config (JSON)' labelled 'config: digest, size'; and arrow to box 4 'Layers: ordered tarballs' labelled 'layers: digest, size' with three small stacked layer bars inside box 4. Left side, a dashed side note box with the monospace text 'mediaType: application/vnd.oci.image.layer.v1.tar+gzip'. Right side, a small arrow from the node box labelled 'Node asks for the entry that matches its own platform' pointing at box 1. Orange outline on box 2, the manifest the runtime follows for the node. Bottom green bar: 'Content addressing: every piece is named by its digest.'",
+  "anchor": "### Manifests, indexes and configs",
+  "alt": "An image index points to a platform manifest, which lists the config and the layers by digest and size.",
+  "cap": "An image index points to a per-platform manifest, which lists the config and the layers by digest and size."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "01",
+  "name": "p2-0501-base-choice",
+  "title": "Choosing a base image: size against debuggability",
+  "spec": "A horizontal spectrum arrow across the top, labelled at the left end 'Smaller, fewer tools, harder to debug' and at the right end 'Larger, more tools, easier to debug'. Six base cards placed along the spectrum from left to right: 'scratch', 'Distroless (gcr.io/distroless, Chainguard images)', 'Alpine', 'Debian or Ubuntu slim', 'UBI or RHEL-compatible', 'NVIDIA NGC and CUDA images'. Each card shows a green 'Pros' line and a grey 'Cons' line from the chapter: scratch pros 'Smallest; only your static binary', cons 'No shell, hard to debug'; Distroless pros 'No shell or package manager', cons 'Debug with kubectl debug'; Alpine pros 'Tiny, fast pulls', cons 'musl libc: breaks ML wheels and CUDA binaries'; Debian or Ubuntu slim pros 'Compatible with manylinux wheels and NVIDIA binaries'; UBI pros 'Enterprise support, FIPS options'; NGC pros 'CUDA, cuDNN, NCCL, TensorRT, PyTorch pre-integrated'. Orange outline on the Alpine card with the label 'Avoid for ML: glibc mismatch'. Green bracket under the Debian and NGC cards labelled 'Choose for GPU and ML work'.",
+  "anchor": "### Choosing a base",
+  "alt": "Base image choices arranged from smallest to most debuggable, with Alpine flagged as a poor fit for GPU and ML work because of musl libc.",
+  "cap": "Base images trade size against debuggability, and for GPU and ML work Debian, Ubuntu or NVIDIA images beat Alpine."
+ }
+]

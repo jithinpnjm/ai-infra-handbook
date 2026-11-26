@@ -34,13 +34,9 @@ Before you start, you should know scaling from 6.3, MPI from 6.4, the I/O arithm
 
 ## 1. Methodology (Systems Performance, chapter 12)
 
-```mermaid
-flowchart LR
-  Char["1. Characterize & Design<br/>Question, Working Set, Bounds"] --> Run["2. Execute & Ramp Load<br/>STREAM, HPL/HPCG, IOR/gdsio, nccl-tests"]
-  Run --> Active["3. Active Benchmarking<br/>USE, bpftrace, Flame Graphs, Nsight"]
-  Active --> Sanity["4. Sanity Check & Stats<br/>Physics Limits, Mean/CV/95% CI"]
-  Sanity --> Gate["5. Acceptance & Regression<br/>Why not double? Did it error?"]
-```
+![Methodology (Systems Performance, chapter 12)](./img/m6-28-1.svg)
+
+*Figure 6.28.1. Methodology (Systems Performance, chapter 12), as a diagram.*
 
 Imagine a purchase report that calls a cluster fast, and then a training team that finds its real jobs run slower than the report suggests. The report did not lie, exactly. It measured something real, but not the thing the team cares about. A benchmark can only tell you how fast the system ran the benchmark. Gregg's chapter in *Systems Performance* opens with the warning "there are lies, damn lies and then there are performance measures" `[Anon 85]`. Its central point is that benchmarks tell you only how fast the system can run the benchmark. It is up to you to understand the result and decide how it applies to your environment.
 

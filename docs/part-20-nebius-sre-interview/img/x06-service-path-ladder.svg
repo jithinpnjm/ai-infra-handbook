@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The Kubernetes Service path: seven checks in order</title>
+  <desc>When a Service fails, confirm in order.</desc>
+
+  <defs>
+    <marker id="arrow-down" markerWidth="14" markerHeight="14" refX="7" refY="7" orient="auto">
+      <path d="M 2,2 L 12,7 L 2,12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="64" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The Kubernetes Service path: seven checks in order</text>
+  <text x="800" y="108" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">When a Service fails, confirm in order.</text>
+
+  
+  <line x1="70" y1="160" x2="70" y2="1035" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-down)" />
+  <text transform="rotate(-90 42 600)" x="42" y="600" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">read top to bottom</text>
+
+  
+  <rect x="135" y="145" width="8" height="910" rx="4" fill="#cbdcd0" />
+  <rect x="1065" y="145" width="8" height="910" rx="4" fill="#cbdcd0" />
+
+  
+  <rect x="1115" y="210" width="435" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1140" y="258" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">the first failing rung</tspan>
+    <tspan x="1140" dy="32">is where to look.</tspan>
+  </text>
+
+  
+  <path d="M 1120,535 L 1550,535 Q 1562,535 1562,547 L 1562,663 Q 1562,675 1550,675 L 1120,675 Q 1108,675 1108,663 L 1108,615 L 1093,602 L 1108,589 L 1108,547 Q 1108,535 1120,535 Z" fill="#fff6ee" stroke="#db8129" stroke-width="3" />
+  <text x="1132" y="582" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1132" dy="0">ENDPOINTS shows none means</tspan>
+    <tspan x="1132" dy="32">the Service selector does</tspan>
+    <tspan x="1132" dy="32">not match pod labels.</tspan>
+  </text>
+
+  
+  <g>
+    <rect x="115" y="150" width="975" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="157" cy="207" r="24" fill="#207448" />
+    <text x="157" y="216" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <polygon points="228,181 248,193 248,217 228,229 208,217 208,193" stroke="#207448" stroke-width="3.5" fill="none" />
+    <circle cx="228" cy="205" r="5" stroke="#207448" stroke-width="3" fill="none" />
+    <line x1="270" y1="168" x2="270" y2="246" stroke="#d0ded3" stroke-width="2" />
+    
+    <text x="292" y="186" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pod</text>
+    <text x="292" y="216" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="292" dy="0">call the pod IP and pod port</tspan>
+      <tspan x="292" dy="28">directly from another pod.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="115" y="280" width="975" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="157" cy="337" r="24" fill="#207448" />
+    <text x="157" y="346" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <circle cx="214" cy="337" r="5" stroke="#207448" stroke-width="3" fill="none" />
+    <line x1="219" y1="337" x2="231" y2="337" stroke="#207448" stroke-width="3" />
+    <circle cx="242" cy="323" r="5" stroke="#207448" stroke-width="3" fill="none" />
+    <circle cx="242" cy="337" r="5" stroke="#207448" stroke-width="3" fill="none" />
+    <circle cx="242" cy="351" r="5" stroke="#207448" stroke-width="3" fill="none" />
+    <path d="M 231,337 L 237,323 M 231,337 L 237,351" stroke="#207448" stroke-width="3" />
+    <line x1="270" y1="298" x2="270" y2="376" stroke="#d0ded3" stroke-width="2" />
+    
+    <text x="292" y="316" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Service</text>
+    <text x="292" y="346" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="292" dy="0">the Service exists, otherwise lookup fails</tspan>
+      <tspan x="292" dy="28">with Name or service not known.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="115" y="410" width="975" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="157" cy="467" r="24" fill="#207448" />
+    <text x="157" y="476" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <circle cx="228" cy="467" r="22" stroke="#207448" stroke-width="3" fill="none" />
+    <ellipse cx="228" cy="467" rx="9" ry="22" stroke="#207448" stroke-width="2.5" fill="none" />
+    <line x1="206" y1="467" x2="250" y2="467" stroke="#207448" stroke-width="2.5" />
+    <line x1="270" y1="428" x2="270" y2="506" stroke="#d0ded3" stroke-width="2" />
+    
+    <text x="292" y="446" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">DNS</text>
+    <text x="292" y="482" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">short, namespaced and full names resolve.</text>
+  </g>
+
+  
+  <g>
+    <rect x="115" y="540" width="975" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="157" cy="597" r="24" fill="#207448" />
+    <text x="157" y="606" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <rect x="208" y="575" width="40" height="44" rx="5" stroke="#207448" stroke-width="3" fill="none" />
+    <circle cx="218" cy="587" r="2.5" fill="#207448" />
+    <line x1="225" y1="587" x2="240" y2="587" stroke="#207448" stroke-width="2.5" />
+    <circle cx="218" cy="597" r="2.5" fill="#207448" />
+    <line x1="225" y1="597" x2="240" y2="597" stroke="#207448" stroke-width="2.5" />
+    <circle cx="218" cy="607" r="2.5" fill="#207448" />
+    <line x1="225" y1="607" x2="240" y2="607" stroke="#207448" stroke-width="2.5" />
+    <line x1="270" y1="558" x2="270" y2="636" stroke="#d0ded3" stroke-width="2" />
+    
+    <text x="292" y="576" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Endpoints</text>
+    <text x="292" y="606" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="292" dy="0">kubectl get endpointslices</tspan>
+      <tspan x="292" dy="28">-l kubernetes.io/service-name=hostnames</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="115" y="670" width="975" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="157" cy="727" r="24" fill="#207448" />
+    <text x="157" y="736" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <rect x="210" y="711" width="36" height="34" rx="6" stroke="#207448" stroke-width="3" fill="none" />
+    <line x1="219" y1="703" x2="219" y2="711" stroke="#207448" stroke-width="3.5" />
+    <line x1="237" y1="703" x2="237" y2="711" stroke="#207448" stroke-width="3.5" />
+    <circle cx="228" cy="728" r="4" stroke="#207448" stroke-width="2.5" fill="none" />
+    <line x1="270" y1="688" x2="270" y2="766" stroke="#d0ded3" stroke-width="2" />
+    
+    <text x="292" y="706" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ports</text>
+    <text x="292" y="736" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="292" dy="0">Service port listed, targetPort correct,</tspan>
+      <tspan x="292" dy="28">named port matched.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="115" y="800" width="975" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="157" cy="857" r="24" fill="#207448" />
+    <text x="157" y="866" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    
+    <rect x="207" y="836" width="42" height="42" rx="5" stroke="#207448" stroke-width="3" fill="none" />
+    <line x1="207" y1="850" x2="249" y2="850" stroke="#207448" stroke-width="2.5" />
+    <line x1="223" y1="850" x2="223" y2="878" stroke="#207448" stroke-width="2.5" />
+    <line x1="237" y1="850" x2="237" y2="878" stroke="#207448" stroke-width="2.5" />
+    <line x1="207" y1="864" x2="249" y2="864" stroke="#207448" stroke-width="2" />
+    <line x1="270" y1="818" x2="270" y2="896" stroke="#d0ded3" stroke-width="2" />
+    
+    <text x="292" y="836" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">kube-proxy rules</text>
+    <text x="292" y="866" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="292" dy="0">iptables-save grep hostnames,</tspan>
+      <tspan x="292" dy="28">or ipvsadm -ln.</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="115" y="930" width="975" height="114" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="157" cy="987" r="24" fill="#207448" />
+    <text x="157" y="996" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    
+    <circle cx="216" cy="987" r="7" stroke="#207448" stroke-width="3" fill="none" />
+    <circle cx="240" cy="987" r="7" stroke="#207448" stroke-width="3" fill="none" />
+    <path d="M 223,982 C 228,978 228,978 233,982" stroke="#207448" stroke-width="2.5" fill="none" />
+    <path d="M 223,992 C 228,996 228,996 233,992" stroke="#207448" stroke-width="2.5" fill="none" />
+    <line x1="270" y1="948" x2="270" y2="1026" stroke="#d0ded3" stroke-width="2" />
+    
+    <text x="292" y="966" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Conntrack</text>
+    <text x="292" y="996" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="292" dy="0">table usage, since iptables Service load</tspan>
+      <tspan x="292" dy="28">balancing depends on connection tracking.</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="115" y="1085" width="1440" height="66" rx="12" fill="#207448" />
+  <text x="835" y="1127" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Pod, Service, DNS, endpoints, ports, kube-proxy rules, then conntrack.</text>
+</svg>

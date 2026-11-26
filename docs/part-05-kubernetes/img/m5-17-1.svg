@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>PersistentVolumes, Claims and StorageClasses</title>
+  <desc>Visual infographic explaining Kubernetes storage architecture, showing the relationships between Pod specs, PersistentVolumeClaims, StorageClasses, PersistentVolumes, and Backend storage volumes.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 8 L 0 14 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 8 L 0 14 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">PersistentVolumes, Claims and StorageClasses</text>
+
+  
+  <line x1="440" y1="305" x2="680" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="840" y1="490" x2="840" y2="650" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  <rect x="895" y="544" width="150" height="52" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="970" y="579" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">binds 1:1</text>
+
+  
+  <line x1="440" y1="875" x2="680" y2="875" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="460" y="735" width="200" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="560" y="767">dynamic</tspan>
+    <tspan x="560" y="799">provisioning</tspan>
+    <tspan x="560" y="831">creates</tspan>
+  </text>
+
+  
+  <line x1="1120" y1="875" x2="1210" y2="875" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-u">
+    <rect x="40" y="120" width="400" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="212" y="145" width="56" height="50" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="212" y1="163" x2="268" y2="163" stroke="#207448" stroke-width="3"/>
+    <circle cx="223" cy="154" r="2.5" fill="#207448"/>
+    <circle cx="232" cy="154" r="2.5" fill="#207448"/>
+    <path d="M 230 181 L 240 171 L 250 181" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="240" y="235" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pod spec:</text>
+    <line x1="70" y1="255" x2="410" y2="255" stroke="#98c2a8" stroke-width="2"/>
+    <text text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="240" y="305">volumes[].</tspan>
+      <tspan x="240" y="345">persistentVolumeClaim</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-pvc">
+    <rect x="680" y="120" width="440" height="370" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="876" y="148" width="48" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 888 148 L 888 141 C 888 138 892 138 894 138 L 906 138 C 908 138 912 138 912 141 L 912 148" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="888" y1="168" x2="912" y2="168" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="888" y1="180" x2="912" y2="180" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="900" y="235" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">PersistentVolumeClaim</text>
+    <line x1="710" y1="255" x2="1090" y2="255" stroke="#98c2a8" stroke-width="2"/>
+    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="900" y="300">(request: size,</tspan>
+      <tspan x="900" y="336">accessModes,</tspan>
+      <tspan x="900" y="372">storageClass)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-sc">
+    <rect x="40" y="650" width="400" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="240" cy="695" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 240 671 L 240 677 M 240 713 L 240 719 M 216 695 L 222 695 M 258 695 L 264 695 M 223 678 L 227 682 M 253 708 L 257 712 M 223 712 L 227 708 M 253 682 L 257 678" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <text x="240" y="745" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">StorageClass</text>
+    <line x1="70" y1="765" x2="410" y2="765" stroke="#98c2a8" stroke-width="2"/>
+    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="240" y="805">(provisioner,</tspan>
+      <tspan x="240" y="839">parameters,</tspan>
+      <tspan x="240" y="873">reclaimPolicy,</tspan>
+      <tspan x="240" y="907">volumeBindingMode,</tspan>
+      <tspan x="240" y="941">allowVolumeExpansion,</tspan>
+      <tspan x="240" y="975">mountOptions)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-pv">
+    <rect x="680" y="650" width="440" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <ellipse cx="900" cy="685" rx="26" ry="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 874 685 L 874 713 C 874 719 926 719 926 713 L 926 685" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 874 699 C 874 705 926 705 926 699" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="900" y="745" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">PersistentVolume</text>
+    <line x1="710" y1="765" x2="1090" y2="765" stroke="#98c2a8" stroke-width="2"/>
+    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="900" y="808">(capacity,</tspan>
+      <tspan x="900" y="844">accessModes,</tspan>
+      <tspan x="900" y="880">reclaimPolicy,</tspan>
+      <tspan x="900" y="916">nodeAffinity,</tspan>
+      <tspan x="900" y="952">CSI volumeHandle)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-be">
+    <rect x="1210" y="650" width="350" height="430" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <rect x="1357" y="675" width="56" height="46" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="1357" y1="690" x2="1413" y2="690" stroke="#207448" stroke-width="3"/>
+    <line x1="1357" y1="705" x2="1413" y2="705" stroke="#207448" stroke-width="3"/>
+    <circle cx="1403" cy="682.5" r="2.5" fill="#207448"/>
+    <circle cx="1403" cy="697.5" r="2.5" fill="#207448"/>
+    <circle cx="1403" cy="712.5" r="2.5" fill="#207448"/>
+    <text x="1385" y="745" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Backend volume</text>
+    <line x1="1235" y1="765" x2="1535" y2="765" stroke="#98c2a8" stroke-width="2"/>
+    <text text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1385" y="808">(cloud disk,</tspan>
+      <tspan x="1385" y="844">Ceph RBD image,</tspan>
+      <tspan x="1385" y="880">NFS export,</tspan>
+      <tspan x="1385" y="916">Lustre dir,</tspan>
+      <tspan x="1385" y="952">local NVMe)</tspan>
+    </text>
+  </g>
+</svg>

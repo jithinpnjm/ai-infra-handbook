@@ -1,0 +1,227 @@
+import xml.etree.ElementTree as ET
+import re
+
+svg_code = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A failed prediction is information: the node 17 example</title>
+  <desc>Visual infographic explaining the scientific method hypothesis loop with the node 17 slow NVMe failed prediction example, NUMA balancing A/B testing, and resource elimination.</desc>
+
+  <defs>
+    <!-- Proportional green arrowhead (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <!-- Proportional orange arrowhead (18px) -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A failed prediction is information: the node 17 example</text>
+
+  <!-- ==================== LOOP STEP 1: Question ==================== -->
+  <g id="step-1">
+    <rect x="40" y="85" width="440" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Number circle 1 (r=24) -->
+    <circle cx="72" cy="130" r="24" fill="#207448" />
+    <text x="72" y="139" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <!-- Magnifying glass / Question icon (56px, stroke 4) -->
+    <g transform="translate(108, 102)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="13" />
+      <line x1="30" y1="30" x2="44" y2="44" />
+    </g>
+    <!-- Combined Question label -->
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="178" y="138" font-size="30" font-weight="bold" fill="#207448">Question: </tspan>
+      <tspan x="65" y="184">why are training steps</tspan>
+      <tspan x="65" y="218">on node 17 slow, and</tspan>
+      <tspan x="65" y="252">only that node?</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <line x1="480" y1="180" x2="530" y2="180" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== LOOP STEP 2: Hypothesis ==================== -->
+  <g id="step-2">
+    <rect x="530" y="85" width="480" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Number circle 2 (r=24) -->
+    <circle cx="562" cy="130" r="24" fill="#207448" />
+    <text x="562" y="139" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <!-- Disk cylinder icon for storage/NVMe (56px, stroke 4) -->
+    <g transform="translate(598, 102)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="24" cy="12" rx="18" ry="7" />
+      <path d="M 6 12 V 36 C 6 42 42 42 42 36 V 12" />
+      <path d="M 6 24 C 6 30 42 30 42 24" />
+    </g>
+    <!-- Combined Hypothesis label -->
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="668" y="138" font-size="30" font-weight="bold" fill="#207448">Hypothesis: </tspan>
+      <tspan x="555" y="196">its data loader is starved</tspan>
+      <tspan x="555" y="234">by a slow local NVMe</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <line x1="1010" y1="180" x2="1060" y2="180" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== LOOP STEP 3: Prediction ==================== -->
+  <g id="step-3">
+    <rect x="1060" y="85" width="500" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Number circle 3 (r=24) -->
+    <circle cx="1092" cy="130" r="24" fill="#207448" />
+    <text x="1092" y="139" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <!-- Gauge / meter icon for iostat & GPU sm (56px, stroke 4) -->
+    <g transform="translate(1128, 102)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 36 A 18 18 0 1 1 40 36" />
+      <line x1="24" y1="36" x2="35" y2="21" />
+      <circle cx="24" cy="36" r="3" fill="#207448" />
+    </g>
+    <!-- Combined Prediction label -->
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1198" y="138" font-size="30" font-weight="bold" fill="#207448">Prediction: </tspan>
+      <tspan x="1085" y="184"><tspan font-family="monospace">iostat</tspan> will show high await</tspan>
+      <tspan x="1085" y="218">on that device, and GPU sm</tspan>
+      <tspan x="1085" y="252">activity will drop in lockstep</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 3 -> 4 -->
+  <line x1="1380" y1="275" x2="1380" y2="375" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== LOOP STEP 4: Test ==================== -->
+  <g id="step-4">
+    <rect x="1200" y="375" width="360" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Number circle 4 (r=24) -->
+    <circle cx="1238" cy="420" r="24" fill="#207448" />
+    <text x="1238" y="429" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <!-- Eye / Look icon (56px, stroke 4) -->
+    <g transform="translate(1274, 392)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 26 C 14 14 36 14 44 26 C 36 38 14 38 6 26 Z" />
+      <circle cx="25" cy="26" r="6" />
+      <circle cx="25" cy="26" r="2" fill="#207448" />
+    </g>
+    <!-- Combined Test label -->
+    <text font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1346" y="428" fill="#207448">Test: </tspan>
+      <tspan x="1346" y="488">look</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 4 -> 5 -->
+  <line x1="1200" y1="470" x2="1140" y2="470" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== LOOP STEP 5: Result ==================== -->
+  <g id="step-5">
+    <rect x="40" y="375" width="1100" height="190" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Number circle 5 (r=24) -->
+    <circle cx="76" cy="415" r="24" fill="#207448" />
+    <text x="76" y="424" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <!-- Branch fork icon (56px, stroke 4 green) -->
+    <g transform="translate(112, 387)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="38" r="5" />
+      <circle cx="40" cy="14" r="5" />
+      <circle cx="40" cy="38" r="5" />
+      <path d="M 17 38 L 35 38" />
+      <path d="M 17 35 Q 26 35 35 18" />
+    </g>
+    <!-- Title: Result -->
+    <text x="178" y="425" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Result</text>
+    
+    <!-- Inner panel for split result / prediction fails branch (orange) -->
+    <rect x="65" y="452" width="1050" height="96" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" y="488" font-weight="bold" fill="#db8129">Prediction fails: </tspan><tspan fill="#303a36">await is normal and the data loader queue is full,</tspan>
+      <tspan x="85" y="524">so the GPU is waiting in NCCL; the NVMe is not the cause</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== RETURN ARROW (5 -> 2) ==================== -->
+  <line x1="770" y1="375" x2="770" y2="275" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  <!-- Return arrow label pill container -->
+  <rect x="310" y="294" width="420" height="64" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="1.5" />
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="520" y="321">new hypothesis,</tspan>
+    <tspan x="520" y="347">such as a slow NIC link</tspan>
+  </text>
+
+  <!-- ==================== SECOND CARD: Experimental example ==================== -->
+  <g id="card-experimental-example">
+    <rect x="40" y="605" width="1520" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Chip / NUMA hardware icon (56px, stroke 4) -->
+    <g transform="translate(65, 620)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="28" height="28" rx="4" fill="#ffffff" />
+      <line x1="18" y1="5" x2="18" y2="12" />
+      <line x1="26" y1="5" x2="26" y2="12" />
+      <line x1="34" y1="5" x2="34" y2="12" />
+      <line x1="18" y1="40" x2="18" y2="47" />
+      <line x1="26" y1="40" x2="26" y2="47" />
+      <line x1="34" y1="40" x2="34" y2="47" />
+      <line x1="5" y1="18" x2="12" y2="18" />
+      <line x1="5" y1="26" x2="12" y2="26" />
+      <line x1="5" y1="34" x2="12" y2="34" />
+      <line x1="40" y1="18" x2="47" y2="18" />
+      <line x1="40" y1="26" x2="47" y2="26" />
+      <line x1="40" y1="34" x2="47" y2="34" />
+    </g>
+    <!-- Card title -->
+    <text x="135" y="652" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Experimental example: does disabling NUMA balancing raise throughput?</text>
+
+    <!-- Sub-card 1: prediction -->
+    <rect x="65" y="676" width="430" height="136" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" y="718">prediction: smaller</tspan>
+      <tspan x="85" y="752">run-to-run variance</tspan>
+      <tspan x="85" y="786">and fewer page faults</tspan>
+    </text>
+
+    <!-- Sub-card 2: A/B comparison -->
+    <rect x="535" y="676" width="530" height="136" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="555" y="718">A/B comparison on identical</tspan>
+      <tspan x="555" y="752">nodes, same data, pinned clocks,</tspan>
+      <tspan x="555" y="786">confidence intervals</tspan>
+    </text>
+
+    <!-- Sub-card 3: if no effect -->
+    <rect x="1105" y="676" width="430" height="136" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1125" y="718">if no effect, revert it</tspan>
+      <tspan x="1125" y="752">and write down that</tspan>
+      <tspan x="1125" y="786">you tried</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== THIRD STRIP: Elimination is also an answer ==================== -->
+  <g id="strip-elimination">
+    <rect x="40" y="875" width="1520" height="140" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Funnel / Elimination filter icon (56px, stroke 4 green) -->
+    <g transform="translate(66, 917)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="6,6 46,6 31,25 31,44 21,48 21,25" fill="#e8f1ea" />
+      <line x1="38" y1="36" x2="48" y2="46" stroke="#207448" stroke-width="4" />
+      <line x1="48" y1="36" x2="38" y2="46" stroke="#207448" stroke-width="4" />
+    </g>
+    <!-- Text content -->
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" y="915"><tspan font-weight="bold" fill="#207448">Elimination is also an answer: </tspan>a resource with low utilisation, no saturation</tspan>
+      <tspan x="145" y="952">and no errors removes that resource from the search; document negative findings</tspan>
+      <tspan x="145" y="989">so other teams do not re-check the same dead end</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM BAR: Takeaway ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1055" width="1520" height="90" rx="14" fill="#207448" />
+    <text x="800" y="1111" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">A failed prediction is information, not a wasted trip</text>
+  </g>
+</svg>"""
+
+with open("test_candidate_node17.svg", "w") as f:
+    f.write(svg_code)
+
+from test_validate_node17 import validate
+validate("test_candidate_node17.svg")
+print("Candidate SVG validated successfully!")

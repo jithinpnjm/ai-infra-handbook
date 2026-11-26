@@ -1,0 +1,162 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-same-pod-test",
+  "title": "What goes in one Pod: the different-machines test",
+  "spec": "Decision diagram. Question box 'Will these containers work correctly if they land on different machines?' Left branch 'No: they share local files or fate' -> 'Same Pod' example 'web or inference server plus a Git or model-weight synchronizer sharing an emptyDir'. Right branch 'Yes' -> 'Separate Pods joined by a Service' example 'WordPress frontend and MySQL: WordPress is mostly stateless so add pods with load, MySQL scales up by giving one pod more resources; one Pod would force one scaling plan on both'. Bottom strip 'A Pod shares: one IP and port space, localhost, IPC /dev/shm, hostname, declared volumes, parent Pod cgroup; each container keeps its own cgroup; PID namespace only if shareProcessNamespace is true'. Text at least 24px.",
+  "anchor": "### Thinking with Pods",
+  "alt": "A decision diagram sends containers to one Pod or separate Pods based on whether they can run on different machines.",
+  "cap": "Containers that cannot work on different machines share a Pod, and the rest get separate Pods behind a Service."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-label-venn",
+  "title": "Labels cut across the same pods in different slices",
+  "spec": "Worked example with the chapter's four Deployments and six pods drawn as small boxes: alpaca-prod (app=alpaca, env=prod, ver=1) two pods; alpaca-test (app=alpaca, env=test, ver=2) one pod; bandicoot-prod (app=bandicoot, env=prod, ver=2) two pods; bandicoot-staging (app=bandicoot, env=staging, ver=2) one pod. Overlapping outlines: ring 'ver=2' around four pods (alpaca-test, both bandicoot-prod, bandicoot-staging); ring 'app=bandicoot,ver=2' around three pods (comma means AND). Result table: 'ver=2 -> 4 pods', 'app=bandicoot,ver=2 -> 3 pods', 'app in (alpaca,bandicoot) -> all 6', 'canary (key is set) -> only alpaca-test after kubectl label'. Operator strip: key=value, key!=value, key in (a,b), key notin (a,b), key, !key. Warning: 'kubectl label on a Deployment changes only the Deployment, not its ReplicaSets or Pods'. Text at least 24px.",
+  "anchor": "### Selecting objects with labels",
+  "alt": "Six pods with app, env and ver labels are cut into different groups by selectors.",
+  "cap": "A comma in a selector means AND, and each extra filter only narrows the result."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-cpu-vs-memory",
+  "title": "CPU is compressible, memory is not: a worked example",
+  "spec": "Left panel 'CPU requests share a busy node': four steps for a 2-core node and containers with request 0.5 CPU that each try to use everything. 1 pod alone gets 2.0 cores; 2 pods get 1.0 each; 3 pods about 0.66 each; 4 pods get the 0.5 each requested and the node is full. Caption 'cpu-shares: share proportional to request'. Right panel 'Memory': 'a process cannot be made to hold less; when the node runs out the kubelet terminates containers that use more than they requested; they restart but the node has less memory'. Bottom row on limits: 'CPU limit 0.5 cores: only 0.5 cores even if idle (CFS quota cpu.max)'; 'memory limit 256Mi: malloc fails past it, container is OOM killed'. Takeaway banner: 'memory requests and limits decide survival, CPU requests mostly decide speed'. Text at least 24px.",
+  "anchor": "### Resource requests and limits, with a worked example",
+  "alt": "A two-core node shows CPU shares shrinking as pods are added while memory has no equivalent squeeze.",
+  "cap": "A busy node slows CPU users in proportion to their requests, but it must stop a process to reclaim memory."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-qos-classes",
+  "title": "How the three QoS classes are derived and what they change",
+  "spec": "Three columns. 'Guaranteed': rule 'every container sets CPU and memory requests equal to limits'; oom_score_adj -997; cgroup kubepods.slice/guaranteed; 'evicted last; required for CPU Manager static policy exclusive cores and Topology Manager alignment'. 'Burstable': rule 'some requests or limits set, but not Guaranteed rules'; oom_score_adj scaled between 2 and 999; cgroup kubepods.slice/burstable. 'BestEffort': rule 'no requests or limits at all'; oom_score_adj 1000; cgroup kubepods.slice/besteffort; 'first to be killed or evicted under pressure'. Header note 'QoS is derived by the API server, never set by a field; check with kubectl get pod -o jsonpath={.status.qosClass}'. Footer: 'GPU extended resources must be whole integers and requests equal limits (no overcommit); setting only limits defaults requests to the same value'. Text at least 24px.",
+  "anchor": "### Resources and QoS",
+  "alt": "Three columns compare Guaranteed, Burstable and BestEffort rules, oom score and cgroup placement.",
+  "cap": "QoS class is derived from requests and limits and decides cgroup placement, OOM score and eviction order."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-shm-oom",
+  "title": "What counts against the container memory limit",
+  "spec": "Stacked bar diagram with a horizontal line at the limit. Bar made of segments: 'process heap and pinned RAM 50 GiB', 'DataLoader and NCCL buffers written to /dev/shm (tmpfs charged to the cgroup) 35 GiB'. Total 85 GiB crosses the line 'limits.memory 80Gi' marked red 'OOMKilled, exit code 137'. Side list 'The limit also includes: page cache attributable to the cgroup, pinned memory, shared memory'. Fix box: 'size emptyDir medium Memory with sizeLimit and include it in limits.memory; read memory.current in the cgroup to watch it'. Note: 'default /dev/shm of 64 MiB breaks PyTorch DataLoader; fix with a memory-backed emptyDir'. Text at least 24px.",
+  "anchor": "### Resources and QoS",
+  "alt": "Heap plus shared memory adds up to 85 GiB, crossing an 80 GiB limit and causing OOMKilled.",
+  "cap": "Shared memory in tmpfs is charged to the container memory cgroup, so count it in the limit."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-termination-race",
+  "title": "Deleting a pod: two paths race, preStop buys time",
+  "spec": "Timeline with two parallel lanes starting at 'kubectl delete pod' -> 'deletionTimestamp set, pod shows Terminating'. Lane 1 'Control plane path': 'EndpointSlice controller removes the pod IP', 'kube-proxy, Ingress and Envoy tables update', 'takes about 1 to 5 seconds across a large cluster'. Lane 2 'Node path': 'kubelet runs preStop hook (for example sleep 10)', 'SIGTERM to PID 1 of each container', 'wait up to terminationGracePeriodSeconds (default 30 s)', 'SIGKILL'. Red annotation on a version without preStop: 'server closes its socket at SIGTERM before proxies updated: 502 or connection reset'. Green annotation: 'with preStop sleep the server keeps accepting while removal spreads, then drains in-flight requests'. Shop analogy: 'sign comes off the door, customers inside finish, then lights off'. Note: 'preStop does not run when a node fails; its time counts against the grace period'. Text at least 24px.",
+  "anchor": "### Lifecycle, termination and restart policy",
+  "alt": "Two parallel lanes show endpoint removal racing with preStop, SIGTERM and SIGKILL after a pod delete.",
+  "cap": "A preStop sleep keeps the server answering while proxies learn the pod is leaving."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-probe-gates",
+  "title": "Three probes for a slow model server",
+  "spec": "Timeline for vllm-llama. Segment 1 'startupProbe: periodSeconds 10, failureThreshold 180, up to 30 minutes; liveness and readiness are disabled until it succeeds once'. Segment 2 after success: two stacked lanes 'readinessProbe periodSeconds 5: on failure the pod IP leaves the EndpointSlices, container is NOT restarted' and 'livenessProbe periodSeconds 20, failureThreshold 6: restarts only after 2 full minutes of no response'. Left note: 'during loading the server downloads or maps weights and captures CUDA graphs'. Red cross: 'liveness with no startup probe on a slow starter creates a restart loop'. Footer: 'Never tie liveness to dependencies'. Text at least 24px.",
+  "anchor": "### Deployment patterns for inference",
+  "alt": "A timeline shows the startup probe gating readiness and liveness probes for a slow model server.",
+  "cap": "The startup probe protects a slow start, then readiness gates traffic and liveness restarts only a truly stuck server."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-gpu-surge-stall",
+  "title": "Why maxSurge 1 stalls a full GPU pool",
+  "spec": "Worked example with a node pool of 12 GPUs. Left panel 'maxSurge 1, maxUnavailable 0': 3 replicas of 4 GPUs each fill all 12 GPUs; the controller must start a fourth pod first; it needs 4 GPUs that do not exist; pod stays Pending with message '0/N nodes are available: Insufficient nvidia.com/gpu'; rule 'maxUnavailable 0 forbids removing an old pod until a replacement is Ready'; red 'rollout hangs'. Right panel 'maxSurge 0, maxUnavailable 1': one old replica terminates first, frees 4 GPUs, the new replica schedules, repeat, green 'rollout completes with temporarily 2 of 3 serving'. Footer: 'progressDeadlineSeconds 1800 because model downloads and CUDA graph capture are slow'. Text at least 24px.",
+  "anchor": "### Deployment patterns for inference",
+  "alt": "A 12 GPU pool with three 4 GPU replicas cannot surge, so the rollout hangs unless maxUnavailable is 1.",
+  "cap": "On a full GPU pool, surge has nowhere to land, so trade one replica of capacity for progress."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-pdb-drain",
+  "title": "A PodDisruptionBudget and a node drain",
+  "spec": "Two rows with three replica boxes each. Row 1 'minAvailable 2': drain evicts one replica, two still serve, DisruptionsAllowed 1, green; drain proceeds one at a time. Row 2 'minAvailable 3 or maxUnavailable 0 on 3 replicas': DisruptionsAllowed 0, red; message 'Cannot evict pod as it would violate the pod's disruption budget'; node upgrade blocked. Notes: 'PDBs limit voluntary disruptions via the Eviction API: drains, upgrades, autoscaler scale-down', 'they do not stop crashes or OOM kills', 'keep minAvailable below replicas, or maxUnavailable at 1 or more, and keep spare capacity so replacements can be placed'. Text at least 24px.",
+  "anchor": "### Deployment patterns for inference",
+  "alt": "A PDB with minAvailable 2 lets a drain proceed while minAvailable 3 on three replicas blocks it.",
+  "cap": "A budget that allows zero disruptions blocks every drain, so it must leave room for one pod to move."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-rollout-mixed-versions",
+  "title": "A rolling update is a period of two versions",
+  "spec": "Timeline t, t1, t2. At t: 'user request reaches a version 1 server, downloads the version 1 client library'. At t1: 'service updated; half the servers run version 1, half version 2 (RollingUpdate with 25 percent max unavailable and 25 percent max surge both v1 and v2 ReplicaSet pods serve traffic)'. At t2: 'version 1 client code in the browser calls an endpoint on a version 2 server'. Red callout 'If the API contract changed incompatibly, the call breaks'. Green callout 'Backward and forward compatibility between adjacent versions; an API contract and load balancer decouple frontend and backend'. Footer question 'Can this version talk to the one before it and the one after it?'. Text at least 24px.",
+  "anchor": "### Rolling updates and version compatibility",
+  "alt": "A timeline shows old client code from version 1 calling a version 2 server during a rolling update.",
+  "cap": "A rollout mixes versions for a while, so adjacent versions must stay compatible."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-undo-vs-git",
+  "title": "kubectl rollout undo versus reverting in Git",
+  "spec": "Two lanes. Lane 1 'rollout undo only': Friday 'kubectl rollout undo stops the error rate, cluster healthy in minutes (Deployment only changes desired replica counts of its ReplicaSets, old ReplicaSet scaled back up)'; Monday 'teammate applies manifests from source control, which still describe the broken version'; red 'error comes back, the fix lived only in the cluster'. Lane 2 'revert the YAML in Git, then kubectl apply': green 'file and cluster stay the same thing'. Side example of kubectl get replicasets -o wide: 'kuard-1128242161 0 0 0', 'kuard-1570155864 0 0 0', 'kuard-2738859366 3 3 3'. Commands strip: status, pause, resume, history, history --revision=2, undo, undo --to-revision=3; 'change-cause annotation goes in spec.template.metadata.annotations'. Text at least 24px.",
+  "anchor": "### Controlling Deployment rollouts: `change-cause`, `pause`, `resume`, `history`, and `undo --to-revision`",
+  "alt": "An emergency undo fixes the cluster but not the Git manifests, so the bug returns on the next apply.",
+  "cap": "Revert the manifest in Git so that source control and the cluster agree after a rollback."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-daemonset-label-switch",
+  "title": "A node label switches a DaemonSet pod on and off",
+  "spec": "Four nodes in a row (k0-default-pool-35609c18-0xnl, -pol3, -ydae, -z7tb). DaemonSet nginx-fast-storage with nodeSelector ssd=true. Step 1 'kubectl label nodes ...-z7tb ssd=true': only z7tb gets a pod (nginx-fast-storage-7b90t). Step 2 'label more nodes: pods appear there too'. Step 3 'remove the label: the controller removes the pod from that node'. Warning box 'Removing a label a DaemonSet selector requires removes its pod; check the selector before you relabel a node'. Side facts: 'DaemonSet sets nodeName in the Pod spec at creation, so the Kubernetes scheduler ignores these pods', 'deleting a DaemonSet deletes its pods unless --cascade is false'. Text at least 24px.",
+  "anchor": "### Limiting a DaemonSet to specific nodes",
+  "alt": "Labeling one of four nodes ssd true places a DaemonSet pod there and removing the label removes it.",
+  "cap": "Node labels act as the switch for DaemonSet pods and the controller flips it for every node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-gang-vs-plain-job",
+  "title": "Plain Job versus gang admission for 16-node training",
+  "spec": "Two lanes. Lane 1 'Plain Job parallelism 16 with only 12 free GPU nodes': 12 pods start at once and wait at the c10d or NCCL rendezvous barrier burning 96 H100 GPUs; 4 pods stay Pending; if a second 16-node job takes the remaining 4 nodes, both deadlock forever; red. Lane 2 'JobSet, MPIJob or PyTorchJob with Kueue or Volcano gang admission': 'Job created suspended (suspend true)', 'admitted only when quota exists for all 16', 'all 16 pods scheduled together'; green. Analogy: 'plain Job = runners who start when they reach the track; gang = relay team that starts only when every runner is on the track'. Indexed Job example: 'completions 16, parallelism 16, backoffLimitPerIndex 2, maxFailedIndexes 1; podFailurePolicy Ignore on DisruptionTarget, FailJob on exit code 42'. Text at least 24px.",
+  "anchor": "### Job patterns for batch and distributed work",
+  "alt": "A plain 16 pod Job wastes 96 GPUs waiting at a barrier when only 12 nodes are free, while gang admission avoids it.",
+  "cap": "Distributed training needs all pods together, so use gang admission instead of a plain Job."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-sidecar-job-hang",
+  "title": "Why a native sidecar lets a Job finish",
+  "spec": "Two lanes of pod timelines. Lane 1 'Old way: helper in spec.containers': worker exits 0, proxy or log shipper keeps running, pod stays Running with 1/2 Ready, Job never completes; red. Lane 2 'Native sidecar: initContainers entry with restartPolicy Always': order 'init containers run one after another' -> 'native sidecar starts before the app and kubelet waits for its startup or readiness probe' -> 'app containers run' -> 'app exits' -> 'kubelet terminates the sidecar automatically' -> 'Job completes'; green. Stagehand note: 'set up before the show, stays backstage, leaves after the last performer'. Footer rule: 'effective scheduling request = max(max of init requests, sum of app requests)' with sidecars counted. Text at least 24px.",
+  "anchor": "### Containers and init containers",
+  "alt": "A helper container in the app list keeps a Job alive, while a native sidecar is stopped after the app exits.",
+  "cap": "Native sidecars start before and stop after the app containers, so Jobs can complete."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-subpath-symlink",
+  "title": "Why subPath mounts miss ConfigMap updates",
+  "spec": "Two panels. Panel 1 'Mounted as a directory (mountPath /etc/config)': ConfigMap changes -> kubelet syncs about every 60 s -> atomic symlink swap on ..data -> container sees new files. Panel 2 'Single file with subPath config.yaml': kernel bind-mounts that file's inode directly -> kubelet swaps the directory symlink -> bind-mounted inode still points to the old file -> no update until the pod restarts. Analogy: 'a window on the whole cabinet versus a window on one drawer'. Side: 'env vars are fixed at container start; prefer mounted files for secrets'. Extra note: 'fsGroup with fsGroupChangePolicy Always recursively chowns the volume; on 10 TB with 5 million files it can take 10 to 30 minutes in ContainerCreating; OnRootMismatch checks only the root directory'. Text at least 24px.",
+  "anchor": "### Volumes",
+  "alt": "A directory mount follows ConfigMap updates while a subPath file mount keeps pointing at the old file.",
+  "cap": "A subPath mount binds one file, so it never sees the symlink swap that delivers ConfigMap updates."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "07",
+  "name": "p3-0507-pod-wont-start-ladder",
+  "title": "A pod will not start: the order of questions",
+  "spec": "Vertical ladder. 1 'kubectl get pod: read the status column (Pending, Init:Error, ImagePullBackOff, CrashLoopBackOff, Running but 0/1 Ready)'. 2 'kubectl describe pod: read the Events from the bottom up (Scheduled, Pulling, Pulled, Created, Started, FailedScheduling, Unhealthy, OOMKilled)'. 3 'kubectl get pod -o jsonpath status.containerStatuses lastState: reason and exit code'. 4 'kubectl logs --previous --timestamps: what the app said before it stopped'. 5 'kubectl debug -it pod --image=nicolaka/netshoot --target=container, or kubectl debug node/name'. Right side mini table from the chapter: 'Insufficient nvidia.com/gpu -> add capacity, tolerations, queue', 'untolerated taint -> add toleration', 'CreateContainerConfigError -> missing ConfigMap or Secret key', 'OOMKilled exit 137 -> raise memory limit, fewer dataloader workers, shm', 'Running not Ready -> readiness probe'. Text at least 24px.",
+  "anchor": "## 4. Operating pods",
+  "alt": "A five-rung ladder from pod status to events, last state, previous logs and debug containers.",
+  "cap": "Ask the cheapest question first, and most pod failures are named by the events or the last container state."
+ }
+]

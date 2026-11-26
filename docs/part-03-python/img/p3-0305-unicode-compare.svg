@@ -1,0 +1,198 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Comparing text correctly: NFC, casefold, accents and byte patterns</title>
+  <desc>Comparing text correctly: NFC, casefold, accents and byte patterns</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="44" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#207448">Comparing text correctly:</text>
+  <text x="800" y="82" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#207448">NFC, casefold, accents and byte patterns</text>
+
+  
+  <rect x="40" y="105" width="1520" height="652" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <line x1="40" y1="285" x2="1560" y2="285" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="40" y1="391" x2="1560" y2="391" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="40" y1="545" x2="1560" y2="545" stroke="#e8f1ea" stroke-width="2" />
+  <line x1="40" y1="651" x2="1560" y2="651" stroke="#e8f1ea" stroke-width="2" />
+
+  
+  
+  <circle cx="75" cy="155" r="24" fill="#db8129" />
+  <text x="75" y="165" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="55" y1="262" x2="95" y2="262" />
+    <line x1="75" y1="216" x2="75" y2="262" />
+    <line x1="52" y1="222" x2="98" y2="222" />
+    <path d="M 52 222 L 46 242 L 58 242 Z" />
+    <path d="M 98 222 L 92 242 L 104 242 Z" />
+  </g>
+
+  
+  <text x="175" y="148" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">caf\u00e9 (len 4) versus</tspan>
+    <tspan x="175" dy="28">cafe\u0301 (len 5, e plus a</tspan>
+    <tspan x="175" dy="28">combining acute accent):</tspan>
+    <tspan x="175" dy="28">both render as café but</tspan>
+    <tspan x="175" dy="28">s1 == s2 is False</tspan>
+  </text>
+
+  
+  <rect x="655" y="113" width="890" height="164" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="675" y="143" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="675" dy="0">unicodedata.normalize(NFC, s) on both,</tspan>
+    <tspan x="675" dy="25">then nfc_equal(s1, s2) is True; W3C recommends NFC;</tspan>
+    <tspan x="675" dy="25">NFKC and NFKD also convert compatibility characters:</tspan>
+    <tspan x="675" dy="25">the one-half sign becomes 1 fraction-slash 2,</tspan>
+    <tspan x="675" dy="25">the micro sign becomes Greek mu; the Ohm sign U+2126</tspan>
+    <tspan x="675" dy="25">normalizes to Greek capital Omega U+03A9 under NFC</tspan>
+  </text>
+
+  
+  
+  <circle cx="65" cy="338" r="24" fill="#207448" />
+  <text x="65" y="348" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 100 356 L 112 320 L 124 356" />
+    <line x1="104" y1="344" x2="120" y2="344" />
+    <path d="M 134 336 C 134 326 150 326 150 336 L 150 356" />
+    <circle cx="142" cy="346" r="8" />
+  </g>
+
+  
+  <text x="175" y="331" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">Case-insensitive</tspan>
+    <tspan x="175" dy="28">comparison</tspan>
+  </text>
+
+  
+  <rect x="655" y="293" width="890" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="675" y="321" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="675" dy="0">normalize with NFC then .casefold():</tspan>
+    <tspan x="675" dy="26">Straße.casefold() == strasse;</tspan>
+    <tspan x="675" dy="26">fold_equal in Fluent Python does this</tspan>
+  </text>
+
+  
+  
+  <circle cx="75" cy="433" r="24" fill="#207448" />
+  <text x="75" y="443" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="58" y1="478" x2="70" y2="466" />
+    <line x1="80" y1="466" x2="92" y2="478" />
+    <rect x="54" y="486" width="42" height="36" rx="4" />
+    <line x1="64" y1="504" x2="86" y2="504" />
+  </g>
+
+  
+  <text x="175" y="455" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">Strip accents without</tspan>
+    <tspan x="175" dy="28">damaging Greek or Cyrillic</tspan>
+  </text>
+
+  
+  <rect x="655" y="399" width="890" height="138" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="675" y="425" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="675" dy="0">shave_marks_latin: decompose with NFD, drop each</tspan>
+    <tspan x="675" dy="24">unicodedata.combining(c) mark only when the base</tspan>
+    <tspan x="675" dy="24">character before it is in string.ascii_letters, recompose</tspan>
+    <tspan x="675" dy="24">with NFC: São Paulo: Zéphyr &amp; Ελληνικά becomes</tspan>
+    <tspan x="675" dy="24">Sao Paulo: Zephyr &amp; Ελληνικά</tspan>
+  </text>
+
+  
+  
+  <circle cx="65" cy="598" r="24" fill="#207448" />
+  <text x="65" y="608" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">4</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="104" y1="582" x2="148" y2="582" />
+    <line x1="104" y1="598" x2="136" y2="598" />
+    <line x1="104" y1="614" x2="124" y2="614" />
+  </g>
+
+  
+  <text x="175" y="583" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">Sort accented words in human</tspan>
+    <tspan x="175" dy="26">order such as caju, atemoia,</tspan>
+    <tspan x="175" dy="26">cajá, açaí, acerola</tspan>
+  </text>
+
+  
+  <rect x="655" y="563" width="890" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="675" y="607" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">locale.strxfrm or pyuca.Collator()</text>
+
+  
+  
+  <circle cx="65" cy="704" r="24" fill="#207448" />
+  <text x="65" y="714" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">5</text>
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 114 686 L 102 686 L 102 722 L 114 722" />
+    <path d="M 138 686 L 150 686 L 150 722 L 138 722" />
+    <line x1="126" y1="698" x2="126" y2="710" />
+    <line x1="120" y1="704" x2="132" y2="704" />
+  </g>
+
+  
+  <text x="175" y="697" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">Regular expressions on</tspan>
+    <tspan x="175" dy="28">text versus bytes</tspan>
+  </text>
+
+  
+  <rect x="655" y="659" width="890" height="90" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="675" y="687" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="675" dy="0">str pattern r\d+ matches ASCII and Unicode digits, including</tspan>
+    <tspan x="675" dy="25">Tamil digits; bytes pattern rb\d+ matches only ASCII 0 to 9;</tspan>
+    <tspan x="675" dy="25">pass re.ASCII to a str regex for that behaviour</tspan>
+  </text>
+
+  
+  <rect x="40" y="797" width="1520" height="128" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="60" y="833" width="56" height="56" rx="6" />
+    <line x1="60" y1="861" x2="116" y2="861" />
+    <line x1="88" y1="833" x2="88" y2="889" />
+  </g>
+
+  
+  <text x="135" y="828" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">struct for binary protocols: struct.pack("&gt;i4sh", 7, b"code", 8)</tspan>
+    <tspan x="135" dy="24">gives b"\x00\x00\x00\x07code\x00\x08"; struct.unpack("&gt;i4sh", B) returns (7, b"code", 8);</tspan>
+    <tspan x="135" dy="24">network order is big-endian, written ! or &gt;; also struct.pack("&lt;IHB", 1, 2, 3),</tspan>
+    <tspan x="135" dy="24">unpack_from, int.from_bytes(b, big), .to_bytes(4, little), memoryview, bytearray</tspan>
+  </text>
+
+  
+  <rect x="40" y="965" width="1520" height="82" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="88" cy="1006" r="24" />
+    <line x1="64" y1="1006" x2="112" y2="1006" />
+    <ellipse cx="88" cy="1006" rx="12" ry="24" />
+  </g>
+
+  
+  <text x="135" y="1000" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">HTTP headers Latin-1 or ASCII; JSON must be UTF-8; YAML UTF-8 or UTF-16;</tspan>
+    <tspan x="135" dy="26">spreadsheet CSV may use utf-8-sig or cp1252; open CSV with newline=""</tspan>
+  </text>
+
+  
+  <rect x="40" y="1087" width="1520" height="63" rx="8" fill="#207448" />
+  <text x="800" y="1129" text-anchor="middle" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Normalize before you compare</text>
+</svg>

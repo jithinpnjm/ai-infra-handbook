@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>ExceptionGroup and except*: each handler takes its matches and the rest move on</title>
+  <desc>Visual explanation of Python 3.11 ExceptionGroup handling with except* syntax: each except* clause matches and handles specific sub-exceptions while unmatched exceptions propagate upward until the group is fully handled.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">ExceptionGroup and except*: each handler takes </tspan>
+    <tspan x="800" dy="54">its matches and the rest move on</tspan>
+  </text>
+
+  
+  <g id="node-top-box">
+    <rect x="40" y="145" width="930" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(62, 167)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 25 4 L 46 42 L 4 42 Z" />
+      <line x1="25" y1="18" x2="25" y2="28" />
+      <circle cx="25" cy="35" r="2" fill="#207448" />
+    </g>
+    <text x="140" y="184" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">action3 raises ExceptionGroup(Nest*, </tspan>
+      <tspan x="140" dy="32">[IndexError(1), TypeError(2), SyntaxError(3)])</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="505" y1="240" x2="505" y2="280" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-action2">
+    <rect x="40" y="280" width="930" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(62, 297)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="6,8 44,8 28,26 28,42 22,38 22,26" />
+    </g>
+    <text x="140" y="331" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">action2: except* IndexError: print(Got IE)</text>
+  </g>
+
+  
+  <line x1="505" y1="365" x2="505" y2="405" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-action1">
+    <rect x="40" y="405" width="930" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(62, 422)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="6,8 44,8 28,26 28,42 22,38 22,26" />
+      <line x1="12" y1="14" x2="38" y2="14" />
+    </g>
+    <text x="140" y="456" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">action1: except* TypeError: print(Got TE)</text>
+  </g>
+
+  
+  <g id="node-top-level-orange">
+    <rect x="40" y="530" width="930" height="180" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    <g transform="translate(62, 548)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 25 4 L 45 12 V 26 C 45 38 25 46 25 46 C 25 46 5 38 5 26 V 12 Z" />
+      <line x1="17" y1="20" x2="33" y2="32" />
+      <line x1="33" y1="20" x2="17" y2="32" />
+    </g>
+    <text x="140" y="570" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">SyntaxError(3)</text>
+    <rect x="125" y="590" width="820" height="105" rx="8" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5" />
+    <text x="150" y="625" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="150" dy="0">+ Exception Group Traceback ... </tspan>
+      <tspan x="150" dy="28">ExceptionGroup: Nest* (1 sub-exception) ... </tspan>
+      <tspan x="150" dy="28">SyntaxError: 3</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-output-box">
+    <rect x="40" y="750" width="930" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(62, 767)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="38" rx="5" fill="#ffffff" />
+      <polyline points="12,18 20,25 12,32" />
+      <line x1="24" y1="32" x2="36" y2="32" />
+    </g>
+    <text x="140" y="802" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">Got IE, Got TE, then the traceback</text>
+  </g>
+
+  
+  <g id="node-contrast">
+    <rect x="40" y="875" width="930" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+    <g transform="translate(62, 892)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="25" y1="6" x2="25" y2="44" />
+      <line x1="10" y1="16" x2="40" y2="16" />
+      <polygon points="4,28 16,28 10,16" />
+      <polygon points="34,34 46,34 40,16" />
+    </g>
+    <text x="140" y="913" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0" font-weight="bold">plain except: </tspan>
+      <tspan x="140" dy="28" font-weight="normal">the first matching handler consumes the whole exception</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-panel-why">
+    <rect x="1010" y="145" width="550" height="815" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1035, 168)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="25" cy="25" r="20" fill="#ffffff" />
+      <path d="M 20 18 C 20 13 30 13 30 18 C 30 22 25 24 25 28" />
+      <circle cx="25" cy="34" r="1.5" fill="#207448" />
+    </g>
+    <text x="1105" y="202" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">Why</text>
+    
+    <rect x="1030" y="230" width="510" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1055" y="265" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1055" dy="0">a script that waits on a </tspan>
+      <tspan x="1055" dy="28">whole rack of hosts can fail </tspan>
+      <tspan x="1055" dy="28">in several ways at once, and </tspan>
+      <tspan x="1055" dy="28">one exception object cannot </tspan>
+      <tspan x="1055" dy="28">carry them all; Python 3.11 </tspan>
+      <tspan x="1055" dy="28">added ExceptionGroup</tspan>
+    </text>
+    
+    <rect x="1030" y="430" width="510" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1055" y="466" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1055" dy="0">in except* IndexError as E: </tspan>
+      <tspan x="1055" dy="28">each E is bound to a </tspan>
+      <tspan x="1055" dy="28">sub-ExceptionGroup of </tspan>
+      <tspan x="1055" dy="28">the matches, available </tspan>
+      <tspan x="1055" dy="28">as E.exceptions</tspan>
+    </text>
+    
+    <rect x="1030" y="605" width="510" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1055" y="640" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1055" dy="0">unmatched exceptions continue </tspan>
+      <tspan x="1055" dy="28">upward in a new ExceptionGroup</tspan>
+    </text>
+    
+    <rect x="1030" y="700" width="510" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1055" y="735" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1055" dy="0">one try statement can run </tspan>
+      <tspan x="1055" dy="28">multiple except* clauses</tspan>
+    </text>
+    
+    <rect x="1030" y="795" width="510" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1055" y="830" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1055" dy="0">asyncio.TaskGroup uses this </tspan>
+      <tspan x="1055" dy="28">mechanism (chapter 3.6)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="limits-strip">
+    <rect x="40" y="1000" width="1520" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(65, 1020)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="18" width="34" height="26" rx="4" />
+      <path d="M 15 18 V 10 C 15 5 35 5 35 10 V 18" />
+      <circle cx="25" cy="30" r="2" fill="#207448" />
+    </g>
+    <text x="140" y="1037" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">you cannot mix except* with a plain except in the same try; </tspan>
+      <tspan x="140" dy="30">you cannot put return, break or continue inside an except* clause</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1120" width="1520" height="60" rx="10" fill="#207448" />
+    <text x="800" y="1159" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">A group keeps moving until every item in it has been matched</text>
+  </g>
+
+</svg>

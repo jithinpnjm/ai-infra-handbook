@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Hard, soft and minimum-reclaim eviction thresholds</title>
+  <desc>Visual infographic explaining Kubernetes hard, soft, and minimum-reclaim eviction thresholds, kubelet reclamation behavior, and memory.available gauge.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Hard, soft and minimum-reclaim eviction thresholds</text>
+
+  
+  <g id="left-note-panel">
+    <rect x="30" y="145" width="545" height="800" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(60, 175)">
+      <circle cx="28" cy="28" r="22" stroke="#207448" stroke-width="4" fill="none"/>
+      <circle cx="28" cy="28" r="10" stroke="#207448" stroke-width="4" fill="none"/>
+      <path d="M28 2 V10 M28 46 V54 M2 28 H10 M46 28 H54 M10 10 L16 16 M40 40 L46 46 M10 46 L16 40 M40 16 L46 10" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="135" y="200" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="135" dy="0">kubelet also tries to</tspan>
+      <tspan x="135" dy="34">reclaim first:</tspan>
+    </text>
+
+    
+    <text x="60" y="295" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">garbage-collect dead</tspan>
+      <tspan x="60" dy="36">containers and unused images;</tspan>
+      <tspan x="60" dy="36">sets MemoryPressure,</tspan>
+      <tspan x="60" dy="36">DiskPressure, PIDPressure;</tspan>
+      <tspan x="60" dy="36">taints like</tspan>
+      <tspan x="60" dy="40" font-family="monospace" fill="#207448">node.kubernetes.io/</tspan>
+      <tspan x="60" dy="36" font-family="monospace" fill="#207448">memory-pressure:NoSchedule</tspan>
+      <tspan x="60" dy="40">block new pods;</tspan>
+      <tspan x="60" dy="44" font-family="monospace" fill="#207448">evictionPressureTransitionPeriod</tspan>
+      <tspan x="60" dy="36">5 minutes before clearing</tspan>
+      <tspan x="60" dy="36">the condition</tspan>
+    </text>
+  </g>
+
+  
+  <g id="memory-available-gauge">
+    
+    <text x="642" y="125" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">memory.available</text>
+
+    
+    <rect x="605" y="145" width="75" height="800" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+    
+    <rect x="607" y="550" width="71" height="290" fill="#cbe3d1" opacity="0.8"/>
+
+    
+    <rect x="607" y="840" width="71" height="103" rx="14" fill="#fae8d7" opacity="0.7"/>
+
+    
+    <line x1="642" y1="170" x2="642" y2="905" stroke="#207448" stroke-width="4" stroke-dasharray="10 8"/>
+    <polygon points="630,900 654,900 642,925" fill="#207448"/>
+
+    
+    
+    <line x1="595" y1="260" x2="690" y2="260" stroke="#207448" stroke-width="4"/>
+    
+    
+    <line x1="605" y1="550" x2="680" y2="550" stroke="#207448" stroke-width="3" stroke-dasharray="6 4"/>
+
+    
+    <line x1="595" y1="840" x2="690" y2="840" stroke="#db8129" stroke-width="4"/>
+  </g>
+
+  
+  
+  <line x1="690" y1="260" x2="740" y2="260" stroke="#207448" stroke-width="4"/>
+
+  
+  <path d="M 692 550 Q 706 550 706 575 L 706 580 Q 706 595 722 595 Q 706 595 706 610 L 706 815 Q 706 840 692 840" fill="none" stroke="#207448" stroke-width="4"/>
+  
+  <line x1="722" y1="595" x2="740" y2="595" stroke="#207448" stroke-width="4"/>
+
+  
+  <line x1="690" y1="840" x2="740" y2="840" stroke="#db8129" stroke-width="4"/>
+
+  
+  
+  <g id="card-soft-eviction">
+    <rect x="740" y="145" width="830" height="305" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(770, 165)">
+      <circle cx="28" cy="28" r="22" stroke="#207448" stroke-width="4" fill="none"/>
+      <path d="M28 14 V28 H38" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="845" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="845" dy="0">evictionSoft 4Gi with</tspan>
+      <tspan x="845" dy="34">evictionSoftGracePeriod 2m:</tspan>
+    </text>
+
+    
+    <text x="770" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="770" dy="0">signal must stay below 4Gi for 2 minutes,</tspan>
+      <tspan x="770" dy="34">then graceful eviction honouring</tspan>
+      <tspan x="770" dy="34" font-family="monospace" fill="#207448">terminationGracePeriodSeconds</tspan> <tspan font-family="system-ui, -apple-system, sans-serif">up to</tspan>
+      <tspan x="770" dy="34" font-family="monospace" fill="#207448">evictionMaxPodGracePeriod</tspan>
+      <tspan x="770" dy="34">(time for an emergency checkpoint)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-minimum-reclaim">
+    <rect x="740" y="480" width="830" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(770, 505)">
+      <path d="M10 20 H38 M28 10 L38 20 L28 30" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+      <path d="M46 36 H18 M28 46 L18 36 L28 26" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="845" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="845" dy="0">evictionMinimumReclaim 1Gi:</tspan>
+    </text>
+
+    
+    <text x="770" y="605" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="770" dy="0">keep evicting until at least</tspan>
+      <tspan x="770" dy="34">2Gi + 1Gi = 3Gi is free, so the node</tspan>
+      <tspan x="770" dy="34">does not oscillate at the boundary</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-hard-eviction">
+    <rect x="740" y="735" width="830" height="210" rx="16" fill="#fdf3e7" stroke="#db8129" stroke-width="4"/>
+    
+    
+    <g transform="translate(770, 760)">
+      <path d="M28 6 L48 15 V28 C48 40 28 48 28 48 C28 48 8 40 8 28 V15 Z" stroke="#db8129" stroke-width="4" fill="none"/>
+      <path d="M28 17 V29 M28 36 V38" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="845" y="795" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">
+      <tspan x="845" dy="0">evictionHard 2Gi:</tspan>
+    </text>
+
+    
+    <text x="770" y="865" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="770" dy="0">immediate eviction, grace 0,</tspan>
+      <tspan x="770" dy="34" font-family="monospace" font-weight="bold" fill="#db8129">SIGKILL-like</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="30" y="975" width="1540" height="175" rx="16" fill="#207448"/>
+
+    
+    <g transform="translate(65, 1030)">
+      <path d="M28 6 L48 15 V28 C48 40 28 48 28 48 C28 48 8 40 8 28 V15 Z" stroke="#ffffff" stroke-width="4" fill="none"/>
+      <path d="M20 27 L26 33 L37 20" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="145" y="1045" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#ffffff">
+      <tspan x="145" dy="0">set the hard value several GiB so the kubelet acts before the kernel OOM killer picks victims;</tspan>
+      <tspan x="145" dy="38">housekeeping samples about every 10 s so pinned memory and page cache can outrun it</tspan>
+    </text>
+  </g>
+</svg>

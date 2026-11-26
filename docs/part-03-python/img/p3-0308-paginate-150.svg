@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>150 items at 100 per page: the naive client and the completeness check</title>
+  <desc>Visual comparison showing how a naive client silently truncates at 100 items while a paginate generator safely retrieves all 150 items.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">150 items at 100 per page:</text>
+  <text x="800" y="125" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">the naive client and the completeness check</text>
+
+  
+  <g id="lane-naive-client">
+    <rect x="60" y="150" width="530" height="645" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="90" y="195" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">naive client</text>
+
+    
+    <rect x="90" y="220" width="470" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="125" cy="260" r="22" fill="#207448"/>
+    <text x="125" y="268" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <rect x="156" y="240" width="28" height="38" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="164" y1="252" x2="176" y2="252" stroke="#207448" stroke-width="3"/>
+    <line x1="164" y1="262" x2="176" y2="262" stroke="#207448" stroke-width="3"/>
+    <text x="205" y="252" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="205" y="252">page 1 returns</tspan>
+      <tspan x="205" y="280">100 items</tspan>
+    </text>
+
+    
+    <line x1="325" y1="300" x2="325" y2="343" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="90" y="345" width="470" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="125" cy="385" r="22" fill="#207448"/>
+    <text x="125" y="393" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <rect x="154" y="368" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="161,385 167,391 179,378" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="205" y="377" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="205" y="377">handles them and</tspan>
+      <tspan x="205" y="405">exits 0</tspan>
+    </text>
+
+    
+    <line x1="325" y1="425" x2="325" y2="468" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="90" y="470" width="470" height="195" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="2.5"/>
+    <circle cx="125" cy="512" r="22" fill="#db8129"/>
+    <text x="125" y="520" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <path d="M 172 494 L 190 528 L 154 528 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="172" y1="506" x2="172" y2="516" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="172" cy="522" r="2" fill="#db8129"/>
+    <text x="205" y="522" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">silent truncation</text>
+    <text x="115" y="575" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="115" y="575">the other 50 hosts were</tspan>
+      <tspan x="115" y="612">never read and nobody notices</tspan>
+    </text>
+  </g>
+
+  
+  <g id="lane-paginate-generator">
+    <rect x="620" y="150" width="920" height="645" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="650" y="195" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">paginate() generator</text>
+
+    
+    <rect x="650" y="215" width="860" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="685" cy="249" r="22" fill="#207448"/>
+    <text x="685" y="257" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <line x1="720" y1="237" x2="750" y2="237" stroke="#207448" stroke-width="3"/>
+    <circle cx="728" cy="237" r="4" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <line x1="720" y1="258" x2="750" y2="258" stroke="#207448" stroke-width="3"/>
+    <circle cx="742" cy="258" r="4" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <text x="775" y="244" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="775" y="244">params limit=page_size</tspan>
+      <tspan x="775" y="270">and page_token when set</tspan>
+    </text>
+
+    
+    <line x1="1080" y1="283" x2="1080" y2="303" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="650" y="305" width="860" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="685" cy="338" r="22" fill="#207448"/>
+    <text x="685" y="346" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <circle cx="735" cy="338" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <ellipse cx="735" cy="338" rx="7" ry="16" fill="none" stroke="#207448" stroke-width="2.5"/>
+    <line x1="719" y1="338" x2="751" y2="338" stroke="#207448" stroke-width="2.5"/>
+    <text x="775" y="347" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">get_json(path, **params)</text>
+
+    
+    <line x1="1080" y1="371" x2="1080" y2="391" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="650" y="393" width="860" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="685" cy="427" r="22" fill="#207448"/>
+    <text x="685" y="435" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <path d="M 724 422 A 12 12 0 1 1 746 433" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="742,440 748,433 741,427" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="775" y="422" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="775" y="422">for item in body[items]:</tspan>
+      <tspan x="775" y="448">    seen += 1; yield item</tspan>
+    </text>
+
+    
+    <line x1="1080" y1="461" x2="1080" y2="481" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="650" y="483" width="860" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="685" cy="516" r="22" fill="#207448"/>
+    <text x="685" y="524" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <circle cx="728" cy="516" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 735 516 L 748 516 L 748 522 L 743 522 L 743 516" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="775" y="525" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">token = body.get(next_page_token)</text>
+
+    
+    <line x1="1080" y1="549" x2="1080" y2="569" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="650" y="571" width="860" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="685" cy="604" r="22" fill="#207448"/>
+    <text x="685" y="612" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <path d="M 722 604 L 734 604 L 746 594 M 734 604 L 746 614" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="744" y1="610" x2="750" y2="618" stroke="#207448" stroke-width="3"/>
+    <line x1="750" y1="610" x2="744" y2="618" stroke="#207448" stroke-width="3"/>
+    <text x="775" y="613" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">if not token: break</text>
+
+    
+    <rect x="650" y="655" width="860" height="120" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="675" y="688" width="34" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="684" y1="701" x2="700" y2="701" stroke="#207448" stroke-width="3"/>
+    <line x1="684" y1="711" x2="700" y2="711" stroke="#207448" stroke-width="3"/>
+    <line x1="684" y1="721" x2="695" y2="721" stroke="#207448" stroke-width="3"/>
+    <text x="735" y="694" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="735" y="694">page 1 gives 100 plus a token,</tspan>
+      <tspan x="735" y="726">page 2 gives 50 and no token,</tspan>
+      <tspan x="735" y="758">loop ends having seen 150</tspan>
+    </text>
+  </g>
+
+  
+  <g id="check-strip">
+    <rect x="60" y="815" width="1480" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 100 842 Q 120 836 140 842 Q 140 865 120 878 Q 100 865 100 842 Z" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <polyline points="112,858 118,864 130,852" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <text x="160" y="849" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="160" y="849">if the API reports a total count, compare it with what you fetched,</tspan>
+      <tspan x="160" y="880">and log how many items you received</tspan>
+    </text>
+  </g>
+
+  
+  <g id="comparison-panel">
+    <rect x="60" y="920" width="1480" height="170" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="85" y="938" width="695" height="134" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="110" y="976" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="110" y="976">offset pagination asks by position: positions</tspan>
+      <tspan x="110" y="1010">shift when items are added, so a page can</tspan>
+      <tspan x="110" y="1044">skip or repeat items;</tspan>
+    </text>
+
+    
+    <rect x="820" y="938" width="695" height="134" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="845" y="976" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" y="976">cursor or token pagination asks for the batch</tspan>
+      <tspan x="845" y="1010">after the one you just read, so a changing</tspan>
+      <tspan x="845" y="1044">list cannot shift it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="1110" width="1480" height="65" rx="10" fill="#207448"/>
+    <text x="800" y="1151" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Hide paging in a generator and make it fail loudly</text>
+  </g>
+</svg>

@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Principles</title>
+  <desc>Visual explanation of backup and disaster recovery principles: primary cluster data, on-site second medium, offsite immutable copy, and quarterly DR drill.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Principles</text>
+
+  
+
+  
+  <g id="subgraph-primary">
+    <rect x="60" y="130" width="620" height="390" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="85" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">1. Primary Cluster Data</text>
+
+    
+    <rect x="85" y="200" width="570" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(105, 242)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="10" />
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12.5 12.5 L 18.1 18.1 M 37.9 37.9 L 43.5 43.5 M 12.5 43.5 L 18.1 37.9 M 37.9 18.1 L 43.5 12.5" />
+    </g>
+    <text x="180" y="252" fill="#303a36">
+      <tspan x="180" dy="0" font-family="ui-monospace, monospace" font-size="24">Control Plane: slurmdbd, LDAP,</tspan>
+      <tspan x="180" dy="36" font-family="ui-monospace, monospace" font-size="24">BCM/xCAT/Warewulf, Vault, Git</tspan>
+    </text>
+
+    
+    <rect x="85" y="360" width="570" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(105, 399)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <ellipse cx="28" cy="14" rx="20" ry="7" />
+      <path d="M 8 14 V 28 C 8 32 17 35 28 35 C 39 35 48 32 48 28 V 14" />
+      <path d="M 8 28 V 42 C 8 46 17 49 28 49 C 39 49 48 46 48 42 V 28" />
+    </g>
+    <text x="180" y="440" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold">User </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="26" font-weight="bold">/home</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold"> &amp; Curated Models</tspan>
+    </text>
+  </g>
+
+   Dedup -->
+  <line x1="680" y1="325" x2="918" y2="325" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="subgraph-local">
+    <rect x="920" y="130" width="620" height="390" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="945" y="175" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">2. Second Medium (On-Site)</text>
+
+    
+    <rect x="945" y="210" width="570" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(1202, 235)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="8" width="44" height="18" rx="4" />
+      <circle cx="16" cy="17" r="2" fill="#207448" />
+      <line x1="26" y1="17" x2="42" y2="17" />
+      <rect x="6" y="30" width="44" height="18" rx="4" />
+      <circle cx="16" cy="39" r="2" fill="#207448" />
+      <line x1="26" y1="39" x2="42" y2="39" />
+    </g>
+    <text x="1230" y="345" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="1230" dy="0">restic / borg / rsync --link-dest</tspan>
+      <tspan x="1230" dy="42">or Bacula (:9101/:9102/:9103)</tspan>
+    </text>
+  </g>
+
+  
+
+   WORM -->
+  <path d="M 1230 520 V 544 Q 1230 560 1214 560 H 386 Q 370 560 370 576 V 598" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="subgraph-offsite">
+    <rect x="60" y="600" width="620" height="390" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <text x="85" y="645" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">3. Offsite + 1 Immutable Copy</text>
+
+    
+    <rect x="85" y="685" width="570" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    
+    <g transform="translate(342, 715)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="10" y="22" width="36" height="28" rx="5" />
+      <path d="M 17 22 V 14 A 11 11 0 0 1 39 14 V 22" />
+      <circle cx="28" cy="33" r="3" fill="#207448" />
+      <line x1="28" y1="36" x2="28" y2="42" />
+    </g>
+    <text x="370" y="825" text-anchor="middle" fill="#303a36">
+      <tspan x="370" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold">S3 Object Lock (WORM) /</tspan>
+      <tspan x="370" dy="42">
+        <tspan font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold">Offline Tape (</tspan>
+        <tspan font-family="ui-monospace, monospace" font-size="26" font-weight="bold">/dev/nst0</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold">)</tspan>
+      </tspan>
+    </text>
+  </g>
+
+   Verify (with Label Badge) -->
+  <line x1="680" y1="820" x2="1178" y2="820" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <g id="arrow-label">
+    <rect x="715" y="774" width="430" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="930" y="810" text-anchor="middle" fill="#303a36">
+      <tspan x="930" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold">0 Errors: Automated Restore</tspan>
+      <tspan x="930" dy="34" font-family="ui-monospace, monospace" font-size="24" font-weight="bold">&amp; --read-data</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-verify">
+    <rect x="1180" y="685" width="360" height="270" rx="16" fill="#fbf3ea" stroke="#db8129" stroke-width="3.5" />
+    
+    <g transform="translate(1332, 730)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="8" y="10" width="40" height="40" rx="6" />
+      <line x1="8" y1="22" x2="48" y2="22" />
+      <line x1="18" y1="6" x2="18" y2="12" />
+      <line x1="38" y1="6" x2="38" y2="12" />
+      <path d="M 18 34 L 25 41 L 38 27" stroke-width="4.5" />
+    </g>
+    <text x="1360" y="855" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Quarterly DR Drill</text>
+  </g>
+</svg>

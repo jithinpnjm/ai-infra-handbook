@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>What the canary host sees in the driver-tuning play</title>
+  <desc>A step by step visual timeline of safety checks, system tuning, service handlers, and GPU validation for canary host gpu001.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 1 1 L 9 5 L 1 9 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">What the canary host sees in the driver-tuning play</text>
+
+  
+  <g transform="translate(40, 95)">
+    <rect width="1520" height="75" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="30" y="32" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">A step by step timeline for the canary, host gpu001.</text>
+    <text x="30" y="60" font-family="monospace" font-size="24" fill="#303a36">serial [1, 10%, 100%], max_fail_percentage 5, expected_gpus 8</text>
+  </g>
+
+  
+  <g transform="translate(40, 185)">
+    <rect width="1520" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+    <text x="30" y="34" font-family="sans-serif" font-size="24" fill="#303a36">if the parameter is wrong for one hardware model, every node of that model fails together</text>
+    <text x="30" y="64" font-family="sans-serif" font-size="24" fill="#303a36">and the Slurm queue fills with failed jobs before anyone reads the first alert</text>
+  </g>
+
+  
+
+  
+  <g transform="translate(40, 300)">
+    <rect width="740" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 20)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="0" y="0" width="56" height="42" rx="4" />
+      <path d="M 12 14 L 22 21 L 12 28" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="28" y1="28" x2="42" y2="28" stroke-linecap="round" />
+    </g>
+    <text x="96" y="50" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Pre-step</text>
+    <text x="24" y="98" font-family="monospace" font-size="24" fill="#303a36">run --check --diff --limit gpu001 first</text>
+  </g>
+
+  
+  <path d="M 410 420 L 410 456" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(40, 460)">
+    <rect width="740" height="230" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(24, 18)" stroke="#db8129" stroke-width="4" fill="none">
+      <path d="M 28 4 L 8 12 L 8 28 C 8 42 28 52 28 52 C 28 52 48 42 48 28 L 48 12 Z" stroke-linejoin="round" />
+      <path d="M 20 27 L 26 33 L 38 21" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <circle cx="114" cy="44" r="24" fill="#db8129" />
+    <text x="114" y="52" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <text x="150" y="53" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Step 1</text>
+    
+    <text x="24" y="96" font-family="monospace" font-size="24" fill="#303a36">pre_task: delegate to the first slurm_controller</text>
+    <text x="24" y="124" font-family="monospace" font-size="24" fill="#303a36">host: scontrol show node gpu001, check_mode false,</text>
+    <text x="24" y="152" font-family="monospace" font-size="24" fill="#303a36">changed_when false, failed_when DRAIN not in</text>
+    <text x="24" y="180" font-family="monospace" font-size="24" fill="#303a36">node_state.stdout</text>
+    
+    <text x="24" y="214" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">the change never touches a node still accepting new jobs</text>
+  </g>
+
+  
+  <path d="M 410 690 L 410 726" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(40, 730)">
+    <rect width="740" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 16)" stroke="#207448" stroke-width="4" fill="none">
+      <line x1="8" y1="12" x2="48" y2="12" stroke-linecap="round" />
+      <circle cx="20" cy="12" r="5" fill="#e8f1ea" />
+      <line x1="8" y1="28" x2="48" y2="28" stroke-linecap="round" />
+      <circle cx="36" cy="28" r="5" fill="#e8f1ea" />
+      <line x1="8" y1="44" x2="48" y2="44" stroke-linecap="round" />
+      <circle cx="26" cy="44" r="5" fill="#e8f1ea" />
+    </g>
+    
+    <circle cx="114" cy="42" r="24" fill="#207448" />
+    <text x="114" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <text x="150" y="51" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+    <text x="24" y="85" font-family="monospace" font-size="24" fill="#303a36">sysctl: vm.swappiness = 1 persisted in</text>
+    <text x="24" y="111" font-family="monospace" font-size="24" fill="#303a36">/etc/sysctl.d/90-ai.conf, reload true</text>
+  </g>
+
+  
+  <path d="M 410 850 L 410 886" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(40, 890)">
+    <rect width="740" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none">
+      <path d="M 12 4 L 34 4 L 46 16 L 46 50 L 12 50 Z" stroke-linejoin="round" />
+      <polyline points="34,4 34,16 46,16" stroke-linejoin="round" />
+      <line x1="20" y1="26" x2="38" y2="26" stroke-linecap="round" />
+      <line x1="20" y1="36" x2="38" y2="36" stroke-linecap="round" />
+    </g>
+    
+    <circle cx="114" cy="42" r="24" fill="#207448" />
+    <text x="114" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <text x="150" y="51" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+    <text x="24" y="83" font-family="monospace" font-size="24" fill="#303a36">template: nvidia-persistenced.override.conf.j2</text>
+    <text x="24" y="111" font-family="monospace" font-size="24" fill="#303a36">to /etc/systemd/system/</text>
+    <text x="24" y="139" font-family="monospace" font-size="24" fill="#303a36">nvidia-persistenced.service.d/override.conf</text>
+    <text x="24" y="167" font-family="monospace" font-size="24" fill="#303a36">mode 0644, notify Restart persistenced</text>
+  </g>
+
+  
+  
+  <path d="M 780 965 L 800 965 L 800 360 L 816 360" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+
+  
+  <g transform="translate(820, 300)">
+    <rect width="740" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 16)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="28" r="16" />
+      <path d="M 28 4 L 28 12 M 28 44 L 28 52 M 4 28 L 12 28 M 44 28 L 52 28" stroke-linecap="round" />
+      <path d="M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" stroke-linecap="round" />
+    </g>
+    
+    <circle cx="114" cy="42" r="24" fill="#207448" />
+    <text x="114" y="50" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    <text x="150" y="51" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 4</text>
+    <text x="24" y="85" font-family="monospace" font-size="24" fill="#303a36">handler: restart nvidia-persistenced with</text>
+    <text x="24" y="111" font-family="monospace" font-size="24" fill="#303a36">daemon_reload, only if the template changed</text>
+  </g>
+
+  
+  <path d="M 1190 420 L 1190 456" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(820, 460)">
+    <rect width="740" height="230" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <rect x="18" y="18" width="8" height="8" fill="#207448" />
+      <rect x="30" y="18" width="8" height="8" fill="#207448" />
+      <rect x="18" y="30" width="8" height="8" fill="#207448" />
+      <rect x="30" y="30" width="8" height="8" fill="#207448" />
+      <line x1="18" y1="2" x2="18" y2="10" stroke-linecap="round" />
+      <line x1="38" y1="2" x2="38" y2="10" stroke-linecap="round" />
+      <line x1="18" y1="46" x2="18" y2="54" stroke-linecap="round" />
+      <line x1="38" y1="46" x2="38" y2="54" stroke-linecap="round" />
+    </g>
+    
+    <circle cx="114" cy="44" r="24" fill="#207448" />
+    <text x="114" y="52" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    <text x="150" y="53" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 5</text>
+    
+    <text x="24" y="96" font-family="monospace" font-size="24" fill="#303a36">post_task: nvidia-smi --query-gpu=index</text>
+    <text x="24" y="124" font-family="monospace" font-size="24" fill="#303a36">--format=csv,noheader;</text>
+    <text x="24" y="152" font-family="monospace" font-size="24" fill="#303a36">failed_when stdout_lines length !=</text>
+    <text x="24" y="180" font-family="monospace" font-size="24" fill="#303a36">expected_gpus</text>
+  </g>
+
+  
+  <path d="M 1190 690 L 1190 726" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(820, 730)">
+    <rect width="740" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 16)" stroke="#207448" stroke-width="4" fill="none">
+      <rect x="6" y="20" width="10" height="32" rx="2" />
+      <rect x="40" y="20" width="10" height="32" rx="2" />
+      <line x1="16" y1="26" x2="40" y2="40" stroke-linecap="round" />
+      <line x1="16" y1="40" x2="40" y2="26" stroke-linecap="round" />
+      <line x1="16" y1="33" x2="40" y2="33" stroke-linecap="round" />
+    </g>
+    <text x="96" y="48" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Gate</text>
+    <text x="24" y="84" font-family="sans-serif" font-size="24" fill="#303a36">validation failure stops the play before the</text>
+    <text x="24" y="110" font-family="sans-serif" font-size="24" fill="#303a36">10 percent batch because of max_fail_percentage</text>
+  </g>
+
+  
+  <path d="M 1190 850 L 1190 886" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(820, 890)">
+    <rect width="740" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(24, 18)" stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="28" cy="18" r="10" />
+      <path d="M 12 48 C 12 36 20 32 28 32 C 36 32 44 36 44 48" stroke-linecap="round" />
+      <path d="M 36 14 L 42 20 L 52 10" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="96" y="50" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Strip</text>
+    <text x="24" y="92" font-family="sans-serif" font-size="24" fill="#303a36">resume the Slurm nodes in a separate,</text>
+    <text x="24" y="122" font-family="sans-serif" font-size="24" fill="#303a36">explicit play once validation has passed</text>
+  </g>
+
+  
+  <g transform="translate(40, 1080)">
+    <rect width="1520" height="65" rx="8" fill="#207448" />
+    <text x="760" y="42" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Apply in small batches and validate each node as it goes</text>
+  </g>
+</svg>

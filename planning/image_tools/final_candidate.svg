@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The GPU diagnostics CLI in four layers, with exit codes</title>
+  <desc>Architecture of the GPU diagnostics CLI showing four pipeline layers, data models, parser and rules details, exit codes table, test strip, and the separation takeaway.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The GPU diagnostics CLI in four layers, with exit codes</text>
+
+  <!-- Layer 1: cli.py -->
+  <rect x="40" y="95" width="860" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Icon: Terminal window outline (56px) -->
+  <g transform="translate(60, 130)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="48" height="38" rx="6" />
+    <line x1="4" y1="18" x2="52" y2="18" />
+    <polyline points="14 26 22 32 14 38" />
+    <line x1="26" y1="38" x2="38" y2="38" />
+  </g>
+  <text x="136" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="136" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">cli.py: </tspan>
+    <tspan font-weight="bold">Click group, output formatting</tspan>
+    <tspan x="136" dy="34">and exit codes</tspan>
+  </text>
+
+  <!-- Arrow 1: cli.py -> collect.py -->
+  <line x1="470" y1="220" x2="470" y2="265" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Layer 2: collect.py -->
+  <rect x="40" y="265" width="860" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Icon: Server host with network connection (56px) -->
+  <g transform="translate(60, 307)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="44" height="24" rx="4" />
+    <circle cx="16" cy="18" r="2.5" fill="#207448" />
+    <circle cx="26" cy="18" r="2.5" fill="#207448" />
+    <line x1="28" y1="30" x2="28" y2="44" />
+    <line x1="12" y1="44" x2="44" y2="44" />
+  </g>
+  <text x="136" y="312" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="136" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">collect.py: </tspan>
+    <tspan>per-host executor over SSH,</tspan>
+    <tspan x="136" dy="32">an agent or Redfish, with timeout</tspan>
+    <tspan x="136" dy="32">and bounded concurrency</tspan>
+  </text>
+
+  <!-- Arrow 2: collect.py -> parsers.py -->
+  <line x1="470" y1="405" x2="470" y2="450" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Layer 3: parsers.py (pure layer - orange) -->
+  <rect x="40" y="450" width="860" height="195" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <!-- Icon: Pure function / transform gear (56px) -->
+  <g transform="translate(60, 520)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="14" />
+    <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" />
+  </g>
+  <text x="136" y="495" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="136" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">parsers.py: </tspan>
+    <tspan>pure functions turning nvidia-smi</tspan>
+    <tspan x="136" dy="34">CSV and dcgmi output into frozen dataclasses</tspan>
+    <tspan x="136" dy="34">(a pure function answers from its inputs alone:</tspan>
+    <tspan x="136" dy="34">no network, no clock, no randomness)</tspan>
+  </text>
+
+  <!-- Arrow 3: parsers.py -> rules.py -->
+  <line x1="470" y1="645" x2="470" y2="705" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  <!-- Layer 4: rules.py (pure layer - orange) -->
+  <rect x="40" y="705" width="860" height="150" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <!-- Icon: Rule verification shield / checklist (56px) -->
+  <g transform="translate(60, 752)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 L 48 28 C 48 40 28 50 28 50 C 28 50 8 40 8 28 L 8 14 Z" />
+    <polyline points="18 26 25 33 38 18" />
+  </g>
+  <text x="136" y="770" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="136" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">rules.py: </tspan>
+    <tspan font-family="ui-monospace, monospace">evaluate(gpus, expected=8,</tspan>
+    <tspan x="136" dy="34" font-family="ui-monospace, monospace">max_temp=85)</tspan>
+  </text>
+
+  <!-- Exit code table container -->
+  <rect x="940" y="95" width="620" height="200" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <line x1="940" y1="145" x2="1560" y2="145" stroke="#c2dcd0" stroke-width="1.5" />
+  <line x1="940" y1="195" x2="1560" y2="195" stroke="#c2dcd0" stroke-width="1.5" />
+  <line x1="940" y1="245" x2="1560" y2="245" stroke="#c2dcd0" stroke-width="1.5" />
+  <text x="965" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">0 </tspan>all GPUs healthy
+  </text>
+  <text x="965" y="182" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">1 </tspan>usage or runtime failure
+  </text>
+  <text x="965" y="232" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">3 </tspan>any GPU unhealthy
+  </text>
+  <text x="965" y="282" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">4 </tspan>partial collection failure
+  </text>
+
+  <!-- models.py at the side -->
+  <rect x="940" y="336" width="620" height="94" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Icon: Dataclass cube / structure (56px) -->
+  <g transform="translate(958, 355)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="28 8 48 18 28 28 8 18" />
+    <polyline points="8 18 8 38 28 48 48 38 48 18" />
+    <line x1="28" y1="28" x2="28" y2="48" />
+  </g>
+  <text x="1030" y="378" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1030" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">models.py: </tspan>
+    <tspan x="1030" dy="30">dataclasses or pydantic models</tspan>
+  </text>
+
+  <!-- Parser detail -->
+  <rect x="940" y="470" width="620" height="230" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="965" y="514" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="965" dy="0">Gpu(index, name, temp_c, util_pct,</tspan>
+    <tspan x="965" dy="27">mem_used_mib, mem_total_mib,</tspan>
+    <tspan x="965" dy="27">ecc_uncorrected); _int maps empty,</tspan>
+    <tspan x="965" dy="27">[N/A] and [Not Supported] to None;</tspan>
+    <tspan x="965" dy="27">a line without exactly 7 columns</tspan>
+    <tspan x="965" dy="27">raises ValueError unexpected</tspan>
+    <tspan x="965" dy="27">nvidia-smi columns</tspan>
+  </text>
+
+  <!-- Rules detail -->
+  <rect x="940" y="740" width="620" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="965" y="782" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="965" dy="0">problems for: expected 8 GPUs but</tspan>
+    <tspan x="965" dy="28">found a different count; temp above 85;</tspan>
+    <tspan x="965" dy="28">uncorrected ECC non-zero; plus XID in</tspan>
+    <tspan x="965" dy="28">a set of known codes</tspan>
+  </text>
+
+  <!-- Test strip -->
+  <rect x="40" y="935" width="1520" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Icon: Test flask / runner (56px) -->
+  <g transform="translate(60, 967)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 8 L 34 8 M 28 8 L 28 20 L 44 44 A 4 4 0 0 1 40 50 L 16 50 A 4 4 0 0 1 12 44 L 28 20 Z" />
+    <line x1="20" y1="36" x2="36" y2="36" />
+  </g>
+  <text x="136" y="975" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="136" dy="0">canned CSV into parse_smi_csv and evaluate: [N/A] values, wrong column count,</tspan>
+    <tspan x="136" dy="28">empty output, missing GPU; then CliRunner with a stubbed executor asserting</tspan>
+    <tspan x="136" dy="28">exit codes and JSON shape</tspan>
+  </text>
+
+  <!-- Bottom takeaway bar -->
+  <rect x="40" y="1095" width="1520" height="65" rx="10" fill="#207448" />
+  <text x="800" y="1139" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Parser, rules, executor and CLI stay separate</text>
+
+</svg>

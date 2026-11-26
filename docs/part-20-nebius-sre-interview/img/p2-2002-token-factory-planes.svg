@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Control plane and regional data plane</title>
+  <desc>Architecture infographic illustrating the Token Factory control plane managing serverless and dedicated endpoints inside a regional data plane serving application requests.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="60" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Control plane and regional data plane</text>
+
+  
+  <rect x="60" y="560" width="230" height="260" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(147, 600)">
+    <rect x="0" y="0" width="56" height="44" rx="5" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3" />
+    <circle cx="10" cy="7" r="2.5" fill="#207448" />
+    <circle cx="19" cy="7" r="2.5" fill="#207448" />
+    <circle cx="28" cy="7" r="2.5" fill="#207448" />
+  </g>
+  <text x="175" y="720" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Application</text>
+
+  
+  <path d="M 290 690 L 550 690" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="420" y="640" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="420" dy="0">OpenAI-compatible</tspan>
+    <tspan x="420" dy="30">API request</tspan>
+  </text>
+
+  
+  <rect x="550" y="130" width="1000" height="840" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="585" y="175" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Token Factory</text>
+
+  
+  <rect x="580" y="200" width="940" height="190" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(620, 225)">
+    <circle cx="20" cy="20" r="9" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M20,4 L20,9 M20,31 L20,36 M4,20 L9,20 M31,20 L36,20 M8.7,8.7 L12.2,12.2 M27.8,27.8 L31.3,31.3 M8.7,31.3 L12.2,27.8 M27.8,12.2 L31.3,8.7" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="680" y="256" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Control plane</text>
+
+  
+  <g>
+    
+    <rect x="625" y="300" width="145" height="56" rx="28" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="697" y="336" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">create</text>
+
+    
+    <rect x="798" y="300" width="145" height="56" rx="28" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="870" y="336" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">update</text>
+
+    
+    <rect x="971" y="300" width="145" height="56" rx="28" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1043" y="336" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">enable</text>
+
+    
+    <rect x="1144" y="300" width="155" height="56" rx="28" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1221" y="336" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">disable</text>
+
+    
+    <rect x="1327" y="300" width="145" height="56" rx="28" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1399" y="336" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">delete</text>
+  </g>
+
+  
+  <path d="M 960 390 L 960 488" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+  <text x="985" y="448" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">manages endpoints</text>
+
+  
+  <rect x="580" y="490" width="940" height="455" rx="16" fill="#f8faf8" stroke="#db8129" stroke-width="4" />
+  
+  <g transform="translate(620, 510)">
+    <rect x="0" y="2" width="44" height="15" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="10" cy="9.5" r="2.5" fill="#207448" />
+    <line x1="28" y1="9.5" x2="36" y2="9.5" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <rect x="0" y="21" width="44" height="15" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="10" cy="28.5" r="2.5" fill="#207448" />
+    <line x1="28" y1="28.5" x2="36" y2="28.5" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="680" y="540" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Regional data plane (serves requests)</text>
+
+  
+  <rect x="615" y="575" width="375" height="340" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(774, 630)">
+    <path d="M12,28 C4,28 0,22 4,14 C6,8 14,6 20,9 C24,2 34,2 40,7 C48,6 54,12 52,18 C56,22 54,28 46,28 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <polygon points="28,24 23,34 29,34 25,44 35,32 29,32" fill="#207448" />
+  </g>
+  <text x="802" y="760" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="802" dy="0">Serverless</tspan>
+    <tspan x="802" dy="38">endpoint</tspan>
+  </text>
+
+  
+  <rect x="1020" y="575" width="475" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1040, 587)">
+    <rect x="8" y="8" width="34" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <rect x="16" y="16" width="18" height="18" rx="2" fill="#207448" />
+    <line x1="14" y1="2" x2="14" y2="8" stroke="#207448" stroke-width="3" />
+    <line x1="25" y1="2" x2="25" y2="8" stroke="#207448" stroke-width="3" />
+    <line x1="36" y1="2" x2="36" y2="8" stroke="#207448" stroke-width="3" />
+    <line x1="14" y1="42" x2="14" y2="48" stroke="#207448" stroke-width="3" />
+    <line x1="25" y1="42" x2="25" y2="48" stroke="#207448" stroke-width="3" />
+    <line x1="36" y1="42" x2="36" y2="48" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="1110" y="622" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Dedicated endpoint</text>
+
+  
+  <rect x="1020" y="670" width="475" height="245" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1048" cy="707" r="4" fill="#207448" />
+  <text x="1068" y="715" font-family="sans-serif" font-size="24" fill="#303a36">GPU type: L40, H100, H200, B200</text>
+
+  <circle cx="1048" cy="760" r="4" fill="#207448" />
+  <text x="1068" y="768" font-family="sans-serif" font-size="24" fill="#303a36">GPUs per replica</text>
+
+  <circle cx="1048" cy="813" r="4" fill="#207448" />
+  <text x="1068" y="821" font-family="sans-serif" font-size="24" fill="#303a36">Min and max replicas</text>
+
+  <circle cx="1048" cy="866" r="4" fill="#207448" />
+  <text x="1068" y="874" font-family="sans-serif" font-size="24" fill="#303a36">Region: EU or US</text>
+
+  
+  <rect x="60" y="1000" width="1490" height="55" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="95" cy="1027" r="14" fill="#207448" />
+  <text x="95" y="1034" text-anchor="middle" font-family="sans-serif" font-size="20" font-weight="bold" fill="#ffffff">i</text>
+  <text x="125" y="1036" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Region is a data-residency choice.</text>
+</svg>

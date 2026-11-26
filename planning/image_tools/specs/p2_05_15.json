@@ -1,0 +1,62 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p2-0515-default-deny-base",
+  "title": "Three policies make a namespace baseline",
+  "spec": "Three stacked cards in order, top to bottom, each with a number circle. Card 1 'Default deny all ingress and egress in a namespace' with a closed-door icon and the monospace name 'default-deny-all' and the note 'Denies everything'. Card 2 'Restore DNS' with a DNS icon and the note 'Lets pods resolve names again'. Card 3 'Allow traffic inside the namespace' with an open-door icon and the note 'Pods in the same namespace can talk'. Arrows from card 1 down to card 2 and card 3, labelled 'Applied to team-a'. A left side label 'Namespace: team-a'. Orange outline on card 1 as the policy that starts from closed. Bottom note: 'Each policy is a baseline you can apply to a namespace.'",
+  "anchor": "### Default-deny and baseline patterns",
+  "alt": "A namespace baseline of three NetworkPolicies: a default deny for all traffic, a DNS allowance and an allowance for traffic inside the namespace.",
+  "cap": "A namespace baseline has three NetworkPolicies: default deny for all ingress and egress, restored DNS, and traffic inside the namespace."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p2-0515-netfilter-hooks",
+  "title": "Where policy engines hook a packet, and conntrack replies",
+  "spec": "A horizontal path of five netfilter hook boxes in a row, labelled 'PREROUTING', 'FORWARD', 'INPUT', 'OUTPUT', 'POSTROUTING', with the note 'iptables and nftables use these hooks'. Above the row a pod box on the left with a veth icon labelled 'Pod egress is caught on the host-side veth' and a pod on the right labelled 'Pod ingress is caught when delivered to the veth'. Below the row a conntrack table box with rows of connection entries, each row listing a pair of addresses and ports, with an arrow from the table back to the FORWARD box labelled 'ESTABLISHED,RELATED matches, replies pass'. Orange outline on the conntrack table as the stateful check. A note under it: 'A reply is matched against the open-connection list first, so the policy is not read again.'",
+  "anchor": "### Netfilter basics and conntrack",
+  "alt": "Policy engines hook packets at netfilter points such as PREROUTING and FORWARD, while conntrack lets established replies pass without the policy being read again.",
+  "cap": "Netfilter hooks catch pod traffic, and conntrack lets replies match ESTABLISHED and RELATED without a second policy check."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p2-0515-cilium-identity",
+  "title": "Cilium policy by identity, not by IP address",
+  "spec": "Left to right. Left: a pod card 'Pod labels: app, tier' with an arrow labelled 'Turned into an identity once' to a number chip 'Identity number' (a number, not an IP address). Middle: a policy map box titled 'cilium_policy map (per endpoint)' with a table of rows keyed by identity, port, protocol and direction, each with a green allow or grey deny flag. One row highlighted 'identity, port 8000, TCP, ingress: allow'. An arrow from the map labelled 'Can redirect to Envoy for L7'. Right: a dashed box labelled 'ipcache lookup' for the destination identity, with arrows from the egress program to the ipcache and to the receiver's ingress check. Orange outline on the identity chip as the key idea. Bottom note: 'This identity may reach that port reads the same way on every node.'",
+  "anchor": "### Cilium (eBPF)",
+  "alt": "Cilium turns pod labels into an identity number, and the per-endpoint policy map is keyed by identity, port, protocol and direction.",
+  "cap": "Cilium turns labels into an identity number, and each endpoint's policy map is keyed by that identity, port, protocol and direction."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p2-0515-admin-bookends",
+  "title": "Admin policy at the front, baseline at the back",
+  "spec": "A horizontal evaluation bar of three segments, left to right: 'AdminNetworkPolicy: runs first, Allow, Deny or Pass by priority', then 'NetworkPolicy: the namespace owner's policy', then 'BaselineAdminNetworkPolicy: default posture for traffic no namespace policy claims'. The left end is a fence icon labelled 'Guardrail tenants cannot override'. The right end is a sofa-like default icon labelled 'Default, not a wall'. A traffic arrow enters from the left and exits at the right, with a small branch from the NetworkPolicy segment labelled 'A team can still open a port here'. Under the bar a monospace example: 'Deny egress to the Internet unless allowed'. Orange outline on the AdminNetworkPolicy segment as the fence. Caption: 'Admin policy and baseline are bookends around namespace policy.'",
+  "anchor": "### Admin and baseline network policies",
+  "alt": "AdminNetworkPolicy is evaluated before namespace NetworkPolicies and BaselineAdminNetworkPolicy after them, as bookends around tenant policy.",
+  "cap": "AdminNetworkPolicy is evaluated before namespace NetworkPolicies, and BaselineAdminNetworkPolicy after them as the default posture."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p2-0515-zone-stance",
+  "title": "Each platform zone gets its own network stance",
+  "spec": "A grid of six zone cards arranged in two rows of three. Each card has a zone name as a header and two lines: 'Examples' and 'Stance'. Card 'Edge': examples 'Ingress or Gateway, auth proxy'; stance 'Ingress from LB or Internet on 443; egress to tenant model namespaces only'. Card 'Serving': examples 'vLLM, Triton, gateways'; stance 'Ingress only from the gateway namespace; no pod-to-pod across tenants'. Card 'Training': examples 'Jobs, operators, launcher pods'; stance 'Intra-job traffic allowed within the job label; deny other tenants'. Card 'Data services': examples 'Vector DB, feature store, MLflow'; stance 'Ingress from approved client namespaces; egress limited'. Card 'Platform and system': examples 'kube-system, monitoring, GPU operator, Argo CD'; stance 'Controlled interactions only'. Card 'Interactive': examples 'Notebooks (JupyterHub)'; stance 'Egress allow-list, no cloud metadata, time-limited'. Orange outline on the Serving card as the gateway-only zone. Caption: 'Not every zone of the cluster deserves the same policy.'",
+  "anchor": "## 5. Policy design for a multi-tenant GPU platform",
+  "alt": "Six platform zones, from edge and serving to training and notebooks, each with the network policy stance for its workloads.",
+  "cap": "Six platform zones on a multi-tenant GPU cluster each take a different network policy stance, from gateway-only ingress to restricted notebook egress."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "15",
+  "name": "p2-0515-predict-test",
+  "title": "Define, locate, predict, then test the flow",
+  "spec": "A five-step horizontal flow with numbered circles, left to right. Step 1 'Define the flow: source pod, destination pod or IP, port, direction'. Step 2 'Find the applicable policies at both ends'. Step 3 'Predict the result before you run anything'. Step 4 'Test it'. Step 5 'If the prediction and test disagree, the mental model is wrong'. Under steps 1 to 4 a worked example card: 'Tester pod in edge to vLLM pod in serving, TCP port 8000. Prediction: tester is not on the list, so it is dropped.' A command chip in monospace under step 2: 'kubectl get netpol -n serving -o wide'. Orange outline on step 3 as the step most people skip. A loop arrow from step 5 back to step 2 labelled 'Revise and test again'.",
+  "anchor": "## 6. Testing and debugging",
+  "alt": "A method for testing a network flow: define it, locate the policies at both ends, predict the result, run the test and compare.",
+  "cap": "To test a network flow, define it, locate the policies at both ends, predict the result, then test and compare the two."
+ }
+]

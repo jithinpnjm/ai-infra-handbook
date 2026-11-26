@@ -1,0 +1,128 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Why not Docker on compute nodes</title>
+  <desc>Visual workflow diagram showing container lifecycle in HPC and AI clusters using Enroot and Pyxis instead of Docker on compute nodes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  
+  <text x="80" y="80" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why not Docker on compute nodes</text>
+
+  
+  
+  <line x1="760" y1="245" x2="840" y2="245" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1180 350 L 1180 388 Q 1180 398 1170 398 L 430 398 Q 420 398 420 408 L 420 445" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <line x1="760" y1="550" x2="840" y2="550" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1180 655 L 1180 692 Q 1180 702 1170 702 L 810 702 Q 800 702 800 712 L 800 750" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <g id="node-1">
+    <rect x="80" y="140" width="680" height="210" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="126" cy="185" r="22" fill="#207448" />
+    <text x="126" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g transform="translate(700, 185)">
+      <rect x="-24" y="-22" width="48" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="-16" cy="-12" r="2.5" fill="#207448" />
+      <line x1="-7" y1="-12" x2="16" y2="-12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <rect x="-24" y="2" width="48" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="-16" cy="12" r="2.5" fill="#207448" />
+      <line x1="-7" y1="12" x2="16" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    
+    <text x="115" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Registry / docker-registry-proxy</text>
+    <text x="115" y="310" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">nvcr.io#nvidia/pytorch:24.07-py3</text>
+  </g>
+
+  
+  <g id="node-2">
+    <rect x="840" y="140" width="680" height="210" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="886" cy="185" r="22" fill="#207448" />
+    <text x="886" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g transform="translate(1460, 185)">
+      <ellipse cx="0" cy="-15" rx="24" ry="9" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M -24 -15 V 15 C -24 20 -11 24 0 24 C 11 24 24 20 24 15 V -15" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M -24 0 C -24 5 -11 9 0 9 C 11 9 24 5 24 0" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    
+    <text x="875" y="260" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">enroot import -&gt; .sqsh</text>
+    <text x="875" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Single Squashfs on Shared FS</text>
+  </g>
+
+  
+  <g id="node-3">
+    <rect x="80" y="445" width="680" height="210" rx="16" ry="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5" />
+    
+    <circle cx="126" cy="490" r="22" fill="#db8129" />
+    <text x="126" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <g transform="translate(700, 490)">
+      <circle cx="0" cy="0" r="8" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <circle cx="0" cy="0" r="18" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <path d="M -4 -25 h 8 v 7 h -8 z M -4 18 h 8 v 7 h -8 z M -25 -4 v 8 h 7 v -8 z M 18 -4 v 8 h 7 v -8 z M -18 -18 l 5.6 5.6 l -5 5 l -5.6 -5.6 z M 13 13 l 5.6 5.6 l -5 5 l -5.6 -5.6 z M 13 -18 l 5.6 -5.6 l 5 5 l -5.6 5.6 z M -18 13 l -5.6 5.6 l 5 5 l 5.6 -5.6 z" fill="#db8129" />
+    </g>
+    
+    <text x="115" y="565" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="30" font-weight="bold" fill="#303a36">srun --container-image=...</text>
+    <text x="115" y="615" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Pyxis SPANK Plugin in slurmstepd</text>
+  </g>
+
+  
+  <g id="node-4">
+    <rect x="840" y="445" width="680" height="210" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="886" cy="490" r="22" fill="#207448" />
+    <text x="886" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <g transform="translate(1460, 490)">
+      <path d="M 0 -24 L 22 -14 C 22 8 13 20 0 25 C -13 20 -22 8 -22 -14 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <circle cx="0" cy="-3" r="4.5" fill="none" stroke="#207448" stroke-width="2.5" />
+      <path d="M -2 1 L 2 1 L 3 9 L -3 9 Z" fill="#207448" />
+    </g>
+    
+    <text x="875" y="565" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">ENROOT_DATA_PATH (Local NVMe)</text>
+    <text x="875" y="615" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">User Namespace + chroot + cgroup</text>
+  </g>
+
+  
+  <g id="node-5">
+    <rect x="420" y="750" width="760" height="210" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="466" cy="795" r="22" fill="#207448" />
+    <text x="466" y="795" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+    
+    <g transform="translate(1124, 795)">
+      <rect x="-22" y="-22" width="44" height="44" rx="5" fill="none" stroke="#207448" stroke-width="3.5" />
+      <rect x="-12" y="-12" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+      <line x1="-14" y1="-22" x2="-14" y2="-28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="0" y1="-22" x2="0" y2="-28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="-22" x2="14" y2="-28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="-14" y1="22" x2="-14" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="0" y1="22" x2="0" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="22" x2="14" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="-22" y1="-14" x2="-28" y2="-14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="-22" y1="0" x2="-28" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="-22" y1="14" x2="-28" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="22" y1="-14" x2="28" y2="-14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="22" y1="0" x2="28" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="22" y1="14" x2="28" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    
+    <text x="455" y="870" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hooks: 98-nvidia.sh, 99-mellanox.sh</text>
+    <text x="455" y="920" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">50-slurm-pmi.sh, 50-slurm-pytorch.sh</text>
+  </g>
+</svg>

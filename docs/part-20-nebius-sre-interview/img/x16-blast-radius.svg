@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Four defences stop automation from draining the fleet, and the breaker freezes it</title>
+  <desc>Infographic illustrating four safety defences against fleet draining automation and circuit breaker activation during a node failure storm.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="2" refY="6" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M 11 2 L 2 6 L 11 10 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-dark" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#303a36" />
+    </marker>
+    <filter id="shadow" x="-3%" y="-3%" width="106%" height="106%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#153623" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four defences stop automation from draining the fleet, <tspan x="800" dy="55">and the breaker freezes it</tspan></text>
+
+  
+  
+  <rect x="50" y="160" width="690" height="775" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" filter="url(#shadow)"/>
+
+  
+  <rect x="50" y="160" width="16" height="775" rx="8" fill="#db8129"/>
+
+  
+  <line x1="400" y1="172" x2="400" y2="225" stroke="#303a36" stroke-width="3.5" marker-end="url(#arrow-dark)"/>
+  <text x="420" y="206" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">flagged node</text>
+
+  
+  <rect x="135" y="235" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#shadow)"/>
+  
+  <g transform="translate(155, 260)">
+    <path d="M 10 8 L 30 0 L 50 8 C 50 32 30 52 30 52 C 30 52 10 32 10 8 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 22 26 L 28 32 L 39 19" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="230" y="280" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fleet budget, <tspan x="230" dy="36" font-size="24" font-weight="normal" fill="#404a46">5 percent of nodes</tspan></text>
+
+  
+  <line x1="400" y1="345" x2="400" y2="375" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="135" y="385" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#shadow)"/>
+  
+  <g transform="translate(155, 412)">
+    <rect x="12" y="20" width="36" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 20 20 L 20 12 C 20 6 40 6 40 12 L 40 20" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="30" cy="32" r="3" fill="#207448"/>
+    <line x1="30" y1="35" x2="30" y2="41" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="230" y="430" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Failure domain cap, <tspan x="230" dy="36" font-size="24" font-weight="normal" fill="#404a46">one node per rack</tspan></text>
+
+  
+  <line x1="400" y1="495" x2="400" y2="525" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="135" y="535" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#shadow)"/>
+  
+  <g transform="translate(155, 562)">
+    <circle cx="30" cy="26" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="30,12 30,26 42,26" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="230" y="580" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hourly rate, <tspan x="230" dy="36" font-size="24" font-weight="normal" fill="#404a46">four drains per hour</tspan></text>
+
+  
+  <line x1="400" y1="645" x2="400" y2="675" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="135" y="685" width="560" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#shadow)"/>
+  
+  <g transform="translate(155, 722)">
+    <path d="M 10 8 L 30 0 L 50 8 C 50 32 30 52 30 52 C 30 52 10 32 10 8 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <polygon points="32,10 21,28 30,28 27,44 41,24 32,24" fill="#207448"/>
+  </g>
+  <text x="230" y="722" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Circuit breaker, <tspan x="230" dy="36" font-size="24" font-weight="normal" fill="#404a46">six flagged nodes within ten </tspan><tspan x="230" dy="32" font-size="24" font-weight="normal" fill="#404a46">minutes freezes everything</tspan></text>
+
+  
+  
+  <path d="M 430 820 L 430 872 L 518 872" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <rect x="530" y="844" width="165" height="56" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="612" y="880" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">granted</text>
+
+  
+  <path d="M 370 820 L 370 872 L 262 872" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+  <rect x="75" y="844" width="175" height="56" rx="10" fill="#fdf4eb" stroke="#db8129" stroke-width="3"/>
+  <text x="162" y="880" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">to a human</text>
+
+
+  
+  
+  <rect x="780" y="160" width="770" height="775" rx="16" fill="#ffffff" stroke="#d0ded3" stroke-width="2" filter="url(#shadow)"/>
+
+  
+  <line x1="820" y1="205" x2="820" y2="895" stroke="#d0ded3" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <circle cx="820" cy="225" r="10" fill="#207448"/>
+  <rect x="850" y="185" width="675" height="80" rx="10" fill="#eaf5ed" stroke="#207448" stroke-width="2"/>
+  <text x="880" y="234" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">t=0s n000 cordoned</text>
+
+  
+  <circle cx="820" cy="315" r="10" fill="#207448"/>
+  <rect x="850" y="275" width="675" height="80" rx="10" fill="#eaf5ed" stroke="#207448" stroke-width="2"/>
+  <text x="880" y="324" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">t=60s n017 cordoned</text>
+
+  
+  <circle cx="820" cy="405" r="10" fill="#207448"/>
+  <rect x="850" y="365" width="675" height="80" rx="10" fill="#eaf5ed" stroke="#207448" stroke-width="2"/>
+  <text x="880" y="414" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">t=120s n034 cordoned</text>
+
+  
+  <circle cx="820" cy="495" r="10" fill="#207448"/>
+  <rect x="850" y="455" width="675" height="80" rx="10" fill="#eaf5ed" stroke="#207448" stroke-width="2"/>
+  <text x="880" y="504" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">t=180s n051 cordoned</text>
+
+  
+  <circle cx="820" cy="585" r="10" fill="#8a9690"/>
+  <rect x="850" y="545" width="675" height="80" rx="10" fill="#f2f4f3" stroke="#8a9690" stroke-width="2"/>
+  <text x="880" y="594" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">t=240s n068 suspect, hourly rate exhausted</text>
+
+  
+  <circle cx="820" cy="675" r="12" fill="#db8129"/>
+  <rect x="850" y="635" width="675" height="80" rx="10" fill="#fdf4eb" stroke="#db8129" stroke-width="3"/>
+  <text x="880" y="684" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">t=300s n085 suspect, frozen many nodes flagged</text>
+
+  
+  <circle cx="820" cy="765" r="10" fill="#8a9690"/>
+  <rect x="850" y="725" width="675" height="80" rx="10" fill="#f2f4f3" stroke="#8a9690" stroke-width="2"/>
+  <text x="880" y="774" font-family="sans-serif" font-size="26" font-weight="bold" fill="#5a6660">t=360s n102 suspect, frozen</text>
+
+  
+  <rect x="850" y="825" width="675" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="1187" y="874" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">frozen True, serving 196 of 200</text>
+
+
+  
+  <rect x="50" y="960" width="1500" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="1007" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Automation may act freely on small, rare events, and must hand over to a person when the scale surprises it.</text>
+
+</svg>

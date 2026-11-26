@@ -1,0 +1,261 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The core ideas</title>
+  <desc>Decision tree flowchart for core algorithmic patterns and problem-solving strategies.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="54" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The core ideas</text>
+
+  
+
+  
+  <line x1="410" y1="180" x2="410" y2="228" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="760" y1="273" x2="900" y2="273" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="830" y="261" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <line x1="410" y1="318" x2="410" y2="366" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="426" y="348" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <line x1="760" y1="411" x2="900" y2="411" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="830" y="399" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <line x1="410" y1="456" x2="410" y2="504" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="426" y="486" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <line x1="760" y1="549" x2="900" y2="549" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="830" y="537" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <line x1="410" y1="594" x2="410" y2="642" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="426" y="624" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <line x1="760" y1="687" x2="900" y2="687" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="830" y="675" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <line x1="410" y1="732" x2="410" y2="780" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="426" y="762" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <line x1="760" y1="825" x2="900" y2="825" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="830" y="813" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <line x1="410" y1="870" x2="410" y2="918" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="426" y="900" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+  
+  <line x1="760" y1="963" x2="900" y2="963" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="830" y="951" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+  <line x1="410" y1="1008" x2="410" y2="1056" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="426" y="1038" text-anchor="start" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">no</text>
+
+
+  
+
+  
+  <g>
+    <rect x="60" y="90" width="700" height="90" rx="14" fill="#fff8f0" stroke="#db8129" stroke-width="4" />
+    
+    <rect x="88" y="112" width="30" height="44" rx="4" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <line x1="96" y1="124" x2="110" y2="124" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="96" y1="134" x2="110" y2="134" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <line x1="96" y1="144" x2="105" y2="144" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    <circle cx="124" cy="140" r="12" fill="#fff8f0" stroke="#db8129" stroke-width="3.5" />
+    <line x1="133" y1="149" x2="143" y2="159" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="165" y="146" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Read the problem</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="228" width="700" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    
+    <circle cx="104" cy="273" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="124" cy="273" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+    
+    <text x="165" y="284" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Counting or grouping?</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="366" width="700" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    
+    <rect x="86" y="401" width="56" height="20" rx="4" fill="none" stroke="#207448" stroke-width="2.5" stroke-dasharray="3 3" />
+    <rect x="98" y="396" width="30" height="30" rx="4" fill="#207448" fill-opacity="0.2" stroke="#207448" stroke-width="3.5" />
+    
+    <text x="165" y="422" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Contiguous range of a stream?</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="504" width="700" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    
+    <rect x="107" y="527" width="14" height="44" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="91" y="540" width="14" height="31" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="123" y="550" width="14" height="21" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="114" cy="520" r="3" fill="#207448" />
+    
+    <text x="165" y="543" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Best k, or merge</tspan>
+      <tspan x="165" dy="34">sorted inputs?</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="642" width="700" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    
+    <line x1="88" y1="710" x2="140" y2="710" stroke="#207448" stroke-width="2.5" />
+    <rect x="90" y="666" width="32" height="13" rx="3" fill="#207448" fill-opacity="0.25" stroke="#207448" stroke-width="3" />
+    <rect x="106" y="685" width="32" height="13" rx="3" fill="#207448" fill-opacity="0.25" stroke="#207448" stroke-width="3" />
+    <line x1="106" y1="660" x2="106" y2="705" stroke="#207448" stroke-width="2" stroke-dasharray="2 2" />
+    
+    <text x="165" y="698" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Time ranges overlap?</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="780" width="700" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    
+    <circle cx="96" cy="807" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="132" cy="807" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="114" cy="843" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="104" y1="807" x2="123" y2="807" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    <line x1="101" y1="814" x2="109" y2="834" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+    
+    <text x="165" y="836" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Things depend on things?</text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="918" width="700" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    
+    <line x1="88" y1="982" x2="140" y2="982" stroke="#207448" stroke-width="2.5" />
+    <line x1="88" y1="938" x2="88" y2="982" stroke="#207448" stroke-width="2.5" />
+    <path d="M 90 972 L 112 972 L 112 946 L 138 946" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="112" cy="959" r="4" fill="#207448" />
+    
+    <text x="165" y="957" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">Is there a yes/no check</tspan>
+      <tspan x="165" dy="34">that flips once?</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="60" y="1056" width="700" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <circle cx="114" cy="1101" r="22" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="114" cy="1101" r="11" fill="none" stroke="#207448" stroke-width="2.5" />
+    <line x1="114" y1="1079" x2="114" y2="1090" stroke="#207448" stroke-width="2.5" />
+    <line x1="114" y1="1112" x2="114" y2="1123" stroke="#207448" stroke-width="2.5" />
+    <line x1="92" y1="1101" x2="103" y2="1101" stroke="#207448" stroke-width="2.5" />
+    <line x1="125" y1="1101" x2="136" y2="1101" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="165" y="1095" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">State and cost model:</tspan>
+      <tspan x="165" dy="34">cache, limiter, ring</tspan>
+    </text>
+  </g>
+
+
+  
+
+  
+  <g>
+    <rect x="900" y="228" width="640" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <rect x="926" y="250" width="48" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="946" y1="250" x2="946" y2="296" stroke="#207448" stroke-width="3" />
+    <line x1="926" y1="265" x2="974" y2="265" stroke="#207448" stroke-width="2.5" />
+    <line x1="926" y1="281" x2="974" y2="281" stroke="#207448" stroke-width="2.5" />
+    <circle cx="936" cy="258" r="2.5" fill="#207448" />
+    <circle cx="960" cy="258" r="2.5" fill="#207448" />
+    <circle cx="936" cy="273" r="2.5" fill="#207448" />
+    <circle cx="960" cy="273" r="2.5" fill="#207448" />
+    <circle cx="936" cy="289" r="2.5" fill="#207448" />
+    <circle cx="960" cy="289" r="2.5" fill="#207448" />
+    
+    <text x="1005" y="284" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hash map</text>
+  </g>
+
+  
+  <g>
+    <rect x="900" y="366" width="640" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <rect x="928" y="388" width="44" height="26" rx="4" fill="#207448" fill-opacity="0.2" stroke="#207448" stroke-width="3.5" />
+    <line x1="936" y1="432" x2="936" y2="418" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <line x1="964" y1="432" x2="964" y2="418" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    
+    <text x="1005" y="405" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Sliding window /</tspan>
+      <tspan x="1005" dy="34">two pointers</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="900" y="504" width="640" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <circle cx="950" cy="527" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="934" cy="565" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="966" cy="565" r="7" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="945" y1="533" x2="938" y2="558" stroke="#207448" stroke-width="3" />
+    <line x1="955" y1="533" x2="962" y2="558" stroke="#207448" stroke-width="3" />
+    
+    <text x="1005" y="560" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Heap</text>
+  </g>
+
+  
+  <g>
+    <rect x="900" y="642" width="640" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <rect x="926" y="694" width="8" height="18" fill="#207448" fill-opacity="0.3" stroke="#207448" stroke-width="2" />
+    <rect x="938" y="684" width="8" height="28" fill="#207448" fill-opacity="0.3" stroke="#207448" stroke-width="2" />
+    <rect x="950" y="674" width="8" height="38" fill="#207448" fill-opacity="0.3" stroke="#207448" stroke-width="2" />
+    <rect x="962" y="664" width="8" height="48" fill="#207448" fill-opacity="0.3" stroke="#207448" stroke-width="2" />
+    <line x1="947" y1="656" x2="947" y2="718" stroke="#207448" stroke-width="3" stroke-dasharray="3 3" />
+    
+    <text x="1005" y="698" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Sort then sweep</text>
+  </g>
+
+  
+  <g>
+    <rect x="900" y="780" width="640" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <circle cx="934" cy="807" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="966" cy="807" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="934" cy="843" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="966" cy="843" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="940" y1="807" x2="960" y2="807" stroke="#207448" stroke-width="2.5" />
+    <line x1="934" y1="813" x2="934" y2="837" stroke="#207448" stroke-width="2.5" />
+    <line x1="938" y1="812" x2="962" y2="838" stroke="#207448" stroke-width="2.5" />
+    <line x1="940" y1="843" x2="960" y2="843" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="1005" y="819" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Graph: topo sort,</tspan>
+      <tspan x="1005" dy="34">BFS, union-find</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="900" y="918" width="640" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3.5" />
+    
+    <rect x="926" y="955" width="48" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="950" y1="950" x2="950" y2="976" stroke="#207448" stroke-width="3" />
+    <line x1="950" y1="936" x2="950" y2="948" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    
+    <text x="1005" y="957" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1005" dy="0">Binary search</tspan>
+      <tspan x="1005" dy="34">on the answer</tspan>
+    </text>
+  </g>
+
+</svg>

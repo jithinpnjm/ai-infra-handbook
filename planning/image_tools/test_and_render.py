@@ -1,0 +1,131 @@
+import asyncio
+from playwright.async_api import async_playwright
+import os
+import test_streaming_trace_audit
+
+svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Tracing a streaming request</title>
+  <desc>Visual flowchart of distributed tracing for an LLM streaming request across Client, Gateway span, Router span, and Engine span showing traceparent propagation and first_token event.</desc>
+
+  <defs>
+    <!-- Arrowhead Green (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <!-- Arrowhead Orange (18px) -->
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Tracing a streaming request</text>
+
+  <!-- ==================== FLOW ARROWS ==================== -->
+
+  <!-- Arrow 1: Client to Gateway span with traceparent -->
+  <line x1="220" y1="500" x2="438" y2="500" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="330" y="455" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">traceparent</text>
+
+  <!-- Arrow 2: Gateway span to Router span -->
+  <line x1="740" y1="500" x2="798" y2="500" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 3: Router span to Engine span -->
+  <line x1="1100" y1="500" x2="1158" y2="500" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 4: Gateway loopback event: first_token (Orange) -->
+  <path d="M 520 320 C 520 205, 660 205, 660 318" stroke="#db8129" stroke-width="4" stroke-dasharray="8,6" fill="none" marker-end="url(#arrow-orange)" />
+  <rect x="445" y="138" width="290" height="46" rx="8" fill="#fffaf3" stroke="#db8129" stroke-width="2" />
+  <text x="590" y="170" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">event: first_token</text>
+
+  <!-- ==================== NODE 1: Client ==================== -->
+  <g id="node-client">
+    <rect x="40" y="320" width="180" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Window / App Outline Icon (56px) -->
+    <g transform="translate(102, 360)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="40" rx="4" />
+      <line x1="4" y1="18" x2="52" y2="18" stroke-width="3" />
+      <circle cx="12" cy="12" r="2" fill="#207448" stroke="none" />
+      <circle cx="18" cy="12" r="2" fill="#207448" stroke="none" />
+      <circle cx="24" cy="12" r="2" fill="#207448" stroke="none" />
+    </g>
+    <text x="130" y="470" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Client</text>
+  </g>
+
+  <!-- ==================== NODE 2: Gateway span ==================== -->
+  <g id="node-gateway">
+    <rect x="440" y="320" width="300" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Gateway Portal Outline Icon (56px) -->
+    <g transform="translate(562, 360)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="5" />
+      <path d="M 18 48 L 18 28 A 10 10 0 0 1 38 28 L 38 48" />
+      <circle cx="28" cy="18" r="3" fill="#207448" stroke="none" />
+    </g>
+    <text x="590" y="470" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Gateway span</text>
+    <rect x="480" y="520" width="220" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="590" y="554" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">whole stream</text>
+  </g>
+
+  <!-- ==================== NODE 3: Router span ==================== -->
+  <g id="node-router">
+    <rect x="800" y="320" width="300" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Router / Dispatcher Outline Icon (56px) -->
+    <g transform="translate(922, 360)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="28" y1="14" x2="28" y2="42" />
+      <line x1="14" y1="28" x2="42" y2="28" />
+      <polyline points="24,18 28,14 32,18" />
+      <polyline points="24,38 28,42 32,38" />
+      <polyline points="18,24 14,28 18,32" />
+      <polyline points="38,24 42,28 38,32" />
+    </g>
+    <text x="950" y="470" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Router span</text>
+    <rect x="840" y="520" width="220" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="950" y="554" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">pick replica</text>
+  </g>
+
+  <!-- ==================== NODE 4: Engine span ==================== -->
+  <g id="node-engine">
+    <rect x="1160" y="320" width="390" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Engine / Chip Outline Icon (56px) -->
+    <g transform="translate(1327, 360)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="#e8f1ea" stroke-width="3" />
+      <line x1="18" y1="4" x2="18" y2="10" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="38" y1="4" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="52" />
+      <line x1="28" y1="46" x2="28" y2="52" />
+      <line x1="38" y1="46" x2="38" y2="52" />
+      <line x1="4" y1="18" x2="10" y2="18" />
+      <line x1="4" y1="28" x2="10" y2="28" />
+      <line x1="4" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="52" y2="18" />
+      <line x1="46" y1="28" x2="52" y2="28" />
+      <line x1="46" y1="38" x2="52" y2="38" />
+    </g>
+    <text x="1355" y="470" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Engine span</text>
+    <rect x="1178" y="520" width="354" height="52" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1355" y="554" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">queue, prefill, decode</text>
+  </g>
+</svg>'''
+
+with open("candidate_streaming_trace.svg", "w") as f:
+    f.write(svg_content)
+
+test_streaming_trace_audit.audit_svg(svg_content)
+
+async def render():
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page(viewport={"width": 1600, "height": 900})
+        svg_url = f"file://{os.path.abspath('candidate_streaming_trace.svg')}"
+        await page.goto(svg_url)
+        await page.screenshot(path="candidate_rendered2.png")
+        await browser.close()
+        print("Rendered successfully to candidate_rendered2.png")
+
+asyncio.run(render())

@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which Slurm variables exist where</title>
+  <desc>Which Slurm variables exist where</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Which Slurm variables exist where</text>
+
+  
+  <rect x="40" y="110" width="880" height="730" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="65" y="132" width="56" height="46" rx="6"/>
+    <line x1="65" y1="147" x2="121" y2="147" stroke-width="3"/>
+    <polyline points="75,160 83,166 75,172" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="89" y1="172" x2="101" y2="172" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="135" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Batch shell (runs on the first node only)</text>
+
+  
+  <rect x="65" y="200" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="85" y="236" font-family="monospace" font-size="24" fill="#303a36">SLURM_JOB_ID</text>
+
+  <rect x="495" y="200" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="515" y="236" font-family="monospace" font-size="24" fill="#303a36">SLURM_JOB_NAME</text>
+
+  
+  <rect x="65" y="270" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="85" y="306" font-family="monospace" font-size="24" fill="#303a36">SLURM_JOB_PARTITION</text>
+
+  <rect x="495" y="270" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="515" y="306" font-family="monospace" font-size="24" fill="#303a36">SLURM_SUBMIT_DIR</text>
+
+  
+  <rect x="65" y="340" width="830" height="155" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="85" y="375" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">SLURM_JOB_NODELIST and SLURM_JOB_NUM_NODES</tspan>
+    <tspan x="85" dy="34" font-family="sans-serif">(the nodelist is compressed like gpu[01-04];</tspan>
+    <tspan x="85" dy="34">expand with <tspan font-family="monospace">scontrol show hostnames</tspan></tspan>
+    <tspan x="85" dy="34" font-family="monospace">$SLURM_JOB_NODELIST)</tspan>
+  </text>
+
+  
+  <rect x="65" y="510" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="85" y="546" font-family="monospace" font-size="24" fill="#303a36">SLURM_NTASKS</text>
+
+  <rect x="495" y="510" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="515" y="546" font-family="monospace" font-size="24" fill="#303a36">SLURM_NTASKS_PER_NODE</text>
+
+  
+  <rect x="65" y="580" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="85" y="616" font-family="monospace" font-size="24" fill="#303a36">SLURM_CPUS_PER_TASK</text>
+
+  <rect x="495" y="580" width="400" height="55" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="515" y="616" font-family="monospace" font-size="24" fill="#303a36">SLURM_MEM_PER_NODE</text>
+
+  
+  <rect x="65" y="650" width="830" height="165" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="85" y="700" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0"><tspan font-family="monospace">SLURM_NODEID</tspan> equal to 0 because it runs on the</tspan>
+    <tspan x="85" dy="38">first node; no task rank of its own</tspan>
+  </text>
+
+  
+  <rect x="960" y="110" width="600" height="330" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <circle cx="1013" cy="158" r="16"/>
+    <circle cx="1013" cy="158" r="6"/>
+    <line x1="1013" y1="136" x2="1013" y2="142"/>
+    <line x1="1013" y1="174" x2="1013" y2="180"/>
+    <line x1="991" y1="158" x2="997" y2="158"/>
+    <line x1="1029" y1="158" x2="1035" y2="158"/>
+    <line x1="997" y1="142" x2="1002" y2="147"/>
+    <line x1="1024" y1="169" x2="1029" y2="174"/>
+    <line x1="997" y1="174" x2="1002" y2="169"/>
+    <line x1="1024" y1="147" x2="1029" y2="142"/>
+  </g>
+
+  
+  <text x="1055" y="152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1055" dy="0">Inside tasks</tspan>
+    <tspan x="1055" dy="36">launched by srun</tspan>
+  </text>
+
+  
+  <rect x="985" y="205" width="550" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="1005" y="246" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">SLURM_PROCID</tspan> global rank</text>
+
+  <rect x="985" y="280" width="550" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="1005" y="321" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">SLURM_LOCALID</tspan> node-local rank</text>
+
+  <rect x="985" y="355" width="550" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1"/>
+  <text x="1005" y="396" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">SLURM_NODEID</tspan> node index</text>
+
+  
+  <rect x="960" y="480" width="600" height="360" rx="12" fill="#fffdfa" stroke="#db8129" stroke-width="3"/>
+
+  
+  <g stroke="#db8129" stroke-width="4" fill="none">
+    <polygon points="1013,510 1039,556 987,556" stroke-linejoin="round"/>
+    <line x1="1013" y1="527" x2="1013" y2="541" stroke-linecap="round"/>
+    <circle cx="1013" cy="549" r="2.5" fill="#db8129"/>
+  </g>
+
+  
+  <text x="985" y="590" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="985" dy="0">a script that works by hand inside</tspan>
+    <tspan x="985" dy="36">salloc but gets an empty rank in a</tspan>
+    <tspan x="985" dy="36">batch job: <tspan font-family="monospace">SLURM_PROCID</tspan> and its</tspan>
+    <tspan x="985" dy="36">relatives exist only inside</tspan>
+    <tspan x="985" dy="36">srun-launched tasks, not in</tspan>
+    <tspan x="985" dy="36">the batch shell</tspan>
+  </text>
+
+  
+  <rect x="40" y="880" width="480" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="65" y="905" width="48" height="48" rx="6"/>
+    <line x1="65" y1="921" x2="113" y2="921"/>
+    <line x1="65" y1="937" x2="113" y2="937"/>
+    <line x1="81" y1="905" x2="81" y2="953"/>
+    <line x1="97" y1="905" x2="97" y2="953"/>
+  </g>
+
+  
+  <text x="65" y="995" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="65" dy="0">SLURM_ARRAY_JOB_ID,</tspan>
+    <tspan x="65" dy="36">SLURM_ARRAY_TASK_ID,</tspan>
+    <tspan x="65" dy="36">SLURM_ARRAY_TASK_COUNT</tspan>
+    <tspan x="65" dy="36" font-family="sans-serif">for arrays</tspan>
+  </text>
+
+  
+  <rect x="560" y="880" width="480" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 609,911 A 18,18 0 1,1 593,935"/>
+    <polyline points="603,907 613,911 609,921"/>
+  </g>
+
+  
+  <text x="585" y="995" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="585" dy="0" font-family="monospace">SLURM_RESTART_COUNT</tspan>
+    <tspan x="585" dy="36">how many times the job was</tspan>
+    <tspan x="585" dy="36">requeued, 0 on the first run</tspan>
+  </text>
+
+  
+  <rect x="1080" y="880" width="480" height="270" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="1115" y="915" width="28" height="28" rx="4"/>
+    <line x1="1121" y1="907" x2="1121" y2="915"/>
+    <line x1="1129" y1="907" x2="1129" y2="915"/>
+    <line x1="1137" y1="907" x2="1137" y2="915"/>
+    <line x1="1121" y1="943" x2="1121" y2="951"/>
+    <line x1="1129" y1="943" x2="1129" y2="951"/>
+    <line x1="1137" y1="943" x2="1137" y2="951"/>
+    <line x1="1107" y1="921" x2="1115" y2="921"/>
+    <line x1="1107" y1="929" x2="1115" y2="929"/>
+    <line x1="1107" y1="937" x2="1115" y2="937"/>
+    <line x1="1143" y1="921" x2="1151" y2="921"/>
+    <line x1="1143" y1="929" x2="1151" y2="929"/>
+    <line x1="1143" y1="937" x2="1151" y2="937"/>
+  </g>
+
+  
+  <text x="1105" y="1010" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1105" dy="0">SLURM_JOB_GPUS and</tspan>
+    <tspan x="1105" dy="38">SLURM_GPUS_ON_NODE</tspan>
+    <tspan x="1105" dy="38" font-family="sans-serif">for GPUs</tspan>
+  </text>
+</svg>

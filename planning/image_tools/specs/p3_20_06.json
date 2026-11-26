@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "p3-2006-accept-queue-numbers",
+  "title": "Backlog 5: six clients connect, four time out",
+  "spec": "Left: a box 'Server: listen(5), never calls accept()' containing a queue drawn as six filled slots labelled 'accept queue holds 6 = backlog 5 plus 1'. Ten client icons on the left sending arrows: first six arrows green into the queue labelled 'connected', last four arrows orange stopping at the edge labelled 'SYN dropped, timeout'. Right side, anatomy of real output as three monospace blocks: block 1 'ss -ltn' showing 'LISTEN 6 5 127.0.0.1:39459' with captions 'Recv-Q 6 = connections waiting to be accepted' and 'Send-Q 5 = the limit'; block 2 'ss -tn state syn-sent' showing one row with Send-Q 1, caption 'the late clients wait in SYN-SENT'; block 3 'nstat -az TcpExtListenOverflows TcpExtListenDrops' showing both 'TcpExtListenOverflows 8' and 'TcpExtListenDrops 8'. Bottom note: 'Each late client sent its SYN again about once a second (four linear retries, tcp_syn_linear_timeouts default 4).' Takeaway bar: 'When connects are slow, read the listener queue, then the overflow counters, then the application.'",
+  "anchor": "### Scenario 1: the full accept queue",
+  "alt": "A listener with backlog 5 that never calls accept admits six connections, shows LISTEN 6 5 in ss, and the four late clients sit in SYN-SENT while ListenOverflows and ListenDrops both read 8.",
+  "cap": "Linux admits the backlog plus one connection and drops the SYNs of the rest, which the client retries about once a second."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "p3-2006-conntrack-guest-list",
+  "title": "A full conntrack table: new connections fail, old ones keep working",
+  "spec": "Centre: a large table box 'conntrack table (hash table)' drawn as rows of slots, all full, labelled 'nf_conntrack_count = nf_conntrack_max'. Each row labelled by the tuple 'source address, source port, destination address, destination port, protocol'. Left: three arrows from existing flows labelled 'established flow: keeps its slot, works' in green. Right: arrows from new flows hitting a closed door labelled 'new connection: no space, cannot be made' in orange. Below the table, a numbered strip: '1 Read the two numbers: sysctl net.netfilter.nf_conntrack_count and nf_conntrack_max', '2 Divide: count / max', '3 Watch the trend: read twice; climbing and staying = flows arrive faster than they leave; rising then falling = a burst', 'Established timeout default: 432000 seconds, five days'. Side note: 'Kube-proxy Service load balancing through iptables depends on conntrack, so a full table looks like Service flakiness; pods on one node share that node's table.' Fix list: 'raise the maximum if memory allows, reuse connections, find the client opening connections in a loop'. Takeaway bar: 'For any new connections fail, old ones work symptom, compare conntrack count to max first.'",
+  "anchor": "### 6. Conntrack: the table that fills quietly",
+  "alt": "A conntrack table with a hard cap where existing flows keep their slots and new flows are refused, with the check of nf_conntrack_count against nf_conntrack_max.",
+  "cap": "A full conntrack table fails quietly: established flows are untouched, only new connections are refused."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "p3-2006-tcpdump-reading",
+  "title": "Reading a tcpdump line and the four signals to look for",
+  "spec": "Top: one monospace line '01:20:46.769073 IP 10.2.203.2.22 > 10.2.0.2.33771: Flags [P.], seq 1:193, ack 5, win 132, length 192' with bracket labels beneath each part: 'time', 'source and destination with ports', 'flags', 'sequence range', 'acknowledgement', 'window', 'length'. Middle: a flags legend row of small chips 'S = SYN', 'S. = SYN-ACK', 'P. = push with data and an ack', '. = pure ack', 'F = FIN', 'R = reset'. Bottom: four signal boxes each with its meaning: 'SYN repeated, no SYN-ACK: packet or answer dropped, or queue full', 'Same sequence range sent twice: a retransmit', 'An R flag arrives: someone destroyed the connection', 'Full size data sent but never acked while small ones pass: MTU'. Right strip 'Two retransmit kinds': 'Timer-based: waits for the retransmit timeout, at least 200 ms on Linux for the first, doubling on later ones' and 'Fast retransmit: after duplicate acknowledgements, no timer'. Capture safety box: 'tcpdump -i eth4 -w /tmp/out.tcpdump, read with tcpdump -nr, filter on host and port, short fixed time'. Takeaway bar: 'Name what was seen, what it means, and what evidence supports it.'",
+  "anchor": "### 9. Retransmits and reading tcpdump",
+  "alt": "One tcpdump line split into time, source and destination, flags, sequence range, ack, window and length, with the four wire signals: repeated SYN, repeated sequence range, reset, and full size packets never acked.",
+  "cap": "Read the flags first, then name the signal before naming the fault."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "p3-2006-ss-states-fault",
+  "title": "Which side is at fault: reading the ss state counts",
+  "spec": "A left-to-right life-of-a-connection strip across the top: 'SYN-SENT' then 'ESTABLISHED' then 'FIN-WAIT-2' then 'TIME-WAIT' on the client side, and 'LISTEN' then 'SYN-RECV' then 'ESTABLISHED' then 'CLOSE-WAIT' on the server side, drawn as two parallel lanes headed 'Client socket' and 'Server socket'. Below, six rows each linking a state to the suspicion when there are many: 'SYN-SENT: remote drops or ignores us, or the path is cut', 'SYN-RECV: a SYN flood, or clients that vanish', 'ESTABLISHED: normal, idle ones may hide a dead peer', 'CLOSE-WAIT: the peer closed, our application has not: a leaked connection in our code' (orange outline), 'FIN-WAIT-2: a slow or stuck peer', 'TIME-WAIT: many short connections'. Side panel 'LISTEN row, two numbers': 'Recv-Q = connections waiting to be accepted', 'Send-Q = the limit', 'flag a listener whose Recv-Q has reached its Send-Q'. Panel 'ss -tiepm flags': 'app_limited: application not handing data over fast enough', 'rwnd_limited: receiver window is the limit', 'sndbuf_limited: sender buffer is full'. Takeaway bar: 'Start every network incident with ss, then say which states dominate and what that means.'",
+  "anchor": "### 3. Reading ss: states and the two numbers",
+  "alt": "A table of TCP states from ss with what a large count of each means, with CLOSE-WAIT pointing at the local application and SYN-RECV at a flood or vanishing clients.",
+  "cap": "Run ss, count the states, and find the one that is out of place; the state tells you who owns the fault."
+ }
+]

@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "p2-2004-open-walk",
+  "title": "What one open call does, step by step",
+  "spec": "Vertical sequence of five numbered step boxes, top to bottom, with a process icon at the top labelled 'Program' and a kernel panel enclosing steps 2 to 4. Step 1 (outside kernel panel): 'Program passes a file name'. Step 2 (inside): 'Kernel walks the directory names until it reaches the inode'. Step 3 (inside): 'Creates an open file description with its own offset'. Step 4 (inside): 'Places a pointer in the first free slot of the process table'. Step 5 (outside, back to program): 'Returns the slot number, for example 3'. Under step 5 a dashed arrow labelled 'Later read and write name only the slot' pointing back into the kernel panel. Orange outline on step 4 as the place where the descriptor is born. Side note: 'The program never touches the inode directly.' Bottom green bar: 'Each error in this chapter has a place on this path.'",
+  "anchor": "### 1. A descriptor is a small number that points at a kernel object",
+  "alt": "Five steps of one open call, from passing a file name to returning a slot number that later reads and writes use.",
+  "cap": "The steps of one open call: the kernel walks the names to the inode, creates an open file description, and returns a slot number."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "04",
+  "name": "p2-2004-first-class-only",
+  "title": "Only the first matching permission class counts",
+  "spec": "Top: a file card showing 'File owner: service user, mode r-- rw- ---' with three coloured bands labelled 'owner r--', 'group rw-', 'other ---'. Below, a decision flow with three diamonds in order. Diamond 1: 'Effective user equals file owner?' with a yes arrow to a box 'Use owner bits: r--' and a stop line. Diamond 2 (on the no path of diamond 1): 'Group matches?' with yes arrow to 'Use group bits rw-'. Diamond 3: 'Use other bits'. Next to the owner box a red-outlined result 'Write denied: the group bits are never consulted'. Dashed grey path from diamond 2 labelled 'Skipped for this process'. Orange outline on the 'owner r--' band as the one that decides. Caption: 'The owner class is decided first, and the search stops there.'",
+  "anchor": "### 6. Permission checks beyond the mode bits",
+  "alt": "A file owned by the service user with owner bits r-- and group bits rw-, where the owner class is decided first so the write is denied.",
+  "cap": "The first matching permission class decides the access, so an owner with r-- cannot write even when the group bits allow it."
+ }
+]

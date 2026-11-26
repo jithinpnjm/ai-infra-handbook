@@ -1,0 +1,174 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A container misbehaves: five questions from the top down</title>
+  <desc>A diagnostic infographic illustrating the five top-down troubleshooting questions for misbehaving containers alongside quick symptom pointers from the chapter table.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A container misbehaves: five questions from the top down</text>
+  <text x="800" y="98" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">A vertical ladder of five numbered boxes, stop at the first that explains the symptom</text>
+
+  
+
+  
+  <line x1="440" y1="308" x2="440" y2="330" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="440" y1="500" x2="440" y2="522" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="440" y1="692" x2="440" y2="714" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <line x1="440" y1="884" x2="440" y2="906" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="40" y="140" width="800" height="168" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="78" cy="184" r="22" fill="#207448"/>
+  <text x="78" y="192" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="116" y="160" width="48" height="42" rx="4"/>
+    <line x1="116" y1="172" x2="164" y2="172"/>
+    <circle cx="124" cy="166" r="1.5" fill="#207448"/>
+    <circle cx="132" cy="166" r="1.5" fill="#207448"/>
+    <path d="M 124 184 L 132 190 L 124 196"/>
+    <line x1="136" y1="196" x2="148" y2="196"/>
+  </g>
+  
+  <text x="184" y="176" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Can the process start at all?</text>
+  <text x="184" y="210" font-family="sans-serif" font-size="24" fill="#303a36">Image pull, rootfs, entrypoint exit code:</text>
+  <text x="184" y="244" font-family="monospace" font-size="24" fill="#303a36">crictl ps -a, kubectl describe pod,</text>
+  <text x="184" y="278" font-family="sans-serif" font-size="24" fill="#303a36">the events</text>
+
+  
+  <rect x="40" y="332" width="800" height="168" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="78" cy="376" r="22" fill="#207448"/>
+  <text x="78" y="384" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="120" y="352" width="40" height="40" rx="4"/>
+    <rect x="130" y="362" width="20" height="20" rx="2"/>
+    <line x1="126" y1="346" x2="126" y2="352"/>
+    <line x1="140" y1="346" x2="140" y2="352"/>
+    <line x1="154" y1="346" x2="154" y2="352"/>
+    <line x1="126" y1="392" x2="126" y2="398"/>
+    <line x1="140" y1="392" x2="140" y2="398"/>
+    <line x1="154" y1="392" x2="154" y2="398"/>
+    <line x1="114" y1="358" x2="120" y2="358"/>
+    <line x1="114" y1="372" x2="120" y2="372"/>
+    <line x1="114" y1="386" x2="120" y2="386"/>
+    <line x1="160" y1="358" x2="166" y2="358"/>
+    <line x1="160" y1="372" x2="166" y2="372"/>
+    <line x1="160" y1="386" x2="166" y2="386"/>
+  </g>
+  
+  <text x="184" y="382" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Are any limits hit?</text>
+  <text x="184" y="424" font-family="monospace" font-size="24" fill="#303a36">cgroup memory.events, cpu.stat</text>
+  <text x="184" y="460" font-family="sans-serif" font-size="24" fill="#303a36">throttling, <tspan font-family="monospace">pids</tspan></text>
+
+  
+  <rect x="40" y="524" width="800" height="168" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="78" cy="568" r="22" fill="#207448"/>
+  <text x="78" y="576" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 140 544 L 164 556 L 140 568 L 116 556 Z"/>
+    <path d="M 116 556 L 116 580 L 140 592 L 140 568"/>
+    <path d="M 164 556 L 164 580 L 140 592"/>
+  </g>
+  
+  <text x="184" y="582" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What does the container see:</text>
+  <text x="184" y="628" font-family="sans-serif" font-size="24" fill="#303a36">mounts, network, user and devices?</text>
+
+  
+  <rect x="40" y="716" width="800" height="168" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="78" cy="760" r="22" fill="#207448"/>
+  <text x="78" y="768" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="118" y="740" width="44" height="20" rx="3"/>
+    <line x1="124" y1="750" x2="132" y2="750"/>
+    <circle cx="152" cy="750" r="2" fill="#207448"/>
+    <circle cx="138" cy="770" r="12"/>
+    <line x1="147" y1="779" x2="160" y2="792" stroke-width="4"/>
+  </g>
+  
+  <text x="184" y="762" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What does the host see for the same PID?</text>
+  <text x="184" y="812" font-family="monospace" font-size="24" fill="#303a36">nsenter<tspan font-family="sans-serif">, or host-side </tspan>strace<tspan font-family="sans-serif"> and </tspan>perf</text>
+
+  
+  <rect x="40" y="908" width="800" height="168" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="78" cy="952" r="22" fill="#207448"/>
+  <text x="78" y="960" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="140" cy="936" rx="20" ry="7"/>
+    <path d="M 120 936 v 14 c 0 3.8 9 7 20 7 s 20 -3.2 20 -7 v -14"/>
+    <path d="M 120 950 v 14 c 0 3.8 9 7 20 7 s 20 -3.2 20 -7 v -14"/>
+    <line x1="116" y1="978" x2="164" y2="978"/>
+    <circle cx="124" cy="978" r="2.5" fill="#207448"/>
+    <circle cx="156" cy="978" r="2.5" fill="#207448"/>
+  </g>
+  
+  <text x="184" y="946" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">What does the container share</text>
+  <text x="184" y="982" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">with its neighbours:</text>
+  <text x="184" y="1024" font-family="sans-serif" font-size="24" fill="#303a36">the kernel, devices, the NIC and the disks?</text>
+
+
+  
+
+  
+  <rect x="870" y="140" width="690" height="936" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1215" y="178" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">Quick symptom pointers from the chapter table</text>
+
+  
+  <rect x="890" y="200" width="650" height="114" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+  <text x="912" y="236" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Pod ignores SIGTERM and is killed after 30 s</text>
+  <path d="M 924 250 L 924 280 L 948 280" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="964" y="288" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">PID 1 (question 3)</text>
+
+  
+  <rect x="890" y="328" width="650" height="114" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+  <text x="912" y="364" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36"><tspan font-family="monospace">free</tspan> and <tspan font-family="monospace">nproc</tspan> show host values</text>
+  <path d="M 924 378 L 924 408 L 948 408" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="964" y="416" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">question 3 and 2: <tspan font-family="monospace">/proc</tspan> is not namespaced</text>
+
+  
+  <rect x="890" y="456" width="650" height="114" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+  <text x="912" y="492" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Bus error in DataLoader</text>
+  <path d="M 924 506 L 924 536 L 948 536" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="964" y="544" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">question 3: <tspan font-family="monospace">/dev/shm</tspan> size</text>
+
+  
+  <rect x="890" y="584" width="650" height="114" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+  <text x="912" y="620" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">GPU visible on host, not in container</text>
+  <path d="M 924 634 L 924 664 L 948 664" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="964" y="672" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">question 3: device nodes, devices cgroup</text>
+
+  
+  <rect x="890" y="712" width="650" height="114" rx="10" fill="#ffffff" stroke="#c4dcd0" stroke-width="1.5"/>
+  <text x="912" y="748" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Node disk full under <tspan font-family="monospace">/var/lib/containerd</tspan></text>
+  <path d="M 924 762 L 924 792 L 948 792" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="964" y="800" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">question 2 and 5: image storage, logs</text>
+
+  
+  <rect x="890" y="840" width="650" height="216" rx="10" fill="#fff7f0" stroke="#db8129" stroke-width="2.5"/>
+  <text x="912" y="876" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Operation not permitted for <tspan font-family="monospace">mount</tspan>, <tspan font-family="monospace">ip</tspan>, <tspan font-family="monospace">sysctl</tspan></text>
+  <path d="M 924 892 L 924 924 L 948 924" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+  <text x="964" y="924" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="964" dy="0">a missing capability or seccomp or LSM block</tspan>
+    <tspan x="964" dy="34">(chapter 1.21): do not fix with <tspan font-family="monospace">--privileged</tspan></tspan>
+    <tspan x="964" dy="34">without review</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="1120" width="1520" height="54" rx="10" fill="#207448"/>
+  <text x="800" y="1155" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">Work the five questions in order, and stop at the first one that explains the symptom</text>
+
+</svg>

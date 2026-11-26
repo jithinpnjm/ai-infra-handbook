@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four habits from office IT that fail in a cluster</title>
+  <desc>Visual comparison of four office IT habits that fail when applied to high-performance computing clusters: density, utilization, I/O storms, and failure learning.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="62" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four habits from office IT that fail in a cluster</text>
+
+  
+  <g id="row-density">
+    
+    <rect x="40" y="110" width="1520" height="270" rx="16" fill="#e8f1ea" stroke="#c2d6c7" stroke-width="1.5"/>
+
+    
+    <g transform="translate(122, 145)">
+      
+      <rect x="4" y="2" width="48" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="19" x2="52" y2="19" stroke="#207448" stroke-width="3"/>
+      <line x1="4" y1="36" x2="52" y2="36" stroke="#207448" stroke-width="3"/>
+      <circle cx="14" cy="11" r="2.5" fill="#207448"/>
+      <circle cx="23" cy="11" r="2.5" fill="#207448"/>
+      <circle cx="14" cy="28" r="2.5" fill="#207448"/>
+      <circle cx="23" cy="28" r="2.5" fill="#207448"/>
+      <circle cx="14" cy="45" r="2.5" fill="#207448"/>
+      <circle cx="23" cy="45" r="2.5" fill="#207448"/>
+    </g>
+    <text x="150" y="248" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Density</text>
+
+    
+    <rect x="278" y="126" width="400" height="238" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="302" y="232">office PCs are spread</tspan>
+      <tspan x="302" y="266">across a building</tspan>
+    </text>
+
+    
+    <rect x="696" y="126" width="422" height="238" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="720" y="168">a cluster is packed into</tspan>
+      <tspan x="720" y="198">a few square meters</tspan>
+      <tspan x="720" y="246">cannot cool by opening a</tspan>
+      <tspan x="720" y="276">window or run from wall</tspan>
+      <tspan x="720" y="306">sockets or a household UPS</tspan>
+    </text>
+
+    
+    <rect x="1136" y="126" width="424" height="238" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" y="162">a slightly weak cooling loop</tspan>
+      <tspan x="1160" y="189">leaves the rack too hot to</tspan>
+      <tspan x="1160" y="216">hold clocks and the job</tspan>
+      <tspan x="1160" y="243">slows without any alarm</tspan>
+      <tspan x="1160" y="282">computing racks often take</tspan>
+      <tspan x="1160" y="309">under a quarter of</tspan>
+      <tspan x="1160" y="336">the floor area</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-utilization">
+    
+    <rect x="40" y="400" width="1520" height="215" rx="16" fill="#e8f1ea" stroke="#c2d6c7" stroke-width="1.5"/>
+
+    
+    <g transform="translate(122, 432)">
+      
+      <path d="M 6 42 A 22 22 0 1 1 50 42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="42" x2="42" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="4" fill="#207448"/>
+    </g>
+    <text x="150" y="528" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Utilization</text>
+
+    
+    <rect x="278" y="416" width="400" height="183" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="302" y="498">an office PC idles</tspan>
+      <tspan x="302" y="530">most of the day</tspan>
+    </text>
+
+    
+    <rect x="696" y="416" width="422" height="183" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="720" y="484">in a cluster normal is</tspan>
+      <tspan x="720" y="516">80 to 100 percent on</tspan>
+      <tspan x="720" y="548">every node</tspan>
+    </text>
+
+    
+    <rect x="1136" y="416" width="424" height="183" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" y="484">an idle node while the</tspan>
+      <tspan x="1160" y="516">queue is full means</tspan>
+      <tspan x="1160" y="548">something is blocking it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-io-storm">
+    
+    <rect x="40" y="635" width="1520" height="215" rx="16" fill="#e8f1ea" stroke="#c2d6c7" stroke-width="1.5"/>
+
+    
+    <g transform="translate(122, 665)">
+      
+      <ellipse cx="28" cy="12" rx="22" ry="7" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 6 12 v 28 c 0 4 9.8 7 22 7 s 22 -3 22 -7 v -28" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 6 26 c 0 4 9.8 7 22 7 s 22 -3 22 -7" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="150" y="763" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">I/O storm</text>
+
+    
+    <rect x="278" y="651" width="400" height="183" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="302" y="718">in an office a hundredfold</tspan>
+      <tspan x="302" y="750">traffic jump looks like</tspan>
+      <tspan x="302" y="782">a virus</tspan>
+    </text>
+
+    
+    <rect x="696" y="651" width="422" height="183" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="720" y="718">in a cluster all nodes</tspan>
+      <tspan x="720" y="750">writing checkpoints at once</tspan>
+      <tspan x="720" y="782">is the plan working</tspan>
+    </text>
+
+    
+    <rect x="1136" y="651" width="424" height="183" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" y="734">monitoring must tell</tspan>
+      <tspan x="1160" y="766">the two apart</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-learning-failures">
+    
+    <rect x="40" y="870" width="1520" height="280" rx="16" fill="#e8f1ea" stroke="#c2d6c7" stroke-width="1.5"/>
+
+    
+    <g transform="translate(122, 902)">
+      
+      <path d="M 28 6 c -9 0 -16 7 -16 17 v 13 l -6 7 h 44 l -6 -7 v -13 c 0 -10 -7 -17 -16 -17 z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M 22 47 a 6 6 0 0 0 12 0" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="150" y="996" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="150" dy="0">Learning of</tspan>
+      <tspan x="150" dy="36">failures</tspan>
+    </text>
+
+    
+    <rect x="278" y="886" width="400" height="248" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="302" y="1000">in an office someone</tspan>
+      <tspan x="302" y="1034">runs in shouting</tspan>
+    </text>
+
+    
+    <rect x="696" y="886" width="422" height="248" rx="12" fill="#ffffff" stroke="#c2d6c7" stroke-width="1.5"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="720" y="970">in a cluster you may hear</tspan>
+      <tspan x="720" y="1002">from users whose parallel</tspan>
+      <tspan x="720" y="1034">job stopped or fails two</tspan>
+      <tspan x="720" y="1066">times out of three</tspan>
+    </text>
+
+    
+    <rect x="1136" y="886" width="424" height="248" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1160" y="955">watch job failure rate,</tspan>
+      <tspan x="1160" y="987">fabric error counters</tspan>
+      <tspan x="1160" y="1019">and temperature trend</tspan>
+      <tspan x="1160" y="1051">together to get a lead</tspan>
+      <tspan x="1160" y="1083">before a ticket</tspan>
+    </text>
+  </g>
+</svg>

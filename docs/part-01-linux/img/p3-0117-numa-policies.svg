@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>NUMA memory policies: first touch, bind, preferred, interleave</title>
+  <desc>Visual infographic explaining Linux NUMA memory allocation policies across nodes: local first touch, bind, preferred, and interleave.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">NUMA memory policies:</text>
+  <text x="40" y="122" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">first touch, bind, preferred, interleave</text>
+
+  
+  <g id="node-headers">
+    <rect x="700" y="145" width="140" height="48" rx="8" fill="#207448"/>
+    
+    <rect x="712" y="157" width="24" height="24" rx="3" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+    <line x1="718" y1="152" x2="718" y2="157" stroke="#ffffff" stroke-width="2"/>
+    <line x1="724" y1="152" x2="724" y2="157" stroke="#ffffff" stroke-width="2"/>
+    <line x1="730" y1="152" x2="730" y2="157" stroke="#ffffff" stroke-width="2"/>
+    <text x="785" y="178" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">node 0</text>
+
+    <rect x="860" y="145" width="140" height="48" rx="8" fill="#207448"/>
+    
+    <rect x="872" y="157" width="24" height="24" rx="3" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+    <line x1="878" y1="152" x2="878" y2="157" stroke="#ffffff" stroke-width="2"/>
+    <line x1="884" y1="152" x2="884" y2="157" stroke="#ffffff" stroke-width="2"/>
+    <line x1="890" y1="152" x2="890" y2="157" stroke="#ffffff" stroke-width="2"/>
+    <text x="945" y="178" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">node 1</text>
+  </g>
+
+  
+  <g id="row-first-touch">
+    <rect x="40" y="205" width="980" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(56, 218)">
+      <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="24" cy="24" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="116" y="250" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">local with first touch (default)</text>
+    
+    <text x="56" y="286" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="56" dy="0">a page lands on the node of the CPU that first writes it</tspan>
+    </text>
+
+    
+    <rect x="56" y="306" width="620" height="96" rx="6" fill="#fff7ed" stroke="#db8129" stroke-width="2"/>
+    <text x="70" y="334" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">one thread initialises a huge buffer</tspan>
+      <tspan x="70" dy="30">and threads on another node use it:</tspan>
+      <tspan x="70" dy="30">the buffer is entirely remote for them</tspan>
+    </text>
+
+    
+    <rect x="700" y="215" width="140" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="720" y="235" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="235" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="720" y="289" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="289" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="720" y="343" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="343" width="42" height="42" rx="4" fill="#207448"/>
+
+    
+    <rect x="860" y="215" width="140" height="190" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,6"/>
+    
+    <rect x="880" y="235" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="938" y="235" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="880" y="289" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="938" y="289" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="880" y="343" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="938" y="343" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+  </g>
+
+  
+  <g id="row-bind">
+    <rect x="40" y="430" width="980" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(56, 442)">
+      <rect x="6" y="18" width="36" height="28" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M14 18 V10 A10 10 0 0 1 34 10 V18" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="116" y="474" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">bind</text>
+    
+    <text x="56" y="512" font-family="sans-serif" font-size="24" fill="#303a36">pages only on the named nodes</text>
+
+    
+    <rect x="56" y="534" width="620" height="88" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="70" y="568" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="70" dy="0">numactl --cpunodebind=1 --membind=1</tspan>
+      <tspan x="70" dy="32">python train.py --gpu 4</tspan>
+    </text>
+
+    
+    <rect x="700" y="440" width="140" height="190" rx="8" fill="#ffffff" stroke="#94a3b8" stroke-width="2" stroke-dasharray="6,6"/>
+    <rect x="720" y="460" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="778" y="460" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="720" y="514" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="778" y="514" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="720" y="568" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="778" y="568" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+
+    
+    <rect x="860" y="440" width="140" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="880" y="460" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="938" y="460" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="880" y="514" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="938" y="514" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="880" y="568" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="938" y="568" width="42" height="42" rx="4" fill="#207448"/>
+  </g>
+
+  
+  <g id="row-preferred">
+    <rect x="40" y="655" width="980" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(56, 668)">
+      <circle cx="24" cy="24" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+      <circle cx="24" cy="24" r="6" fill="#207448"/>
+      <line x1="24" y1="0" x2="24" y2="8" stroke="#207448" stroke-width="4"/>
+      <line x1="24" y1="40" x2="24" y2="48" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="24" x2="8" y2="24" stroke="#207448" stroke-width="4"/>
+      <line x1="40" y1="24" x2="48" y2="24" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="116" y="700" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">preferred</text>
+    
+    <text x="56" y="760" font-family="sans-serif" font-size="24" fill="#303a36">tries a node and falls back</text>
+
+    
+    <rect x="700" y="665" width="140" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="720" y="685" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="685" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="720" y="739" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="739" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="720" y="793" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="793" width="42" height="42" rx="4" fill="#207448"/>
+
+    
+    <rect x="860" y="665" width="140" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="880" y="685" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="938" y="685" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="880" y="739" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="938" y="739" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="880" y="793" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="938" y="793" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+  </g>
+
+  
+  <g id="row-interleave">
+    <rect x="40" y="880" width="980" height="210" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(56, 892)">
+      <line x1="4" y1="12" x2="44" y2="12" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="24" x2="44" y2="24" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="36" x2="44" y2="36" stroke="#207448" stroke-width="4"/>
+      <rect x="8" y="8" width="10" height="8" fill="#207448"/>
+      <rect x="28" y="20" width="10" height="8" fill="#207448"/>
+      <rect x="16" y="32" width="10" height="8" fill="#207448"/>
+    </g>
+    <text x="116" y="924" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">interleave</text>
+    
+    <text x="56" y="964" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="56" dy="0">pages spread round-robin across nodes,</tspan>
+      <tspan x="56" dy="30">suits data every CPU reads</tspan>
+    </text>
+
+    
+    <rect x="56" y="1006" width="620" height="72" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="70" y="1048" font-family="monospace" font-size="24" fill="#303a36">numactl --interleave=all ./big_shared_table</text>
+
+    
+    <rect x="700" y="890" width="140" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="720" y="910" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="910" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="720" y="964" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="964" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="720" y="1018" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="778" y="1018" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+
+    
+    <rect x="860" y="890" width="140" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="880" y="910" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="938" y="910" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="880" y="964" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="938" y="964" width="42" height="42" rx="4" fill="#207448"/>
+    <rect x="880" y="1018" width="42" height="42" rx="4" fill="none" stroke="#cbd5e1" stroke-width="2" stroke-dasharray="4,4"/>
+    <rect x="938" y="1018" width="42" height="42" rx="4" fill="#207448"/>
+  </g>
+
+  
+  <g id="side-panel-related">
+    <rect x="1050" y="145" width="510" height="945" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1074, 166)">
+      <rect x="0" y="0" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="10" y1="12" x2="34" y2="12" stroke="#207448" stroke-width="4"/>
+      <line x1="10" y1="22" x2="34" y2="22" stroke="#207448" stroke-width="4"/>
+      <line x1="10" y1="32" x2="24" y2="32" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="1132" y="198" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Related</text>
+
+    
+    <rect x="1070" y="230" width="470" height="185" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1090" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" dy="0">taskset -c 16-31 ./prog is</tspan>
+      <tspan x="1090" dy="38">CPU affinity only; memory</tspan>
+      <tspan x="1090" dy="38">follows first touch</tspan>
+    </text>
+
+    
+    <rect x="1070" y="440" width="470" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1090" y="500" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" dy="0">numactl --show prints the</tspan>
+      <tspan x="1090" dy="38">current policy</tspan>
+    </text>
+
+    
+    <rect x="1070" y="610" width="470" height="215" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1090" y="660" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" dy="0">spawn or exec does not inherit</tspan>
+      <tspan x="1090" dy="38">the numactl memory policy,</tspan>
+      <tspan x="1090" dy="38">but fork does</tspan>
+    </text>
+
+    
+    <rect x="1070" y="850" width="470" height="215" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1090" y="905" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1090" dy="0">kernel.numa_balancing=0</tspan>
+      <tspan x="1090" dy="38">where processes are</tspan>
+      <tspan x="1090" dy="38">explicitly bound</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1115" width="1520" height="60" rx="10" fill="#207448"/>
+    <text x="800" y="1154" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Bind by topology rather than by habit</text>
+  </g>
+</svg>

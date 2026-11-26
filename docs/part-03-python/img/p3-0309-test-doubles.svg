@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1025" width="1600" height="1025">
+  <title>Stub, fake, mock and spy: four stand-ins, four jobs</title>
+  <desc>Visual comparison table and rules for test doubles: stub, fake, mock, and spy.</desc>
+
+  <rect width="1600" height="1025" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Stub, fake, mock and spy: four stand-ins, four jobs</text>
+
+  
+  <rect x="40" y="130" width="340" height="350" rx="12" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <rect x="40" y="130" width="340" height="8" rx="4" fill="#207448"/>
+  <g transform="translate(182, 160)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 28 4 L 54 48 L 2 48 Z"/>
+    <line x1="28" y1="20" x2="28" y2="34"/>
+    <circle cx="28" cy="42" r="2" fill="#207448"/>
+  </g>
+  <text x="210" y="245" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="210" dy="0">a test that calls a</tspan>
+    <tspan x="210" dy="34">real API is slow,</tspan>
+    <tspan x="210" dy="34">depends on the</tspan>
+    <tspan x="210" dy="34">network and can fail</tspan>
+    <tspan x="210" dy="34">for reasons unrelated</tspan>
+    <tspan x="210" dy="34">to your code</tspan>
+  </text>
+
+  
+  <rect x="40" y="505" width="340" height="350" rx="12" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <rect x="40" y="505" width="340" height="8" rx="4" fill="#207448"/>
+  <g transform="translate(182, 530)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 20 6 L 36 6 M 24 6 L 24 20 L 6 48 L 50 48 L 32 20 L 32 6"/>
+    <line x1="14" y1="36" x2="42" y2="36"/>
+  </g>
+  <text x="210" y="620" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="210" dy="0">over-mocking is</tspan>
+    <tspan x="210" dy="34">a smell: if a test</tspan>
+    <tspan x="210" dy="34">needs ten patches,</tspan>
+    <tspan x="210" dy="34">the code under test</tspan>
+    <tspan x="210" dy="34">has too many</tspan>
+    <tspan x="210" dy="34">collaborators</tspan>
+  </text>
+
+  
+  <rect x="410" y="130" width="1150" height="60" rx="8" fill="#207448"/>
+  <text x="440" y="171" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Double</text>
+  <text x="660" y="171" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">What it does</text>
+  <text x="1200" y="171" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Asserts on</text>
+
+  
+  <rect x="410" y="205" width="1150" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <g transform="translate(430, 235)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 6 4 L 32 4 L 44 16 L 44 46 L 6 46 Z"/>
+    <path d="M 32 4 L 32 16 L 44 16"/>
+    <line x1="14" y1="26" x2="36" y2="26"/>
+    <line x1="14" y1="34" x2="28" y2="34"/>
+  </g>
+  <text x="495" y="270" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Stub</text>
+  <text x="660" y="268" font-family="sans-serif" font-size="24" fill="#303a36">returns canned answers</text>
+  <rect x="1200" y="238" width="160" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1280" y="270" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">outcomes</text>
+
+  
+  <rect x="410" y="330" width="1150" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(430, 380)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="25" cy="12" rx="20" ry="8"/>
+    <path d="M 5 12 L 5 36 C 5 42 45 42 45 36 L 45 12"/>
+    <path d="M 5 24 C 5 30 45 30 45 24"/>
+  </g>
+  <text x="495" y="415" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fake</text>
+  <text x="660" y="378" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="660" dy="0">a working, lightweight</tspan>
+    <tspan x="660" dy="34">implementation, such as an</tspan>
+    <tspan x="660" dy="34">in-memory repository (FakeKube)</tspan>
+  </text>
+  <rect x="1200" y="380" width="160" height="46" rx="8" fill="#db8129"/>
+  <text x="1280" y="412" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">outcomes</text>
+
+  
+  <rect x="410" y="495" width="1150" height="135" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <g transform="translate(430, 538)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="8" y="10" width="34" height="38" rx="4"/>
+    <path d="M 18 10 V 6 C 18 4 32 4 32 6 V 10"/>
+    <line x1="16" y1="22" x2="34" y2="22"/>
+    <line x1="16" y1="30" x2="34" y2="30"/>
+    <line x1="16" y1="38" x2="26" y2="38"/>
+  </g>
+  <text x="495" y="573" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Mock</text>
+  <text x="660" y="552" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="660" dy="0">records calls so you can</tspan>
+    <tspan x="660" dy="34">assert on the interactions</tspan>
+  </text>
+  <text x="1200" y="552" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1200" dy="0">implementation, so tests</tspan>
+    <tspan x="1200" dy="34">break whenever you refactor</tspan>
+  </text>
+
+  
+  <rect x="410" y="645" width="1150" height="110" rx="10" fill="#ffffff" stroke="#c8dcd0" stroke-width="2"/>
+  <g transform="translate(430, 675)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="20" cy="20" r="14"/>
+    <line x1="30" y1="30" x2="44" y2="44"/>
+    <circle cx="20" cy="20" r="5" fill="#207448"/>
+  </g>
+  <text x="495" y="710" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Spy</text>
+  <text x="660" y="710" font-family="sans-serif" font-size="24" fill="#303a36">wraps the real thing</text>
+  <text x="1200" y="710" font-family="sans-serif" font-size="24" fill="#303a36">calls on the real object</text>
+
+  
+  <rect x="410" y="775" width="1150" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(440, 798)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 26 4 L 46 10 V 26 C 46 38 26 48 26 48 C 26 48 6 38 6 26 V 10 Z"/>
+    <path d="M 16 25 L 23 32 L 36 18"/>
+  </g>
+  <text x="520" y="834" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">prefer fakes and stubs over heavy mocking</text>
+
+  
+  <rect x="40" y="895" width="1520" height="90" rx="12" fill="#207448"/>
+  <text x="800" y="951" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Fakes and stubs assert on outcomes, mocks tend to assert on implementation</text>
+</svg>

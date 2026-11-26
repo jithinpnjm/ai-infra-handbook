@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Getting a Python environment onto many nodes without pip at job start</title>
+  <desc>Getting a Python environment onto many nodes without pip at job start</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Getting a Python environment onto many nodes</text>
+  <text x="800" y="104" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">without pip at job start</text>
+
+  
+  
+  <rect x="60" y="130" width="380" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 169)">
+    <rect x="10" y="3" width="40" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="0" y="33" width="28" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="32" y="33" width="28" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 30 17 L 30 26 M 14 26 L 46 26 M 14 26 L 14 33 M 46 26 L 46 33" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="165" y="188" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Slurm or</text>
+  <text x="165" y="226" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Kubernetes job</text>
+
+  
+  <rect x="460" y="130" width="1080" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="490" y="174" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="490" dy="0">bake environments into images or shared read-only locations and</tspan>
+    <tspan x="490" dy="34">pin them by digest; avoid <tspan font-family="monospace">pip install</tspan> at job start</tspan>
+    <tspan x="490" dy="34">(network dependency, rate limits, results that differ between runs)</tspan>
+  </text>
+
+  
+  
+  <rect x="60" y="283" width="380" height="350" rx="12" fill="#fff6ee" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(85, 335)">
+    <rect x="8" y="8" width="44" height="44" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    <rect x="19" y="19" width="22" height="22" rx="3" fill="none" stroke="#db8129" stroke-width="3"/>
+    <path d="M 17 8 L 17 -1 M 30 8 L 30 -1 M 43 8 L 43 -1" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 17 52 L 17 61 M 30 52 L 30 61 M 43 52 L 43 61" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 8 17 L -1 17 M 8 30 L -1 30 M 8 43 L -1 43" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 52 17 L 61 17 M 52 30 L 61 30 M 52 43 L 61 43" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="165" y="375" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">HPC with Lmod</text>
+
+  
+  <rect x="460" y="283" width="680" height="350" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="486" y="316" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="486" dy="0">load compilers, MPI and CUDA through</tspan>
+    <tspan x="486" dy="29">environment modules; create venvs or</tspan>
+    <tspan x="486" dy="29">conda environments on shared file systems</tspan>
+    <tspan x="486" dy="29">with care: metadata-heavy import storms</tspan>
+    <tspan x="486" dy="29">on Lustre or NFS slow startup because</tspan>
+    <tspan x="486" dy="29">each import is a network round trip;</tspan>
+    <tspan x="486" dy="29">copy the environment to node-local NVMe,</tspan>
+    <tspan x="486" dy="29">or use <tspan font-family="monospace">zipimport</tspan> or container images;</tspan>
+    <tspan x="486" dy="29">keep large packages such as <tspan font-family="monospace">torch</tspan> in a</tspan>
+    <tspan x="486" dy="29"><tspan font-family="monospace">squashfs</tspan> or container image; set</tspan>
+    <tspan x="486" dy="29"><tspan font-family="monospace">PYTHONDONTWRITEBYTECODE</tspan> on read-only paths</tspan>
+  </text>
+
+  
+  <line x1="1178" y1="425" x2="1144" y2="425" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1180" y="370" width="360" height="110" rx="10" fill="#fff6ee" stroke="#db8129" stroke-width="2"/>
+  <text x="1360" y="415" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">find slow imports with</text>
+  <text x="1360" y="452" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">python -X importtime</text>
+
+  
+  
+  <rect x="60" y="651" width="380" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 680)">
+    <path d="M 28 2 L 52 11 C 52 35 41 49 28 54 C 15 49 4 35 4 11 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <rect x="20" y="26" width="16" height="13" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 24 26 L 24 21 C 24 18 32 18 32 21 L 32 26" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="165" y="699" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Offline or</text>
+  <text x="165" y="737" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">air-gapped cluster</text>
+
+  
+  <rect x="460" y="651" width="1080" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="490" y="700" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="490" dy="0"><tspan font-family="monospace">pip download -r requirements.txt -d wheelhouse</tspan>; mirror the indexes;</tspan>
+    <tspan x="490" dy="36"><tspan font-family="monospace">pip install --no-index --find-links wheelhouse</tspan></tspan>
+  </text>
+
+  
+  
+  <rect x="60" y="784" width="380" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 822)">
+    <rect x="0" y="21" width="22" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="34" y="3" width="22" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="34" y="22" width="22" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="34" y="41" width="22" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 22 29 L 28 29 L 28 10 L 34 10 M 28 29 L 34 29 M 28 29 L 28 48 L 34 48" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="165" y="842" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Tool to</text>
+  <text x="165" y="880" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">500 servers</text>
+
+  
+  <rect x="460" y="784" width="1080" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="490" y="828" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="490" dy="0">zipapp <tspan font-family="monospace">python -m zipapp myapp -m myops.cli:main</tspan>,</tspan>
+    <tspan x="490" dy="34">shiv or pex bundle dependencies, Python must still be installed;</tspan>
+    <tspan x="490" dy="34">PyInstaller and Nuitka build standalone binaries</tspan>
+  </text>
+
+  
+  
+  <rect x="60" y="937" width="380" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 966)">
+    <rect x="3" y="6" width="50" height="44" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="3" y1="18" x2="53" y2="18" stroke="#207448" stroke-width="2.5"/>
+    <path d="M 11 28 L 18 33 L 11 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="22" y1="38" x2="31" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="165" y="1005" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Stock host script</text>
+
+  
+  <rect x="460" y="937" width="1080" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="490" y="986" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="490" dy="0">distribution packages <tspan font-family="monospace">python3-yaml</tspan>, <tspan font-family="monospace">python3-requests</tspan>,</tspan>
+    <tspan x="490" dy="36"><tspan font-family="monospace">python3-psutil</tspan>; else ship a venv or zipapp</tspan>
+  </text>
+
+  
+  <rect x="60" y="1095" width="1480" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1136" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Bake the environment before the job starts, not during it</text>
+</svg>

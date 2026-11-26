@@ -1,0 +1,272 @@
+#!/usr/bin/env python3
+import re
+import subprocess
+import pathlib
+import xml.etree.ElementTree as ET
+
+W = 1600
+H = 1150
+
+svg = f'''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {W} {H}" width="{W}" height="{H}">
+  <title>Host memory budget for an 8 GPU node: multiplied workers add up fast</title>
+  <desc>Visual infographic explaining host memory budget segments for an 8 GPU training node, the 256 GB dataloader multiplication trap, and shm checkpoint pitfalls.</desc>
+
+  <defs>
+    <!-- Gear icon for OS/daemons -->
+    <g id="icon-gear" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="7"/>
+      <path d="M 20 4 L 20 8 M 20 32 L 20 36 M 4 20 L 8 20 M 32 20 L 36 20 M 8.7 8.7 L 11.5 11.5 M 28.5 28.5 L 31.3 31.3 M 8.7 31.3 L 11.5 28.5 M 28.5 11.5 L 31.3 8.7"/>
+    </g>
+
+    <!-- Worker / Loader icon (orange) -->
+    <g id="icon-loader" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="28" height="24" rx="4"/>
+      <circle cx="15" cy="18" r="3"/>
+      <circle cx="25" cy="18" r="3"/>
+      <path d="M 12 26 C 14 23 26 23 28 26"/>
+      <line x1="20" y1="2" x2="20" y2="8"/>
+      <line x1="2" y1="20" x2="6" y2="20"/>
+      <line x1="34" y1="20" x2="38" y2="20"/>
+    </g>
+
+    <!-- Lock icon for pinned buffers -->
+    <g id="icon-lock" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="16" width="24" height="18" rx="3"/>
+      <path d="M 13 16 V 10 C 13 6 27 6 27 10 V 16"/>
+      <circle cx="20" cy="24" r="2.5" fill="#207448"/>
+    </g>
+
+    <!-- Window/app icon for framework allocations -->
+    <g id="icon-framework" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="28" height="26" rx="4"/>
+      <line x1="6" y1="14" x2="34" y2="14"/>
+      <circle cx="11" cy="10" r="1.5" fill="#207448"/>
+      <circle cx="16" cy="10" r="1.5" fill="#207448"/>
+      <circle cx="21" cy="10" r="1.5" fill="#207448"/>
+    </g>
+
+    <!-- Disk cache icon -->
+    <g id="icon-cache" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="20" cy="10" rx="14" ry="5"/>
+      <path d="M 6 10 V 28 C 6 32 34 32 34 28 V 10"/>
+      <path d="M 6 19 C 6 23 34 23 34 19"/>
+    </g>
+
+    <!-- Checkpoint / storage icon -->
+    <g id="icon-checkpoint" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="6" width="24" height="28" rx="3"/>
+      <line x1="13" y1="12" x2="27" y2="12"/>
+      <line x1="13" y1="18" x2="27" y2="18"/>
+      <line x1="13" y1="24" x2="21" y2="24"/>
+    </g>
+
+    <!-- Shield icon for margin -->
+    <g id="icon-margin" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 20 6 L 32 11 V 20 C 32 28 20 34 20 34 C 20 34 8 28 8 20 V 11 Z"/>
+    </g>
+
+    <!-- 56px Chip / Multiplier Icon for calculation card -->
+    <g id="icon-calc-chip" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="6" fill="#ffffff"/>
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="#e8f1ea"/>
+      <line x1="18" y1="2" x2="18" y2="10"/>
+      <line x1="28" y1="2" x2="28" y2="10"/>
+      <line x1="38" y1="2" x2="38" y2="10"/>
+      <line x1="18" y1="46" x2="18" y2="54"/>
+      <line x1="28" y1="46" x2="28" y2="54"/>
+      <line x1="38" y1="46" x2="38" y2="54"/>
+      <line x1="2" y1="18" x2="10" y2="18"/>
+      <line x1="2" y1="28" x2="10" y2="28"/>
+      <line x1="2" y1="38" x2="10" y2="38"/>
+      <line x1="46" y1="18" x2="54" y2="18"/>
+      <line x1="46" y1="28" x2="54" y2="28"/>
+      <line x1="46" y1="38" x2="54" y2="38"/>
+    </g>
+
+    <!-- 56px Disk Storage Icon for mistake card -->
+    <g id="icon-disk-cylinder" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="20" ry="8" fill="#ffffff"/>
+      <path d="M 8 14 V 42 C 8 48 48 48 48 42 V 14" fill="#ffffff"/>
+      <ellipse cx="28" cy="14" rx="20" ry="8"/>
+      <path d="M 8 28 C 8 34 48 34 48 28"/>
+      <path d="M 8 42 C 8 48 48 48 48 42"/>
+      <line x1="28" y1="22" x2="36" y2="22"/>
+      <line x1="28" y1="36" x2="36" y2="36"/>
+    </g>
+
+    <!-- 56px Gauge / Monitor Icon for bottom strip -->
+    <g id="icon-gauge" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 42 A 22 22 0 1 1 46 42"/>
+      <line x1="28" y1="28" x2="38" y2="18"/>
+      <circle cx="28" cy="28" r="3" fill="#207448"/>
+      <line x1="8" y1="46" x2="48" y2="46"/>
+    </g>
+  </defs>
+
+  <!-- Background -->
+  <rect width="{W}" height="{H}" fill="#f5f8f5"/>
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Host memory budget for an 8 GPU node: </tspan>
+    <tspan x="800" dy="54">multiplied workers add up fast</tspan>
+  </text>
+
+  <!-- ==================== LEFT COLUMN: Stacked Budget Bar ==================== -->
+  <!-- Container (x=40, y=150, w=710, h=690) -->
+  <g id="left-budget-bar">
+    <rect x="40" y="150" width="710" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Segment 1: OS and daemons -->
+    <g id="seg-os">
+      <rect x="60" y="166" width="670" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-gear" x="76" y="175"/>
+      <text x="130" y="203" font-family="sans-serif" font-size="24" fill="#303a36">Operating system and daemons (a few GB)</text>
+    </g>
+
+    <!-- Segment 2: Data-loader workers (ORANGE HIGHLIGHT) -->
+    <g id="seg-loader">
+      <rect x="60" y="234" width="670" height="138" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+      <use href="#icon-loader" x="76" y="278"/>
+      <text font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="130" y="272">Data-loader workers (process overhead, </tspan>
+        <tspan x="130" y="306">decoded batches, prefetch queue) </tspan>
+        <tspan x="130" y="340">x number of workers x GPUs</tspan>
+      </text>
+    </g>
+
+    <!-- Segment 3: Pinned staging buffers -->
+    <g id="seg-pinned">
+      <rect x="60" y="382" width="670" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-lock" x="76" y="391"/>
+      <text x="130" y="419" font-family="sans-serif" font-size="24" fill="#303a36">Pinned staging buffers</text>
+    </g>
+
+    <!-- Segment 4: Framework host allocations -->
+    <g id="seg-framework">
+      <rect x="60" y="450" width="670" height="134" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-framework" x="76" y="492"/>
+      <text font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="130" y="488">Framework host allocations: </tspan>
+        <tspan x="130" y="522">CUDA context host memory, NCCL buffers, </tspan>
+        <tspan x="130" y="556">NCCL proxy threads</tspan>
+      </text>
+    </g>
+
+    <!-- Segment 5: Page cache -->
+    <g id="seg-page-cache">
+      <rect x="60" y="594" width="670" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-cache" x="76" y="603"/>
+      <text x="130" y="631" font-family="sans-serif" font-size="24" fill="#303a36">Page cache to keep for the dataset</text>
+    </g>
+
+    <!-- Segment 6: Checkpoint staging headroom -->
+    <g id="seg-checkpoint">
+      <rect x="60" y="662" width="670" height="98" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-checkpoint" x="76" y="691"/>
+      <text font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="130" y="702">Checkpoint staging headroom </tspan>
+        <tspan x="130" y="736">in tmpfs or page cache</tspan>
+      </text>
+    </g>
+
+    <!-- Segment 7: Margin -->
+    <g id="seg-margin">
+      <rect x="60" y="770" width="670" height="54" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-margin" x="76" y="777"/>
+      <text x="130" y="805" font-family="sans-serif" font-size="24" fill="#303a36">Margin</text>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT COLUMN 1: Boxed Calculation ==================== -->
+  <!-- Container (x=790, y=150, w=420, h=690) -->
+  <g id="right-calculation">
+    <rect x="790" y="150" width="420" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Icon: 56px chip -->
+    <use href="#icon-calc-chip" x="972" y="170"/>
+
+    <!-- Worked calculation text (26px bold) -->
+    <text text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1000" y="260">8 GPUs x 16 workers </tspan>
+      <tspan x="1000" y="294">x 2 GB = 256 GB</tspan>
+    </text>
+
+    <!-- Grid background container -->
+    <rect x="815" y="325" width="370" height="495" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    <!-- 8 GPU columns each with 16 small worker squares labelled 2 GB -->
+    <!-- Col width: 38px, Col gap: 7px. Total width = 8*38 + 7*7 = 304 + 49 = 353px. Start x = 815 + (370-353)/2 = 823.5 -> 824 -->
+    <!-- Row height: 24px, Row gap: 6px. Total height = 16*24 + 15*6 = 384 + 90 = 474px. Start y = 325 + (495-474)/2 = 335.5 -> 336 -->
+'''
+
+# Generate 8 columns x 16 worker squares
+col_start_x = 824
+row_start_y = 336
+col_w = 38
+row_h = 24
+col_gap = 7
+row_gap = 6
+
+squares_svg = []
+for c in range(8):
+    cx = col_start_x + c * (col_w + col_gap)
+    squares_svg.append(f'    <!-- GPU Column {c+1} -->')
+    squares_svg.append(f'    <g id="gpu-col-{c+1}">')
+    for r in range(16):
+        ry = row_start_y + r * (row_h + row_gap)
+        squares_svg.append(f'      <rect x="{cx}" y="{ry}" width="{col_w}" height="{row_h}" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" aria-label="2 GB"><title>2 GB</title></rect>')
+    squares_svg.append('    </g>')
+
+svg += "\n".join(squares_svg)
+
+svg += f'''
+  </g>
+
+  <!-- ==================== RIGHT COLUMN 2: Mistake Card ==================== -->
+  <!-- Container (x=1250, y=150, w=310, h=690) -->
+  <g id="right-mistake-card">
+    <rect x="1250" y="150" width="310" height="690" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Icon: 56px disk storage (aligned with chip icon at y=170) -->
+    <use href="#icon-disk-cylinder" x="1377" y="170"/>
+
+    <!-- Mistake card inner white panel (aligned with grid panel in Card 1) -->
+    <rect x="1265" y="325" width="280" height="495" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    <!-- Text: Checkpoints put in /dev/shm without a size cap (24px) -->
+    <text text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1405" y="520">Checkpoints put in </tspan>
+      <tspan x="1405" y="566" font-family="monospace" font-size="26" font-weight="bold">/dev/shm </tspan>
+      <tspan x="1405" y="612">without a size cap</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM STRIP ==================== -->
+  <!-- Container (x=40, y=880, w=1520, h=130) -->
+  <g id="bottom-strip">
+    <rect x="40" y="880" width="1520" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Icon: 56px gauge -->
+    <use href="#icon-gauge" x="65" y="917"/>
+
+    <!-- Text: Compare the total... (24px) -->
+    <text x="145" y="922" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">Compare the total with <tspan font-family="monospace">MemAvailable</tspan> and the cgroup limits; </tspan>
+      <tspan x="145" dy="36">test with the real job and watch <tspan font-family="monospace">RssAnon</tspan> and <tspan font-family="monospace">PSI;</tspan> </tspan>
+      <tspan x="145" dy="36">monitor <tspan font-family="monospace">MemAvailable, PSI,</tspan> per-cgroup <tspan font-family="monospace">memory.stat</tspan> and the OOM counters</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <!-- Container (x=40, y=1050, w=1520, h=60) -->
+  <g id="bottom-bar">
+    <rect x="40" y="1050" width="1520" height="60" rx="12" fill="#207448"/>
+    <text x="800" y="1088" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">A budget on paper is a starting point, not a promise</text>
+  </g>
+</svg>
+'''
+
+output_path = pathlib.Path("test_host_budget.svg")
+output_path.write_text(svg)
+print("Wrote test_host_budget.svg")

@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Where a pod IP comes from: node CIDR then CNI IPAM</title>
+  <desc>Visual infographic explaining Kubernetes pod IP assignment from node CIDR allocation to CNI IPAM, overlay vs routed networking, and probe reachability.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where a pod IP comes from: node CIDR then CNI IPAM</text>
+
+  
+  <rect x="60" y="90" width="1480" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <circle cx="105" cy="135" r="24" fill="#207448"/>
+  <text x="105" y="143" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <g transform="translate(145, 112)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="23" cy="23" r="10"/>
+    <path d="M23 3 v6 M23 37 v6 M3 23 h6 M37 23 h6 M9 9 l4.5 4.5 M32.5 32.5 l4.5 4.5 M9 37 l4.5 -4.5 M32.5 13.5 l4.5 -4.5"/>
+  </g>
+
+  <text x="210" y="143" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Cluster CIDR Configuration</text>
+
+  <text x="105" y="183" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36">kubeadm init --pod-network-cidr 10.244.0.0/16 sets --cluster-cidr on kube-controller-manager</text>
+  <text x="105" y="211" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">with --allocate-node-cidrs=true, RangeAllocator, --node-cidr-mask-size-ipv4=24</text>
+
+  
+  <path d="M 800 225 L 800 255 M 290 255 L 1290 255 M 290 255 L 290 283" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 790 255 L 790 283" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+  <path d="M 1290 255 L 1290 283" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="285" width="460" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 305)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="4" width="44" height="32" rx="4"/>
+    <line x1="8" y1="14" x2="28" y2="14"/>
+    <line x1="8" y1="24" x2="28" y2="24"/>
+    <circle cx="36" cy="14" r="1.5" fill="#207448"/>
+    <circle cx="36" cy="24" r="1.5" fill="#207448"/>
+  </g>
+  <text x="145" y="338" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Node 1</text>
+  <rect x="85" y="358" width="180" height="34" rx="6" fill="#e8f1ea"/>
+  <text x="95" y="382" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">10.244.0.0/24</text>
+  <text x="275" y="382" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">(/24 slice)</text>
+  <text x="85" y="424" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">shown in spec.podCIDR</text>
+  <text x="85" y="454" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">and spec.podCIDRs</text>
+
+  
+  <rect x="560" y="285" width="460" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(585, 305)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="4" width="44" height="32" rx="4"/>
+    <line x1="8" y1="14" x2="28" y2="14"/>
+    <line x1="8" y1="24" x2="28" y2="24"/>
+    <circle cx="36" cy="14" r="1.5" fill="#207448"/>
+    <circle cx="36" cy="24" r="1.5" fill="#207448"/>
+  </g>
+  <text x="645" y="338" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Node 2</text>
+  <rect x="585" y="358" width="180" height="34" rx="6" fill="#e8f1ea"/>
+  <text x="595" y="382" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">10.244.1.0/24</text>
+  <text x="775" y="382" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">(/24 slice)</text>
+  <text x="585" y="424" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">shown in spec.podCIDR</text>
+  <text x="585" y="454" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">and spec.podCIDRs</text>
+
+  
+  <rect x="1060" y="285" width="460" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1085, 305)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="4" width="44" height="32" rx="4"/>
+    <line x1="8" y1="14" x2="28" y2="14"/>
+    <line x1="8" y1="24" x2="28" y2="24"/>
+    <circle cx="36" cy="14" r="1.5" fill="#207448"/>
+    <circle cx="36" cy="24" r="1.5" fill="#207448"/>
+  </g>
+  <text x="1145" y="338" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Node 3</text>
+  <rect x="1085" y="358" width="180" height="34" rx="6" fill="#e8f1ea"/>
+  <text x="1095" y="382" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">10.244.2.0/24</text>
+  <text x="1275" y="382" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">(/24 slice)</text>
+  <text x="1085" y="424" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">shown in spec.podCIDR</text>
+  <text x="1085" y="454" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">and spec.podCIDRs</text>
+
+  
+  <path d="M 680 475 L 680 517" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="60" y="525" width="820" height="195" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+
+  
+  <circle cx="105" cy="565" r="24" fill="#db8129"/>
+  <text x="105" y="573" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <g transform="translate(145, 542)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="8" width="40" height="28" rx="4"/>
+    <path d="M12 36 v6 M32 36 v6 M8 42 h28 M14 18 h4 M26 18 h4"/>
+  </g>
+
+  <text x="205" y="573" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Pod IP Assignment (Local Node IPAM)</text>
+
+  <text x="95" y="620" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#303a36">CNI ADD returns JSON:</text>
+  <text x="95" y="656" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#db8129">ips address 10.244.1.188/24<tspan fill="#303a36" font-weight="normal">, gateway 10.244.1.1,</tspan></text>
+  <text x="95" y="692" font-family="ui-monospace, monospace" font-size="25" fill="#303a36">routes, dns</text>
+
+  
+  <rect x="910" y="525" width="630" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(940, 545)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 4 h22 l10 10 v26 h-32 z"/>
+    <path d="M28 4 v10 h10"/>
+    <line x1="14" y1="22" x2="30" y2="22"/>
+    <line x1="14" y1="30" x2="26" y2="30"/>
+  </g>
+  <text x="995" y="573" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Side note:</text>
+  <text x="940" y="618" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Cilium uses CiliumNode</text>
+  <text x="940" y="648" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">spec.ipam.podCIDRs;</text>
+  <text x="940" y="684" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Calico uses ipPools with blockSize 26</text>
+
+  
+  
+  <rect x="60" y="750" width="670" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(90, 772)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="14" cy="22" rx="8" ry="16"/>
+    <ellipse cx="36" cy="22" rx="8" ry="16"/>
+    <line x1="14" y1="6" x2="36" y2="6"/>
+    <line x1="14" y1="38" x2="36" y2="38"/>
+  </g>
+  <text x="155" y="805" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Overlay CNIs:</text>
+  <text x="90" y="855" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">VXLAN, Geneve or</text>
+  <text x="90" y="890" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">IP-in-IP tunnels per node</text>
+
+  
+  <rect x="745" y="812" width="110" height="48" rx="24" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="844" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">versus</text>
+
+  
+  <rect x="870" y="750" width="670" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(900, 772)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="42" height="28" rx="4"/>
+    <line x1="12" y1="22" x2="22" y2="22"/>
+    <polyline points="18,18 22,22 18,26"/>
+    <line x1="38" y1="22" x2="28" y2="22"/>
+    <polyline points="32,18 28,22 32,26"/>
+  </g>
+  <text x="965" y="805" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Routed CNIs:</text>
+  <text x="900" y="855" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">Calico BGP or Cilium</text>
+  <text x="900" y="890" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">native routing advertise pod CIDRs</text>
+
+  
+  <rect x="60" y="955" width="1480" height="140" rx="12" fill="#207448"/>
+  
+  <g transform="translate(95, 992)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M25 4 L45 12 V26 C45 38 25 46 25 46 C25 46 5 38 5 26 V12 Z"/>
+    <path d="M16 24 L22 30 L34 18"/>
+  </g>
+  <text x="165" y="1010" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Rule:</text>
+  <text x="255" y="1010" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">CNI must allow the local node IP to reach every pod</text>
+  <text x="255" y="1052" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#e8f1ea">so kubelet httpGet, tcpSocket and grpc probes work</text>
+</svg>

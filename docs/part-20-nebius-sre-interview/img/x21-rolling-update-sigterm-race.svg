@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>A rolling update races the endpoint removal against SIGTERM</title>
+  <desc>A swimlane diagram illustrating how a rolling update races endpoint removal against SIGTERM in Kubernetes.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" markerWidth="12" markerHeight="12" refX="9" refY="6" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-time" markerWidth="10" markerHeight="10" refX="5" refY="5" orient="auto">
+      <path d="M 2 2 L 8 5 L 2 8 Z" fill="#303a36" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A rolling update races the endpoint removal against SIGTERM</text>
+
+  
+  <rect x="100" y="125" width="260" height="825" rx="14" fill="#e8f1ea" opacity="0.35" />
+  <rect x="510" y="125" width="260" height="825" rx="14" fill="#e8f1ea" opacity="0.35" />
+  <rect x="920" y="125" width="260" height="825" rx="14" fill="#e8f1ea" opacity="0.35" />
+  <rect x="1310" y="125" width="260" height="825" rx="14" fill="#e8f1ea" opacity="0.35" />
+
+  
+  <line x1="230" y1="245" x2="230" y2="935" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.45" />
+  <line x1="640" y1="245" x2="640" y2="935" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.45" />
+  <line x1="1050" y1="245" x2="1050" y2="935" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.45" />
+  <line x1="1440" y1="245" x2="1440" y2="935" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.45" />
+
+  
+  <text x="55" y="248" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Time</text>
+  <line x1="55" y1="265" x2="55" y2="920" stroke="#303a36" stroke-width="2.5" marker-end="url(#arrow-time)" />
+
+  
+  <rect x="100" y="125" width="260" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="204" y="138" width="52" height="38" rx="5" fill="none" stroke="#207448" stroke-width="3.5" />
+  <circle cx="218" cy="157" r="3.5" fill="#207448" />
+  <line x1="230" y1="157" x2="244" y2="157" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="214" y1="176" x2="214" y2="186" stroke="#207448" stroke-width="3.5" />
+  <line x1="246" y1="176" x2="246" y2="186" stroke="#207448" stroke-width="3.5" />
+  <line x1="202" y1="186" x2="258" y2="186" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <text x="230" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Kubelet</text>
+
+  
+  <rect x="510" y="125" width="260" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="614" y="137" width="52" height="48" rx="8" fill="none" stroke="#207448" stroke-width="3.5" />
+  <rect x="623" y="146" width="14" height="13" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="643" y="146" width="14" height="13" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="623" y="165" width="34" height="12" rx="3" fill="none" stroke="#207448" stroke-width="2.5" />
+  <text x="640" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Engine pod</text>
+
+  
+  <rect x="920" y="125" width="260" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="1050" cy="161" r="23" fill="none" stroke="#207448" stroke-width="3.5" />
+  <line x1="1037" y1="161" x2="1063" y2="161" stroke="#207448" stroke-width="3" />
+  <line x1="1050" y1="148" x2="1050" y2="174" stroke="#207448" stroke-width="3" />
+  <path d="M 1033 155 L 1037 161 L 1033 167" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 1067 155 L 1063 161 L 1067 167" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1050" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Router and clients</text>
+
+  
+  <rect x="1310" y="125" width="260" height="115" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <path d="M 1440 137 L 1464 146 L 1464 167 Q 1464 185 1440 193 Q 1416 185 1416 167 L 1416 146 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+  <line x1="1440" y1="148" x2="1440" y2="181" stroke="#207448" stroke-width="2.5" />
+  <line x1="1427" y1="164" x2="1453" y2="164" stroke="#207448" stroke-width="2.5" />
+  <text x="1440" y="222" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Control plane</text>
+
+  
+  
+  <text x="445" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Run preStop hook, sleep</text>
+  <line x1="254" y1="340" x2="636" y2="340" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <circle cx="230" cy="340" r="24" fill="#207448" />
+  <text x="230" y="340" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <rect x="765" y="322" width="160" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="845" y="347" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">In parallel</text>
+
+  
+  <text x="1245" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Remove pod from endpoints</text>
+  <line x1="1440" y1="340" x2="1056" y2="340" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  
+  <text x="445" y="445" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Send SIGTERM</text>
+  <line x1="254" y1="460" x2="636" y2="460" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <circle cx="230" cy="460" r="24" fill="#207448" />
+  <text x="230" y="460" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <rect x="490" y="515" width="300" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="640" y="552" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="640" dy="0">vLLM aborts</tspan>
+    <tspan x="640" dy="30">running requests at</tspan>
+    <tspan x="640" dy="30">shutdown-timeout 0</tspan>
+  </text>
+
+  
+  
+  <text x="845" y="655" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="845" dy="0">Requests still arrive</tspan>
+    <tspan x="845" dy="28">for a short while</tspan>
+  </text>
+  <line x1="1050" y1="700" x2="646" y2="700" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  
+  <text x="445" y="775" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="445" dy="0">Send SIGKILL when</tspan>
+    <tspan x="445" dy="28">grace period ends</tspan>
+  </text>
+  <line x1="254" y1="820" x2="636" y2="820" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <circle cx="230" cy="820" r="24" fill="#207448" />
+  <text x="230" y="820" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+
+  
+  <rect x="310" y="836" width="270" height="64" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4" />
+  <text x="445" y="862" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="445" dy="0">grace period</tspan>
+    <tspan x="445" dy="28">30 s by default</tspan>
+  </text>
+
+  
+  <rect x="60" y="975" width="1480" height="75" rx="12" fill="#207448" />
+  <text x="800" y="1022" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Size the grace period from the longest allowed stream, and test a rolling update while streams are running.</text>
+</svg>

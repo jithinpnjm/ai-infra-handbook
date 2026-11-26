@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>A lossless Ethernet class needs every piece set the same, end to end</title>
+  <desc>A lossless Ethernet class needs every piece set the same, end to end: network chain, checklist, failure modes, InfiniBand contrast, and rail-optimised fabric.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+  <!-- 1. Title -->
+  <text x="40" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">A lossless Ethernet class needs</tspan>
+    <tspan x="40" dy="54">every piece set the same, end to end</tspan>
+  </text>
+  <!-- Checklist Container -->
+  <rect x="40" y="150" width="980" height="405" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="55" y="165" width="950" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="85" cy="199" r="14" fill="#207448" /><path d="M 79 199 L 83 204 L 92 194" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="115" y="193" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">PFC (802.1Qbb) for the RoCE priority, on the NIC and on</tspan>
+    <tspan x="115" dy="28">every switch</tspan>
+  </text>
+  <rect x="55" y="243" width="950" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="85" cy="267" r="14" fill="#207448" /><path d="M 79 267 L 83 272 L 92 262" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="115" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">ECN marking with DCQCN or similar rate control</tspan>
+  </text>
+  <rect x="55" y="301" width="950" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="85" cy="325" r="14" fill="#207448" /><path d="M 79 325 L 83 330 L 92 320" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="115" y="333" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">DSCP and PCP trust and mapping set correctly</tspan>
+  </text>
+  <rect x="55" y="359" width="950" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="85" cy="393" r="14" fill="#207448" /><path d="M 79 393 L 83 398 L 92 388" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="115" y="387" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">buffer allocation and headroom sized for each port speed</tspan>
+    <tspan x="115" dy="28">and cable length</tspan>
+  </text>
+  <rect x="55" y="437" width="950" height="104" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="85" cy="489" r="14" fill="#207448" /><path d="M 79 489 L 83 494 L 92 484" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="115" y="465" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0">per-port counters watched: CRC, FEC uncorrected, symbol</tspan>
+    <tspan x="115" dy="28">errors, PFC pause counts per priority, ECN-marked packets,</tspan>
+    <tspan x="115" dy="28">buffer occupancy, link flaps, optical power (DOM)</tspan>
+  </text>
+  <!-- Node 1: NIC -->
+  <rect x="40" y="575" width="150" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(87, 595)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="40" rx="4" />
+    <line x1="14" y1="44" x2="14" y2="52" /><line x1="22" y1="44" x2="22" y2="52" /><line x1="30" y1="44" x2="30" y2="52" /><line x1="38" y1="44" x2="38" y2="52" />
+    <circle cx="28" cy="24" r="8" />
+  </g>
+  <text x="115" y="705" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="115" dy="0">NIC</tspan>
+  </text>
+  <line x1="190" y1="672.5" x2="247.5" y2="672.5" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <!-- Node 2: Leaf switch port -->
+  <rect x="247.5" y="575" width="150" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(294.5, 591)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="48" height="34" rx="4" />
+    <line x1="12" y1="25" x2="44" y2="25" />
+    <polyline points="18,19 12,25 18,31" />
+    <polyline points="38,19 44,25 38,31" />
+  </g>
+  <text x="322.5" y="677" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="322.5" dy="0">Leaf</tspan>
+    <tspan x="322.5" dy="34">switch</tspan>
+    <tspan x="322.5" dy="34">port</tspan>
+  </text>
+  <line x1="397.5" y1="672.5" x2="455" y2="672.5" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <!-- Node 3: Spine switch port -->
+  <rect x="455" y="575" width="150" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(502, 591)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="38" rx="4" />
+    <line x1="12" y1="18" x2="44" y2="18" /><line x1="12" y1="32" x2="44" y2="32" />
+    <circle cx="28" cy="25" r="4" fill="#207448" />
+  </g>
+  <text x="530" y="677" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="530" dy="0">Spine</tspan>
+    <tspan x="530" dy="34">switch</tspan>
+    <tspan x="530" dy="34">port</tspan>
+  </text>
+  <line x1="605" y1="672.5" x2="662.5" y2="672.5" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <!-- Node 4: Leaf switch port -->
+  <rect x="662.5" y="575" width="150" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(709.5, 591)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="48" height="34" rx="4" />
+    <line x1="12" y1="25" x2="44" y2="25" />
+    <polyline points="18,19 12,25 18,31" />
+    <polyline points="38,19 44,25 38,31" />
+  </g>
+  <text x="737.5" y="677" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="737.5" dy="0">Leaf</tspan>
+    <tspan x="737.5" dy="34">switch</tspan>
+    <tspan x="737.5" dy="34">port</tspan>
+  </text>
+  <line x1="812.5" y1="672.5" x2="870" y2="672.5" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <!-- Node 5: NIC -->
+  <rect x="870" y="575" width="150" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(917, 595)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="40" rx="4" />
+    <line x1="14" y1="44" x2="14" y2="52" /><line x1="22" y1="44" x2="22" y2="52" /><line x1="30" y1="44" x2="30" y2="52" /><line x1="38" y1="44" x2="38" y2="52" />
+    <circle cx="28" cy="24" r="8" />
+  </g>
+  <text x="945" y="705" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="945" dy="0">NIC</tspan>
+  </text>
+  <!-- Bar spanning chain -->
+  <rect x="40" y="788" width="980" height="52" rx="10" fill="#207448" />
+  <text x="530" y="822" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    <tspan x="530" dy="0">the lossless class works only end to end</tspan>
+  </text>
+  <!-- Right Panel: Failure modes -->
+  <rect x="1060" y="150" width="500" height="355" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="1078" y="168" width="464" height="145" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <line x1="1102" y1="195" x2="1102" y2="285" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <text x="1126" y="218" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1126" dy="0">PFC missing on one switch</tspan>
+    <tspan x="1126" dy="32">port: drops, and RDMA</tspan>
+    <tspan x="1126" dy="32">retransmits are costly</tspan>
+  </text>
+  <rect x="1078" y="332" width="464" height="155" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <line x1="1102" y1="365" x2="1102" y2="455" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <text x="1126" y="396" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="1126" dy="0">misconfigured the other</tspan>
+    <tspan x="1126" dy="32">way: pause storms and</tspan>
+    <tspan x="1126" dy="32">deadlocks</tspan>
+  </text>
+  <!-- Side Contrast: InfiniBand -->
+  <rect x="1060" y="525" width="500" height="315" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1282, 540)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="38" rx="6" />
+    <path d="M 14 25 C 20 17, 36 17, 42 25" />
+    <path d="M 14 25 C 20 33, 36 33, 42 25" />
+  </g>
+  <text x="1080" y="626" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1080" dy="0">InfiniBand: credit-based flow</tspan>
+    <tspan x="1080" dy="30">control per virtual lane,</tspan>
+    <tspan x="1080" dy="30">lossless by construction; LIDs</tspan>
+    <tspan x="1080" dy="30">and GIDs replace MACs and IPs;</tspan>
+    <tspan x="1080" dy="30">the Subnet Manager programs</tspan>
+    <tspan x="1080" dy="30">forwarding tables</tspan>
+  </text>
+  <!-- Footer: Rail-optimised -->
+  <rect x="40" y="860" width="1520" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(60, 915)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="6" />
+    <circle cx="28" cy="28" r="12" />
+    <line x1="28" y1="4" x2="28" y2="16" /><line x1="28" y1="40" x2="28" y2="52" />
+    <line x1="4" y1="28" x2="16" y2="28" /><line x1="40" y1="28" x2="52" y2="28" />
+  </g>
+  <text x="135" y="908" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">Rail-optimised: one NIC per GPU, often its own subnet, VLAN or VRF; 8 x 400G back end; a single x4</tspan>
+    <tspan x="135" dy="34">link at 100G instead of 400G slows the whole job because collectives move at the speed of the slowest</tspan>
+    <tspan x="135" dy="34">participant</tspan>
+  </text>
+  <!-- Bottom Takeaway Bar -->
+  <rect x="40" y="1050" width="1520" height="60" rx="10" fill="#207448" />
+  <text x="800" y="1088" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    <tspan x="800" dy="0">Treat a PFC change on one switch as a change to the whole fabric</tspan>
+  </text>
+</svg>

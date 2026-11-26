@@ -1,0 +1,211 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Three ways a control plane avoids loops</title>
+  <desc>Visual comparison of Distance vector, Link state, and Path vector routing mechanisms for preventing loops in network control planes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three ways a control plane avoids loops</text>
+
+  
+  <g id="top-banner">
+    <rect x="50" y="80" width="1500" height="105" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(75, 107)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="26" cy="26" r="22"/>
+      <path d="M 26 14 L 26 28"/>
+      <circle cx="26" cy="36" r="2" fill="#207448"/>
+    </g>
+    <text x="145" y="125" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan font-weight="bold">Why loops matter:</tspan> IP packets die when the TTL runs out; <tspan fill="#db8129" font-weight="bold">L2 has no TTL</tspan>,
+      <tspan x="145" dy="34">so packets multiply and can melt the network in a broadcast storm</tspan>
+    </text>
+  </g>
+
+  
+  <g id="column-distance-vector">
+    <rect x="50" y="210" width="473" height="820" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(258, 235)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="28" cy="28" r="24"/>
+      <path d="M 14 28 L 42 28 M 28 14 L 28 42"/>
+      <path d="M 20 22 L 14 28 L 20 34 M 36 22 L 42 28 L 36 34"/>
+    </g>
+
+    <text x="286" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Distance vector</text>
+    <text x="286" y="365" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">(RIP, EIGRP)</text>
+
+    
+    
+    <g transform="translate(103, 508)">
+      <circle cx="32" cy="32" r="30" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 16 32 L 48 32 M 32 16 L 32 48" stroke="#207448" stroke-width="2.5" fill="none"/>
+      <path d="M 22 26 L 16 32 L 22 38 M 42 26 L 48 32 L 42 38" stroke="#207448" stroke-width="2.5" fill="none"/>
+    </g>
+
+    
+    <g transform="translate(254, 508)">
+      <circle cx="32" cy="32" r="30" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 16 32 L 48 32 M 32 16 L 32 48" stroke="#207448" stroke-width="2.5" fill="none"/>
+      <path d="M 22 26 L 16 32 L 22 38 M 42 26 L 48 32 L 42 38" stroke="#207448" stroke-width="2.5" fill="none"/>
+    </g>
+
+    
+    <g transform="translate(405, 508)">
+      <circle cx="32" cy="32" r="30" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M 16 32 L 48 32 M 32 16 L 32 48" stroke="#207448" stroke-width="2.5" fill="none"/>
+      <path d="M 22 26 L 16 32 L 22 38 M 42 26 L 48 32 L 42 38" stroke="#207448" stroke-width="2.5" fill="none"/>
+    </g>
+
+    
+    
+    <path d="M 170 515 C 195 475, 225 475, 250 515" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+    
+    <path d="M 250 565 C 225 605, 195 605, 170 565" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+    
+    <path d="M 322 515 C 347 475, 377 475, 402 515" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+    
+    <path d="M 402 565 C 377 605, 347 605, 322 565" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    
+    <rect x="75" y="725" width="423" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="286" y="805" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="286" dy="0">each router tells its</tspan>
+      <tspan x="286" dy="40">neighbours its distances,</tspan>
+      <tspan x="286" dy="40">hop by hop, like a rumour</tspan>
+      <tspan x="286" dy="40">passed along a street</tspan>
+    </text>
+  </g>
+
+  
+  <g id="column-link-state">
+    <rect x="563" y="210" width="474" height="820" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(772, 235)" stroke="#207448" stroke-width="3" fill="none">
+      <polygon points="28,6 50,46 6,46"/>
+      <circle cx="28" cy="6" r="4" fill="#207448"/>
+      <circle cx="50" cy="46" r="4" fill="#207448"/>
+      <circle cx="6" cy="46" r="4" fill="#207448"/>
+    </g>
+
+    <text x="800" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Link state</text>
+    <text x="800" y="365" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">(OSPF, IS-IS)</text>
+
+    
+    
+    <g transform="translate(642, 412)">
+      <circle cx="24" cy="24" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 12 24 L 36 24 M 24 12 L 24 36" stroke="#207448" stroke-width="2"/>
+    </g>
+    <g transform="translate(776, 392)">
+      <circle cx="24" cy="24" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 12 24 L 36 24 M 24 12 L 24 36" stroke="#207448" stroke-width="2"/>
+    </g>
+    <g transform="translate(910, 412)">
+      <circle cx="24" cy="24" r="22" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 12 24 L 36 24 M 24 12 L 24 36" stroke="#207448" stroke-width="2"/>
+    </g>
+
+    
+    <path d="M 688 430 L 776 414" stroke="#207448" stroke-width="2" stroke-dasharray="4 3"/>
+    <path d="M 824 414 L 912 430" stroke="#207448" stroke-width="2" stroke-dasharray="4 3"/>
+    <path d="M 688 440 Q 800 460 912 440" stroke="#207448" stroke-width="2" stroke-dasharray="4 3" fill="none"/>
+
+    
+    <path d="M 675 465 L 725 520" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M 800 445 L 800 520" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M 925 465 L 875 520" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    
+    <rect x="588" y="530" width="424" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(778, 542)" stroke="#207448" stroke-width="2.5" fill="none">
+      <ellipse cx="22" cy="10" rx="20" ry="7"/>
+      <path d="M 2 10 L 2 26 C 2 30, 42 30, 42 26 L 42 10"/>
+      <path d="M 2 18 C 2 22, 42 22, 42 18"/>
+    </g>
+    <text x="800" y="622" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">Dijkstra shortest path first</tspan>
+      <tspan x="800" dy="34">on the same database</tspan>
+    </text>
+
+    
+    <rect x="588" y="725" width="424" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(772, 790)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="4" y="6" width="48" height="38" rx="4"/>
+      <path d="M 18 6 L 18 44 M 38 6 L 38 44 M 4 25 L 52 25"/>
+    </g>
+    <text x="800" y="885" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">everyone holds the same map</text>
+  </g>
+
+  
+  <g id="column-path-vector">
+    <rect x="1077" y="210" width="473" height="820" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1285, 235)" stroke="#207448" stroke-width="3" fill="none">
+      <path d="M 12 12 L 44 12 L 44 44 L 12 44 Z"/>
+      <path d="M 20 22 L 36 22 M 20 30 L 36 30 M 20 38 L 28 38"/>
+    </g>
+
+    <text x="1313" y="325" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Path vector</text>
+    <text x="1313" y="365" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">(BGP)</text>
+
+    
+    
+    <g transform="translate(1125, 412)">
+      <circle cx="26" cy="26" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 14 26 L 38 26 M 26 14 L 26 38" stroke="#207448" stroke-width="2"/>
+    </g>
+    
+    <g transform="translate(1447, 412)">
+      <circle cx="26" cy="26" r="24" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+      <path d="M 14 26 L 38 26 M 26 14 L 26 38" stroke="#207448" stroke-width="2"/>
+    </g>
+
+    
+    <rect x="1102" y="495" width="423" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1293, 510)" stroke="#207448" stroke-width="2.5" fill="none">
+      <path d="M 6 4 L 28 4 L 36 12 L 36 38 L 6 38 Z"/>
+      <path d="M 28 4 L 28 12 L 36 12"/>
+      <path d="M 12 18 L 26 18 M 12 24 L 28 24 M 12 30 L 22 30"/>
+    </g>
+
+    
+    <path d="M 1165 448 L 1220 495" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+    <path d="M 1405 495 L 1460 448" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+    <text x="1313" y="582" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1313" dy="0" font-weight="bold">AS list:</tspan>
+      <tspan x="1313" dy="34">the autonomous systems</tspan>
+      <tspan x="1313" dy="34">crossed</tspan>
+    </text>
+
+    
+    <rect x="1102" y="725" width="423" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1313" y="785" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1313" dy="0">a router that sees its own</tspan>
+      <tspan x="1313" dy="38">name on the list knows the</tspan>
+      <tspan x="1313" dy="38">route has already been</tspan>
+      <tspan x="1313" dy="38">through it; the list prevents</tspan>
+      <tspan x="1313" dy="38">loops and allows policy</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1060" width="1500" height="80" rx="12" fill="#207448"/>
+    <text x="800" y="1110" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Judge a routing protocol by stability, scalability and operability, not by overhead alone</text>
+  </g>
+</svg>

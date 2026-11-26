@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Adding 256 nodes needs one more spare, not eight</title>
+  <desc>Worked comparison with the assumed 10 percent annual failure and 72 hour repair across different fleet sizes.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Adding 256 nodes needs one more spare, not eight</text>
+  <text x="800" y="116" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">Worked comparison with the assumed 10 percent annual failure and 72 hour repair.</text>
+
+  
+  <rect x="60" y="160" width="460" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(262, 190)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="6"/>
+    <line x1="4" y1="20" x2="52" y2="20"/>
+    <line x1="4" y1="36" x2="52" y2="36"/>
+    <circle cx="14" cy="12" r="2" fill="#207448"/>
+    <circle cx="14" cy="28" r="2" fill="#207448"/>
+    <circle cx="14" cy="44" r="2" fill="#207448"/>
+  </g>
+  <text x="290" y="285" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="290" dy="0" font-weight="bold">Fleet of 512:</tspan>
+    <tspan x="290" dy="38">average 0.42 in repair,</tspan>
+    <tspan x="290" dy="38">3 spares, about 0.6 percent</tspan>
+    <tspan x="290" dy="38">of the fleet</tspan>
+  </text>
+
+  
+  <rect x="570" y="160" width="460" height="340" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+  <g transform="translate(772, 185)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="6"/>
+    <line x1="4" y1="20" x2="52" y2="20"/>
+    <line x1="4" y1="36" x2="52" y2="36"/>
+    <circle cx="14" cy="12" r="2" fill="#db8129"/>
+    <circle cx="14" cy="28" r="2" fill="#db8129"/>
+    <circle cx="14" cy="44" r="2" fill="#db8129"/>
+  </g>
+  <text x="800" y="275" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="800" dy="0" font-weight="bold">Fleet of 768:</tspan>
+    <tspan x="800" dy="36">average 0.63 in repair,</tspan>
+    <tspan x="800" dy="36">calculator gives 4 spares,</tspan>
+    <tspan x="800" dy="36">so 256 new nodes need</tspan>
+    <tspan x="800" dy="36">one more spare</tspan>
+  </text>
+
+  
+  <rect x="1080" y="160" width="460" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1282, 190)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="6"/>
+    <line x1="4" y1="20" x2="52" y2="20"/>
+    <line x1="4" y1="36" x2="52" y2="36"/>
+    <circle cx="14" cy="12" r="2" fill="#207448"/>
+    <circle cx="14" cy="28" r="2" fill="#207448"/>
+    <circle cx="14" cy="44" r="2" fill="#207448"/>
+  </g>
+  <text x="1310" y="315" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="1310" dy="0" font-weight="bold">Fleet of 2,048:</tspan>
+    <tspan x="1310" dy="38">7 spares, about 0.3 percent</tspan>
+  </text>
+
+  
+  <rect x="60" y="530" width="1480" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(90, 547)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6,14 18,28 6,42"/>
+    <line x1="26" y1="42" x2="46" y2="42"/>
+  </g>
+  <text x="165" y="585" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" fill="#207448">python3 -c from c16_spare_pool import spares_needed; print(spares_needed(768, 0.10, 72))</text>
+
+  
+  <rect x="60" y="650" width="1480" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(90, 677)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6 44 L22 30 L34 36 L50 12"/>
+    <polyline points="38,12 50,12 50,24"/>
+  </g>
+  <text x="170" y="714" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">spares do not scale linearly with fleet size; a bigger pool is cheaper per node</text>
+
+  
+  <rect x="60" y="785" width="1480" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(90, 812)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <polyline points="28,14 28,28 40,28"/>
+  </g>
+  <text x="170" y="849" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">tripling repair time triples the mean, so invest in repair speed before buying nodes</text>
+
+  
+  <rect x="60" y="920" width="1480" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(90, 957)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="6" width="40" height="44" rx="4"/>
+    <line x1="8" y1="18" x2="48" y2="18"/>
+    <line x1="18" y1="28" x2="38" y2="28"/>
+    <line x1="18" y1="38" x2="30" y2="38"/>
+  </g>
+  <text x="170" y="974" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="170" dy="0">failure rate and repair time must come from the fleet's own history,</tspan>
+    <tspan x="170" dy="38">until then 10 percent and 72 hours are placeholders</tspan>
+  </text>
+</svg>

@@ -127,39 +127,9 @@ Management clusters also often host shared or regional services that other clust
 
 When a fleet breaks, you first ask which layer failed. Layers are the separate jobs a fleet must do, each one depending on the layers below it. The diagram below splits fleet management into six layers. Read it from the top left. Provisioning comes first, because nothing else can run until a cluster exists.
 
-```mermaid
-flowchart TB
-  subgraph L1["1 Provisioning"]
-    TF[Terraform or OpenTofu]
-    CAPI[Cluster API]
-    MAN[Managed services: GKE, EKS, AKS]
-  end
-  subgraph L2["2 Configuration delivery"]
-    GIT[Git source of truth]
-    ARGO[Argo CD ApplicationSets or Flux]
-  end
-  subgraph L3["3 Workload placement"]
-    MK[Kueue MultiKueue]
-    KAR[Karmada or OCM]
-    SLU[Schedulers per cluster]
-  end
-  subgraph L4["4 Connectivity"]
-    NET[ClusterMesh, Submariner, mesh multi-cluster, plain VPN or peering]
-    DNS[Global DNS and load balancing]
-  end
-  subgraph L5["5 Identity and policy"]
-    ID[Workload identity, SPIFFE, OIDC]
-    POL[Kyverno or Gatekeeper, RBAC baselines]
-  end
-  subgraph L6["6 Observability and ops"]
-    OBS[Metrics federation, central logs, tracing]
-    UPG[Wave-based upgrades, drift detection]
-  end
-  L1 --> L2 --> L3
-  L3 --> L4
-  L2 --> L5
-  L2 --> L6
-```
+![Layers of fleet management](./img/m5-35-1.svg)
+
+*Figure 5.35.1. Layers of fleet management, as a diagram.*
 
 No single product does all six layers well, so each layer can use different tools. What matters to you is that the interfaces between layers stay clean. An interface here means the agreed handoff between two layers. Provisioning produces a cluster and a record of it in a **cluster inventory**. Configuration delivery then reads that inventory to decide which clusters get what. Keep the inventory as the handoff between those two layers, so each can change without breaking the other.
 
@@ -274,23 +244,9 @@ The setup is made of a few roles and objects. Read them as a chain. The manager 
 
 The documented flow looks like this:
 
-```mermaid
-sequenceDiagram
-  participant U as User
-  participant M as Manager cluster (Kueue)
-  participant W1 as Worker 1
-  participant W2 as Worker 2
-  U->>M: submit Job to LocalQueue
-  M->>M: Workload gets QuotaReservation in ClusterQueue
-  M->>W1: create remote Workload (dispatcher picks clusters)
-  M->>W2: create remote Workload
-  W2->>W2: admits the Workload
-  M->>W1: delete remote Workload
-  M->>W2: create copy of the Job labelled prebuilt-workload-name
-  W2->>W2: run Job
-  W2-->>M: status synced back to local Job
-  M->>W2: delete remote objects when Workload Finished
-```
+![Kueue MultiKueue (read from the Kueue docs and API types)](./img/m5-35-2.svg)
+
+*Figure 5.35.2. Kueue MultiKueue (read from the Kueue docs and API types), as a diagram.*
 
 Notice that the manager creates remote copies on both workers, but only W2 admits and runs the Job. The manager then deletes the pending remote copy on W1. The job then runs on whichever worker admitted it. The manager keeps the single local Job as the record that users see.
 

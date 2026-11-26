@@ -1,0 +1,201 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>GPU scheduling symptoms and first checks</title>
+  <desc>Table symptom, likely cause, check</desc>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title: 48px bold -->
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">GPU scheduling symptoms and first checks</text>
+
+  <!-- ==================== TABLE CONTAINER ==================== -->
+  <!-- Outer boundary -->
+  <rect x="40" y="85" width="1520" height="885" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  <!-- Table Header Background (main green) -->
+  <path d="M 40 95 Q 40 85 50 85 L 1550 85 Q 1560 85 1560 95 L 1560 155 L 40 155 Z" fill="#207448" />
+
+  <!-- Header 1: symptom (Node 1) -->
+  <g transform="translate(145, 96)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 12 36 L 24 10 L 36 36 Z" />
+    <line x1="24" y1="18" x2="24" y2="26" />
+    <circle cx="24" cy="31" r="1.5" fill="#ffffff" />
+  </g>
+  <text x="210" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">symptom</text>
+
+  <!-- Header 2: likely cause (Node 2) -->
+  <g transform="translate(635, 96)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="9" />
+    <path d="M 24 6 L 24 11 M 24 37 L 24 42 M 6 24 L 11 24 M 37 24 L 42 24 M 11.3 11.3 L 14.8 14.8 M 33.2 33.2 L 36.7 36.7 M 11.3 36.7 L 14.8 33.2 M 33.2 14.8 L 36.7 11.3" />
+  </g>
+  <text x="700" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">likely cause</text>
+
+  <!-- Header 3: check (Node 3) -->
+  <g transform="translate(1225, 96)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="13" />
+    <line x1="31" y1="31" x2="42" y2="42" />
+    <polyline points="16,22 20,26 28,18" />
+  </g>
+  <text x="1290" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">check</text>
+
+  <!-- ==================== ROW 1 ==================== -->
+  <rect x="40" y="155" width="1520" height="85" fill="#ffffff" />
+  <line x1="40" y1="240" x2="1560" y2="240" stroke="#207448" stroke-width="1" opacity="0.3" />
+  <text x="64" y="190.5" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">Invalid generic resource </tspan>
+    <tspan x="64" dy="34">(gres) specification</tspan>
+  </text>
+  <text x="544" y="192.5" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">type or name not in </tspan>
+    <tspan x="544" dy="28">GresTypes or node Gres</tspan>
+  </text>
+  <text x="1064" y="192.5" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">scontrol show node, slurmd -G, </tspan>
+    <tspan x="1064" dy="28">typo in type</tspan>
+  </text>
+
+  <!-- ==================== ROW 2 ==================== -->
+  <rect x="40" y="240" width="1520" height="140" fill="#e8f1ea" />
+  <line x1="40" y1="380" x2="1560" y2="380" stroke="#207448" stroke-width="1" opacity="0.3" />
+  <text x="64" y="303.0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">Pending Resources or </tspan>
+    <tspan x="64" dy="34">ReqNodeNotAvail</tspan>
+  </text>
+  <text x="544" y="277.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">request not satisfiable </tspan>
+    <tspan x="544" dy="28">(type, count, memory per GPU, </tspan>
+    <tspan x="544" dy="28">sockets with enforce-binding) </tspan>
+    <tspan x="544" dy="28">or nodes drained</tspan>
+  </text>
+  <text x="1064" y="305.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">scontrol show job, </tspan>
+    <tspan x="1064" dy="28">sinfo -o %N %G %t</tspan>
+  </text>
+
+  <!-- ==================== ROW 3 ==================== -->
+  <rect x="40" y="380" width="1520" height="85" fill="#fff7f0" />
+  <rect x="40" y="380" width="8" height="85" fill="#db8129" />
+  <line x1="40" y1="465" x2="1560" y2="465" stroke="#207448" stroke-width="1" opacity="0.3" />
+  <text x="64" y="415.5" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="64" dy="0">Node DRAIN gres/gpu </tspan>
+    <tspan x="64" dy="34">count too low (0 &lt; 8)</tspan>
+  </text>
+  <text x="544" y="417.5" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">NVML or driver failed to load, </tspan>
+    <tspan x="544" dy="28">GPU missing</tspan>
+  </text>
+  <text x="1064" y="417.5" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">nvidia-smi, slurmd log, </tspan>
+    <tspan x="1064" dy="28">slurmd -G, dmesg Xid</tspan>
+  </text>
+
+  <!-- ==================== ROW 4 ==================== -->
+  <rect x="40" y="465" width="1520" height="100" fill="#ffffff" />
+  <line x1="40" y1="565" x2="1560" y2="565" stroke="#207448" stroke-width="1" opacity="0.3" />
+  <text x="64" y="508.0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">CUDA_VISIBLE_DEVICES </tspan>
+    <tspan x="64" dy="34">empty</tspan>
+  </text>
+  <text x="544" y="496.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">no File= or device constraint </tspan>
+    <tspan x="544" dy="28">config, --gres not requested, </tspan>
+    <tspan x="544" dy="28">--gpu-bind=none</tspan>
+  </text>
+  <text x="1064" y="510.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">gres.conf, </tspan>
+    <tspan x="1064" dy="28">scontrol show job TresPerNode</tspan>
+  </text>
+
+  <!-- ==================== ROW 5 ==================== -->
+  <rect x="40" y="565" width="1520" height="60" fill="#e8f1ea" />
+  <line x1="40" y1="625" x2="1560" y2="625" stroke="#207448" stroke-width="1" opacity="0.3" />
+  <text x="64" y="605.0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">Job sees all GPUs</tspan>
+  </text>
+  <text x="544" y="604.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">ConstrainDevices=no</tspan>
+  </text>
+  <text x="1064" y="604.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">cgroup.conf</tspan>
+  </text>
+
+  <!-- ==================== ROW 6 ==================== -->
+  <rect x="40" y="625" width="1520" height="100" fill="#ffffff" />
+  <line x1="40" y1="725" x2="1560" y2="725" stroke="#207448" stroke-width="1" opacity="0.3" />
+  <text x="64" y="685.0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">Two ranks use one GPU</tspan>
+  </text>
+  <text x="544" y="656.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">no per-task binding, </tspan>
+    <tspan x="544" dy="28">--gpus-per-task missing, </tspan>
+    <tspan x="544" dy="28">sharing configured</tspan>
+  </text>
+  <text x="1064" y="684.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">gpu_env_check.py per rank</tspan>
+  </text>
+
+  <!-- ==================== ROW 7 ==================== -->
+  <rect x="40" y="725" width="1520" height="100" fill="#e8f1ea" />
+  <line x1="40" y1="825" x2="1560" y2="825" stroke="#207448" stroke-width="1" opacity="0.3" />
+  <text x="64" y="785.0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">Slow host-device copies</tspan>
+  </text>
+  <text x="544" y="784.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">CPUs on the wrong NUMA node</tspan>
+  </text>
+  <text x="1064" y="756.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">--gres-flags=enforce-binding, </tspan>
+    <tspan x="1064" dy="28">Cores=, taskset, </tspan>
+    <tspan x="1064" dy="28">nvidia-smi topo -m</tspan>
+  </text>
+
+  <!-- ==================== ROW 8 ==================== -->
+  <rect x="40" y="825" width="1520" height="70" fill="#ffffff" />
+  <line x1="40" y1="895" x2="1560" y2="895" stroke="#207448" stroke-width="1" opacity="0.3" />
+  <text x="64" y="853.0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">NVLink-poor pairs </tspan>
+    <tspan x="64" dy="34">allocated</tspan>
+  </text>
+  <text x="544" y="869.0" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">Links missing</tspan>
+  </text>
+  <text x="1064" y="855.0" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">slurmd -G, </tspan>
+    <tspan x="1064" dy="28">--gres-flags=enforce-links</tspan>
+  </text>
+
+  <!-- ==================== ROW 9 ==================== -->
+  <rect x="40" y="895" width="1520" height="75" fill="#e8f1ea" />
+  <text x="64" y="925.5" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="64" dy="0">MIG count wrong </tspan>
+    <tspan x="64" dy="34">after reboot</tspan>
+  </text>
+  <text x="544" y="927.5" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="544" dy="0">layout not recreated </tspan>
+    <tspan x="544" dy="28">before slurmd</tspan>
+  </text>
+  <text x="1064" y="927.5" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="1064" dy="0">systemd ordering, </tspan>
+    <tspan x="1064" dy="28">nvidia-smi -L</tspan>
+  </text>
+
+  <!-- Vertical Column Dividers -->
+  <line x1="520" y1="85" x2="520" y2="970" stroke="#207448" stroke-width="1.5" opacity="0.4" />
+  <line x1="1040" y1="85" x2="1040" y2="970" stroke="#207448" stroke-width="1.5" opacity="0.4" />
+
+  <!-- ==================== NOTE PANEL ==================== -->
+  <rect x="40" y="1010" width="1520" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Shield / Info Outline Icon (56px, stroke 4) -->
+  <g transform="translate(68, 1057)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 L 48 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 L 8 14 Z" />
+    <line x1="28" y1="20" x2="28" y2="30" />
+    <circle cx="28" cy="38" r="2" fill="#207448" />
+  </g>
+
+  <!-- Note Text -->
+  <text x="145" y="1075" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">bring a recovered test node back with scontrol update NodeName=node[6-7] State=RESUME; </tspan>
+    <tspan x="145" dy="38" font-family="system-ui, -apple-system, sans-serif">drain a node when a GPU reports Xid, ECC or NVLink faults</tspan>
+  </text>
+</svg>

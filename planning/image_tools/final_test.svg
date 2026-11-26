@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>When the method itself fails: four traps and the counter-move</title>
+  <desc>Visual infographic explaining four diagnostic traps, what they look like, and the counter-moves.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="46" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">When the method itself fails:</tspan>
+    <tspan x="800" dy="52">four traps and the counter-move</tspan>
+  </text>
+
+  <!-- ==================== ROW 1 ==================== -->
+
+  <!-- Card 1: The counter does not exist -->
+  <g id="card-1">
+    <rect x="50" y="124" width="720" height="360" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Number Circle -->
+    <circle cx="94" cy="168" r="24" fill="#207448" />
+    <text x="94" y="177" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <!-- Title -->
+    <text x="134" y="162" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="134" dy="0">The counter</tspan>
+      <tspan x="134" dy="34">does not exist</tspan>
+    </text>
+    <!-- Icon 1: Gauge with question mark / missing counter (56px, stroke 4) -->
+    <g transform="translate(684, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 42 A 22 22 0 1 1 50 42" />
+      <path d="M 23 18 C 23 13 33 13 33 21 C 33 26 28 26 28 30" />
+      <circle cx="28" cy="38" r="1.5" fill="#207448" stroke="none" />
+    </g>
+    <!-- Panel 1-A: What it looks like -->
+    <rect x="70" y="222" width="680" height="120" rx="10" fill="#f8faf8" stroke="#d0dfd4" stroke-width="1.5" />
+    <text x="92" y="272" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="92" dy="0">some resources expose only some of</tspan>
+      <tspan x="92" dy="32">utilisation, saturation and errors</tspan>
+    </text>
+    <!-- Panel 1-B: Counter-move -->
+    <rect x="70" y="354" width="680" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="92" y="394" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="92" dy="0">mark the empty cell as a known unknown and</tspan>
+      <tspan x="92" dy="28">say so in the report; do not read an</tspan>
+      <tspan x="92" dy="28">empty cell as healthy</tspan>
+    </text>
+  </g>
+
+  <!-- Card 2: The interval hides the problem -->
+  <g id="card-2">
+    <rect x="830" y="124" width="720" height="360" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Number Circle -->
+    <circle cx="874" cy="168" r="24" fill="#207448" />
+    <text x="874" y="177" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <!-- Title -->
+    <text x="914" y="162" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="914" dy="0">The interval</tspan>
+      <tspan x="914" dy="34">hides the problem</tspan>
+    </text>
+    <!-- Icon 2: Clock / timer icon (56px, stroke 4) -->
+    <g transform="translate(1464, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="30" r="20" />
+      <polyline points="28,18 28,30 38,30" />
+      <path d="M 22 4 L 34 4" />
+    </g>
+    <!-- Panel 2-A: What it looks like -->
+    <rect x="850" y="222" width="680" height="120" rx="10" fill="#f8faf8" stroke="#d0dfd4" stroke-width="1.5" />
+    <text x="872" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="872" dy="0">a one-minute average shows a device at 80%</tspan>
+      <tspan x="872" dy="28">while one-second samples show bursts to</tspan>
+      <tspan x="872" dy="28">100% with queueing (Case 1)</tspan>
+    </text>
+    <!-- Panel 2-B: Counter-move -->
+    <rect x="850" y="354" width="680" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="872" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="872" dy="0">shorten the interval before you move on</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== CENTRE BADGE ==================== -->
+  <g id="centre-badge">
+    <rect x="380" y="498" width="840" height="68" rx="34" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <text x="800" y="540" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">A method gives you a shape, not a guarantee</text>
+  </g>
+
+  <!-- ==================== ROW 2 ==================== -->
+
+  <!-- Card 3: The measurement disturbs the system -->
+  <g id="card-3">
+    <rect x="50" y="580" width="720" height="360" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- Number Circle -->
+    <circle cx="94" cy="624" r="24" fill="#207448" />
+    <text x="94" y="633" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <!-- Title -->
+    <text x="134" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="134" dy="0">The measurement</tspan>
+      <tspan x="134" dy="34">disturbs the system</tspan>
+    </text>
+    <!-- Icon 3: CPU chip with disturbance waveform (56px, stroke 4) -->
+    <g transform="translate(684, 596)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <line x1="20" y1="4" x2="20" y2="12" stroke-width="3" />
+      <line x1="36" y1="4" x2="36" y2="12" stroke-width="3" />
+      <line x1="20" y1="44" x2="20" y2="52" stroke-width="3" />
+      <line x1="36" y1="44" x2="36" y2="52" stroke-width="3" />
+      <line x1="4" y1="20" x2="12" y2="20" stroke-width="3" />
+      <line x1="4" y1="36" x2="12" y2="36" stroke-width="3" />
+      <line x1="44" y1="20" x2="52" y2="20" stroke-width="3" />
+      <line x1="44" y1="36" x2="52" y2="36" stroke-width="3" />
+      <polyline points="23,20 31,25 24,31 33,36" stroke-width="3" />
+    </g>
+    <!-- Panel 3-A: What it looks like -->
+    <rect x="70" y="678" width="680" height="120" rx="10" fill="#f8faf8" stroke="#d0dfd4" stroke-width="1.5" />
+    <text x="92" y="718" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="92" dy="0">profilers, tracers and heavy sampling use</tspan>
+      <tspan x="92" dy="28">CPU and can turn a rare stall into a</tspan>
+      <tspan x="92" dy="28">constant one on a GPU node</tspan>
+    </text>
+    <!-- Panel 3-B: Counter-move -->
+    <rect x="70" y="810" width="680" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="92" y="860" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="92" dy="0">start with cheap counters; turn on heavy</tspan>
+      <tspan x="92" dy="32">tools only for a short, announced window</tspan>
+    </text>
+  </g>
+
+  <!-- Card 4: The first explanation feels complete (orange) -->
+  <g id="card-4">
+    <rect x="830" y="580" width="720" height="360" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <!-- Number Circle -->
+    <circle cx="874" cy="624" r="24" fill="#db8129" />
+    <text x="874" y="633" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <!-- Title -->
+    <text x="914" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="914" dy="0">The first explanation</tspan>
+      <tspan x="914" dy="34">feels complete</tspan>
+    </text>
+    <!-- Icon 4: Target / Magnifying glass (orange, 56px, stroke 4) -->
+    <g transform="translate(1464, 596)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16" />
+      <line x1="36" y1="36" x2="49" y2="49" stroke-width="4.5" />
+      <line x1="24" y1="16" x2="24" y2="25" stroke-width="3.5" />
+      <circle cx="24" cy="31" r="1.5" fill="#db8129" stroke="none" />
+    </g>
+    <!-- Panel 4-A: What it looks like -->
+    <rect x="850" y="678" width="680" height="120" rx="10" fill="#fffaf5" stroke="#f0ceaa" stroke-width="1.5" />
+    <text x="872" y="728" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="872" dy="0">you find a real fault, fix it, and stop, but</tspan>
+      <tspan x="872" dy="32">it explains only a fraction of the slowdown</tspan>
+    </text>
+    <!-- Panel 4-B: Counter-move -->
+    <rect x="850" y="810" width="680" height="120" rx="10" fill="#fdf4ea" stroke="#db8129" stroke-width="2" />
+    <text x="872" y="850" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#b35b10">
+      <tspan x="872" dy="0">check the fix against the original problem</tspan>
+      <tspan x="872" dy="28">statement; if step time did not return to</tspan>
+      <tspan x="872" dy="28">baseline, the investigation is not finished</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== FOOTER STRIP ==================== -->
+  <g id="footer-strip">
+    <rect x="50" y="956" width="1500" height="152" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="75" y="996" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">Common mistakes: favourite tool first, tunables changed without a hypothesis or baseline,</tspan>
+      <tspan x="75" dy="28">several changes at once, failed experiments not reverted, trusting GPU-Util or load average as a</tspan>
+      <tspan x="75" dy="28">verdict, optimising off the critical path, benchmarking the load generator or a warm cache,</tspan>
+      <tspan x="75" dy="28">ignoring corrected ECC, link retrains and PCIe replays</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="50" y="1124" width="1500" height="64" rx="12" fill="#207448" />
+    <text x="800" y="1165" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Check that your fix explains the bulk of the symptom before you close an investigation</text>
+  </g>
+
+</svg>

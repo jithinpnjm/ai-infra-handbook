@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "x03-first-minute-ladder",
+  "title": "The first minute: ten commands, each asks one question",
+  "spec": "A vertical numbered ladder of ten rows, top to bottom, numbered 1 to 10 with green number circles (r=24, white number). Each row has a small outline icon at left, a monospace command box in the middle and a sans question on the right. Rows in order: 1 uptime, question 'Is demand rising or falling? Compare the 1, 5 and 15 minute numbers.'; 2 dmesg -T | tail, question 'Did the kernel log errors, including OOM kills?'; 3 vmstat -SM 1, question 'Run queue, swapping and overall CPU split, one second at a time.'; 4 mpstat -P ALL 1, question 'Is one CPU busy while the others idle?'; 5 pidstat 1, question 'Which processes use the CPU, and user or kernel time?'; 6 iostat -sxz 1, question 'Disk IOPS, throughput, wait time and percent busy.'; 7 free -m, question 'Memory in use, including the page cache.'; 8 sar -n DEV 1, question 'Network interface throughput and packets.'; 9 sar -n TCP,ETCP 1, question 'TCP connection rates and retransmits.'; 10 top, question 'A sanity overview of everything above.' Group the rows with three thin green brackets on the far left labelled CPU (rows 1 to 5), Memory and disk (rows 6 to 7), Network (rows 8 to 9), and row 10 as a sanity check. A small clock icon near the top labelled 1 second interval. One orange callout beside row 3 vmstat, labelled first row is since boot. Title 'The first 60 seconds, command by command'. No arrows except a single thin down arrow along the left edge from row 1 to row 10 labelled read top to bottom. Green takeaway bar at bottom: Run the checklist top to bottom without stopping to theorise, then say what each line told you.",
+  "anchor": "### 3. The first 60 seconds, command by command",
+  "alt": "Ten numbered commands in order, each beside the one question it answers, grouped by CPU, memory and disk, and network.",
+  "cap": "The first-minute checklist is a fixed order of ten commands, and each command answers one question about the machine."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "x03-load-signals-decision",
+  "title": "Load average, run queue and pressure: which one says CPU, which says disk",
+  "spec": "Left column: three signal cards stacked vertically, each with an outline icon (gauge for load, bar chart for run queue, pressure dial for PSI). Card 1 title 'Load average' with sub-line 'Running, waiting and uninterruptible tasks' and monospace tag uptime or /proc/loadavg; trap line 'Slow to react, includes disk waits'. Card 2 title 'Run queue r' with sub-line 'Runnable threads now' and tag vmstat 1; trap line 'Includes the threads that are running'. Card 3 title 'PSI' with sub-line 'Percent of time stalled per resource' and tag /proc/pressure/cpu, memory, io; trap line 'Needs Linux 4.20 or newer'. Right side: a decision tree with three rounded boxes. Top decision box 'Load high?' splits by two arrows: arrow labelled 'run queue high and pressure high' goes to box 'CPU is the bottleneck'; arrow labelled 'load high, run queue idle, no pressure' goes to box 'Disk waits: uninterruptible tasks inflate load without using CPU'. Orange highlight on the disk box as the non-obvious case. Under the tree, a single sentence box: Say load is demand, not just CPU, so I will confirm with the run queue and pressure. Green takeaway bar: Load is a question, run queue and PSI answer it.",
+  "anchor": "### 4. Reading load, run queue and pressure correctly",
+  "alt": "Three CPU demand signals, load average, run queue and pressure, and a decision that separates CPU saturation from disk waits.",
+  "cap": "Load average, the run queue and pressure each count demand differently, so the three are read together before choosing a direction."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "x03-free-vs-available",
+  "title": "Free is small, available is large: the page cache is reclaimable",
+  "spec": "One long horizontal stacked bar labelled total 1950 MB at its top, drawn to full width. Segments left to right: a dark green block labelled used by applications (the part not free and not cache, shown as the remainder), a light green block labelled page cache, buffers and reclaimable, and a small white block at the far left labelled free 163 MB. A bracket spanning the page cache block and the free block is labelled available 1187 MB, with the bracket value measured from the start of the free block to the end of the cache block. Under the bar, two label cards: left card 'free, the column that looks scary' with value 163 MB; right card 'available, the number to read' with value 1187 MB. Use monospace for the column names free and available and the command free -m. A thin arrow from the cache block to the available bracket labelled the kernel gives it back to applications on demand. Orange note on the free card: free looks low, but that is not a problem. Green takeaway bar: Read available, not free.",
+  "anchor": "### 5. Reading memory and disk output",
+  "alt": "A memory bar where free is only 163 MB but available is 1187 MB, because most of the rest is reclaimable page cache.",
+  "cap": "On a 1950 MB machine, free memory is small, but available memory is large because the kernel gives back page cache on demand."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "x03-disk-busy-not-saturated",
+  "title": "Busy is not saturated: three disk numbers read together",
+  "spec": "Three gauge-style panels side by side, each with a title and a large value, and a one-line meaning below. Panel 1 titled %util with value 100.00 and meaning 'The device was never idle'. Panel 2 titled aqu-sz with value 0.00 and meaning 'No queue forms in front of the device'. Panel 3 titled await with value 0.44 ms and meaning 'Each request waits under half a millisecond'. Below the three panels, a supermarket checkout picture as an analogy: a till icon labelled open the whole time (utilisation), an empty queue icon labelled no line (saturation), and a clock icon labelled how long each customer waited (await). Across the bottom a verdict strip with two halves: left half orange-outlined box labelled 'Busy' with check mark, right half grey-outlined box labelled 'Saturated' with a cross mark. Monospace for %util, aqu-sz, await, iostat -sxz 1. Title 'Busy is not the same as saturated'. Green takeaway bar: Always check saturation next to utilisation.",
+  "anchor": "### Scenario 2: the disk is 100 percent busy",
+  "alt": "A disk at 100 percent utilisation with a zero queue and a 0.44 millisecond await is busy but not saturated.",
+  "cap": "Utilisation only says the device was never idle, so saturation has to be read from the queue and the wait time."
+ }
+]

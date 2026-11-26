@@ -1,0 +1,225 @@
+import sys
+
+svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>GPU container: what the image brings, what the host brings, and which error means what</title>
+  <desc>Visual infographic showing host components versus container image components joined by NVIDIA Container Toolkit injection, the 4-step startup sequence, and root-cause solutions for common GPU container errors.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Main Title -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">GPU container: what the image brings,</tspan>
+    <tspan x="800" dy="54">what the host brings, and which error means what</tspan>
+  </text>
+
+  <!-- ==================== TOP PANELS ==================== -->
+
+  <!-- Left Panel: Host -->
+  <g id="panel-host">
+    <rect x="50" y="145" width="570" height="305" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Chip Icon (56px outline, green stroke 4) -->
+    <g transform="translate(80, 160)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <line x1="20" y1="4" x2="20" y2="12" />
+      <line x1="28" y1="4" x2="28" y2="12" />
+      <line x1="36" y1="4" x2="36" y2="12" />
+      <line x1="20" y1="44" x2="20" y2="52" />
+      <line x1="28" y1="44" x2="28" y2="52" />
+      <line x1="36" y1="44" x2="36" y2="52" />
+      <line x1="4" y1="20" x2="12" y2="20" />
+      <line x1="4" y1="28" x2="12" y2="28" />
+      <line x1="4" y1="36" x2="12" y2="36" />
+      <line x1="44" y1="20" x2="52" y2="20" />
+      <line x1="44" y1="28" x2="52" y2="28" />
+      <line x1="44" y1="36" x2="52" y2="36" />
+    </g>
+
+    <text x="160" y="200" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Host</text>
+
+    <!-- Row 1 -->
+    <rect x="75" y="235" width="520" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="335" y="270" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">NVIDIA kernel module nvidia.ko</text>
+
+    <!-- Row 2 -->
+    <rect x="75" y="304" width="520" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="335" y="339" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">device nodes /dev/nvidia*</text>
+
+    <!-- Row 3 -->
+    <rect x="75" y="373" width="520" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="335" y="398" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="335" dy="0">libcuda.so, libnvidia-ml.so,</tspan>
+      <tspan x="335" dy="26">nvidia-smi</tspan>
+    </text>
+  </g>
+
+  <!-- Joining Arrow with Orange Outline & Label Box -->
+  <g id="panel-connector">
+    <!-- Label box above arrow with orange outline -->
+    <rect x="630" y="230" width="340" height="102" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+    <text x="800" y="260" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">NVIDIA Container</tspan>
+      <tspan x="800" dy="28">Toolkit injects</tspan>
+      <tspan x="800" dy="28">at start</tspan>
+    </text>
+
+    <!-- Arrow between panels with orange outline -->
+    <line x1="620" y1="365" x2="980" y2="365" stroke="#db8129" stroke-width="4.5" marker-end="url(#arrow-orange)" />
+  </g>
+
+  <!-- Right Panel: Container image -->
+  <g id="panel-image">
+    <rect x="980" y="145" width="570" height="305" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Container / Package Outline Icon (56px, stroke 4) -->
+    <g transform="translate(1010, 160)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 18 L 28 30 L 6 18 Z" />
+      <path d="M 6 18 L 6 38 L 28 50 L 28 30" />
+      <path d="M 50 18 L 50 38 L 28 50" />
+      <line x1="17" y1="24" x2="39" y2="12" />
+    </g>
+
+    <text x="1090" y="200" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Container image</text>
+
+    <!-- Row 1 -->
+    <rect x="1005" y="235" width="520" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1265" y="270" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">CUDA runtime libcudart</text>
+
+    <!-- Row 2 -->
+    <rect x="1005" y="304" width="520" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1265" y="339" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">cuBLAS, cuDNN, NCCL</text>
+
+    <!-- Row 3 -->
+    <rect x="1005" y="373" width="520" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="1265" y="412" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">PyTorch, TensorRT, vLLM</text>
+  </g>
+
+  <!-- ==================== NUMBERED STRIP ==================== -->
+  <g id="numbered-strip">
+    <rect x="50" y="475" width="1500" height="225" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    <!-- Step 1 -->
+    <rect x="70" y="490" width="345" height="195" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <circle cx="242" cy="524" r="24" fill="#207448" />
+    <text x="242" y="533" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="242" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="242" dy="0">1 runtime is</tspan>
+      <tspan x="242" dy="30">asked for GPU access</tspan>
+      <tspan x="242" dy="30">(--gpus all or CDI)</tspan>
+    </text>
+
+    <!-- Step 2 -->
+    <rect x="435" y="490" width="345" height="195" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <circle cx="607" cy="524" r="24" fill="#207448" />
+    <text x="607" y="533" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="607" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="607" dy="0">2 toolkit hook lists</tspan>
+      <tspan x="607" dy="30">host GPUs before</tspan>
+      <tspan x="607" dy="30">the app starts</tspan>
+    </text>
+
+    <!-- Step 3 -->
+    <rect x="800" y="490" width="345" height="195" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <circle cx="972" cy="524" r="24" fill="#207448" />
+    <text x="972" y="533" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="972" y="582" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="972" dy="0">3 adds /dev/nvidia*</tspan>
+      <tspan x="972" dy="30">and bind-mounts</tspan>
+      <tspan x="972" dy="30">host driver libraries</tspan>
+    </text>
+
+    <!-- Step 4 -->
+    <rect x="1165" y="490" width="365" height="195" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <circle cx="1347" cy="524" r="24" fill="#207448" />
+    <text x="1347" y="533" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <text x="1347" y="575" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1347" dy="0">4 your code loads</tspan>
+      <tspan x="1347" dy="28">libcudart from the</tspan>
+      <tspan x="1347" dy="28">image, which calls</tspan>
+      <tspan x="1347" dy="28">the host libcuda</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ERROR BOXES ==================== -->
+
+  <!-- Box A: Driver version insufficient -->
+  <g id="error-box-a">
+    <!-- Left: Error symptom -->
+    <rect x="50" y="722" width="560" height="114" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="330" y="756" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="330" dy="0">CUDA driver version</tspan>
+      <tspan x="330" dy="28">is insufficient for</tspan>
+      <tspan x="330" dy="28">CUDA runtime version</tspan>
+    </text>
+
+    <!-- Arrow -->
+    <line x1="610" y1="779" x2="690" y2="779" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    <!-- Right: Cause and Resolution -->
+    <rect x="690" y="722" width="860" height="114" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1120" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">host driver older than the image CUDA needs:</tspan>
+      <tspan x="1120" dy="32">upgrade the driver, or use cuda-compat</tspan>
+    </text>
+  </g>
+
+  <!-- Box B: No kernel image available -->
+  <g id="error-box-b">
+    <!-- Left: Error symptom -->
+    <rect x="50" y="854" width="560" height="146" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="330" y="904" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="330" dy="0">no kernel image is</tspan>
+      <tspan x="330" dy="30">available for execution</tspan>
+      <tspan x="330" dy="30">on the device</tspan>
+    </text>
+
+    <!-- Arrow -->
+    <line x1="610" y1="927" x2="690" y2="927" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    <!-- Right: Cause and Resolution -->
+    <rect x="690" y="854" width="860" height="146" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1120" y="888" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">binary not compiled for the GPU compute capability:</tspan>
+      <tspan x="1120" dy="28">rebuild, set TORCH_CUDA_ARCH_LIST</tspan>
+      <tspan x="1120" dy="28">(sm_80 A100, sm_90 H100, sm_100 B200);</tspan>
+      <tspan x="1120" dy="28">a driver upgrade does not help</tspan>
+    </text>
+  </g>
+
+  <!-- Third small box: bash: nvidia-smi: not found -->
+  <g id="error-box-c">
+    <!-- Left: Error symptom -->
+    <rect x="50" y="1018" width="560" height="88" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="330" y="1071" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">bash: nvidia-smi: not found</text>
+
+    <!-- Arrow -->
+    <line x1="610" y1="1062" x2="690" y2="1062" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    <!-- Right: Cause and Resolution -->
+    <rect x="690" y="1018" width="860" height="88" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1120" y="1052" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">toolkit or runtime not configured,</tspan>
+      <tspan x="1120" dy="30">NVIDIA_DRIVER_CAPABILITIES lacks utility</tspan>
+    </text>
+  </g>
+
+  <!-- Takeaway Bar -->
+  <rect x="50" y="1124" width="1500" height="56" rx="10" fill="#207448" />
+  <text x="800" y="1160" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Newer drivers support older CUDA runtimes.</text>
+
+</svg>'''
+
+with open("gpu_container_infographic.svg", "w", encoding="utf-8") as f:
+    f.write(svg_content)
+
+print("Saved gpu_container_infographic.svg successfully!")

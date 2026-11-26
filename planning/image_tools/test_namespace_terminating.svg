@@ -1,0 +1,178 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Namespace stuck in Terminating: two causes</title>
+  <desc>Decision tree for diagnosing a Kubernetes namespace stuck in Terminating state due to unfulfilled resource finalizers or an unavailable aggregated APIService.</desc>
+
+  <defs>
+    <!-- Green arrowhead for standard step arrows (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Namespace stuck in Terminating: two causes</text>
+
+  <!-- ==================== ARROWS ==================== -->
+  <!-- 1. Start -> First look -->
+  <line x1="800" y1="215" x2="800" y2="265" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- 2. First look -> Branch A Cause -->
+  <line x1="415" y1="385" x2="415" y2="445" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- 3. First look -> Branch B Cause -->
+  <line x1="1185" y1="385" x2="1185" y2="445" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- 4. Branch A: Cause -> Check -->
+  <line x1="415" y1="625" x2="415" y2="685" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- 5. Branch A: Check -> Fix -->
+  <line x1="415" y1="865" x2="415" y2="925" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- 6. Branch B: Cause -> Check -->
+  <line x1="1185" y1="625" x2="1185" y2="685" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- 7. Branch B: Check -> Fix -->
+  <line x1="1185" y1="865" x2="1185" y2="925" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- ==================== LEVEL 1: START NODE ==================== -->
+  <g id="node-start">
+    <rect x="140" y="95" width="1320" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Folder / namespace deletion icon (56x56, stroke 4) -->
+    <g transform="translate(170, 127)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 12 L 20 12 L 26 18 L 48 18 A 4 4 0 0 1 52 22 L 52 44 A 4 4 0 0 1 48 48 L 8 48 A 4 4 0 0 1 4 44 L 4 16 A 4 4 0 0 1 8 12 Z"/>
+      <line x1="22" y1="28" x2="34" y2="40"/>
+      <line x1="34" y1="28" x2="22" y2="40"/>
+    </g>
+    <text x="256" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="256" dy="0"><tspan font-family="ui-monospace, monospace">kubectl delete ns x</tspan> leaves it Terminating;</tspan>
+      <tspan x="256" dy="34">the namespace controller must delete every resource</tspan>
+      <tspan x="256" dy="34">before removing the kubernetes finalizer</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== LEVEL 2: FIRST LOOK NODE (ORANGE ACCENT) ==================== -->
+  <g id="node-first-look">
+    <rect x="180" y="265" width="1240" height="120" rx="16" fill="#fff8f0" stroke="#db8129" stroke-width="3.5"/>
+    <!-- Magnifying glass inspection icon (56x56, stroke 4) in orange -->
+    <g transform="translate(210, 297)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="14"/>
+      <line x1="32" y1="32" x2="48" y2="48" stroke-width="5"/>
+      <line x1="14" y1="18" x2="30" y2="18" stroke-width="3"/>
+      <line x1="16" y1="25" x2="26" y2="25" stroke-width="3"/>
+    </g>
+    <text x="296" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="296" dy="0" font-family="ui-monospace, monospace" fill="#207448">kubectl get ns x -o json | jq .status.conditions</tspan>
+      <tspan x="296" dy="36">shows the exact blocker</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BRANCH A: RESOURCE FINALIZER ==================== -->
+  <!-- Node A1: Cause -->
+  <g id="node-branch-a-cause">
+    <rect x="60" y="445" width="710" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <!-- Lock / finalizer icon (56x56) -->
+    <g transform="translate(88, 507)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="22" width="36" height="26" rx="5"/>
+      <path d="M 18 22 V 15 A 10 10 0 0 1 38 15 V 22"/>
+      <circle cx="28" cy="33" r="3" fill="#207448"/>
+      <line x1="28" y1="36" x2="28" y2="41"/>
+    </g>
+    <text x="170" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="170" dy="0">A resource inside has an</tspan>
+      <tspan x="170" dy="34">unfulfilled finalizer (CRD instance</tspan>
+      <tspan x="170" dy="34">whose operator was uninstalled,</tspan>
+      <tspan x="170" dy="34">PVC still mounted)</tspan>
+    </text>
+  </g>
+
+  <!-- Node A2: Check -->
+  <g id="node-branch-a-check">
+    <rect x="60" y="685" width="710" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <!-- Terminal CLI list icon (56x56) -->
+    <g transform="translate(88, 747)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="6"/>
+      <polyline points="14,20 20,26 14,32" stroke-width="3.5"/>
+      <line x1="24" y1="26" x2="38" y2="26" stroke-width="3.5"/>
+      <circle cx="16" cy="39" r="2" fill="#207448"/>
+      <circle cx="26" cy="39" r="2" fill="#207448"/>
+      <circle cx="36" cy="39" r="2" fill="#207448"/>
+    </g>
+    <text x="170" y="736" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="170" dy="0">kubectl api-resources</tspan>
+      <tspan x="170" dy="32">--verbs=list --namespaced -o name |</tspan>
+      <tspan x="170" dy="32">xargs -n 1 kubectl get --show-kind</tspan>
+      <tspan x="170" dy="32">--ignore-not-found -n ns</tspan>
+    </text>
+  </g>
+
+  <!-- Node A3: Fix -->
+  <g id="node-branch-a-fix">
+    <rect x="60" y="925" width="710" height="210" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <!-- Controller restore loop icon (56x56) -->
+    <g transform="translate(88, 1002)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="10"/>
+      <path d="M 28 8 A 20 20 0 1 1 12 36"/>
+      <polyline points="6,28 12,36 18,28"/>
+    </g>
+    <text x="170" y="969" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="170" dy="0">restore the controller that should</tspan>
+      <tspan x="170" dy="32">remove the finalizer; hand-removing</tspan>
+      <tspan x="170" dy="32">it skips cleanup and can leak</tspan>
+      <tspan x="170" dy="32">cloud disks, IPs and</tspan>
+      <tspan x="170" dy="32">load balancers</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BRANCH B: UNAVAILABLE APISERVICE ==================== -->
+  <!-- Node B1: Cause -->
+  <g id="node-branch-b-cause">
+    <rect x="830" y="445" width="710" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <!-- Broken APIService icon (56x56) -->
+    <g transform="translate(858, 507)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="16" rx="4"/>
+      <rect x="8" y="32" width="40" height="16" rx="4"/>
+      <circle cx="16" cy="18" r="2.5" fill="#207448"/>
+      <circle cx="16" cy="40" r="2.5" fill="#207448"/>
+      <path d="M 32 20 L 25 29 L 31 29 L 24 38" stroke-width="3"/>
+    </g>
+    <text x="940" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="940" dy="0">An unavailable APIService</tspan>
+      <tspan x="940" dy="34">(broken metrics-server or custom</tspan>
+      <tspan x="940" dy="34">adapter) stops the controller</tspan>
+      <tspan x="940" dy="34">listing that API group</tspan>
+    </text>
+  </g>
+
+  <!-- Node B2: Check -->
+  <g id="node-branch-b-check">
+    <rect x="830" y="685" width="710" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <!-- Status check FALSE icon (56x56) -->
+    <g transform="translate(858, 747)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="42" rx="5"/>
+      <line x1="16" y1="18" x2="36" y2="18" stroke-width="3"/>
+      <line x1="18" y1="28" x2="34" y2="42" stroke-width="4"/>
+      <line x1="34" y1="28" x2="18" y2="42" stroke-width="4"/>
+    </g>
+    <text x="940" y="760" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="940" dy="0">kubectl get apiservices</tspan>
+      <tspan x="940" dy="38" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">shows AVAILABLE False</tspan>
+    </text>
+  </g>
+
+  <!-- Node B3: Fix -->
+  <g id="node-branch-b-fix">
+    <rect x="830" y="925" width="710" height="210" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    <!-- Wrench / repair icon (56x56) -->
+    <g transform="translate(858, 1002)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 10 C 33 6 26 8 23 13 L 10 36 C 8 40 10 44 14 46 C 18 48 22 46 24 43 L 37 20 C 42 23 48 20 50 14 C 47 15 43 14 40 11 Z"/>
+    </g>
+    <text x="940" y="1000" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="940" dy="0">repair or delete the APIService</tspan>
+      <tspan x="940" dy="36">and the namespace</tspan>
+      <tspan x="940" dy="36">finishes deleting</tspan>
+    </text>
+  </g>
+</svg>

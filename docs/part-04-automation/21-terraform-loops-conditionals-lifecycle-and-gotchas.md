@@ -168,17 +168,9 @@ output "for_directive_index_if_strip" {
 
 The comment at the bottom shows what the directive renders. Picture writing a config file that lists team members separated by commas, with no trailing comma after the last name. The `if` directive handles that last comma. The diagram below helps you pick the right construct for the job.
 
-```mermaid
-flowchart TD
-    Need["What are you repeating or gating in HCL?"] --> Res{"Multiple Resources<br/>or Modules?"}
-    Res -->|Yes: Interchangeable N or 0/1 toggle| Count["count = N (or cond ? 1 : 0)<br/>Address: type.name[0]<br/>Outputs: one(type.name[*].id)"]
-    Res -->|Yes: Distinct keyed items| ForEach["for_each = map or toset(list)<br/>Address: type.name[#quot;key#quot;]<br/>Outputs: values(type.name)[*].id"]
-    Need --> Block{"Repeated Nested<br/>Blocks inside a Resource?"}
-    Block -->|Yes| Dyn["dynamic #quot;block_name#quot; {<br/>  for_each = ...<br/>  content { ... }<br/>}"]
-    Need --> Val{"Transforming Lists/Maps<br/>or Rendering Strings?"}
-    Val -->|List / Map value| ForExpr["[for x in xs : ...] /<br/>{for k, v in m : k => v if cond}"]
-    Val -->|Inside string / heredoc| StrDir["%{~ for i, x in xs ~}...%{ endfor ~}"]
-```
+![Renders: "neo, trinity, morpheus"](./img/m4-21-1.svg)
+
+*Figure 4.21.1. Renders: "neo, trinity, morpheus", as a diagram.*
 
 Read the diagram as a series of questions. Each diamond asks what you are building, and each branch names the tool that answers it. Start with the first question. Repeated resources, repeated nested blocks, and reshaped values or strings each lead to a different tool.
 

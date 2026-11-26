@@ -45,17 +45,9 @@ The next section draws the full stack, so keep it in view as you read the rest o
 
 Suppose a pod sits in `ContainerCreating` while the other pods on its node run fine. The node is healthy, so the problem is specific to this pod. The diagram below shows every layer that could be holding it up. Think of it as a chain of workers, where each one hands the job to the next. A break anywhere in the chain looks like the same symptom from the outside, so you need the chain in your head before you start checking.
 
-```mermaid
-flowchart TB
-  KL["kubelet\n(talks CRI over a gRPC unix socket)"] -->|"CRI: RuntimeService + ImageService"| CD["containerd (CRI plugin)\nor CRI-O"]
-  CD --> IMG["Image service: pull, content store, snapshotter (overlayfs)"]
-  CD --> SH["containerd-shim-runc-v2 (one per pod/sandbox)"]
-  SH --> RC["OCI runtime: runc / crun / kata / runsc"]
-  RC --> K["Kernel: namespaces, cgroups, seccomp, LSM"]
-  RC --> P["Container processes"]
-  CD -. "NRI / CDI hooks" .-> P
-  CNI["CNI plugins (network)"] <-. "called by runtime for sandbox networking" .-> CD
-```
+![The stack](./img/m5-02-1.svg)
+
+*Figure 5.2.1. The stack, as a diagram.*
 
 Read the diagram from top to bottom. Solid arrows are calls from one layer into the next. Dotted lines show hooks and plugins that reach the container processes or the network. A simple way to remember it is to picture a restaurant. The kubelet is the head waiter who takes the order from the kitchen manager. The containerd or CRI-O daemon is the kitchen manager, who handles ingredients and stock. The shim is a cook who stays with each dish until it leaves the kitchen. The OCI runtime is the tool that actually heats the pan. The kernel is the building's gas line, which every pan depends on.
 

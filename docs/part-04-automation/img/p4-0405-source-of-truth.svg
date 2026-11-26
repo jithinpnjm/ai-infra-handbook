@@ -1,0 +1,184 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Who owns the list of machines: the source of truth</title>
+  <desc>Visual infographic explaining why machine inventory must be generated from authoritative sources of truth rather than manually edited spreadsheets.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Who owns the list of machines: the source of truth</text>
+
+  
+
+  
+  <g id="spoke-netbox">
+    <rect x="40" y="110" width="540" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(60, 147)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="4" />
+      <rect x="4" y="30" width="48" height="18" rx="4" />
+      <circle cx="14" cy="15" r="2.5" fill="#207448" />
+      <circle cx="24" cy="15" r="2.5" fill="#207448" />
+      <circle cx="14" cy="39" r="2.5" fill="#207448" />
+      <circle cx="24" cy="39" r="2.5" fill="#207448" />
+      <line x1="34" y1="15" x2="44" y2="15" />
+      <line x1="34" y1="39" x2="44" y2="39" />
+    </g>
+    <text x="136" y="152" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="136" dy="0" font-weight="bold">NetBox or Nautobot: </tspan>
+      <tspan font-weight="normal">devices,</tspan>
+      <tspan x="136" dy="32">interfaces, IPs, racks,</tspan>
+      <tspan x="136" dy="32">cables and tags</tspan>
+    </text>
+  </g>
+
+  
+  <g id="spoke-cloud">
+    <rect x="40" y="290" width="540" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(60, 327)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 14 38 A 12 12 0 0 1 18 18 A 16 16 0 0 1 44 20 A 11 11 0 0 1 44 38 Z" />
+      <line x1="18" y1="46" x2="38" y2="46" />
+    </g>
+    <text x="136" y="348" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="136" dy="0" font-weight="bold">cloud or Terraform state: </tspan>
+      <tspan x="136" dy="34">the cloud side</tspan>
+    </text>
+  </g>
+
+  
+  <g id="hub-inventory">
+    <rect x="650" y="180" width="300" height="170" rx="18" fill="#ffffff" stroke="#207448" stroke-width="3.5" />
+    
+    <g transform="translate(772, 198)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="12" rx="22" ry="7" />
+      <path d="M 6 12 v 14 c 0 4 10 7 22 7 s 22 -3 22 -7 v -14" />
+      <path d="M 6 26 v 14 c 0 4 10 7 22 7 s 22 -3 22 -7 v -14" />
+    </g>
+    <text x="800" y="292" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">inventory </tspan>
+      <tspan x="800" dy="38">(generated)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="spoke-bcm">
+    <rect x="1020" y="110" width="540" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1040, 147)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="5" />
+      <line x1="20" y1="4" x2="20" y2="12" />
+      <line x1="28" y1="4" x2="28" y2="12" />
+      <line x1="36" y1="4" x2="36" y2="12" />
+      <line x1="20" y1="44" x2="20" y2="52" />
+      <line x1="28" y1="44" x2="28" y2="52" />
+      <line x1="36" y1="44" x2="36" y2="52" />
+      <line x1="4" y1="20" x2="12" y2="20" />
+      <line x1="4" y1="28" x2="12" y2="28" />
+      <line x1="4" y1="36" x2="12" y2="36" />
+      <line x1="44" y1="20" x2="52" y2="20" />
+      <line x1="44" y1="28" x2="52" y2="28" />
+      <line x1="44" y1="36" x2="52" y2="36" />
+    </g>
+    <text x="1116" y="152" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1116" dy="0" font-weight="bold">NVIDIA Base Command Manager </tspan>
+      <tspan x="1116" dy="32">(BCM): node categories and </tspan>
+      <tspan x="1116" dy="32">provisioning data</tspan>
+    </text>
+  </g>
+
+  
+  <g id="spoke-slurm">
+    <rect x="1020" y="290" width="540" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1040, 327)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="40" height="38" rx="5" />
+      <line x1="8" y1="22" x2="48" y2="22" />
+      <line x1="18" y1="4" x2="18" y2="12" />
+      <line x1="38" y1="4" x2="38" y2="12" />
+      <circle cx="20" cy="32" r="3" fill="#207448" />
+      <circle cx="30" cy="32" r="3" fill="#207448" />
+    </g>
+    <text x="1116" y="348" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1116" dy="0" font-weight="bold">the scheduler: </tspan>
+      <tspan x="1116" dy="34">Slurm node definitions</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 580 175 C 615 175, 615 225, 650 225" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <path d="M 580 355 C 615 355, 615 305, 650 305" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <path d="M 1020 175 C 985 175, 985 225, 950 225" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <path d="M 1020 355 C 985 355, 985 305, 950 305" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g id="card-story">
+    <rect x="40" y="460" width="1520" height="150" rx="14" fill="#fff7f0" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(65, 507)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,6 52,48 4,48" />
+      <line x1="28" y1="22" x2="28" y2="34" />
+      <circle cx="28" cy="42" r="2.5" fill="#db8129" />
+    </g>
+    <text x="145" y="506" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">a node pulled for RMA last week: the spreadsheet still lists it as healthy, </tspan>
+      <tspan x="145" dy="32">so a driver rollout sends it a job it cannot run; </tspan>
+      <tspan x="145" dy="32">the inventory says gpu77 exists but it was RMA&apos;d</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="card-benefits">
+    <rect x="40" y="650" width="740" height="380" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(65, 674)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 48 24 A 20 20 0 0 0 12 16" />
+      <polyline points="12,8 12,16 20,16" />
+      <path d="M 8 32 A 20 20 0 0 0 44 40" />
+      <polyline points="44,48 44,40 36,40" />
+    </g>
+    <text x="65" y="770" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">a generated inventory does not drift from </tspan>
+      <tspan x="65" dy="34">the fleet; after a rack is re-cabled and two </tspan>
+      <tspan x="65" dy="34">nodes swap switch ports, a generated </tspan>
+      <tspan x="65" dy="34">inventory reflects the new cabling after its </tspan>
+      <tspan x="65" dy="34">next sync; enables cabling-aware automation </tspan>
+      <tspan x="65" dy="34">such as checking which rail each NIC </tspan>
+      <tspan x="65" dy="34">connects to</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-code-rule">
+    <rect x="820" y="650" width="740" height="380" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(845, 674)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="16,14 4,28 16,42" />
+      <polyline points="40,14 52,28 40,42" />
+      <line x1="32" y1="10" x2="24" y2="46" />
+    </g>
+    <text x="845" y="760" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">treat the inventory source as code: review </tspan>
+      <tspan x="845" dy="33">its changes, validate it for unique names </tspan>
+      <tspan x="845" dy="33">and required fields, and write tests that </tspan>
+      <tspan x="845" dy="33">fail the build when a host lacks a role or </tspan>
+      <tspan x="845" dy="33">rack; a generator that quietly writes an </tspan>
+      <tspan x="845" dy="33">empty rack field looks fine, and the test is </tspan>
+      <tspan x="845" dy="33">the only thing that catches it before the </tspan>
+      <tspan x="845" dy="33">rollout</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1070" width="1520" height="80" rx="14" fill="#207448" />
+    <text x="800" y="1120" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">The difference is who keeps the list true</text>
+  </g>
+</svg>

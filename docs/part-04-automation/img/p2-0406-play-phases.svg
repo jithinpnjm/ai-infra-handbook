@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 950" width="1600" height="950">
+  <title>A play runs its phases in a fixed order, and handlers flush at each boundary</title>
+  <desc>Visual infographic explaining Ansible play execution phases and handler flush points at boundaries.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="950" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A play runs its phases in a fixed order,</text>
+  <text x="800" y="118" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">and handlers flush at each boundary</text>
+
+  
+  <rect x="250" y="152" width="1100" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="188" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Plays run in file order, and each play covers all its hosts.</text>
+
+  
+  
+  <rect x="60" y="248" width="450" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="102" cy="288" r="22" fill="#207448"/>
+  <text x="102" y="296" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(138, 260)">
+    <path d="M 6 12 L 28 4 L 50 12 L 50 30 C 50 44 28 54 28 54 C 28 54 6 44 6 30 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 18 28 L 25 35 L 38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  
+  <text x="208" y="298" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">pre_tasks:</text>
+  <text x="102" y="356" font-family="sans-serif" font-size="24" fill="#303a36">assert the OS,</text>
+  <text x="102" y="396" font-family="monospace" font-size="24" fill="#303a36">check Slurm DRAIN</text>
+
+  
+  <line x1="285" y1="428" x2="285" y2="446" stroke="#207448" stroke-width="3"/>
+  <polygon points="285,446 299,460 285,474 271,460" fill="#207448" stroke="#ffffff" stroke-width="2"/>
+  <line x1="285" y1="474" x2="285" y2="492" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="60" y="495" width="450" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="285" y="556" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">flush handlers</text>
+  <text x="285" y="602" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">notified by pre_tasks</text>
+
+  
+  <path d="M 510 570 L 542 570 L 542 338 L 572 338" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  
+  <rect x="575" y="248" width="450" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="617" cy="288" r="22" fill="#207448"/>
+  <text x="617" y="296" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(650, 260)">
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  <text x="720" y="298" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">roles, then tasks:</text>
+  <text x="617" y="356" font-family="monospace" font-size="24" fill="#303a36">packages, sysctl,</text>
+  <text x="617" y="396" font-family="monospace" font-size="24" fill="#303a36">templates</text>
+
+  
+  <line x1="800" y1="428" x2="800" y2="446" stroke="#207448" stroke-width="3"/>
+  <polygon points="800,446 816,462 800,478 784,462" fill="#db8129" stroke="#ffffff" stroke-width="2"/>
+  <line x1="800" y1="478" x2="800" y2="492" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="575" y="495" width="450" height="175" rx="10" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+  <text x="800" y="546" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#db8129">flush handlers,</text>
+  <text x="800" y="592" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">each restart runs once</text>
+  <text x="800" y="636" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">even if notified many times</text>
+
+  
+  <path d="M 1025 582 L 1058 582 L 1058 338 L 1087 338" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  
+  <rect x="1090" y="248" width="450" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <circle cx="1132" cy="288" r="22" fill="#207448"/>
+  <text x="1132" y="296" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(1165, 260)">
+    <rect x="8" y="10" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 18 28 L 26 36 L 40 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 18 4 L 18 10 M 38 4 L 38 10 M 18 44 L 18 50 M 38 44 L 38 50" stroke="#207448" stroke-width="4"/>
+  </g>
+  
+  <text x="1235" y="298" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">post_tasks:</text>
+  <text x="1132" y="356" font-family="monospace" font-size="24" fill="#303a36">nvidia-smi or</text>
+  <text x="1132" y="396" font-family="monospace" font-size="24" fill="#303a36">uri smoke test</text>
+
+  
+  <line x1="1315" y1="428" x2="1315" y2="446" stroke="#207448" stroke-width="3"/>
+  <polygon points="1315,446 1329,460 1315,474 1301,460" fill="#207448" stroke="#ffffff" stroke-width="2"/>
+  <line x1="1315" y1="474" x2="1315" y2="492" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1090" y="495" width="450" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1315" y="556" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">flush handlers</text>
+  <text x="1315" y="602" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">notified by post_tasks</text>
+
+  
+  <rect x="680" y="700" width="860" height="96" rx="8" fill="#f0f2f0" stroke="#88948e" stroke-width="2"/>
+  <text x="1110" y="738" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#505c56">A handler that restarts a service runs only</text>
+  <text x="1110" y="774" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#505c56">after the file that configures it is in place.</text>
+
+  
+  <rect x="60" y="836" width="1480" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="880" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Handlers run at flush points, not in the middle of a task.</text>
+</svg>

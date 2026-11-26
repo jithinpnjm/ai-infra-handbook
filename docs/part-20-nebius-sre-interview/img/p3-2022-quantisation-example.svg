@@ -1,0 +1,125 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title></title>
+  <desc></desc>
+
+  <defs>
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="60" dy="0">4-bit AWQ frees weight memory for cache:</tspan>
+    <tspan x="60" dy="56">the book's numbers</tspan>
+  </text>
+
+  
+  <text x="60" y="172" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="60" dy="0">Two columns from Hands-On LLM Serving and Optimization chapter 9, Qwen3-14B on one GPU</tspan>
+    <tspan x="60" dy="34">(book measurements on its hardware, not yours; a reason to measure, not a forecast)</tspan>
+  </text>
+
+  
+  <rect x="60" y="240" width="500" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(85, 260)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <line x1="18" y1="2" x2="18" y2="10"/>
+    <line x1="28" y1="2" x2="28" y2="10"/>
+    <line x1="38" y1="2" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="54"/>
+    <line x1="28" y1="46" x2="28" y2="54"/>
+    <line x1="38" y1="46" x2="38" y2="54"/>
+    <line x1="2" y1="18" x2="10" y2="18"/>
+    <line x1="2" y1="28" x2="10" y2="28"/>
+    <line x1="2" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="54" y2="18"/>
+    <line x1="46" y1="28" x2="54" y2="28"/>
+    <line x1="46" y1="38" x2="54" y2="38"/>
+  </g>
+
+  <text x="160" y="298" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Full precision</text>
+
+  
+  <rect x="85" y="335" width="450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="105" y="369" font-family="sans-serif" font-size="24" fill="#303a36">weights 27.5 GiB</text>
+
+  <rect x="85" y="397" width="450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="105" y="431" font-family="sans-serif" font-size="24" fill="#303a36">KV cache 11.00 GiB</text>
+
+  <rect x="85" y="459" width="450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="105" y="493" font-family="sans-serif" font-size="24" fill="#303a36">cache holds 72,064 tokens</text>
+
+  <rect x="85" y="521" width="450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="105" y="555" font-family="sans-serif" font-size="24" fill="#303a36">throughput 474 tokens per second</text>
+
+  
+  <text x="800" y="352" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="800" dy="0">weights shrink,</tspan>
+    <tspan x="800" dy="32">so the memory left</tspan>
+    <tspan x="800" dy="32">for KV cache grows</tspan>
+  </text>
+  <line x1="560" y1="455" x2="1036" y2="455" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1040" y="240" width="500" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1065, 260)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <line x1="18" y1="2" x2="18" y2="10"/>
+    <line x1="28" y1="2" x2="28" y2="10"/>
+    <line x1="38" y1="2" x2="38" y2="10"/>
+    <line x1="18" y1="46" x2="18" y2="54"/>
+    <line x1="28" y1="46" x2="28" y2="54"/>
+    <line x1="38" y1="46" x2="38" y2="54"/>
+    <line x1="2" y1="18" x2="10" y2="18"/>
+    <line x1="2" y1="28" x2="10" y2="28"/>
+    <line x1="2" y1="38" x2="10" y2="38"/>
+    <line x1="46" y1="18" x2="54" y2="18"/>
+    <line x1="46" y1="28" x2="54" y2="28"/>
+    <line x1="46" y1="38" x2="54" y2="38"/>
+  </g>
+
+  <text x="1140" y="298" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">4-bit AWQ</text>
+
+  
+  <rect x="1065" y="335" width="450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1085" y="369" font-family="sans-serif" font-size="24" fill="#303a36">weights 9.36 GiB</text>
+
+  <rect x="1065" y="397" width="450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1085" y="431" font-family="sans-serif" font-size="24" fill="#303a36">KV cache 29.15 GiB</text>
+
+  <rect x="1065" y="459" width="450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1085" y="493" font-family="sans-serif" font-size="24" fill="#303a36">cache holds 191,056 tokens</text>
+
+  <rect x="1065" y="521" width="450" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1085" y="555" font-family="sans-serif" font-size="24" fill="#303a36">throughput 1,280 tokens per second</text>
+
+  
+  <rect x="60" y="620" width="1480" height="195" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(85, 642)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 48 14 C 48 36 28 48 28 50 C 28 48 8 36 8 14 Z"/>
+  </g>
+
+  <text x="165" y="670" font-family="sans-serif" fill="#303a36">
+    <tspan font-size="30" font-weight="bold">quality and hardware support: </tspan>
+    <tspan font-size="24">AWQ is not supported on Volta;</tspan>
+    <tspan x="165" dy="40" font-size="24">FP8 W8A8 through LLM Compressor is listed only for Ada, Hopper and AMD GPUs;</tspan>
+    <tspan x="165" dy="38" font-size="24">quantisation drift means answers slowly get worse with no error in the logs (chapter 20.18)</tspan>
+  </text>
+
+  
+  <rect x="60" y="845" width="1480" height="105" rx="16" fill="#207448"/>
+  <text x="800" y="888" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="800" dy="0">put quantisation, prefix caching and speculative decoding each behind a canary with a quality check</tspan>
+    <tspan x="800" dy="36">and keep the flag in version control so you can undo it fast</tspan>
+  </text>
+</svg>

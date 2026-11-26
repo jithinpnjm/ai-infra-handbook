@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The replica floor: GPU-hours against queue misses</title>
+  <desc>Infographic analyzing GPU-hours and queue SLO misses across replica floor configurations during a simulated burst hour.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="85" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The replica floor: GPU-hours against queue misses</text>
+
+  
+  <rect x="60" y="135" width="1480" height="540" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(90, 160)">
+    <rect x="0" y="0" width="56" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="3"/>
+    <circle cx="12" cy="8" r="3" fill="#207448"/>
+    <circle cx="22" cy="8" r="3" fill="#207448"/>
+    <circle cx="32" cy="8" r="3" fill="#207448"/>
+  </g>
+
+  
+  <text x="165" y="178" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" y="178">Table from one simulated burst hour (baseline 1.2 requests per second jumping to 6</tspan>
+    <tspan x="165" y="208">for 15 minutes, in-flight policy, same assumed cold start; the hour and trace</tspan>
+    <tspan x="165" y="238">are invented so the shape is the lesson).</tspan>
+  </text>
+
+  
+  <rect x="80" y="265" width="1440" height="52" rx="8" fill="#ffffff" stroke="#cadad0" stroke-width="1.5"/>
+  <text x="110" y="300" font-family="sans-serif" font-size="25" font-weight="600" fill="#303a36">Floor of 3: 7.2 GPU-hours, 51.5 percent of requests over the 5 s queue SLO</text>
+
+  
+  <rect x="80" y="327" width="1440" height="52" rx="8" fill="#ffffff" stroke="#cadad0" stroke-width="1.5"/>
+  <text x="110" y="362" font-family="sans-serif" font-size="25" font-weight="600" fill="#303a36">Floor of 3 plus 2 spare nodes: 8.9, 46.6 percent</text>
+
+  
+  <rect x="80" y="389" width="1440" height="52" rx="8" fill="#ffffff" stroke="#cadad0" stroke-width="1.5"/>
+  <text x="110" y="424" font-family="sans-serif" font-size="25" font-weight="600" fill="#303a36">Floor of 3 plus 6 spare nodes: 12.3, 35.6 percent</text>
+
+  
+  <rect x="80" y="451" width="1440" height="52" rx="8" fill="#ffffff" stroke="#cadad0" stroke-width="1.5"/>
+  <text x="110" y="486" font-family="sans-serif" font-size="25" font-weight="600" fill="#303a36">Floor of 6: 8.9, 38.0 percent</text>
+
+  
+  <rect x="80" y="513" width="1440" height="52" rx="8" fill="#ffffff" stroke="#cadad0" stroke-width="1.5"/>
+  <text x="110" y="548" font-family="sans-serif" font-size="25" font-weight="600" fill="#303a36">Floor of 9: 10.8, 0 percent</text>
+
+  
+  <rect x="80" y="580" width="1440" height="68" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+  <text x="800" y="622" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">floor of 9 costs 3.6 GPU-hours more than a floor of 3 and removes the whole burst</text>
+
+  
+  <rect x="60" y="705" width="725" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(85, 784)">
+    <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="20" y1="0" x2="20" y2="10" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="0" x2="36" y2="10" stroke="#207448" stroke-width="3"/>
+    <line x1="20" y1="46" x2="20" y2="56" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="46" x2="36" y2="56" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="20" x2="10" y2="20" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="36" x2="10" y2="36" stroke="#207448" stroke-width="3"/>
+    <line x1="46" y1="20" x2="56" y2="20" stroke="#207448" stroke-width="3"/>
+    <line x1="46" y1="36" x2="56" y2="36" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="165" y="780" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" y="780">X+1 floor: baseline 1.2 requests</tspan>
+    <tspan x="165" y="816">per second at 0.8 per replica needs</tspan>
+    <tspan x="165" y="852">2 replicas, so the floor is 3</tspan>
+  </text>
+
+  
+  <rect x="815" y="705" width="725" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(840, 784)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="28,12 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="920" y="780" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="920" y="780">a five-times burst with an eight-minute</tspan>
+    <tspan x="920" y="816">cold start cannot be reacted to,</tspan>
+    <tspan x="920" y="852">only absorbed</tspan>
+  </text>
+
+  
+  <rect x="60" y="945" width="725" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(85, 1024)">
+    <ellipse cx="28" cy="8" rx="24" ry="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M4,8 v16 c0,3.9 10.7,7 24,7 s24,-3.1 24,-7 v-16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M4,24 v16 c0,3.9 10.7,7 24,7 s24,-3.1 24,-7 v-16" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="165" y="1020" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" y="1020">spare nodes cost more than standing</tspan>
+    <tspan x="165" y="1056">replicas and help less because 150 s</tspan>
+    <tspan x="165" y="1092">of weight load and warm-up remain</tspan>
+  </text>
+
+  
+  <rect x="815" y="945" width="725" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(840, 1024)">
+    <path d="M28,2 L52,12 v18 c0,16 -24,24 -24,24 c0,0 -24,-8 -24,-24 v-18 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="920" y="1020" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="920" y="1020">the SLO decides: a burst that burns a</tspan>
+    <tspan x="920" y="1056">month's budget in 15 minutes</tspan>
+    <tspan x="920" y="1092">justifies the floor of 9</tspan>
+  </text>
+</svg>

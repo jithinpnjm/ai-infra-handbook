@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p2-0523-scaling-layers",
+  "title": "A scaling decision passes through a relay of layers",
+  "spec": "A top-down flow with the metric source at the top. Box 'Metrics: CPU and memory, request rate, queue depth, tokens per second, KV cache, external events' at the top, splitting into two boxes side by side: 'HPA or KEDA: adjust replicas' (left) and 'VPA: adjust requests and limits' (right). Below HPA a downward arrow to 'Pending pods: no capacity' then to 'Cluster Autoscaler or Karpenter: add nodes' then to 'New nodes join (minutes for GPU)' then to 'Scheduler places pods'. A separate branch at the bottom labelled 'Idle or underused nodes' to 'Cluster Autoscaler scale-down: drain and remove'. Numbered relay markers on the main chain 1 to 4. Orange outline on 'New nodes join (minutes for GPU)' as the slowest runner. Side note: 'If any runner is slow, the whole race slows down.'",
+  "anchor": "## 1. Layers of autoscaling",
+  "alt": "A scaling decision flows from metrics to HPA or KEDA, then to pending pods, new nodes from the cluster autoscaler, and finally scheduling, with VPA adjusting requests.",
+  "cap": "A scaling decision runs from metrics to replica counts, then pending pods, new nodes and scheduling, and the slowest step sets the delay."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "23",
+  "name": "p2-0523-hpa-ratio",
+  "title": "HPA scales by the ratio of metric to target",
+  "spec": "Top: a formula strip in monospace 'desiredReplicas = ceil(currentReplicas x currentMetricValue / targetMetricValue)'. Below, three worked cards side by side. Card 1: 'Metric is twice its target, 2 replicas' with an arrow to 'Answer: 4 replicas'. Card 2: 'Metric at target, 4 replicas' with an arrow to 'Answer: 4, nothing changes'. Card 3: 'Fraction of a replica' with the note 'The ceiling always rounds up'. A band below the cards labelled 'Tolerance band of plus or minus 10 percent stops jitter'. A small side card 'Several metrics: HPA computes each and uses the largest result'. Orange outline on card 1 as the worked example that doubles the count. A final clamp bar at the bottom labelled 'Clamped to minReplicas and maxReplicas'.",
+  "anchor": "### Controller and algorithm",
+  "alt": "The HPA ratio formula, with worked cases of a metric at twice its target doubling the replicas and a metric at target leaving the count unchanged.",
+  "cap": "The HPA formula multiplies current replicas by the metric over its target and rounds up, so a metric at twice its target doubles the replica count."
+ }
+]

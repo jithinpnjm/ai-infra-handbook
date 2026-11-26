@@ -1,0 +1,291 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>One app host through the application play</title>
+  <desc>Four stage columns showing pre_tasks, tasks, handlers, and post_tasks for an application deployment with zero downtime.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">One app host through the application play</text>
+
+  
+  <rect x="45" y="82" width="1510" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="114" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">one app host with serial one at a time and max_fail_percentage 0</text>
+
+  
+  <rect x="45" y="148" width="360" height="1022" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="45" y="148" width="360" height="54" rx="14" fill="#207448" />
+  <text x="225" y="186" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#ffffff">pre_tasks</text>
+
+  
+  <rect x="430" y="148" width="425" height="1022" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="430" y="148" width="425" height="54" rx="14" fill="#207448" />
+  <text x="642" y="186" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#ffffff">tasks</text>
+
+  
+  <rect x="880" y="148" width="325" height="1022" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="880" y="148" width="325" height="54" rx="14" fill="#207448" />
+  <text x="1042" y="186" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#ffffff">handlers</text>
+
+  
+  <rect x="1230" y="148" width="325" height="1022" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <rect x="1230" y="148" width="325" height="54" rx="14" fill="#207448" />
+  <text x="1392" y="186" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#ffffff">post_tasks</text>
+
+  
+  <g id="pretask-1">
+    <rect x="60" y="226" width="330" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(203, 244)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 4 L 4 12 V 24 C 4 34 22 44 22 44 C 22 44 40 34 40 24 V 12 Z" />
+      <polyline points="14,24 20,30 30,18" />
+    </g>
+    <text x="225" y="322" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="225" dy="0">assert app_version</tspan>
+      <tspan x="225" dy="28">is a tag or</tspan>
+      <tspan x="225" dy="28">commit SHA</tspan>
+    </text>
+  </g>
+
+  <line x1="225" y1="406" x2="225" y2="426" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="pretask-2">
+    <rect x="60" y="430" width="330" height="240" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(203, 448)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="36" height="34" rx="4" />
+      <line x1="4" y1="23" x2="40" y2="23" />
+      <circle cx="12" cy="14" r="2" fill="#207448" />
+      <circle cx="12" cy="31" r="2" fill="#207448" />
+    </g>
+    <text x="225" y="520" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="225" dy="0" font-weight="bold">touch drain flag</tspan>
+      <tspan x="225" dy="28">under</tspan>
+      <tspan x="225" dy="28" font-family="monospace">/var/www/lb-drain</tspan>
+      <tspan x="225" dy="28">delegated to the</tspan>
+      <tspan x="225" dy="28">first web host</tspan>
+    </text>
+  </g>
+
+  <line x1="225" y1="670" x2="225" y2="690" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="pretask-3">
+    <rect x="60" y="694" width="330" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(203, 712)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="18" />
+      <polyline points="22,12 22,22 30,22" />
+    </g>
+    <text x="225" y="788" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">pause 5 seconds</text>
+  </g>
+
+  
+  <path d="M 390 759 H 418 V 251 H 445" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="task-1">
+    <rect x="445" y="218" width="395" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 231)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="14" r="8" />
+      <path d="M 4 36 C 4 26 24 26 24 36" />
+      <circle cx="28" cy="16" r="6" />
+      <path d="M 22 36 C 22 28 38 28 38 36" />
+    </g>
+    <text x="525" y="259" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">group and user</text>
+  </g>
+  <line x1="642" y1="284" x2="642" y2="292" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-2">
+    <rect x="445" y="294" width="395" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 307)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 10 L 16 10 L 22 16 L 38 16 L 38 36 L 6 36 Z" />
+      <line x1="6" y1="18" x2="38" y2="18" />
+    </g>
+    <text x="525" y="335" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">directory skeleton</text>
+  </g>
+  <line x1="642" y1="360" x2="642" y2="368" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-3">
+    <rect x="445" y="370" width="395" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 396)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="12" r="5" />
+      <circle cx="12" cy="32" r="5" />
+      <circle cx="32" cy="18" r="5" />
+      <line x1="12" y1="17" x2="12" y2="27" />
+      <path d="M 12 27 C 12 18 32 25 32 23" />
+    </g>
+    <text x="525" y="407" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="525" dy="0" font-weight="bold">git fetch</tspan>
+      <tspan x="525" dy="28">pinned version</tspan>
+    </text>
+  </g>
+  <line x1="642" y1="462" x2="642" y2="470" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-4">
+    <rect x="445" y="472" width="395" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 498)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="32" height="30" rx="3" />
+      <line x1="6" y1="18" x2="38" y2="18" />
+      <line x1="14" y1="26" x2="30" y2="26" />
+    </g>
+    <text x="525" y="509" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="525" dy="0">venv from</tspan>
+      <tspan x="525" dy="28" font-family="monospace">requirements.lock</tspan>
+    </text>
+  </g>
+  <line x1="642" y1="564" x2="642" y2="572" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-5">
+    <rect x="445" y="574" width="395" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 587)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="18" width="24" height="20" rx="3" />
+      <path d="M 16 18 V 10 C 16 6 28 6 28 10 V 18" />
+    </g>
+    <text x="525" y="615" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">env file mode </tspan>
+      <tspan font-family="monospace" font-weight="bold">0600</tspan>
+    </text>
+  </g>
+  <line x1="642" y1="640" x2="642" y2="648" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-6">
+    <rect x="445" y="650" width="395" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 676)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="22" cy="12" rx="16" ry="6" />
+      <path d="M 6 12 V 32 C 6 36 38 36 38 32 V 12" />
+      <path d="M 6 22 C 6 26 38 26 38 22" />
+    </g>
+    <text x="525" y="687" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="525" dy="0" font-family="monospace">alembic upgrade head</tspan>
+      <tspan x="525" dy="28" font-weight="bold">run_once</tspan>
+    </text>
+  </g>
+  <line x1="642" y1="742" x2="642" y2="750" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-7">
+    <rect x="445" y="752" width="395" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 765)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="8" />
+      <path d="M 22 6 V 10 M 22 34 V 38 M 6 22 H 10 M 34 22 H 38 M 11 11 L 14 14 M 30 30 L 33 33 M 11 33 L 14 30 M 30 14 L 33 11" />
+    </g>
+    <text x="525" y="793" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">systemd unit</text>
+  </g>
+  <line x1="642" y1="818" x2="642" y2="826" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-8">
+    <rect x="445" y="828" width="395" height="92" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 854)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 28 A 10 10 0 1 1 26 34" />
+      <path d="M 32 16 A 10 10 0 1 1 18 10" />
+      <line x1="16" y1="28" x2="28" y2="16" />
+    </g>
+    <text x="525" y="865" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="525" dy="0">switch current</tspan>
+      <tspan x="525" dy="28">symlink</tspan>
+    </text>
+  </g>
+  <line x1="642" y1="920" x2="642" y2="928" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-9">
+    <rect x="445" y="930" width="395" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 943)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="8,14 18,24 8,34" />
+      <polyline points="18,14 28,24 18,34" />
+      <line x1="34" y1="12" x2="34" y2="36" />
+    </g>
+    <text x="525" y="971" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">meta flush_handlers</text>
+  </g>
+
+  
+  <line x1="840" y1="963" x2="893" y2="963" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="handler-card">
+    <rect x="895" y="875" width="295" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(1020, 893)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 22 A 16 16 0 1 1 28 8" />
+      <polyline points="28,2 28,10 36,10" />
+    </g>
+    <text x="1042" y="975" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1042" dy="0" font-weight="bold">restart fleetapp</tspan>
+      <tspan x="1042" dy="28">only when</tspan>
+      <tspan x="1042" dy="28">something changed</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 895 1025 H 868 V 1042 H 842" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="task-10">
+    <rect x="445" y="1006" width="395" height="92" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="3" />
+    <g transform="translate(460, 1032)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="16" />
+      <polyline points="14,22 20,28 30,16" />
+    </g>
+    <text x="525" y="1043" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="525" dy="0" font-family="monospace" font-weight="bold" fill="#db8129">uri readyz</tspan>
+      <tspan x="525" dy="28" font-family="monospace">retries 20 delay 3</tspan>
+    </text>
+  </g>
+  <line x1="642" y1="1098" x2="642" y2="1106" stroke="#207448" stroke-width="2" marker-end="url(#arrow)" />
+
+  
+  <g id="task-11">
+    <rect x="445" y="1108" width="395" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(460, 1121)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="6,12 12,38 32,38 38,12" />
+      <line x1="4" y1="12" x2="40" y2="12" />
+      <line x1="16" y1="8" x2="28" y2="8" />
+    </g>
+    <text x="525" y="1149" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">prune old releases</text>
+  </g>
+
+  
+  <path d="M 840 1141 H 1215 V 990 H 1243" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="posttask-1">
+    <rect x="1245" y="940" width="295" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(1374, 950)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="36" x2="8" y2="8" />
+      <path d="M 8 8 L 30 14 L 8 20 Z" />
+      <line x1="26" y1="26" x2="36" y2="36" />
+      <line x1="36" y1="26" x2="26" y2="36" />
+    </g>
+    <text x="1392" y="1018" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">remove drain flag</text>
+  </g>
+
+  <line x1="1392" y1="1040" x2="1392" y2="1058" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g id="posttask-2">
+    <rect x="1245" y="1062" width="295" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(1260, 1087)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 36 24 A 14 14 0 1 1 24 10" />
+      <polyline points="24,4 24,11 31,11" />
+      <polyline points="14,24 19,29 28,19" />
+    </g>
+    <text x="1312" y="1099" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1312" dy="0" font-weight="bold">host back in</tspan>
+      <tspan x="1312" dy="28">rotation</tspan>
+    </text>
+  </g>
+
+</svg>

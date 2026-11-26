@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>uniq only merges neighbours, so sort first</title>
+  <desc>Visual comparison demonstrating why input lines must be sorted before running uniq -c to avoid duplicate counts in different locations.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">uniq only merges neighbours, so sort first</text>
+
+  
+  <rect x="60" y="130" width="710" height="800" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(100, 160)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="3"/>
+    <circle cx="12" cy="8" r="3" fill="#207448"/>
+    <circle cx="22" cy="8" r="3" fill="#207448"/>
+    <circle cx="32" cy="8" r="3" fill="#207448"/>
+    <line x1="12" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="12" y1="38" x2="44" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="12" y1="46" x2="24" y2="46" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="175" y="200" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">unsorted input</text>
+
+  
+  <g transform="translate(195, 235)">
+    
+    <rect x="0" y="0" width="440" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="220" y="33" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">203.0.113.7</text>
+
+    
+    <rect x="0" y="58" width="440" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="220" y="91" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">198.51.100.4</text>
+
+    
+    <rect x="0" y="116" width="440" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="220" y="149" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">203.0.113.7</text>
+
+    
+    <rect x="0" y="174" width="440" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="220" y="207" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">198.51.100.4</text>
+
+    
+    <rect x="0" y="232" width="440" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="220" y="265" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">203.0.113.7</text>
+  </g>
+
+  
+  <rect x="95" y="540" width="640" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="415" y="576" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">awk print first field, then uniq -c</text>
+
+  
+  <rect x="95" y="625" width="640" height="280" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <text x="125" y="665" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">uniq -c output</text>
+
+  <text x="125" y="712" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">1 203.0.113.7</text>
+  <text x="125" y="750" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">1 198.51.100.4</text>
+  <text x="125" y="788" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">1 203.0.113.7</text>
+  <text x="125" y="826" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">1 198.51.100.4</text>
+  <text x="125" y="864" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">1 203.0.113.7</text>
+
+  
+  <g transform="translate(370, 715)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="16" y1="16" x2="40" y2="40" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <line x1="40" y1="16" x2="16" y2="40" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <text x="66" y="38" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">wrong</text>
+  </g>
+  <text x="370" y="805" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="370" dy="0">the same address</tspan>
+    <tspan x="370" dy="32">counted in several places</tspan>
+  </text>
+
+
+  
+  <rect x="830" y="130" width="710" height="800" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(870, 160)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="3"/>
+    <circle cx="12" cy="8" r="3" fill="#207448"/>
+    <circle cx="22" cy="8" r="3" fill="#207448"/>
+    <circle cx="32" cy="8" r="3" fill="#207448"/>
+    <line x1="12" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="12" y1="36" x2="34" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="12" y1="44" x2="24" y2="44" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="945" y="200" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">sorted input</text>
+
+  
+  <g transform="translate(865, 235)">
+    
+    <rect x="0" y="0" width="310" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="155" y="33" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">203.0.113.7</text>
+
+    
+    <rect x="0" y="58" width="310" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="155" y="91" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">203.0.113.7</text>
+
+    
+    <rect x="0" y="116" width="310" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="155" y="149" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">203.0.113.7</text>
+
+    
+    <rect x="0" y="174" width="310" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="155" y="207" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">198.51.100.4</text>
+
+    
+    <rect x="0" y="232" width="310" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="155" y="265" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">198.51.100.4</text>
+  </g>
+
+  
+  <path d="M 1195,240 h 20 v 75 h 25 h -25 v 75 h -20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M 1195,414 h 20 v 48 h 25 h -25 v 48 h -20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <text x="1255" y="340" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="1255" dy="0">uniq only joins</tspan>
+    <tspan x="1255" dy="32">touching lines</tspan>
+  </text>
+
+  
+  <rect x="865" y="540" width="640" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1185" y="576" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">sort, then uniq -c, then sort -k2,2nr</text>
+
+  
+  <rect x="865" y="625" width="640" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <text x="915" y="735" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">3 203.0.113.7</text>
+  <text x="915" y="815" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">2 198.51.100.4</text>
+
+  
+  <g transform="translate(1260, 725)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 18,28 l 8,8 l 16,-16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="68" y="38" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">right</text>
+  </g>
+
+
+  
+  <rect x="60" y="965" width="1480" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1009" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">uniq only merges lines that touch, so sort before uniq</text>
+</svg>

@@ -44,6 +44,10 @@ The right sentence in the room is: "Nebius has not published its router, so here
 
 ### 1. Requirements and numbers first (minutes 0 to 5)
 
+![An eleven-step ladder from 1,000 requests per second through Little's law and KV memory to about 40 GPUs.](./img/p3-2013-sizing-ladder.svg)
+
+*Figure 20.13.1. Each line reuses the one above, so a wrong input shows up in every result below it.*
+
 An interviewer says "design an inference API" and goes quiet. If you draw a load balancer now, you have lost the first five minutes. Ask questions that change the design instead. Is it chat, batch or both? Which models and context lengths? What availability target? Must data stay in a region? Are tenants trusted?
 
 Each answer moves a box. Batch work can wait in a queue, so chat needs a faster path. A context length sets how much memory one request holds, because the context is everything the model reads and writes for that request, measured in tokens. A token is a small piece of text, often a word or part of one. A residency rule decides where a box is allowed to sit. Tenant trust decides how hard you must separate one customer from another. A question that changes nothing in the design is a question you can skip.
@@ -85,6 +89,10 @@ The result says memory alone needs about 40 GPUs at peak. A compute check and he
 
 ### 2. The API contract (minutes 5 to 8)
 
+![Two columns list what the inference API promises, including 429 with Retry-After, and what it explicitly does not.](./img/p3-2013-api-contract.svg)
+
+*Figure 20.13.2. Say what you will not promise, such as exactly-once generation, before the interviewer asks.*
+
 A customer writes a short script against the API on Monday and expects it to still work on Friday. That promise is the API contract, and it is the first thing the interviewer will check. Keep the surface small. Nebius says the API is OpenAI-compatible, so the data path is a streaming chat or completion call. A data path is the route the actual requests take. Add a separate control API for managing endpoints, which the public facts say lifecycle operations belong to. Say the split now, because everything later hangs on it.
 
 The data plane call needs four properties. It carries a tenant credential. It names a model or an endpoint. It can stream tokens back. It returns token counts for billing. The Token Factory chat completion reference, fetched 2026-11-09, defines a `usage` object with `prompt_tokens`, `completion_tokens` and `total_tokens`, plus optional `prompt_tokens_details` and `completion_tokens_details`. A usage object is the small block of counts that comes back with a response, and billing is built on it. For streams, the same page says usage statistics arrive only when the request sets `stream_options` to `{"include_usage": true}`, in a final chunk. A gateway that bills streamed calls must therefore set that option itself, or it will have no counts to bill from.
@@ -95,6 +103,10 @@ Decide what you will not promise. Imagine a client that retries a call after the
 
 ### 3. The control plane and the data plane (minutes 8 to 10)
 
+![The control plane holds desired state, the data plane serves traffic from a signed snapshot, and traffic keeps flowing when the control plane is down.](./img/x13-control-data-plane.svg)
+
+*Figure 20.13.3. Separating control from data keeps a control plane outage from dropping live requests.*
+
 Picture a customer clicking "disable endpoint" while a million requests per minute are flowing. If both actions went through the same service, a control bug could stop traffic. So they are separate.
 
 The control plane holds desired state: which endpoints exist, which model, how many replicas, which region. It is low traffic and needs strong consistency and an audit log. Strong consistency means every reader sees the same latest value, so two operators cannot disagree about whether an endpoint is on. An audit log is a record of who changed what and when. The data plane holds the request path: gateway, router, workers. It is high traffic and must keep serving when the control plane is down. Nebius publishes this split. How it is built inside is not published, so this is my design.
@@ -104,6 +116,14 @@ My design rule: the data plane caches a signed snapshot of the control plane sta
 **Say the failure sentence: the control plane may be down for an hour and customers must not notice.**
 
 ### 4. The gateway: auth, quotas and rate limits by tokens (minutes 10 to 17)
+
+![Four rate limit types with what each protects, its unit and the failure when it is missing.](./img/p3-2013-four-fences.svg)
+
+*Figure 20.13.4. A single limit does not stop the other kinds of trouble.*
+
+![A request first takes one request slot, then reserves its prompt plus max output tokens; a token rejection refunds the request slot, and unused output tokens are refunded when the response ends.](./img/x13-token-admission.svg)
+
+*Figure 20.13.5. Admission reserves tokens up front, and the limiter refunds both the rejected request slot and the output tokens that were never generated.*
 
 An alert fires: one tenant sent ten requests with 8,000 prompt tokens and a large max output, and every other tenant's TTFT doubled. TTFT, or time to first token, is how long a user waits before the first word of the answer appears. A limit of 60 requests a minute would not have stopped it. Requests are not equal work, so the limit must count tokens.
 
@@ -128,6 +148,10 @@ Read the table as separate fences. Each one stops a different kind of trouble, a
 
 ### 5. Usage metering for billing (minutes 17 to 19)
 
+![Rate limiting is fast and approximate, while metering emits one usage event per request to a durable log that aggregates hourly totals for billing.](./img/p2-2013-usage-metering.svg)
+
+*Figure 20.13.6. Metering emits one usage event per finished request to a durable log, using the request id so a retried event is counted once.*
+
 A customer disputes an invoice by 3%. You need to prove the number. Billing must come from a durable record, not from a Prometheus counter that can lose scrapes. Durable means the record survives a crash, a restart or a network hiccup.
 
 The gateway emits one usage event per finished request with the tenant, the model, the region, prompt tokens, completion tokens, whether the prompt hit the cache, status and a request id. A usage event is one small record that describes one finished call. Events go to a durable log, then to an aggregator that writes hourly totals. Use the request id as an idempotency key, so a retried event is counted once. An idempotency key is an identifier that tells the system "I have already seen this," so the same event applied twice has the same effect as applying it once. Reconcile the billing total against engine-side token counters daily, and alert on drift above a small threshold. Drift is the gap that grows between two numbers that should agree.
@@ -137,6 +161,14 @@ Metering and rate limiting are different systems with different correctness need
 What counts when a stream dies at token 100? I would bill the tokens actually delivered and not the reserved ones. That is a product choice. Name it as a choice and move on.
 
 ### 6. The router: cache-aware and load-aware (minutes 19 to 26)
+
+![Four routing policies and a bound sweep compared on hit rate, p99 latency and load imbalance in a toy simulation.](./img/p3-2013-router-sim-results.svg)
+
+*Figure 20.13.7. Tune the cache bound against p99 latency and not against hit rate.*
+
+![The router sends a request to the replica holding its prefix only when that replica's backlog is within a bound of the least loaded replica, otherwise to the least loaded one.](./img/x13-bounded-router.svg)
+
+*Figure 20.13.8. A bounded cache-aware router keeps most prefix hits without creating a hotspot on one replica.*
 
 Consider eight replicas and a chat product where every request starts with the same long system prompt. A system prompt is the standing instruction that frames every conversation. With round robin, which means sending each request to the next replica in turn, each replica recomputes that prefix about as often as every other. If the request goes to the replica that already holds the prefix in its KV cache, the prefill is mostly skipped. Prefill is the step where the engine reads the whole prompt before it can write the first token. Skipping it makes TTFT drop and frees GPU time.
 
@@ -172,6 +204,10 @@ The bound is a knob, and the simulation sweeps it. A zero bound behaves close to
 
 ### 7. Prefill and decode pools (minutes 26 to 29)
 
+![Colocated prefill and decode stall streaming users, so the design splits them into pools with a KV transfer and backpressure from decode back to prefill.](./img/p2-2013-prefill-decode-pools.svg)
+
+*Figure 20.13.9. Colocated prefill stalls streaming users, so prefill and decode can be split into pools with KV transfer and backpressure, but only when interference is measured.*
+
 A long prompt arrives while many users are streaming. Its prefill takes the GPU for a stretch, and every streaming user sees a stall in token delivery. Prefill is compute heavy and decode is memory-bandwidth heavy. Decode is the step that writes one output token at a time, and it is limited by how fast memory can feed the GPU. Mixing them on one GPU makes them fight over the same hardware.
 
 The public case study says Nebius separated prefill and decode pools for that customer. The handbook's chapter 15.10 teaches the mechanism and the sizing in depth. For this interview you need the trade-off. Separation protects inter-token latency, which is the pause between one output token and the next, and it lets you scale each pool on its own signal. The price is moving the KV cache from the prefill worker to the decode worker, which needs a fast link, and more moving parts to fail.
@@ -186,6 +222,10 @@ The router sees two stages. It picks a prefill worker, mainly by cache and load,
 
 ### 8. Model placement and warm pools (minutes 29 to 31)
 
+![Shared on-demand hosting contrasted with dedicated always-on hosting with the cold start and warm pool recipe.](./img/p3-2013-hosting-shapes.svg)
+
+*Figure 20.13.10. Warm pools and local weight caches keep requests from paying the cold start.*
+
 A tenant calls a model that no replica holds. The first request has to wait while tens of GB of weights are loaded onto a GPU, and that takes seconds to minutes. Hands-On LLM Serving and Optimization, Chapter 3, calls this cold start latency and notes it can cause timeouts and cascading failures under load. A cascading failure is one where a problem in one part spreads to the others, usually because retries and timeouts pile on.
 
 The book offers two shapes. The cost-optimised design shares instances across many models, loads on demand and bin-packs. Bin-packing means fitting as many models as possible onto each machine, like packing boxes into a van. It is cheap but reactive, so surges hurt. The latency-optimised design gives each model its own always-on group. It has no cold start and is simpler to operate, but it wastes GPUs on quiet models.
@@ -195,6 +235,10 @@ Nebius offers both products. Serverless endpoints suit shared pools of popular m
 For warm pools, keep popular models always resident with at least two replicas. A warm pool is capacity that is already loaded and waiting, so a request does not pay the cold start. Keep weights on local NVMe or a node-local cache so a new replica does not download from the object store. NVMe is fast solid-state storage inside the machine itself. LLMs in Production, Chapter 6, describes a hybrid where weights are downloaded once and kept on a mounted volume so new instances skip the download. Warm up a new replica with a few real requests before it receives traffic, so CUDA graphs and caches are ready. A CUDA graph is a recorded sequence of GPU work that can be replayed quickly, and it takes a few runs to set up.
 
 ### 9. Autoscaling signals (minutes 31 to 34)
+
+![A dashboard shows GPU utilisation at 40 percent while time to first token climbs, so the design scales on queue depth and KV-cache pressure instead.](./img/p2-2013-scale-signals.svg)
+
+*Figure 20.13.11. GPU utilisation can look half idle while users wait, so the design scales on queue depth and KV-cache pressure and checks tail TTFT as the outcome.*
 
 The alert says TTFT is up and GPU utilisation is 40%. Picture the dashboard: the GPUs look half asleep, yet users are waiting. CPU-based or GPU-utilisation autoscaling would do nothing, yet users are suffering. For LLM serving, utilisation is a poor signal because batching keeps a GPU busy while queues grow. Batching means the engine groups many requests into one GPU step, so the GPU looks busy even while new work piles up behind it.
 
@@ -208,6 +252,10 @@ Two things sit above autoscaling. Rate limits dampen bursts while new capacity b
 
 ### 10. Regions and data residency (minutes 34 to 36)
 
+![Requests route by the endpoint's region for data residency, with prompts and logs staying in the EU region and nearest-region routing rejected.](./img/p2-2013-residency-routing.svg)
+
+*Figure 20.13.12. Requests route by the endpoint's region so prompts and logs stay in-region, because routing to the nearest region can break a residency promise silently.*
+
 A European customer asks that prompts never leave the EU. Data residency is the rule that data must stay in a named place, and it is a promise you make to the customer in writing. Nebius lists EU and US as region choices with data residency for dedicated endpoints. So residency is a property of the endpoint, fixed at creation.
 
 My design: the control plane may be global for metadata, but prompts, completions and logs containing them stay in the endpoint's region. Route by the endpoint's region, never by "nearest". The nearest data center can sit outside the promised region, and that breaks the promise without any error. Metering events can leave the region only after they are stripped of content. Telemetry needs the same care, because a trace with a prompt inside is customer data.
@@ -215,6 +263,10 @@ My design: the control plane may be global for metadata, but prompts, completion
 Failover across regions is a trap for residency customers. Failover means sending traffic to a backup when the main place fails. A fallback region that breaks the promise is worse than an outage in the customer's eyes. So cross-region failover is off by default for residency-bound tenants and must be opted into per tenant. Spare capacity is then needed in each region, which costs money. Say it. The interviewer is often waiting to see whether you noticed that cost.
 
 ### 11. Tenant isolation and noisy neighbours (minutes 36 to 38)
+
+![Isolation layers for multi-tenant inference from the gateway limits and router slot caps down to the shared batch and KV cache where noisy neighbours act.](./img/p2-2013-isolation-layers.svg)
+
+*Figure 20.13.13. Noisy neighbours act on the shared batch and KV cache inside one engine, so isolation adds gateway limits, router slot caps and priority classes above it.*
 
 Picture two customers sharing one engine. One sends short chat messages, and the other sends a huge document every few seconds. The first customer's answers slow down, and nothing in the logs says why. That is the noisy neighbour problem. Production Kubernetes, Chapter 12, describes isolation as a spectrum and separates soft multitenancy, where tenants trust each other, from hard multitenancy, where they do not. An API serving the public is closer to hard. The book also says requests and limits give weaker isolation than a hypervisor and that noisy neighbour symptoms are hard to remove completely. A hypervisor is the layer that runs separate virtual machines, and it isolates them more strongly than container limits do.
 
@@ -226,6 +278,10 @@ Cache sharing is a security question too. A shared prefix cache across tenants c
 
 ### 12. Streaming and backpressure (minutes 38 to 40)
 
+![A slow streaming client holds a decode slot and its KV memory, so the design sets a write timeout, a maximum stream duration and stops generation on disconnect.](./img/p2-2013-stream-bounds.svg)
+
+*Figure 20.13.14. A slow streaming client holds a decode slot and KV memory, so the design bounds each stream with a write timeout, a maximum duration and disconnect handling.*
+
 A client on a slow mobile link reads tokens at a crawl. The server keeps its decode slot and its KV memory until the stream ends. Thousands of such clients quietly eat capacity, and nothing looks broken on the GPU dashboard.
 
 LLMs in Production, Chapter 6, says streaming is a must-have because output length is unpredictable and tokens per second becomes the steady metric. Streaming also means the request is long-lived, so deploys, scale-down and failures all interact with open connections. A deploy that restarts a pod will cut every stream that pod is holding.
@@ -233,6 +289,14 @@ LLMs in Production, Chapter 6, says streaming is a must-have because output leng
 Set a per-stream write timeout and a maximum duration. A write timeout gives up on a client that stops reading, and a maximum duration puts a ceiling on how long any one stream can hold a slot. Stop generation when the client disconnects, because generating for nobody wastes GPU. Bound every queue. Distributed AI Systems, Chapter 9, describes a bounded request queue that rejects at once with a 503 rather than letting requests time out after a long wait. Fast rejection gives the client a clear signal to retry or go elsewhere. A queue that can grow without limit only hides the overload until users give up.
 
 ### 13. Failure handling and retries with budgets (minutes 40 to 42)
+
+![A decision tree on which failures are safe to retry plus retry budget, circuit breaker and probe guidance.](./img/p3-2013-retry-safety.svg)
+
+*Figure 20.13.15. Retry only before the first token, under a budget, in one layer.*
+
+![A pool at 90 percent capacity that loses replicas and retries each failed request three times sees its load multiply, feeding more failures.](./img/x13-retry-amplification.svg)
+
+*Figure 20.13.16. Unbudgeted retries add load exactly when the pool has the least capacity, so a partial outage becomes a full one.*
 
 The case study says retry logic was changed to stop amplification in partial outages. Here is the mechanism. A pool is at 90% capacity and some requests fail. Each client retries three times. Load becomes nearly four times the original, and the pool collapses. Every retry is a new request that the pool must serve, so failures feed themselves.
 
@@ -246,6 +310,10 @@ Circuit breakers help. A circuit breaker stops sending traffic to a component th
 
 ### 14. Observability (minutes 42 to 43)
 
+![A list of inference SLIs beside a warning about averages and per-tenant label cardinality.](./img/p3-2013-observability-slis.svg)
+
+*Figure 20.13.17. Use percentiles and limit tenant labels to top tenants to keep metrics useful and affordable.*
+
 Picture a Grafana board that shows a single average for the whole platform. It looks calm while one tenant is badly hurt. Nebius shows customers latency percentiles, TTFT, token throughput, active replicas, errors by status code and traffic by prompt size and region. A percentile tells you the value that a given share of requests stayed under, so the p99 is the value that nearly every request beats. Build the internal view on the same dimensions, plus per-tenant slices.
 
 The SLIs I would define are time to first token, inter-token latency, end-to-end latency, error rate and goodput, which is the share of requests that meet their latency target. An SLI, or service level indicator, is a measured number that describes how well the service is doing. Hands-On LLM Serving and Optimization, Chapter 4, defines E2E latency as `TTFT + ITL × (N – 1)` when ITL is steady. ITL is inter-token latency, and N is the number of output tokens. The case study's alert list gives you concrete alerts: tail TTFT, cache hit drops, finish_reason drift and decode error bursts.
@@ -254,30 +322,19 @@ Per-tenant labels explode metric cardinality. Cardinality is the number of disti
 
 ### 15. Rollout (minutes 43 to 45)
 
+![A staircase from shadow traffic to tenant canary to full rollout with gates on latency, errors and finish_reason.](./img/p3-2013-rollout-stages.svg)
+
+*Figure 20.13.18. Gate each step on latency, errors and finish_reason and keep rollback one command away.*
+
 Picture the last five minutes of the round, when the interviewer asks what happens the day you change the model. Rollout is the way a new version reaches users. Distributed AI Systems, Chapter 9, describes a canary that sends a small share, for example 10%, to the new version and steps up through larger shares if error rate and latency hold. A canary is a small test group that runs the new version first. It also separates canary from A/B testing, where consistent assignment per user matters. In an A/B test each user is kept in one group, so the comparison stays fair.
 
 For model or engine changes I would add a shadow stage that mirrors traffic and discards the output, then a canary by tenant. In a shadow stage the new version does the work, but its answers are thrown away, so you learn about speed and errors with no user risk. Pick internal tenants first. Gate each step on TTFT, ITL, error rate and finish_reason distribution, since a model change can shift finish_reason without raising errors. A gate is a check that must pass before the next step runs. Keep the old version's capacity until the new one has served peak traffic, and keep rollback one command. Chapter 20.14 goes deeper on dedicated endpoint rollout.
 
 ### 16. The whole picture in one diagram
 
-```mermaid
-flowchart TD
-    C["Client"] --> GW["Gateway: auth, quotas, token limits"]
-    GW --> M["Usage events log"]
-    GW --> R["Router: cache and load aware"]
-    R --> PF["Prefill pool"]
-    R --> DC["Decode pool"]
-    PF -- "KV cache" --> DC
-    DC -- "token stream" --> GW
-    CP["Control plane: endpoints, models, replicas"] -- "state snapshot" --> GW
-    CP -- "state snapshot" --> R
-    CP --> AS["Autoscaler"]
-    DC -- "queue, KV usage" --> AS
-    PF -- "queue, TTFT" --> AS
-    AS --> PF
-    AS --> DC
-    M --> B["Billing aggregator"]
-```
+![The whole picture in one diagram](./img/m20-13-1.svg)
+
+*Figure 20.13.19. The whole picture in one diagram, as a diagram.*
 
 Draw the data path left to right first, then add the control plane above it with dotted ownership. Call out the two feedback loops: engine metrics into the router, and engine metrics into the autoscaler. A feedback loop is a path where the output of the system comes back in as an input, so you should always say where the loop closes.
 
@@ -301,6 +358,10 @@ Use this table when an interviewer asks you to compare two options in one senten
 Picture yourself at the whiteboard with a clock on the wall and about 45 minutes left. This section gives the plan you can rehearse until it feels ordinary.
 
 ### The 45-minute speaking plan
+
+![A timeline of eight blocks across 45 minutes with the output expected from each block.](./img/p3-2013-forty-five-minutes.svg)
+
+*Figure 20.13.20. Keep a clock so every part of the design is spoken before the time runs out.*
 
 | Minutes | Topic | Output |
 |---|---|---|
@@ -341,11 +402,19 @@ Picture a tenant that multiplies its traffic in one minute. Rate limits absorb t
 
 ### Scenario 1: size a quota for a tenant
 
+![Arithmetic for a 10,000 token per second quota showing 2,000 token reservations, a 5 per second start rate and 50 request burst.](./img/p3-2013-quota-arithmetic.svg)
+
+*Figure 20.13.21. Reserve the maximum and refund the unused part so short answers do not pay for long ones.*
+
 A tenant pays for 10,000 tokens per second and sends chat calls of 1,500 prompt tokens with max output 500. How many requests per second can it start, and what happens when its calls finish early?
 
 Each reservation is 2,000 tokens. At 10,000 tokens per second the tenant can start 5 requests per second. If the real output averages 300, each call used 1,800 and the refund is 200, so the sustained start rate rises to about 5.5 per second. The refund is why reserving the maximum does not punish short answers for long. Set burst to 10 seconds of rate, 100,000 tokens, which allows 50 requests at once. The simulation tests this refund path in `test_finish_refunds_unused_output_tokens`.
 
 ### Scenario 2: TTFT doubled, GPU utilisation 40%
+
+![Four checks for a TTFT doubling with flat GPU utilisation: queue and KV, prefix hit rate, ready replicas and per-tenant tokens.](./img/p3-2013-ttft-flat-gpu.svg)
+
+*Figure 20.13.22. Check queue, cache, replica count and tenant mix before trusting a flat utilisation graph.*
 
 The alert shows p99 TTFT doubled over ten minutes. Utilisation is flat. Picture the on-call engineer staring at a green GPU graph and a red latency graph, and asking which one to believe. Steps. Check the waiting queue and KV usage per replica. If KV usage is near full, long contexts are evicting or queueing requests. Check the prefix hit rate. If it dropped, a router or cache change happened, since the case study lists cache drops as an alert. Check ready replicas against desired. A silent shrink explains it without any error. Check per-tenant token rates for one tenant sending long prompts. The mitigation order is to shed or limit the heavy tenant, then add replicas, then investigate the cause. Mitigate before root cause.
 

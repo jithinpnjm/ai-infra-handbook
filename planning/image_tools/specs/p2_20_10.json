@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p2-2010-blocklist-bigo",
+  "title": "Blocklist check: list scan versus set lookup",
+  "spec": "Top banner: 'Name the variables: n log lines, m blocked addresses'. Two side-by-side panels. Left panel, heading 'List: if ip in blocked': a row of m small boxes representing the blocked list, with a scanning arrow walking from the first entry to the last, labelled 'Compare each entry, O(m) per line'. Below the panel the formula chip 'Loop cost: O(n times m)' in grey. Right panel, heading 'Set: if ip in blocked_set': the same m entries drawn as hashed slots, with one direct arrow from the address to one slot labelled 'Hash to a slot, O(1) on average'. Below the panel the chip 'Loop cost: O(n)' in green. Between the panels a note 'Say on average: a hash table can slow down on collisions.' Orange outline on the right panel's O(n) chip as the improved version. Bottom note: 'Name the variables before you name a big-O.'",
+  "anchor": "### 1. Say Big-O in a way that survives a follow-up",
+  "alt": "A list membership test scans every blocked address per log line, while a set lookup finds the address in one step on average.",
+  "cap": "A list membership test costs O(n times m) across the loop, while converting the blocklist to a set brings it down to O(n) on average."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p2-2010-set-memory",
+  "title": "A set buys speed for about five times the memory",
+  "spec": "Two horizontal bars side by side on a shared scale, labelled in megabytes. Bar 1 labelled 'List of 100,000 integers: 0.8 MB' in grey, short. Bar 2 labelled 'Set of 100,000 integers: 4.19 MB' in green, about five times as long as bar 1. A bracket between the bars labelled 'About five times the container memory'. A speed card to the right with the text 'Lookup thousands of times faster'. Under the bars a footnote: 'Both figures leave out the integer objects themselves.' A three-question card at the bottom titled 'Is the trade worth it?' with three chips: 'How often is the lookup done?', 'How large is the table?', 'How much memory can the service spare?'. Orange outline on the 4.19 MB bar. Bottom note: 'I would use a set is half an answer. Name the memory cost too.'",
+  "anchor": "### 3. Space against time",
+  "alt": "A list of one hundred thousand integers takes 0.8 megabytes while the matching set takes 4.19 megabytes for a much faster lookup.",
+  "cap": "A set of 100,000 integers takes about 4.19 MB against 0.8 MB for the list, a memory cost that buys much faster lookups."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p2-2010-latency-ladder",
+  "title": "The latency ladder with ratios to a memory read",
+  "spec": "A vertical ladder of rungs, top to bottom, cheapest at the top. Left side a vertical arrow labelled 'Each rung down costs more'. Each rung is a horizontal bar whose length grows logarithmically down the page (drawn as stepped widths), with the label on the left and the time and ratio on the right. Rungs, top to bottom, with the time and ratio in the right column: 'L1 cache reference: 0.5 ns, ratio 0.005'; 'Main memory reference: 100 ns, ratio 1'; 'Send 2K bytes over 1 Gbps network: 20,000 ns, ratio 200'; 'Round trip within same datacenter: 500,000 ns, ratio 5,000'; 'Disk seek: 10,000,000 ns, ratio 100,000'; 'Send packet CA to Netherlands and back: 150,000,000 ns, ratio 1,500,000'. The Main memory rung has a green marker as the ratio base. Orange outline on the datacenter round trip rung. A note on the side: 'Figures from the 2009 slide: use the order of magnitude and say the year.'",
+  "anchor": "### 4. The latency numbers, with sources and dates",
+  "alt": "A ladder of operation times from an L1 cache reference to a round trip across continents, with each time expressed as a ratio to a main memory read.",
+  "cap": "A ladder of 2009 latency figures, from an L1 cache reference to a round trip across continents, with ratios to a memory read."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p2-2010-fanout-tail",
+  "title": "Fan-out makes the tail the common case",
+  "spec": "A bar chart with four bars for fan-out N, labelled on the horizontal axis 'Fan-out N' and on the vertical axis 'Chance at least one call is slow'. Bars: 'N = 1' at 1.0 percent, 'N = 10' at 9.6 percent, 'N = 100' at 63.4 percent, 'N = 1,000' at about 99.996 percent. Each bar has its value printed above it. The N = 100 bar has an orange outline. Above the chart, the formula strip in monospace: 'chance at least one slow = 1 - (1 - p) to the power N, with p = 0.01'. A side card: 'One request sends 100 calls and waits for all of them. The slowest call decides the wait.' Bottom note: 'A healthy p99 on one backend does not describe the tail the request waits through.'",
+  "anchor": "### 6. Why the p99 of a fan-out is worse than the p99 of one call",
+  "alt": "A bar chart showing that the chance of at least one slow call rises from one percent at fan-out one to 63.4 percent at fan-out one hundred.",
+  "cap": "The chance that at least one of N calls lands in the slow one percent rises from 1.0 percent at N equals 1 to 63.4 percent at N equals 100."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p2-2010-locality-bars",
+  "title": "Same sum, two memory orders",
+  "spec": "Two horizontal bars on a shared time axis in seconds. Bar 1 labelled 'Index order, sequential walk: 0.157 seconds', drawn short and green. Bar 2 labelled 'Shuffled order, scattered access: 0.622 seconds', drawn about four times as long and in orange outline. A bracket with the label 'About 4 times slower' between the bar ends. Above the bars a memory strip showing a 64-byte cache line as a block with neighbouring values inside it, labelled 'Reading one value pulls in its neighbours'. Under the bar 2 a note 'Random walk wastes the neighbours'. Formula strip at the bottom: 'runtime = hit rate x hit latency + miss rate x miss latency'. Caption: 'Going from 98 to 99 percent hits matters far more than 10 to 11 percent.'",
+  "anchor": "### 7. Caches and locality",
+  "alt": "Summing an array in index order takes 0.157 seconds while summing it in shuffled order takes 0.622 seconds, about four times slower.",
+  "cap": "Summing five million values in index order took 0.157 seconds against 0.622 seconds in shuffled order, because scattered reads waste cache lines."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p2-2010-measure-loop",
+  "title": "Measure, find, change one thing, measure again",
+  "spec": "A circular loop of four stages with arrows between them, drawn clockwise. Stage 1 box 'Measure the whole' with a stopwatch icon. Stage 2 box 'Find where the time goes' with a profiler icon and the tool chip 'cProfile'. Stage 3 box 'Change one thing' with a gear icon. Stage 4 box 'Measure again' with a stopwatch icon, arrow back to stage 1. Beside stage 2 a small tool card for micro-benchmarks: 'timeit', with the note 'Report the minimum of repeats: higher values come from other processes'. Orange outline on stage 3 with the note 'Change one thing, so you know which change mattered'. Bottom note: 'A measurement tells you where to look. A guess only tells you where you hope the problem is.'",
+  "anchor": "### 8. Measuring your own code with timeit and cProfile",
+  "alt": "A four-stage measurement loop of measure the whole, find the hot spot with cProfile, change one thing and measure again, with timeit for small snippets.",
+  "cap": "A measurement loop of measuring the whole, finding the hot spot, changing one thing and measuring again, using timeit minimums for snippets."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "10",
+  "name": "p2-2010-loop-budget",
+  "title": "A one-second budget for ten million items",
+  "spec": "Top calculation card in monospace: 'Budget: 1 second divided by 10,000,000 items = 100 ns per item'. Below it a horizontal bar chart with a vertical line at 100 ns labelled 'Budget: 100 ns per item'. Bars: 'Built-in sum(range(n)): 8 ns, 0.08 s total' (green), 'for loop with total += i: 18 ns, 0.18 s total' (green), 'Same loop with one Python function call: 41 ns, 0.41 s total' (green with a margin note 'about two times margin'). A fourth bar, orange outline, labelled 'One network call per item at 500 microseconds: 5,000 seconds, about 83 minutes', drawn far off the scale with a break symbol. Bottom note: 'Compare the per-item cost with the budget before you commit.'",
+  "anchor": "### 10. Will this loop of ten million items finish in a second?",
+  "alt": "A budget of one hundred nanoseconds per item for ten million items, with measured loop costs that fit and a network call per item that does not.",
+  "cap": "A one-second budget for ten million items allows 100 ns per item, so simple loops fit while one network call per item does not."
+ }
+]

@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four questions every container answers: see, use, reach, store</title>
+  <desc>Technical infographic illustrating container isolation and resource boundaries across namespaces, cgroups, security profiles, and overlay storage around a shared host kernel.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Four questions every container answers: see, use, reach, store</text>
+
+  
+  <g id="box-1">
+    <rect x="40" y="95" width="740" height="405" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 107 A 12 12 0 0 1 52 95 L 768 95 A 12 12 0 0 1 780 107 L 780 165 L 40 165 Z" fill="#e8f1ea"/>
+    
+    <g transform="translate(62, 107)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 2 24 C 14 10, 36 10, 48 24 C 36 38, 14 38, 2 24 Z"/>
+      <circle cx="25" cy="24" r="7"/>
+    </g>
+    <text x="125" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">What can it see?</text>
+
+    
+    <text x="65" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">PID namespace: own process tree, app is PID 1</text>
+
+    <text x="65" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">Mount namespace + <tspan font-family="ui-monospace, monospace">pivot_root</tspan>:</tspan>
+      <tspan x="85" dy="28">own filesystem view</tspan>
+    </text>
+
+    <text x="65" y="302" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Network namespace: own interfaces, IPs, ports</text>
+
+    <text x="65" y="342" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">UTS and IPC namespaces: own hostname, own IPC</text>
+
+    <text x="65" y="382" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">User namespace:</tspan>
+      <tspan x="85" dy="28">root inside is unprivileged outside</tspan>
+    </text>
+
+    <text x="65" y="450" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Cgroup namespace</text>
+  </g>
+
+  
+  <g id="box-2">
+    <rect x="820" y="95" width="740" height="405" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 820 107 A 12 12 0 0 1 832 95 L 1548 95 A 12 12 0 0 1 1560 107 L 1560 165 L 820 165 Z" fill="#e8f1ea"/>
+    
+    <g transform="translate(842, 107)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 5 36 A 21 21 0 1 1 45 36"/>
+      <line x1="25" y1="25" x2="37" y2="15"/>
+      <circle cx="25" cy="25" r="3" fill="#207448"/>
+      <line x1="7" y1="18" x2="12" y2="20"/>
+      <line x1="25" y1="6" x2="25" y2="12"/>
+      <line x1="43" y1="18" x2="38" y2="20"/>
+    </g>
+    <text x="905" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">How much can it use?</text>
+
+    
+    <rect x="845" y="190" width="690" height="80" rx="8" fill="#f5f8f5" stroke="#c4d8c8" stroke-width="1.5"/>
+    <text x="865" y="238" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">cgroups v2: CPU, memory, I/O, PIDs, devices</text>
+
+    <rect x="845" y="295" width="690" height="150" rx="8" fill="#f5f8f5" stroke="#c4d8c8" stroke-width="1.5"/>
+    <text x="865" y="348" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="865" dy="0">flags: <tspan font-family="ui-monospace, monospace">--cpus, --cpu-shares, --memory,</tspan></tspan>
+      <tspan x="865" dy="42" font-family="ui-monospace, monospace">--memory-swap, --pids-limit</tspan>
+    </text>
+  </g>
+
+  
+  <g id="centre-box">
+    <rect x="240" y="525" width="1120" height="125" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(275, 560)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4"/>
+      <line x1="20" y1="20" x2="36" y2="20"/>
+      <line x1="20" y1="28" x2="36" y2="28"/>
+      <line x1="20" y1="36" x2="36" y2="36"/>
+      
+      <line x1="20" y1="4" x2="20" y2="12"/>
+      <line x1="28" y1="4" x2="28" y2="12"/>
+      <line x1="36" y1="4" x2="36" y2="12"/>
+      <line x1="20" y1="44" x2="20" y2="52"/>
+      <line x1="28" y1="44" x2="28" y2="52"/>
+      <line x1="36" y1="44" x2="36" y2="52"/>
+      <line x1="4" y1="20" x2="12" y2="20"/>
+      <line x1="4" y1="28" x2="12" y2="28"/>
+      <line x1="4" y1="36" x2="12" y2="36"/>
+      <line x1="44" y1="20" x2="52" y2="20"/>
+      <line x1="44" y1="28" x2="52" y2="28"/>
+      <line x1="44" y1="36" x2="52" y2="36"/>
+    </g>
+    <text x="355" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Container = a process started by the kernel</text>
+  </g>
+
+  
+  <g id="box-3">
+    <rect x="40" y="675" width="740" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 40 687 A 12 12 0 0 1 52 675 L 768 675 A 12 12 0 0 1 780 687 L 780 740 L 40 740 Z" fill="#e8f1ea"/>
+    
+    <g transform="translate(62, 683)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 25 4 L 7 12 L 7 24 C 7 37 25 46 25 46 C 25 46 43 37 43 24 L 43 12 Z"/>
+      <circle cx="25" cy="22" r="3.5"/>
+      <line x1="25" y1="26" x2="25" y2="33"/>
+    </g>
+    <text x="125" y="720" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">What can it reach?</text>
+
+    
+    <text x="65" y="775" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">Capabilities: <tspan font-family="ui-monospace, monospace">--cap-drop ALL</tspan></tspan>
+      <tspan x="85" dy="30" font-family="ui-monospace, monospace">--cap-add NET_BIND_SERVICE</tspan>
+    </text>
+
+    <text x="65" y="847" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0"><tspan font-family="ui-monospace, monospace">seccomp</tspan>: default profile blocks</tspan>
+      <tspan x="85" dy="30">about 40 risky calls</tspan>
+    </text>
+
+    <text x="65" y="934" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">AppArmor or SELinux profiles</text>
+  </g>
+
+  
+  <g id="box-4">
+    <rect x="820" y="675" width="740" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 820 687 A 12 12 0 0 1 832 675 L 1548 675 A 12 12 0 0 1 1560 687 L 1560 740 L 820 740 Z" fill="#e8f1ea"/>
+    
+    <g transform="translate(842, 683)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="25" cy="11" rx="19" ry="6"/>
+      <path d="M 6 11 L 6 23 C 6 27 25 29 25 29 C 25 29 44 27 44 23 L 44 11"/>
+      <path d="M 6 23 L 6 35 C 6 39 25 41 25 41 C 25 41 44 39 44 35 L 44 23"/>
+    </g>
+    <text x="905" y="720" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Where do its files come from?</text>
+
+    
+    <text x="845" y="780" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0"><tspan font-family="ui-monospace, monospace">overlayfs</tspan>: read-only image layers plus a</tspan>
+      <tspan x="865" dy="32">writable upper layer, copy-on-write</tspan>
+    </text>
+
+    <text x="845" y="885" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">writes vanish with the container</text>
+  </g>
+
+  
+  <g id="bottom-strip">
+    <rect x="40" y="995" width="1520" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 1022)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="44" height="40" rx="4"/>
+      <line x1="4" y1="18" x2="48" y2="18"/>
+      <circle cx="12" cy="12" r="2.5" fill="#207448"/>
+      <circle cx="20" cy="12" r="2.5" fill="#207448"/>
+      <line x1="12" y1="28" x2="24" y2="28"/>
+      <line x1="12" y1="36" x2="36" y2="36"/>
+    </g>
+    <text x="135" y="1032" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">One shared host kernel: kernel version, <tspan font-family="ui-monospace, monospace">sysctls</tspan>, loaded modules,</tspan>
+      <tspan x="135" dy="32"><tspan font-family="ui-monospace, monospace">dmesg</tspan> and the GPU driver belong to the host.</tspan>
+      <tspan x="135" dy="32">Escape = kernel or runtime vulnerability, not a hypervisor escape.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1125" width="1520" height="55" rx="8" fill="#207448"/>
+    <text x="800" y="1161" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Ask first: does the problem live in the image or in the host kernel the container shares?</text>
+  </g>
+</svg>

@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>How an idempotent module decides, and the toggle that is not</title>
+  <desc>Visual infographic explaining the decision logic of idempotent configuration management modules versus non-idempotent procedural toggles.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">How an idempotent module decides, and the toggle that is not</text>
+
+  
+
+  
+  <rect x="40" y="105" width="460" height="460" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(70, 135)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="36" height="48" rx="4"/>
+    <line x1="8" y1="12" x2="28" y2="12"/>
+    <line x1="8" y1="22" x2="28" y2="22"/>
+    <line x1="8" y1="32" x2="20" y2="32"/>
+    <circle cx="36" cy="38" r="14" fill="#ffffff"/>
+    <line x1="46" y1="48" x2="56" y2="58"/>
+  </g>
+
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" y="240" font-weight="bold">module compares desired state</tspan>
+    <tspan x="70" y="278" font-weight="bold">with actual state:</tspan>
+    <tspan x="70" y="340">does the package exist?</tspan>
+    <tspan x="70" y="388">is the file content identical?</tspan>
+    <tspan x="70" y="436">does the line already exist?</tspan>
+  </text>
+
+  
+  <line x1="500" y1="335" x2="535" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <polygon points="590,285 645,335 590,385 535,335" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="590" y="344" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle">same?</text>
+
+  
+  <path d="M 590,285 L 590,225 L 690,225" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="605" y="215" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  <rect x="690" y="145" width="310" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g transform="translate(720, 165)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="22" cy="22" r="20"/>
+    <path d="M 12 22 L 19 29 L 32 15"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="720" y="245">no change,</tspan>
+    <tspan x="720" y="280">reports ok</tspan>
+  </text>
+
+  
+  <path d="M 590,385 L 590,455 L 690,455" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <text x="605" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">no</text>
+
+  <rect x="690" y="375" width="310" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(720, 395)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="8"/>
+    <path d="M 20 4 L 20 10 M 20 30 L 20 36 M 4 20 L 10 20 M 30 20 L 36 20 M 9 9 L 14 14 M 26 26 L 31 31 M 9 31 L 14 26 M 26 14 L 31 9"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="720" y="475">makes the change,</tspan>
+    <tspan x="720" y="510">reports changed</tspan>
+  </text>
+
+  
+  <rect x="1030" y="105" width="530" height="300" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(1060, 125)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="24,4 46,42 2,42"/>
+    <line x1="24" y1="18" x2="24" y2="28"/>
+    <circle cx="24" cy="35" r="1.5" fill="#db8129"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1060" y="200" font-weight="bold" fill="#db8129">toggle in disguise: a command</tspan>
+    <tspan x="1060" y="234">that adds a line every time it</tspan>
+    <tspan x="1060" y="268">runs, so the file grows with each</tspan>
+    <tspan x="1060" y="302">rerun; mkdir describes steps</tspan>
+    <tspan x="1060" y="336">and has no idea whether the</tspan>
+    <tspan x="1060" y="370">directory exists</tspan>
+  </text>
+
+  
+  <rect x="1030" y="420" width="530" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1060, 440)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="34" height="52" rx="4"/>
+    <line x1="17" y1="8" x2="17" y2="14"/>
+    <line x1="17" y1="38" x2="17" y2="44"/>
+    <polygon points="11,18 23,18 20,28 14,28" fill="#207448"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" y="460">a light switch set to on</tspan>
+    <tspan x="1115" y="495">is idempotent; a toggle flips</tspan>
+    <tspan x="1115" y="530">the light off on the second press</tspan>
+  </text>
+
+
+  
+
+  <rect x="40" y="585" width="1520" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(70, 620)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="24"/>
+    <polyline points="26,10 26,26 38,20"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="140" y="640">a playbook runs at 2 AM after a partial failure: half the hosts were already changed;</tspan>
+    <tspan x="140" y="678" font-weight="bold" fill="#207448">an idempotent task changes what is wrong and leaves alone what is already right</tspan>
+  </text>
+
+
+  
+
+  
+  <rect x="40" y="730" width="485" height="370" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(70, 755)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 4 L 42 14 L 22 24 L 2 14 Z"/>
+    <path d="M 2 14 L 2 36 L 22 46 L 22 24"/>
+    <path d="M 42 14 L 42 36 L 22 46"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" y="835" font-weight="bold" fill="#207448">declarative first: package,</tspan>
+    <tspan x="70" y="872">service, user, file, template,</tspan>
+    <tspan x="70" y="909">lineinfile, sysctl, mount,</tspan>
+    <tspan x="70" y="946">cron, git, get_url, unarchive</tspan>
+    <tspan x="70" y="983">before command or shell</tspan>
+  </text>
+
+  
+  <rect x="550" y="730" width="460" height="370" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(580, 755)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="22"/>
+    <circle cx="24" cy="24" r="14"/>
+    <circle cx="24" cy="24" r="6" fill="#207448"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="580" y="835" font-weight="bold" fill="#207448">describe the final state:</tspan>
+    <tspan x="580" y="875">state present, absent,</tspan>
+    <tspan x="580" y="915">started, latest</tspan>
+    <tspan x="580" y="955">or directory</tspan>
+  </text>
+
+  
+  <rect x="1035" y="730" width="525" height="370" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1065, 755)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 24 4 L 44 12 L 44 26 C 44 38 24 46 24 46 C 24 46 4 38 4 26 L 4 12 Z"/>
+    <line x1="24" y1="18" x2="24" y2="30"/>
+    <circle cx="24" cy="34" r="1.5" fill="#207448"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065" y="835" font-weight="bold" fill="#207448">guards when you must use</tspan>
+    <tspan x="1065" y="872">command: creates: skips if</tspan>
+    <tspan x="1065" y="909">a path exists, removes: skips</tspan>
+    <tspan x="1065" y="946">if the path is missing, a stat</tspan>
+    <tspan x="1065" y="983">task gated with when, or</tspan>
+    <tspan x="1065" y="1020">changed_when computed</tspan>
+    <tspan x="1065" y="1057">from output</tspan>
+  </text>
+
+
+  
+
+  <rect x="40" y="1120" width="1520" height="60" rx="8" fill="#207448"/>
+  
+  <g transform="translate(65, 1133)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 26 6 A 14 14 0 1 0 30 18"/>
+    <polyline points="26,1 26,8 33,8"/>
+  </g>
+  <text x="800" y="1158" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Run it twice: the second recap must show changed=0</text>
+</svg>

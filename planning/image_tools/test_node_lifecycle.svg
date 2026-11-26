@@ -1,0 +1,122 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1060" viewBox="0 0 1600 1060">
+  <title>Node lifecycle</title>
+  <desc>State diagram showing Slurm node lifecycle states and transitions</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-down" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1600" height="1060" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Node lifecycle</text>
+
+  <!-- ==================== ARROWS ==================== -->
+
+  <!-- 1. [*] -> IDLE -->
+  <circle cx="100" cy="225" r="16" fill="#207448"/>
+  <path d="M 116 225 L 240 225" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- 2. IDLE -> ALLOCATED (job starts) -->
+  <path d="M 520 240 L 1080 240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="700" y="210" width="200" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="238" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">job starts</text>
+
+  <!-- 3. ALLOCATED -> IDLE (job ends) -->
+  <path d="M 1080 280 L 520 280" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="710" y="270" width="180" height="40" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="298" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">job ends</text>
+
+  <!-- 4. IDLE -> DRAINED (scontrol drain / health check) -->
+  <path d="M 330 305 L 330 515" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- 5. DRAINED -> IDLE (scontrol resume) -->
+  <path d="M 430 515 L 430 305" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="350" y="390" width="240" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="470" y="420" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">scontrol resume</text>
+
+  <!-- 6. ALLOCATED -> DRAINING (scontrol drain / health check) -->
+  <path d="M 1220 305 L 1220 515" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Shared trigger label between IDLE->DRAINED and ALLOCATED->DRAINING -->
+  <rect x="580" y="430" width="440" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="461" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">scontrol drain / health check</text>
+  <!-- Connector dashes visually linking shared trigger to both arrows -->
+  <line x1="330" y1="452" x2="580" y2="452" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+  <line x1="1020" y1="452" x2="1220" y2="452" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+
+  <!-- 7. DRAINING -> DRAINED (running jobs finish) -->
+  <path d="M 1080 560 L 520 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="630" y="535" width="340" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="565" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">running jobs finish</text>
+
+  <!-- 8. ALLOCATED -> DOWN (node failure (jobs requeued or failed)) -->
+  <path d="M 1360 260 L 1540 260 L 1540 730 L 980 730 L 980 900" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="965" y="705" width="560" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1245" y="735" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">node failure (jobs requeued or failed)</text>
+
+  <!-- 9. IDLE -> DOWN (slurmd not responding (SlurmdTimeout) / admin) -->
+  <path d="M 240 290 L 70 290 L 70 1020 L 900 1020 L 900 980" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="130" y="995" width="700" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="480" y="1025" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">slurmd not responding (SlurmdTimeout) / admin</text>
+
+  <!-- 10. DOWN -> IDLE (resume or ReturnToService on valid registration) -->
+  <path d="M 820 900 L 820 810 L 150 810 L 150 260 L 240 260" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <rect x="145" y="785" width="715" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="502" y="815" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">resume or ReturnToService on valid registration</text>
+
+  <!-- ==================== STATE NODES ==================== -->
+
+  <!-- Node: IDLE -->
+  <g id="node-idle">
+    <rect x="240" y="215" width="280" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Server ready / standby -->
+    <rect x="255" y="233" width="54" height="54" rx="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="270" cy="260" r="4" fill="#207448"/>
+    <line x1="285" y1="260" x2="297" y2="260" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="410" y="271" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">IDLE</text>
+  </g>
+
+  <!-- Node: ALLOCATED -->
+  <g id="node-allocated">
+    <rect x="1080" y="215" width="280" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: CPU chip with activity pins -->
+    <rect x="1095" y="233" width="54" height="54" rx="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="1107" y="245" width="30" height="30" rx="4" fill="#207448"/>
+    <text x="1255" y="271" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">ALLOCATED</text>
+  </g>
+
+  <!-- Node: DRAINED -->
+  <g id="node-drained">
+    <rect x="240" y="515" width="280" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Shield / lock maintenance -->
+    <path d="M 282 233 L 282 587" fill="none"/>
+    <path d="M 282 533 Q 309 540 309 555 Q 309 580 282 587 Q 255 580 255 555 Q 255 540 282 533 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="282" y1="545" x2="282" y2="565" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="410" y="571" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">DRAINED</text>
+  </g>
+
+  <!-- Node: DRAINING -->
+  <g id="node-draining">
+    <rect x="1080" y="515" width="280" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <!-- Icon: Hourglass draining timer -->
+    <path d="M 1102 535 L 1142 535 L 1122 560 L 1142 585 L 1102 585 L 1122 560 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <text x="1255" y="571" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">DRAINING</text>
+  </g>
+
+  <!-- Node: DOWN (Orange highlight as the critical failure state) -->
+  <g id="node-down">
+    <rect x="760" y="900" width="280" height="90" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    <!-- Icon: Alert triangle -->
+    <path d="M 802 915 L 827 962 L 777 962 Z" fill="none" stroke="#db8129" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="802" y1="932" x2="802" y2="946" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="802" cy="954" r="2" fill="#db8129"/>
+    <text x="930" y="956" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">DOWN</text>
+  </g>
+</svg>

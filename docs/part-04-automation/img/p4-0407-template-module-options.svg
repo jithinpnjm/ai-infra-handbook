@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180">
+  <title>The template task options, and what each protects</title>
+  <desc>Visual breakdown of Ansible template options: src, dest, backup, validate, and notify, with an analogy strip, story strip, and takeaway.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The template task options, and what each protects</text>
+
+  
+  <g id="analogy-strip">
+    <rect x="40" y="110" width="1520" height="96" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(60, 130)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="4" width="44" height="48" rx="4" fill="#ffffff" />
+      <line x1="14" y1="16" x2="32" y2="16" />
+      <line x1="38" y1="16" x2="44" y2="16" stroke-dasharray="2 2" />
+      <line x1="14" y1="26" x2="24" y2="26" />
+      <line x1="30" y1="26" x2="44" y2="26" stroke-dasharray="2 2" />
+      <line x1="14" y1="36" x2="44" y2="36" />
+    </g>
+    <text x="135" y="148" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">a template is a form letter with blanks: the text is fixed and each blank is filled</tspan>
+      <tspan x="135" dy="32">from the data for that host or that run</tspan>
+    </text>
+  </g>
+
+  
+  <g id="story-strip">
+    <rect x="40" y="222" width="1520" height="128" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(60, 258)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="18" rx="3" fill="#ffffff" />
+      <circle cx="12" cy="15" r="2" fill="#207448" />
+      <line x1="22" y1="15" x2="44" y2="15" />
+      <rect x="4" y="32" width="48" height="18" rx="3" fill="#ffffff" />
+      <circle cx="12" cy="41" r="2" fill="#207448" />
+      <line x1="22" y1="41" x2="44" y2="41" />
+    </g>
+    <text x="135" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0">a new GPU node joins and the Slurm configuration must list it: editing by hand risks missing</tspan>
+      <tspan x="135" dy="30">a controller or a CPU count typed from memory; a template renders the file from data</tspan>
+      <tspan x="135" dy="30">every time so the new node appears automatically</tspan>
+    </text>
+  </g>
+
+  
+  <g id="annotated-task">
+    <rect x="40" y="368" width="1520" height="680" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <g id="task-header">
+      
+      <g transform="translate(60, 388)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="4" width="44" height="48" rx="4" fill="#e8f1ea" />
+        <polyline points="16,28 24,36 40,20" stroke-width="4" />
+      </g>
+      <text x="135" y="422" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Render slurm.conf</text>
+    </g>
+
+    
+    <g id="opt-src">
+      <rect x="70" y="456" width="1460" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      
+      <g transform="translate(80, 478)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 10 4 L 34 4 L 46 16 L 46 50 L 10 50 Z" fill="#ffffff" />
+        <polyline points="34,4 34,16 46,16" />
+        <path d="M 22 26 C 18 29 18 33 22 36" />
+        <path d="M 34 26 C 38 29 38 33 34 36" />
+      </g>
+      <text x="146" y="494" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="146" dy="0">src: slurm.conf.j2: .j2 marks a Jinja2 template, read from the role&apos;s</tspan>
+        <tspan x="146" dy="30">templates/ directory or any path you give</tspan>
+      </text>
+    </g>
+
+    
+    <g id="opt-dest">
+      <rect x="70" y="566" width="1460" height="72" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      
+      <g transform="translate(80, 577)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 6 12 L 22 12 L 28 18 L 48 18 L 48 44 L 6 44 Z" fill="#ffffff" />
+        <line x1="16" y1="30" x2="38" y2="30" />
+      </g>
+      <text x="146" y="610" font-family="monospace" font-size="24" fill="#303a36">dest: /etc/slurm/slurm.conf; owner slurm, group slurm, mode 0644</text>
+    </g>
+
+    
+    <g id="opt-backup">
+      <rect x="70" y="652" width="1460" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      
+      <g transform="translate(80, 674)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 10 14 C 10 8 46 8 46 14 C 46 20 10 20 10 14" fill="#ffffff" />
+        <path d="M 10 14 V 40 C 10 46 46 46 46 40 V 14" />
+        <path d="M 10 27 C 10 33 46 33 46 27" />
+      </g>
+      <text x="146" y="690" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="146" dy="0">backup: true keeps a timestamped copy when the file changes, so a bad render</tspan>
+        <tspan x="146" dy="30">can be undone by copying the old file back</tspan>
+      </text>
+    </g>
+
+    
+    <g id="opt-validate">
+      <rect x="70" y="762" width="1460" height="126" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="2.5" />
+      
+      <g transform="translate(80, 797)" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 6 L 48 14 V 28 C 48 42 28 50 28 50 C 28 50 8 42 8 28 V 14 Z" fill="#ffffff" />
+        <polyline points="18,28 25,35 38,20" stroke="#db8129" stroke-width="4" />
+      </g>
+      <text x="146" y="798" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="146" dy="0">validate: slurmd -f %s -C (an example; check the tool&apos;s actual option support):</tspan>
+        <tspan x="146" dy="30">checks the rendered file before it replaces the live one; if the checker fails</tspan>
+        <tspan x="146" dy="30">the live file stays as it was, protecting a running scheduler from a broken config</tspan>
+      </text>
+    </g>
+
+    
+    <g id="opt-notify">
+      <rect x="70" y="902" width="1460" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+      
+      <g transform="translate(80, 924)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 8 A 16 16 0 0 0 12 24 C 12 34 8 38 8 38 L 48 38 C 48 38 44 34 44 24 A 16 16 0 0 0 28 8 Z" fill="#ffffff" />
+        <path d="M 24 44 A 4 4 0 0 0 32 44" />
+        <line x1="28" y1="4" x2="28" y2="8" />
+      </g>
+      <text x="146" y="940" font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="146" dy="0">notify: Reload slurmctld: the handler runs only when the rendered file changed,</tspan>
+        <tspan x="146" dy="30">so the scheduler reloads only when there was something to apply</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1072" width="1520" height="68" rx="10" fill="#207448" />
+    <text x="800" y="1114" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Render, validate, then replace</text>
+  </g>
+</svg>

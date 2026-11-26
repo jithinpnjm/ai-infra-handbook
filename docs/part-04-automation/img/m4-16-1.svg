@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>NVIDIA networking</title>
+  <desc>Workflow diagram of NVIDIA network automation pipeline from data model through templating, dry run, apply with commit-confirm, verification, and rollback or next batch.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">NVIDIA networking</text>
+
+  
+
+  
+  <g id="node-data-model">
+    <rect x="70" y="120" width="440" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="106" cy="156" r="24" fill="#207448" />
+    <text x="106" y="165" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g transform="translate(262, 134)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="12" rx="24" ry="7" />
+      <path d="M 4 12 v 26 c 0 4 11 7 24 7 s 24 -3 24 -7 v -26" />
+      <path d="M 4 25 c 0 4 11 7 24 7 s 24 -3 24 -7" />
+    </g>
+    
+    <text x="290" y="222" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="290" dy="0">Data model</tspan>
+      <tspan x="290" dy="36">(YAML/NetBox)</tspan>
+    </text>
+    <text x="290" y="306" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      ASNs, links, VRFs, MTU, QoS
+    </text>
+  </g>
+
+  
+  <path d="M 510 235 L 580 235" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-templates">
+    <rect x="580" y="120" width="440" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="616" cy="156" r="24" fill="#207448" />
+    <text x="616" y="165" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g transform="translate(772, 134)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 6 h 22 l 10 10 v 30 h -32 z" />
+      <path d="M 34 6 v 10 h 10" />
+      <path d="M 19 28 l -4 4 l 4 4" />
+      <path d="M 37 28 l 4 4 l -4 4" />
+      <path d="M 30 25 l -5 14" />
+    </g>
+    
+    <text x="800" y="240" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">Templates /</tspan>
+      <tspan x="800" dy="38">resource modules</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1020 235 L 1090 235" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-dry-run">
+    <rect x="1090" y="120" width="440" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="1126" cy="156" r="24" fill="#207448" />
+    <text x="1126" y="165" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g transform="translate(1282, 134)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="38" rx="5" />
+      <path d="M 4 17 h 48" />
+      <path d="M 13 28 l 4 3 l -4 3" />
+      <path d="M 24 34 h 9" />
+      <path d="M 40 25 v 6" />
+      <path d="M 37 28 h 6" />
+    </g>
+    
+    <text x="1310" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      Dry run:
+    </text>
+    <text x="1310" y="280" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      rendered/--check --diff
+    </text>
+  </g>
+
+  
+  <path d="M 1310 350 L 1310 410 Q 1310 425 1294 425 L 306 425 Q 290 425 290 440 L 290 500" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g id="node-apply">
+    <rect x="70" y="500" width="440" height="260" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="106" cy="536" r="24" fill="#207448" />
+    <text x="106" y="545" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g transform="translate(262, 516)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="20" />
+      <path d="M 23 4 h 10" />
+      <path d="M 28 4 v 4" />
+      <path d="M 20 28 l 6 6 l 11 -11" />
+    </g>
+    
+    <text x="290" y="608" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="290" dy="0">Apply with</tspan>
+      <tspan x="290" dy="36">commit-confirm</tspan>
+    </text>
+    <text x="290" y="692" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      (canary leaf, then batches)
+    </text>
+  </g>
+
+  
+  <path d="M 510 630 L 580 630" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <g id="node-verify">
+    <rect x="580" y="500" width="460" height="260" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <circle cx="616" cy="536" r="24" fill="#207448" />
+    <text x="616" y="545" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <g transform="translate(782, 516)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="36" r="6" />
+      <circle cx="42" cy="36" r="6" />
+      <circle cx="28" cy="14" r="6" />
+      <path d="M 18 32 L 24 18" />
+      <path d="M 38 32 L 32 18" />
+      <path d="M 20 36 h 16" />
+      <path d="M 22 25 l 4 4 l 8 -8" />
+    </g>
+    
+    <text x="810" y="602" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      Verify:
+    </text>
+    <text x="810" y="648" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="810" dy="0">BGP, LLDP vs cabling plan,</tspan>
+      <tspan x="810" dy="34">counters, ECMP</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <path d="M 1040 560 H 1075 V 535 H 1120" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <rect x="1053" y="520" width="44" height="30" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1075" y="543" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">ok</text>
+
+  
+  <g id="node-next-batch">
+    <rect x="1120" y="470" width="420" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1142, 510)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 6 h 28 l 8 8 v 26 h -36 z" />
+      <rect x="15" y="6" width="14" height="12" />
+      <path d="M 15 28 h 18" />
+    </g>
+    
+    <text x="1210" y="528" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="start">
+      <tspan x="1210" dy="0">Next batch /</tspan>
+      <tspan x="1210" dy="36">save config</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1040 700 H 1075 V 725 H 1120" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  
+  <rect x="1046" y="710" width="58" height="30" rx="6" fill="#fdf3eb" stroke="#db8129" stroke-width="1.5" />
+  <text x="1075" y="733" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">fail</text>
+
+  
+  <g id="node-rollback">
+    <rect x="1120" y="660" width="420" height="130" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(1142, 700)" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 24 A 15 15 0 1 0 24 38" />
+      <path d="M 28 43 l -6 -5 l 6 -5" />
+    </g>
+    
+    <text x="1210" y="718" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="start">
+      <tspan x="1210" dy="0">Rollback to</tspan>
+      <tspan x="1210" dy="36">saved config</tspan>
+    </text>
+  </g>
+
+</svg>

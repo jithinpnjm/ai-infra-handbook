@@ -159,27 +159,9 @@ For a standard MPI+OpenMP program, start with the `MPI_THREAD_FUNNELED` level. I
 
 Open MPI is not one big program. It is a set of plugins, and the plugins can be swapped at runtime. That design is powerful, because you can change the transport or the collective algorithm without rebuilding the application. It is also confusing, because the same setting can come from several places, and the one that wins is not always the one you expected. This section shows the moving parts, and the precedence rules that decide which setting is used.
 
-```mermaid
-flowchart TB
-  subgraph APP["MPI Application / mpi4py / nccl-tests"]
-    API[MPI_Send, MPI_Recv, MPI_Allreduce]
-  end
-  subgraph MCA["Open MPI Modular Component Architecture (MCA)"]
-    PML["pml: ucx (preferred) vs ob1 vs cm"]
-    COLL["coll: hcoll (IB/SHARP), tuned, han, libnbc"]
-    BTL["btl (under ob1): self, sm/vader, tcp (^openib)"]
-    RTE["PRRTE / PMIx runtime (prterun / srun --mpi=pmix)"]
-  end
-  subgraph SUB["Low-level Transport & Hardware Offload"]
-    UCX["UCX: rc, dc, ud, sm, cuda_copy, cuda_ipc, gdr_copy"]
-    SHARP["HCOLL + SHARP switch reductions & multicast"]
-  end
-  API --> PML
-  API --> COLL
-  PML --> UCX
-  PML --> BTL
-  COLL --> SHARP
-```
+![Open MPI architecture (MCA), 5-level priority, HCOLL, and UCX](./img/m6-04-1.svg)
+
+*Figure 6.4.1. Open MPI architecture (MCA), 5-level priority, HCOLL, and UCX, as a diagram.*
 
 Open MPI's internals are built from plugins. Its **Modular Component Architecture (MCA)** loads transport and algorithm modules at runtime. Each framework in the table is a slot, and each component is a plugin that can fill the slot. You pick the plugin by name, and the framework then uses it for that job.
 

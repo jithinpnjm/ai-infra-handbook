@@ -1,0 +1,102 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading facts: three setup commands and the facts list</title>
+  <desc>Visual infographic explaining Ansible setup module commands, fact filtering and gathering subsets, facts categories, and fact namespace best practices.</desc>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title: 48px bold, wrapped cleanly -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">Reading facts: </tspan><tspan x="800" dy="54">three setup commands and the facts list</tspan></text>
+
+  <!-- ==================== SECTION 1: COMMANDS & FACTS COVER ==================== -->
+  <!-- Left Command 1 Card -->
+  <rect x="40" y="130" width="860" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(54, 147)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="6"/>
+    <line x1="4" y1="18" x2="52" y2="18"/>
+    <polyline points="14,28 22,34 14,40"/>
+    <line x1="26" y1="40" x2="38" y2="40"/>
+  </g>
+  <text x="124" y="166" font-family="monospace" font-size="24" fill="#303a36"><tspan x="124" dy="0" font-family="monospace">ansible gpu001 -m ansible.builtin.setup | less: </tspan><tspan x="124" dy="30" font-family="sans-serif">every fact for one host, scroll the whole dictionary</tspan></text>
+
+  <!-- Left Command 2 Card -->
+  <rect x="40" y="260" width="860" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(54, 277)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <ellipse cx="28" cy="28" rx="10" ry="22"/>
+    <line x1="6" y1="28" x2="50" y2="28"/>
+  </g>
+  <text x="124" y="296" font-family="monospace" font-size="24" fill="#303a36"><tspan x="124" dy="0" font-family="monospace">setup -a filter=ansible_default_ipv4: </tspan><tspan x="124" dy="30" font-family="sans-serif">narrows to the default network route</tspan></text>
+
+  <!-- Left Command 3 Card -->
+  <rect x="40" y="390" width="860" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(54, 422)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="12" y="12" width="32" height="32" rx="4"/>
+    <line x1="20" y1="6" x2="20" y2="12"/>
+    <line x1="28" y1="6" x2="28" y2="12"/>
+    <line x1="36" y1="6" x2="36" y2="12"/>
+    <line x1="20" y1="44" x2="20" y2="50"/>
+    <line x1="28" y1="44" x2="28" y2="50"/>
+    <line x1="36" y1="44" x2="36" y2="50"/>
+    <line x1="6" y1="20" x2="12" y2="20"/>
+    <line x1="6" y1="28" x2="12" y2="28"/>
+    <line x1="6" y1="36" x2="12" y2="36"/>
+    <line x1="44" y1="20" x2="50" y2="20"/>
+    <line x1="44" y1="28" x2="50" y2="28"/>
+    <line x1="44" y1="36" x2="50" y2="36"/>
+  </g>
+  <text x="124" y="424" font-family="monospace" font-size="24" fill="#303a36"><tspan x="124" dy="0" font-family="monospace">setup -a gather_subset=!all,!min,network,hardware: </tspan><tspan x="124" dy="30" font-family="sans-serif">excludes all and min, gathers only network and </tspan><tspan x="124" dy="30" font-family="sans-serif">hardware: the command to run when a node misbehaves</tspan></text>
+
+  <!-- Right Panel: What facts cover -->
+  <rect x="940" y="130" width="620" height="380" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(964, 146)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="6" width="40" height="44" rx="4"/>
+    <line x1="16" y1="16" x2="40" y2="16"/>
+    <line x1="16" y1="26" x2="40" y2="26"/>
+    <line x1="16" y1="36" x2="30" y2="36"/>
+  </g>
+  <text x="1036" y="184" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">What facts cover</text>
+  <line x1="964" y1="214" x2="1536" y2="214" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <text x="968" y="252" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="968" dy="0">distribution, kernel, CPU count, </tspan><tspan x="968" dy="34">memory, mounts, network interfaces </tspan><tspan x="968" dy="34">and addresses, DMI info (the hardware </tspan><tspan x="968" dy="34">identity the BIOS reports, such as </tspan><tspan x="968" dy="34">vendor and model), environment, </tspan><tspan x="968" dy="34">date and time, SELinux, user, Python</tspan></text>
+
+  <!-- ==================== SECTION 2: EXAMPLE LINE & NOTE ==================== -->
+  <rect x="40" y="550" width="1520" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 627)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 12 L 20 6 L 50 6 L 50 50 L 6 50 Z"/>
+    <line x1="14" y1="18" x2="38" y2="18"/>
+    <line x1="14" y1="28" x2="42" y2="28"/>
+    <line x1="14" y1="38" x2="32" y2="38"/>
+  </g>
+  <text x="136" y="586" font-family="monospace" font-size="24" fill="#303a36"><tspan x="136" dy="0">inventory_hostname: ansible_facts[distribution] ansible_facts[distribution_version], </tspan><tspan x="136" dy="28">kernel ansible_facts[kernel], ansible_facts[processor_vcpus] vCPUs, </tspan><tspan x="136" dy="28">(ansible_facts[memtotal_mb] / 1024) | round(1) GiB RAM, </tspan><tspan x="136" dy="28">primary IP ansible_facts[default_ipv4][address]</tspan></text>
+  <line x1="136" y1="684" x2="1520" y2="684" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4"/>
+  <text x="136" y="714" font-family="sans-serif" font-size="24" fill="#207448"><tspan x="136" dy="0">GiB is binary: 1 GiB is 1024 MiB; the value is a plain number </tspan><tspan x="136" dy="26">so the division needs no conversion</tspan></text>
+
+  <!-- ==================== SECTION 3: PREFER STRIP (ORANGE) ==================== -->
+  <rect x="40" y="800" width="1520" height="120" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+  <g transform="translate(60, 834)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 50 14 L 50 30 C 50 44 28 52 28 52 C 28 52 6 44 6 30 L 6 14 Z"/>
+    <polyline points="18,28 25,36 38,20"/>
+  </g>
+  <text x="136" y="836" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="136" dy="0" font-weight="bold" fill="#db8129">ansible_facts[distribution] instead of the short injected names such as ansible_distribution: </tspan><tspan x="136" dy="28">older names share one global space, so a host-reported value can sit next to your own variable </tspan><tspan x="136" dy="28">of the same name; inject_facts_as_vars controls the short names</tspan></text>
+
+  <!-- ==================== SECTION 4: COST STRIP ==================== -->
+  <rect x="40" y="960" width="1520" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 980)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <polyline points="28,14 28,28 38,34"/>
+  </g>
+  <text x="136" y="998" font-family="sans-serif" font-size="24" fill="#303a36"><tspan x="136" dy="0">each fact is a probe on each host: seconds per host before your first real task, </tspan><tspan x="136" dy="28">minutes on hundreds of nodes</tspan></text>
+
+  <!-- ==================== SECTION 5: BOTTOM TAKEAWAY BAR ==================== -->
+  <rect x="40" y="1090" width="1520" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1135" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Facts describe what the host actually is</text>
+</svg>"""
+
+with open("candidate_facts_perfect.svg", "w") as f:
+    f.write(svg_content)
+
+print("Written candidate_facts_perfect.svg")

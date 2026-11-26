@@ -1,0 +1,101 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>PID 1 without a handler ignores TERM</title>
+  <desc>Visual comparison showing that PID 1 without a signal handler ignores SIGTERM and waits out the full grace period until SIGKILL, while using docker-init reaps processes and stops cleanly in 0.1 seconds.</desc>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">PID 1 without a handler ignores TERM</text>
+
+  
+  <rect x="60" y="110" width="710" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="415" y="162" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Container with sleep as PID 1</text>
+
+  
+  <rect x="90" y="195" width="650" height="300" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="120" y="225" width="590" height="115" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="150" y="255" width="48" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <rect x="162" y="267" width="24" height="24" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="140" y1="270" x2="150" y2="270" stroke="#207448" stroke-width="3"/>
+  <line x1="140" y1="288" x2="150" y2="288" stroke="#207448" stroke-width="3"/>
+  <line x1="198" y1="270" x2="208" y2="270" stroke="#207448" stroke-width="3"/>
+  <line x1="198" y1="288" x2="208" y2="288" stroke="#207448" stroke-width="3"/>
+  <line x1="165" y1="245" x2="165" y2="255" stroke="#207448" stroke-width="3"/>
+  <line x1="181" y1="245" x2="181" y2="255" stroke="#207448" stroke-width="3"/>
+  <line x1="165" y1="303" x2="165" y2="313" stroke="#207448" stroke-width="3"/>
+  <line x1="181" y1="303" x2="181" y2="313" stroke="#207448" stroke-width="3"/>
+  <text x="235" y="291" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">sleep</text>
+
+  
+  <rect x="120" y="365" width="590" height="105" rx="10" fill="#f5f8f5" stroke="#8ba895" stroke-width="2"/>
+  
+  <rect x="150" y="393" width="48" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <line x1="162" y1="407" x2="186" y2="407" stroke="#207448" stroke-width="3"/>
+  <line x1="162" y1="417" x2="178" y2="417" stroke="#207448" stroke-width="3"/>
+  <line x1="162" y1="427" x2="186" y2="427" stroke="#207448" stroke-width="3"/>
+  <text x="225" y="428" font-family="monospace" font-size="24" fill="#303a36">SigCgt: all zeros (no handlers)</text>
+
+  
+  <rect x="90" y="520" width="650" height="140" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+  
+  <circle cx="155" cy="590" r="26" fill="none" stroke="#db8129" stroke-width="4"/>
+  <polyline points="155,572 155,590 169,590" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="205" y="577" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="205" dy="0">docker stop -t 4: 4.1 seconds,</tspan>
+    <tspan x="205" dy="34">whole grace period, then SIGKILL</tspan>
+  </text>
+
+  
+  <rect x="830" y="110" width="710" height="580" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1185" y="162" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Same container with --init</text>
+
+  
+  <rect x="860" y="195" width="650" height="300" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="890" y="285" width="590" height="120" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="920" y="321" width="48" height="48" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <rect x="932" y="333" width="24" height="24" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="910" y1="336" x2="920" y2="336" stroke="#207448" stroke-width="3"/>
+  <line x1="910" y1="354" x2="920" y2="354" stroke="#207448" stroke-width="3"/>
+  <line x1="968" y1="336" x2="978" y2="336" stroke="#207448" stroke-width="3"/>
+  <line x1="968" y1="354" x2="978" y2="354" stroke="#207448" stroke-width="3"/>
+  <line x1="935" y1="311" x2="935" y2="321" stroke="#207448" stroke-width="3"/>
+  <line x1="951" y1="311" x2="951" y2="321" stroke="#207448" stroke-width="3"/>
+  <line x1="935" y1="369" x2="935" y2="379" stroke="#207448" stroke-width="3"/>
+  <line x1="951" y1="369" x2="951" y2="379" stroke="#207448" stroke-width="3"/>
+  <text x="1005" y="357" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">docker-init</text>
+
+  
+  <rect x="860" y="520" width="650" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="925" cy="590" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+  <polyline points="925,572 925,590 939,582" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="980" y="599" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">docker stop: 0.1 seconds</text>
+
+  
+  <rect x="60" y="715" width="710" height="95" rx="12" fill="#ffffff" stroke="#8ba895" stroke-width="2"/>
+  
+  <path d="M 105 775 C 105 745 145 745 145 775 C 145 785 139 780 133 785 C 127 780 121 785 115 780 C 109 785 105 775 105 775 Z" fill="#e8f1ea" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="119" cy="762" r="3.5" fill="#207448"/>
+  <circle cx="131" cy="762" r="3.5" fill="#207448"/>
+  <text x="175" y="771" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Children never reaped: zombies pile up</text>
+
+  
+  <rect x="830" y="715" width="710" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 870 738 L 896 738 L 910 752 L 910 786 L 870 786 Z" fill="#e8f1ea" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <polyline points="896,738 896,752 910,752" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="878" y1="762" x2="900" y2="762" stroke="#207448" stroke-width="3"/>
+  <line x1="878" y1="772" x2="896" y2="772" stroke="#207448" stroke-width="3"/>
+  <text x="940" y="771" font-family="sans-serif" font-size="24" fill="#303a36">docker run --init adds an init process as PID 1</text>
+
+  
+  <rect x="60" y="840" width="1480" height="75" rx="12" fill="#207448"/>
+  <text x="800" y="887" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">PID 1 in a container ignores signals it has no handler for.</text>
+</svg>

@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Architectures for large fleets</title>
+  <desc>Visual comparison of Push at scale and Pull at scale architectures for fleet management</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Architectures for large fleets</text>
+
+  
+  <g id="push-subgraph">
+    <rect x="40" y="110" width="950" height="750" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="75" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Push at scale</text>
+
+    
+    <rect x="325" y="185" width="380" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="365" y1="217" x2="365" y2="267" />
+      <path d="M 365 245 C 365 233 385 233 385 227" />
+      <circle cx="365" cy="221" r="5" fill="#e8f1ea" />
+      <circle cx="365" cy="263" r="5" fill="#e8f1ea" />
+      <circle cx="385" cy="223" r="5" fill="#e8f1ea" />
+      <path d="M 397 249 L 403 255 L 397 261" />
+    </g>
+    <text x="424" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Git + CI/AAP</text>
+
+    
+    <rect x="75" y="390" width="410" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="257" y="408" width="46" height="38" rx="4" />
+      <line x1="257" y1="421" x2="303" y2="421" />
+      <line x1="257" y1="433" x2="303" y2="433" />
+      <circle cx="265" cy="414" r="1.5" fill="#207448" />
+      <circle cx="265" cy="427" r="1.5" fill="#207448" />
+      <circle cx="265" cy="439" r="1.5" fill="#207448" />
+      <line x1="287" y1="414" x2="297" y2="414" />
+      <line x1="287" y1="427" x2="297" y2="427" />
+      <line x1="287" y1="439" x2="297" y2="439" />
+    </g>
+    <text x="280" y="482" text-anchor="middle">
+      <tspan x="280" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Controller /</tspan>
+      <tspan x="280" dy="38" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">execution node A</tspan>
+      <tspan x="280" dy="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(rack group 1-20)</tspan>
+    </text>
+
+    
+    <rect x="545" y="390" width="410" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="727" y="408" width="46" height="38" rx="4" />
+      <line x1="727" y1="421" x2="773" y2="421" />
+      <line x1="727" y1="433" x2="773" y2="433" />
+      <circle cx="735" cy="414" r="1.5" fill="#207448" />
+      <circle cx="735" cy="427" r="1.5" fill="#207448" />
+      <circle cx="735" cy="439" r="1.5" fill="#207448" />
+      <line x1="757" y1="414" x2="767" y2="414" />
+      <line x1="757" y1="427" x2="767" y2="427" />
+      <line x1="757" y1="439" x2="767" y2="439" />
+    </g>
+    <text x="750" y="502" text-anchor="middle">
+      <tspan x="750" dy="0" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Execution node B</tspan>
+      <tspan x="750" dy="40" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(rack group 21-40)</tspan>
+    </text>
+
+    
+    <rect x="110" y="680" width="340" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="155" y="722" width="44" height="44" rx="6" />
+      <rect x="165" y="732" width="24" height="24" rx="2" fill="#e8f1ea" />
+      <line x1="163" y1="716" x2="163" y2="722" />
+      <line x1="177" y1="716" x2="177" y2="722" />
+      <line x1="191" y1="716" x2="191" y2="722" />
+      <line x1="163" y1="766" x2="163" y2="772" />
+      <line x1="177" y1="766" x2="177" y2="772" />
+      <line x1="191" y1="766" x2="191" y2="772" />
+      <line x1="149" y1="730" x2="155" y2="730" />
+      <line x1="149" y1="744" x2="155" y2="744" />
+      <line x1="149" y1="758" x2="155" y2="758" />
+      <line x1="199" y1="730" x2="205" y2="730" />
+      <line x1="199" y1="744" x2="205" y2="744" />
+      <line x1="199" y1="758" x2="205" y2="758" />
+    </g>
+    <text x="235" y="756" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Nodes</text>
+
+    
+    <rect x="580" y="680" width="340" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="625" y="722" width="44" height="44" rx="6" />
+      <rect x="635" y="732" width="24" height="24" rx="2" fill="#e8f1ea" />
+      <line x1="633" y1="716" x2="633" y2="722" />
+      <line x1="647" y1="716" x2="647" y2="722" />
+      <line x1="661" y1="716" x2="661" y2="722" />
+      <line x1="633" y1="766" x2="633" y2="772" />
+      <line x1="647" y1="766" x2="647" y2="772" />
+      <line x1="661" y1="766" x2="661" y2="772" />
+      <line x1="619" y1="730" x2="625" y2="730" />
+      <line x1="619" y1="744" x2="625" y2="744" />
+      <line x1="619" y1="758" x2="625" y2="758" />
+      <line x1="669" y1="730" x2="675" y2="730" />
+      <line x1="669" y1="744" x2="675" y2="744" />
+      <line x1="669" y1="758" x2="675" y2="758" />
+    </g>
+    <text x="705" y="756" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Nodes</text>
+
+    
+    <path d="M 450 305 V 340 Q 450 350 440 350 H 290 Q 280 350 280 360 V 390" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <path d="M 580 305 V 340 Q 580 350 590 350 H 740 Q 750 350 750 360 V 390" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <path d="M 280 600 V 680" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+    
+    <path d="M 750 600 V 680" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  </g>
+
+  
+  <g id="pull-subgraph">
+    <rect x="1030" y="110" width="530" height="750" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1065" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Pull at scale</text>
+
+    
+    <rect x="1105" y="185" width="380" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="1165" y1="217" x2="1165" y2="267" />
+      <path d="M 1165 245 C 1165 233 1185 233 1185 227" />
+      <circle cx="1165" cy="221" r="5" fill="#e8f1ea" />
+      <circle cx="1165" cy="263" r="5" fill="#e8f1ea" />
+      <circle cx="1185" cy="223" r="5" fill="#e8f1ea" />
+    </g>
+    <text x="1225" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Git repo</text>
+
+    
+    <rect x="1070" y="420" width="450" height="230" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    
+    <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="1295" cy="460" r="21" fill="#f5f8f5" />
+      <polyline points="1295,446 1295,460 1307,466" />
+      <line x1="1295" y1="434" x2="1295" y2="439" />
+    </g>
+    <text x="1295" y="524" text-anchor="middle">
+      <tspan x="1295" dy="0" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="30" font-weight="bold" fill="#303a36">ansible-pull</tspan>
+      <tspan x="1295" dy="38" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">on each node</tspan>
+      <tspan x="1295" dy="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(cron/systemd timer)</tspan>
+    </text>
+
+    
+    <path d="M 1295 305 V 420" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  </g>
+</svg>

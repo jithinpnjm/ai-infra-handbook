@@ -1,0 +1,115 @@
+import xml.etree.ElementTree as ET
+import re
+import pathlib
+import subprocess
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>A model weights distribution system for cold start [my addition]</title>
+  <desc>Architecture flowchart of a cold-start model weights distribution system showing Object store fanning out to Rack seeders, which populate Node caches with peer replication and loading into GPU memory.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A model weights distribution </tspan>
+    <tspan x="800" dy="58">system for cold start [my addition]</tspan>
+  </text>
+
+  <!-- ==================== FLOW ARROWS ==================== -->
+  <!-- 1. O -> S -->
+  <line x1="330" y1="500" x2="440" y2="500" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- 2. S -> N1 -->
+  <path d="M 710 430 C 760 430, 780 310, 830 310" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- 3. S -> N2 -->
+  <path d="M 710 570 C 760 570, 780 690, 830 690" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- 4. N1 -> N2 -->
+  <line x1="965" y1="430" x2="965" y2="570" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- 5. N1 -> GPU -->
+  <line x1="1100" y1="310" x2="1230" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== NODES ==================== -->
+  <!-- Node O: Object store -->
+  <g id="node-o">
+    <rect x="60" y="380" width="270" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Storage cylinder icon (56px) -->
+    <g transform="translate(171, 415)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="24" cy="12" rx="20" ry="8" />
+      <path d="M 4 12 V 44 C 4 50, 44 50, 44 44 V 12" />
+      <path d="M 4 28 C 4 34, 44 34, 44 28" />
+    </g>
+    <text x="195" y="545" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Object store</text>
+  </g>
+
+  <!-- Node S: Rack seeders -->
+  <g id="node-s">
+    <rect x="440" y="380" width="270" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Server rack outline icon (56px) -->
+    <g transform="translate(551, 415)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="4" width="36" height="48" rx="4" />
+      <line x1="6" y1="20" x2="42" y2="20" />
+      <line x1="6" y1="36" x2="42" y2="36" />
+      <circle cx="14" cy="12" r="2" fill="#207448" />
+      <line x1="22" y1="12" x2="34" y2="12" />
+      <circle cx="14" cy="28" r="2" fill="#207448" />
+      <line x1="22" y1="28" x2="34" y2="28" />
+      <circle cx="14" cy="44" r="2" fill="#207448" />
+      <line x1="22" y1="44" x2="34" y2="44" />
+    </g>
+    <text x="575" y="545" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Rack seeders</text>
+  </g>
+
+  <!-- Node N1: Node cache (upper) -->
+  <g id="node-n1">
+    <rect x="830" y="190" width="270" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Node cache icon (56px) -->
+    <g transform="translate(941, 225)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="40" height="44" rx="6" />
+      <ellipse cx="24" cy="20" rx="12" ry="5" />
+      <path d="M 12 20 V 30 C 12 34, 36 34, 36 30 V 20" />
+      <circle cx="36" cy="12" r="2" fill="#207448" />
+    </g>
+    <text x="965" y="355" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node cache</text>
+  </g>
+
+  <!-- Node N2: Node cache (lower) -->
+  <g id="node-n2">
+    <rect x="830" y="570" width="270" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Node cache icon (56px) -->
+    <g transform="translate(941, 605)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="40" height="44" rx="6" />
+      <ellipse cx="24" cy="20" rx="12" ry="5" />
+      <path d="M 12 20 V 30 C 12 34, 36 34, 36 30 V 20" />
+      <circle cx="36" cy="12" r="2" fill="#207448" />
+    </g>
+    <text x="965" y="735" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node cache</text>
+  </g>
+
+  <!-- Node GPU: GPU load (Orange highlight) -->
+  <g id="node-gpu">
+    <rect x="1230" y="190" width="270" height="240" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5" />
+    <!-- GPU chip icon (56px) -->
+    <g transform="translate(1337, 225)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="6" />
+      <rect x="18" y="18" width="20" height="20" rx="3" />
+      <path d="M 18 10 V 4 M 28 10 V 4 M 38 10 V 4" />
+      <path d="M 18 52 V 46 M 28 52 V 46 M 38 52 V 46" />
+      <path d="M 10 18 H 4 M 10 28 H 4 M 10 38 H 4" />
+      <path d="M 52 18 H 46 M 52 28 H 46 M 52 38 H 46" />
+    </g>
+    <text x="1365" y="355" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">GPU load</text>
+  </g>
+</svg>"""
+
+pathlib.Path("test_distribution.svg").write_text(svg_content)
+print("Wrote test_distribution.svg")

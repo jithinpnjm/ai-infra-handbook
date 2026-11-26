@@ -45,21 +45,9 @@ The remaining checks cover more ground. For builds and registries, the chapter w
 
 Suppose a developer's account pushes one bad commit. Where would it end up? The diagram traces the path from source to runtime, and the dashed arrows mark the attack points. Read it from left to right, the way the code travels, and notice that every box on the path is a place where a bad input can enter. A supply chain is only as strong as its weakest link, so the diagram asks you to inspect each link instead of just the last one.
 
-```mermaid
-flowchart LR
-  SRC["Source code & config\n(repos, IaC, Dockerfiles)"] --> BLD["Build system\n(CI runners, base images, build tools)"]
-  DEP["Dependencies\n(OS packages, PyPI, npm, CUDA, models, datasets)"] --> BLD
-  BLD --> ART["Artefacts\n(images, wheels, charts, models)"]
-  ART --> REG["Registry / artefact store"]
-  REG --> DEPLOY["Deployment (GitOps, Helm, admission)"]
-  DEPLOY --> RUN["Runtime (cluster, nodes, GPUs)"]
-  A1["Compromised developer account / malicious commit"] -.-> SRC
-  A2["Compromised CI runner / secrets / build plugin"] -.-> BLD
-  A3["Typosquat, dependency confusion, hijacked maintainer, poisoned model"] -.-> DEP
-  A4["Tampered or substituted artefact; registry compromise"] -.-> REG
-  A5["Unverified image or manifest deployed; malicious controller"] -.-> DEPLOY
-  A6["Container escape, credential theft, exfiltration"] -.-> RUN
-```
+![Threat model](./img/m5-27-1.svg)
+
+*Figure 5.27.1. Threat model, as a diagram.*
 
 A1 is a compromised developer account or a malicious commit. A2 is a compromised CI runner, its secrets or a build plugin. A3 is a typosquat, dependency confusion, a hijacked maintainer or a poisoned model. A4 is a tampered artefact or a registry compromise. A5 is an unverified image that gets deployed, or a malicious controller. A6 is a container escape, credential theft or exfiltration. Each attack class enters at a different stage, so a control at one stage does not cover the others.
 
@@ -408,16 +396,9 @@ Combine this flow with admission controllers. Then only signed images, or images
 
 The diagram shows an upstream image moving from quarantine into the approved repository. Each arrow is a decision, and only the images that pass every decision reach the approved repository.
 
-```mermaid
-flowchart LR
-  UP["Upstream image (NGC / community)"] --> MIR["Mirror into 'quarantine' repo by digest"]
-  MIR --> SC["Scan, SBOM, license check, optional rebuild"]
-  SC --> POL{"Policy pass?"}
-  POL -- yes --> SIGN["Sign + attest (your identity)"]
-  SIGN --> PROD["Promote to 'approved' repo"]
-  POL -- no --> REJ["Reject / ticket / exception"]
-  PROD --> ADM["Admission verifies your signature only"]
-```
+![Image promotion pipeline](./img/m5-27-2.svg)
+
+*Figure 5.27.2. Image promotion pipeline, as a diagram.*
 
 Clusters trust only the `approved` repository and your signer. Upstream trust decisions are made once, centrally, with evidence. That means a team that wants a vendor image does not have to repeat the review, and the clusters do not have to trust the vendor directly. Decide which signer and repository your clusters trust before you enable enforcement, because changing that trust later means re-signing everything.
 

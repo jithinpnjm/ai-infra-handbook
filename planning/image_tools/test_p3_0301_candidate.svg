@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>How the first matching case in handle(event) is chosen</title>
+  <desc>Visual infographic explaining Python match-case pattern evaluation in handle(event), demonstrating first-match-wins semantics, variable binding, guard conditions, and wildcards.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">How the first matching case in</tspan>
+    <tspan x="800" dy="54">handle(event) is chosen</tspan>
+  </text>
+
+  <!-- ==================== ROW 1: EVENT 1 -> CASE 1 ==================== -->
+  <!-- Event 1 Card -->
+  <rect x="40" y="145" width="660" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Server / Node Alert Icon (44px) -->
+  <g transform="translate(56, 183)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="36" height="32" rx="4"/>
+    <line x1="4" y1="16" x2="40" y2="16"/>
+    <circle cx="10" cy="11" r="2" fill="#207448"/>
+    <circle cx="17" cy="11" r="2" fill="#207448"/>
+    <line x1="10" y1="26" x2="26" y2="26"/>
+    <line x1="10" y1="31" x2="20" y2="31"/>
+  </g>
+  <text x="115" y="180" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0" font-family="monospace" font-weight="bold" fill="#207448">event {type: node_down, node: gpu07}</tspan>
+    <tspan x="115" dy="32">matches case 1 and binds name to gpu07,</tspan>
+    <tspan x="115" dy="28">result &apos;drain gpu07&apos;</tspan>
+  </text>
+
+  <!-- Arrow 1 -->
+  <line x1="700" y1="205" x2="720" y2="205" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- Case 1 Card -->
+  <rect x="720" y="145" width="840" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Ladder step / Dispatch icon (40px) -->
+  <g transform="translate(734, 185)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="32" height="28" rx="4"/>
+    <polyline points="11,20 17,26 29,14"/>
+  </g>
+  <text x="775" y="196" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">case {&quot;type&quot;: &quot;node_down&quot;, &quot;node&quot;: str(name)}</text>
+  <!-- Return pill 1 -->
+  <rect x="1335" y="212" width="200" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="1435" y="241" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">drain name</text>
+
+  <!-- ==================== ROW 2: EVENT 2 -> CASE 2 (ORANGE) ==================== -->
+  <!-- Event 2 Card -->
+  <rect x="40" y="290" width="660" height="120" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+  <!-- Thermometer / Gauge Icon (44px) -->
+  <g transform="translate(56, 328)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 18 26 L 18 8 C 18 5 22 5 22 8 L 22 26 C 19 26 15 29 15 33 C 15 37 19 41 23 41 C 27 41 31 37 31 33 C 31 29 27 26 24 26"/>
+    <line x1="20" y1="14" x2="20" y2="32" stroke="#db8129" stroke-width="3.5"/>
+  </g>
+  <text x="115" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0" font-family="monospace" font-weight="bold" fill="#db8129">event {type: temp, value: 91.0}</tspan>
+    <tspan x="115" dy="32">matches case 2 because the guard</tspan>
+    <tspan x="115" dy="28">v &gt; 85 holds, result &apos;throttle&apos;</tspan>
+  </text>
+
+  <!-- Arrow 2 -->
+  <line x1="700" y1="350" x2="720" y2="350" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)"/>
+
+  <!-- Case 2 Card -->
+  <rect x="720" y="290" width="840" height="120" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+  <!-- Shield Guard Icon (40px) -->
+  <g transform="translate(734, 330)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 10 L 20 5 L 32 10 C 32 24 20 33 20 36 C 20 33 8 24 8 10 Z"/>
+    <line x1="20" y1="14" x2="20" y2="22"/>
+    <circle cx="20" cy="27" r="2" fill="#db8129"/>
+  </g>
+  <text x="775" y="341" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">case {&quot;type&quot;: &quot;temp&quot;, &quot;value&quot;: float(v)} if v &gt; 85</text>
+  <!-- Return pill 2 -->
+  <rect x="1355" y="357" width="180" height="42" rx="8" fill="#fff0e0" stroke="#db8129" stroke-width="2"/>
+  <text x="1445" y="386" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">throttle</text>
+
+  <!-- ==================== ROW 3: EVENT 3 -> CASE 3 ==================== -->
+  <!-- Event 3 Card -->
+  <rect x="40" y="435" width="660" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Chip / Sequence Icon (44px) -->
+  <g transform="translate(56, 473)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="26" height="26" rx="3"/>
+    <line x1="14" y1="3" x2="14" y2="8"/>
+    <line x1="21" y1="3" x2="21" y2="8"/>
+    <line x1="28" y1="3" x2="28" y2="8"/>
+    <line x1="14" y1="34" x2="14" y2="39"/>
+    <line x1="21" y1="34" x2="21" y2="39"/>
+    <line x1="28" y1="34" x2="28" y2="39"/>
+  </g>
+  <text x="115" y="470" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0" font-family="monospace" font-weight="bold" fill="#207448">event {type: gpu, ids: [3, 4]}</tspan>
+    <tspan x="115" dy="32">matches case 3 binding first to 3,</tspan>
+    <tspan x="115" dy="28">result &apos;first gpu 3&apos;</tspan>
+  </text>
+
+  <!-- Arrow 3 -->
+  <line x1="700" y1="495" x2="720" y2="495" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- Case 3 Card -->
+  <rect x="720" y="435" width="840" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Unpack Sequence Icon (40px) -->
+  <g transform="translate(734, 475)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="10" width="10" height="20" rx="2"/>
+    <rect x="20" y="10" width="14" height="20" rx="2" stroke-dasharray="3 2"/>
+  </g>
+  <text x="775" y="486" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">case {&quot;type&quot;: &quot;gpu&quot;, &quot;ids&quot;: [first, *_]}</text>
+  <!-- Return pill 3 -->
+  <rect x="1275" y="502" width="260" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="1405" y="531" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">first gpu first</text>
+
+  <!-- ==================== ROW 4: EVENT 4 -> CASE 4 ==================== -->
+  <!-- Event 4 Card -->
+  <rect x="40" y="580" width="660" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Fan / Cooling Icon (44px) -->
+  <g transform="translate(56, 618)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="21" cy="21" r="5"/>
+    <path d="M 21 16 C 21 7 28 7 28 12 C 28 17 24 19 21 20"/>
+    <path d="M 25 25 C 32 28 30 34 25 34 C 20 34 20 29 20 25"/>
+    <path d="M 16 21 C 8 18 10 11 15 12 C 18 14 19 18 18 21"/>
+  </g>
+  <text x="115" y="615" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="115" dy="0" font-family="monospace" font-weight="bold" fill="#207448">event {type: fan}</tspan>
+    <tspan x="115" dy="32">reaches case 4 binding t to fan,</tspan>
+    <tspan x="115" dy="28">result &apos;unhandled fan&apos;</tspan>
+  </text>
+
+  <!-- Arrow 4 -->
+  <line x1="700" y1="640" x2="720" y2="640" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  <!-- Case 4 Card -->
+  <rect x="720" y="580" width="840" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Key-value Mapping Icon (40px) -->
+  <g transform="translate(734, 620)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="8" width="30" height="24" rx="3"/>
+    <line x1="11" y1="16" x2="17" y2="16"/>
+    <line x1="22" y1="16" x2="28" y2="16"/>
+    <line x1="11" y1="24" x2="17" y2="24"/>
+    <line x1="22" y1="24" x2="26" y2="24"/>
+  </g>
+  <text x="775" y="631" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">case {&quot;type&quot;: t}</text>
+  <!-- Return pill 4 -->
+  <rect x="1325" y="647" width="210" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="1430" y="676" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">unhandled t</text>
+
+  <!-- ==================== ROW 5: WILDCARD FALLBACK CASE 5 ==================== -->
+  <!-- Left Side: Empty / Fallback indicator box -->
+  <rect x="40" y="725" width="660" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="8 6"/>
+  <!-- Default Fallback Icon (44px) -->
+  <g transform="translate(348, 763)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity="0.5">
+    <circle cx="21" cy="21" r="16"/>
+    <line x1="13" y1="21" x2="29" y2="21"/>
+  </g>
+
+  <!-- Case 5 Card -->
+  <rect x="720" y="725" width="840" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Wildcard Underscore Icon (40px) -->
+  <g transform="translate(734, 765)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="15"/>
+    <line x1="13" y1="27" x2="27" y2="27" stroke-width="4"/>
+  </g>
+  <text x="775" y="776" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">case _</text>
+  <!-- Return pill 5 -->
+  <rect x="1355" y="792" width="180" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8"/>
+  <text x="1445" y="821" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">unknown</text>
+
+  <!-- ==================== PATTERN KINDS STRIP ==================== -->
+  <rect x="40" y="865" width="1520" height="80" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Shapes/Patterns Icon (40px) -->
+  <g transform="translate(58, 885)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="5" width="14" height="14" rx="2"/>
+    <circle cx="28" cy="12" r="7"/>
+    <polygon points="12,22 19,36 5,36"/>
+    <path d="M 23 27 L 33 27 M 28 22 L 28 32"/>
+  </g>
+  <text x="125" y="902" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">literals, captures, wildcard _, sequences, mappings, </tspan>
+    <tspan x="125" dy="30">class patterns Point(x=0, y=0), alternatives with |, guards with if</tspan>
+  </text>
+
+  <!-- ==================== COMMAND PARSING STRIP ==================== -->
+  <rect x="40" y="965" width="1520" height="70" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Terminal Prompt Icon (40px) -->
+  <g transform="translate(58, 980)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="5" y="7" width="30" height="26" rx="3"/>
+    <polyline points="11,15 16,20 11,25"/>
+    <line x1="20" y1="24" x2="26" y2="24" stroke-width="3"/>
+  </g>
+  <text x="125" y="1009" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">match cmd.split(): case [&quot;start&quot;, service], case [&quot;stop&quot;, service, *flags], case [&quot;status&quot;]</text>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR ==================== -->
+  <rect x="40" y="1055" width="1520" height="80" rx="12" fill="#207448" stroke="#207448" stroke-width="2"/>
+  <!-- Key Award Icon (40px) -->
+  <g transform="translate(65, 1075)" stroke="#ffffff" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="20" r="8"/>
+    <line x1="24" y1="20" x2="36" y2="20"/>
+    <line x1="31" y1="20" x2="31" y2="25"/>
+    <line x1="36" y1="20" x2="36" y2="25"/>
+  </g>
+  <text x="800" y="1104" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Not a C-style switch: the first matching case wins, and matched parts are bound to names</text>
+</svg>

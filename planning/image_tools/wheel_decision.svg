@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a wheel filename and deciding between wheel and sdist</title>
+  <desc>Visual infographic explaining how to read a Python wheel filename, understand tag variants, and decide whether pip can install a pre-built wheel or must build from sdist.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <!-- Infographic Title -->
+  <text x="800" y="44" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Reading a wheel filename </tspan>
+    <tspan x="800" dy="50">and deciding between wheel and sdist</tspan>
+  </text>
+  <!-- ==================== SECTION 1: FILENAME ANATOMY ==================== -->
+  <g id="section-anatomy">
+    <rect x="40" y="110" width="1520" height="180" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <rect x="40" y="110" width="1520" height="78" rx="16" fill="#e8f1ea" />
+    <line x1="40" y1="188" x2="1560" y2="188" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(60, 120)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24" />
+      <circle cx="28" cy="28" r="8" fill="#ffffff" />
+      <line x1="28" y1="4" x2="28" y2="20" />
+      <line x1="28" y1="36" x2="28" y2="52" />
+      <line x1="4" y1="28" x2="20" y2="28" />
+      <line x1="36" y1="28" x2="52" y2="28" />
+    </g>
+    <text x="800" y="150" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">name-version-pythontag-abitag-platformtag</text>
+    <text x="800" y="178" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">numpy-1.26.4-cp311-cp311-manylinux_2_17_x86_64.whl</text>
+    <g id="piece-1">
+      <rect x="60" y="192" width="190" height="88" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="155" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="155" dy="0" font-family="monospace" font-weight="bold" fill="#207448">numpy: </tspan>
+        <tspan x="155" dy="26">name</tspan>
+      </text>
+    </g>
+    <g id="piece-2">
+      <rect x="265" y="192" width="190" height="88" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="360" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="360" dy="0" font-family="monospace" font-weight="bold" fill="#207448">1.26.4: </tspan>
+        <tspan x="360" dy="26">version</tspan>
+      </text>
+    </g>
+    <g id="piece-3">
+      <rect x="470" y="192" width="310" height="88" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="625" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="625" dy="0" font-weight="bold" fill="#207448">cp311: Python tag </tspan>
+        <tspan x="625" dy="26">(CPython 3.11)</tspan>
+      </text>
+    </g>
+    <g id="piece-4">
+      <rect x="795" y="192" width="190" height="88" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="890" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="890" dy="0" font-family="monospace" font-weight="bold" fill="#207448">cp311: </tspan>
+        <tspan x="890" dy="26">ABI tag</tspan>
+      </text>
+    </g>
+    <g id="piece-5">
+      <rect x="1000" y="192" width="540" height="88" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" />
+      <text x="1270" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1270" dy="0" font-weight="bold" fill="#207448">manylinux_2_17_x86_64: platform tag </tspan>
+        <tspan x="1270" dy="26">(x86_64 Linux, glibc-compatible)</tspan>
+      </text>
+    </g>
+  </g>
+  <!-- ==================== SECTION 2: VARIANTS STRIP ==================== -->
+  <g id="section-variants">
+    <rect x="40" y="330" width="1520" height="265" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(56, 434)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="6" />
+      <path d="M 20 8 L 20 4 M 28 8 L 28 4 M 36 8 L 36 4" />
+      <path d="M 20 48 L 20 52 M 28 48 L 28 52 M 36 48 L 36 52" />
+      <path d="M 8 20 L 4 20 M 8 28 L 4 28 M 8 36 L 4 36" />
+      <path d="M 48 20 L 52 20 M 48 28 L 52 28 M 48 36 L 52 36" />
+    </g>
+    <g id="var-1">
+      <rect x="125" y="338" width="700" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="475" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="475" dy="0" font-family="monospace" font-weight="bold" fill="#207448">py3-none-any: </tspan>
+        <tspan x="475" dy="22">pure Python, installs anywhere</tspan>
+      </text>
+    </g>
+    <g id="var-2">
+      <rect x="845" y="338" width="700" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="1195" y="378" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1195" dy="0" font-weight="bold" fill="#207448">manylinux: runs on most Linux distributions </tspan>
+        <tspan x="1195" dy="22">with a compatible glibc</tspan>
+      </text>
+    </g>
+    <g id="var-3">
+      <rect x="125" y="428" width="700" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="475" y="468" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="475" dy="0" font-family="monospace" font-weight="bold" fill="#207448">musllinux: </tspan>
+        <tspan x="475" dy="22">Alpine, which uses musl instead</tspan>
+      </text>
+    </g>
+    <g id="var-4">
+      <rect x="845" y="428" width="700" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="1195" y="468" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1195" dy="0" font-family="monospace" font-weight="bold" fill="#207448">abi3: </tspan>
+        <tspan x="1195" dy="22">the stable ABI</tspan>
+      </text>
+    </g>
+    <g id="var-5">
+      <rect x="125" y="518" width="700" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="475" y="558" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="475" dy="0" font-weight="bold" fill="#207448">+cu121: local version label (PEP 440) marking </tspan>
+        <tspan x="475" dy="22">a CUDA build, used by PyTorch index wheels</tspan>
+      </text>
+    </g>
+    <g id="var-6">
+      <rect x="845" y="518" width="700" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="1195" y="558" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1195" dy="0" font-weight="bold" fill="#207448">aarch64: Grace and other ARM hosts, </tspan>
+        <tspan x="1195" dy="22">some packages have no wheels</tspan>
+      </text>
+    </g>
+  </g>
+  <!-- ==================== SECTION 3: DECISION FLOW ==================== -->
+  <g id="section-decision">
+    <g id="box-decision">
+      <rect x="40" y="635" width="450" height="185" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(60, 700)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="24" r="16" />
+        <line x1="36" y1="36" x2="50" y2="50" />
+        <circle cx="24" cy="24" r="7" stroke-dasharray="4 3" />
+      </g>
+      <text x="280" y="715" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+        <tspan x="280" dy="0">pip finds a </tspan>
+        <tspan x="280" dy="38">compatible wheel?</tspan>
+      </text>
+    </g>
+    <g id="box-yes">
+      <rect x="620" y="635" width="940" height="70" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+      <g transform="translate(640, 642)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 16 L 24 16 L 28 24 L 48 24 L 48 48 L 8 48 Z" />
+        <path d="M 28 28 L 36 36 L 48 24" stroke="#207448" />
+      </g>
+      <text x="1100" y="679" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">unzip, no build step, fast</text>
+    </g>
+    <line x1="490" y1="670" x2="620" y2="670" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    <text x="555" y="658" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+    <g id="box-no">
+      <rect x="620" y="716" width="940" height="114" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+      <g transform="translate(640, 745)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="40" rx="6" />
+        <path d="M 16 22 L 24 28 L 16 34" />
+        <line x1="28" y1="34" x2="38" y2="34" />
+      </g>
+      <text x="1100" y="756" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1100" dy="0" font-weight="bold" fill="#db8129">builds from the sdist: needs compilers and headers; </tspan>
+        <tspan x="1100" dy="24">the usual reason an install takes 10 minutes or </tspan>
+        <tspan x="1100" dy="24">fails in a slim container</tspan>
+      </text>
+    </g>
+    <line x1="490" y1="773" x2="620" y2="773" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+    <text x="555" y="761" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">no</text>
+  </g>
+  <!-- ==================== SECTION 4: TOOL LINE & EARLY CHECK ==================== -->
+  <g id="section-tools">
+    <rect x="40" y="870" width="1520" height="185" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g id="tool-1">
+      <rect x="56" y="878" width="1488" height="84" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="800" y="918" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="800" dy="0">python -m build makes dist/myops-0.3.1.tar.gz (sdist) </tspan>
+        <tspan x="800" dy="22">and dist/myops-0.3.1-py3-none-any.whl (wheel)</tspan>
+      </text>
+    </g>
+    <g id="tool-2">
+      <rect x="56" y="968" width="734" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="423" y="1008" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="423" dy="0" font-family="monospace" font-weight="bold" fill="#207448">python -m pip debug --verbose </tspan>
+        <tspan x="423" dy="22">lists the supported tags</tspan>
+      </text>
+    </g>
+    <g id="tool-3">
+      <rect x="810" y="968" width="734" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.2" />
+      <text x="1177" y="1008" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="1177" dy="0" fill="#207448">pip download --only-binary=:all: </tspan>
+        <tspan x="1177" dy="22">--platform manylinux2014_aarch64 ...</tspan>
+      </text>
+    </g>
+  </g>
+  <!-- ==================== SECTION 5: BOTTOM TAKEAWAY BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1095" width="1520" height="65" rx="12" fill="#207448" />
+    <text x="800" y="1137" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Check the tags of every wheel you plan to ship against the machines that will install it</text>
+  </g>
+</svg>

@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>What all batch schedulers share</title>
+  <desc>Architecture comparison of OpenPBS, IBM Spectrum LSF, and LLNL Flux showing controller and execution agents</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="16" markerHeight="16" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="16" markerHeight="16" orient="auto-start-reverse">
+      <path d="M 1 2 L 14 8 L 1 14 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">What all batch schedulers share</text>
+
+  
+  <rect x="40" y="130" width="480" height="780" rx="24" fill="#ffffff" stroke="#c0d4c6" stroke-width="2" />
+  <rect x="55" y="146" width="450" height="74" rx="16" fill="#e8f1ea" />
+  <text x="280" y="193" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">OpenPBS / Torque</text>
+
+  
+  <rect x="60" y="256" width="440" height="214" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="256" y="288" width="48" height="52" rx="6" />
+    <line x1="256" y1="305" x2="304" y2="305" />
+    <line x1="256" y1="322" x2="304" y2="322" />
+    <circle cx="266" cy="297" r="2" fill="#207448" stroke="none" />
+    <circle cx="273" cy="297" r="2" fill="#207448" stroke="none" />
+    <line x1="284" y1="297" x2="296" y2="297" />
+    <circle cx="266" cy="314" r="2" fill="#207448" stroke="none" />
+    <circle cx="273" cy="314" r="2" fill="#207448" stroke="none" />
+    <line x1="284" y1="314" x2="296" y2="314" />
+    <circle cx="266" cy="331" r="2" fill="#207448" stroke="none" />
+    <circle cx="273" cy="331" r="2" fill="#207448" stroke="none" />
+    <line x1="284" y1="331" x2="296" y2="331" />
+  </g>
+  <text text-anchor="middle" font-family="monospace" font-size="25" fill="#303a36">
+    <tspan x="280" y="395">pbs_server + pbs_sched</tspan>
+    <tspan x="280" y="435">(or Maui maui.cfg)</tspan>
+  </text>
+
+  
+  <line x1="280" y1="470" x2="280" y2="618" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="60" y="620" width="440" height="250" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="261" y="652" width="38" height="38" rx="4" />
+    <rect x="272" y="663" width="16" height="16" rx="2" />
+    <line x1="267" y1="644" x2="267" y2="652" />
+    <line x1="275" y1="644" x2="275" y2="652" />
+    <line x1="284" y1="644" x2="284" y2="652" />
+    <line x1="292" y1="644" x2="292" y2="652" />
+    <line x1="267" y1="690" x2="267" y2="698" />
+    <line x1="275" y1="690" x2="275" y2="698" />
+    <line x1="284" y1="690" x2="284" y2="698" />
+    <line x1="292" y1="690" x2="292" y2="698" />
+    <line x1="253" y1="658" x2="261" y2="658" />
+    <line x1="253" y1="666" x2="261" y2="666" />
+    <line x1="253" y1="675" x2="261" y2="675" />
+    <line x1="253" y1="683" x2="261" y2="683" />
+    <line x1="299" y1="658" x2="307" y2="658" />
+    <line x1="299" y1="666" x2="307" y2="666" />
+    <line x1="299" y1="675" x2="307" y2="675" />
+    <line x1="299" y1="683" x2="307" y2="683" />
+  </g>
+  <text text-anchor="middle" font-size="25" fill="#303a36">
+    <tspan x="280" y="760" font-family="monospace">pbs_mom (+ trqauthd)</tspan>
+    <tspan x="280" y="800" font-family="sans-serif">on compute nodes</tspan>
+  </text>
+
+
+  
+  <rect x="560" y="130" width="480" height="780" rx="24" fill="#ffffff" stroke="#c0d4c6" stroke-width="2" />
+  <rect x="575" y="146" width="450" height="74" rx="16" fill="#e8f1ea" />
+  <text x="800" y="193" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">IBM Spectrum LSF</text>
+
+  
+  <rect x="580" y="256" width="440" height="214" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="800" cy="314" r="18" />
+    <line x1="800" y1="314" x2="800" y2="304" />
+    <line x1="800" y1="314" x2="808" y2="314" />
+    <line x1="800" y1="290" x2="800" y2="296" />
+    <line x1="800" y1="332" x2="800" y2="338" />
+    <line x1="776" y1="314" x2="782" y2="314" />
+    <line x1="818" y1="314" x2="824" y2="314" />
+    <line x1="783" y1="297" x2="787" y2="301" />
+    <line x1="813" y1="327" x2="817" y2="331" />
+    <line x1="783" y1="331" x2="787" y2="327" />
+    <line x1="813" y1="301" x2="817" y2="297" />
+  </g>
+  <text text-anchor="middle" font-family="monospace" font-size="25" fill="#303a36">
+    <tspan x="800" y="395">mbatchd + mbschd</tspan>
+    <tspan x="800" y="435">+ master LIM</tspan>
+  </text>
+
+  
+  <line x1="800" y1="470" x2="800" y2="618" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="580" y="620" width="440" height="250" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="775" y="650" width="50" height="36" rx="5" />
+    <line x1="800" y1="686" x2="800" y2="696" />
+    <line x1="788" y1="696" x2="812" y2="696" />
+    <path d="M 784 664 L 790 668 L 784 672" />
+    <line x1="795" y1="672" x2="805" y2="672" />
+  </g>
+  <text text-anchor="middle" font-family="monospace" font-size="25" fill="#303a36">
+    <tspan x="800" y="760">sbatchd + res</tspan>
+    <tspan x="800" y="800">+ host LIM</tspan>
+  </text>
+
+
+  
+  <rect x="1080" y="130" width="480" height="780" rx="24" fill="#ffffff" stroke="#c0d4c6" stroke-width="2" />
+  <rect x="1095" y="146" width="450" height="74" rx="16" fill="#e8f1ea" />
+  <text text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">
+    <tspan x="1320" y="177">LLNL Flux</tspan>
+    <tspan x="1320" y="209">(Hierarchical)</tspan>
+  </text>
+
+  
+  <rect x="1100" y="256" width="440" height="214" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1320" cy="296" r="6" />
+    <circle cx="1302" cy="318" r="5" />
+    <circle cx="1338" cy="318" r="5" />
+    <circle cx="1292" cy="338" r="4" />
+    <circle cx="1312" cy="338" r="4" />
+    <circle cx="1328" cy="338" r="4" />
+    <circle cx="1348" cy="338" r="4" />
+    <line x1="1320" y1="302" x2="1302" y2="313" />
+    <line x1="1320" y1="302" x2="1338" y2="313" />
+    <line x1="1302" y1="323" x2="1292" y2="334" />
+    <line x1="1302" y1="323" x2="1312" y2="334" />
+    <line x1="1338" y1="323" x2="1328" y2="334" />
+    <line x1="1338" y1="323" x2="1348" y2="334" />
+  </g>
+  <text text-anchor="middle" font-size="25" fill="#303a36">
+    <tspan x="1320" y="395" font-family="sans-serif">System flux-broker tree</tspan>
+    <tspan x="1320" y="435" font-family="monospace">+ Fluxion</tspan>
+  </text>
+
+  
+  <line x1="1320" y1="470" x2="1320" y2="618" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="1100" y="620" width="440" height="250" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1294" y="646" width="52" height="52" rx="7" />
+    <rect x="1306" y="658" width="28" height="28" rx="4" stroke-dasharray="4 3" />
+    <circle cx="1320" cy="672" r="5" fill="#207448" />
+  </g>
+  <text text-anchor="middle" font-size="25" fill="#303a36">
+    <tspan x="1320" y="760" font-family="sans-serif">Job Subinstance</tspan>
+    <tspan x="1320" y="800" font-family="monospace">flux-broker (flux batch)</tspan>
+  </text>
+</svg>

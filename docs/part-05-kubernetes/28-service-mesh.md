@@ -51,23 +51,9 @@ The idea is a lot like a postal service. You do not build your own roads, sort y
 
 The diagram below shows the architecture. Each pod runs your app container next to a sidecar proxy. The proxies talk to each other over mTLS, while a control plane hands them their configuration and certificates. Read it from the top down. The control plane is the office that writes the rules, and the proxies are the staff who follow those rules on every single call.
 
-```mermaid
-flowchart LR
-  subgraph CP["Control plane"]
-    CA["CA / identity (SPIFFE IDs)"]
-    CFG["Config distribution (xDS / gRPC)"]
-    POL["Policy & telemetry config"]
-  end
-  subgraph Pod1["Pod A"]
-    A["App container"] <--> PX1["Sidecar proxy (Envoy / linkerd2-proxy)"]
-  end
-  subgraph Pod2["Pod B"]
-    B["App container"] <--> PX2["Sidecar proxy"]
-  end
-  PX1 -- "mTLS (HTTP/2, TCP)" --> PX2
-  CFG --> PX1 & PX2
-  CA --> PX1 & PX2
-```
+![Concepts](./img/m5-28-1.svg)
+
+*Figure 5.28.1. Concepts, as a diagram.*
 
 Each part of this picture has a clear job. Start with the data plane, which is the set of proxies. Each proxy intercepts traffic, using `iptables`, eBPF redirection or explicit proxying. Then it handles TLS, routing, retries and metrics. You can think of a proxy as a doorkeeper and translator standing at the door of each pod, because every request going in or out walks past it. Envoy is the dominant proxy, and Istio, Consul, Kuma and Gateway API implementations all use it. Linkerd takes a different route. It uses its own purpose-built Rust micro-proxy, which stays small because it does only the jobs Linkerd needs.
 

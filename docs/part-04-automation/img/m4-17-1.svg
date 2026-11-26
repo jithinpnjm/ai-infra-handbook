@@ -1,0 +1,235 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The node bring-up dependency graph</title>
+  <desc>Visual dependency graph showing the sequential and parallel requirements to bring up an accelerated GPU node from firmware to workload release.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">The node bring-up dependency graph</text>
+
+  
+  
+  <g id="node-F">
+    <rect x="60" y="85" width="680" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="85" y="115" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 97 107 v 8 M 109 107 v 8 M 121 107 v 8 M 97 163 v 8 M 109 163 v 8 M 121 163 v 8 M 77 127 h 8 M 77 139 h 8 M 77 151 h 8 M 133 127 h 8 M 133 139 h 8 M 133 151 h 8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="109" cy="139" r="6" fill="#207448" />
+    <text x="155" y="128" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Firmware &amp; BIOS</text>
+    <text x="155" y="164" font-family="sans-serif" font-size="24" fill="#303a36">(virtualisation/IOMMU, SR-IOV, NPS,</text>
+    <text x="155" y="194" font-family="sans-serif" font-size="24" fill="#303a36">power profile, PCIe settings)</text>
+  </g>
+
+  
+  <g id="node-OS">
+    <rect x="860" y="85" width="680" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <ellipse cx="912" cy="125" rx="24" ry="10" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 888 125 v 28 c 0 6 11 10 24 10 s 24 -4 24 -10 v -28" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 888 139 c 0 6 11 10 24 10 s 24 -4 24 -10" fill="none" stroke="#207448" stroke-width="4" />
+    <text x="955" y="128" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">OS install / image</text>
+    <text x="955" y="164" font-family="sans-serif" font-size="24" fill="#303a36">(kernel, headers, base packages,</text>
+    <text x="955" y="194" font-family="sans-serif" font-size="24" fill="#303a36">time sync, users)</text>
+  </g>
+
+  
+  <path d="M 740 147.5 H 846" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="node-K">
+    <rect x="860" y="240" width="680" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 890 275 h 44 M 890 302 h 44 M 890 330 h 44" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="902" cy="275" r="6" fill="#207448" />
+    <circle cx="924" cy="302" r="6" fill="#207448" />
+    <circle cx="908" cy="330" r="6" fill="#207448" />
+    <text x="955" y="283" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kernel params &amp; tuning</text>
+    <text x="955" y="319" font-family="sans-serif" font-size="24" fill="#303a36">(hugepages, IOMMU, isolcpus,</text>
+    <text x="955" y="349" font-family="sans-serif" font-size="24" fill="#303a36">sysctl, limits)</text>
+  </g>
+
+  
+  <g id="node-OFED">
+    <rect x="60" y="240" width="680" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="86" y="275" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 94 309 v 12 M 104 309 v 12 M 114 309 v 12 M 124 309 v 12 M 86 287 h -8 v 18 h 8" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="155" y="283" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">MLNX_OFED / DOCA</text>
+    <text x="155" y="319" font-family="sans-serif" font-size="24" fill="#303a36">(RDMA, ConnectX/BlueField drivers)</text>
+  </g>
+
+  
+  <path d="M 1200 210 V 226" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 860 302.5 H 754" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="node-R1">
+    <rect x="60" y="395" width="380" height="110" rx="55" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 106 430 A 18 18 0 1 1 90 450" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 106 420 v 12 h -12" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="145" y="443" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">reboot /</text>
+    <text x="145" y="475" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">module reload</text>
+  </g>
+
+  
+  <g id="node-DRV">
+    <rect x="520" y="395" width="1020" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="548" y="425" width="50" height="50" rx="5" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="573" cy="450" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 573 438 v 24 M 561 450 h 24 M 548 440 h -6 M 548 460 h -6 M 598 440 h 6 M 598 460 h 6" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="620" y="443" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">NVIDIA driver</text>
+    <text x="620" y="479" font-family="sans-serif" font-size="24" fill="#303a36">(open or proprietary; DKMS or precompiled)</text>
+  </g>
+
+  
+  <path d="M 250 365 V 381" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 440 450 H 506" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="node-R2">
+    <rect x="60" y="540" width="440" height="125" rx="62.5" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 126 585 A 18 18 0 1 1 110 605" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 126 575 v 12 h -12" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="165" y="612" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">reboot / reload</text>
+  </g>
+
+  
+  <g id="node-PM">
+    <rect x="580" y="540" width="440" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="618" cy="580" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 618 566 v 14 l 10 6" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="655" y="583" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">nvidia-persistenced</text>
+    <text x="655" y="619" font-family="sans-serif" font-size="24" fill="#303a36">persistence mode, clocks,</text>
+    <text x="655" y="649" font-family="sans-serif" font-size="24" fill="#303a36">power cap, MIG</text>
+  </g>
+
+  
+  <g id="node-PEER">
+    <rect x="1100" y="540" width="440" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="1126" y="572" width="22" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="1158" y="572" width="22" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1137 610 h 32 M 1163 605 l 6 5 l -6 5 M 1169 562 h -32 M 1143 557 l -6 5 l 6 5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="1195" y="583" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">nvidia-peermem /</text>
+    <text x="1195" y="613" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">GDRCopy</text>
+    <text x="1195" y="647" font-family="sans-serif" font-size="24" fill="#303a36">(GPUDirect RDMA)</text>
+  </g>
+
+  
+  <path d="M 620 505 V 522 H 280 V 526" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 800 505 V 526" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1320 505 V 526" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="node-FM">
+    <rect x="60" y="700" width="440" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="95" cy="740" r="5" fill="#207448" />
+    <circle cx="135" cy="740" r="5" fill="#207448" />
+    <circle cx="95" cy="780" r="5" fill="#207448" />
+    <circle cx="135" cy="780" r="5" fill="#207448" />
+    <path d="M 95 740 H 135 M 95 780 H 135 M 95 740 V 780 M 135 740 V 780 M 95 740 L 135 780 M 95 780 L 135 740" stroke="#207448" stroke-width="3" />
+    <text x="155" y="753" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fabric Manager</text>
+    <text x="155" y="793" font-family="sans-serif" font-size="24" fill="#303a36">(NVSwitch systems)</text>
+  </g>
+
+  
+  <g id="node-DCGM">
+    <rect x="580" y="700" width="440" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="602" y="738" width="48" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 607 758 h 9 l 6 -12 l 8 22 l 6 -13 l 5 3 h 5" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="665" y="753" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">DCGM + exporter</text>
+    <text x="665" y="793" font-family="sans-serif" font-size="24" fill="#303a36">(telemetry, health)</text>
+  </g>
+
+  
+  <g id="node-CT">
+    <rect x="1100" y="700" width="440" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="1125" y="738" width="48" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 1137 738 v 42 M 1149 738 v 42 M 1161 738 v 42 M 1125 752 h 48 M 1125 766 h 48" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text x="1190" y="753" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Container toolkit</text>
+    <text x="1190" y="793" font-family="sans-serif" font-size="24" fill="#303a36">(runtime config)</text>
+  </g>
+
+  
+  <path d="M 280 665 V 686" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 500 762.5 H 566" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 800 665 V 686" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1320 665 V 686" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="node-VAL">
+    <rect x="350" y="860" width="900" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <path d="M 385 895 v 20 c 0 16 16 28 26 32 c 10 -4 26 -16 26 -32 v -20 l -26 -10 z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 399 917 l 9 9 l 16 -16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="460" y="913" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Validation &amp; burn-in</text>
+    <text x="460" y="953" font-family="sans-serif" font-size="24" fill="#303a36">(DCGM diag, NCCL tests)</text>
+  </g>
+
+  
+  <path d="M 720 825 V 846" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1320 825 V 842 H 1050 V 846" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g id="node-SCH">
+    <rect x="60" y="1020" width="700" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="100" cy="1082" r="16" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="100" cy="1082" r="5" fill="#207448" />
+    <path d="M 100 1058 v 48 M 76 1082 h 48 M 83 1065 l 34 34 M 83 1099 l 34 -34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="145" y="1063" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Scheduler / Kubernetes agent</text>
+    <text x="145" y="1103" font-family="sans-serif" font-size="24" fill="#303a36">(slurmd, kubelet, GPU Operator parts)</text>
+  </g>
+
+  
+  <g id="node-OK">
+    <rect x="840" y="1020" width="700" height="125" rx="14" fill="#fcf3ea" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="885" cy="1082" r="24" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M 873 1082 l 8 8 l 16 -16" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="935" y="1092" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Node released to workloads</text>
+  </g>
+
+  
+  <path d="M 500 985 V 1006" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <path d="M 760 1082.5 H 826" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+</svg>

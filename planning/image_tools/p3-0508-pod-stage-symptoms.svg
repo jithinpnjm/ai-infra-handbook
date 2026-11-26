@@ -1,0 +1,247 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Match the symptom to the lifecycle stage</title>
+  <desc>Ten-row debugging ladder matching Kubernetes pod lifecycle stages to common failure symptoms and their diagnostic commands.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Match the symptom to the lifecycle stage</text>
+  <!-- ==================== ROW 1: Admission ==================== -->
+  <g id="row-1">
+    <rect x="40" y="108" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="155" r="24" fill="#207448" />
+    <text x="76" y="155" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(114, 131)">
+      <path d="M 24 6 L 42 12 V 26 C 42 36 24 44 24 44 C 24 44 6 36 6 26 V 12 Z" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+      <circle cx="24" cy="22" r="3.5" fill="#207448"/>
+      <line x1="24" y1="26" x2="24" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="176" y="166" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Admission</text>
+    <rect x="445" y="108" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="151" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="465" dy="0">forbidden, exceeded quota, </tspan>
+      <tspan x="465" dy="28">webhook denied</tspan>
+    </text>
+    <line x1="1030" y1="155" x2="1085" y2="155" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="108" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="151" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">API error text, </tspan>
+      <tspan x="1105" dy="28">describe resourcequota</tspan>
+    </text>
+  </g>
+  <!-- ==================== ROW 2: Scheduling ==================== -->
+  <g id="row-2">
+    <rect x="40" y="212" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="259" r="24" fill="#207448" />
+    <text x="76" y="259" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(114, 235)">
+      <circle cx="24" cy="24" r="18" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="24" y1="6" x2="24" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="6" y1="24" x2="42" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <circle cx="24" cy="24" r="6" fill="#207448"/>
+    </g>
+    <text x="176" y="270" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Scheduling</text>
+    <rect x="445" y="212" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="268" font-family="sans-serif" font-size="24" fill="#303a36">Pending with no node</text>
+    <line x1="1030" y1="259" x2="1085" y2="259" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="212" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="255" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">describe pod events, </tspan>
+      <tspan x="1105" dy="28">taints, Kueue Workload</tspan>
+    </text>
+  </g>
+  <!-- ==================== ROW 3: Kubelet admit ==================== -->
+  <g id="row-3">
+    <rect x="40" y="316" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="363" r="24" fill="#207448" />
+    <text x="76" y="363" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(114, 339)">
+      <rect x="6" y="10" width="36" height="26" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="14" y1="36" x2="14" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="34" y1="36" x2="34" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="8" y1="42" x2="40" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="16" cy="23" r="3" fill="#207448"/>
+      <circle cx="24" cy="23" r="3" fill="#207448"/>
+      <circle cx="32" cy="23" r="3" fill="#207448"/>
+    </g>
+    <text x="176" y="360" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="176" dy="0">Kubelet </tspan>
+      <tspan x="176" dy="32">admit</tspan>
+    </text>
+    <rect x="445" y="316" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="359" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="465" dy="0">OutOf..., NodeAffinity, </tspan>
+      <tspan x="465" dy="28">TopologyAffinityError</tspan>
+    </text>
+    <line x1="1030" y1="363" x2="1085" y2="363" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="316" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="359" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">describe pod, kubelet logs, </tspan>
+      <tspan x="1105" dy="28">device plugin health</tspan>
+    </text>
+  </g>
+  <!-- ==================== ROW 4: Volumes ==================== -->
+  <g id="row-4">
+    <rect x="40" y="420" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="467" r="24" fill="#207448" />
+    <text x="76" y="467" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(114, 443)">
+      <ellipse cx="24" cy="12" rx="18" ry="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <path d="M 6 12 V 36 C 6 41 14 44 24 44 C 34 44 42 41 42 36 V 12" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <path d="M 6 24 C 6 29 14 32 24 32 C 34 32 42 29 42 24" stroke="#207448" stroke-width="3.5" fill="none"/>
+    </g>
+    <text x="176" y="478" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Volumes</text>
+    <rect x="445" y="420" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="463" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="465" dy="0">ContainerCreating, FailedMount, </tspan>
+      <tspan x="465" dy="28">FailedAttachVolume, Multi-Attach error</tspan>
+    </text>
+    <line x1="1030" y1="467" x2="1085" y2="467" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="420" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="463" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">events, kubectl get </tspan>
+      <tspan x="1105" dy="28">volumeattachment, CSI logs</tspan>
+    </text>
+  </g>
+  <!-- ==================== ROW 5: Sandbox and CNI ==================== -->
+  <g id="row-5">
+    <rect x="40" y="524" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="571" r="24" fill="#207448" />
+    <text x="76" y="571" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    <g transform="translate(114, 547)">
+      <circle cx="12" cy="36" r="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <circle cx="36" cy="36" r="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <circle cx="24" cy="12" r="6" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="24" y1="18" x2="12" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="24" y1="18" x2="36" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="36" x2="30" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="176" y="568" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="176" dy="0">Sandbox and </tspan>
+      <tspan x="176" dy="32">CNI</tspan>
+    </text>
+    <rect x="445" y="524" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="580" font-family="sans-serif" font-size="24" fill="#303a36">FailedCreatePodSandBox</text>
+    <line x1="1030" y1="571" x2="1085" y2="571" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="524" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="567" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">CNI logs, /etc/cni/net.d, </tspan>
+      <tspan x="1105" dy="28">IPAM exhaustion, crictl pods</tspan>
+    </text>
+  </g>
+  <!-- ==================== ROW 6: Image ==================== -->
+  <g id="row-6">
+    <rect x="40" y="628" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="675" r="24" fill="#207448" />
+    <text x="76" y="675" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    <g transform="translate(114, 651)">
+      <path d="M 24 6 L 42 16 V 34 L 24 44 L 6 34 V 16 Z" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round"/>
+      <line x1="24" y1="6" x2="24" y2="44" stroke="#207448" stroke-width="2.5"/>
+      <line x1="24" y1="25" x2="42" y2="16" stroke="#207448" stroke-width="2.5"/>
+      <line x1="24" y1="25" x2="6" y2="16" stroke="#207448" stroke-width="2.5"/>
+    </g>
+    <text x="176" y="686" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Image</text>
+    <rect x="445" y="628" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="684" font-family="sans-serif" font-size="24" fill="#303a36">ErrImagePull, ImagePullBackOff</text>
+    <line x1="1030" y1="675" x2="1085" y2="675" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="628" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="671" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">crictl pull, credentials, </tspan>
+      <tspan x="1105" dy="28">rate limits, DNS</tspan>
+    </text>
+  </g>
+  <!-- ==================== ROW 7: Create or start ==================== -->
+  <g id="row-7">
+    <rect x="40" y="732" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="779" r="24" fill="#207448" />
+    <text x="76" y="779" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+    <g transform="translate(114, 755)">
+      <rect x="6" y="8" width="36" height="32" rx="4" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <polyline points="14,20 20,24 14,28" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <line x1="24" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="176" y="776" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="176" dy="0">Create or </tspan>
+      <tspan x="176" dy="32">start</tspan>
+    </text>
+    <rect x="445" y="732" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="775" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="465" dy="0">CreateContainerError, </tspan>
+      <tspan x="465" dy="28">RunContainerError, StartError</tspan>
+    </text>
+    <line x1="1030" y1="779" x2="1085" y2="779" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="732" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="775" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">journalctl -u containerd, </tspan>
+      <tspan x="1105" dy="28">runc text</tspan>
+    </text>
+  </g>
+  <!-- ==================== ROW 8: Run ==================== -->
+  <g id="row-8">
+    <rect x="40" y="836" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="883" r="24" fill="#207448" />
+    <text x="76" y="883" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">8</text>
+    <g transform="translate(114, 859)">
+      <rect x="12" y="12" width="24" height="24" rx="3" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <rect x="18" y="18" width="12" height="12" rx="2" fill="#207448"/>
+      <line x1="18" y1="6" x2="18" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="30" y1="6" x2="30" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="36" x2="18" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="30" y1="36" x2="30" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="6" y1="18" x2="12" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="6" y1="30" x2="12" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="30" x2="42" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="176" y="894" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Run</text>
+    <rect x="445" y="836" width="585" height="94" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    <text x="465" y="892" font-family="sans-serif" font-size="24" fill="#303a36">CrashLoopBackOff, OOMKilled</text>
+    <line x1="1030" y1="883" x2="1085" y2="883" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+    <rect x="1085" y="836" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="879" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">logs --previous, </tspan>
+      <tspan x="1105" dy="28">exit codes, dmesg</tspan>
+    </text>
+  </g>
+  <!-- ==================== ROW 9: Readiness ==================== -->
+  <g id="row-9">
+    <rect x="40" y="940" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="987" r="24" fill="#207448" />
+    <text x="76" y="987" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">9</text>
+    <g transform="translate(114, 963)">
+      <circle cx="24" cy="24" r="18" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <polyline points="10,24 17,24 21,15 27,33 31,24 38,24" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="176" y="998" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Readiness</text>
+    <rect x="445" y="940" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="996" font-family="sans-serif" font-size="24" fill="#303a36">Running but 0/1</text>
+    <line x1="1030" y1="987" x2="1085" y2="987" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="940" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="996" font-family="monospace" font-size="24" fill="#207448">probe events, app logs</text>
+  </g>
+  <!-- ==================== ROW 10: Termination ==================== -->
+  <g id="row-10">
+    <rect x="40" y="1044" width="380" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="76" cy="1091" r="24" fill="#207448" />
+    <text x="76" y="1091" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">10</text>
+    <g transform="translate(114, 1067)">
+      <circle cx="24" cy="24" r="18" stroke="#207448" stroke-width="3.5" fill="none"/>
+      <line x1="24" y1="12" x2="24" y2="24" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <path d="M 16 16 A 11 11 0 1 0 32 16" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+    </g>
+    <text x="176" y="1102" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Termination</text>
+    <rect x="445" y="1044" width="585" height="94" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="465" y="1100" font-family="sans-serif" font-size="24" fill="#303a36">Terminating forever</text>
+    <line x1="1030" y1="1091" x2="1085" y2="1091" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1085" y="1044" width="475" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1105" y="1087" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="1105" dy="0">kubelet logs, lsof or </tspan>
+      <tspan x="1105" dy="28">fuser on mounts, crictl ps -a</tspan>
+    </text>
+  </g>
+</svg>

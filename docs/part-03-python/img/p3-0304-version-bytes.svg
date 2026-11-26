@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Two domain types: Version sorts like a human, Bytes prints like a human</title>
+  <desc>Infographic explaining Python domain types: Version using total_ordering for human-like sorting and Bytes subclassing int for human-readable string formatting, alongside operator overloading best practices.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Two domain types: Version sorts like a human,</tspan>
+    <tspan x="800" dy="54">Bytes prints like a human</tspan>
+  </text>
+
+  
+  <g>
+    <rect x="40" y="135" width="740" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <polygon points="75,145 51,187 99,187" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="75" y1="158" x2="75" y2="173" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="75" cy="180" r="2" fill="#207448"/>
+    <text x="115" y="176" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Why strings fail</text>
+    <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" y="216">release tags 1.9 and 1.10 compared as</tspan>
+      <tspan x="65" y="246">plain strings: 1.10 comes first, the rollout</tspan>
+      <tspan x="65" y="276">picks the older image and the bug looks like</tspan>
+      <tspan x="65" y="306">a build problem for an hour</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="135" width="740" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="855" cy="155" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 837,155 v 11 c 0,3.3 8,6 18,6 c 10,0 18,-2.7 18,-6 v -11" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 837,166 v 11 c 0,3.3 8,6 18,6 c 10,0 18,-2.7 18,-6 v -11" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="895" y="176" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Bytes(int)</text>
+    <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" y="216">subclass a builtin for a domain type; __str__</tspan>
+      <tspan x="845" y="246">divides by 1024 through B, KiB, MiB, GiB, TiB</tspan>
+      <tspan x="845" y="276">and prints with one decimal; Bytes(1024)</tspan>
+      <tspan x="845" y="306">prints 1.0 KiB rather than 1024</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="375" width="740" height="365" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="56" y1="418" x2="56" y2="408" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="66" y1="418" x2="66" y2="400" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="76" y1="418" x2="76" y2="392" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="86" y1="418" x2="86" y2="384" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 96,418 L 96,386 M 91,392 L 96,384 L 101,392" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="115" y="412" font-family="system-ui, sans-serif" font-size="30" font-weight="bold" fill="#207448">Version with @total_ordering</text>
+
+    
+    <rect x="55" y="430" width="710" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="70" y="456">__init__ stores parts =</tspan>
+      <tspan x="70" y="482">tuple(int(p) for p in s.split("."))</tspan>
+    </text>
+
+    
+    <rect x="55" y="504" width="710" height="96" rx="8" fill="#fffaf3" stroke="#db8129" stroke-width="3"/>
+    <text font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="70" y="532">so 1.9 becomes (1, 9) and</tspan>
+      <tspan x="70" y="560">1.10 becomes (1, 10), and tuple</tspan>
+      <tspan x="70" y="588">comparison puts (1, 10) after (1, 9)</tspan>
+    </text>
+
+    
+    <rect x="55" y="610" width="710" height="118" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="70" y="636">define __eq__ and __lt__; @total_ordering</tspan>
+      <tspan x="70" y="662">generates the rest; both return NotImplemented</tspan>
+      <tspan x="70" y="688">for non-Version operands; __hash__ returns</tspan>
+      <tspan x="70" y="714">hash(self.parts); __repr__ Version(1.10)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="375" width="740" height="365" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 852,396 c -5,0 -7,3 -7,7 c 0,4 0,5 -5,7 c 5,2 5,3 5,7 c 0,4 2,7 7,7" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 874,396 c 5,0 7,3 7,7 c 0,4 0,5 5,7 c -5,2 -5,3 -5,7 c 0,4 -2,7 -7,7" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="858" y1="410" x2="868" y2="410" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="863" y1="405" x2="863" y2="415" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+
+    
+    <rect x="835" y="430" width="710" height="298" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text font-family="system-ui, sans-serif" fill="#303a36">
+      <tspan x="895" y="412" font-size="30" font-weight="bold" fill="#207448">ThirdClass(SecondClass): </tspan>
+      <tspan x="850" y="460" font-size="24">__add__ returns a new ThirdClass so the</tspan>
+      <tspan x="850" y="490" font-size="24">result keeps the same type; __str__ gives</tspan>
+      <tspan x="850" y="520" font-size="24">[ThirdClass: 6] for print; mul changes</tspan>
+      <tspan x="850" y="550" font-size="24">the instance in place and is a named method;</tspan>
+      <tspan x="850" y="580" font-size="24">a custom intersection can be intersect()</tspan>
+      <tspan x="850" y="610" font-size="24">by name or __and__ for &amp;, and plain names</tspan>
+      <tspan x="850" y="640" font-size="24">are clearer unless your objects truly</tspan>
+      <tspan x="850" y="670" font-size="24">behave like built-ins</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="780" width="1520" height="125" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 75,815 L 97,825 C 97,848 75,865 75,865 C 75,865 53,848 53,825 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 65,838 L 72,845 L 85,830" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text font-family="system-ui, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="125" y="818">overload an operator only when its meaning is natural (vectors, sizes, versions, durations);</tspan>
+      <tspan x="125" y="850">return new objects so the value semantics stay clear; return NotImplemented for operand types</tspan>
+      <tspan x="125" y="882">you do not understand; keep __eq__, __hash__ and ordering methods consistent</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="945" width="1520" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 60,1015 L 82,985 C 85,981 90,980 94,983 C 96,985 96,988 95,990 L 89,996 L 94,1001 L 88,1006 L 83,1001 L 76,1007 C 74,1009 71,1009 69,1007 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <text font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="125" y="985">real version handling: packaging.version.Version; IP addresses: ipaddress;</tspan>
+      <tspan x="125" y="1018">durations: datetime.timedelta</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1090" width="1520" height="70" rx="10" fill="#207448"/>
+    <text x="800" y="1134" text-anchor="middle" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Compare versions as tuples of integers, never as strings</text>
+  </g>
+</svg>

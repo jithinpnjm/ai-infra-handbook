@@ -1,0 +1,97 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000">
+  <title>site.yml</title>
+  <desc>Ansible site.yml execution flow and handler flush sequence</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="80" y="70" font-family="ui-monospace, monospace" font-size="48" font-weight="bold" fill="#303a36">site.yml</text>
+
+  
+  <rect x="80" y="120" width="660" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(110, 142)">
+    <path d="M 10 14 L 28 6 L 46 14 C 46 36 28 50 28 50 C 28 50 10 36 10 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 18 26 L 25 33 L 38 19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="185" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">1. pre_tasks</text>
+  <text x="110" y="270" font-family="sans-serif" font-size="24" fill="#303a36">(assert OS, check Slurm DRAIN)</text>
+
+  
+  <path d="M 740 235 L 860 235" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="860" y="120" width="660" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(890, 142)">
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="965" y="180" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">2. Flush handlers</text>
+  <text x="890" y="270" font-family="sans-serif" font-size="24" fill="#303a36">(notified by pre_tasks)</text>
+
+  
+  <path d="M 1190 350 L 1190 372 Q 1190 382 1180 382 L 420 382 Q 410 382 410 392 L 410 415" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="80" y="415" width="660" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(110, 437)">
+    <path d="M 8 16 L 28 8 L 48 16 L 28 24 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 8 28 L 28 36 L 48 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 8 40 L 28 48 L 48 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="185" y="475" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">3. roles -&gt; tasks</text>
+  <text x="110" y="565" font-family="sans-serif" font-size="24" fill="#303a36">(packages, sysctl, templates)</text>
+
+  
+  <path d="M 740 530 L 860 530" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="860" y="415" width="660" height="230" rx="16" fill="#fdfbf7" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(890, 437)">
+    <circle cx="28" cy="28" r="7" fill="#db8129" />
+    <path d="M 46 22 A 19 19 0 1 0 47 34" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <path d="M 44 10 L 48 23 L 35 21" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="965" y="475" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">4. Flush handlers</text>
+  <text x="890" y="555" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="890" dy="0">(Restart service once even if</tspan>
+    <tspan x="890" dy="34">notified by multiple tasks)</tspan>
+  </text>
+
+  
+  <path d="M 1190 645 L 1190 667 Q 1190 677 1180 677 L 420 677 Q 410 677 410 687 L 410 710" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="80" y="710" width="660" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(110, 732)">
+    <rect x="6" y="8" width="44" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="6" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="2.5" />
+    <path d="M 15 28 L 22 34 L 15 40" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="26" y1="40" x2="38" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="185" y="770" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">5. post_tasks</text>
+  <text x="110" y="860" font-family="sans-serif" font-size="24" fill="#303a36">(nvidia-smi / uri smoke test)</text>
+
+  
+  <path d="M 740 825 L 860 825" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <rect x="860" y="710" width="660" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(890, 732)">
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="965" y="770" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">6. Flush handlers</text>
+  <text x="890" y="860" font-family="sans-serif" font-size="24" fill="#303a36">(notified by post_tasks)</text>
+</svg>

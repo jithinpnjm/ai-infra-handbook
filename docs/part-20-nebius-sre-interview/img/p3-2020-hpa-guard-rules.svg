@@ -1,0 +1,141 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The rules around the HPA ratio that stop wrong decisions</title>
+  <desc>Infographic explaining the HPA ratio evaluation formula and the five guard rules that prevent erroneous autoscaling decisions in Kubernetes.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The rules around the HPA ratio that stop wrong decisions</text>
+
+  
+  
+  <g id="guard-tolerance">
+    <rect x="40" y="120" width="740" height="320" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 140)">
+      <path d="M 28 4 L 50 12 C 50 36 38 48 28 54 C 18 48 6 36 6 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="18" y1="28" x2="38" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="20" x2="28" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="135" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Tolerance:</text>
+    
+    <text x="65" y="228" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">ratio close to 1.0 is skipped; default 0.1</tspan>
+      <tspan x="65" dy="30">cluster-wide via a <tspan font-family="monospace">kube-controller-manager</tspan></tspan>
+      <tspan x="65" dy="30">flag; per-HPA <tspan font-family="monospace">behavior.scaleUp.tolerance</tspan></tspan>
+      <tspan x="65" dy="30">and <tspan font-family="monospace">scaleDown.tolerance</tspan> fields on by</tspan>
+      <tspan x="65" dy="30">default from Kubernetes 1.37; example</tspan>
+      <tspan x="65" dy="30">average 11.9 against target 11 is ratio 1.08,</tspan>
+      <tspan x="65" dy="30">nothing happens</tspan>
+    </text>
+  </g>
+
+  
+  <g id="guard-not-ready-pods">
+    <rect x="820" y="120" width="740" height="320" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(845, 140)">
+      <rect x="6" y="8" width="44" height="42" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="6" y1="26" x2="50" y2="26" stroke="#207448" stroke-width="3" stroke-dasharray="5 3"/>
+      <circle cx="28" cy="38" r="4" fill="#207448"/>
+    </g>
+    
+    <text x="915" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Not-ready pods on scale-up</text>
+    
+    <text x="845" y="235" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">are assumed to use 0 percent of the target:</tspan>
+      <tspan x="845" dy="38">88 in flight over 8 pods (4 not ready) is 11,</tspan>
+      <tspan x="845" dy="38">ratio 1.0, no runaway</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="guard-several-metrics">
+    <rect x="40" y="470" width="370" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 492)">
+      <rect x="6" y="26" width="10" height="22" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="22" y="14" width="10" height="34" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="38" y="4" width="10" height="44" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    </g>
+    
+    <text x="135" y="530" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Several metrics:</text>
+    
+    <text x="65" y="585" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">compute a count</tspan>
+      <tspan x="65" dy="36">for each and take</tspan>
+      <tspan x="65" dy="36">the largest</tspan>
+    </text>
+  </g>
+
+  
+  <g id="center-formula">
+    <rect x="440" y="470" width="720" height="310" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(520, 488)">
+      <circle cx="28" cy="24" r="18" fill="none" stroke="#db8129" stroke-width="3.5"/>
+      <polyline points="28,14 28,24 38,24" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="815" y="523" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">evaluated every 15 s sync</text>
+
+    
+    <rect x="465" y="555" width="670" height="200" rx="10" fill="#f5f8f5" stroke="#db8129" stroke-width="1.5"/>
+    <text x="800" y="605" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">desiredReplicas = ceil(</tspan>
+      <tspan x="800" dy="44">currentReplicas x currentMetricValue</tspan>
+      <tspan x="800" dy="44">/ desiredMetricValue)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="guard-metric-fetch-fail">
+    <rect x="1190" y="470" width="370" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1215, 492)">
+      <circle cx="26" cy="26" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+      <line x1="14" y1="14" x2="38" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="38" y1="14" x2="14" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    
+    <text x="1215" y="565" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1215" dy="0">A metric cannot</tspan>
+      <tspan x="1215" dy="34">be fetched:</tspan>
+    </text>
+    
+    <text x="1215" y="640" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1215" dy="0">if the others suggest</tspan>
+      <tspan x="1215" dy="30">scale-down, scaling</tspan>
+      <tspan x="1215" dy="30">is skipped; scale-up</tspan>
+      <tspan x="1215" dy="30">still works</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="guard-keda">
+    <rect x="40" y="810" width="1520" height="260" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 830)">
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M28 6 L28 12 M28 44 L28 50 M6 28 L12 28 M44 28 L50 28 M12 12 L17 17 M39 39 L44 44 M12 44 L17 39 M39 17 L44 12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="135" y="868" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">KEDA ScaledObject</text>
+    
+    <text x="65" y="925" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">creates and owns an HPA; its own cooldown applies only to scaling to zero;</tspan>
+      <tspan x="65" dy="40">Prometheus trigger takes query and threshold, <tspan font-family="monospace">metricType</tspan> defaults to <tspan font-family="monospace">AverageValue</tspan></tspan>
+      <tspan x="65" dy="40">so the threshold is per replica</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer">
+    <rect x="80" y="1100" width="1440" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="1134" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">metric source: Prometheus Adapter (Production Kubernetes) or KEDA (LLMs in Production recommends KEDA)</text>
+  </g>
+</svg>

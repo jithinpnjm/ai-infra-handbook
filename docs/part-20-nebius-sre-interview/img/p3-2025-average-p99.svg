@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Averaging p99 across pods: 1.47 versus the true 0.99</title>
+  <desc>Infographic explaining why averaging per-pod p99 values gives misleading results compared to aggregating bucket rates across pods before calculating the fleet quantile.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Averaging p99 across pods: 1.47 versus the true 0.99</text>
+
+  
+  <g id="two-pod-bars">
+    <rect x="50" y="95" width="1500" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="75" y="115" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="75" y1="131" x2="123" y2="131" stroke="#207448" stroke-width="3"/>
+    <line x1="75" y1="147" x2="123" y2="147" stroke="#207448" stroke-width="3"/>
+    <circle cx="87" cy="123" r="3" fill="#207448"/>
+    <circle cx="87" cy="139" r="3" fill="#207448"/>
+    <circle cx="87" cy="155" r="3" fill="#207448"/>
+
+    <text x="145" y="152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Two pod bars</text>
+
+    
+    <rect x="145" y="168" width="1310" height="58" rx="8" fill="#d5e8da" stroke="#207448" stroke-width="2"/>
+    <text x="175" y="205" font-family="sans-serif" font-size="24" fill="#303a36">Pod A: 1,000 requests per step, p99 0.95 s</text>
+
+    
+    <rect x="145" y="238" width="680" height="58" rx="8" fill="#d5e8da" stroke="#207448" stroke-width="2"/>
+    <text x="175" y="275" font-family="sans-serif" font-size="24" fill="#303a36">Pod B: 10 requests per step, p99 1.99 s</text>
+  </g>
+
+  
+  <g id="wrong-path">
+    <rect x="50" y="335" width="730" height="260" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="103" cy="383" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="93" y1="373" x2="113" y2="393" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="113" y1="373" x2="93" y2="393" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+    <text x="145" y="392" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Wrong path</text>
+    
+    <text x="75" y="450" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">average of the two p99 values = 1.47 s,</tspan>
+      <tspan x="75" dy="36">which gives the idle pod the same vote</tspan>
+      <tspan x="75" dy="36">as the busy one</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-path">
+    <rect x="820" y="335" width="730" height="260" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+
+    
+    <circle cx="873" cy="383" r="24" fill="none" stroke="#db8129" stroke-width="4"/>
+    <polyline points="861,383 869,391 885,375" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <text x="915" y="392" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Right path</text>
+    
+    <text x="845" y="435" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">sum bucket rates by le across both pods,</tspan>
+      <tspan x="845" dy="35">take the quantile once: p99 of all requests</tspan>
+      <tspan x="845" dy="35">together = 0.99 s; the busy pod dominates,</tspan>
+      <tspan x="845" dy="35">as it should</tspan>
+    </text>
+  </g>
+
+  
+  <g id="query-forms">
+    <rect x="50" y="615" width="730" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="79" y="634" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="89,652 97,658 89,664" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="103" y1="664" x2="115" y2="664" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <text x="145" y="667" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Query forms</text>
+
+    
+    <rect x="75" y="692" width="680" height="76" rx="6" fill="#dbe9de" stroke="#207448" stroke-width="1.5"/>
+    <text x="90" y="722" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="90" dy="0">sum by (le) (rate(...[5m]))</tspan>
+      <tspan x="90" dy="32">then histogram_quantile(0.99, ...)</tspan>
+    </text>
+
+    
+    <text x="75" y="798" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">sum by (model, le) keeps the model label;</tspan>
+      <tspan x="75" dy="34">plain sum drops le and returns nothing;</tspan>
+      <tspan x="75" dy="34">sum by (pod) drops le and returns nothing</tspan>
+    </text>
+  </g>
+
+  
+  <g id="edge-cases">
+    <rect x="820" y="615" width="730" height="275" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <polygon points="873,634 901,658 873,682 845,658" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="873" y1="648" x2="873" y2="662" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="873" cy="670" r="2.5" fill="#207448"/>
+
+    <text x="915" y="667" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Edge cases</text>
+
+    <text x="845" y="722" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">highest bucket must have an upper bound</tspan>
+      <tspan x="845" dy="35">of +Inf; a histogram with no observations</tspan>
+      <tspan x="845" dy="35">returns NaN, so an empty histogram</tspan>
+      <tspan x="845" dy="35">looks like a broken panel</tspan>
+    </text>
+  </g>
+
+  
+  <g id="scenario-note">
+    <rect x="50" y="910" width="1500" height="240" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="79" y="929" width="48" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="103" y1="965" x2="103" y2="973" stroke="#207448" stroke-width="4"/>
+    <line x1="91" y1="973" x2="115" y2="973" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="87" y1="947" x2="119" y2="947" stroke="#207448" stroke-width="3"/>
+
+    <text x="145" y="967" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Scenario note</text>
+
+    <text x="75" y="1022" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="75" dy="0">a flat p99 panel of 0.4 s while customers say slow: the panel averages per-pod quantiles;</tspan>
+      <tspan x="75" dy="38">the linter reports P003; rerun as the fleet quantile and check bucket coverage</tspan>
+      <tspan x="75" dy="38">near the 1 s SLO limit and traffic skew</tspan>
+    </text>
+  </g>
+</svg>

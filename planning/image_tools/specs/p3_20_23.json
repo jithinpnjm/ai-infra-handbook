@@ -1,0 +1,112 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-pull-by-pool",
+  "title": "Drill 2: one difference lines up with one pool",
+  "spec": "Two-column comparison for the 40 GB llm-server:v3 image. Column 'Old pool (7 nodes): pulled fine yesterday; node-level registry credentials; cold-node pull takes about 9 minutes'. Column 'New pool (3 of 10 new nodes) in ImagePullBackOff: service account has no imagePullSecrets; registry host times out on port 443 from a new node because egress rules for the new subnet are missing'. Event sequence below: 'Pulling image registry.example/llm-server:v3' then 'Error: ErrImagePull' then 'Back-off pulling image'; delay keeps growing up to 300 seconds. Checks that agree: 'image name and tag are correct, the tag exists'. Fix list: 'fix the egress rule or the pull secret', 'delete stuck pods so the next pull happens now, not at the back-off ceiling', 'take the pull off the critical path: bake the image into the node image or pre-pull with a DaemonSet'. Prevention: 'cold start is a capacity number; measure pull time per pool; never scale into a pool that has not pulled the image'. Text at least 24px.",
+  "anchor": "### Drill 2: ImagePullBackOff on a huge model image",
+  "alt": "Two columns compare an old node pool that pulls the image with a new pool blocked by missing egress and a pull secret.",
+  "cap": "A failure that lines up with one pool points at what differs about that pool."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-startup-probe-timeline",
+  "title": "Drill 3: a liveness probe kills a slow load",
+  "spec": "Horizontal time axis 0 to 300 seconds with two lanes. Lane 'what exists': weights load for about 90 seconds ('loading weights 62%' then nothing in the previous logs). Lane 'broken probes': liveness initialDelaySeconds 5, periodSeconds 10, failureThreshold 1, no startup probe; first check near 5 s fails, event 'Unhealthy: Liveness probe failed' three times then 'Killing: failed liveness probe, will be restarted'; restart count 40, one restart every four minutes. Lane 'fixed': startup probe with failureThreshold 30 and period 10 gives a 300 second window; liveness only starts after the startup probe passes. Restart delay strip: 'starts at 10 s, doubles, capped at 300 s, resets after ten clean minutes'. Contrast: 'OOM kill shows Last State Terminated, Reason OOMKilled, Exit Code 137; here Reason is Error and no OOMKilled'. Prevention: 'liveness answers is this process stuck, not is it ready; slow starters get a startup probe sized to a measured load time'. Text at least 24px.",
+  "anchor": "### Drill 3: CrashLoopBackOff, OOM or probe kill",
+  "alt": "A timeline shows a liveness probe firing at 5 seconds during a 90 second model load and a startup probe window of 300 seconds that fixes it.",
+  "cap": "A liveness probe cannot tell a slow process from a stuck one, so a startup probe covers the load time."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-eviction-limits",
+  "title": "Drill 4: what limits the blast radius of a dead node",
+  "spec": "Numbered limiters on a NotReady event for kube-worker-1 with eight inference pods and nine other nodes. 'Reading: node Ready Unknown, reason NodeStatusUnknown, message Kubelet stopped posting node status; taints node.kubernetes.io/unreachable NoExecute and NoSchedule; VM still running in the console, SSH hangs, console shows filesystem read-only'. 'Limiter 1: node controller waits 5 minutes before submitting the first eviction'. 'Limiter 2: evictions rate limited by --node-eviction-rate, default 0.1 per second'. 'Limiter 3: when at least 55 percent of nodes in a zone are unhealthy the rate drops'. 'Limiter 4: on a cluster of 50 nodes or fewer evictions stop'. Outcome 'a partitioned zone does not trigger a mass reschedule'. Order of fix: '1 confirm replacement capacity exists for eight pods on nine nodes; 2 recover or replace the node: systemctl status kubelet, journalctl -xeu kubelet; 3 if damaged, drain what you can, delete the node object, let the autoscaler replace it; never delete the node first, read conditions and logs first'. Prevention: 'alert on Ready not true for longer than the eviction delay; keep N+1 GPU capacity'. Text at least 24px.",
+  "anchor": "### Drill 4: A node goes NotReady",
+  "alt": "Four limiters on node eviction and an ordered fix list for a node that stopped posting status.",
+  "cap": "Eviction waits five minutes and is rate limited, so confirm capacity before touching the node object."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-eviction-vs-oom",
+  "title": "Drill 5: eviction storm versus OOM kill",
+  "spec": "Two-lane comparison for batch pods that request 2Gi and use 14Gi with no limits, while inference pods have requests equal to limits. Lane 'Eviction by kubelet': trigger 'node-pressure signal such as memory.available below 100Mi (other hard thresholds: nodefs.available below 10 percent, imagefs.available below 15 percent)'; event text 'The node was low on resource: memory'; node condition MemoryPressure True and a memory-pressure taint that appears and disappears; pod phase set to Failed; PDB and termination grace period ignored for hard thresholds; the Deployment controller creates replacements that repeat the growth; an evicted pod does not come back by itself. Eviction order: 'first pods whose usage exceeds requests, by priority then how far over; QoS does not order eviction but predicts it; requests equal to limits are evicted last'. Lane 'Kernel OOM kill': memory runs out before the kubelet can reclaim; victim chosen by oom_score_adj, -997 for Guaranteed pods; killed container restarts under the restart policy. Fix: 'stop the source first, cap or move the batch workload, set requests near true usage, do not delete node taints by hand, reserve memory for the kubelet, separate serving and batch pools'. Text at least 24px.",
+  "anchor": "### Drill 5: Eviction storm",
+  "alt": "Two lanes contrast kubelet eviction under memory pressure with a kernel OOM kill and list the eviction order.",
+  "cap": "Evicted pods do not restart by themselves while OOM-killed containers do, so recovery differs."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-pdb-arithmetic",
+  "title": "Drill 6: why the drain never finishes",
+  "spec": "Worked arithmetic. Deployment llm-server has 3 replicas, all Ready. PDB minAvailable 3. Allowed disruptions = replicas available (3) minus minAvailable (3) = 0. Drain on gpu-node-2 asks the eviction API, answer 429 Too Many Requests, kubectl retries ('eviction of a pod llm-server-... is being retried') for thirty minutes. Other pods on the node are DaemonSet pods, already ignored by drain. Fix box: PDB maxUnavailable 1 gives allowed disruptions 1; add unhealthyPodEvictionPolicy AlwaysAllow so broken pods can be evicted; check the replacement pod becomes Ready before the next eviction. Forbidden shortcut: 'delete the pod directly: deletion bypasses the budget and drops serving capacity at once'. Related traps: 'eviction API can also return 500 when more than one PDB references one Pod', 'if new pods never become Ready the budget will never clear by waiting; look at why replacements are not Ready'. Prevention: 'list every PDB with zero allowed disruptions before an upgrade'. Text at least 24px.",
+  "anchor": "### Drill 6: A PDB blocks a drain",
+  "alt": "Arithmetic showing three replicas minus minAvailable three gives zero allowed disruptions and the maxUnavailable fix.",
+  "cap": "A budget equal to the replica count allows no voluntary eviction, so change the budget instead of deleting pods."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-dns-half-slow",
+  "title": "Drill 7: half the lookups are slow because one replica is",
+  "spec": "Diagram: gateway pod sends queries to Service kube-dns; kube-proxy iptables chain sends each to one of two backends with probability 0.5: CoreDNS replica A (pod IP, healthy node, answers instantly) and CoreDNS replica B (on a node under heavy CPU pressure, no errors in logs, very slow). Result 'about half of lookups fast, half take five seconds; nslookup kubernetes.default from a debug pod alternates instant and timeout'. Test box: 'query each replica by its pod IP: A instant, B times out'. Fix order from the Kubernetes DNS debugging page: 'nslookup kubernetes.default from a pod; check /etc/resolv.conf; list pods with label k8s-app=kube-dns in kube-system; read logs; confirm kube-dns Service and EndpointSlice; then move the unhealthy replica off the loaded node'. Prevention: 'CoreDNS replicas spread across nodes with NodeLocal DNSCache, a per-node DaemonSet, in front'. Note 'intermittent failure tied to one replica means check backends first'. Text at least 24px.",
+  "anchor": "### Drill 7: CoreDNS slow for half the lookups",
+  "alt": "A gateway query splits with probability 0.5 across two CoreDNS replicas, one healthy and one slow on a loaded node.",
+  "cap": "Intermittent failures often mean one bad backend, so query each replica by its IP."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-no-endpoints",
+  "title": "Drill 8: a Service with no endpoints",
+  "spec": "Side-by-side compare. Left Service llm-server ClusterIP 10.0.1.175 port 80/TCP with selector app: llm-serv. Right three pods Running 3/3 with label app: llm-server. Between them a red mismatch mark on the missing letter e. Underneath 'EndpointSlice controller evaluates each Service selector and writes the result; kubectl get endpointslices -l kubernetes.io/service-name=llm-server shows no addresses; the gateway gets connection refused'. Two causes as a fork: 'cause 1: selector does not match pod labels, compare character by character, correct the selector'; 'cause 2 (more common): labels match but no ready addresses because the readiness probe fails; the controller reads the pod Ready condition and a server leaves the endpoints after failing checks'. Also 'targetPort is the named port http, which exists, so rule it out'. Fix verification: 'apply the corrected Service and confirm the EndpointSlice fills before calling it done'. Prevention: 'selectors and labels from one template; a deploy check fails if a Service has no EndpointSlice addresses'. Text at least 24px.",
+  "anchor": "### Drill 8: A Service has no endpoints",
+  "alt": "A Service selector with a one-letter typo is compared with pod labels, and a fork shows the readiness variant.",
+  "cap": "Healthy pods do not help when the selector selects nothing or the pods are not Ready."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-hpa-unknown",
+  "title": "Drill 9: an HPA with no denominator",
+  "spec": "Formula strip: 'CPU utilisation = usage divided by the container CPU request'. Draw the division with the denominator box empty and labelled 'CPU requests missing, only limits set' so the result shows <unknown>/70%; condition 'HPA cannot compute a metric'; metrics-server is running and kubectl top pods returns values, so the pipeline is fine. Second problem: 'GPU inference: CPU about 40 percent busy while the GPU is saturated, the wrong signal'. Fix steps: '1 set requests; 2 move the signal to queue depth or running requests per replica; Metrics Server gives CPU and memory only, use custom application metrics for other signals'. Behaviour box: '10 percent tolerance by default; downscale stabilization window 300 seconds; scale-up has none; new GPU pods may still be Pending, which sends you back to the Pending GPU drill and the cluster autoscaler'. Prevention: 'an alert on unknown HPA targets; inference scales on queue depth, not CPU'. Text at least 24px.",
+  "anchor": "### Drill 9: The HPA does not scale",
+  "alt": "A utilisation fraction with an empty denominator shows why the HPA target reads unknown when CPU requests are missing.",
+  "cap": "No CPU request means nothing to divide by, and CPU is the wrong signal for a GPU server anyway."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-plugin-after-upgrade",
+  "title": "Drill 10: GPU capacity vanished on two upgraded nodes",
+  "spec": "Three-step cause chain. 'Upgrade recreated two GPU nodes with the GPU taint' then 'device plugin DaemonSet has no toleration for that taint: desired 10, ready 8, missing pods are on the two upgraded nodes' then 'kubelet never learns about the GPUs: Allocatable nvidia.com/gpu is 0 on both nodes (others show 8); pod events show Insufficient nvidia.com/gpu; old pods still run'. Fix: 'add the toleration to the DaemonSet and watch the pods come up; check Allocatable before you uncordon; check the plugin re-registers after any kubelet restart (a new kubelet deletes the plugin sockets); unhealthy device lowers allocatable and keeps capacity the same, so compare the two numbers'. Upgrade order with gate: 'kubectl drain NODE --ignore-daemonsets, upgrade and restart kubelet, GATE: Allocatable shows the GPU count, then uncordon'. Prevention: 'plugin DaemonSet tolerates every GPU taint; runbook step checks Allocatable before uncordon'. Text at least 24px.",
+  "anchor": "### Drill 10: Device plugin missing after an upgrade",
+  "alt": "A chain from the recreated tainted nodes to the missing device plugin pods to zero allocatable GPUs, with an upgrade gate.",
+  "cap": "Check Allocatable shows the GPU count before uncordoning an upgraded node."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-etcd-split",
+  "title": "Drill 11: control plane slow while serving is fine",
+  "spec": "Two-zone diagram. Control plane side: 3 etcd members, two near each other with round trips under 1 ms and one rebuilt yesterday in another region with about 60 ms round trip; leader changed twice in the last hour; kubectl commands take ten seconds; writes and reads slow and rising; disk is fast local SSD on all members so disk is not the cause. Data plane side: serving pods have no dependency on the Kubernetes API so they keep answering. Labels 'running pods are fine means the API layer is slow, not the data plane'. Cause note: 'etcd defaults assume one datacenter; test round trips and tune heartbeat interval and election timeout if you must span; etcd across regions is strongly discouraged'. Fix: 'bring the member back close, or remove it and add one in the same datacenter; one membership change at a time; snapshot first; do not defragment a live member as a reflex; do not roll the whole control plane at once'. Prevention: 'members in one low-latency domain with an odd count; alert on leader changes and request latency'. Text at least 24px.",
+  "anchor": "### Drill 11: etcd is slow after a topology change",
+  "alt": "One distant etcd member at 60 ms slows the control plane while serving pods continue to answer.",
+  "cap": "A far-away etcd member slows deploys and kubectl while pods without API dependencies keep serving."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "23",
+  "name": "p3-2023-gpu-upgrade-steps",
+  "title": "Upgrading GPU nodes one at a time without an outage",
+  "spec": "Loop repeated per node. Step 1 'PDB allows one disruption (maxUnavailable 1)'. Step 2 'kubectl drain NODE --ignore-daemonsets (kubeadm requires draining before a minor kubelet upgrade)'. Step 3 'upgrade and restart the kubelet'. Step 4 'check the device plugin pod is back and registered, and node Allocatable shows the GPU count'. Step 5 'uncordon'. Step 6 'next node'. A gate marked between step 4 and 5: 'do not uncordon until Allocatable is restored'. Spoken line: 'One node at a time, with a PDB that allows one disruption, and a check that the device plugin is back and Allocatable is restored before the next node.' Text at least 24px.",
+  "anchor": "### \"How do you upgrade GPU nodes without an outage?\"",
+  "alt": "A per-node loop of drain, upgrade, check Allocatable and uncordon with a gate before uncordoning.",
+  "cap": "Capacity is protected by upgrading one node at a time and gating on restored GPU Allocatable."
+ }
+]

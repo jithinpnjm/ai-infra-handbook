@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reverse path filtering: three modes, the effective value and how to see the silent drops</title>
+  <desc>Visual infographic explaining Linux reverse path filtering modes, effective sysctl value calculation, multi-homed silent drop diagnostics, and policy routing fixes.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Reverse path filtering: three modes,</text>
+  <text x="800" y="122" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">the effective value and how to see the silent drops</text>
+
+  
+  <rect x="40" y="150" width="460" height="770" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(242, 168)">
+    <path d="M 28 4 L 48 12 L 48 28 C 48 42 28 52 28 52 C 28 52 8 42 8 28 L 8 12 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <circle cx="28" cy="24" r="5" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 28 29 L 28 37" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <rect x="60" y="235" width="420" height="250" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="270" y="280" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="270" dy="0">a packet arrives on NIC B with</tspan>
+    <tspan x="270" dy="38">source S; the guard asks:</tspan>
+    <tspan x="270" dy="38">if I wanted to answer S,</tspan>
+    <tspan x="270" dy="38">would I use the door</tspan>
+    <tspan x="270" dy="38">they came through?</tspan>
+  </text>
+
+  
+  <path d="M 160 485 L 160 558" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <path d="M 380 485 L 380 558" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="60" y="565" width="200" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(132, 600)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 18 28 L 25 35 L 38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="160" y="700" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="160" dy="0">yes: accept</tspan>
+  </text>
+
+  
+  <rect x="280" y="565" width="200" height="240" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(352, 590)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 18 18 L 38 38 M 38 18 L 18 38" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="380" y="665" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="380" dy="0">no: assume</tspan>
+    <tspan x="380" dy="34">the source</tspan>
+    <tspan x="380" dy="34">is forged,</tspan>
+    <tspan x="380" dy="34">drop</tspan>
+  </text>
+
+  
+  <rect x="530" y="150" width="480" height="770" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(742, 168)">
+    <rect x="6" y="8" width="44" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="14" y1="18" x2="42" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="14" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="14" y1="38" x2="42" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <rect x="550" y="235" width="440" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="770" y="278" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="770" dy="0" font-weight="bold">rp_filter 0:</tspan>
+    <tspan x="770" dy="34">no source validation</tspan>
+  </text>
+
+  
+  <rect x="550" y="355" width="440" height="180" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="770" y="392" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="770" dy="0" font-weight="bold">rp_filter 1 strict:</tspan>
+    <tspan x="770" dy="32">the best route back</tspan>
+    <tspan x="770" dy="32">to the source must use</tspan>
+    <tspan x="770" dy="32">the same interface</tspan>
+    <tspan x="770" dy="32">(RFC 3704 strict)</tspan>
+  </text>
+
+  
+  <rect x="550" y="550" width="440" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="770" y="590" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="770" dy="0" font-weight="bold">rp_filter 2 loose:</tspan>
+    <tspan x="770" dy="34">the source must be</tspan>
+    <tspan x="770" dy="34">reachable via any interface</tspan>
+  </text>
+
+  
+  <rect x="550" y="685" width="440" height="215" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(742, 698)">
+    <circle cx="28" cy="20" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 28 12 L 28 28 M 20 20 L 36 20" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="770" y="760" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="770" dy="0" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">effective value for</tspan>
+    <tspan x="770" dy="34" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif">an interface =</tspan>
+    <tspan x="770" dy="40" font-weight="bold">max(conf.all.rp_filter,</tspan>
+    <tspan x="770" dy="34" font-weight="bold">conf.&lt;if&gt;.rp_filter)</tspan>
+  </text>
+
+  
+  <rect x="1040" y="150" width="520" height="770" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1272, 168)">
+    <rect x="6" y="10" width="44" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="12" y="36" width="8" height="10" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="24" y="36" width="8" height="10" fill="none" stroke="#207448" stroke-width="3" />
+    <rect x="36" y="36" width="8" height="10" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="16" cy="20" r="3" fill="#207448" />
+    <circle cx="28" cy="20" r="3" fill="#207448" />
+    <circle cx="40" cy="20" r="3" fill="#207448" />
+  </g>
+
+  
+  <rect x="1060" y="235" width="480" height="175" rx="10" fill="#fef3e7" stroke="#db8129" stroke-width="3" />
+  <text x="1080" y="268" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1080" dy="0">Per-NIC subnets and asymmetric</tspan>
+    <tspan x="1080" dy="32">flows (rails, storage, VIPs):</tspan>
+    <tspan x="1080" dy="32">strict mode causes silent drops</tspan>
+    <tspan x="1080" dy="32">that look like packet loss</tspan>
+    <tspan x="1080" dy="32">in ethtool</tspan>
+  </text>
+
+  
+  <rect x="1060" y="425" width="480" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1080" y="458" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="1080" dy="0" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold">Find them: </tspan><tspan>nstat -az |</tspan>
+    <tspan x="1080" dy="32">egrep IPReversePathFilter|</tspan>
+    <tspan x="1080" dy="32">IpInAddrErrors, or the</tspan>
+    <tspan x="1080" dy="32">IPReversePathFilter counter in</tspan>
+    <tspan x="1080" dy="32">/proc/net/netstat</tspan>
+  </text>
+
+  
+  <rect x="1060" y="615" width="480" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1080" y="650" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="1080" dy="0" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold">Log impossible sources: </tspan>
+    <tspan x="1080" dy="34">sysctl -w net.ipv4.conf.all.</tspan>
+    <tspan x="1080" dy="34">log_martians=1, then dmesg</tspan>
+  </text>
+
+  
+  <rect x="1060" y="765" width="480" height="140" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1080" y="798" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="1080" dy="0" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-weight="bold">Read settings: </tspan><tspan>sysctl</tspan>
+    <tspan x="1080" dy="32">net.ipv4.conf.all.rp_filter</tspan>
+    <tspan x="1080" dy="32">net.ipv4.conf.default.rp_filter</tspan>
+    <tspan x="1080" dy="32">net.ipv4.conf.eth0.rp_filter</tspan>
+  </text>
+
+  
+  <rect x="40" y="945" width="1520" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(68, 970)">
+    <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 18 38 L 38 18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <path d="M 32 14 L 42 24" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  <text x="140" y="988" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    <tspan x="140" dy="0">set rp_filter to 2 or 0 where that fits, and use policy routing</tspan>
+    <tspan x="140" dy="36">so replies leave the same NIC the requests arrived on</tspan>
+  </text>
+
+  
+  <rect x="40" y="1075" width="1520" height="85" rx="10" fill="#207448" />
+  <g transform="translate(68, 1090)">
+    <circle cx="28" cy="28" r="20" fill="none" stroke="#ffffff" stroke-width="3" />
+    <line x1="28" y1="20" x2="28" y2="30" stroke="#ffffff" stroke-width="3" stroke-linecap="round" />
+    <circle cx="28" cy="38" r="2.5" fill="#ffffff" />
+  </g>
+  <text x="800" y="1128" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    If the reply leaves on the wrong NIC, fix the routing with policy routing before you relax rp_filter
+  </text>
+</svg>

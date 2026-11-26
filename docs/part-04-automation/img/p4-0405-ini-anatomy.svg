@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading hosts.ini as a spreadsheet of groups</title>
+  <desc>An infographic explaining Ansible hosts.ini syntax, showing groups as tables, hosts as rows, variables as columns, and special suffixes.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Reading hosts.ini as a spreadsheet of groups</text>
+
+  
+  <g id="left-panel">
+    
+    <rect x="40" y="85" width="740" height="1015" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <path d="M 40 97 Q 40 85 52 85 L 768 85 Q 780 85 780 97 L 780 165 L 40 165 Z" fill="#e8f1ea"/>
+    <line x1="40" y1="165" x2="780" y2="165" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(60, 97)">
+      <rect x="5" y="2" width="46" height="52" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="5" y1="18" x2="51" y2="18" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="18" x2="28" y2="54" stroke="#207448" stroke-width="3"/>
+      <line x1="5" y1="36" x2="51" y2="36" stroke="#207448" stroke-width="3"/>
+    </g>
+    <text x="135" y="137" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Annotated INI file</text>
+
+    
+    <g transform="translate(60, 180)">
+      <rect width="700" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M 0 8 Q 0 0 8 0 L 692 0 Q 700 0 700 8 L 700 36 L 0 36 Z" fill="#e8f1ea"/>
+      <line x1="0" y1="36" x2="700" y2="36" stroke="#207448" stroke-width="1.5"/>
+      <text x="16" y="26" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Top host with no group</text>
+      <text x="16" y="65" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">mgmt01 ansible_host=10.1.0.2</text>
+    </g>
+
+    
+    <g transform="translate(60, 279)">
+      <rect width="700" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M 0 8 Q 0 0 8 0 L 692 0 Q 700 0 700 8 L 700 36 L 0 36 Z" fill="#e8f1ea"/>
+      <line x1="0" y1="36" x2="700" y2="36" stroke="#207448" stroke-width="1.5"/>
+      <text x="16" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">[login]</text>
+      <text x="16" y="65" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">login01 ansible_host=10.1.1.5</text>
+    </g>
+
+    
+    <g transform="translate(60, 378)">
+      <rect width="700" height="170" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M 0 8 Q 0 0 8 0 L 692 0 Q 700 0 700 8 L 700 36 L 0 36 Z" fill="#e8f1ea"/>
+      <line x1="0" y1="36" x2="700" y2="36" stroke="#207448" stroke-width="1.5"/>
+      <text x="16" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">[gpu_h100]</text>
+      
+      <line x1="0" y1="102" x2="700" y2="102" stroke="#e8f1ea" stroke-width="1.5"/>
+      <text x="16" y="66" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">gpu[001:032] ansible_user=automation</text>
+      <text x="16" y="93" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#506058">(range gpu001 to gpu032)</text>
+      
+      <rect x="2" y="104" width="696" height="64" rx="6" fill="#fff9f2"/>
+      <rect x="2" y="104" width="8" height="64" fill="#db8129"/>
+      <text x="20" y="132" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">gpu033 gpu_count=4</text>
+      <text x="20" y="159" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(a node with a different build)</text>
+    </g>
+
+    
+    <g transform="translate(60, 562)">
+      <rect width="700" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M 0 8 Q 0 0 8 0 L 692 0 Q 700 0 700 8 L 700 36 L 0 36 Z" fill="#e8f1ea"/>
+      <line x1="0" y1="36" x2="700" y2="36" stroke="#207448" stroke-width="1.5"/>
+      <text x="16" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">[gpu_a100]</text>
+      <text x="16" y="65" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">dgx-a100-[01:08].mgmt.example.com</text>
+    </g>
+
+    
+    <g transform="translate(60, 661)">
+      <rect width="700" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M 0 8 Q 0 0 8 0 L 692 0 Q 700 0 700 8 L 700 36 L 0 36 Z" fill="#e8f1ea"/>
+      <line x1="0" y1="36" x2="700" y2="36" stroke="#207448" stroke-width="1.5"/>
+      <text x="16" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">[gpu:children]</text>
+      <text x="16" y="65" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">gpu_h100 gpu_a100</text>
+      <text x="16" y="92" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#506058">(group of groups)</text>
+    </g>
+
+    
+    <g transform="translate(60, 775)">
+      <rect width="700" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M 0 8 Q 0 0 8 0 L 692 0 Q 700 0 700 8 L 700 36 L 0 36 Z" fill="#e8f1ea"/>
+      <line x1="0" y1="36" x2="700" y2="36" stroke="#207448" stroke-width="1.5"/>
+      <text x="16" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">[slurm_controller]</text>
+      <text x="16" y="65" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">slurmctl01</text>
+    </g>
+
+    
+    <g transform="translate(60, 874)">
+      <rect width="700" height="85" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M 0 8 Q 0 0 8 0 L 692 0 Q 700 0 700 8 L 700 36 L 0 36 Z" fill="#e8f1ea"/>
+      <line x1="0" y1="36" x2="700" y2="36" stroke="#207448" stroke-width="1.5"/>
+      <text x="16" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">[cluster:children]</text>
+      <text x="16" y="65" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">login gpu slurm_controller</text>
+    </g>
+
+    
+    <g transform="translate(60, 973)">
+      <rect width="700" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+      <path d="M 0 8 Q 0 0 8 0 L 692 0 Q 700 0 700 8 L 700 36 L 0 36 Z" fill="#e8f1ea"/>
+      <line x1="0" y1="36" x2="700" y2="36" stroke="#207448" stroke-width="1.5"/>
+      <text x="16" y="26" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">[gpu:vars]</text>
+      <text x="16" y="66" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">nvidia_driver_branch=550,</text>
+      <text x="16" y="98" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">ansible_python_interpreter=/usr/bin/python3</text>
+    </g>
+  </g>
+
+  
+  <g id="right-panel">
+    
+    <rect x="820" y="85" width="740" height="1015" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <path d="M 820 97 Q 820 85 832 85 L 1548 85 Q 1560 85 1560 97 L 1560 165 L 820 165 Z" fill="#e8f1ea"/>
+    <line x1="820" y1="165" x2="1560" y2="165" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(840, 97)">
+      <path d="M 4 13 Q 27 5 50 13 L 50 47 Q 27 39 4 47 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M 50 13 Q 73 5 96 13 L 96 47 Q 73 39 50 47 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    </g>
+    <text x="955" y="137" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Reading guide</text>
+
+    
+    <g transform="translate(840, 180)">
+      <rect width="700" height="150" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <rect width="8" height="150" rx="4" fill="#207448"/>
+      <text x="24" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">each host line is a row: the first word is</tspan>
+        <tspan x="24" dy="36">the row name and every key=value pair</tspan>
+        <tspan x="24" dy="36">after it is a column</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(840, 356)">
+      <rect width="700" height="125" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <rect width="8" height="125" rx="4" fill="#207448"/>
+      <text x="24" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">section headers in square brackets</tspan>
+        <tspan x="24" dy="38">start a new table</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(840, 507)">
+      <rect width="700" height="150" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <rect width="8" height="150" rx="4" fill="#207448"/>
+      <text x="24" y="47" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">values on host lines are parsed as loose</tspan>
+        <tspan x="24" dy="36">Python literals: a string with spaces</tspan>
+        <tspan x="24" dy="36">needs quotes</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(840, 683)">
+      <rect width="700" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <rect width="8" height="110" rx="4" fill="#207448"/>
+      <text x="24" y="63" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">:children and :vars are special suffixes</text>
+    </g>
+
+    
+    <g transform="translate(840, 819)">
+      <rect width="700" height="125" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <rect width="8" height="125" rx="4" fill="#207448"/>
+      <text x="24" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">ranges support letters like [a:f]</tspan>
+        <tspan x="24" dy="38">as well as zero-padded numbers</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(840, 970)">
+      <rect width="700" height="110" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+      <rect width="8" height="110" rx="4" fill="#207448"/>
+      <text x="24" y="63" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a host can appear in several groups</text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1120" width="1520" height="60" rx="10" fill="#207448"/>
+    <text x="800" y="1158" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">INI is quick to type for a small static fleet</text>
+  </g>
+</svg>

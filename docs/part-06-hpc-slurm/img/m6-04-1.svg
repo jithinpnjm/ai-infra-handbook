@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Open MPI architecture (MCA), 5-level priority, HCOLL, and UCX</title>
+  <desc>Architecture diagram of Open MPI Modular Component Architecture (MCA) showing application layer, MCA framework with PML, COLL, BTL, and PRRTE/PMIx runtime, and low-level transport layer with UCX and HCOLL+SHARP offload.</desc>
+
+  <defs>
+    <marker id="ar" viewBox="0 0 16 16" refX="16" refY="8" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L16 8 L0 16 Z" fill="#207448"/>
+    </marker>
+    <marker id="ao" viewBox="0 0 16 16" refX="16" refY="8" markerWidth="16" markerHeight="16" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L16 8 L0 16 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Open MPI architecture (MCA),</text>
+  <text x="800" y="112" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">5-level priority, HCOLL, and UCX</text>
+
+  
+  <rect x="60" y="145" width="1480" height="155" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="85" y="180" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">MPI Application / mpi4py / nccl-tests</text>
+
+  
+  <rect x="420" y="195" width="760" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(445, 212)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="2" y="2" width="52" height="48" rx="6"/>
+    <line x1="2" y1="14" x2="54" y2="14" stroke-width="2.5"/>
+    <circle cx="10" cy="8" r="2" fill="#207448" stroke="none"/>
+    <circle cx="17" cy="8" r="2" fill="#207448" stroke="none"/>
+    <circle cx="24" cy="8" r="2" fill="#207448" stroke="none"/>
+    <path d="M 18 23 L 11 31 L 18 39" stroke-width="3"/>
+    <path d="M 38 23 L 45 31 L 38 39" stroke-width="3"/>
+    <line x1="31" y1="22" x2="25" y2="40" stroke-width="3"/>
+  </g>
+  <text x="525" y="235" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">MPI_Send, MPI_Recv,</text>
+  <text x="525" y="270" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">MPI_Allreduce</text>
+
+  
+  <rect x="60" y="350" width="1480" height="515" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="85" y="385" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Open MPI Modular Component Architecture (MCA)</text>
+
+  
+  <rect x="85" y="405" width="685" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(110, 445)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="2" y="2" width="52" height="52" rx="8"/>
+    <circle cx="14" cy="28" r="5" stroke-width="3"/>
+    <circle cx="42" cy="15" r="4" stroke-width="3"/>
+    <circle cx="42" cy="28" r="4" stroke-width="3"/>
+    <circle cx="42" cy="41" r="4" stroke-width="3"/>
+    <path d="M 19 28 L 38 15" stroke-width="2.5"/>
+    <path d="M 19 28 L 38 28" stroke-width="2.5"/>
+    <path d="M 19 28 L 38 41" stroke-width="2.5"/>
+  </g>
+  <text x="190" y="458" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">pml: ucx (preferred)</text>
+  <text x="190" y="500" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">vs ob1 vs cm</text>
+
+  
+  <rect x="830" y="405" width="685" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(855, 445)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="2" y="2" width="52" height="52" rx="8"/>
+    <circle cx="28" cy="14" r="5" stroke-width="3"/>
+    <circle cx="14" cy="38" r="4" stroke-width="3"/>
+    <circle cx="28" cy="38" r="4" stroke-width="3"/>
+    <circle cx="42" cy="38" r="4" stroke-width="3"/>
+    <line x1="24" y1="18" x2="16" y2="34" stroke-width="2.5"/>
+    <line x1="28" y1="19" x2="28" y2="34" stroke-width="2.5"/>
+    <line x1="32" y1="18" x2="40" y2="34" stroke-width="2.5"/>
+  </g>
+  <text x="935" y="458" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">coll: hcoll (IB/SHARP),</text>
+  <text x="935" y="500" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">tuned, han, libnbc</text>
+
+  
+  <rect x="85" y="635" width="485" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(110, 705)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="4" y="8" width="48" height="40" rx="6"/>
+    <path d="M 16 48 L 16 34 L 22 34 L 22 26 L 34 26 L 34 34 L 40 34 L 40 48" stroke-width="3"/>
+    <circle cx="14" cy="18" r="2.5" fill="#207448" stroke="none"/>
+    <circle cx="22" cy="18" r="2.5" fill="#207448" stroke="none"/>
+    <line x1="34" y1="18" x2="42" y2="18" stroke-width="3"/>
+  </g>
+  <text x="185" y="690" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">btl (under ob1):</text>
+  <text x="185" y="735" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">self, sm/vader,</text>
+  <text x="185" y="778" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">tcp (^openib)</text>
+
+  
+  <rect x="1030" y="635" width="485" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1055, 705)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="28" cy="28" r="10" stroke-width="3.5"/>
+    <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12.5 12.5 L 16.7 16.7 M 39.3 39.3 L 43.5 43.5 M 12.5 43.5 L 16.7 39.3 M 39.3 16.7 L 43.5 12.5" stroke-width="4"/>
+    <circle cx="28" cy="28" r="20" stroke-width="3" stroke-dasharray="8 6"/>
+  </g>
+  <text x="1130" y="690" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">PRRTE / PMIx runtime</text>
+  <text x="1130" y="735" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">(prterun /</text>
+  <text x="1130" y="778" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">srun --mpi=pmix)</text>
+
+  
+  <rect x="60" y="910" width="1480" height="265" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="85" y="945" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Low-level Transport &amp; Hardware Offload</text>
+
+  
+  <rect x="85" y="965" width="685" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(110, 1030)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="2" y="2" width="52" height="52" rx="8"/>
+    <path d="M 31 10 L 17 28 L 29 28 L 23 46 L 41 24 L 29 24 Z" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <text x="190" y="1020" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">UCX: rc, dc, ud, sm,</text>
+  <text x="190" y="1065" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">cuda_copy, cuda_ipc,</text>
+  <text x="190" y="1110" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">gdr_copy</text>
+
+  
+  <rect x="830" y="965" width="685" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(855, 1030)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="10" y="10" width="36" height="36" rx="4" stroke-width="3.5"/>
+    <line x1="18" y1="3" x2="18" y2="10" stroke-width="3"/>
+    <line x1="28" y1="3" x2="28" y2="10" stroke-width="3"/>
+    <line x1="38" y1="3" x2="38" y2="10" stroke-width="3"/>
+    <line x1="18" y1="46" x2="18" y2="53" stroke-width="3"/>
+    <line x1="28" y1="46" x2="28" y2="53" stroke-width="3"/>
+    <line x1="38" y1="46" x2="38" y2="53" stroke-width="3"/>
+    <line x1="3" y1="18" x2="10" y2="18" stroke-width="3"/>
+    <line x1="3" y1="28" x2="10" y2="28" stroke-width="3"/>
+    <line x1="3" y1="38" x2="10" y2="38" stroke-width="3"/>
+    <line x1="46" y1="18" x2="53" y2="18" stroke-width="3"/>
+    <line x1="46" y1="28" x2="53" y2="28" stroke-width="3"/>
+    <line x1="46" y1="38" x2="53" y2="38" stroke-width="3"/>
+    <path d="M 21 21 L 35 21 L 26 28 L 35 35 L 21 35" stroke-width="2.5"/>
+  </g>
+  <text x="935" y="1020" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">HCOLL + SHARP</text>
+  <text x="935" y="1065" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">switch reductions &amp;</text>
+  <text x="935" y="1110" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">multicast</text>
+
+  
+   PML -->
+  <line x1="500" y1="285" x2="500" y2="405" stroke="#207448" stroke-width="4" marker-end="url(#ar)"/>
+
+   COLL -->
+  <line x1="1100" y1="285" x2="1100" y2="405" stroke="#207448" stroke-width="4" marker-end="url(#ar)"/>
+
+   BTL -->
+  <line x1="325" y1="540" x2="325" y2="635" stroke="#207448" stroke-width="4" marker-end="url(#ar)"/>
+
+   UCX (Preferred transport - single orange highlight) -->
+  <line x1="670" y1="540" x2="670" y2="965" stroke="#db8129" stroke-width="5" marker-end="url(#ao)"/>
+
+   SHARP -->
+  <line x1="930" y1="540" x2="930" y2="965" stroke="#207448" stroke-width="4" marker-end="url(#ar)"/>
+</svg>

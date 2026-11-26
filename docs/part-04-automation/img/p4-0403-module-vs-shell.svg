@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Three shell commands versus one file task, and what the second run does</title>
+  <desc>Comparison of imperative shell scripts versus declarative idempotent file tasks in configuration management.</desc>
+
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three shell commands versus one file task,</text>
+  <text x="800" y="124" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">and what the second run does</text>
+
+  
+  <rect x="40" y="155" width="740" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(65, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="52" height="42" rx="6"/>
+    <path d="M12 18 l10 8 l-10 8"/>
+    <line x1="28" y1="34" x2="42" y2="34"/>
+  </g>
+  <text x="140" y="215" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Shell script (imperative)</text>
+
+  
+  <rect x="65" y="245" width="690" height="145" rx="10" fill="#ffffff" stroke="#c4d8c8" stroke-width="1.5"/>
+  <text x="85" y="285" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">mkdir -p /etc/skel/.ssh &amp;&amp;</tspan>
+    <tspan x="85" dy="34">chown root:root /etc/skel/.ssh &amp;&amp;</tspan>
+    <tspan x="85" dy="34">chmod go-wrx /etc/skel/.ssh</tspan>
+  </text>
+
+  
+  <rect x="65" y="405" width="690" height="150" rx="10" fill="#ffffff" stroke="#c4d8c8" stroke-width="1.5"/>
+  <text x="85" y="448" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">creates the directory again, changes the owner</tspan>
+    <tspan x="85" dy="34">again, reports success every time, whether</tspan>
+    <tspan x="85" dy="34">or not anything was wrong</tspan>
+  </text>
+
+  
+  <rect x="820" y="155" width="740" height="425" rx="16" fill="#fdf7f0" stroke="#db8129" stroke-width="3"/>
+
+  
+  <g transform="translate(845, 175)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 4 h28 l14 14 v30 a4 4 0 0 1 -4 4 h-38 a4 4 0 0 1 -4 -4 v-40 a4 4 0 0 1 4 -4 z"/>
+    <path d="M36 4 v14 h14"/>
+    <path d="M18 34 l8 8 l16 -16"/>
+  </g>
+  <text x="920" y="215" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">file task (declarative)</text>
+
+  
+  <rect x="845" y="245" width="690" height="145" rx="10" fill="#ffffff" stroke="#f0cfab" stroke-width="1.5"/>
+  <text x="865" y="302" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="865" dy="0">path: /etc/skel/.ssh, mode: 0700,</tspan>
+    <tspan x="865" dy="34">owner: root, group: root, state: directory</tspan>
+  </text>
+
+  
+  <rect x="845" y="405" width="690" height="150" rx="10" fill="#ffffff" stroke="#f0cfab" stroke-width="1.5"/>
+  <text x="865" y="465" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="865" dy="0">looks at the directory first, changes it</tspan>
+    <tspan x="865" dy="34">only if it differs, and says so</tspan>
+  </text>
+
+  
+  <rect x="40" y="600" width="1520" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(65, 627)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 4 L50 16 L28 28 L6 16 Z"/>
+    <path d="M6 16 V38 L28 50 V28"/>
+    <path d="M50 16 V38 L28 50"/>
+    <path d="M17 22 L39 10"/>
+  </g>
+  <text x="145" y="648" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">package with name: nginx abstracts apt, dnf and yum: the same task</tspan>
+    <tspan x="145" dy="34">runs on an Ubuntu node and a RHEL node</tspan>
+  </text>
+
+  
+  <rect x="40" y="730" width="1520" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(65, 757)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 8 A20 20 0 1 1 10 20"/>
+    <path d="M10 8 V20 H22"/>
+    <circle cx="28" cy="28" r="4" fill="#207448"/>
+  </g>
+  <text x="145" y="778" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">from the Latin for same power: applying the same instruction again has no further effect;</tspan>
+    <tspan x="145" dy="34">a light switch set to on is idempotent, a toggle button is not</tspan>
+  </text>
+
+  
+  <rect x="40" y="860" width="1520" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(65, 887)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="6" y1="12" x2="36" y2="12"/>
+    <polyline points="30,6 36,12 30,18"/>
+    <line x1="6" y1="28" x2="48" y2="28"/>
+    <polyline points="42,22 48,28 42,34"/>
+    <line x1="6" y1="44" x2="36" y2="44"/>
+    <polyline points="30,38 36,44 30,50"/>
+  </g>
+  <text x="145" y="908" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">CFEngine and Puppet converge over repeated passes; Ansible runs tasks deterministically</tspan>
+    <tspan x="145" dy="34">top to bottom in a single pass and waits for every host to finish task 1 before task 2</tspan>
+  </text>
+
+  
+  <rect x="40" y="990" width="1520" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1033" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Prefer modules over shell scripts</text>
+</svg>

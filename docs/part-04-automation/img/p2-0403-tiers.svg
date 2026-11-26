@@ -1,0 +1,106 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>Four pieces make up Ansible, and each one is pinned separately</title>
+  <desc>Infographic explaining the four pieces of Ansible: Execution environment, Collections, ansible-core, and the ansible community package, showing how each is pinned separately.</desc>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Four pieces make up Ansible, and each one is pinned separately</text>
+
+  
+
+  
+  <rect x="50" y="120" width="1000" height="610" rx="16" fill="#ffffff" stroke="#7a8b85" stroke-width="2.5"/>
+
+  
+  <g transform="translate(75, 142)">
+    <rect x="0" y="4" width="56" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="14" y1="4" x2="14" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="4" x2="28" y2="48" stroke="#207448" stroke-width="3"/>
+    <line x1="42" y1="4" x2="42" y2="48" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <text x="150" y="160" font-family="system-ui, -apple-system, sans-serif" fill="#52605b">
+    <tspan font-size="30" font-weight="bold">Execution environment:</tspan>
+    <tspan x="150" dy="32" font-size="24">container image built with ansible-builder,</tspan>
+    <tspan x="150" dy="30" font-size="24">run with ansible-navigator or AWX</tspan>
+  </text>
+
+  
+  <rect x="80" y="240" width="940" height="460" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(105, 260)">
+    <rect x="2" y="2" width="22" height="22" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="30" y="2" width="22" height="22" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="2" y="30" width="22" height="22" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="30" y="30" width="22" height="22" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <text x="180" y="280" font-family="system-ui, -apple-system, sans-serif">
+    <tspan font-size="30" font-weight="bold" fill="#207448">Collections: </tspan>
+    <tspan font-size="24" fill="#303a36">namespace.name, such as ansible.posix,</tspan>
+    <tspan x="180" dy="32" font-size="24" fill="#303a36">community.general, kubernetes.core</tspan>
+  </text>
+
+  
+  <rect x="180" y="348" width="560" height="44" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="196" y="378" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#207448">pin in collections/requirements.yml</text>
+
+  
+  <rect x="110" y="420" width="880" height="250" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+  
+  <rect x="560" y="398" width="400" height="42" rx="6" fill="#db8129"/>
+  <text x="760" y="427" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">pin the core version range</text>
+
+  
+  <g transform="translate(140, 465)">
+    <rect x="6" y="6" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="28" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="0" x2="28" y2="6" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="50" x2="28" y2="56" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="28" x2="6" y2="28" stroke="#207448" stroke-width="4"/>
+    <line x1="50" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="4"/>
+  </g>
+
+  
+  <text x="220" y="495" font-family="system-ui, -apple-system, sans-serif">
+    <tspan font-size="30" font-weight="bold" fill="#207448">ansible-core 2.x:</tspan>
+    <tspan x="220" dy="38" font-size="26" fill="#207448">the engine, CLI tools</tspan>
+    <tspan x="220" dy="36" font-size="26" fill="#207448">and ansible.builtin modules</tspan>
+  </text>
+
+  
+  <rect x="50" y="755" width="1000" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="550" y="796" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">Always use the FQCN, such as ansible.builtin.copy, never copy alone.</text>
+
+  
+
+  
+  <rect x="1090" y="120" width="460" height="700" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <g transform="translate(1292, 165)">
+    <path d="M 0 16 L 28 0 L 56 16 L 28 32 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0 16 L 0 48 L 28 64 L 28 32" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 56 16 L 56 48 L 28 64" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="14" y1="24" x2="42" y2="40" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <text x="1320" y="280" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">
+    <tspan font-size="30" font-weight="bold" fill="#207448">ansible community</tspan>
+    <tspan x="1320" dy="40" font-size="30" font-weight="bold" fill="#207448">package 9.x or 10.x:</tspan>
+    <tspan x="1320" dy="55" font-size="26" fill="#303a36">ansible-core plus a</tspan>
+    <tspan x="1320" dy="38" font-size="26" fill="#303a36">bundle of collections,</tspan>
+    <tspan x="1320" dy="38" font-size="26" fill="#303a36">convenient but large</tspan>
+  </text>
+
+  
+  <rect x="50" y="860" width="1500" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="904" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Pin each layer, so every laptop and CI job runs the same toolchain.</text>
+</svg>

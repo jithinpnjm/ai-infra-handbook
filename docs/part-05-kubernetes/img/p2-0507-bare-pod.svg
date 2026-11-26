@@ -1,0 +1,56 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1600" height="900" viewBox="0 0 1600 900" font-family="Helvetica, Arial, sans-serif">
+<title>A bare Pod stays dead with its node</title>
+<desc>Left panel: a bare Pod on a failed node is not rescheduled. Right panel: a ReplicaSet controller re-creates the Pod on a healthy node.</desc>
+<defs>
+<style>.t{fill:#303a36;font-size:24px}.h{fill:#303a36;font-size:30px;font-weight:bold}.hg{fill:#207448;font-size:30px;font-weight:bold}.ti{fill:#303a36;font-size:48px;font-weight:bold}</style>
+<marker id="ah" markerWidth="18" markerHeight="18" refX="18" refY="9" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L18,9 L0,18 z" fill="#207448"/></marker>
+<g id="i-server" fill="none" stroke="#207448" stroke-width="4"><rect x="6" y="8" width="44" height="14" rx="3"/><rect x="6" y="34" width="44" height="14" rx="3"/><path d="M14,15 H16 M14,41 H16"/></g>
+<g id="i-cube" fill="none" stroke="#207448" stroke-width="4"><path d="M28,4 L50,16 V40 L28,52 L6,40 V16 Z"/><path d="M6,16 L28,28 L50,16 M28,28 V52"/></g>
+<g id="i-gear" fill="none" stroke="#207448" stroke-width="4"><circle cx="28" cy="28" r="18" stroke-dasharray="6 5"/><circle cx="28" cy="28" r="9"/></g>
+</defs>
+<rect width="1600" height="900" fill="#f5f8f5"/>
+<text class="ti" x="60" y="80">A bare Pod stays dead with its node</text>
+
+<!-- Left panel -->
+<rect x="40" y="120" width="760" height="720" rx="18" fill="#e8f1ea"/>
+<text class="hg" x="80" y="180">Bare Pod</text>
+<rect x="90" y="210" width="500" height="260" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+<use xlink:href="#i-server" x="110" y="230"/>
+<text class="h" x="186" y="256">Node</text>
+<text class="t" x="186" y="296">Node fails</text>
+<path d="M480,230 L560,310 M560,230 L480,310" stroke="#303a36" stroke-width="8" fill="none"/>
+<rect x="120" y="340" width="440" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+<use xlink:href="#i-cube" x="136" y="356"/>
+<text class="h" x="212" y="384">Pod, scheduled to</text>
+<text class="h" x="212" y="422">this node</text>
+<rect x="90" y="520" width="500" height="70" rx="12" fill="#e4e8e6" stroke="#db8129" stroke-width="6"/>
+<text class="t" x="120" y="564">Nothing reschedules the Pod</text>
+
+<!-- Right panel -->
+<rect x="840" y="120" width="720" height="720" rx="18" fill="#e8f1ea"/>
+<text class="hg" x="880" y="180">Controller owns the Pod</text>
+<rect x="880" y="210" width="640" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+<use xlink:href="#i-gear" x="900" y="232"/>
+<text class="h" x="976" y="276">ReplicaSet controller</text>
+
+<rect x="880" y="400" width="280" height="340" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+<use xlink:href="#i-server" x="900" y="420"/>
+<text class="h" x="900" y="512">Node</text>
+<path d="M980,560 L1060,640 M1060,560 L980,640" stroke="#303a36" stroke-width="8" fill="none"/>
+<text class="t" x="900" y="690">Node fails</text>
+
+<rect x="1200" y="400" width="320" height="340" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+<use xlink:href="#i-server" x="1222" y="420"/>
+<text class="h" x="1222" y="512">Healthy node</text>
+<rect x="1222" y="540" width="276" height="160" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+<use xlink:href="#i-cube" x="1238" y="556"/>
+<text class="h" x="1238" y="646">Replacement</text>
+<text class="h" x="1238" y="684">Pod</text>
+
+<path d="M1000,330 V400" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#ah)"/>
+<path d="M1470,330 V540" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#ah)"/>
+<text class="t" x="1450" y="378" text-anchor="end">Re-creates the Pod</text>
+
+<text class="t" x="880" y="780">Controllers automate what you would otherwise</text>
+<text class="t" x="880" y="814">name and create by hand.</text>
+</svg>

@@ -1,0 +1,109 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Scheduled --check runs catch hand-made changes before anyone is surprised</title>
+  <desc>A timeline showing how a manual configuration change is caught early by a scheduled check run instead of quietly reverted by a normal run.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Scheduled --check runs catch hand-made</tspan>
+    <tspan x="800" dy="54">changes before anyone is surprised</tspan>
+  </text>
+
+  
+  <rect x="40" y="150" width="1520" height="126" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g transform="translate(68, 185)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="18" rx="4"/>
+    <circle cx="12" cy="15" r="2.5" fill="#207448"/>
+    <circle cx="20" cy="15" r="2.5" fill="#207448"/>
+    <line x1="32" y1="15" x2="44" y2="15"/>
+    <rect x="4" y="30" width="48" height="18" rx="4"/>
+    <polyline points="12,36 17,39 12,42"/>
+    <line x1="21" y1="42" x2="28" y2="42"/>
+    <circle cx="44" cy="39" r="2.5" fill="#207448"/>
+  </g>
+  <text x="145" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="145" dy="0">last week: someone logs in to a node and changes a setting by hand;</tspan>
+    <tspan x="145" dy="40">nothing in the playbook knows about it</tspan>
+  </text>
+
+  
+  <path d="M 680 276 V 316 H 410 V 352" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <path d="M 920 276 V 316 H 1190 V 352" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="40" y="356" width="740" height="210" rx="14" fill="#fff9f5" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(68, 385)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 12 28 A 18 18 0 1 1 24 45"/>
+    <polyline points="4,28 12,28 12,20"/>
+    <line x1="28" y1="20" x2="28" y2="30"/>
+    <circle cx="28" cy="37" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="145" y="422" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="145" dy="0">no scheduled check:</tspan>
+    <tspan x="145" dy="42">the next normal run</tspan>
+    <tspan x="145" dy="42">quietly reverts the change</tspan>
+  </text>
+
+  
+  <rect x="820" y="356" width="740" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g transform="translate(848, 385)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="42" rx="5"/>
+    <line x1="6" y1="18" x2="50" y2="18"/>
+    <line x1="16" y1="4" x2="16" y2="10"/>
+    <line x1="40" y1="4" x2="40" y2="10"/>
+    <circle cx="28" cy="33" r="8"/>
+    <polyline points="24,33 27,36 33,30"/>
+  </g>
+  <text x="925" y="410" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="925" dy="0">scheduled --check run:</tspan>
+    <tspan x="925" dy="38">exits non-zero or reports changed&gt;0,</tspan>
+    <tspan x="925" dy="38">revealing the manual change</tspan>
+    <tspan x="925" dy="38">before anyone is surprised</tspan>
+  </text>
+
+  
+  <rect x="40" y="600" width="1520" height="150" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 647)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="4"/>
+    <polyline points="12,20 20,28 12,36"/>
+    <line x1="26" y1="36" x2="42" y2="36"/>
+  </g>
+  <text x="145" y="645" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="145" dy="0">for drift detection parse the recap and look at changed= counts, or use </tspan>
+    <tspan x="145" dy="40"><tspan font-family="ui-monospace, monospace">ANSIBLE_STDOUT_CALLBACK=json</tspan> or <tspan font-family="ui-monospace, monospace">ansible.posix.json</tspan> for machine-readable output; </tspan>
+    <tspan x="145" dy="40">in CI treat any non-zero exit as a failure</tspan>
+  </text>
+
+  
+  <rect x="40" y="780" width="1520" height="90" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(68, 797)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="14" r="5"/>
+    <circle cx="16" cy="42" r="5"/>
+    <line x1="16" y1="19" x2="16" y2="37"/>
+    <circle cx="40" cy="24" r="5"/>
+    <path d="M 40 29 V 34 C 40 40 32 42 21 42"/>
+  </g>
+  <text x="145" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan>use the </tspan><tspan font-family="ui-monospace, monospace">--check --diff</tspan><tspan> output as evidence in pull requests (4.2)</tspan>
+  </text>
+
+  
+  <rect x="40" y="900" width="1520" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="944" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">A dry run notices the difference first</text>
+</svg>

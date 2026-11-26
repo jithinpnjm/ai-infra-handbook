@@ -1,0 +1,197 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Building a private CA by hand: the seven steps and why each is there</title>
+  <desc>A visual walkthrough of the seven steps to build, sign, verify, trust, and serve with a private Certificate Authority, contrasted with production PKI best practices and public CA operations.</desc>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title: max 2 lines, 48px bold -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Building a private CA by hand: </tspan>
+    <tspan x="800" dy="54">the seven steps and why each is there</tspan>
+  </text>
+
+  <!-- ==================== STEP 1 ==================== -->
+  <g id="step-1">
+    <rect x="40" y="134" width="1030" height="122" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="72" cy="195" r="22" fill="#207448" />
+    <text x="72" y="204" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(104, 171)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 20 4 L 38 11 V 24 C 38 35 20 44 20 44 C 20 44 2 35 2 24 V 11 Z" />
+      <circle cx="20" cy="20" r="5" />
+      <line x1="20" y1="25" x2="20" y2="35" />
+      <line x1="17" y1="30" x2="23" y2="30" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" y="162" font-size="30" font-weight="bold">Make the CA key and self-signed root: </tspan>
+      <tspan x="165" y="189" font-family="monospace" font-size="24">openssl req -x509 ... -subj /CN=Lab Root CA </tspan>
+      <tspan x="165" y="215" font-family="monospace" font-size="24">-addext basicConstraints=critical,CA:TRUE </tspan>
+      <tspan x="165" y="241" font-family="monospace" font-size="24">-addext keyUsage=critical,keyCertSign,cRLSign -keyout ca.key -out ca.pem (10 years)</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== STEP 2 ==================== -->
+  <g id="step-2">
+    <rect x="40" y="266" width="1030" height="128" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="72" cy="330" r="22" fill="#207448" />
+    <text x="72" y="339" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(104, 306)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="32" height="40" rx="4" />
+      <line x1="12" y1="14" x2="28" y2="14" />
+      <line x1="12" y1="22" x2="28" y2="22" />
+      <line x1="12" y1="30" x2="20" y2="30" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" y="293" font-size="30" font-weight="bold">Make the server key and CSR: </tspan>
+      <tspan x="165" y="320" font-family="monospace" font-size="24">openssl req -newkey ec ... -subj /CN=api.lab.internal -keyout srv.key -out srv.csr; </tspan>
+      <tspan x="165" y="347" font-family="sans-serif" font-size="24">a CSR carries only the public key and the requested names, the application form you </tspan>
+      <tspan x="165" y="373" font-family="sans-serif" font-size="24">send to the CA, never the secret</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== STEP 3 ==================== -->
+  <g id="step-3">
+    <rect x="40" y="404" width="1030" height="106" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="72" cy="457" r="22" fill="#207448" />
+    <text x="72" y="466" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(104, 433)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 4 H 26 L 36 14 V 42 H 6 Z" />
+      <polyline points="26,4 26,14 36,14" />
+      <line x1="12" y1="24" x2="28" y2="24" />
+      <line x1="12" y1="32" x2="24" y2="32" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" y="432" font-size="30" font-weight="bold">Write the extension file srv.ext: </tspan>
+      <tspan x="165" y="461" font-family="monospace" font-size="24">subjectAltName=DNS:api.lab.internal,</tspan><tspan x="165" y="486" font-family="monospace" font-size="24">DNS:*.lab.internal,IP:10.0.0.5; </tspan>
+      <tspan x="590" y="486" font-family="monospace" font-size="24">extendedKeyUsage=serverAuth; basicConstraints=CA:FALSE</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== STEP 4 ==================== -->
+  <g id="step-4">
+    <rect x="40" y="520" width="1030" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="72" cy="562" r="22" fill="#207448" />
+    <text x="72" y="571" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(104, 538)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 36 L 26 12 L 34 20 L 14 44 L 6 44 Z" />
+      <line x1="22" y1="16" x2="30" y2="24" />
+      <circle cx="33" cy="9" r="3" fill="#207448" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" y="552" font-size="30" font-weight="bold">Sign: </tspan>
+      <tspan x="250" y="552" font-family="monospace" font-size="24">openssl x509 -req -in srv.csr -CA ca.pem -CAkey ca.key </tspan>
+      <tspan x="165" y="583" font-family="monospace" font-size="24">-CAcreateserial -days 90 -extfile srv.ext -out srv.pem</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== STEP 5 ==================== -->
+  <g id="step-5">
+    <rect x="40" y="614" width="1030" height="72" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="72" cy="650" r="22" fill="#207448" />
+    <text x="72" y="659" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <g transform="translate(104, 626)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="24" r="16" />
+      <polyline points="13,24 18,29 28,19" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" y="658" font-size="30" font-weight="bold">Verify: </tspan>
+      <tspan x="270" y="658" font-family="monospace" font-size="24">openssl verify -CAfile ca.pem srv.pem</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== STEP 6 ==================== -->
+  <g id="step-6">
+    <rect x="40" y="696" width="1030" height="72" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="72" cy="732" r="22" fill="#207448" />
+    <text x="72" y="741" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    <g transform="translate(104, 708)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="18" width="24" height="22" rx="4" />
+      <path d="M 13 18 V 11 C 13 7 27 7 27 11 V 18" />
+      <circle cx="20" cy="29" r="2" fill="#207448" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" y="740" font-size="30" font-weight="bold">Trust the CA on the client </tspan>
+      <tspan x="545" y="740" font-family="monospace" font-size="24">(update-ca-certificates)</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== STEP 7 ==================== -->
+  <g id="step-7">
+    <rect x="40" y="778" width="1030" height="94" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="72" cy="825" r="22" fill="#207448" />
+    <text x="72" y="834" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">7</text>
+    <g transform="translate(104, 801)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="28" height="14" rx="3" />
+      <rect x="6" y="26" width="28" height="14" rx="3" />
+      <circle cx="12" cy="15" r="2" fill="#207448" />
+      <circle cx="12" cy="33" r="2" fill="#207448" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" y="813" font-size="30" font-weight="bold">Serve it with nginx: </tspan>
+      <tspan x="450" y="813" font-family="monospace" font-size="24">ssl_certificate, ssl_certificate_key, </tspan>
+      <tspan x="165" y="848" font-family="monospace" font-size="24">ssl_protocols TLSv1.2 TLSv1.3, http2 on</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== RIGHT PANEL: Real use (orange) ==================== -->
+  <g id="panel-real-use">
+    <rect x="1090" y="134" width="470" height="738" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5" />
+    <g transform="translate(1120, 155)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="36" height="36" rx="6" />
+      <circle cx="24" cy="24" r="8" />
+      <line x1="24" y1="10" x2="24" y2="16" />
+      <line x1="24" y1="32" x2="24" y2="38" />
+      <line x1="10" y1="24" x2="16" y2="24" />
+      <line x1="32" y1="24" x2="38" y2="24" />
+    </g>
+    <text x="1175" y="186" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Real use</text>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" y="230">prefer step-ca or Vault PKI; </tspan>
+      <tspan x="1120" y="265">keep the root offline and </tspan>
+      <tspan x="1120" y="300">issue from intermediates; </tspan>
+      <tspan x="1120" y="335">name constraints, short </tspan>
+      <tspan x="1120" y="370">lifetimes, automated </tspan>
+      <tspan x="1120" y="405">rotation; distribute the </tspan>
+      <tspan x="1120" y="440">root to all trust stores </tspan>
+      <tspan x="1120" y="475">through configuration </tspan>
+      <tspan x="1120" y="510">management; keys generated </tspan>
+      <tspan x="1120" y="545">on the server or in an HSM, </tspan>
+      <tspan x="1120" y="580">TPM or KMS, never emailed, </tspan>
+      <tspan x="1120" y="615">mode 0600, one machine per </tspan>
+      <tspan x="1120" y="650">key; a client certificate is </tspan>
+      <tspan x="1120" y="685">built the same way with </tspan>
+      <tspan x="1120" y="720">extendedKeyUsage=clientAuth</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== PUBLIC CA STRIP ==================== -->
+  <g id="public-ca-strip">
+    <rect x="40" y="890" width="1520" height="186" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(68, 915)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18" />
+      <ellipse cx="24" cy="24" rx="18" ry="8" />
+      <line x1="24" y1="6" x2="24" y2="42" />
+    </g>
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" y="938">Let's Encrypt, DigiCert, Google Trust Services check control of the domain (DV) with a DNS or </tspan>
+      <tspan x="135" y="973">HTTP challenge; OV and EV add organisation checks; ACME (RFC 8555) automates renewal through </tspan>
+      <tspan x="135" y="1008">certbot, acme.sh, Caddy, cert-manager; Let's Encrypt lasts 90 days; CT logs every public </tspan>
+      <tspan x="135" y="1043">certificate; CAA records restrict which CAs may issue</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <g id="bottom-bar">
+    <rect x="40" y="1096" width="1520" height="64" rx="10" fill="#207448" />
+    <g transform="translate(68, 1106)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="15" cy="22" r="9" />
+      <line x1="24" y1="22" x2="42" y2="22" />
+      <line x1="34" y1="22" x2="34" y2="30" />
+      <line x1="40" y1="22" x2="40" y2="28" />
+    </g>
+    <text x="800" y="1138" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      Building one by hand once is the best way to understand what the tools do for you
+    </text>
+  </g>
+
+</svg>

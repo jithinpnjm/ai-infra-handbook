@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading data off the wire: decode, then deserialize</title>
+  <desc>Reading data off the wire: decode, then deserialize</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="54" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading data off the wire: decode, then deserialize</text>
+
+  <!-- Source label (24px) -->
+  <text x="800" y="96" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Network Programmability and Automation chapter 8</text>
+
+  <!-- Flow Container -->
+  <rect x="40" y="118" width="1520" height="336" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Node 1: bytes arrive -->
+  <rect x="60" y="136" width="330" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(78, 176)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="4" y1="28" x2="52" y2="28" />
+    <circle cx="16" cy="14" r="5" fill="#ffffff" />
+    <circle cx="40" cy="42" r="5" fill="#ffffff" />
+    <polyline points="28,10 36,28 20,28 28,46" />
+  </g>
+  <text x="245" y="214" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">bytes arrive</text>
+
+  <!-- Arrow 1: bytes arrive -> decode -->
+  <line x1="390" y1="204" x2="458" y2="204" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Node 2: decode into a UTF-8 string -->
+  <rect x="460" y="136" width="550" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(476, 176)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="6" width="40" height="44" rx="4" />
+    <line x1="16" y1="18" x2="40" y2="18" stroke-width="3" />
+    <line x1="16" y1="28" x2="36" y2="28" stroke-width="3" />
+    <line x1="16" y1="38" x2="30" y2="38" stroke-width="3" />
+  </g>
+  <text x="765" y="174" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="765" dy="0">decode into a UTF-8 string, </tspan>
+    <tspan x="765" dy="32">for example </tspan>
+    <tspan x="765" dy="32">{"vendors":["Cisco",</tspan>
+    <tspan x="765" dy="32">"Juniper","Arista"]}</tspan>
+  </text>
+
+  <!-- Arrow 2: decode -> deserialize -->
+  <line x1="1010" y1="204" x2="1078" y2="204" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Node 3: deserialize with json.loads() -->
+  <rect x="1080" y="136" width="460" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(1096, 176)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="20" height="18" rx="3" />
+    <rect x="30" y="8" width="20" height="18" rx="3" />
+    <rect x="18" y="30" width="20" height="18" rx="3" />
+    <line x1="16" y1="26" x2="28" y2="30" />
+    <line x1="40" y1="26" x2="28" y2="30" />
+  </g>
+  <text x="1335" y="186" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1335" dy="0">deserialize with json.loads() </tspan>
+    <tspan x="1335" dy="34">into native structures: </tspan>
+    <tspan x="1335" dy="34">a Python dict and list</tspan>
+  </text>
+
+  <!-- Node 4: serialize first -->
+  <rect x="1080" y="296" width="460" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(1120, 336)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="10" width="40" height="36" rx="4" />
+    <line x1="8" y1="22" x2="48" y2="22" />
+    <polyline points="22,32 28,38 34,32" />
+    <line x1="28" y1="22" x2="28" y2="38" />
+  </g>
+  <text x="1340" y="374" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">serialize first</text>
+
+  <!-- Arrow 3: serialize first -> encode (pointing left) -->
+  <line x1="1080" y1="364" x2="1012" y2="364" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  <!-- Node 5: encode (orange) -->
+  <rect x="460" y="296" width="550" height="136" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(540, 336)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="20" />
+    <line x1="16" y1="28" x2="40" y2="28" />
+    <line x1="28" y1="16" x2="28" y2="40" />
+  </g>
+  <text x="765" y="374" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">encode</text>
+
+  <!-- Strip: screen scraping -->
+  <rect x="40" y="474" width="1520" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(60, 494)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="40" rx="4" />
+    <polyline points="14,24 22,30 14,36" stroke-width="3" />
+    <line x1="26" y1="36" x2="38" y2="36" stroke-width="3" />
+  </g>
+  <text x="820" y="515" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="820" dy="0">screen scraping show interfaces em0 breaks when a vendor changes the spacing; </tspan>
+    <tspan x="820" dy="34">ask for structured output: show interfaces em0 | display xml, or JSON</tspan>
+  </text>
+
+  <!-- Table Intro Card -->
+  <rect x="40" y="590" width="1520" height="68" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="632" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Markup languages like HTML annotate documents for rendering; </tspan>
+    <tspan x="800" dy="30">data serialization formats represent typed data structures across languages</tspan>
+  </text>
+
+  <!-- XML Row -->
+  <rect x="40" y="674" width="1520" height="96" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="715" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">XML: tags, attributes, xmlns namespaces; query with XPath such as //device/model </tspan>
+    <tspan x="800" dy="34">or //device[@name="leaf"]/model, or XQuery; validate with XSD (xmlschema)</tspan>
+  </text>
+
+  <!-- JSON Row -->
+  <rect x="40" y="784" width="1520" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="820" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">JSON: lighter; validate with JSON Schema: </tspan>
+    <tspan x="800" dy="32">$schema https://json-schema.org/draft/2020-12/schema, minLength, maxLength, </tspan>
+    <tspan x="800" dy="32">minimum 1, maximum 4094, IPv4 pattern regexes through jsonschema.validate()</tspan>
+  </text>
+
+  <!-- Protobuf Row -->
+  <rect x="40" y="904" width="1520" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="940" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">Protocol Buffers: binary, .proto files compiled with protoc, validated with protoc-gen-validate; </tspan>
+    <tspan x="800" dy="32">FlatBuffers: read fields straight from the byte buffer; </tspan>
+    <tspan x="800" dy="32">for high-throughput RPCs such as gRPC telemetry</tspan>
+  </text>
+
+  <!-- pickle Row -->
+  <rect x="40" y="1024" width="1520" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="1068" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">pickle: Python only, unsafe on untrusted bytes</text>
+
+  <!-- Bottom Takeaway Bar -->
+  <rect x="40" y="1120" width="1520" height="62" rx="10" fill="#207448" />
+  <text x="800" y="1160" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Structured data beats fragile screen scraping</text>
+</svg>

@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>A set buys speed for about five times the memory</title>
+  <desc>Visual comparison of memory usage and speed trade-off between a list and a set of 100,000 integers.</desc>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="60" y="85" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A set buys speed for about five times the memory</text>
+
+  
+  <rect x="60" y="130" width="960" height="420" rx="16" fill="#e8f1ea" />
+
+  
+  <g transform="translate(95, 160)">
+    <rect x="4" y="10" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <rect x="11" y="17" width="8" height="12" rx="1" fill="#207448" />
+    <rect x="24" y="17" width="8" height="12" rx="1" fill="#207448" />
+    <rect x="37" y="17" width="8" height="12" rx="1" fill="#207448" />
+    <line x1="10" y1="44" x2="10" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="19" y1="44" x2="19" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="28" y1="44" x2="28" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="37" y1="44" x2="37" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="46" y1="44" x2="46" y2="52" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <line x1="170" y1="180" x2="170" y2="440" stroke="#cfd8dc" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="326" y1="180" x2="326" y2="440" stroke="#cfd8dc" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="482" y1="180" x2="482" y2="440" stroke="#cfd8dc" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="639" y1="180" x2="639" y2="440" stroke="#cfd8dc" stroke-width="1.5" stroke-dasharray="4,4" />
+  <line x1="795" y1="180" x2="795" y2="440" stroke="#cfd8dc" stroke-width="1.5" stroke-dasharray="4,4" />
+
+  
+  <text x="170" y="185" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">List of 100,000 integers: 0.8 MB</text>
+  <rect x="170" y="200" width="125" height="46" rx="6" fill="#b0bec5" stroke="#78909c" stroke-width="2" />
+
+  
+  <path d="M 170,278 L 170,288 L 495,288 L 495,298 L 495,288 L 825,288 L 825,278" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="495" y="278" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">About five times the container memory</text>
+
+  
+  <text x="170" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Set of 100,000 integers: 4.19 MB</text>
+  <rect x="170" y="355" width="655" height="46" rx="6" fill="#207448" stroke="#db8129" stroke-width="4" />
+
+  
+  <line x1="170" y1="440" x2="825" y2="440" stroke="#78909c" stroke-width="2" />
+  <line x1="170" y1="434" x2="170" y2="446" stroke="#78909c" stroke-width="2" />
+  <line x1="326" y1="434" x2="326" y2="446" stroke="#78909c" stroke-width="2" />
+  <line x1="482" y1="434" x2="482" y2="446" stroke="#78909c" stroke-width="2" />
+  <line x1="639" y1="434" x2="639" y2="446" stroke="#78909c" stroke-width="2" />
+  <line x1="795" y1="434" x2="795" y2="446" stroke="#78909c" stroke-width="2" />
+  <line x1="825" y1="434" x2="825" y2="446" stroke="#78909c" stroke-width="2" />
+
+  
+  <text x="170" y="500" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Both figures leave out the integer objects themselves.</text>
+
+  
+  <rect x="1060" y="130" width="480" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(1272, 185)">
+    <path d="M 6,44 A 26,26 0 1,1 50,44" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="36" x2="45" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <circle cx="28" cy="36" r="4.5" fill="#207448" />
+  </g>
+
+  
+  <text x="1300" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">
+    <tspan x="1300" dy="0">Lookup thousands</tspan>
+    <tspan x="1300" dy="44">of times faster</tspan>
+  </text>
+
+  
+  <rect x="60" y="580" width="1480" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(95, 608)">
+    <line x1="12" y1="50" x2="44" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="28" y1="10" x2="28" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="8" y1="16" x2="48" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <line x1="8" y1="16" x2="2" y2="32" stroke="#207448" stroke-width="2" />
+    <line x1="8" y1="16" x2="14" y2="32" stroke="#207448" stroke-width="2" />
+    <path d="M 2,32 Q 8,38 14,32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="48" y1="16" x2="42" y2="32" stroke="#207448" stroke-width="2" />
+    <line x1="48" y1="16" x2="54" y2="32" stroke="#207448" stroke-width="2" />
+    <path d="M 42,32 Q 48,38 54,32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="175" y="642" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Is the trade worth it?</text>
+
+  
+  <rect x="95" y="675" width="445" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="317.5" y="722" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="317.5" dy="0">How often is</tspan>
+    <tspan x="317.5" dy="32">the lookup done?</tspan>
+  </text>
+
+  
+  <rect x="577.5" y="675" width="445" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="722" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">How large is</tspan>
+    <tspan x="800" dy="32">the table?</tspan>
+  </text>
+
+  
+  <rect x="1060" y="675" width="445" height="105" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1282.5" y="722" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1282.5" dy="0">How much memory</tspan>
+    <tspan x="1282.5" dy="32">can the service spare?</tspan>
+  </text>
+
+  
+  <rect x="60" y="845" width="1480" height="72" rx="12" fill="#207448" />
+  <text x="800" y="890" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">I would use a set is half an answer. Name the memory cost too.</text>
+</svg>

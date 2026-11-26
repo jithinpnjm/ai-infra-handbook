@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-04-automation",
+  "ch": "10",
+  "name": "p2-0410-layer-flow",
+  "title": "Sort a failure into one layer with yes-or-no questions, cheapest check first",
+  "anchor": "## 1. A layered method",
+  "spec": "A top-down decision flowchart with diamonds and boxes. Start box 'Failure'. Diamond 1: 'Parse error before any task?' Yes: box 'YAML, syntax or templating at load: run --syntax-check, yamllint, ansible-lint'. No: diamond 2 'UNREACHABLE?' Yes: box 'Connection layer: SSH, DNS, user, key, host key, bastion, port, firewall'. No: diamond 3 'Task FAILED?' Yes: diamond 4 'Message mentions a variable or template?' Yes: box 'Data layer: undefined variable, wrong type, precedence'. No: diamond 5 'Permission, sudo or module error?' Yes: box 'Privilege and module layer: become, interpreter, module arguments, target state'. No: box, orange outline, 'Application layer: the command failed on the host, run it by hand'. Back at diamond 3, No: box 'Succeeded but wrong result: assertions, check mode, idempotency, drift'. Side note, grey: 'Ask four questions in order: when, where, what changed, can you reproduce on one host with --limit and -vvv.' Caption: 'Open the first drawer that could hold the problem, and the next one only when the first is empty.'",
+  "alt": "A flowchart sorts a failed playbook run into a parse error, connection, data, privilege and module, or application layer by asking yes or no questions in order.",
+  "cap": "A flowchart sorts a playbook failure into a layer by asking yes or no questions in order, starting with the parse check and ending at the application."
+ }
+]

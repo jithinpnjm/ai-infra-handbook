@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Scale-up latency, broken down</title>
+  <desc>Infographic diagram showing the sequential breakdown of scale-up latency from metric trigger to ready state, highlighting warm versus cold node paths.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Scale-up latency, broken down</text>
+
+  
+  
+  <path d="M 370 220 L 450 220" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 760 220 L 840 220" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1150 220 L 1230 220" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1270 310 L 1270 470" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <text x="1405" y="398" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">no free GPU node</text>
+
+  
+  <path d="M 1360 310 L 1360 390 L 605 390 L 605 470" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arrow-green)" />
+  <text x="980" y="372" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">warm node free</text>
+
+  
+  <path d="M 1230 560 L 1150 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 840 560 L 760 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 605 650 L 605 770" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 760 860 L 840 860" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g transform="translate(60, 130)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <line x1="6" y1="22" x2="50" y2="22" stroke="#207448" stroke-width="3" stroke-dasharray="4 3" stroke-linecap="round" />
+      <path d="M 6 40 L 18 40 L 26 12 L 34 46 L 42 32 L 50 32" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <circle cx="28" cy="22" r="4" fill="#207448" />
+    </g>
+    <text x="155" y="118" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="155" dy="0">Signal crosses</tspan>
+      <tspan x="155" dy="36">target</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(450, 130)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="28" y1="28" x2="28" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="28" y1="28" x2="42" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="3" fill="#207448" />
+    </g>
+    <text x="155" y="118" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="155" dy="0">Scrape and</tspan>
+      <tspan x="155" dy="36">15 s sync</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(840, 130)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <rect x="8" y="28" width="22" height="18" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="18" y="12" width="22" height="18" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 44 44 L 44 14 M 36 22 L 44 14 L 52 22" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="155" y="118" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="155" dy="0">HPA raises</tspan>
+      <tspan x="155" dy="36">replicas</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(1230, 130)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <path d="M 12 10 L 44 10 L 32 28 L 44 46 L 12 46 L 24 28 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="18" y1="42" x2="38" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="155" y="136" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Pod Pending</text>
+  </g>
+
+  
+  <g transform="translate(1230, 470)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <rect x="6" y="12" width="44" height="34" rx="5" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="14" y1="22" x2="28" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="36" cy="22" r="2.5" fill="#207448" />
+      <line x1="14" y1="34" x2="28" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="36" cy="34" r="2.5" fill="#207448" />
+      <path d="M 42 4 L 42 16 M 36 10 L 48 10" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="155" y="118" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="155" dy="0">Autoscaler</tspan>
+      <tspan x="155" dy="36">adds node</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(840, 470)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <rect x="10" y="24" width="36" height="24" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="22" y1="24" x2="22" y2="48" stroke="#207448" stroke-width="2.5" />
+      <line x1="34" y1="24" x2="34" y2="48" stroke="#207448" stroke-width="2.5" />
+      <path d="M 28 8 L 28 22 M 20 16 L 28 22 L 36 16" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="155" y="136" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Image pull</text>
+  </g>
+
+  
+  <g transform="translate(450, 470)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <ellipse cx="28" cy="14" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 10 14 V 38 C 10 42 18 46 28 46 C 38 46 46 42 46 38 V 14" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 10 26 C 10 30 18 34 28 34 C 38 34 46 30 46 26" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="155" y="136" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Weight load</text>
+  </g>
+
+  
+  <g transform="translate(450, 770)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <path d="M 28 6 C 28 14 38 18 38 28 C 38 38 32 46 28 46 C 24 46 18 38 18 28 C 18 20 24 16 28 6 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <path d="M 28 26 C 28 30 32 34 32 38 C 32 41 30 43 28 43 C 26 43 24 41 24 38 C 24 34 26 30 28 26 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    </g>
+    <text x="155" y="136" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Warm-up</text>
+  </g>
+
+  
+  <g transform="translate(840, 770)">
+    <rect width="310" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <g transform="translate(127, 20)">
+      <circle cx="28" cy="28" r="21" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 18 28 L 25 35 L 38 19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="155" y="118" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="155" dy="0">Ready, router</tspan>
+      <tspan x="155" dy="36">adds it</tspan>
+    </text>
+  </g>
+</svg>

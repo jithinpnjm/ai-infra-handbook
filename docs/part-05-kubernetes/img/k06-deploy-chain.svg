@@ -1,0 +1,133 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1100" viewBox="0 0 1600 1100">
+  <title>Deployment, ReplicaSets and Pods during a rollout</title>
+  <desc>Infographic illustrating Kubernetes Deployment, old and new ReplicaSets, and Pods during a rollout.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="16" markerHeight="16" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Deployment, ReplicaSets and Pods during a rollout</text>
+
+  
+  <g id="deployment-node">
+    <rect x="200" y="105" width="1200" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <rect x="240" y="132" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="240" y1="148" x2="296" y2="148" stroke="#207448" stroke-width="3"/>
+    <circle cx="252" cy="140" r="3" fill="#207448"/>
+    <circle cx="262" cy="140" r="3" fill="#207448"/>
+    <circle cx="272" cy="140" r="3" fill="#207448"/>
+    
+    
+    <text x="325" y="152" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Deployment web</text>
+    <text x="325" y="188" font-family="sans-serif" font-size="24" fill="#303a36">which decides which version should exist</text>
+  </g>
+
+  
+  
+  <g id="rs-old-node">
+    <rect x="70" y="265" width="500" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <rect x="105" y="295" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="117" y="285" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="180" y="322" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">web-old-hash</text>
+    <text x="105" y="385" font-family="sans-serif" font-size="24" fill="#303a36">with the old pod template hash</text>
+    
+    <rect x="100" y="415" width="440" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="120" y="448" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">shrinking count of replicas</text>
+  </g>
+
+  
+  <g id="rollout-arrow">
+    <text x="800" y="338" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">shift replicas by</text>
+    <text x="800" y="372" text-anchor="middle" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">maxSurge</tspan>
+      <tspan font-family="sans-serif"> and </tspan>
+      <tspan font-family="monospace" font-weight="bold">maxUnavailable</tspan>
+    </text>
+    <line x1="575" y1="410" x2="1025" y2="410" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  </g>
+
+  
+  <g id="rs-new-node">
+    <rect x="1030" y="265" width="500" height="230" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <rect x="1065" y="295" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="1077" y="285" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="1140" y="322" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">web-new-hash</text>
+    <text x="1065" y="385" font-family="sans-serif" font-size="24" fill="#303a36">with the new one</text>
+    
+    <rect x="1060" y="415" width="440" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1080" y="448" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">growing count</text>
+  </g>
+
+  
+  <g id="undo-note">
+    <rect x="300" y="525" width="1000" height="80" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="800" y="558" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">the old ReplicaSet is kept at zero replicas,</text>
+    <text x="800" y="590" text-anchor="middle" font-size="24" fill="#303a36">
+      <tspan font-family="sans-serif">which makes </tspan>
+      <tspan font-family="monospace" font-weight="bold">kubectl rollout undo</tspan>
+      <tspan font-family="sans-serif"> work.</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="pods-old-node">
+    <rect x="78" y="643" width="500" height="180" rx="12" fill="#d8e8dc" stroke="#207448" stroke-width="2"/>
+    <rect x="70" y="635" width="500" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <rect x="105" y="665" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="133" cy="693" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="185" y="700" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="185" dy="0">running on the</tspan>
+      <tspan x="185" dy="40">old version</tspan>
+    </text>
+  </g>
+
+  
+  <g id="pods-new-node">
+    <rect x="1038" y="643" width="500" height="180" rx="12" fill="#d8e8dc" stroke="#207448" stroke-width="2"/>
+    <rect x="1030" y="635" width="500" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <rect x="1065" y="665" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="1093" cy="693" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    
+    <text x="1145" y="700" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1145" dy="0">running on the</tspan>
+      <tspan x="1145" dy="40">new version</tspan>
+    </text>
+  </g>
+
+  
+  <g id="orange-note">
+    <rect x="150" y="850" width="1300" height="85" rx="10" fill="#fff8f0" stroke="#db8129" stroke-width="3"/>
+    <rect x="150" y="850" width="12" height="85" rx="4" fill="#db8129"/>
+    <text x="800" y="902" text-anchor="middle" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan font-family="sans-serif">the ReplicaSet controller never talks to a node; it only writes </tspan>
+      <tspan font-family="monospace">Pod</tspan>
+      <tspan font-family="sans-serif"> objects.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="150" y="970" width="1300" height="80" rx="10" fill="#207448"/>
+    <text x="800" y="1020" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">each link has one job.</text>
+  </g>
+</svg>

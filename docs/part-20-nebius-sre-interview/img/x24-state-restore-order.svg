@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180" style="background-color: #f5f8f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;">
+  <title>Recovering a lost state: check versions first, then import in dependency order</title>
+  <desc>Flowchart diagram illustrating the recovery process when an infrastructure state file is lost or corrupt, comparing the bucket version restoration path against sequential resource importing.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8.5 5 L 1 8.5 z" fill="#207448" />
+    </marker>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#303a36" flood-opacity="0.06" />
+    </filter>
+  </defs>
+
+  
+  <text x="800" y="52" font-size="48" font-weight="bold" fill="#207448" text-anchor="middle">Recovering a lost state: check versions first,</text>
+  <text x="800" y="106" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">then import in dependency order</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="220" y="135" width="1160" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(255, 162)">
+      <polygon points="28,4 54,48 2,48" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="42" r="2.5" fill="#207448" />
+    </g>
+    <text x="330" y="178" font-size="30" font-weight="bold" fill="#303a36">State file for production is gone or corrupt</text>
+    <text x="330" y="220" font-size="24" fill="#303a36">The cluster still runs, so every plan looks like create everything</text>
+  </g>
+
+  
+  <line x1="800" y1="245" x2="800" y2="295" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="360" y="295" width="880" height="80" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(390, 311)">
+      <ellipse cx="24" cy="12" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 6,12 v 22 c 0,4.5 8,8 18,8 c 10,0 18,-3.5 18,-8 v -22" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 6,23 c 0,4.5 8,8 18,8 c 10,0 18,-3.5 18,-8" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="450" y="346" font-size="30" font-weight="bold" fill="#303a36">Are old object versions in the bucket?</text>
+  </g>
+
+  
+  
+  <path d="M 520,375 L 520,405 L 450,405 L 450,430" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="475" y="400" font-size="28" font-weight="bold" fill="#207448">Yes</text>
+
+  
+  <path d="M 1080,375 L 1080,405 L 1150,405 L 1150,430" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="1100" y="400" font-size="28" font-weight="bold" fill="#303a36">No</text>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="120" y="430" width="660" height="90" rx="16" fill="#fdf6ed" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(145, 450)">
+      <path d="M 25,10 A 18,18 0 1,0 43,28" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+      <polyline points="25,2 25,12 35,12" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+      <polyline points="25,20 25,28 33,28" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="215" y="486" font-size="30" font-weight="bold" fill="#db8129">Restore the previous object version</text>
+  </g>
+
+  
+  <line x1="450" y1="520" x2="450" y2="560" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="120" y="560" width="660" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(145, 595)">
+      <rect x="6" y="6" width="36" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="14" y1="18" x2="34" y2="18" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="28" x2="28" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="14" y1="38" x2="34" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="215" y="612" font-size="30" font-weight="bold" fill="#303a36">Run plan and read the gap</text>
+    <text x="215" y="660" font-size="24" fill="#303a36">Shows only changes made since that version</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="430" width="660" height="160" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(845, 465)">
+      <rect x="4" y="6" width="40" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="10" y="24" width="34" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <rect x="16" y="42" width="28" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <polyline points="3,20 3,50 12,50" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+    <text x="915" y="475" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">Import</tspan> each object, network first,
+    </text>
+    <text x="915" y="515" font-size="30" font-weight="bold" fill="#303a36">then cluster, then pools</text>
+    <text x="915" y="562" font-size="24" fill="#303a36">
+      Use <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">-generate-config-out</tspan> for a draft of the resource
+    </text>
+  </g>
+
+  
+  <line x1="1150" y1="590" x2="1150" y2="620" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="820" y="620" width="660" height="80" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(845, 636)">
+      <rect x="4" y="6" width="40" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 12,18 L 20,24 L 12,30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="24" y1="30" x2="34" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="915" y="670" font-size="30" font-weight="bold" fill="#303a36">Run plan</text>
+  </g>
+
+  
+  <path d="M 940,700 L 940,745 L 1440,745 L 1440,708" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="1190" y="736" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Repeat until plan shows no changes</text>
+
+  
+  
+  <path d="M 450,700 L 450,795 L 560,795" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  
+  <path d="M 870,700 L 870,795 L 1040,795" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g filter="url(#shadow)">
+    <rect x="560" y="760" width="480" height="75" rx="16" fill="#207448" stroke="#185837" stroke-width="2" />
+    
+    <g transform="translate(585, 775)">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#ffffff" stroke-width="3.5" />
+      <path d="M 13,22 L 19,28 L 31,16" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="645" y="808" font-size="30" font-weight="bold" fill="#ffffff">Plan shows no changes</text>
+  </g>
+
+  
+  <g filter="url(#shadow)">
+    <rect x="80" y="875" width="1440" height="260" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(110, 895)">
+      
+      <path d="M 20,6 L 36,13 L 36,26 C 36,36 20,44 20,44 C 20,44 4,36 4,26 L 4,13 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <polyline points="13,24 18,29 28,19" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="160" y="930" font-size="32" font-weight="bold" fill="#207448">Prevention</text>
+
+    
+    <rect x="110" y="955" width="670" height="70" rx="10" fill="#e8f1ea" stroke="#c2dcc8" stroke-width="1.5" />
+    <circle cx="140" cy="990" r="10" fill="#207448" />
+    <polyline points="136,990 139,993 145,987" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="165" y="998" font-size="24" font-weight="bold" fill="#303a36">Enable bucket versioning</text>
+
+    
+    <rect x="820" y="955" width="670" height="70" rx="10" fill="#e8f1ea" stroke="#c2dcc8" stroke-width="1.5" />
+    <circle cx="850" cy="990" r="10" fill="#207448" />
+    <polyline points="846,990 849,993 855,987" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="875" y="998" font-size="24" font-weight="bold" fill="#303a36">Keep the bucket in a different project or account</text>
+
+    
+    <rect x="110" y="1045" width="670" height="70" rx="10" fill="#e8f1ea" stroke="#c2dcc8" stroke-width="1.5" />
+    <circle cx="140" cy="1080" r="10" fill="#207448" />
+    <polyline points="136,1080 139,1083 145,1077" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="165" y="1088" font-size="24" font-weight="bold" fill="#303a36">Restore drill in a scratch project</text>
+
+    
+    <rect x="820" y="1045" width="670" height="70" rx="10" fill="#e8f1ea" stroke="#c2dcc8" stroke-width="1.5" />
+    <circle cx="850" cy="1080" r="10" fill="#207448" />
+    <polyline points="846,1080 849,1083 855,1077" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="875" y="1088" font-size="24" font-weight="bold" fill="#303a36">Alert on deletes, policy changes and unexpected access</text>
+  </g>
+</svg>

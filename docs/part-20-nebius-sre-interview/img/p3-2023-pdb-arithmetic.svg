@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140">
+  <title>Drill 6: why the drain never finishes</title>
+  <desc>Infographic illustrating Kubernetes drain failure caused by PodDisruptionBudget minAvailable 3 with 3 replicas yielding 0 allowed disruptions and continuous 429 eviction rejections.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Drill 6: why the drain never finishes</text>
+
+  
+
+  
+  <g id="worked-arithmetic">
+    <rect x="50" y="110" width="720" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="80" y="132" width="56" height="56" rx="8"/>
+      <line x1="92" y1="148" x2="124" y2="148"/>
+      <line x1="96" y1="168" x2="108" y2="168"/>
+      <line x1="102" y1="162" x2="102" y2="174"/>
+      <line x1="116" y1="165" x2="124" y2="165"/>
+      <line x1="116" y1="171" x2="124" y2="171"/>
+    </g>
+    <text x="155" y="172" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Worked arithmetic</text>
+
+    
+    <rect x="75" y="205" width="670" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="234" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">Deployment llm-server has 3 replicas,</tspan>
+      <tspan x="95" dy="28">all Ready.</tspan>
+    </text>
+
+    
+    <rect x="75" y="283" width="670" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="317" font-family="sans-serif" font-size="24" fill="#303a36">PDB minAvailable 3.</text>
+
+    
+    <rect x="75" y="345" width="670" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="375" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">Allowed disruptions =</tspan>
+      <tspan x="95" dy="28">replicas available (3) minus minAvailable (3)</tspan>
+      <tspan x="95" dy="28">= 0.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="drain-flow">
+    <rect x="830" y="110" width="720" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <circle cx="865" cy="150" r="20" fill="#207448"/>
+    <text x="865" y="158" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <rect x="900" y="125" width="620" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="915" y="158" font-family="sans-serif" font-size="24" fill="#303a36">Drain on gpu-node-2 asks the eviction API</text>
+
+    
+    <line x1="1210" y1="175" x2="1210" y2="195" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <circle cx="865" cy="220" r="20" fill="#db8129"/>
+    <text x="865" y="228" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <rect x="900" y="195" width="620" height="50" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+    <text x="915" y="228" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">answer 429 Too Many Requests</text>
+
+    
+    <line x1="1210" y1="245" x2="1210" y2="265" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <circle cx="865" cy="310" r="20" fill="#207448"/>
+    <text x="865" y="318" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <rect x="900" y="265" width="620" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="915" y="293" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="915" dy="0">kubectl retries ('eviction of a pod</tspan>
+      <tspan x="915" dy="28">llm-server-... is being retried')</tspan>
+      <tspan x="915" dy="28">for thirty minutes.</tspan>
+    </text>
+
+    
+    <path d="M 1520 310 H 1535 V 150 H 1520" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="850" y="375" width="680" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="870" y="407" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="870" dy="0">Other pods on the node are DaemonSet pods,</tspan>
+      <tspan x="870" dy="28">already ignored by drain.</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="fix-box">
+    <rect x="50" y="500" width="720" height="465" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M125 538 a16 16 0 0 1 -22 22 l-18 18 a6 6 0 0 1 -8 -8 l18 -18 a16 16 0 0 1 22 -22 z"/>
+      <circle cx="91" cy="572" r="3" fill="#207448"/>
+    </g>
+    <text x="155" y="562" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Fix box</text>
+
+    
+    <rect x="75" y="605" width="670" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="640" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">PDB maxUnavailable 1</tspan>
+      <tspan x="95" dy="28">gives allowed disruptions 1</tspan>
+    </text>
+
+    
+    <rect x="75" y="710" width="670" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="743" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">add unhealthyPodEvictionPolicy AlwaysAllow</tspan>
+      <tspan x="95" dy="28">so broken pods can be evicted</tspan>
+    </text>
+
+    
+    <rect x="75" y="838" width="670" height="106" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="95" y="873" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">check the replacement pod becomes Ready</tspan>
+      <tspan x="95" dy="28">before the next eviction.</tspan>
+    </text>
+  </g>
+
+  
+  <g id="forbidden-shortcut">
+    <rect x="830" y="500" width="720" height="205" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="888" cy="548" r="24"/>
+      <line x1="871" y1="531" x2="905" y2="565"/>
+    </g>
+    <text x="930" y="558" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Forbidden shortcut</text>
+
+    <rect x="855" y="590" width="670" height="96" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="875" y="620" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="875" dy="0">delete the pod directly: deletion bypasses</tspan>
+      <tspan x="875" dy="28">the budget and drops</tspan>
+      <tspan x="875" dy="28">serving capacity at once</tspan>
+    </text>
+  </g>
+
+  
+  <g id="related-traps">
+    <rect x="830" y="725" width="720" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="888,728 862,768 914,768"/>
+      <line x1="888" y1="742" x2="888" y2="754"/>
+      <circle cx="888" cy="761" r="1.5" fill="#207448"/>
+    </g>
+    <text x="930" y="760" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Related traps</text>
+
+    
+    <rect x="855" y="785" width="670" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="875" y="812" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="875" dy="0">eviction API can also return 500 when</tspan>
+      <tspan x="875" dy="26">more than one PDB references one Pod</tspan>
+    </text>
+
+    
+    <rect x="855" y="865" width="670" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="875" y="891" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="875" dy="0">if new pods never become Ready the budget</tspan>
+      <tspan x="875" dy="26">will never clear by waiting; look at why</tspan>
+      <tspan x="875" dy="26">replacements are not Ready</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="prevention-bar">
+    <rect x="50" y="995" width="1500" height="105" rx="16" fill="#207448"/>
+
+    
+    <g stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M85 1022 v22 c0 16 23 28 23 28 c0 0 23 -12 23 -28 v-22 l-23 -8 z"/>
+      <polyline points="99,1044 105,1050 117,1038"/>
+    </g>
+
+    <text x="155" y="1058" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Prevention</text>
+    <text x="350" y="1058" font-family="sans-serif" font-size="26" fill="#ffffff">list every PDB with zero allowed disruptions before an upgrade</text>
+  </g>
+</svg>

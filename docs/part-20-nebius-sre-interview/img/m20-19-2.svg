@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>Measure at the gateway, explain at the engine</title>
+  <desc>Architecture flow showing request routing alongside telemetry collection, recording rules, burn-rate calculation, and alerting.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="50" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Measure at the gateway, explain at the engine</text>
+
+  
+  
+  <line x1="280" y1="205" x2="380" y2="205" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <line x1="720" y1="205" x2="810" y2="205" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <line x1="1150" y1="205" x2="1240" y2="205" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <line x1="480" y1="270" x2="480" y2="410" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <text x="460" y="348" text-anchor="end" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">gateway_* metrics</text>
+
+  
+  <path d="M 1380 270 L 1380 340 L 620 340 L 620 410" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow)" />
+  <text x="1000" y="326" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">vllm:* metrics</text>
+
+  
+  <line x1="720" y1="475" x2="810" y2="475" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <line x1="1150" y1="475" x2="1240" y2="475" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <path d="M 1360 540 L 1360 610 L 980 610 L 980 680" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+  <line x1="810" y1="745" x2="720" y2="745" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  <text x="765" y="730" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">page</text>
+
+  
+  <line x1="1150" y1="745" x2="1240" y2="745" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  <text x="1195" y="730" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ticket</text>
+
+  
+
+  
+  <rect x="50" y="140" width="230" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(68, 183)">
+    <rect x="0" y="0" width="44" height="30" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="22" y1="30" x2="22" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="10" y1="42" x2="34" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="130" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Client</text>
+
+  
+  <rect x="380" y="140" width="340" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(400, 183)">
+    <path d="M 6 42 L 6 16 A 16 16 0 0 1 38 16 L 38 42" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="22" y1="12" x2="22" y2="34" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <polyline points="15,26 22,34 29,26" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="460" y="192" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="460" dy="0">Gateway:</tspan>
+    <tspan x="460" dy="36">SLI ratios</tspan>
+  </text>
+
+  
+  <rect x="810" y="140" width="340" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(835, 183)">
+    <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="10" y1="22" x2="34" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="22" y1="10" x2="22" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <polyline points="28,17 34,22 28,27" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <polyline points="16,17 10,22 16,27" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="905" y="215" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Router</text>
+
+  
+  <rect x="1240" y="140" width="320" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1258, 183)">
+    <rect x="8" y="8" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <rect x="15" y="15" width="14" height="14" fill="#207448" fill-opacity="0.25" stroke="#207448" stroke-width="2" />
+    <line x1="15" y1="2" x2="15" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="29" y1="2" x2="29" y2="8" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="15" y1="36" x2="15" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="29" y1="36" x2="29" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="2" y1="15" x2="8" y2="15" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="2" y1="29" x2="8" y2="29" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="36" y1="15" x2="42" y2="15" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="36" y1="29" x2="42" y2="29" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="1318" y="192" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1318" dy="0">vLLM engine:</tspan>
+    <tspan x="1318" dy="36">explains</tspan>
+  </text>
+
+  
+
+  
+  <rect x="380" y="410" width="340" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(402, 453)">
+    <ellipse cx="22" cy="11" rx="16" ry="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 6 11 v 22 a 16 6 0 0 0 32 0 v -22" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 6 22 a 16 6 0 0 0 32 0" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="465" y="485" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Prometheus</text>
+
+  
+  <rect x="810" y="410" width="340" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(830, 453)">
+    <rect x="8" y="4" width="28" height="36" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="14" y1="13" x2="30" y2="13" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="14" y1="21" x2="25" y2="21" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="14" y1="29" x2="28" y2="29" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="888" y="462" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="888" dy="0">Recording</tspan>
+    <tspan x="888" dy="36">rules</tspan>
+  </text>
+
+  
+  <rect x="1240" y="410" width="320" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1260, 453)">
+    <path d="M 8 32 A 16 16 0 1 1 36 32" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="22" y1="26" x2="31" y2="15" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="22" cy="26" r="3.5" fill="#207448" />
+  </g>
+  <text x="1320" y="462" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1320" dy="0">Burn-rate</tspan>
+    <tspan x="1320" dy="36">rules</tspan>
+  </text>
+
+  
+
+  
+  <rect x="380" y="680" width="340" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(405, 723)">
+    <rect x="10" y="8" width="24" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <rect x="15" y="14" width="14" height="10" rx="2" fill="none" stroke="#207448" stroke-width="2" />
+    <line x1="16" y1="30" x2="28" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="14" y1="3" x2="14" y2="8" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="475" y="755" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">On-call</text>
+
+  
+  <rect x="810" y="680" width="340" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(830, 723)">
+    <path d="M 22 6 A 11 11 0 0 0 11 17 C 11 25 7 29 7 31 L 37 31 C 37 29 33 25 33 17 A 11 11 0 0 0 22 6 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    <circle cx="22" cy="37" r="3.5" fill="#207448" />
+    <circle cx="22" cy="4" r="2" fill="#207448" />
+  </g>
+  <text x="890" y="755" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Alertmanager</text>
+
+  
+  <rect x="1240" y="680" width="320" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <g transform="translate(1258, 723)">
+    <rect x="6" y="8" width="32" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="16" y1="8" x2="16" y2="36" stroke="#207448" stroke-width="2.5" stroke-dasharray="3 3" />
+    <line x1="22" y1="16" x2="31" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="22" y1="23" x2="28" y2="23" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="1318" y="732" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1318" dy="0">Ticket</tspan>
+    <tspan x="1318" dy="36">queue</tspan>
+  </text>
+</svg>

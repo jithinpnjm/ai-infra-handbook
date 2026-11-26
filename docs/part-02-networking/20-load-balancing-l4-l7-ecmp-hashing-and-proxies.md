@@ -36,11 +36,15 @@ Tools such as IPVS, HAProxy, nginx and Envoy are introduced from scratch, each o
 
 ## 1. What a load balancer does
 
+![Five design questions of where the decision is made, what the unit of work is, how a backend is chosen, how the reply returns and how failures are handled, with the families of load balancer.](./img/p3-0220-five-questions.svg)
+
+*Figure 2.20.1. Every load balancer must answer where the decision is made, what a unit of work is, how a backend is chosen, how the reply returns and how failures are handled.*
+
 Picture a single server that is now too busy to answer every request. Clients have been given one address, and they keep sending their requests to it. The load balancer stands between the clients and the servers, so the work is shared. Nobody has to change the address the clients use, and when a server is added or removed, the clients never notice. The rest of this section explains how that trick is done, and what it costs.
 
 ![Load balancer and health checks](./img/n20-fig1-lb.jpg)
 
-*Figure 2.20.1. One virtual address in front of a pool; failed backends are skipped.*
+*Figure 2.20.2. One virtual address in front of a pool; failed backends are skipped.*
 
 Suppose one server can no longer handle the traffic for a service, but clients should still use one address. Nobody wants to tell a million users to rotate through a list of servers by hand. A **load balancer (LB)** solves that. It presents one stable address, a virtual IP (VIP) or a name, and spreads incoming work across a pool of backends, which are the real servers. Think of the host at a busy restaurant: guests ask for "a table" and the host decides which waiter gets them.
 
@@ -60,7 +64,7 @@ The rest of the chapter keeps coming back to these five. When a design feels con
 
 ![Load balancer families](./img/n20-families.svg)
 
-*Figure 2.20.2. Lower-layer balancers decide faster but see less of each request.*
+*Figure 2.20.3. Lower-layer balancers decide faster but see less of each request.*
 
 The table groups the common families by the decision each one makes, with examples and the trade-offs to know.
 
@@ -81,7 +85,7 @@ The two diagrams show where the reply goes. That path decides throughput and wha
 
 ![Packet paths](./img/m2-20-1.svg)
 
-*Figure 2.20.3. Packet paths, as a diagram.*
+*Figure 2.20.4. Packet paths, as a diagram.*
 
 In proxy mode, at L4 or L7, the balancer terminates the client connection and opens a separate one to the backend. That lets it modify, buffer, retry and inspect traffic. The backend sees the address of the balancer, so you must preserve the client IP with `X-Forwarded-For`, the `Forwarded` header or PROXY protocol. Proxy mode is stateful, costs CPU and memory, and is bounded by the capacity of the balancer.
 
@@ -94,6 +98,18 @@ Tunnel and encapsulation, as in Maglev or Katran, wrap the original packet in GR
 Pick the packet path before anything else, because it decides whether replies pass through your balancer and what your backends can see.
 
 ## 2. Algorithms
+
+![Modulo hashing remapping most keys when a backend leaves versus consistent hashing moving only about one in N keys, with Maglev and prefix cache uses.](./img/p3-0220-hash-remap.svg)
+
+*Figure 2.20.5. Plain modulo hashing remaps most keys when N changes, while consistent hashing moves only about 1/N of them.*
+
+![Three balancers all sending to the same idle backend under least connections, versus one balancer drawing two random backends and choosing the less loaded.](./img/p3-0220-p2c-herd.svg)
+
+*Figure 2.20.6. Power of two choices looks at only two random backends and picks the less loaded, so separate balancers do not herd onto the same idle server.*
+
+![A table pairing each unit of work with the load balancing algorithm that counts it, the pitfall of each, and four principles including herding and slow start.](./img/p3-0220-algo-pick.svg)
+
+*Figure 2.20.7. Pick the algorithm that counts the right unit of work, since connections, requests, tokens and GPU-seconds are different things.*
 
 Picture two backends behind one address and a stream of requests of very different sizes. The balancer must choose a backend for each request, and the rule it uses decides how evenly the work spreads. The table compares the common rules, what each one looks at, and where each one breaks.
 
@@ -121,6 +137,18 @@ Four principles follow from the table. First, choose the metric that represents 
 Name the unit of work first, then pick the algorithm that counts it, so you know exactly what your balancer measures.
 
 ## 3. Health checks, failure handling and draining
+
+![A generation cut off by a deploy without drain versus completing with a drain, the Kubernetes order of readiness false, stop new requests, wait and terminate, and the timers that must align.](./img/p3-0220-drain-sequence.svg)
+
+*Figure 2.20.8. Drain by turning readiness false, stopping new requests, waiting for in-flight streams up to the grace period, then terminating.*
+
+![A retry storm loop where timeouts trigger retries that add more load, beside controls of a retry budget, per-try timeouts, idempotent retries only and a circuit breaker that sheds with 503.](./img/p3-0220-retry-storm.svg)
+
+*Figure 2.20.9. Retries without a budget multiply a fault, so cap retries to a small share of requests and shed excess load with a 503.*
+
+![Health check parameters interval, timeout, rise and fall with detection time of interval times fall, active versus passive checks, and liveness versus readiness for inference.](./img/p3-0220-health-params.svg)
+
+*Figure 2.20.10. Detection takes about interval times fall, passive checks catch brownouts that probes miss, and readiness should reflect whether the model is loaded.*
 
 Picture a backend that stops answering, yet its address is still in the pool. Requests keep going to it, and users see timeouts that the dashboard cannot explain. Health checks are how the balancer notices, and draining is the polite way to take a healthy backend out of service. The paragraphs below describe how each mechanism works, so you can choose the right one for each kind of failure.
 
@@ -150,9 +178,13 @@ Set the drain deadline with your longest stream in mind, because a deadline shor
 
 ## 4. ECMP, anycast and scaling out the L4 tier
 
+![A path from client through anycast or ECMP, L4 and L7 gateways, TLS termination, a load and cache aware picker and inference pods, with the metrics and streaming hygiene to watch.](./img/p3-0220-inference-path.svg)
+
+*Figure 2.20.11. A good inference path runs anycast or ECMP to gateways, per-request L7 routing and a load-aware picker, and watches TTFT, ITL, queue time and ejections.*
+
 ![ECMP and anycast L4 tier](./img/n20-anycast.svg)
 
-*Figure 2.20.4. Many L4 nodes announce the same VIP and the router spreads flows across them, with consistent hashing keeping connections intact.*
+*Figure 2.20.12. Many L4 nodes announce the same VIP and the router spreads flows across them, with consistent hashing keeping connections intact.*
 
 Suppose a single L4 node serves a VIP. You get a throughput limit and a single point of failure. The standard fix is to put the L4 tier behind ECMP, which works in four steps. We follow one VIP through them.
 
@@ -171,6 +203,10 @@ The same ideas apply inside the AI fabric, as chapter 2.12 describes. ECMP hashi
 Decide your failover budget first, because BGP convergence sets how quickly a failed node's traffic moves.
 
 ## 5. L4 tools: IPVS and friends
+
+![A client request to a VIP delivered to an IPVS balancer which rewrites only the destination MAC to a real server holding the VIP on loopback, whose reply goes directly back to the client.](./img/p3-0220-ipvs-dr-walk.svg)
+
+*Figure 2.20.13. In IPVS direct routing the balancer rewrites only the MAC and the real server replies straight to the client with the VIP as source.*
 
 On plain Linux, you can use the kernel itself as an L4 balancer, with no extra software to install. Linux IPVS (LVS) is built on netfilter, and the IPVS mode of kube-proxy and keepalived both use it. The listing below builds one by hand, so you can see how small the idea is.
 
@@ -200,6 +236,14 @@ An L7 proxy reads every request, so its configuration decides how streams behave
 Picture a Triton gRPC endpoint behind HAProxy. A client opens one connection and streams a long generation, with tokens arriving over several minutes. The config below has one setting for each hop that could cut that stream. The client-side timeout, the server-side timeout and the tunnel timeout each have to outlast the longest generation. If one of them is shorter, the proxy closes the stream and the client sees a reset with no clear cause.
 
 ### HAProxy (HTTP and TCP)
+
+![Six steps of a gRPC call through HAProxy: TLS accept, content type read, ACL match, leastconn backend, HTTP/2 stream and token return, with the health-check caveat for in-progress streams.](./img/p3-0220-grpc-through-haproxy.svg)
+
+*Figure 2.20.14. HAProxy terminates TLS, matches application/grpc to the inference backend, picks the server with the fewest connections and keeps the stream on it.*
+
+![A path from client through a cloud load balancer, a proxy and the model server, with the timer that can cut a stream at each hop including HAProxy timeout tunnel, nginx read timeouts and Envoy stream idle timeout.](./img/p3-0220-stream-timers.svg)
+
+*Figure 2.20.15. Each hop has a timer that can cut a long generation, and the client, server and tunnel timeouts must all outlast the longest stream.*
 
 ```text
 global
@@ -268,6 +312,10 @@ Open-source nginx resolves upstream hostnames when the configuration loads, so n
 
 ### Envoy
 
+![An nginx reload leaving old workers alive or cutting streams, compared with an Envoy xDS update that adds the new host in slow start without restarting anything.](./img/p3-0220-reload-vs-xds.svg)
+
+*Figure 2.20.16. An nginx reload starts new workers while old ones linger, whereas an Envoy xDS update adds a host in slow start and cuts no streams.*
+
 Envoy is a modern L4 and L7 proxy. Its design centres on dynamic configuration through the **xDS** APIs for listeners, routes, clusters, endpoints and secrets. Instead of editing a file and reloading, a control plane pushes changes to Envoy while it runs. It handles HTTP/2 and gRPC natively, and it offers rich observability through stats, access logs and tracing, plus advanced load balancing and resilience.
 
 ```yaml
@@ -314,9 +362,17 @@ Pick the proxy whose xDS and drain behaviour matches your streams, because a rel
 
 ## 7. TLS, client identity and L4/L7 interplay
 
+![Four gRPC streams pinned to one backend by an L4 balancer, with three fixes of an L7 proxy, client-side balancing and MAX_CONNECTION_AGE, and the QUIC connection ID note.](./img/p3-0220-pinning-fixes.svg)
+
+*Figure 2.20.17. An L4 balancer pins all streams of a connection to one backend, fixed by per-request L7 balancing, client-side balancing or a maximum connection age.*
+
+![Forwarded headers at layer 7 and the PROXY protocol at layer 4 carrying the client address to the backend, with the requirement that the backend expect the header.](./img/p3-0220-proxy-protocol.svg)
+
+*Figure 2.20.18. The proxy writes a PROXY header naming the client before any application bytes, and the backend must be configured to expect it.*
+
 ![TLS termination versus passthrough](./img/n20-tlsplace.svg)
 
-*Figure 2.20.5. Where TLS ends decides what the balancer can read and route on.*
+*Figure 2.20.19. Where TLS ends decides what the balancer can read and route on.*
 
 Picture a request that arrives over TLS. It is a sealed envelope, and where the balancer opens it decides what the balancer can read, which shapes routing, WAF rules and mTLS. Three placements are available.
 
@@ -338,6 +394,14 @@ Decide where TLS ends before anything else, because that choice sets what the ba
 
 ## 8. Cloud and Kubernetes load balancing (overview)
 
+![A table of GCP, AWS and Azure load balancers by L7 and L4 types, and the differences to check including source IP preservation, idle timeouts, protocol support and draining.](./img/p3-0220-cloud-lbs.svg)
+
+*Figure 2.20.20. Cloud load balancers differ on source IP preservation, idle timeouts, protocol support, draining and cost, so read the idle timeout first.*
+
+![kube-proxy iptables mode as a chain of rules with probability 1 over N, 1 over N minus 1 and so on, picking randomly per connection with no load awareness.](./img/p3-0220-kubeproxy-prob.svg)
+
+*Figure 2.20.21. kube-proxy's iptables mode picks a pod at random per connection with no load awareness, so long gRPC channels stay where they landed.*
+
 Most teams do not build their own balancers from scratch. They rent one from a cloud provider or get one from Kubernetes. Both come with defaults you should check before you depend on them, because a default that suits a website may quietly cut an LLM stream.
 
 Picture a team that chose a cloud load balancer because its defaults suit a website. The site serves short pages, and nothing has ever run for more than a minute. Then the team moves an LLM stream onto the same load balancer. A generation that is quiet for longer than the idle timeout gets cut, and the client sees a reset. Read the idle timeout first, because that single default decides whether your streams survive.
@@ -352,9 +416,13 @@ One warning applies to the Kubernetes side. The iptables mode of kube-proxy bala
 
 ## 9. Load balancing for AI inference
 
+![Five differences of LLM serving from web traffic: long variable requests, long-lived connections, cache locality, expensive heterogeneous backends and slow autoscaling, with the routing response to each.](./img/p3-0220-llm-differences.svg)
+
+*Figure 2.20.22. LLM serving needs per-request balancing on queue depth and KV-cache load, cache-aware routing, graceful draining and early shedding.*
+
 ![gRPC connection pinning](./img/n20-pinning.svg)
 
-*Figure 2.20.6. An L4 balancer pins each long gRPC connection to one backend, so per-request balancing is needed.*
+*Figure 2.20.23. An L4 balancer pins each long gRPC connection to one backend, so per-request balancing is needed.*
 
 Picture an inference service that answers every health check, while one replica is buried under long generations and the others sit nearly idle. The dashboard shows an average latency that looks acceptable, and the users of that one replica are very unhappy. The section below explains why the usual web assumptions fail for this kind of work, and what signal the balancer should use instead.
 
@@ -397,6 +465,10 @@ For an interview, a whiteboard answer can run in this order: client, then anycas
 Measure first, and choose the load signal before you choose the algorithm.
 
 ## 10. Troubleshooting
+
+![A four step ladder to walk a 502, comparing the balancer's read timeout with the backend deadline and checking keepalives, beside a table of other load balancer symptoms with causes and fixes.](./img/p3-0220-502-walk.svg)
+
+*Figure 2.20.24. To walk a 502, compare the balancer's read timeout with the backend deadline, check both keepalives, then change one timer and retest.*
 
 When a balancer misbehaves, the symptom usually points to a short list of causes. Find the row that matches what you see, then run the check in the third column.
 

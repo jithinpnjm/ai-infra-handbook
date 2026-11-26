@@ -1,0 +1,254 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five AI fabrics against the layers: which one carries what</title>
+  <desc>Five AI fabrics against the layers: which one carries what</desc>
+  <defs>
+    <style>
+      .title-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 48px; font-weight: bold; fill: #303a36; }
+      .header-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 30px; font-weight: bold; fill: #ffffff; }
+      .fabric-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 24px; font-weight: bold; fill: #207448; }
+      .cell-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 24px; fill: #303a36; }
+      .bottom-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 26px; font-weight: bold; fill: #ffffff; }
+      .right-header { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; font-size: 30px; font-weight: bold; fill: #207448; }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title (kept well inside canvas, 2 lines) -->
+  <text class="title-text" x="40" y="70">
+    <tspan x="40" dy="0">Five AI fabrics against the layers:</tspan>
+    <tspan x="40" dy="56">which one carries what</tspan>
+  </text>
+
+  <!-- COLUMN HEADERS -->
+  <!-- Col 1 Header: L1/L2 -->
+  <rect x="330" y="165" width="265" height="55" rx="8" fill="#207448"/>
+  <text class="header-text" x="462" y="203" text-anchor="middle">
+    <tspan x="462" dy="0">L1/L2</tspan>
+  </text>
+
+  <!-- Col 2 Header: L3 -->
+  <rect x="605" y="165" width="265" height="55" rx="8" fill="#207448"/>
+  <text class="header-text" x="737" y="203" text-anchor="middle">
+    <tspan x="737" dy="0">L3</tspan>
+  </text>
+
+  <!-- Col 3 Header: L4 and transport -->
+  <rect x="880" y="165" width="360" height="55" rx="8" fill="#207448"/>
+  <text class="header-text" x="1060" y="203" text-anchor="middle">
+    <tspan x="1060" dy="0">L4 and transport</tspan>
+  </text>
+
+  <!-- ==================== ROW 1: Ethernet with TCP ==================== -->
+  <!-- Row 1 Fabric Header -->
+  <rect x="40" y="235" width="280" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text class="fabric-text" x="56" y="272">
+    <tspan x="56" dy="0">Ethernet with</tspan>
+    <tspan x="56" dy="30">TCP (front end,</tspan>
+    <tspan x="56" dy="30">storage,</tspan>
+    <tspan x="56" dy="30">control plane)</tspan>
+  </text>
+
+  <!-- Row 1, Col 1: Ethernet 25/100/400 GbE -->
+  <rect x="330" y="235" width="265" height="155" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="350" y="302">
+    <tspan x="350" dy="0">Ethernet</tspan>
+    <tspan x="350" dy="32">25/100/400 GbE</tspan>
+  </text>
+
+  <!-- Row 1, Col 2: IP (BGP/ECMP in Clos) -->
+  <rect x="605" y="235" width="265" height="155" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="625" y="302">
+    <tspan x="625" dy="0">IP (BGP/ECMP</tspan>
+    <tspan x="625" dy="32">in Clos)</tspan>
+  </text>
+
+  <!-- Row 1, Col 3: TCP and UDP in the kernel; CUBIC or BBR -->
+  <rect x="880" y="235" width="360" height="155" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="900" y="302">
+    <tspan x="900" dy="0">TCP and UDP in the</tspan>
+    <tspan x="900" dy="32">kernel; CUBIC or BBR</tspan>
+  </text>
+
+  <!-- ==================== ROW 2: RoCE v2 ==================== -->
+  <!-- Row 2 Fabric Header -->
+  <rect x="40" y="402" width="280" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text class="fabric-text" x="56" y="488" font-size="28">
+    <tspan x="56" dy="0">RoCE v2</tspan>
+  </text>
+
+  <!-- Row 2, Col 1: Lossless Ethernet (PFC, ECN, DCB) -->
+  <rect x="330" y="402" width="265" height="155" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="350" y="456">
+    <tspan x="350" dy="0">Lossless</tspan>
+    <tspan x="350" dy="30">Ethernet</tspan>
+    <tspan x="350" dy="30">(PFC, ECN, DCB)</tspan>
+  </text>
+
+  <!-- Row 2, Col 2: IP, routable -->
+  <rect x="605" y="402" width="265" height="155" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="625" y="485">
+    <tspan x="625" dy="0">IP, routable</tspan>
+  </text>
+
+  <!-- Row 2, Col 3 (ORANGE HIGHLIGHT): UDP 4791 plus IB transport (BTH) in the NIC; RDMA verbs bypass the kernel stack -->
+  <rect x="880" y="402" width="360" height="155" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="3"/>
+  <text class="cell-text" x="900" y="442">
+    <tspan x="900" dy="0">UDP 4791 plus IB</tspan>
+    <tspan x="900" dy="28">transport (BTH) in the</tspan>
+    <tspan x="900" dy="28">NIC; RDMA verbs bypass</tspan>
+    <tspan x="900" dy="28">the kernel stack</tspan>
+  </text>
+
+  <!-- ==================== ROW 3: InfiniBand ==================== -->
+  <!-- Row 3 Fabric Header -->
+  <rect x="40" y="569" width="280" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text class="fabric-text" x="56" y="668" font-size="28">
+    <tspan x="56" dy="0">InfiniBand</tspan>
+  </text>
+
+  <!-- Row 3, Col 1: IB link layer, credit-based, virtual lanes -->
+  <rect x="330" y="569" width="265" height="180" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="350" y="637">
+    <tspan x="350" dy="0">IB link layer,</tspan>
+    <tspan x="350" dy="30">credit-based,</tspan>
+    <tspan x="350" dy="30">virtual lanes</tspan>
+  </text>
+
+  <!-- Row 3, Col 2: IB network layer, GIDs, LIDs inside subnets, GRH across -->
+  <rect x="605" y="569" width="265" height="180" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="625" y="609">
+    <tspan x="625" dy="0">IB network</tspan>
+    <tspan x="625" dy="28">layer, GIDs,</tspan>
+    <tspan x="625" dy="28">LIDs inside</tspan>
+    <tspan x="625" dy="28">subnets, GRH</tspan>
+    <tspan x="625" dy="28">across</tspan>
+  </text>
+
+  <!-- Row 3, Col 3: IB transport RC/UD in the NIC; Subnet Manager computes forwarding tables -->
+  <rect x="880" y="569" width="360" height="180" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="900" y="623">
+    <tspan x="900" dy="0">IB transport RC/UD in</tspan>
+    <tspan x="900" dy="28">the NIC; Subnet</tspan>
+    <tspan x="900" dy="28">Manager computes</tspan>
+    <tspan x="900" dy="28">forwarding tables</tspan>
+  </text>
+
+  <!-- ==================== ROW 4: NVLink / NVSwitch ==================== -->
+  <!-- Row 4 Fabric Header -->
+  <rect x="40" y="761" width="280" height="145" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text class="fabric-text" x="56" y="828" font-size="28">
+    <tspan x="56" dy="0">NVLink /</tspan>
+    <tspan x="56" dy="32">NVSwitch</tspan>
+  </text>
+
+  <!-- Row 4, Col 1: proprietary GPU-to-GPU links -->
+  <rect x="330" y="761" width="265" height="145" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="350" y="817">
+    <tspan x="350" dy="0">proprietary</tspan>
+    <tspan x="350" dy="28">GPU-to-GPU</tspan>
+    <tspan x="350" dy="28">links</tspan>
+  </text>
+
+  <!-- Row 4, Col 2: no IP, memory-semantic -->
+  <rect x="605" y="761" width="265" height="145" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="625" y="831">
+    <tspan x="625" dy="0">no IP,</tspan>
+    <tspan x="625" dy="30">memory-semantic</tspan>
+  </text>
+
+  <!-- Row 4, Col 3: load/store and DMA between GPUs -->
+  <rect x="880" y="761" width="360" height="145" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="900" y="831">
+    <tspan x="900" dy="0">load/store and DMA</tspan>
+    <tspan x="900" dy="30">between GPUs</tspan>
+  </text>
+
+  <!-- ==================== ROW 5: PCIe ==================== -->
+  <!-- Row 5 Fabric Header -->
+  <rect x="40" y="918" width="280" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text class="fabric-text" x="56" y="995" font-size="28">
+    <tspan x="56" dy="0">PCIe</tspan>
+  </text>
+
+  <!-- Row 5, Col 1: serial links, TLPs -->
+  <rect x="330" y="918" width="265" height="135" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="350" y="977">
+    <tspan x="350" dy="0">serial links,</tspan>
+    <tspan x="350" dy="30">TLPs</tspan>
+  </text>
+
+  <!-- Row 5, Col 2: a bus -->
+  <rect x="605" y="918" width="265" height="135" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="625" y="993">
+    <tspan x="625" dy="0">a bus</tspan>
+  </text>
+
+  <!-- Row 5, Col 3: GPU-NIC-CPU paths; locality matters -->
+  <rect x="880" y="918" width="360" height="135" rx="8" fill="#ffffff" stroke="#c2d6c6" stroke-width="2"/>
+  <text class="cell-text" x="900" y="977">
+    <tspan x="900" dy="0">GPU-NIC-CPU paths;</tspan>
+    <tspan x="900" dy="30">locality matters</tspan>
+  </text>
+
+  <!-- ==================== RIGHT STRIP: NCCL hierarchy ==================== -->
+  <!-- Outer Container -->
+  <rect x="1260" y="165" width="300" height="888" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  <!-- Right Strip Header -->
+  <rect x="1260" y="165" width="300" height="55" rx="8" fill="#207448"/>
+  <text class="header-text" x="1410" y="203" text-anchor="middle">
+    <tspan x="1410" dy="0">NCCL hierarchy</tspan>
+  </text>
+
+  <!-- Right Strip Item 1: NVLink inside the node -->
+  <rect x="1275" y="245" width="270" height="235" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Recognizable outline icon: GPU chip interconnect -->
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="1382" y="275" width="56" height="56" rx="6"/>
+    <circle cx="1410" cy="303" r="14"/>
+    <line x1="1395" y1="265" x2="1395" y2="275"/>
+    <line x1="1425" y1="265" x2="1425" y2="275"/>
+    <line x1="1395" y1="331" x2="1395" y2="341"/>
+    <line x1="1425" y1="331" x2="1425" y2="341"/>
+  </g>
+  <text class="cell-text" x="1410" y="390" text-anchor="middle" font-weight="bold">
+    <tspan x="1410" dy="0">NVLink inside</tspan>
+    <tspan x="1410" dy="30">the node</tspan>
+  </text>
+
+  <!-- Right Strip Item 2: NIC and fabric between nodes -->
+  <rect x="1275" y="510" width="270" height="235" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Recognizable outline icon: Network fabric / switch interconnect -->
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="1382" y="540" width="56" height="42" rx="4"/>
+    <line x1="1396" y1="561" x2="1402" y2="561"/>
+    <line x1="1418" y1="561" x2="1424" y2="561"/>
+    <path d="M 1392 582 L 1392 602 L 1428 602 L 1428 582"/>
+  </g>
+  <text class="cell-text" x="1410" y="655" text-anchor="middle" font-weight="bold">
+    <tspan x="1410" dy="0">NIC and fabric</tspan>
+    <tspan x="1410" dy="30">between nodes</tspan>
+  </text>
+
+  <!-- Right Strip Item 3: TCP sockets as the fallback and for bootstrap -->
+  <rect x="1275" y="775" width="270" height="255" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <!-- Recognizable outline icon: TCP socket / network connection -->
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="1395" cy="815" r="14"/>
+    <circle cx="1425" cy="845" r="14"/>
+    <path d="M 1405 825 L 1415 835"/>
+  </g>
+  <text class="cell-text" x="1410" y="910" text-anchor="middle" font-weight="bold">
+    <tspan x="1410" dy="0">TCP sockets as the</tspan>
+    <tspan x="1410" dy="30">fallback and for</tspan>
+    <tspan x="1410" dy="30">bootstrap</tspan>
+  </text>
+
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <rect x="40" y="1080" width="1520" height="75" rx="8" fill="#207448"/>
+  <text class="bottom-text" x="800" y="1127" text-anchor="middle">
+    <tspan x="800" dy="0">When a collective runs slowly, first find out which link in this hierarchy it is using</tspan>
+  </text>
+</svg>

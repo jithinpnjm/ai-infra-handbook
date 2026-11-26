@@ -1,0 +1,185 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140">
+  <title>Phase is coarse; the container reason says why</title>
+  <desc>Phases are coarse summaries.</desc>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Phase is coarse; the container reason says why</text>
+
+  
+  <g id="pod-box">
+    <rect x="40" y="110" width="910" height="255" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(68, 130)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="12"/>
+      <rect x="11" y="16" width="14" height="22" rx="4"/>
+      <rect x="31" y="16" width="14" height="22" rx="4"/>
+    </g>
+    
+    
+    <text x="145" y="168" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Pod phase</text>
+
+    
+    
+    <rect x="65" y="205" width="150" height="48" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="140" y="237" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Pending</text>
+
+    
+    <rect x="235" y="205" width="150" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="310" y="237" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Running</text>
+
+    
+    <rect x="405" y="205" width="165" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="487" y="237" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Succeeded</text>
+
+    
+    <rect x="590" y="205" width="140" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="660" y="237" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Failed</text>
+
+    
+    <rect x="750" y="205" width="165" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="832" y="237" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Unknown</text>
+
+    
+    <rect x="65" y="280" width="760" height="54" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    <text x="445" y="315" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Accepted, but not all containers are running yet</text>
+  </g>
+
+  
+  
+  <g id="box-waiting">
+    <rect x="40" y="390" width="910" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(68, 408)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="28,14 28,28 40,28"/>
+    </g>
+    
+    <text x="145" y="446" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Waiting</text>
+
+    
+    <rect x="68" y="485" width="290" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="213" y="517" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ContainerCreating</text>
+
+    <rect x="380" y="485" width="280" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="520" y="517" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">ImagePullBackOff</text>
+
+    <rect x="68" y="555" width="280" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="208" y="587" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CrashLoopBackOff</text>
+
+    <rect x="370" y="555" width="440" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="590" y="587" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">CreateContainerConfigError</text>
+  </g>
+
+  
+  <g id="box-running">
+    <rect x="40" y="665" width="370" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(68, 695)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="14"/>
+      <path d="M28,6 L28,14 M28,42 L28,50 M6,28 L14,28 M42,28 L50,28 M12,12 L18,18 M38,38 L44,44 M12,44 L18,38 M38,18 L44,12"/>
+    </g>
+    
+    <text x="145" y="736" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Running</text>
+  </g>
+
+  
+  <g id="box-terminated">
+    <rect x="435" y="665" width="515" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(465, 695)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <rect x="18" y="18" width="20" height="20" rx="4"/>
+    </g>
+    
+    <text x="542" y="736" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Terminated</text>
+
+    
+    <rect x="465" y="775" width="180" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="555" y="807" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Completed</text>
+
+    <rect x="670" y="775" width="150" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="745" y="807" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Error</text>
+  </g>
+
+  
+  
+  <g id="card-gpu">
+    <rect x="980" y="110" width="580" height="255" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1015, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="6"/>
+      <rect x="18" y="18" width="20" height="20" rx="3"/>
+      <path d="M18,4 L18,10 M28,4 L28,10 M38,4 L38,10 M18,46 L18,52 M28,46 L28,52 M38,46 L38,52 M4,18 L10,18 M4,28 L10,28 M4,38 L10,38 M46,18 L52,18 M46,28 L52,28 M46,38 L52,38"/>
+    </g>
+
+    <text x="1015" y="240" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="1015" dy="0">Pending: waiting for a GPU</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-image">
+    <rect x="980" y="390" width="580" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1015, 418)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M14,36 L10,36 C6,36 4,34 4,30 C4,26 7,24 10,24 C10,18 15,12 22,12 C28,12 33,16 34,21 C36,20 38,20 40,20 C46,20 50,24 50,29 C50,34 46,36 42,36 L38,36"/>
+      <polyline points="20,30 28,38 36,30"/>
+      <line x1="28" y1="20" x2="28" y2="38"/>
+    </g>
+
+    <text x="1015" y="525" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="1015" dy="0">Pending:</tspan>
+      <tspan x="1015" dy="38">waiting for an image download</tspan>
+    </text>
+  </g>
+
+  
+  <g id="comparison-note">
+    <rect x="980" y="665" width="580" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1015, 695)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="16"/>
+      <line x1="34" y1="34" x2="48" y2="48"/>
+    </g>
+
+    <text x="1015" y="795" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1015" dy="0">Same phase, different reasons:</tspan>
+      <tspan x="1015" dy="36">read the reason, not only the phase</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-strip">
+    <rect x="40" y="945" width="1520" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(68, 955)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="42" rx="8"/>
+      <polyline points="14,20 22,27 14,34"/>
+      <line x1="26" y1="34" x2="38" y2="34"/>
+    </g>
+
+    
+    <rect x="145" y="958" width="300" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="295" y="992" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">kubectl describe</text>
+
+    
+    <text x="475" y="992" font-family="sans-serif" font-size="26" fill="#303a36">Events usually point at the cause</text>
+  </g>
+
+  
+  <g id="caption-bar">
+    <rect x="40" y="1045" width="1520" height="60" rx="8" fill="#207448"/>
+    <text x="800" y="1084" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Phases are coarse summaries.</text>
+  </g>
+</svg>

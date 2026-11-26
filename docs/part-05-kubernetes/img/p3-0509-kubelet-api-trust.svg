@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>The kubelet API and what nodes/proxy really grants</title>
+  <desc>Visual infographic explaining the kubelet HTTPS API, endpoint exposure, nodes/proxy privilege escalation risks, Node authorizer, NodeRestriction admission, and hardening configurations.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The kubelet API and what nodes/proxy really grants</text>
+
+  
+
+  
+  <rect x="45" y="140" width="470" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <rect x="70" y="165" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 88 207 L 88 221 M 74 221 L 122 221" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 78 188 L 88 188 L 94 176 L 102 198 L 108 188 L 118 188" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <text x="145" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="145" dy="0">Prometheus</tspan>
+    <tspan x="145" dy="36">ServiceAccount</tspan>
+  </text>
+
+  
+  <text x="70" y="285" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">with only nodes/metrics and</tspan>
+    <tspan x="70" dy="36">nodes/stats get: safe</tspan>
+  </text>
+
+
+  
+  <rect x="45" y="500" width="470" height="350" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  
+  
+  <circle cx="92" cy="545" r="14" fill="none" stroke="#db8129" stroke-width="4"/>
+  <line x1="106" y1="545" x2="124" y2="545" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  <line x1="116" y1="545" x2="116" y2="556" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  <line x1="124" y1="545" x2="124" y2="554" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <text x="145" y="550" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="145" dy="0">ServiceAccount</tspan>
+    <tspan x="145" dy="36">with nodes/proxy</tspan>
+  </text>
+
+  
+  <text x="70" y="635" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">get or create: reaches</tspan>
+    <tspan x="70" dy="34">/exec, /run, /attach,</tspan>
+    <tspan x="70" dy="34">/portForward on every pod</tspan>
+    <tspan x="70" dy="34">on every node, bypassing</tspan>
+    <tspan x="70" dy="34">namespace pods/exec RBAC</tspan>
+  </text>
+
+
+  
+
+  
+  <line x1="515" y1="300" x2="563" y2="300" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <line x1="515" y1="675" x2="563" y2="675" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+
+  
+
+  
+  <rect x="565" y="140" width="470" height="710" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="595" y="165" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="607" y1="180" x2="639" y2="180" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="607" y1="192" x2="639" y2="192" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <rect x="613" y="202" width="20" height="13" rx="2" fill="#207448"/>
+  <path d="M 617 202 L 617 197 A 6 6 0 0 1 629 197 L 629 202" fill="none" stroke="#207448" stroke-width="3"/>
+
+  
+  <text x="670" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">kubelet</text>
+  <text x="670" y="230" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">HTTPS :10250</text>
+
+  
+  <text x="600" y="285" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">/pods, /runningpods,</tspan>
+    <tspan x="600" dy="42">/stats/summary, /metrics,</tspan>
+    <tspan x="600" dy="42">/metrics/cadvisor,</tspan>
+    <tspan x="600" dy="42">/metrics/resource,</tspan>
+    <tspan x="600" dy="42">/metrics/probes, /logs/,</tspan>
+    <tspan x="600" dy="50" font-weight="bold" fill="#db8129">/exec, /attach,</tspan>
+    <tspan x="600" dy="42" font-weight="bold" fill="#db8129">/portForward,</tspan>
+    <tspan x="600" dy="50" fill="#303a36">/configz, /healthz</tspan>
+  </text>
+
+
+  
+
+  
+  <rect x="1085" y="140" width="470" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <path d="M 1115 172 Q 1143 165 1171 172 Q 1171 204 1143 221 Q 1115 204 1115 172 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M 1133 194 L 1141 202 L 1155 186" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+  
+  <text x="1190" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node authorizer:</text>
+
+  
+  <text x="1115" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0">system:node:name in group</tspan>
+    <tspan x="1115" dy="36">system:nodes can read only</tspan>
+    <tspan x="1115" dy="36">Secrets, ConfigMaps and PVs</tspan>
+    <tspan x="1115" dy="36">of pods bound to its node</tspan>
+  </text>
+
+
+  
+  <rect x="1085" y="500" width="470" height="350" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <path d="M 1115 532 Q 1143 525 1171 532 Q 1171 564 1143 581 Q 1115 564 1115 532 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="1127" y1="554" x2="1159" y2="554" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <text x="1190" y="550" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1190" dy="0">NodeRestriction</tspan>
+    <tspan x="1190" dy="36">admission:</tspan>
+  </text>
+
+  
+  <text x="1115" y="635" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0">may modify only its own</tspan>
+    <tspan x="1115" dy="34">Node object and bound</tspan>
+    <tspan x="1115" dy="34">pods status, cannot set</tspan>
+    <tspan x="1115" dy="34">node-role.* or</tspan>
+    <tspan x="1115" dy="34">node-restriction.</tspan>
+    <tspan x="1115" dy="34">kubernetes.io/* labels</tspan>
+  </text>
+
+
+  
+
+  
+  <rect x="45" y="880" width="1510" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="75" y="930" width="48" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 87 930 L 87 918 A 12 12 0 0 1 111 918 L 111 930" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="99" cy="945" r="3" fill="#207448"/>
+  <line x1="99" y1="948" x2="99" y2="956" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  
+  <text x="150" y="945" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hardening list:</text>
+
+  
+  <text x="150" y="988" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="150" dy="0">anonymous auth false, authorization mode Webhook, read-only port 10255 off (readOnlyPort 0),</tspan>
+    <tspan x="150" dy="40">protectKernelDefaults, seccompDefault, rotateCertificates, approve serving CSRs</tspan>
+  </text>
+
+</svg>

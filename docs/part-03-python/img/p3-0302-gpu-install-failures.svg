@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Why pip install broke torch, and the other GPU packaging failures</title>
+  <desc>A table of causes with the error text and the prevention.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Why pip install broke torch, and the other GPU packaging failures</text>
+
+  
+  <g>
+    
+    <rect x="40" y="105" width="720" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M85,142 L110,156 L85,170 L60,156 Z"/>
+      <path d="M60,156 L60,184 L85,198 L85,170 Z"/>
+      <path d="M110,156 L110,184 L85,198 L85,170 Z"/>
+      <path d="M85,142 L85,170"/>
+    </g>
+    
+    <text x="130" y="145" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">pip replaces the tuned</tspan>
+      <tspan x="130" dy="36">PyTorch in an NGC container with</tspan>
+      <tspan x="130" dy="36">a generic wheel (the classic</tspan>
+      <tspan x="130" dy="36">pip install broke torch incident)</tspan>
+    </text>
+
+    
+    <rect x="780" y="105" width="780" height="175" rx="10" fill="#fdf6ec" stroke="#db8129" stroke-width="3"/>
+    
+    <text x="810" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">build a constraints file from pip freeze inside</tspan>
+      <tspan x="810" dy="32">the image: nvcr.io/nvidia/pytorch:24.xx-py3</tspan>
+      <tspan x="810" dy="32">bundles Python, PyTorch, CUDA, cuDNN, NCCL,</tspan>
+      <tspan x="810" dy="32">Apex, TransformerEngine</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="292" width="720" height="195" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="63" y="367" width="44" height="44" rx="6"/>
+      <rect x="73" y="377" width="24" height="24" rx="2"/>
+      <line x1="71" y1="361" x2="71" y2="367"/>
+      <line x1="85" y1="361" x2="85" y2="367"/>
+      <line x1="99" y1="361" x2="99" y2="367"/>
+      <line x1="71" y1="411" x2="71" y2="417"/>
+      <line x1="85" y1="411" x2="85" y2="417"/>
+      <line x1="99" y1="411" x2="99" y2="417"/>
+      <line x1="57" y1="375" x2="63" y2="375"/>
+      <line x1="57" y1="389" x2="63" y2="389"/>
+      <line x1="57" y1="403" x2="63" y2="403"/>
+      <line x1="107" y1="375" x2="113" y2="375"/>
+      <line x1="107" y1="389" x2="113" y2="389"/>
+      <line x1="107" y1="403" x2="113" y2="403"/>
+    </g>
+    
+    <text x="130" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">CUDA driver version is</tspan>
+      <tspan x="130" dy="38">insufficient</tspan>
+    </text>
+
+    
+    <rect x="780" y="292" width="780" height="195" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <text x="810" y="326" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">the wheel's CUDA runtime is newer than the</tspan>
+      <tspan x="810" dy="28">host driver; a newer driver runs older runtimes,</tspan>
+      <tspan x="810" dy="28">not the reverse; upgrade the driver or use an</tspan>
+      <tspan x="810" dy="28">older wheel such as cu118; check</tspan>
+      <tspan x="810" dy="28">torch.version.cuda, torch.cuda.is_available(),</tspan>
+      <tspan x="810" dy="28">nvidia-smi</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="499" width="720" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <circle cx="68" cy="544" r="8"/>
+      <circle cx="102" cy="544" r="8"/>
+      <circle cx="85" cy="570" r="8"/>
+      <line x1="75" y1="548" x2="95" y2="548"/>
+      <line x1="73" y1="550" x2="80" y2="563"/>
+      <line x1="97" y1="550" x2="90" y2="563"/>
+    </g>
+    
+    <text x="130" y="548" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">LD_LIBRARY_PATH points at a</tspan>
+      <tspan x="130" dy="38">different CUDA</tspan>
+    </text>
+
+    
+    <rect x="780" y="499" width="780" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <text x="810" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">loads the wrong libcudart, libcublas or libnccl;</tspan>
+      <tspan x="810" dy="32">prefer wheel-bundled libraries or the NGC stack</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="626" width="720" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M72,661 L63,661 L63,705 L72,705"/>
+      <path d="M98,661 L107,661 L107,705 L98,705"/>
+      <circle cx="75" cy="673" r="3.5" fill="#207448"/>
+      <circle cx="95" cy="673" r="3.5" fill="#207448"/>
+      <circle cx="75" cy="693" r="3.5" fill="#207448"/>
+      <circle cx="95" cy="693" r="3.5" fill="#207448"/>
+    </g>
+    
+    <text x="130" y="675" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">module compiled using NumPy 1.x</tspan>
+      <tspan x="130" dy="38">cannot be run in NumPy 2.x</tspan>
+    </text>
+
+    
+    <rect x="780" y="626" width="780" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <text x="810" y="677" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">NumPy 2.x changed the C ABI; pin versions</tspan>
+      <tspan x="810" dy="32">consistently, rebuild extensions, run pip check</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="753" width="720" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="63" y="788" width="44" height="44" rx="8"/>
+      <rect x="73" y="798" width="24" height="24" rx="4"/>
+      <line x1="85" y1="798" x2="85" y2="822"/>
+      <line x1="73" y1="810" x2="97" y2="810"/>
+      <line x1="74" y1="782" x2="74" y2="788"/>
+      <line x1="96" y1="782" x2="96" y2="788"/>
+      <line x1="74" y1="832" x2="74" y2="838"/>
+      <line x1="96" y1="832" x2="96" y2="838"/>
+      <line x1="57" y1="799" x2="63" y2="799"/>
+      <line x1="57" y1="821" x2="63" y2="821"/>
+      <line x1="107" y1="799" x2="113" y2="799"/>
+      <line x1="107" y1="821" x2="113" y2="821"/>
+    </g>
+    
+    <text x="130" y="802" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">No wheels on aarch64 (Grace Hopper,</tspan>
+      <tspan x="130" dy="38">Blackwell hosts, Apple silicon)</tspan>
+    </text>
+
+    
+    <rect x="780" y="753" width="780" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <text x="810" y="804" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">source builds are slow; check wheel</tspan>
+      <tspan x="810" dy="32">availability early</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="40" y="880" width="720" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="63" y="945" width="44" height="44" rx="6"/>
+      <line x1="63" y1="957" x2="107" y2="957"/>
+      <circle cx="70" cy="951" r="1.5" fill="#207448"/>
+      <circle cx="76" cy="951" r="1.5" fill="#207448"/>
+      <path d="M70,967 L76,972 L70,977"/>
+      <line x1="80" y1="977" x2="88" y2="977"/>
+    </g>
+    
+    <text x="130" y="952" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">flash-attn, apex, xformers or a</tspan>
+      <tspan x="130" dy="38">custom CUDA extension build</tspan>
+    </text>
+
+    
+    <rect x="780" y="880" width="780" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <text x="810" y="918" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="810" dy="0">needs matching nvcc, compatible GCC,</tspan>
+      <tspan x="810" dy="28">TORCH_CUDA_ARCH_LIST such as 9.0 for Hopper,</tspan>
+      <tspan x="810" dy="28">MAX_JOBS sized to RAM; tens of minutes; cache</tspan>
+      <tspan x="810" dy="28">built wheels with pip wheel, a wheelhouse/ or</tspan>
+      <tspan x="810" dy="28">an internal index</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1070" width="1520" height="80" rx="10" fill="#207448"/>
+    <text x="800" y="1102" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">Check the driver and the CUDA runtime first,</tspan>
+      <tspan x="800" dy="32">because a mismatch there breaks the install on every node</tspan>
+    </text>
+  </g>
+</svg>

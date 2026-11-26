@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Targeting flags: choose hosts, choose tasks, inspect before running</title>
+  <desc>Visual guide to Ansible targeting flags, tag rules, and safety considerations.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="74" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">Targeting flags: choose hosts, choose tasks,</tspan>
+    <tspan x="40" dy="54">inspect before running</tspan>
+  </text>
+
+  
+  <g id="analogy-box">
+    <rect x="1030" y="44" width="530" height="88" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1052, 60)">
+      <line x1="6" y1="28" x2="50" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="34" cy="28" r="12" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="1122" y="97" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">controls on a dimmer switch</text>
+  </g>
+
+  
+  <g id="command-effect-table">
+    <rect x="40" y="160" width="1520" height="428" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 40 172 Q 40 160 52 160 L 1548 160 Q 1560 160 1560 172 L 1560 206 L 40 206 Z" fill="#e8f1ea"/>
+    
+    
+    <line x1="960" y1="160" x2="960" y2="588" stroke="#c0d4c6" stroke-width="1.5"/>
+
+    
+    <text x="70" y="193" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Command</text>
+    <text x="990" y="193" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Effect</text>
+
+    
+    <rect x="41" y="206" width="1518" height="42" fill="#ffffff"/>
+    <rect x="41" y="248" width="1518" height="42" fill="#f6faf7"/>
+    <rect x="41" y="290" width="1518" height="42" fill="#ffffff"/>
+    <rect x="41" y="332" width="1518" height="42" fill="#f6faf7"/>
+    <rect x="41" y="374" width="1518" height="42" fill="#ffffff"/>
+    <rect x="41" y="416" width="1518" height="42" fill="#f6faf7"/>
+    <rect x="41" y="458" width="1518" height="42" fill="#ffffff"/>
+    <rect x="41" y="500" width="1518" height="42" fill="#f6faf7"/>
+    <rect x="41" y="542" width="1518" height="44" rx="0" fill="#ffffff"/>
+
+    
+    <line x1="40" y1="206" x2="1560" y2="206" stroke="#c0d4c6" stroke-width="1.5"/>
+    <line x1="40" y1="248" x2="1560" y2="248" stroke="#e0ece2" stroke-width="1"/>
+    <line x1="40" y1="290" x2="1560" y2="290" stroke="#e0ece2" stroke-width="1"/>
+    <line x1="40" y1="332" x2="1560" y2="332" stroke="#e0ece2" stroke-width="1"/>
+    <line x1="40" y1="374" x2="1560" y2="374" stroke="#e0ece2" stroke-width="1"/>
+    <line x1="40" y1="416" x2="1560" y2="416" stroke="#e0ece2" stroke-width="1"/>
+    <line x1="40" y1="458" x2="1560" y2="458" stroke="#e0ece2" stroke-width="1"/>
+    <line x1="40" y1="500" x2="1560" y2="500" stroke="#e0ece2" stroke-width="1"/>
+    <line x1="40" y1="542" x2="1560" y2="542" stroke="#e0ece2" stroke-width="1"/>
+
+    
+    <text x="70" y="235" font-family="monospace" font-size="24" fill="#303a36">ansible-playbook site.yml --limit "gpu_h100:&amp;rack_r01"</text>
+    <text x="990" y="235" font-family="sans-serif" font-size="24" fill="#303a36">slice of the fleet</text>
+
+    
+    <text x="70" y="277" font-family="monospace" font-size="24" fill="#303a36">--tags packages,monitoring</text>
+    <text x="990" y="277" font-family="sans-serif" font-size="24" fill="#303a36">only tagged tasks</text>
+
+    
+    <text x="70" y="319" font-family="monospace" font-size="24" fill="#303a36">--skip-tags slow</text>
+
+    
+    <text x="70" y="361" font-family="monospace" font-size="24" fill="#303a36">--start-at-task "Install baseline packages"</text>
+
+    
+    <text x="70" y="403" font-family="monospace" font-size="24" fill="#303a36">--step</text>
+    <text x="990" y="403" font-family="sans-serif" font-size="24" fill="#303a36">confirm each task interactively</text>
+
+    
+    <text x="70" y="445" font-family="monospace" font-size="24" fill="#303a36">--list-tasks --list-tags --list-hosts</text>
+    <text x="990" y="445" font-family="sans-serif" font-size="24" fill="#303a36">show what a run would touch</text>
+
+    
+    <text x="70" y="487" font-family="monospace" font-size="24" fill="#303a36">-e "nvidia_driver_branch=555" -e @extra.yml</text>
+    <text x="990" y="487" font-family="sans-serif" font-size="24" fill="#303a36">extra variables</text>
+
+    
+    <text x="70" y="529" font-family="monospace" font-size="24" fill="#303a36">--syntax-check</text>
+
+    
+    <text x="70" y="571" font-family="monospace" font-size="24" fill="#303a36">-f 50 -vv</text>
+    <text x="990" y="571" font-family="sans-serif" font-size="24" fill="#303a36">forks and verbosity</text>
+  </g>
+
+  
+  <g id="tag-rules-panel">
+    <rect x="40" y="614" width="740" height="460" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(68, 636)">
+      <path d="M 6 26 L 26 6 L 48 6 L 48 28 L 28 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+      <circle cx="38" cy="16" r="3.5" fill="#207448"/>
+    </g>
+
+    
+    <g id="rule-item-1">
+      <rect x="68" y="702" width="684" height="74" rx="10" fill="#f6faf7" stroke="#d2e5d6" stroke-width="1.5"/>
+      <rect x="68" y="702" width="8" height="74" rx="4" fill="#207448"/>
+      <text x="94" y="746" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">tags: on tasks, blocks, plays, roles and imports</text>
+    </g>
+
+    
+    <g id="rule-item-2">
+      <rect x="68" y="790" width="684" height="74" rx="10" fill="#f6faf7" stroke="#d2e5d6" stroke-width="1.5"/>
+      <rect x="68" y="790" width="8" height="74" rx="4" fill="#207448"/>
+      <text x="94" y="834" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">always runs unless you pass --skip-tags always</text>
+    </g>
+
+    
+    <g id="rule-item-3">
+      <rect x="68" y="878" width="684" height="74" rx="10" fill="#f6faf7" stroke="#d2e5d6" stroke-width="1.5"/>
+      <rect x="68" y="878" width="8" height="74" rx="4" fill="#207448"/>
+      <text x="94" y="922" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">never runs only when you request it</text>
+    </g>
+
+    
+    <g id="rule-item-4">
+      <rect x="68" y="966" width="684" height="88" rx="10" fill="#f6faf7" stroke="#d2e5d6" stroke-width="1.5"/>
+      <rect x="68" y="966" width="8" height="88" rx="4" fill="#207448"/>
+      <text x="94" y="1002" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="94" dy="0">small, consistent vocabulary:</tspan>
+        <tspan x="94" dy="34">packages, config, services, firewall, monitoring</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="warning-panel">
+    <rect x="820" y="614" width="740" height="460" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(850, 638)">
+      <path d="M 28 6 L 52 48 L 4 48 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="2.5" fill="#db8129"/>
+    </g>
+
+    
+    <text x="850" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="850" dy="0">tags are a convenience, not a safety mechanism:</tspan>
+      <tspan x="850" dy="42">a tagged partial run skips dependencies; a --tags</tspan>
+      <tspan x="850" dy="42">config run that rewrites a Slurm config on a</tspan>
+      <tspan x="850" dy="42">node whose packages were never updated leaves a</tspan>
+      <tspan x="850" dy="42">correct file the node cannot read; use tags to</tspan>
+      <tspan x="850" dy="42">save time on a run you already understand, not</tspan>
+      <tspan x="850" dy="42">to skip steps you have not checked</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1100" width="1520" height="72" rx="12" fill="#207448"/>
+    <text x="800" y="1145" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Turn the change down to one host before you turn it up</text>
+  </g>
+</svg>

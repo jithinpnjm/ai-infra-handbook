@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>From a MAC address to the IPv6 neighbour address: a worked derivation</title>
+  <desc>Visual derivation of an IPv6 link-local address and solicited-node multicast address from an Ethernet MAC address using modified EUI-64.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="40" y="58" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="44" font-weight="bold" fill="#303a36">From a MAC address to the IPv6 neighbour address:</text>
+  <text x="40" y="104" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="34" font-weight="bold" fill="#207448">a worked derivation</text>
+
+  
+
+  
+  <rect x="40" y="130" width="940" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="72" cy="172" r="22" fill="#207448" />
+  <text x="72" y="180" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(112, 147)" fill="none" stroke="#207448" stroke-width="3">
+    <rect x="0" y="0" width="52" height="38" rx="4" />
+    <rect x="12" y="10" width="28" height="18" rx="2" stroke-width="2.5" />
+    <path d="M 12 38 v 8 M 22 38 v 8 M 32 38 v 8 M 42 38 v 8" stroke-linecap="round" />
+  </g>
+  
+  <text x="190" y="182" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">MAC 01:23:45:67:89:ab</text>
+
+  
+  <line x1="510" y1="215" x2="510" y2="243" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="245" width="940" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="72" cy="285" r="22" fill="#207448" />
+  <text x="72" y="293" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(112, 260)" fill="none" stroke="#207448" stroke-width="3">
+    <rect x="2" y="4" width="22" height="22" rx="3" />
+    <rect x="28" y="26" width="22" height="22" rx="3" />
+    <path d="M 28 12 Q 44 12 44 24" stroke-linecap="round" />
+    <path d="M 24 40 Q 8 40 8 28" stroke-linecap="round" />
+  </g>
+  
+  <text x="190" y="280" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="bold" fill="#303a36">Flip the U/L bit and insert ff:fe in the middle:</text>
+  <text x="190" y="316" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#207448">modified EUI-64 0323:45ff:fe67:89ab</text>
+  <text x="190" y="354" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">(the 01 becomes 03; the ff:fe sits between 45 and 67)</text>
+
+  
+  <line x1="510" y1="380" x2="510" y2="408" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="410" width="940" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="72" cy="455" r="22" fill="#207448" />
+  <text x="72" y="463" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(112, 432)" fill="none" stroke="#207448" stroke-width="3">
+    <circle cx="26" cy="26" r="24" />
+    <ellipse cx="26" cy="26" rx="11" ry="24" stroke-width="2.5" />
+    <line x1="2" y1="26" x2="50" y2="26" stroke-width="2.5" />
+  </g>
+  
+  <text x="190" y="455" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="25" font-weight="bold" fill="#303a36">Link-local address fe80::/64 plus the interface ID:</text>
+  <text x="190" y="495" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448">fe80::323:45ff:fe67:89ab</text>
+
+  
+  <line x1="510" y1="525" x2="510" y2="553" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="555" width="940" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="72" cy="600" r="22" fill="#207448" />
+  <text x="72" y="608" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(112, 575)" fill="none" stroke="#207448" stroke-width="3">
+    <circle cx="26" cy="28" r="4" fill="#207448" />
+    <path d="M 15 17 A 16 16 0 0 1 37 17" stroke-linecap="round" />
+    <path d="M 8 10 A 26 26 0 0 1 44 10" stroke-linecap="round" />
+    <path d="M 26 32 v 16 M 16 48 h 20" stroke-linecap="round" />
+  </g>
+
+  
+  <rect x="185" y="570" width="765" height="85" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="205" y="604" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" font-weight="bold" fill="#207448">Solicited-node multicast: <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">ff02::1:ff67:89ab,</tspan></text>
+  <text x="205" y="638" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">from the last 24 bits (67:89:ab) of the address</text>
+
+  
+  <line x1="565" y1="655" x2="565" y2="685" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="185" y="690" width="765" height="80" rx="8" fill="#fff6ee" stroke="#db8129" stroke-width="3" />
+  <text x="205" y="740" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#db8129">Ethernet destination 33:33:ff:67:89:ab</text>
+
+
+  
+
+  
+  <rect x="1020" y="130" width="540" height="375" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1045, 155)" fill="none" stroke="#207448" stroke-width="3">
+    <circle cx="26" cy="26" r="24" />
+    <circle cx="26" cy="26" r="14" stroke-width="2.5" />
+    <circle cx="26" cy="26" r="4" fill="#207448" />
+  </g>
+  <text x="1115" y="190" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="30" font-weight="bold" fill="#207448">Why this beats ARP</text>
+  <text x="1045" y="245" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1045" dy="0">only hosts whose address ends in</tspan>
+    <tspan x="1045" dy="36">those 24 bits receive the</tspan>
+    <tspan x="1045" dy="36">solicitation, instead of every</tspan>
+    <tspan x="1045" dy="36">host hearing a broadcast: a</tspan>
+    <tspan x="1045" dy="36">question sent to one block, not</tspan>
+    <tspan x="1045" dy="36">shouted across a stadium</tspan>
+  </text>
+
+  
+  <rect x="1020" y="530" width="540" height="260" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6" />
+  
+  <g transform="translate(1045, 552)" fill="none" stroke="#207448" stroke-width="3">
+    <path d="M 26 4 L 48 14 C 48 34 38 48 26 54 C 14 48 4 34 4 14 Z" stroke-linejoin="round" />
+    <path d="M 26 18 v 22 M 18 28 h 16" stroke-linecap="round" stroke-width="2.5" />
+  </g>
+  <text x="1115" y="588" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="28" font-weight="bold" fill="#207448">Side note</text>
+  <text x="1045" y="640" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1045" dy="0">Modern systems may use a random</tspan>
+    <tspan x="1045" dy="36">stable privacy ID (RFC 7217)</tspan>
+    <tspan x="1045" dy="36">instead; the Linux setting is</tspan>
+    <tspan x="1045" dy="36" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-weight="bold">addr_gen_mode</tspan>
+  </text>
+
+
+  
+
+  
+  <rect x="40" y="815" width="1520" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(65, 840)" fill="none" stroke="#207448" stroke-width="3">
+    <rect x="0" y="0" width="54" height="38" rx="4" />
+    <path d="M 2 2 L 27 22 L 52 2" stroke-linejoin="round" />
+  </g>
+  
+  <text x="135" y="865" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#207448">ICMPv6 types: <tspan font-weight="normal" fill="#303a36">133 Router Solicitation (to ff02::2), 134 Router Advertisement,</tspan></text>
+  <text x="135" y="912" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="24" fill="#303a36">135 Neighbor Solicitation, 136 Neighbor Advertisement, 137 Redirect</text>
+
+  
+  <rect x="40" y="975" width="1520" height="75" rx="10" fill="#207448" />
+  <text x="800" y="1022" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">IPv6 has no broadcast, so it uses ICMPv6 messages to multicast addresses</text>
+</svg>

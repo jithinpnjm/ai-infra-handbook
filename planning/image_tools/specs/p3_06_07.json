@@ -1,0 +1,132 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-wm-four-jobs",
+  "title": "What a workload manager does and its three parts",
+  "spec": "Top row four jobs: '1 Resource management: know what exists (nodes, CPUs, memory, GPUs, licences) and what is in use, and enforce that jobs use only what they were given'; '2 Scheduling: decide who runs where and when from queue, priorities, limits, fairness and the shape of each request'; '3 Launching and control: start the program on chosen nodes, set up environment, track every process, clean up when it ends or is killed'; '4 Accounting: record who used what for how long, to bill, enforce quotas, balance fairness and answer why my job died'. Bottom row three parts: 'queue manager: front desk, accepts a job, shows state of queues and jobs'; 'scheduler: decides when a job starts and which resources; first-come first-served leaves processors idle while a large job waits; a complex scheduler can take tens of minutes to produce a plan'; 'agents on compute nodes: help start and watch a job; stop processes a crashed or withdrawn job left behind so a dead job does not hold a node'. Side contrast: 'Slurm is a batch system: you describe nodes, GPUs and time, submit, and the request waits in the queue until it can get exactly that all at once; Kubernetes is built to scale long-running services where capacity exceeds demand, not for network topology, job priorities or queuing'. Text at least 24px.",
+  "anchor": "## 1. What a workload manager does",
+  "alt": "Four jobs of a workload manager above its three parts: queue manager, scheduler and node agents.",
+  "cap": "A batch system waits until it can give a job everything it asked for at once."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-compute-node-access",
+  "title": "Stopping users from bypassing the queue by SSH",
+  "spec": "Two-path diagram. Problem: 'unless SSH on compute nodes is locked down, a user can ssh directly to a compute node and run work outside the queue'. Option A 'pam_slurm_adopt: a scheduler-integrated PAM module; user may ssh into a compute node only if they currently own a running job on that node; the SSH session is adopted into the job's cgroup'. Option B 'prolog and epilog scripts add and remove the allocated user's name in a node-local allowlist file; the standard pam_listfile PAM module checks that file; scripts update the file before and after the job'. Second operational habit box: 'keep production partitions for real work, for example separating nodes with and without accelerators, and add a small dedicated test partition for fast smoke tests'. Footer 'both are cheap on day one and expensive to add after users built habits'. Text at least 24px.",
+  "anchor": "### Dedicated test partition, scheduler overhead, and compute-node access control (`pam_listfile` and `pam_slurm_adopt`)",
+  "alt": "Two ways to block direct SSH to compute nodes: pam_slurm_adopt and a prolog-managed pam_listfile allowlist.",
+  "cap": "Only a user who owns a running job on a node should be able to log in to it."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-plugin-families",
+  "title": "Slurm is plugins: which parameter picks what",
+  "spec": "Grouped map of slurm.conf parameters and typical production choice. Identity and placement group: 'AuthType auth/munge (or auth/slurm on newer versions)', 'SelectType select/cons_tres decides how CPUs, memory and GPUs are assigned inside nodes', 'TopologyPlugin topology/tree or block topology for large IB fabrics'. Queue decisions group: 'SchedulerType sched/backfill', 'PriorityType priority/multifactor', 'PreemptType preempt/qos or preempt/partition_prio'. Launch and tracking group: 'ProctrackType proctrack/cgroup finds and kills all processes of a job', 'TaskPlugin task/affinity,task/cgroup CPU binding and per-task cgroup constraints', 'MpiDefault pmix if built with PMIx'. Accounting group: 'AccountingStorageType accounting_storage/slurmdbd', 'JobAcctGatherType jobacct_gather/cgroup'. Hooks group: 'JobSubmitPlugins lua to validate and rewrite requests, enforce naming, require GPUs via --gres, route to the right partition', 'PlugStackConfig SPANK plugins at launch, for example Pyxis (6.13)'. Rule strip: 'job_submit and SPANK have stable APIs; other plugin interfaces use internal structures that change per version and break on upgrade; write site policy in job_submit and SPANK; the last column is where to start, check it against your site'. Text at least 24px.",
+  "anchor": "## 4. Plugins and extension points",
+  "alt": "A grouped map of slurm.conf plugin parameters with typical choices and the two stable extension points.",
+  "cap": "Every behaviour is a plugin chosen by name, and only job_submit and SPANK survive upgrades well."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-state-stores",
+  "title": "Where Slurm keeps its state and what losing it costs",
+  "spec": "Five store cards. 'Configuration: slurm.conf and friends in /etc/slurm or served configless; lost: cluster cannot start; keep in version control'. 'Controller run-time state: queued and running jobs, node states, reservations in StateSaveLocation (for example /var/spool/slurmctld); lost: queued jobs lost, running jobs may be orphaned or lost'. 'Per-node job state: SlurmdSpoolDir (for example /var/spool/slurmd); lost: node forgets running steps on restart'. 'Accounting: job history, associations, limits, QoS, usage in MariaDB behind slurmdbd; lost: history and every account-based policy'. 'Logs: SlurmctldLogFile, SlurmdLogFile, SlurmdbdLogFile or journald; lost: only diagnosability'. Restart story: 'on startup slurmctld reads StateSaveLocation back, rebuilds the queue and cluster state, then asks the nodes what is running; the directory must be writable by SlurmUser, on a reliable filesystem and shared in an HA pair'. Cost scale from cheap to permanent: 'configuration restore from version control, state directory somewhere in between, accounting database is a permanent gap in history'. Text at least 24px.",
+  "anchor": "### What lives where",
+  "alt": "Five stores of Slurm state with what is lost if each disappears, ordered from cheap to permanent.",
+  "cap": "The state directory is the controller's memory, and a lost accounting database cannot be rebuilt."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-munge-checklist",
+  "title": "Munge: four rules and two test commands",
+  "spec": "Checklist and ladder. Rule 1 'one shared key: identical /etc/munge/munge.key on controller, compute, login and database hosts; owned by munge, mode 0400; create once and distribute securely'. Rule 2 'consistent identities: munge transports numbers, so UID and GID must mean the same everywhere; LDAP or SSSD or configuration management so alice is UID 1042 on all nodes'. Rule 3 'synchronised time: credentials carry a timestamp with a short validity window, five minutes by default; run chrony or ntpd and monitor skew'. Rule 4 'running munged and the right socket: /run/munge/munge.socket.2 with correct permissions and ownership'. Test ladder: 'munge -n | unmunge: local encode and decode', 'munge -n | ssh node1 unmunge: cross-node, proves key and clocks agree'. Failure reading: 'Invalid authentication credential or Unable to contact slurm controller; logs show Rewound credential or Invalid credential; if the cross-node test fails check the key checksum first then time sync'. Note 'newer Slurm (around 23.11) offers auth/slurm with the sackd daemon; munge is still most common'. Text at least 24px.",
+  "anchor": "## 6. Authentication: munge, and its successor",
+  "alt": "Four munge rules and a two-step test ladder, local then cross-node, with the usual failure messages.",
+  "cap": "Test munge across nodes before installing anything else because key and clock mismatches cause most failures."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-configless",
+  "title": "Configless mode: edit once on the controller",
+  "spec": "Before and after. Before: 'slurm.conf must be identical on every node; the controller compares a hash of the file; a node whose copy differs refuses to join or misbehaves; keeping 1,000 copies in sync leads to drift'. After: 'controller slurm.conf has SlurmctldParameters=enable_configless; compute node starts slurmd --conf-server ctl1:6817, or a DNS SRV record _slurmctld._tcp is published so that no flag is needed; login nodes use sackd the same way; nodes fetch the configuration from the controller'. Update loop: 'edit only on the controller, run scontrol reconfigure, nodes pick up the change; a handful of settings still need a daemon restart'. Family of files around slurm.conf: 'cgroup.conf, gres.conf (autodetect), topology.conf (switch tree), slurmdbd.conf (database, mode 600), plugstack.conf (SPANK), job_submit.lua'. Note 'used by BCM, Slinky and many cloud images'. Text at least 24px.",
+  "anchor": "## 7. Configuration files and configless mode",
+  "alt": "Copying slurm.conf to every node is contrasted with configless mode where nodes fetch the file from the controller.",
+  "cap": "Configless mode removes the drift that comes from keeping many copies of slurm.conf."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-roles-ports",
+  "title": "Cluster roles and the doors between them",
+  "spec": "Boxes for roles with sizing notes and ports on the arrows. 'Controllers: slurmctld primary and backup; fast CPU cores because the scheduler is largely single-threaded in critical sections, plenty of RAM, local SSD or very reliable shared filesystem for StateSaveLocation; not a GPU node'. 'Accounting database host: MariaDB or MySQL plus slurmdbd; own host or at least own disk; InnoDB buffer pool sized for job history; back it up'. 'Login or submit nodes: client tools, munge, sackd; scale with users'. 'Compute nodes: slurmd and munge; reserve some CPU and memory for OS and daemons'. 'Optional: slurmrestd host, monitoring exporter, often on a management node'. Port arrows: '6817 to slurmctld', '6818 to slurmd', '6819 to slurmdbd'; 'srun opens ephemeral ports on the submit node for I/O and step traffic; restrict with SrunPortRange; compute nodes must also resolve and reach each other'. Note 'a shut door gives no helpful message: the sender waits until it gives up'. Prerequisites strip: 'DNS or /etc/hosts consistency, time sync, consistent UIDs and GIDs, shared home or data filesystem, dedicated unprivileged slurm system user'. Text at least 24px.",
+  "anchor": "### Planning roles and sizing",
+  "alt": "Cluster role boxes with sizing notes joined by arrows labelled with ports 6817, 6818 and 6819.",
+  "cap": "Separate the roles and open the three daemon ports between them before installing."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-accounting-enforce-order",
+  "title": "Build the account tree before turning enforcement on",
+  "spec": "Sequence with a trap. Step 1 'sacctmgr add cluster mycluster'. Step 2 'sacctmgr add account ai-research Description=AI research Organization=lab; sub-account with parent, for example sacctmgr add account llm-pretrain parent=genai'. Step 3 'sacctmgr add user alice Account=ai-research'. Step 4 'sacctmgr list associations format=cluster,account,user,share,qos and sacctmgr show tree to check each user sits under the expected account'. Step 5 'only now set AccountingStorageEnforce=associations,limits,qos in slurm.conf'. Trap: 'enforcement on before the tree exists: a submit from a user with no association is rejected with Invalid account or account/partition combination and everyone is locked out'. Model box: 'association is a tuple of cluster, account, user and optionally partition; limits and shares attach to associations and accounts; each account is a pot of shares, a user draws from the pot of their account; AdminLevel Admin, Operator or None; coordinators manage users inside an account'. Housekeeping: 'PurgeJobAfter and PurgeStepAfter and related Purge*After settings, never purged if unset; ArchiveJobs=yes writes purged records out; MaxQueryTimeRange limits how wide one sacct or sreport query may be; slurmdbd.conf readable only by SlurmUser'. Text at least 24px.",
+  "anchor": "## 9. Accounting: the account tree",
+  "alt": "An ordered sacctmgr sequence that builds the account tree first and only then enables enforcement.",
+  "cap": "Enabling enforcement before the tree exists locks every user out."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-first-conf-blocks",
+  "title": "A first slurm.conf read in blocks",
+  "spec": "slurm.conf grouped by the question each block answers, with values from the chapter. 'Identity of the cluster: ClusterName=mycluster, SlurmctldHost=ctl1, SlurmUser=slurm, ports 6817 and 6818, StateSaveLocation=/var/spool/slurmctld, SlurmdSpoolDir=/var/spool/slurmd'. 'Authentication: AuthType=auth/munge, CredType=cred/munge'. 'Scheduling and selection: SchedulerType=sched/backfill, SelectType=select/cons_tres, SelectTypeParameters=CR_Core_Memory, GresTypes=gpu, PriorityType=priority/multifactor'. 'Cleanup foundation: ProctrackType=proctrack/cgroup, TaskPlugin=task/affinity,task/cgroup, JobAcctGatherType=jobacct_gather/cgroup (without them a killed job can leave a Python process holding GPU memory)'. 'Accounting: slurmdbd, AccountingStorageHost=db1, TRES gres/gpu, Enforce associations,limits,qos'. 'Timers: SlurmctldTimeout=120, SlurmdTimeout=300, ReturnToService=2, MinJobAge=300, MaxJobCount=50000'. 'Nodes and partitions: NodeName=gpu[01-04] CPUs=64 Sockets=2 CoresPerSocket=16 ThreadsPerCore=2 RealMemory=500000 Gres=gpu:8; PartitionName=gpu Default=YES MaxTime=2-00:00:00'. Companion files: 'cgroup.conf CgroupPlugin=autodetect, ConstrainCores, ConstrainRAMSpace, ConstrainDevices=yes (a job only sees the GPUs it was given)', 'gres.conf AutoDetect=nvml', 'slurmdbd.conf mode 600 owner slurm holds the database password'. Removed or deprecated: 'FastSchedule removed; ControlMachine and ControlAddr deprecated for SlurmctldHost'. Text at least 24px.",
+  "anchor": "## 10. A first `slurm.conf`, and the node definition problem",
+  "alt": "A first slurm.conf grouped into blocks that each answer one question, with the companion cgroup, gres and slurmdbd files.",
+  "cap": "Each block of slurm.conf answers one question, and cgroup settings make job cleanup reliable."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-node-def-drain",
+  "title": "Why a new node registers and then drains",
+  "spec": "Comparison diagram. Left 'Blueprint: NodeName line in slurm.conf, what you promised: CPUs, Sockets, CoresPerSocket, ThreadsPerCore, RealMemory, Gres'. Right 'Reality: what slurmd discovers on the node'. Arrow between them to the controller: 'controller compares the two; they differ so the node is drained with Reason Low RealMemory or Low socket*core*thread count and shows state invalid or drain'. Causes of a gap: 'BIOS settings, hyperthreading toggled, memory modules removed, a GPU missing'. Fix steps: '1 never guess the layout; run slurmd -C on the real node; it prints a ready-made NodeName line with CPUs, Boards, SocketsPerBoard, CoresPerSocket, ThreadsPerCore, RealMemory; 2 paste that into the configuration; 3 compare slurmd -C output with scontrol show node'. Also 'asterisk in down* means the node is not responding; every down, drain or invalid carries a Reason shown by scontrol show node'. Text at least 24px.",
+  "anchor": "### 2. Node shows `invalid`, `drain` with \"Low RealMemory\" or \"Low socket*core*thread count\"",
+  "alt": "The node line in slurm.conf is compared with what slurmd discovers and a mismatch drains the node.",
+  "cap": "Run slurmd -C on the real node and paste its output instead of guessing the layout."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-statesave-recovery",
+  "title": "Controller starts with an empty queue: recovery options",
+  "spec": "Two parts. Part 1 causes: 'slurmctld exits with a permission or I/O error, or after a crash queued jobs have vanished; directory not writable by SlurmUser; full or slow filesystem; not shared in an HA pair; wiped during a reinstall; check the log for StateSaveLocation errors'. Part 2 recovery flags: 'default: recover partial state, jobs and node DOWN or DRAIN state with reasons, but not partition state'; 'slurmctld -R: recover full state including partitions'; '-i: ignore errors reading state files (has a cost)'. Recovery order after two controllers believed they were primary: '1 stop all but one controller; 2 restore StateSaveLocation from backup; 3 start with the default or -R; 4 validate with squeue and sinfo before reopening the queue; 5 have users resubmit what was lost; 6 find why two controllers ran'. Rule 'do not run two active controllers on independent state; exactly one controller can ever be primary'. Text at least 24px.",
+  "anchor": "### 4. Controller will not start, or starts with an empty queue: `StateSaveLocation` problems",
+  "alt": "Causes of an empty queue after a controller start and the recovery flags and ordered steps to restore state.",
+  "cap": "Check the state directory first and restore it from backup under exactly one controller."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-install-failure-table",
+  "title": "Eight early failures and where to look",
+  "spec": "Table symptom, likely cause, first diagnosis. '1 Invalid authentication credential or Unable to contact slurm controller: different munge keys, clock skew over a few minutes, munged not running, wrong permissions on /etc/munge or /run/munge'. '2 Node invalid or drain with Low RealMemory: node line does not match what slurmd discovers; run slurmd -C'. '3 Jobs rejected or sacctmgr hangs, Invalid account or account/partition combination: slurmdbd not running, wrong DB credentials, max_allowed_packet too small, blocked port, no association; follow the request: command to slurmdbd to database to login'. '4 Controller will not start or empty queue: StateSaveLocation not writable, full, not shared, wiped'. '5 Can't find an address, wrong user, Invalid user id: NodeName differs from hostname with no NodeHostname or NodeAddr, DNS or hosts inconsistencies, UID mismatch'. '6 slurmd will not start after an OS upgrade: OS switched to cgroup v2 while Slurm built without v2, cgroup.conf forces v1, missing systemd delegation; stat -fc %T /sys/fs/cgroup'. '7 Socket timed out on send/recv operation: polling loops from hundreds of clients running squeue every second, too small MaxJobCount, accounting back-pressure; run sdiag, look at RPC statistics by type and by user; use sacct for history, exporters that poll once, RPC rate limiting'. '8 squeue and sinfo time out but running jobs continue: accounting database under strain, very wide sacct or sreport query; sdiag thread count and agent queue, slurmdbd.log lock waits, SHOW FULL PROCESSLIST in the database'. Rule 'read the first error, not the last'. Text at least 24px.",
+  "anchor": "## 12. How it fails during installation and early operation",
+  "alt": "A table of eight early Slurm failures with symptom, likely cause and the first diagnosis step.",
+  "cap": "Match the symptom, then read the first error in the log rather than the last."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "07",
+  "name": "p3-0607-log-patterns",
+  "title": "Three log shapes worth recognising",
+  "spec": "Three cards. Card 1 'Node flapping': lines 'slurmctld: error: Nodes dgx-h100-14 not responding' then 'slurmctld: Node dgx-h100-14 now responding' alternating; cause 'rarely Slurm: packets dropped on the management network, or the node so loaded that slurmd cannot answer the ping in time'; action 'investigate the network and node CPU and I/O load before touching Slurm settings; changing a timeout to hide a flapping node hides the fault'. Card 2 'Job killed for memory': slurmd log shows a step dying with signal 9 and a memory-limit message for the job's cgroup; 'user asked for less memory than the job used; the kernel out-of-memory killer acting at the cgroup limit ended the job'. Card 3 'Invalid RPC after an upgrade': 'a compute node logs it received an RPC it does not understand or a message with zero bytes; version mismatch; slurmd must never be newer than slurmctld; nodes may be older than the controller during a rolling upgrade'. Footer 'exact wording differs between versions; learn the shape'. Text at least 24px.",
+  "anchor": "## 13. Reading the logs: three patterns to recognise",
+  "alt": "Three log patterns: node flapping, a job killed for memory and an invalid RPC after an upgrade, with what each means.",
+  "cap": "Recognise the shape of a log pattern first and then investigate the layer it points to."
+ }
+]

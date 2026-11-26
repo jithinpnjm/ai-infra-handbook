@@ -1,0 +1,132 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-sealed-flow",
+  "title": "Sealed Secrets: safe in Git, plain only inside the cluster",
+  "spec": "Left-to-right flow with a Git repo boundary. Cluster box holds 'sealed-secret-controller' that generates keys by default; public and private keys sit in Secret kube-system/sealed-secret-key (do not read it directly). Step 1 'kubeseal --fetch-cert gets the public key only (encryption key)'. Step 2 'developer runs kubeseal mysecret.yaml: plain Secret mysecret with dbuser and dbkey becomes SealedSecret (bitnami.com/v1alpha1) with spec.encryptedData dbkey and dbuser as ciphertext'. Step 3 'SealedSecret committed anywhere in Git, safe while the private key stays safe'. Step 4 'controller decrypts with the private key and creates plain Secret mysecret, with ownerReferences kind SealedSecret'. Step 5 'delete the SealedSecret and the Secret is garbage collected'. Side notes: 'key renewal every 30 days by default; new key joins old ones, does not replace them', 'leaked private key: rotate the encryption key AND rotate the secrets themselves, re-encrypting alone is not enough because old encrypted files remain in Git history', 'bound to the Namespace where it was sealed; cannot simply be moved', 'does not replace etcd encryption or Vault'. Text at least 24px.",
+  "anchor": "### Sealed Secrets in depth",
+  "alt": "A flow showing a public key sealing a Secret into Git and the in-cluster controller decrypting it with the private key.",
+  "cap": "Only the encrypted object lives in Git while the controller holds the key that turns it back into a Secret."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-gitops-where-lives",
+  "title": "GitOps secret patterns: what stays in Git and what lands in etcd",
+  "spec": "Comparison table with columns 'Approach', 'How the value arrives', 'Notable fact from the chapter'. Rows: 'External Secrets Operator: ExternalSecret and SecretStore CRs reference Vault, AWS SM, GCP SM or Azure KV; ESO syncs into native Secrets; values never in Git; native Secret still in etcd; refresh intervals handle rotation'. 'Secrets Store CSI Driver: SecretProviderClass mounts secrets from a vault as a volume via driver secrets-store.csi.k8s.io; optionally syncs to a Secret'. 'Vault Agent Injector or Vault Secrets Operator: sidecar or operator renders secrets into the pod via Vault Kubernetes auth; dynamic secrets and leases'. 'Sealed Secrets: kubeseal encrypts with the cluster public key; controller decrypts to a Secret; cluster-bound key; rotate keys every 30 days'. 'SOPS with age or KMS: encrypted YAML in Git, decrypted at apply; reviewable diffs because keys stay visible'. 'CSI or Workload Identity: pods authenticate to cloud APIs with federated tokens, no secret at all; best for cloud resources'. Footer: 'Never commit plaintext Secrets to Git. A synced Secret lives in etcd and is readable through the API; an injected secret is rendered into the pod'. Text at least 24px.",
+  "anchor": "### GitOps-safe secret management",
+  "alt": "A table compares six GitOps secret patterns by how the value reaches the pod and what is left in etcd.",
+  "cap": "Choose by where the plaintext may exist, since some patterns still create a native Secret in etcd."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-vault-injector-flow",
+  "title": "Vault Agent Injector: from annotation to a file in the pod",
+  "spec": "Numbered sequence. 1 'Deployment pod template carries annotations vault.hashicorp.com/agent-inject true, agent-inject-status update, role database, agent-inject-secret-db-creds secrets/db/creds, and an agent-inject-template-db-creds Go template that formats a JDBC string'. 2 'Webhook runs on every Pod CREATE or UPDATE but changes only pods with the annotations; it injects the vault-agent-init init container and, because status is update, the long-running vault-agent sidecar'. 3 'Agent sends the pod ServiceAccount token to Vault Kubernetes auth'. 4 'Vault calls the Kubernetes TokenReview API to validate the token'. 5 'Vault matches a role: vault write auth/kubernetes/role/database bound_service_account_names=webapp bound_service_account_namespaces=team-a policies=team-a ttl=20m'. 6 'Policy team-a: path secret/data/team-a/* capabilities read'. 7 'Agent renders the secret to /vault/secrets/db-creds; the sidecar refreshes leased or rotated secrets'. Setup box: 'vault auth enable kubernetes', 'vault write auth/kubernetes/config with kubernetes_host, kubernetes_ca_cert, token_reviewer_jwt', 'vault policy write team-a', 'vault write auth/kubernetes/role/database'. Note 'the application sees only a file and never talks to Vault'. Text at least 24px.",
+  "anchor": "### HashiCorp Vault Agent Injector and Kubernetes authentication",
+  "alt": "Annotations cause a webhook to add Vault agent containers that authenticate with the pod token and write a secret file.",
+  "cap": "The pod proves its identity with its ServiceAccount token and Vault checks it through TokenReview."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-sat-vs-psat",
+  "title": "Plain ServiceAccount token versus projected token",
+  "spec": "Two columns. Left 'SAT: ServiceAccount token' 'Secret of type kubernetes.io/service-account-token holding ca.crt, namespace and token, annotated with the account name and uid', 'automounted at /var/run/secrets/kubernetes.io/serviceaccount/', 'weak points: no time to live, wide scope, long persistence; stops working only when its ServiceAccount or Secret is deleted'. Right 'PSAT: projected token (since v1.12)' 'pod volume projected with serviceAccountToken audience api, expirationSeconds 600, path app-token, mounted at /var/run/secrets/tokens', 'API server flags: --service-account-signing-key-file=/etc/kubernetes/pki/sa.key, --service-account-key-file=/etc/kubernetes/pki/sa.pub, --service-account-issuer=api, --service-account-api-audiences=api', 'has a TTL and an audience; a mismatched audience is rejected', 'TokenReview adds extra: authentication.kubernetes.io/pod-name and pod-uid'. Bottom shared strip: 'Both are verified the same way: receiver POSTs a TokenReview to /apis/authentication.k8s.io/v1/tokenreviews and reads status.user.username such as system:serviceaccount:default:default; only validity and granularity of the identity differ'. Text at least 24px.",
+  "anchor": "### Projected service account tokens (PSAT)",
+  "alt": "Two columns compare the long-lived ServiceAccount token with a short-lived audience-bound projected token.",
+  "cap": "Projected tokens add an expiry, an audience and pod details to the same TokenReview flow."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-projected-volume",
+  "title": "One projected volume, three sources, one directory",
+  "spec": "A pod box with a single volume named creds of type projected, fanning in three source boxes to one directory. Source 1 'serviceAccountToken: path sa-token, audience vault, expirationSeconds 3600; the kubelet refreshes it before expiry; proves who the pod is'. Source 2 'configMap ca-bundle, key ca.crt to path ca.crt; lets the pod trust the server it talks to'. Source 3 'downwardAPI: path labels from fieldRef metadata.labels; describes the pod itself'. Output: 'files sa-token, ca.crt and labels in one directory; the application reads everything from one place'. Text at least 24px.",
+  "anchor": "## 3. Projected volumes and ServiceAccount tokens",
+  "alt": "Three sources, a token, a CA bundle and pod labels, are merged into one directory by a projected volume.",
+  "cap": "A projected volume gathers identity, trust and self-description into a single mount."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-csr-lifecycle",
+  "title": "Client certificate through the CSR flow",
+  "spec": "Five-step vertical flow. 1 'User creates a key and request locally: openssl req -new -key john.key -out john.csr -subj /CN=john'. 2 'Portal submits a CertificateSigningRequest named john with spec.request set to the base64 of john.csr and usages client auth; state pending, requestor recorded'. 3 'An approver checks who is asking and runs kubectl certificate approve; condition type Approved, reason KubectlApprove'. 4 'controller-manager signs with the cluster CA (--cluster-signing-cert-file=/etc/kubernetes/pki/ca.crt and --cluster-signing-key-file=/etc/kubernetes/pki/ca.key); certificate appears in status.certificate'. 5 'User builds a kubeconfig pairing john.key with the certificate in client-certificate-data; identity is CN john, groups come from O'. Right panel 'Why not the main login method': 'cannot be revoked before expiry, no CRL or OCSP stapling', 'extra PKI and an issuing component to run', 'short lifetimes mean high churn', 'each certificate works in one cluster only'. Footer 'keep admin.conf (user kubernetes-admin) as the break-glass path'. Text at least 24px.",
+  "anchor": "### Client certificates from the CSR flow",
+  "alt": "A five-step flow from key and request to an approved certificate in a kubeconfig, with its drawbacks.",
+  "cap": "Certificates identify users well but cannot be revoked early, so they are not the main login method."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-auth-methods",
+  "title": "Which credential for which caller",
+  "spec": "Table of callers to methods with a verdict. Humans: 'OIDC SSO with MFA and short-lived tokens via an IdP such as Dex, Keycloak, Okta or Entra; id_token claims map to username and groups; kubelogin or kubectl oidc-login; RECOMMENDED'. Machines in the cluster: 'ServiceAccount tokens or workload identities'. Robot users tied to central accounts: 'write a kubectl authentication plug-in; token verified by the webhook token authenticator'. Robot accounts needing no central management: 'certificate-based authentication, you manage issuance and rotation'. Simplest robot option: 'a ServiceAccount token; copy to a secure location for tools outside the cluster'. Cloud IAM: 'webhook token authentication such as aws-iam-authenticator or gke-gcloud-auth-plugin'. Avoid: 'static token and password files: plain text, never expire, any change needs an API server restart'. Footer facts: 'Kubernetes has no User or Group object; the authenticating method decides the name; certificate CN is the user and O is the group'. Text at least 24px.",
+  "anchor": "## 4. Authentication",
+  "alt": "A table maps humans, machines and robots to the recommended authentication method and flags static files as avoided.",
+  "cap": "Use OIDC for people, ServiceAccount tokens for workloads and avoid static credential files."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-role-binding-scope",
+  "title": "Role, ClusterRole and their bindings: where permissions apply",
+  "spec": "Two-by-two scope grid. Rows 'binding type', columns 'what it grants'. 'Role (namespace) + RoleBinding (namespace): permissions inside that namespace only'. 'ClusterRole + RoleBinding: the ClusterRole is reusable, but the grant applies only within the RoleBinding namespace, so a RoleBinding in team-a that references a ClusterRole keeps permissions strictly inside team-a'. 'ClusterRole + ClusterRoleBinding: cluster-wide'. Beside it list 'ClusterRole is needed for cluster-scoped resources (nodes, PVs, CRDs), non-resource URLs (/healthz, /metrics), or reuse across namespaces'. Properties strip: 'additive only, no deny rules, permissions are the union of all bindings', 'roleRef cannot be changed: delete and recreate the binding', 'subjects: User, Group or ServiceAccount', 'default roles: cluster-admin (everything), admin (namespace admin incl. RBAC), edit (read and write most objects, not roles or bindings), view', 'built-in ClusterRoles are reconciled at API server start unless annotated rbac.authorization.kubernetes.io/autoupdate false'. Text at least 24px.",
+  "anchor": "### Properties",
+  "alt": "A grid shows how Role and ClusterRole combine with RoleBinding and ClusterRoleBinding to set scope.",
+  "cap": "A RoleBinding limits even a ClusterRole to one namespace."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-trainer-runner-walk",
+  "title": "Reading the trainer-runner Role and its binding",
+  "spec": "Worked example. Role trainer-runner in namespace team-a with four rules drawn as rows: 'pods and pods/log: get list watch (debug a stuck run)'; 'batch jobs: get list watch create delete'; 'kubeflow.org pytorchjobs: verb * (everything)'; 'configmaps with resourceNames trainer-config: get only (one named object)'. RoleBinding team-a-researchers in team-a with subjects 'Group oidc:team-a-researchers' and 'ServiceAccount ci-runner from namespace ci' and roleRef Role trainer-runner. Test rows: 'researcher deletes a Job in team-a: allowed'; 'researcher reads a different ConfigMap: not allowed (resourceNames)'; 'researcher in team-b namespace: no binding there, denied'. Note 'a Role does nothing until a binding hands it to someone; the binding can name a ServiceAccount from another namespace'. Text at least 24px.",
+  "anchor": "## 5. RBAC",
+  "alt": "A Role with four rules and a RoleBinding naming a group and a ServiceAccount, with allowed and denied examples.",
+  "cap": "The Role lists permissions and the binding gives them to subjects only in its own namespace."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-rbac-testing-ladder",
+  "title": "Checking RBAC before an incident",
+  "spec": "Ladder of questions with the command for each. 'Can this identity do X: kubectl auth can-i create pods -n team-a --as=jane@example.com'. 'Is the CI account too powerful: kubectl auth can-i * * --as=system:serviceaccount:ci:ci-runner, should be no'. 'What can it do at all: kubectl auth can-i --list -n team-a --as=system:serviceaccount:team-a:trainer'. 'Subresources: kubectl auth can-i get pods --subresource=logs'. 'Who am I: kubectl auth whoami'. 'Who is bound to everyone: list ClusterRoleBindings whose subject is system:authenticated'. 'Who holds the keys: kubectl get clusterrolebindings,rolebindings -A -o wide with grep cluster-admin or system:masters'. 'Who can read secrets: kubectl who-can get secrets -n team-a (krew plugin)'. 'See the whole graph: rbac-tool viz, rbac-tool lookup, rakkess'. 'Change safely: kubectl auth reconcile -f some-rbac-config.yaml with --dry-run in the pipeline, RBAC stored in Git'. Text at least 24px.",
+  "anchor": "### Testing and auditing RBAC",
+  "alt": "A ladder of RBAC questions each paired with the kubectl or plugin command that answers it.",
+  "cap": "Run these checks on a quiet day so an overbroad role is found before an incident."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-escalation-paths",
+  "title": "Grants that quietly equal cluster-admin",
+  "spec": "Hub-and-spoke with 'cluster-admin' in the middle and six spokes, each a grant with the reason from the chapter. 'create pods: roughly equivalent to reading secrets and tokens in the namespace (mount another ServiceAccount token, or run privileged if PSA is absent)'. 'pods/exec in prod: shell inside a pod with its secrets and token'. 'get, list, watch on secrets: listing reveals contents'. 'nodes/proxy: reaches the kubelet on the node'. 'escalate and bind verbs on roles: allow granting permissions you do not hold'. 'impersonate: act as another identity such as cluster-admin'. Bottom row of mitigations: 'tighten roles and remove wildcards', 'Pod Security Admission or admission policy for what pods may look like', 'no cluster-wide list or watch on secrets for monitoring or view roles', 'never bind roles to system:authenticated', 'sudo-style impersonation with --as for one command, audited'. Text at least 24px.",
+  "anchor": "## 9. Common mistakes",
+  "alt": "Six RBAC grants radiate toward cluster-admin with the reason each one is an escalation path.",
+  "cap": "Create pods, exec, secret reads, nodes proxy, escalate, bind and impersonate can each lead to full control."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-immutable-rollout",
+  "title": "Changing an immutable ConfigMap by versioning the name",
+  "spec": "Timeline with three states. State 1 'ConfigMap trainer-config immutable true with LOG_LEVEL info; Deployment points at trainer-config'. State 2 'create trainer-config-v2 with LOG_LEVEL debug; point the Deployment at trainer-config-v2'. State 3 'rolling update replaces old pods with pods reading v2; the old ConfigMap can be removed once no pod uses it'. Side benefits: 'protects from accidental edits', 'kubelets stop watching the object so API server load drops at scale'. Contrast row 'mutable ConfigMap: env vars keep the old value until the pod restarts, a directory volume updates in about 1 to 2 minutes via an atomic ..data symlink swap, subPath mounts never update; a hash annotation on the pod template makes every config change a visible rollout in Git'. Text at least 24px.",
+  "anchor": "## 1. ConfigMaps",
+  "alt": "A timeline shows a new versioned ConfigMap created, the Deployment repointed and old pods replaced.",
+  "cap": "Immutable objects change by creating a new name and rolling pods onto it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "16",
+  "name": "p3-0516-failure-ladder",
+  "title": "Symptom to cause to fix for config, secret and RBAC faults",
+  "spec": "Three-column table, symptom then likely cause then fix. 'Pod CreateContainerConfigError: referenced ConfigMap, Secret or key missing: describe pod, create the object, mark optional if appropriate'. 'Config change not applied: env var snapshot, subPath, app does not reload, kubelet sync delay: rolling restart with hash annotation, avoid subPath, reload signal'. 'forbidden: User cannot list resource: missing RBAC: auth can-i, add minimal rule, check subresource and group names'. 'Image pull unauthorized: missing or expired pull secret: check SA imagePullSecrets, credential provider, token expiry'. '401 Unauthorized for kubectl: expired OIDC token or certificate or wrong context: re-login, kubectl config view, clock skew'. 'ServiceAccount token missing: auto-mount disabled or token Secret not created from 1.24: use a projected token, kubectl create token'. 'Secret visible in logs or describe: printed by app, env dumped: mount as file, fix logging, rotate'. 'Operator cannot reconcile after upgrade: new RBAC rules not applied: update ClusterRole from chart, review diffs'. Text at least 24px.",
+  "anchor": "## 7. Failure modes and troubleshooting",
+  "alt": "A table maps eight symptoms in configuration, secrets and RBAC to causes and fixes.",
+  "cap": "Start from the symptom column to decide which command to run next."
+ }
+]

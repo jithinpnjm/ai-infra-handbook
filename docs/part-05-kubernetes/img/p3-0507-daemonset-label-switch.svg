@@ -1,0 +1,154 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A node label switches a DaemonSet pod on and off</title>
+  <desc>Visual explanation of how node labels switch Kubernetes DaemonSet pods on and off across four nodes.</desc>
+
+  <defs>
+    
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 Z" fill="#db8129" />
+    </marker>
+    
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">A node label switches a DaemonSet pod on and off</text>
+
+  
+  <rect x="50" y="105" width="1500" height="85" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(75, 120)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="26" cy="26" r="12" />
+    <path d="M 26 6 L 26 14 M 26 38 L 26 46 M 6 26 L 14 26 M 38 26 L 46 26 M 12 12 L 18 18 M 34 34 L 40 40 M 12 40 L 18 34 M 34 12 L 40 18" stroke-linecap="round" />
+  </g>
+  <text x="145" y="157" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
+    DaemonSet <tspan font-family="monospace">nginx-fast-storage</tspan> with nodeSelector <tspan font-family="monospace">ssd=true</tspan>
+  </text>
+
+  
+  
+  <rect x="50" y="215" width="1500" height="260" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="75" y="235" width="345" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(95, 250)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="6" y="6" width="38" height="38" rx="6" />
+    <circle cx="25" cy="25" r="7" />
+    <path d="M 13 6 L 13 2 M 25 6 L 25 2 M 37 6 L 37 2 M 13 44 L 13 48 M 25 44 L 25 48 M 37 44 L 37 48 M 6 13 L 2 13 M 6 25 L 2 25 M 6 37 L 2 37 M 44 13 L 48 13 M 44 25 L 48 25 M 44 37 L 48 37" stroke-linecap="round" />
+  </g>
+  <text x="160" y="282" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">...-0xnl</text>
+  <text x="95" y="332" font-family="monospace" font-size="24px" fill="#303a36">k0-default-pool-35609c18-0xnl</text>
+  <line x1="95" y1="352" x2="400" y2="352" stroke="#207448" stroke-width="1" stroke-dasharray="4 4" />
+
+  
+  <rect x="445" y="235" width="345" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(465, 250)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="6" y="6" width="38" height="38" rx="6" />
+    <circle cx="25" cy="25" r="7" />
+    <path d="M 13 6 L 13 2 M 25 6 L 25 2 M 37 6 L 37 2 M 13 44 L 13 48 M 25 44 L 25 48 M 37 44 L 37 48 M 6 13 L 2 13 M 6 25 L 2 25 M 6 37 L 2 37 M 44 13 L 48 13 M 44 25 L 48 25 M 44 37 L 48 37" stroke-linecap="round" />
+  </g>
+  <text x="530" y="282" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">-pol3</text>
+  <line x1="465" y1="352" x2="770" y2="352" stroke="#207448" stroke-width="1" stroke-dasharray="4 4" />
+
+  
+  <rect x="815" y="235" width="345" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(835, 250)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="6" y="6" width="38" height="38" rx="6" />
+    <circle cx="25" cy="25" r="7" />
+    <path d="M 13 6 L 13 2 M 25 6 L 25 2 M 37 6 L 37 2 M 13 44 L 13 48 M 25 44 L 25 48 M 37 44 L 37 48 M 6 13 L 2 13 M 6 25 L 2 25 M 6 37 L 2 37 M 44 13 L 48 13 M 44 25 L 48 25 M 44 37 L 48 37" stroke-linecap="round" />
+  </g>
+  <text x="900" y="282" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">-ydae</text>
+  <line x1="835" y1="352" x2="1140" y2="352" stroke="#207448" stroke-width="1" stroke-dasharray="4 4" />
+
+  
+  <rect x="1185" y="235" width="345" height="220" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(1205, 250)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="6" y="6" width="38" height="38" rx="6" />
+    <circle cx="25" cy="25" r="7" />
+    <path d="M 13 6 L 13 2 M 25 6 L 25 2 M 37 6 L 37 2 M 13 44 L 13 48 M 25 44 L 25 48 M 37 44 L 37 48 M 6 13 L 2 13 M 6 25 L 2 25 M 6 37 L 2 37 M 44 13 L 48 13 M 44 25 L 48 25 M 44 37 L 48 37" stroke-linecap="round" />
+  </g>
+  <text x="1270" y="282" font-family="monospace" font-size="24px" font-weight="bold" fill="#303a36">-z7tb</text>
+  
+  <rect x="1205" y="325" width="305" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1217, 340)" stroke="#207448" stroke-width="2.5" fill="none">
+    <rect x="4" y="4" width="32" height="26" rx="4" />
+    <line x1="4" y1="12" x2="36" y2="12" />
+    <circle cx="10" cy="8" r="1.5" fill="#207448" />
+    <circle cx="16" cy="8" r="1.5" fill="#207448" />
+  </g>
+  <text x="1262" y="365" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">only z7tb gets a pod</text>
+  <text x="1217" y="410" font-family="monospace" font-size="24px" fill="#303a36">(nginx-fast-storage-7b90t)</text>
+
+  
+  <path d="M 720 545 L 1357 545 L 1357 465" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="50" y="495" width="650" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="85" cy="545" r="24" fill="#207448" />
+  <text x="85" y="554" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="125" y="553" font-family="monospace" font-size="24px" fill="#303a36">kubectl label nodes ...-z7tb ssd=true</text>
+
+  
+  <rect x="50" y="615" width="730" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="85" cy="665" r="24" fill="#207448" />
+  <text x="85" y="674" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="125" y="673" font-family="sans-serif" font-size="26px" fill="#303a36">label more nodes: pods appear there too</text>
+
+  
+  <rect x="820" y="615" width="730" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="855" cy="665" r="24" fill="#207448" />
+  <text x="855" y="674" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="895" y="658" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="895" dy="0">remove the label: the controller removes</tspan>
+    <tspan x="895" dy="32">the pod from that node</tspan>
+  </text>
+
+  
+  <rect x="50" y="740" width="1500" height="155" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(75, 785)" stroke="#db8129" stroke-width="3" fill="none">
+    <path d="M 25 5 L 45 13 L 45 28 C 45 40 25 47 25 47 C 25 47 5 40 5 28 L 5 13 Z" />
+    <line x1="25" y1="18" x2="25" y2="28" stroke-linecap="round" />
+    <circle cx="25" cy="34" r="2" fill="#db8129" />
+  </g>
+  <text x="145" y="805" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#303a36">
+    <tspan x="145" dy="0">Removing a label a DaemonSet selector requires removes its pod;</tspan>
+    <tspan x="145" dy="36">check the selector before you relabel a node</tspan>
+  </text>
+
+  
+  <rect x="50" y="920" width="1500" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="75" y="945" width="695" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(95, 965)" stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="25" cy="25" r="20" />
+    <polyline points="25,13 25,25 35,25" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="160" y="995" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="160" dy="0">DaemonSet sets <tspan font-family="monospace">nodeName</tspan> in the</tspan>
+    <tspan x="160" dy="36">Pod spec at creation, so the</tspan>
+    <tspan x="160" dy="36">Kubernetes scheduler ignores these pods</tspan>
+  </text>
+
+  
+  <rect x="830" y="945" width="695" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <g transform="translate(850, 965)" stroke="#207448" stroke-width="3" fill="none">
+    <ellipse cx="25" cy="12" rx="18" ry="7" />
+    <path d="M 7 12 L 7 36 C 7 42 43 42 43 36 L 43 12" />
+    <path d="M 7 24 C 7 30 43 30 43 24" />
+  </g>
+  <text x="915" y="1010" font-family="sans-serif" font-size="24px" fill="#303a36">
+    <tspan x="915" dy="0">deleting a DaemonSet deletes its pods</tspan>
+    <tspan x="915" dy="36">unless <tspan font-family="monospace">--cascade</tspan> is false</tspan>
+  </text>
+</svg>

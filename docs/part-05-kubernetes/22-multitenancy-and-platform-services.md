@@ -72,14 +72,9 @@ The authors of *Production Kubernetes* explain the difference with a housing ana
 
 The housing picture is useful because it shows that the two models are not better or worse. They are answers to different questions. A family does not lock every door in the house, and a hotel does not let guests share a bathroom. Pick the arrangement that fits the people who will live there.
 
-```mermaid
-flowchart TD
-    PR["Tenant Onboarding Spec<br/>(tenants/team-a.yaml or Team / AcmeNamespace CR)"] --> Op["GitOps / Namespace Operator<br/>(Level-triggered reconciliation of child objects)"]
-    Op --> NS["1. Namespace & Identity<br/>Labels (team, cost-center, PSA baseline/restricted)<br/>+ OIDC RoleBindings"]
-    Op --> Quota["2. Compute & GPU Fairness<br/>ResourceQuota (requests.nvidia.com/gpu, count/*)<br/>+ LimitRange + Kueue LocalQueue/ClusterQueue"]
-    Op --> Net["3. Network & Storage Isolation<br/>default-deny-all + allow-dns NetworkPolicy<br/>+ per-tenant StorageClass / CSI subPathExpr"]
-    Op --> Obs["4. Observability & Showback<br/>Fluent Bit / Loki tenant log routing<br/>+ Grafana Folder + OpenCost + DCGM GPU-hours"]
-```
+![Tenancy models and trust levels](./img/m5-22-1.svg)
+
+*Figure 5.22.1. Tenancy models and trust levels, as a diagram.*
 
 The diagram follows one onboarding spec as it fans out. Read it as a single form that a platform team fills in once. The form then becomes four groups of objects: identity, compute and GPU fairness, network and storage, and observability. Each group is a separate set of walls, and each one has to be built before the tenant can work safely.
 

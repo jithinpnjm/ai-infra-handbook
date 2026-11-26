@@ -46,6 +46,26 @@ By the end of this chapter, you will be able to:
 
 ### Class definition and instances
 
+![A table of five Vector2d habits, __iter__, a subclass-friendly __repr__, __bytes__ with frombytes, a polar __format__ and a hashable immutable design, with what each gives.](./img/p3-0304-vector2d-habits.svg)
+
+*Figure 3.4.1. Each Vector2d method enables a built-in behaviour such as unpacking, eval round-trips, binary encoding, formatting or hashing.*
+
+![Four rules for __slots__ with examples of the failures, such as a superclass without slots, repeated names, a class default conflict and a missing __dict__, plus the 1.62 GiB to 655 MiB result.](./img/p3-0304-slots-rules.svg)
+
+*Figure 3.4.2. Every class in the hierarchy must declare slots, or the per-instance dictionary quietly returns and the memory saving disappears.*
+
+![Classes C1 and C2 each storing a double underscore X that is rewritten to _C1__X and _C2__X, so the C3 instance dictionary holds 88 and 99 together.](./img/p3-0304-name-mangling.svg)
+
+*Figure 3.4.3. The compiler rewrites each double underscore name with its class name, so two classes can use __X without colliding.*
+
+![A plain function on the class beside a bound method object that holds __self__ and __func__, with the four places an assignment of X can store a name.](./img/p3-0304-bound-method.svg)
+
+*Figure 3.4.4. Reaching a method through an instance wraps the class function with the instance, and where you assign a name decides which namespace holds it.*
+
+![Nested scopes for classscope3.py where print(X) in a method finds the enclosing function's X equal to 2 while print(self.X) finds the class attribute 3, with the class attribute sharing rules.](./img/p3-0304-class-scope.svg)
+
+*Figure 3.4.5. An unqualified name inside a method skips the class body, so it prints 2, while self.X reaches the class attribute 3.*
+
 Suppose someone defines one shared tag list at the top of a node class, and a single node appends a tag to it. Overnight every node in the cluster reports that tag, including the nodes nobody touched. Nothing in the code looks wrong, and that is what makes this bug so common.
 
 Most infrastructure tools start by modelling one real thing, such as a compute node. A **class** is the place where you describe that thing once. An **instance** is one concrete object built from that description. The example below shows the parts a class can hold, and each part has its own job.
@@ -210,7 +230,7 @@ This freedom has a cost. Adding data that the class cannot use usually does not 
 
 ![Attribute lookup climbs the class tree](./img/s04-attrsearch.svg)
 
-*Figure 3.4.1. Attribute search: Python looks in the instance, then the class, then each superclass, and the first match wins.*
+*Figure 3.4.6. Attribute search: Python looks in the instance, then the class, then each superclass, and the first match wins.*
 
 Every dot expression starts a search through a tree of linked objects. Picture a tree with two instances, `I1` and `I2`, a class `C1` that both were made from, and two superclasses, `C2` and `C3`, above `C1`. Each object carries its own names. When you ask for `I2.w`, Python checks `I2`, then `C1`, then `C2`, then `C3`. It stops at the first `w` it finds. If no object in the tree has the name, Python raises an error.
 
@@ -226,7 +246,7 @@ Method calls follow the same tree with one extra step. When `I2.w` is a function
 
 ![Instance versus class attribute assignment](./img/s04-assignstore.svg)
 
-*Figure 3.4.2. Assignment through an instance stores on that instance, while assignment through the class is shared by all instances.*
+*Figure 3.4.7. Assignment through an instance stores on that instance, while assignment through the class is shared by all instances.*
 
 Attributes appear the first time you assign them. The place where the assignment runs decides which object gets the name. Assignments at the top level of a `class` body attach names to the class, so every instance and subclass shares them. Assignments through `self` inside a method attach names to the instance being processed.
 
@@ -454,6 +474,10 @@ A custom set intersection shows the choice. You can write it as a plain method n
 
 ### Classes as records
 
+![Four steps from a dictionary record to a class namespace, instances of an empty class and a Person class with a constructor, with __dict__ and dot lookup differences.](./img/p3-0304-record-evolution.svg)
+
+*Figure 3.4.8. A class packages the data of a record with its logic, and dot lookup climbs the class tree while __dict__ indexing does not.*
+
 Programs often need to store facts about an entity, such as a person's name, age and jobs. A tuple or a dictionary can hold these facts, but a class can hold them with less noise. Here is the dictionary version:
 
 ```python
@@ -562,9 +586,17 @@ Normally a `class` statement and the methods inside it build these namespaces. T
 
 ### Inheritance and `super()`
 
+![A table of Inheritor, Replacer, Extender and Provider subclass patterns, with mixin ordering on the MRO, the UserDict advice and delegation through __getattr__.](./img/p3-0304-subclass-ways.svg)
+
+*Figure 3.4.9. A subclass can inherit, replace, extend or fill in a hook, and mixins must come first on the MRO to intercept calls.*
+
+![A diamond of A, B, C and D whose MRO gives D then B then C then A, with the three rules for cooperative super calls: every class calls super, the chain ends at an anchor and signatures are compatible.](./img/p3-0304-super-rules.svg)
+
+*Figure 3.4.10. super() follows the MRO rather than the direct parent, so every class on the chain must pass the call along.*
+
 ![Method resolution order with super()](./img/s04-mro.svg)
 
-*Figure 3.4.3. Inheritance: Python searches classes in the method resolution order, and super() moves to the next one.*
+*Figure 3.4.11. Inheritance: Python searches classes in the method resolution order, and super() moves to the next one.*
 
 Suppose a `GpuNode` must do everything a generic `Resource` does, plus report its GPU count. You do not want to copy the generic code, because two copies of `describe` drift apart the first time someone fixes a bug in one of them. Inheritance lets the subclass reuse the parent's `__init__` and `describe` and extend them.
 
@@ -617,7 +649,7 @@ Use `isinstance(x, Base)` and `issubclass` when you want the check to respect in
 
 ![Inheritance versus composition](./img/s04-composition.svg)
 
-*Figure 3.4.4. Composition: an object that has parts can swap them, while inheritance couples a child to its parent.*
+*Figure 3.4.12. Composition: an object that has parts can swap them, while inheritance couples a child to its parent.*
 
 Inheritance and composition answer different questions. Inheritance describes what something is. A pizza-making robot is a kind of robot, so it inherits the usual robot properties. Those shared properties are written once and reused by every kind of robot. Composition describes what something has. The same robot is also a team of parts, such as arms to roll dough and motors to move it to the oven. Each part can be its own class.
 
@@ -636,9 +668,13 @@ The benefits are concrete. Dependencies are explicit and easy to swap, so you ca
 
 ### Abstract base classes
 
+![A decision tree choosing between an ABC with abstract methods and a template method, a structural Protocol for third-party boundaries, virtual subclass registration and the Sized subclasshook.](./img/p3-0304-abc-vs-protocol.svg)
+
+*Figure 3.4.13. Use an ABC when you own the hierarchy and want enforcement at instantiation, and a Protocol when implementers are unrelated or third-party.*
+
 ![An abstract base class enforcing a method](./img/s04-abc.svg)
 
-*Figure 3.4.5. Abstract base classes: a subclass that forgets an abstract method cannot be instantiated.*
+*Figure 3.4.14. Abstract base classes: a subclass that forgets an abstract method cannot be instantiated.*
 
 An abstract base class, or ABC, is a contract that subclasses must satisfy. Suppose three providers are written, a fourth is on the way, and nobody notices that `find` was never implemented until a user calls it. An ABC moves that discovery to the moment the object is created. Here, `Provider` lists the methods every cloud or on-prem provider must implement:
 
@@ -665,13 +701,13 @@ Fluent Python Chapter 13, `Examples 13-7` to `13-14`, shows the full pattern. Ra
 
 ![Abstract base classes](./img/m3-04-1.svg)
 
-*Figure 3.4.6. Abstract base classes, as a diagram.*
+*Figure 3.4.15. Abstract base classes, as a diagram.*
 
 ### Protocols (structural typing)
 
 ![Protocol structural typing](./img/s04-protocol.svg)
 
-*Figure 3.4.7. A Protocol is satisfied by any class that has the right methods, with no inheritance needed.*
+*Figure 3.4.16. A Protocol is satisfied by any class that has the right methods, with no inheritance needed.*
 
 Suppose a refactor splits one storage client into two, and a pile of `isinstance` checks still names the old class. The tests pass for reasons that have nothing to do with what the code actually needs. A **protocol** avoids that trap. It describes an interface by the methods an object has, with no inheritance required. This is the "if it quacks like a duck" idea. Static checkers verify that an object conforms. `@runtime_checkable` allows `isinstance` checks, but those check only that the methods exist.
 
@@ -693,9 +729,17 @@ Choose a Protocol for interfaces at boundaries, where the implementers are third
 
 ## 3. Data class builders
 
+![The options of a frozen ordered slotted keyword-only dataclass for GpuNode, default_factory for Cluster, ClassVar and __post_init__ examples, and three pitfalls.](./img/p3-0304-dataclass-options.svg)
+
+*Figure 3.4.17. frozen, order, slots and kw_only change the generated class, default_factory avoids shared lists, and annotations are never enforced at runtime.*
+
+![A table of namedtuple, NamedTuple, dataclass, attrs, pydantic BaseModel and TypedDict by mutability, typing and validation, with how annotations behave in plain, NamedTuple and dataclass classes.](./img/p3-0304-builders-table.svg)
+
+*Figure 3.4.18. Only pydantic enforces types at runtime, and dataclasses validate through __post_init__, while namedtuples and TypedDicts do not validate at all.*
+
 ![What @dataclass generates](./img/s04-dataclass.svg)
 
-*Figure 3.4.8. A dataclass generates __init__, __repr__ and __eq__ from the field list.*
+*Figure 3.4.19. A dataclass generates __init__, __repr__ and __eq__ from the field list.*
 
 You have just written the fourth `__init__`, the fourth `__repr__` and the fourth `__eq__` for what is really the same kind of record. Nothing in those lines is new, and every one of them can drift. That is the moment to reach for a data class builder. A **dataclass** is a class whose boring methods Python writes for you from the field annotations. The table compares the builders, so you can pick one for the job at hand.
 
@@ -754,6 +798,10 @@ Dataclasses have three pitfalls, and all three are quiet. Annotations are not en
 
 ### Pydantic
 
+![A node spec with a quoted gpus value validated by a pydantic model, coerced to an integer on success and rejected with a structured error on an unknown key, plus BaseSettings with SecretStr.](./img/p3-0304-pydantic-flow.svg)
+
+*Figure 3.4.20. Pydantic coerces a quoted 8 to an integer, rejects unknown keys such as a misspelled timeout at once and returns structured errors.*
+
 A YAML file arrives from another team with `gpus: "8"` in quotes and a field spelled `timout` instead of `timeout`. Nothing in Python objects, and the mistake travels until something fails far away. Pydantic models validate and coerce input at runtime, so the file is judged the moment it is read. They are the standard tool for parsing external data, such as YAML or JSON configs, API requests and environment variables. Here is a model for a node specification, plus a settings class that reads from the environment:
 
 ```python
@@ -795,9 +843,17 @@ Pydantic v2 uses a Rust core, which makes it fast. Version 1 has a different API
 
 ## 4. Type hints and static checking
 
+![A table of type hint forms such as unions, NewType, Final, Literal, TypedDict, overload and Annotated, with Postel's Law, Any versus object and a gradual strict-mode rollout.](./img/p3-0304-typing-toolkit.svg)
+
+*Figure 3.4.21. Annotate general types on parameters and concrete types on returns, treat Any as the off switch, and tighten mypy settings step by step in CI.*
+
+![Three columns for invariant, covariant and contravariant generics with the list of Dog and Animal, the beverage dispenser, the trash can and the Callable argument rule.](./img/p3-0304-variance.svg)
+
+*Figure 3.4.22. Read-only producers are covariant, write-only consumers are contravariant, and a mutable container must be invariant.*
+
 ![Static checking of type hints](./img/s04-typehints.svg)
 
-*Figure 3.4.9. Type hints are read by a static checker before running, and Python itself does not enforce them at run time.*
+*Figure 3.4.23. Type hints are read by a static checker before running, and Python itself does not enforce them at run time.*
 
 You change a function so that it takes a node object instead of a node name, and nothing complains until a scheduled job fails at 2 a.m. A type checker would have complained at your desk, before lunch. **Type hints**, defined in PEP 484 and its successors, record what you intend a value to be. CPython ignores them at runtime and stores them in `__annotations__`. Tools do the enforcing. mypy, pyright (through Pylance), pyre, pytype and many IDEs read the hints and report mismatches before your code runs. Libraries such as pydantic and FastAPI also read them at runtime, so the hints do real work in those cases.
 
@@ -865,6 +921,10 @@ Typing pays off most at boundaries, such as API clients, config models and plugi
 
 ## 5. Operator overloading and comparison
 
+![A Version class that compares release tags as tuples of integers so 1.10 sorts after 1.9, and a Bytes class that prints 1.0 KiB, with the rules for overloading operators.](./img/p3-0304-version-bytes.svg)
+
+*Figure 3.4.24. Comparing 1.9 and 1.10 as tuples of integers sorts them as people expect, and total_ordering fills in the other comparisons.*
+
 Two release tags, `1.9` and `1.10`, compare as plain strings, and `1.10` comes first. The rollout then picks the older image, and the bug looks like a build problem for an hour. A `Version("1.10")` compared with `Version("1.9")` should sort the way a human expects, and a `Bytes(1024)` should print as `1.0 KiB` rather than `1024`. That is what operator overloading buys you when it is used well. Overload an operator only when its meaning is natural, such as for vectors, sizes, versions or durations. If you let `+` mean something surprising, your readers will struggle to follow the code. Follow a few rules, and you will avoid most of the trouble. Return new objects so the value semantics stay clear. Return `NotImplemented` for operand types you do not understand. Keep `__eq__`, `__hash__` and the ordering methods consistent with each other.
 
 ```python
@@ -889,6 +949,10 @@ class Bytes(int):                    # subclass a builtin for a domain type
 The `Version` class defines `__eq__` and `__lt__`, and `@total_ordering` generates the remaining comparisons. `Bytes` subclasses `int` to get a domain type that prints in human units. If you need real version handling, use `packaging.version.Version`. For IP addresses, use `ipaddress`. For durations, use `datetime.timedelta`.
 
 ### Sequence special methods (`Vector` Takes #1–#5, Fluent Python Chapter 12) and operator overloading (Fluent Python Chapter 16 and Learning Python Chapter 30)
+
+![A five step ladder building an N-dimensional Vector through repr, slicing, dynamic read-only attributes, hashing and operators, with the add, matmul and in-place worked results.](./img/p3-0304-vector-takes.svg)
+
+*Figure 3.4.25. Each take adds one capability, and the attribute and in-place operator traps show why __setattr__ and returning self matter.*
 
 Fluent Python Chapters 12 and 16, and Learning Python Chapter 30, use an N-dimensional `Vector` class backed by `array('d', components)`. The class shows how a production-grade sequence should behave, one feature at a time. The code is modeled in `code/part03/python_classes_typing_protocols.py`. Each numbered item below adds one capability, so you can read them in order.
 
@@ -924,6 +988,10 @@ Picture a provisioning script that has grown to a dozen functions, three module-
 12. Apply SOLID in practice. Each class should have one responsibility, so it changes for one reason. Open-closed design uses registries or plugins. Liskov substitution comes from contracts, interface segregation from Protocols, and dependency inversion from injection.
 
 ### Example: a typed provider layer
+
+![A layered typed provider design with a StrEnum state, a frozen dataclass Instance, a Compute Protocol, ensure_running and a FakeCompute test, beside the twelve design habits.](./img/p3-0304-provider-layer.svg)
+
+*Figure 3.4.26. Because FakeCompute satisfies the Compute Protocol without inheriting from it, ensure_running is tested with no cloud API.*
 
 The example below pulls these habits together. It uses an enum for the state, a frozen dataclass for the instance, a Protocol for the cloud client, and a fake that needs no inheritance:
 
@@ -988,6 +1056,10 @@ Next, move to any machine with Python 3.11 or later. The interactive shell steps
 10. Clean up.
 
 ## 8. Common mistakes
+
+![A table of ten class and typing mistakes such as mutable class attributes, deep inheritance, assuming hints are enforced, IO in __init__, pickling untrusted data and secrets in repr, each with its fix.](./img/p3-0304-mistakes.svg)
+
+*Figure 3.4.27. Most of these mistakes are shared state, hidden coupling or unchecked assumptions, and each has a standard fix.*
 
 Every chapter earns its own list of scars, and this is ours. The mistakes below are the ones this chapter warns about. When you review your own code, look for each of them in turn.
 

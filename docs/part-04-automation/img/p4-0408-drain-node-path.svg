@@ -1,0 +1,156 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 950" width="1600" height="950">
+  <title>One node's drain, change, validate, return path</title>
+  <desc>Visual flowchart of one GPU node lifecycle: Drain from Slurm, Wait until no jobs remain, block with apply_changes and Validate, Return to service, and rescue path on failure to fail with message leaving node DRAINED for investigation.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="11" refY="7" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="950" fill="#f5f8f5"/>
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">One node's drain, change, validate, return path</text>
+
+  <!-- ==================== STEP 1: Drain from Slurm ==================== -->
+  <g id="step-1">
+    <rect x="40" y="110" width="296" height="420" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="82" cy="150" r="24" fill="#207448"/>
+    <text x="82" y="150" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    <g transform="translate(258, 122)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="8" x2="8" y2="48"/>
+      <line x1="48" y1="8" x2="48" y2="48"/>
+      <line x1="4" y1="18" x2="52" y2="18"/>
+      <line x1="4" y1="36" x2="52" y2="36"/>
+      <line x1="16" y1="18" x2="40" y2="36"/>
+      <line x1="16" y1="36" x2="40" y2="18"/>
+    </g>
+    <text x="188" y="225" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="188" dy="0">Drain from</tspan>
+      <tspan x="188" dy="38">Slurm</tspan>
+    </text>
+    <line x1="60" y1="295" x2="316" y2="295" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="188" y="355" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="188" dy="0">scontrol update</tspan>
+      <tspan x="188" dy="34">State=DRAIN</tspan>
+    </text>
+    <text x="188" y="455" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="188" dy="0">delegate_to the</tspan>
+      <tspan x="188" dy="34">Slurm controller</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <line x1="336" y1="320" x2="372" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- ==================== STEP 2: Wait until no jobs remain ==================== -->
+  <g id="step-2">
+    <rect x="372" y="110" width="296" height="420" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="414" cy="150" r="24" fill="#207448"/>
+    <text x="414" y="150" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    <g transform="translate(590, 122)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <polyline points="28,14 28,28 38,28"/>
+    </g>
+    <text x="520" y="225" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="520" dy="0">Wait until no</tspan>
+      <tspan x="520" dy="38">jobs remain</tspan>
+    </text>
+    <line x1="392" y1="295" x2="648" y2="295" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="520" y="335" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">squeue -h -w</text>
+    <text x="520" y="388" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="520" dy="0">until stdout</tspan>
+      <tspan x="520" dy="32">is empty</tspan>
+    </text>
+    <text x="520" y="475" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">retries 120</text>
+    <text x="520" y="510" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">delay 30</text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <line x1="668" y1="320" x2="704" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- ==================== STEP 3: block ==================== -->
+  <g id="step-3-block">
+    <rect x="704" y="110" width="556" height="420" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="744" cy="150" r="24" fill="#207448"/>
+    <text x="744" y="150" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    <text x="785" y="159" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">block</text>
+    <rect x="724" y="195" width="246" height="305" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(819, 225)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="10"/>
+      <line x1="28" y1="6" x2="28" y2="14"/>
+      <line x1="28" y1="42" x2="28" y2="50"/>
+      <line x1="6" y1="28" x2="14" y2="28"/>
+      <line x1="42" y1="28" x2="50" y2="28"/>
+      <line x1="12" y1="12" x2="18" y2="18"/>
+      <line x1="38" y1="38" x2="44" y2="44"/>
+      <line x1="12" y1="44" x2="18" y2="38"/>
+      <line x1="38" y1="18" x2="44" y2="12"/>
+    </g>
+    <text x="847" y="370" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">apply_changes</text>
+    <line x1="970" y1="347" x2="994" y2="347" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <rect x="994" y="195" width="246" height="305" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(1089, 225)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 8 L 48 16 C 48 34 28 48 28 50 C 28 48 8 34 8 16 Z"/>
+      <polyline points="18,28 25,35 38,20"/>
+    </g>
+    <text x="1117" y="370" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Validate</text>
+  </g>
+
+  <!-- Arrow 3 -> 4 -->
+  <line x1="1260" y1="320" x2="1296" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- ==================== STEP 4: Return to service ==================== -->
+  <g id="step-4">
+    <rect x="1296" y="110" width="264" height="420" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="1336" cy="150" r="24" fill="#207448"/>
+    <text x="1336" y="150" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    <g transform="translate(1488, 122)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="15" rx="3"/>
+      <rect x="6" y="27" width="44" height="15" rx="3"/>
+      <circle cx="14" cy="15.5" r="2" fill="#207448"/>
+      <circle cx="14" cy="34.5" r="2" fill="#207448"/>
+      <polyline points="28,34 35,40 46,26"/>
+    </g>
+    <text x="1428" y="225" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="1428" dy="0">Return to</tspan>
+      <tspan x="1428" dy="38">service</tspan>
+    </text>
+    <line x1="1314" y1="295" x2="1542" y2="295" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="1428" y="380" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1428" dy="0">scontrol update</tspan>
+      <tspan x="1428" dy="34">State=RESUME</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== RESCUE PATH ==================== -->
+  <line x1="982" y1="530" x2="982" y2="590" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- Rescue box (ORANGE ONLY) -->
+  <g id="rescue-box">
+    <rect x="652" y="590" width="660" height="190" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="3.5"/>
+    <g transform="translate(688, 657)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,6 52,48 4,48"/>
+      <line x1="28" y1="20" x2="28" y2="32"/>
+      <circle cx="28" cy="41" r="2" fill="#db8129" stroke="none"/>
+    </g>
+    <text x="1012" y="660" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">fail with message</text>
+    <text x="1012" y="715" font-family="sans-serif" font-size="26" fill="#303a36" text-anchor="middle">
+      <tspan x="1012" dy="0">node left DRAINED for</tspan>
+      <tspan x="1012" dy="34">investigation</tspan>
+    </text>
+  </g>
+
+  <!-- Note under the rescue box -->
+  <g id="rescue-note">
+    <rect x="210" y="824" width="1180" height="76" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(234, 838)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 6 L 40 14 C 40 30 24 40 24 42 C 24 40 8 30 8 14 Z"/>
+      <polyline points="16,24 22,30 32,18"/>
+    </g>
+    <text x="815" y="871" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">no always resume on purpose, only a healthy node returns to service</text>
+  </g>
+
+</svg>

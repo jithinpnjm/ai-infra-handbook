@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Only the first matching permission class counts</title>
+  <desc>Linux permission evaluation flow showing that effective file owner match stops further permission checking</desc>
+  <defs>
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-grey" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#7a8b84"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Only the first matching permission class counts</text>
+
+  
+  <rect x="80" y="105" width="1440" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(115, 125)">
+    <path d="M 5 0 L 32 0 L 46 14 L 46 54 L 5 54 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 32 0 L 32 14 L 46 14" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="14" y1="26" x2="36" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="14" y1="38" x2="36" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="185" y="150" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">File owner: service user, mode r-- rw- ---</text>
+
+  
+  
+  <rect x="185" y="180" width="370" height="65" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="5"/>
+  <text x="370" y="222" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">owner r--</text>
+
+  
+  <rect x="615" y="180" width="370" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="222" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">group rw-</text>
+
+  
+  <rect x="1045" y="180" width="370" height="65" rx="8" fill="#ffffff" stroke="#8a9992" stroke-width="2"/>
+  <text x="1230" y="222" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#5a6862">other ---</text>
+
+  
+
+  
+  <polygon points="450,290 710,400 450,510 190,400" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(450, 345)">
+    <circle cx="0" cy="-6" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M -18 18 C -18 6 18 6 18 18" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="450" y="415">Effective user</tspan>
+    <tspan x="450" y="452">equals file owner?</tspan>
+  </text>
+
+  
+  <line x1="710" y1="400" x2="760" y2="400" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="770" y="335" width="350" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(945, 368)">
+    <rect x="-16" y="-4" width="32" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M -10 -4 L -10 -15 C -10 -22 10 -22 10 -15 L 10 -4" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="945" y="432" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">Use owner bits: r--</text>
+
+  
+  <line x1="1120" y1="400" x2="1155" y2="400" stroke="#d9383a" stroke-width="4"/>
+  <line x1="1155" y1="325" x2="1155" y2="475" stroke="#d9383a" stroke-width="8" stroke-linecap="round"/>
+
+  
+  <line x1="1155" y1="400" x2="1185" y2="400" stroke="#d9383a" stroke-width="4"/>
+
+  
+  <rect x="1185" y="320" width="375" height="160" rx="10" fill="#fff5f5" stroke="#d9383a" stroke-width="3"/>
+  
+  <g transform="translate(1372, 355)">
+    <path d="M -16 -18 L 16 -18 L 16 2 C 16 14 0 22 0 22 C 0 22 -16 14 -16 2 Z" fill="none" stroke="#d9383a" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="-6" y1="-6" x2="6" y2="6" stroke="#d9383a" stroke-width="4" stroke-linecap="round"/>
+    <line x1="6" y1="-6" x2="-6" y2="6" stroke="#d9383a" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text text-anchor="middle" font-family="sans-serif" font-size="24">
+    <tspan x="1372" y="398" font-weight="bold" fill="#d9383a">Write denied:</tspan>
+    <tspan x="1372" y="430" fill="#303a36">the group bits are</tspan>
+    <tspan x="1372" y="460" fill="#303a36">never consulted</tspan>
+  </text>
+
+  
+  <line x1="450" y1="510" x2="450" y2="590" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <polygon points="450,600 690,705 450,810 210,705" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(450, 650)">
+    <circle cx="-10" cy="-6" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="10" cy="-6" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M -22 16 C -22 8 -2 8 -2 16" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 2 16 C 2 8 22 8 22 16" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="450" y="735" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">Group matches?</text>
+
+  
+  <line x1="690" y1="705" x2="760" y2="705" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="770" y="640" width="350" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(945, 678)">
+    <path d="M -16 -16 L 16 -16 L 16 4 C 16 16 0 24 0 24 C 0 24 -16 16 -16 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="945" y="738" text-anchor="middle" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">Use group bits rw-</text>
+
+  
+  <line x1="450" y1="810" x2="450" y2="880" stroke="#7a8b84" stroke-width="4" stroke-dasharray="8 6" marker-end="url(#arrow-grey)"/>
+  <text x="485" y="855" font-family="sans-serif" font-size="24" font-weight="bold" fill="#7a8b84">Skipped for this process</text>
+
+  
+  <polygon points="450,890 670,985 450,1080 230,985" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(450, 935)">
+    <circle cx="0" cy="0" r="18" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="-18" y1="0" x2="18" y2="0" stroke="#207448" stroke-width="3"/>
+    <ellipse cx="0" cy="0" rx="9" ry="18" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="450" y="1015" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Use other bits</text>
+
+  
+  <rect x="40" y="1110" width="1520" height="65" rx="10" fill="#207448"/>
+  <text x="800" y="1152" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">The owner class is decided first, and the search stops there.</text>
+</svg>

@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1115" width="1600" height="1115">
+  <title>Why become fails: four predictable causes</title>
+  <desc>Table detailing four predictable causes for Ansible become failures: requiretty, Password prompt, Unprivileged become_user and temp files, and Sudo rule refuses the module path, along with what is happening and how to fix each.</desc>
+
+  
+  <rect width="1600" height="1115" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Why become fails: four predictable causes</text>
+
+  
+  <g id="header-row">
+    <rect x="40" y="85" width="1520" height="50" rx="8" fill="#207448"/>
+    <text x="195" y="120" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Failure</text>
+    <text x="705" y="120" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">What is happening</text>
+    <text x="1310" y="120" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">Fix</text>
+  </g>
+
+  
+  <g id="row-requiretty">
+    <rect x="40" y="150" width="1520" height="130" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <line x1="350" y1="150" x2="350" y2="280" stroke="#c8dcd0" stroke-width="1.5"/>
+    <line x1="1060" y1="150" x2="1060" y2="280" stroke="#c8dcd0" stroke-width="1.5"/>
+
+    
+    <rect x="171" y="162" width="48" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="195" y1="196" x2="195" y2="204" stroke="#207448" stroke-width="3"/>
+    <line x1="183" y1="204" x2="207" y2="204" stroke="#207448" stroke-width="3"/>
+    <path d="M 178 174 L 185 179 L 178 184" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="189" y1="184" x2="196" y2="184" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+
+    
+    <text x="195" y="244" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">requiretty</text>
+
+    
+    <text x="375" y="193" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">a tty is a terminal session, and requiretty is a</tspan>
+      <tspan x="375" dy="32">sudoers setting that refuses commands run</tspan>
+      <tspan x="375" dy="32">without one</tspan>
+    </text>
+
+    
+    <text x="1085" y="209" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0">disable requiretty for the</tspan>
+      <tspan x="1085" dy="32">automation user</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-password-prompt">
+    <rect x="40" y="295" width="1520" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <line x1="350" y1="295" x2="350" y2="415" stroke="#c8dcd0" stroke-width="1.5"/>
+    <line x1="1060" y1="295" x2="1060" y2="415" stroke="#c8dcd0" stroke-width="1.5"/>
+
+    
+    <rect x="177" y="310" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 183 310 V 303 A 12 12 0 0 1 207 303 V 310" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="195" cy="321" r="2.5" fill="#207448"/>
+    <line x1="195" y1="324" x2="195" y2="330" stroke="#207448" stroke-width="2"/>
+
+    
+    <text x="195" y="366" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="195" dy="0">Password</tspan>
+      <tspan x="195" dy="34">prompt</tspan>
+    </text>
+
+    
+    <text x="375" y="350" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">appears when --ask-become-pass is</tspan>
+      <tspan x="375" dy="32">left out</tspan>
+    </text>
+
+    
+    <text x="1085" y="350" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0">-K, or vaulted password, or</tspan>
+      <tspan x="1085" dy="32">NOPASSWD</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-unprivileged-user">
+    <rect x="40" y="430" width="1520" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <line x1="350" y1="430" x2="350" y2="610" stroke="#c8dcd0" stroke-width="1.5"/>
+    <line x1="1060" y1="430" x2="1060" y2="610" stroke="#c8dcd0" stroke-width="1.5"/>
+
+    
+    <path d="M 172 444 H 186 L 192 450 H 218 V 476 H 172 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="180" y1="460" x2="210" y2="460" stroke="#207448" stroke-width="2.5"/>
+    <line x1="180" y1="466" x2="202" y2="466" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="195" y="515" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="195" dy="0">Unprivileged</tspan>
+      <tspan x="195" dy="34">become_user</tspan>
+      <tspan x="195" dy="34">and temp files</tspan>
+    </text>
+
+    
+    <text x="375" y="495" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">Ansible has to hand files to that user; if</tspan>
+      <tspan x="375" dy="34">the user cannot read the temporary</tspan>
+      <tspan x="375" dy="34">directory the module never starts</tspan>
+    </text>
+
+    
+    <text x="1085" y="478" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0">install acl (precise access without</tspan>
+      <tspan x="1085" dy="34">making the file public), or</tspan>
+      <tspan x="1085" dy="34">allow_world_readable_tmpfiles</tspan>
+      <tspan x="1085" dy="34">only if you understand the risk</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-sudo-rule-refuses">
+    <rect x="40" y="625" width="1520" height="300" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="2.5"/>
+    <line x1="350" y1="625" x2="350" y2="925" stroke="#f0cbb0" stroke-width="1.5"/>
+    <line x1="1060" y1="625" x2="1060" y2="925" stroke="#f0cbb0" stroke-width="1.5"/>
+
+    
+    <path d="M 195 644 L 217 654 V 674 C 217 689 195 701 195 701 C 195 701 173 689 173 674 V 654 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="195" y1="659" x2="195" y2="677" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="195" cy="686" r="2.5" fill="#db8129"/>
+
+    
+    <text x="195" y="744" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129" text-anchor="middle">
+      <tspan x="195" dy="0">Sudo rule</tspan>
+      <tspan x="195" dy="34">refuses the</tspan>
+      <tspan x="195" dy="34">module path</tspan>
+    </text>
+
+    
+    <text x="375" y="662" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">command-specific sudoers allow-lists and</tspan>
+      <tspan x="375" dy="32">restricted shells (rbash) do not work: Ansible</tspan>
+      <tspan x="375" dy="32">uploads each module to a randomly named temp</tspan>
+      <tspan x="375" dy="32">path such as</tspan>
+      <tspan x="375" dy="32" font-family="monospace">~/.ansible/tmp/ansible-tmp-.../AnsiballZ_...py</tspan>
+      <tspan x="375" dy="32">and a static command rule cannot match it; the</tspan>
+      <tspan x="375" dy="32">error can point at the module rather than at</tspan>
+      <tspan x="375" dy="32">the sudoers file</tspan>
+    </text>
+
+    
+    <text x="1085" y="710" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1085" dy="0">grant a dedicated automation group</tspan>
+      <tspan x="1085" dy="34" font-family="monospace">%ansible ALL=(ALL) ALL,</tspan>
+      <tspan x="1085" dy="34">or </tspan><tspan font-family="monospace">NOPASSWD: ALL</tspan><tspan>, in</tspan>
+      <tspan x="1085" dy="34" font-family="monospace">/etc/sudoers.d/ansible</tspan>
+      <tspan x="1085" dy="34">validated with </tspan><tspan font-family="monospace">visudo -cf</tspan>
+    </text>
+  </g>
+
+  
+  <g id="base-strip">
+    <rect x="40" y="940" width="1520" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="800" y="972" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" dy="0">become: true runs as root through sudo; become_user: postgres switches user;</tspan>
+      <tspan x="800" dy="30">become_method: sudo, su, doas, pbrun</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1035" width="1520" height="60" rx="8" fill="#207448"/>
+    <text x="800" y="1075" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Scope become to the tasks that need it</text>
+  </g>
+</svg>

@@ -1,0 +1,105 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Version skew during a rollout</title>
+  <desc>Four skew cases during a rollout and the fix for each, with prefix cache keyed by version and sticky session routing.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Header -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Version skew during a rollout</text>
+  <text x="800" y="106" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Four skew cases, each with the fix.</text>
+
+  <!-- Card 1: Engine version against router -->
+  <rect x="50" y="150" width="730" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(78, 178)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="12" width="48" height="24" rx="4" />
+    <circle cx="16" cy="24" r="3" fill="#207448" />
+    <circle cx="28" cy="24" r="3" fill="#207448" />
+    <circle cx="40" cy="24" r="3" fill="#207448" />
+    <line x1="14" y1="12" x2="8" y2="2" />
+    <line x1="42" y1="12" x2="48" y2="2" />
+    <circle cx="8" cy="2" r="2" fill="#207448" />
+    <circle cx="48" cy="2" r="2" fill="#207448" />
+    <path d="M 12 44 L 20 36 M 28 48 L 28 36 M 44 44 L 36 36" />
+  </g>
+  <text x="156" y="214" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Engine version against router</text>
+  <rect x="74" y="260" width="682" height="285" rx="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="100" y="335">Request accepted by the old version and</tspan>
+    <tspan x="100" dy="44">rejected by the new in the same minute:</tspan>
+    <tspan x="100" dy="44">two versions run at once during a rollout</tspan>
+  </text>
+
+  <!-- Card 2: Prefix cache (Orange highlight - single most important item) -->
+  <rect x="820" y="150" width="730" height="425" rx="16" fill="#fef8f2" stroke="#db8129" stroke-width="2.5" />
+  <g transform="translate(848, 178)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="6" />
+    <line x1="4" y1="20" x2="52" y2="20" />
+    <line x1="4" y1="35" x2="52" y2="35" />
+    <line x1="28" y1="6" x2="28" y2="50" />
+    <circle cx="16" cy="13" r="2.5" fill="#db8129" />
+    <circle cx="40" cy="13" r="2.5" fill="#db8129" />
+    <circle cx="16" cy="27.5" r="2.5" fill="#db8129" />
+    <circle cx="40" cy="27.5" r="2.5" fill="#db8129" />
+    <circle cx="16" cy="42.5" r="2.5" fill="#db8129" />
+    <circle cx="40" cy="42.5" r="2.5" fill="#db8129" />
+  </g>
+  <rect x="844" y="260" width="682" height="285" rx="12" fill="#ffffff" stroke="#eedcd0" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="926" y="214" font-size="30" font-weight="bold" fill="#db8129">Prefix cache: </tspan>
+    <tspan x="870" y="296">different weights produce different KV</tspan>
+    <tspan x="870" dy="34">values; reusing a block from old weights</tspan>
+    <tspan x="870" dy="34">would feed the new model numbers it never</tspan>
+    <tspan x="870" dy="34">computed, wrong answers with no error; key</tspan>
+    <tspan x="870" dy="34">the prefix cache and cache-aware routing</tspan>
+    <tspan x="870" dy="34">by model version so no hit crosses a</tspan>
+    <tspan x="870" dy="34">version boundary</tspan>
+  </text>
+
+  <!-- Card 3: Tokenizer against weights -->
+  <rect x="50" y="615" width="730" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(78, 643)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="8" width="22" height="18" rx="3" />
+    <rect x="30" y="8" width="22" height="18" rx="3" />
+    <path d="M 8 32 L 48 32 L 48 48 L 8 48 Z" />
+    <line x1="22" y1="32" x2="22" y2="48" />
+    <line x1="36" y1="32" x2="36" y2="48" />
+    <line x1="15" y1="26" x2="15" y2="32" />
+    <line x1="41" y1="26" x2="41" y2="32" />
+  </g>
+  <rect x="74" y="725" width="682" height="285" rx="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="156" y="679" font-size="30" font-weight="bold" fill="#207448">Tokenizer against weights: </tspan>
+    <tspan x="100" y="772">a checkpoint with the wrong tokenizer</tspan>
+    <tspan x="100" dy="38">fails quietly, garbage output and green</tspan>
+    <tspan x="100" dy="38">infrastructure; the registry record makes</tspan>
+    <tspan x="100" dy="38">weights, tokenizer and config one object</tspan>
+    <tspan x="100" dy="38">with one version</tspan>
+  </text>
+
+  <!-- Card 4: Client-facing -->
+  <rect x="820" y="615" width="730" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(848, 643)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="42" rx="6" />
+    <line x1="4" y1="18" x2="52" y2="18" />
+    <circle cx="12" cy="12" r="2" fill="#207448" />
+    <circle cx="20" cy="12" r="2" fill="#207448" />
+    <path d="M 14 28 C 14 25 18 25 22 25 C 26 25 30 25 30 28 C 30 32 26 32 22 32 L 18 35 L 18 32 C 15 32 14 30 14 28 Z" />
+    <path d="M 38 35 C 38 33 35 33 32 33 L 32 38 Z" />
+  </g>
+  <rect x="844" y="725" width="682" height="285" rx="12" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="926" y="679" font-size="30" font-weight="bold" fill="#207448">Client-facing: </tspan>
+    <tspan x="870" y="765">a user who sees both versions in one</tspan>
+    <tspan x="870" dy="36">conversation may see style change midway;</tspan>
+    <tspan x="870" dy="36">sticky routing by tenant or session during</tspan>
+    <tspan x="870" dy="36">the canary sends one user back to the same</tspan>
+    <tspan x="870" dy="36">version every time; this is the difference</tspan>
+    <tspan x="870" dy="36">between a canary and an A/B test</tspan>
+  </text>
+
+  <!-- Takeaway Bar -->
+  <rect x="50" y="1065" width="1500" height="100" rx="14" fill="#207448" />
+  <text text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="800" y="1106">pin tokenizer, weights and config as one version, key caches by version,</tspan>
+    <tspan x="800" dy="36">keep a session on one version during a canary</tspan>
+  </text>
+</svg>

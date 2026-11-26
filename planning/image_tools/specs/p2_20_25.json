@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p2-2025-sum-before-rate",
+  "title": "Summing counters before rate hides the restart",
+  "spec": "Two side-by-side panels with green headings. Left panel 'Wrong: sum first, then rate': two counter lines for pod A and pod B over time, with pod A dropping from 100 to 0 at a restart and pod B climbing by 100. The two lines are added into one flat total line, labelled 'Sum stays flat: the reset is invisible'. Orange outline on the flat total line with the note 'The work pod A did before the restart is lost'. Right panel 'Right: rate per series, then sum by the labels you keep': the same two counter lines each with a rate step, then a sum box labelled 'sum by the labels you keep', then a green result line labelled 'Fleet rate, reset handled per pod'. Bottom formula strip in monospace: 'sum by (labels you keep) (rate(counter))' and a note 'Rate per series, sum by the labels you want to keep, then divide.' A small note on the ratio: 'Numerator and denominator summed separately, then divided. Never average ratios.'",
+  "anchor": "### 3. Aggregate after rate, never before",
+  "alt": "Summing two pods' counters before the rate hides a restart, while taking the rate per series first keeps the reset visible and gives the fleet rate.",
+  "cap": "Summing counters before taking the rate hides a pod restart, so the rate is taken per series first and then summed by the labels kept."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p2-2025-le-buckets",
+  "title": "Histogram buckets: keep le, then take the quantile once",
+  "spec": "Left: a histogram drawn as a row of cumulative boxes, each box labelled with an upper bound 'le' and a count, with the counts rising from left to right. A note 'Each box counts every request at or under its bound: cumulative'. An orange outline on the box where the target quantile falls. Middle: an arrow labelled 'histogram_quantile interpolates inside the bucket that holds the quantile'. Right: a two-row comparison. Row 1 'Trap: sum by (model) drops le' with a red cross and the note 'Breaks histogram_quantile'. Row 2 'Right: sum by (le, model)' with a green check and the note 'Keep le in the by clause, then take the quantile once'. Below the rows a flow of two pods' buckets: 'Pod A buckets' and 'Pod B buckets' joined to 'rate per series', then 'sum by (le, model)', then 'histogram_quantile(0.99)'. Caption: 'le stands for less than or equal to.'",
+  "anchor": "### 4. Histograms: keep le, then take the quantile once",
+  "alt": "A cumulative latency histogram where summing without the le label breaks the p99, and the right query keeps le in the by clause before taking the quantile once.",
+  "cap": "A latency histogram stores cumulative buckets by le, and the p99 is correct only when le stays in the by clause before histogram_quantile runs."
+ }
+]

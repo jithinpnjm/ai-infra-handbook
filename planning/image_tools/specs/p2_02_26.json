@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p2-0226-scale-ladder",
+  "title": "A 100 Gb/s link sends about 8 million packets per second, so capture needs a ladder of options",
+  "anchor": "## 5. Capturing at scale and in awkward places",
+  "spec": "A vertical ladder of seven numbered steps, from the simplest at the top to the heaviest at the bottom, with a widening arrow on the left labelled 'more power, more hardware'. Top banner, orange outline: 'Arithmetic: 100 Gb/s and 1500-byte frames is about 8 million packets per second'. Step 1: 'Capture only what you need: tight filter and -s 96'. Step 2: 'Bigger kernel buffer (-B), RAM disk or striped NVMe, no name lookups'. Step 3: 'Per queue or per flow: steer the flow with ethtool flow rules'. Step 4: 'Fast capture tools: PF_RING, AF_XDP, DPDK-based tools'. Step 5: 'Hardware: switch SPAN or ERSPAN to a capture server, or a NIC or DPU'. Step 6: 'Sample instead of capturing everything: sFlow, IPFIX, tcpdump -c'. Step 7: 'Trigger-based ring: rolling -C and -W files, stopped by an event, so earlier packets are kept'. Caption: 'Climb only as far as the question requires.'",
+  "alt": "Capture options for a 100 Gb/s link run from a tight filter and short snaplen through larger buffers and per-flow queues to hardware mirrors, sampling and trigger-based rings.",
+  "cap": "A 100 Gb/s link carries about 8 million packets per second, so capture options climb from tight filters to hardware mirrors and trigger-based rings."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p2-0226-first-minute",
+  "title": "The first minute of a training node carries a dozen protocols in a fixed order",
+  "anchor": "## 4. Decoding the protocols you meet in AI infrastructure",
+  "spec": "A horizontal timeline from left to right with numbered circles 1 to 6 on a time axis labelled 'first minute of a training node'. Step 1 box: 'DNS: udp port 53, resolves the registry name'. Step 2 box: 'DHCP: udp ports 67 and 68, DORA sequence'. Step 3 box: 'ARP: who-has the gateway, is-at reply'. Step 4 box: 'TLS: ClientHello with SNI and ALPN, to the registry'. Step 5 box: 'NCCL bootstrap: TCP between ranks'. Step 6 box, orange outline: 'RoCEv2 data: udp port 4791, bypasses the kernel, needs a NIC or switch capture'. Under step 6, a grey note: 'tcpdump on the host does not see RoCE traffic.' Under the timeline, a row of small chips with the capture filters in monospace: 'udp port 53', 'udp port 67 or 68', 'arp', 'tcp', 'udp dst port 4791'. Caption: 'Know the protocol and its first check before you read the packet.'",
+  "alt": "The first minute of a training node carries DNS, DHCP, ARP, TLS, NCCL bootstrap TCP and RoCEv2 traffic, and RoCEv2 needs a NIC or switch capture.",
+  "cap": "A training node's first minute carries DNS, DHCP, ARP, TLS, NCCL bootstrap and RoCEv2 traffic, and only RoCEv2 avoids the host capture."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "26",
+  "name": "p2-0226-bpf-question-tool",
+  "title": "Match the question to the BPF tool that answers it",
+  "anchor": "### Using BPF tools in network investigations",
+  "spec": "A decision map. A central box at the left labelled 'Network question' and a fan of arrows to a column of question boxes, each linked to a tool box on the right. Row 1: question 'Which processes connect or accept, and where?' to tool 'tcpconnect, tcpaccept, sockstat'. Row 2: 'How long do sessions live, and how much do they move?' to 'tcplife'. Row 3, orange outline: 'Which flows retransmit, and in which state?' to 'tcpretrans'. Row 4: 'Why were packets dropped, and from which call stack?' to 'tcpdrop, or bpftrace on kfree_skb'. Row 5: 'How long does the handshake take per destination?' to 'tcpconnlat'. Row 6: 'Which process uses the most bandwidth?' to 'tcptop'. Row 7: 'Is the listen backlog overflowing?' to 'solisten, nstat ListenOverflows'. Row 8: 'Is softirq or scheduler time the cost?' to 'softirqs, hardirqs, runqlat'. Caption at the bottom: 'BPF tools complement the pcap, they do not replace it.'",
+  "alt": "A decision map pairs network questions such as connection origin, session life, retransmits, drops and handshake latency with the BPF tool that answers each one.",
+  "cap": "Each network question, from retransmits and drops to handshake latency and backlog overflow, maps to a specific BCC or bpftrace tool."
+ }
+]

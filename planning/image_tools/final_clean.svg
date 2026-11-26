@@ -1,0 +1,310 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Why web load balancing assumptions fail for LLM serving: five differences</title>
+  <desc>Technical infographic comparing traditional web load balancing assumptions with LLM serving realities across request duration, connection longevity, cache locality, backend heterogeneity, and autoscaling latency, alongside the required architectural responses.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="44" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Why web load balancing assumptions fail</tspan>
+    <tspan x="800" dy="44">for LLM serving: five differences</tspan>
+  </text>
+
+  <!-- Top Strip: Left Scenario (Orange) & Right Inference Balancing Flow -->
+  <g id="top-scenario-row">
+    <!-- Left Scenario in Orange -->
+    <rect x="40" y="98" width="740" height="92" rx="12" fill="#fff5ea" stroke="#db8129" stroke-width="2.5" />
+    
+    <!-- Warning Alert Outline Icon (Orange stroke 3.5) -->
+    <g transform="translate(56, 122)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 22 4 L 41 38 L 3 38 Z" />
+      <line x1="22" y1="16" x2="22" y2="26" stroke-width="3.5" />
+      <circle cx="22" cy="32" r="1.5" fill="#db8129" />
+    </g>
+
+    <!-- Scenario Text (Exactly the source label, 24px bold) -->
+    <text x="114" y="125" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="114" dy="0">every health check green, average latency fine,</tspan>
+      <tspan x="114" dy="28">one replica buried under long generations while</tspan>
+      <tspan x="114" dy="28">the others sit idle</tspan>
+    </text>
+
+    <!-- Right Header Visual: L7 Router & Balanced Dispatch Architecture (SVG vector shapes) -->
+    <rect x="820" y="98" width="740" height="92" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(840, 114)">
+      <!-- Client Ingress -->
+      <rect x="10" y="12" width="70" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="45" cy="28" r="7" fill="none" stroke="#207448" stroke-width="2" />
+      <path d="M 33 48 C 33 40, 57 40, 57 48" fill="none" stroke="#207448" stroke-width="2" />
+      
+      <!-- Flow Arrow 1 -->
+      <path d="M 85 35 L 145 35" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+      
+      <!-- Router Gateway -->
+      <rect x="155" y="8" width="160" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <circle cx="180" cy="35" r="12" fill="none" stroke="#207448" stroke-width="2" />
+      <path d="M 180 23 L 180 47 M 168 35 L 192 35" stroke="#207448" stroke-width="2" />
+      <line x1="205" y1="26" x2="300" y2="26" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+      <line x1="205" y1="44" x2="280" y2="44" stroke="#207448" stroke-width="2" stroke-dasharray="4,3" stroke-linecap="round" />
+
+      <!-- Fan-out Arrows -->
+      <path d="M 320 25 L 380 18" stroke="#207448" stroke-width="2.5" fill="none" marker-end="url(#arrow-green)" />
+      <path d="M 320 35 L 380 35" stroke="#207448" stroke-width="2.5" fill="none" marker-end="url(#arrow-green)" />
+      <path d="M 320 45 L 380 52" stroke="#207448" stroke-width="2.5" fill="none" marker-end="url(#arrow-green)" />
+
+      <!-- Balanced Replicas Fleet -->
+      <rect x="390" y="4" width="90" height="20" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <circle cx="402" cy="14" r="3" fill="#207448" />
+      <rect x="415" y="10" width="55" height="8" rx="2" fill="#207448" fill-opacity="0.3" />
+
+      <rect x="390" y="25" width="90" height="20" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <circle cx="402" cy="35" r="3" fill="#207448" />
+      <rect x="415" y="31" width="55" height="8" rx="2" fill="#207448" fill-opacity="0.3" />
+
+      <rect x="390" y="46" width="90" height="20" rx="4" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+      <circle cx="402" cy="56" r="3" fill="#207448" />
+      <rect x="415" y="52" width="55" height="8" rx="2" fill="#207448" fill-opacity="0.3" />
+
+      <!-- Feedback Telemetry Loop -->
+      <path d="M 490 35 C 540 35, 540 68, 235 68 L 235 64" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" fill="none" />
+      <circle cx="505" cy="35" r="4" fill="#207448" />
+      <polyline points="530,28 538,35 530,42" fill="none" stroke="#207448" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+  </g>
+
+  <!-- ==================== ROW 1 ==================== -->
+  <g id="row-1">
+    <!-- Left Box: Difference 1 & Consequence -->
+    <rect x="40" y="200" width="740" height="212" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <!-- Clock / Streaming Timer Icon (44px) -->
+    <g transform="translate(56, 214)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="18" />
+      <polyline points="20,10 20,20 28,24" />
+      <path d="M 32 6 A 18 18 0 0 1 38 16" stroke-width="2.5" stroke-dasharray="2,3" />
+    </g>
+
+    <!-- Difference 1 Title (30px bold) -->
+    <text x="110" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="110" dy="0">1 Requests are long, variable and</tspan>
+      <tspan x="110" dy="32">somewhat stateful</tspan>
+    </text>
+
+    <!-- Consequence 1 (24px) -->
+    <text x="60" y="300" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">a request may stream tokens for minutes; cost</tspan>
+      <tspan x="60" dy="25">varies by orders of magnitude with prompt and</tspan>
+      <tspan x="60" dy="25">output length; the real load is queue depth,</tspan>
+      <tspan x="60" dy="25">running sequences and KV-cache occupancy, not</tspan>
+      <tspan x="60" dy="25">connection count</tspan>
+    </text>
+
+    <!-- Arrow between Col 1 and Col 2 -->
+    <path d="M 780 306 L 820 306" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
+
+    <!-- Right Box: Response 1 -->
+    <rect x="820" y="200" width="740" height="212" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Response 1 Icon -->
+    <g transform="translate(838, 222)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="36" height="30" rx="4" />
+      <line x1="4" y1="16" x2="40" y2="16" />
+      <circle cx="12" cy="11" r="2" fill="#207448" />
+      <circle cx="18" cy="11" r="2" fill="#207448" />
+      <path d="M 12 28 L 22 22 L 32 28" />
+    </g>
+    <text x="892" y="248" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="892" dy="0">Balance per request, not per connection (Envoy,</tspan>
+      <tspan x="892" dy="32">HAProxy, nginx grpc_pass, Gateway API inference</tspan>
+      <tspan x="892" dy="32">extensions, or client-side)</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 2 ==================== -->
+  <g id="row-2">
+    <!-- Left Box: Difference 2 & Consequence -->
+    <rect x="40" y="422" width="740" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    <!-- Network Stream Link Icon (44px) -->
+    <g transform="translate(56, 434)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 26 A 8 8 0 0 1 18 10 L 26 10 A 8 8 0 0 1 34 26" />
+      <line x1="22" y1="10" x2="22" y2="34" />
+      <circle cx="22" cy="36" r="3" fill="#207448" />
+    </g>
+
+    <!-- Difference 2 Title (30px bold) -->
+    <text x="110" y="458" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">2 Connections are long-lived</text>
+
+    <!-- Consequence 2 (24px) -->
+    <text x="60" y="492" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">HTTP/2 and gRPC streams and SSE hold resources;</tspan>
+      <tspan x="60" dy="25">reloads, scale-in and deploys must drain gracefully;</tspan>
+      <tspan x="60" dy="25">an idle timeout at any hop can cut a slow</tspan>
+      <tspan x="60" dy="25">generation</tspan>
+    </text>
+
+    <!-- Arrow between Col 1 and Col 2 -->
+    <path d="M 780 502 L 820 502" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
+
+    <!-- Right Box: Response 2 -->
+    <rect x="820" y="422" width="740" height="160" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="844" y="452" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">load signal: least-outstanding-requests</tspan>
+      <tspan x="844" dy="25">baseline, better backend-reported running and</tspan>
+      <tspan x="844" dy="25">waiting requests, KV-cache usage and estimated</tspan>
+      <tspan x="844" dy="25">tokens (Prometheus, headers, ORCA-style load</tspan>
+      <tspan x="844" dy="25">reports), P2C over load</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 3 ==================== -->
+  <g id="row-3">
+    <!-- Left Box: Difference 3 & Consequence -->
+    <rect x="40" y="592" width="740" height="210" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    <!-- Storage / KV Cache Blocks Icon (44px) -->
+    <g transform="translate(56, 604)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="32" height="10" rx="3" />
+      <rect x="6" y="18" width="32" height="10" rx="3" />
+      <rect x="6" y="30" width="32" height="10" rx="3" />
+      <circle cx="12" cy="11" r="1.5" fill="#207448" />
+      <circle cx="12" cy="23" r="1.5" fill="#207448" />
+      <circle cx="12" cy="35" r="1.5" fill="#207448" />
+    </g>
+
+    <!-- Difference 3 Title (30px bold) -->
+    <text x="110" y="628" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">3 Cache locality matters</text>
+
+    <!-- Consequence 3 (24px) -->
+    <text x="60" y="662" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">prefix caching for system prompts, RAG context</tspan>
+      <tspan x="60" dy="25">and multi-turn chat makes a request cheaper on</tspan>
+      <tspan x="60" dy="25">the replica that already holds its prefix KV</tspan>
+      <tspan x="60" dy="25">blocks; same session or prefix to the same</tspan>
+      <tspan x="60" dy="25">replica raises hit rates, pure affinity creates</tspan>
+      <tspan x="60" dy="25">hot spots</tspan>
+    </text>
+
+    <!-- Arrow between Col 1 and Col 2 -->
+    <path d="M 780 697 L 820 697" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
+
+    <!-- Right Box: Response 3 -->
+    <rect x="820" y="592" width="740" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Response 3 Icon -->
+    <g transform="translate(838, 614)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="14" />
+      <line x1="20" y1="6" x2="20" y2="12" />
+      <line x1="20" y1="28" x2="20" y2="34" />
+      <line x1="6" y1="20" x2="12" y2="20" />
+      <line x1="28" y1="20" x2="34" y2="20" />
+      <circle cx="20" cy="20" r="4" fill="#207448" />
+    </g>
+    <text x="892" y="640" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="892" dy="0">cache-aware: consistent hashing on session</tspan>
+      <tspan x="892" dy="30">ID or prefix hash with bounded loads, or a</tspan>
+      <tspan x="892" dy="30">router tracking which replica holds which</tspan>
+      <tspan x="892" dy="30">prefix blocks</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 4 ==================== -->
+  <g id="row-4">
+    <!-- Left Box: Difference 4 & Consequence -->
+    <rect x="40" y="812" width="740" height="162" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    <!-- GPU Chip Icon (44px) -->
+    <g transform="translate(56, 824)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="28" height="28" rx="4" />
+      <line x1="14" y1="2" x2="14" y2="8" />
+      <line x1="22" y1="2" x2="22" y2="8" />
+      <line x1="30" y1="2" x2="30" y2="8" />
+      <line x1="14" y1="36" x2="14" y2="42" />
+      <line x1="22" y1="36" x2="22" y2="42" />
+      <line x1="30" y1="36" x2="30" y2="42" />
+      <line x1="2" y1="14" x2="8" y2="14" />
+      <line x1="2" y1="22" x2="8" y2="22" />
+      <line x1="2" y1="30" x2="8" y2="30" />
+      <line x1="36" y1="14" x2="42" y2="14" />
+      <line x1="36" y1="22" x2="42" y2="22" />
+      <line x1="36" y1="30" x2="42" y2="30" />
+      <rect x="15" y="15" width="14" height="14" fill="#207448" />
+    </g>
+
+    <!-- Difference 4 Title (30px bold) -->
+    <text x="110" y="846" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="110" dy="0">4 Backends are expensive and</tspan>
+      <tspan x="110" dy="32">heterogeneous</tspan>
+    </text>
+
+    <!-- Consequence 4 (24px) -->
+    <text x="60" y="910" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">GPU types, tensor-parallel group sizes,</tspan>
+      <tspan x="60" dy="25">disaggregated prefill and decode pools, LoRA</tspan>
+      <tspan x="60" dy="25">adapters per replica, quantised variants</tspan>
+    </text>
+
+    <!-- Arrow between Col 1 and Col 2 -->
+    <path d="M 780 893 L 820 893" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
+
+    <!-- Right Box: Response 4 -->
+    <rect x="820" y="812" width="740" height="162" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Response 4 Icon -->
+    <g transform="translate(838, 834)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="16" height="26" rx="3" />
+      <rect x="24" y="8" width="16" height="26" rx="3" />
+      <path d="M 12 21 L 28 21" stroke-dasharray="2,2" />
+    </g>
+    <text x="892" y="858" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="892" dy="0">disaggregated: route prefill and decode to</tspan>
+      <tspan x="892" dy="30">separate pools, handle the KV transfer, couple</tspan>
+      <tspan x="892" dy="30">the autoscaling and admission</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 5 ==================== -->
+  <g id="row-5">
+    <!-- Left Box: Difference 5 & Consequence -->
+    <rect x="40" y="984" width="740" height="134" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    <!-- Autoscaling Gauge / Timer Icon (44px) -->
+    <g transform="translate(56, 996)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 32 A 16 16 0 1 1 36 32" />
+      <line x1="22" y1="24" x2="30" y2="16" />
+      <circle cx="22" cy="24" r="3" fill="#207448" />
+    </g>
+
+    <!-- Difference 5 Title (30px bold) -->
+    <text x="110" y="1020" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">5 Autoscaling is slow</text>
+
+    <!-- Consequence 5 (24px) -->
+    <text x="60" y="1054" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">GPU nodes and model loads take minutes, so the</tspan>
+      <tspan x="60" dy="25">router must absorb bursts by queueing or</tspan>
+      <tspan x="60" dy="25">shedding</tspan>
+    </text>
+
+    <!-- Arrow between Col 1 and Col 2 -->
+    <path d="M 780 1051 L 820 1051" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow-green)" />
+
+    <!-- Right Box: Response 5 -->
+    <rect x="820" y="984" width="740" height="134" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="844" y="1014" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="844" dy="0">overload: per-tenant concurrency and token-rate</tspan>
+      <tspan x="844" dy="25">limits, priority queues separating interactive</tspan>
+      <tspan x="844" dy="25">from batch, 429 or 503 early, KV-cache headroom</tspan>
+      <tspan x="844" dy="25">in admission control</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM BAR ==================== -->
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="1130" width="1520" height="48" rx="10" fill="#207448" />
+    <text x="800" y="1162" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Measure first, and choose the load signal before you choose the algorithm</text>
+  </g>
+</svg>

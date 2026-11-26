@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Unquoted variables split on spaces and expand to the wrong arguments</title>
+  <desc>Visual comparison showing how unquoted shell variables split on whitespace and expand dangerously versus safe quoted expansions.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#db8129" />
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-red" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 Z" fill="#d32f2f" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">Unquoted variables split on spaces </tspan><tspan x="800" dy="56">and expand to the wrong arguments</tspan></text>
+
+  
+  
+  <rect x="50" y="145" width="725" height="850" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+
+  
+  <rect x="75" y="165" width="675" height="75" rx="12" fill="#fdf0e6" stroke="#db8129" stroke-width="2" />
+  
+  <g transform="translate(145, 178)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 24 4 L 46 42 L 2 42 Z" />
+    <line x1="24" y1="18" x2="24" y2="28" />
+    <circle cx="24" cy="35" r="1.5" fill="#db8129" />
+  </g>
+  <text x="215" y="214" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#b55400">Unquoted (DANGER)</text>
+
+  
+  <rect x="75" y="265" width="675" height="90" rx="10" fill="#ffffff" stroke="#d0d7de" stroke-width="2" />
+  
+  <g transform="translate(105, 287)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="46" height="38" rx="6" />
+    <line x1="2" y1="14" x2="48" y2="14" />
+    <path d="M 12 24 L 18 29 L 12 34" />
+    <line x1="24" y1="34" x2="36" y2="34" />
+  </g>
+  <text x="185" y="322" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">rm $file</text>
+
+  
+  <line x1="412" y1="355" x2="412" y2="413" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="75" y="415" width="675" height="175" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  
+  <g transform="translate(190, 432)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 38 L 10 10 L 32 10 L 42 20 L 42 38 Z" />
+    <path d="M 4 44 L 4 16 L 10 16" />
+    <polyline points="32,10 32,20 42,20" />
+  </g>
+  <text x="255" y="464" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#b55400">two arguments</text>
+
+  
+  <rect x="105" y="495" width="290" height="70" rx="8" fill="#faeee3" stroke="#db8129" stroke-width="2" />
+  <text x="250" y="540" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">my</text>
+
+  
+  <rect x="430" y="495" width="290" height="70" rx="8" fill="#faeee3" stroke="#db8129" stroke-width="2" />
+  <text x="575" y="540" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">report.txt</text>
+
+  
+  <line x1="75" y1="620" x2="750" y2="620" stroke="#f0d5be" stroke-width="2" stroke-dasharray="8 6" />
+
+  
+  <rect x="75" y="645" width="675" height="115" rx="10" fill="#ffffff" stroke="#d0d7de" stroke-width="2" />
+  
+  <g transform="translate(105, 680)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="46" height="38" rx="6" />
+    <line x1="2" y1="14" x2="48" y2="14" />
+    <path d="M 12 24 L 18 29 L 12 34" />
+    <line x1="24" y1="34" x2="36" y2="34" />
+  </g>
+  <text x="185" y="692" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">rm -rf $dir/*</text>
+  <text x="185" y="734" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#8c3b00">dir empty</text>
+
+  
+  <line x1="412" y1="760" x2="412" y2="818" stroke="#d32f2f" stroke-width="4" marker-end="url(#arrow-red)" />
+
+  
+  <rect x="75" y="820" width="675" height="150" rx="10" fill="#fdf2f2" stroke="#d32f2f" stroke-width="3" />
+  
+  <g transform="translate(130, 868)" stroke="#d32f2f" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="24" cy="12" rx="20" ry="8" />
+    <path d="M 4 12 L 4 36 C 4 41, 44 41, 44 36 L 44 12" />
+    <path d="M 4 24 C 4 29, 44 29, 44 24" />
+    <line x1="24" y1="46" x2="24" y2="48" />
+  </g>
+  <text x="215" y="908" font-family="ui-monospace, monospace" font-size="34" font-weight="bold" fill="#c92a2a">rm -rf /*</text>
+
+  
+  
+  <rect x="825" y="145" width="725" height="850" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+  
+  <rect x="850" y="165" width="675" height="75" rx="12" fill="#d7e8dc" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(945, 178)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 24 4 L 44 11 L 44 24 C 44 36 24 44 24 44 C 24 44 4 36 4 24 L 4 11 Z" />
+    <polyline points="15,24 21,30 33,18" />
+  </g>
+  <text x="1015" y="214" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Quoted (correct)</text>
+
+  
+  <rect x="850" y="265" width="675" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(880, 287)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="46" height="38" rx="6" />
+    <line x1="2" y1="14" x2="48" y2="14" />
+    <path d="M 12 24 L 18 29 L 12 34" />
+    <line x1="24" y1="34" x2="36" y2="34" />
+  </g>
+  <text x="960" y="322" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">rm "$file"</text>
+
+  
+  <line x1="1187" y1="355" x2="1187" y2="413" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="850" y="415" width="675" height="175" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(980, 432)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 42 L 8 6 L 30 6 L 40 16 L 40 42 Z" />
+    <polyline points="30,6 30,16 40,16" />
+  </g>
+  <text x="1045" y="464" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">one argument</text>
+
+  
+  <rect x="960" y="495" width="455" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1187" y="540" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">my report.txt</text>
+
+  
+  <line x1="850" y1="620" x2="1525" y2="620" stroke="#c0d8c6" stroke-width="2" stroke-dasharray="8 6" />
+
+  
+  <rect x="850" y="645" width="675" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1165, 655)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 2 L 38 8 L 38 18 C 38 28 22 34 22 34 C 22 34 6 28 6 18 L 6 8 Z" />
+    <polyline points="14,18 19,23 29,13" />
+  </g>
+  <text x="1187" y="730" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24.5" font-weight="bold" fill="#303a36">rm -rf "${dir:?dir is unset or empty}"/*</text>
+
+  
+  <line x1="1187" y1="760" x2="1187" y2="818" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="850" y="820" width="675" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(980, 870)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="20" />
+    <polyline points="14,24 21,31 34,17" />
+  </g>
+  <text x="1045" y="904" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">aborts instead</text>
+
+  
+  <rect x="50" y="1025" width="1500" height="80" rx="12" fill="#207448" />
+  <text x="800" y="1075" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Always double-quote every expansion, such as "$var", "$(cmd)" and "$@".</text>
+</svg>

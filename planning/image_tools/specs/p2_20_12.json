@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "p2-2012-estimation-chain",
+  "title": "The six-step estimation chain from weights to GPUs",
+  "spec": "A left-to-right chain of six numbered boxes with arrows, each box with a number circle, a short title and one monospace input line. Box 1 'Weights memory' with the input 'parameters x bytes per parameter'. Box 2 'KV cache per request' with the input 'KV bytes per token x (prompt + output tokens)'. Box 3 'Requests that fit on one GPU' with the input 'GPU memory x 0.9 minus weights, divided by KV per request'. Box 4 'Decode tokens per second' with the input 'batch size and decode rate'. Box 5 'Requests per second per GPU' combining 'prefill tokens per second' and 'decode tokens per second'. Box 6 'GPUs for QPS, plus headroom and N+1' with the input 'demand divided by requests per second per GPU'. A final small arrow from box 6 to a cost card 'Cost per million tokens'. Under the chain a bar labelled 'Each box is a ceiling, not a measurement'. Orange outline on box 3, where the weights decide the room left for the cache. Caption: 'Work forward from the inputs, never backward from the answer you want.'",
+  "anchor": "### 1. The estimation chain",
+  "alt": "The estimation chain runs from weights memory through KV cache, requests per GPU, tokens per second and requests per second to the GPU count.",
+  "cap": "The estimation chain works forward from weights memory through KV cache and requests per GPU to the number of GPUs needed for the target load."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "p2-2012-kv-per-token",
+  "title": "KV bytes per token, worked for Qwen3-8B in BF16",
+  "spec": "Top: a formula strip in monospace, two lines: 'KV bytes per token = 2 x layers x kv_heads x head_dim x bytes_per_element' and 'KV bytes per request = KV bytes per token x (prompt tokens + output tokens)'. Below, a factor row of five labelled blocks multiplied by x signs: 'x2 (one key, one value)', 'x36 layers', 'x8 KV heads (grouped-query attention)', 'x128 head dimension', 'x2 bytes (BF16)'. An equals sign and a result block '147,456 bytes per token'. Right side, a three-step result strip: 'Per token: 147,456 bytes', 'Request of 2,000 + 500 tokens = 2,500 tokens: 368,640,000 bytes', 'In gigabytes: 0.36864 GB'. A comparison card in grey: 'Full multi-head attention with 32 KV heads: four times larger per token'. Orange outline on the 'x8 KV heads' block as the factor that grouped-query attention reduces. Caption: 'Say each factor as you multiply, because the listener can follow the factors but not a bare result.'",
+  "anchor": "### 3. KV-cache memory per token and per request",
+  "alt": "KV cache bytes per token for Qwen3-8B in BF16, built from two keys and values, 36 layers, 8 KV heads, head dimension 128 and 2 bytes, giving 147,456 bytes.",
+  "cap": "The KV cache for Qwen3-8B in BF16 is 147,456 bytes per token, from two, 36 layers, 8 KV heads, a head dimension of 128 and 2 bytes."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "p2-2012-weights-precision",
+  "title": "Weights memory by precision, from FP32 to 4-bit",
+  "spec": "A horizontal bar chart with four bars for precision, each bar labelled with bytes per parameter. Bars from longest to shortest: 'FP32, 4 bytes per parameter', 'BF16, 2 bytes', 'FP8 or INT8, 1 byte', '4-bit, 0.5 bytes'. Two columns of values on the right of each bar as small cards: 'Qwen3-8B weights' with values '32.8 GB', '16.4 GB', '8.2 GB', '4.1 GB'; and 'Qwen2.5-72B weights' with values '290.8 GB', '145.4 GB', '72.7 GB', '36.35 GB'. Formula strip at the top in monospace: 'Weights memory = parameters x bytes per parameter'. A note under the 4-bit bar: 'Real four-bit formats also store scales, so the true size is slightly larger.' Orange outline on the BF16 bar as the common default. Caption: 'Check the weights first: if they do not fit, nothing after them matters.'",
+  "anchor": "### 2. Weights memory by precision",
+  "alt": "Weights memory for Qwen3-8B and Qwen2.5-72B at FP32, BF16, FP8 or INT8 and 4-bit precision, computed as parameters times bytes per parameter.",
+  "cap": "Weights memory equals parameters times bytes per parameter, so Qwen3-8B takes 16.4 GB in BF16 and Qwen2.5-72B takes 145.4 GB."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "12",
+  "name": "p2-2012-cost-levers",
+  "title": "Cost per million tokens: utilisation is the big lever",
+  "spec": "Top: a formula strip in monospace 'cost per million tokens = price per GPU-hour x GPUs / (tokens per second x 3600 x utilisation) x 1e6'. Left: a bar chart of three bars for utilisation: '100 percent: $0.44 per million output tokens' (short green bar), '60 percent: $0.73' (medium bar), '30 percent: $1.47' (long bar). Right: a card 'Price used: $4.50 per H100 GPU-hour (on-demand, fetched 2026-11-09)'. A callout 'Halving utilisation doubles the cost'. Below the chart a ranked list of the finance levers in order: '1. Raise utilisation: fill the batch, smooth the traffic', '2. Lower cost per token: a precision the quality tests accept', '3. Only then the GPU type'. Orange outline on the 30 percent bar as the expensive case. Caption: 'Quote cost per million output tokens with its utilisation.'",
+  "anchor": "### 9. Cost per million tokens",
+  "alt": "Cost per million output tokens at 100, 60 and 30 percent utilisation, showing that halving utilisation roughly doubles the cost on a four-dollar-fifty H100.",
+  "cap": "Cost per million output tokens rises from $0.44 at full utilisation to $1.47 at 30 percent, so utilisation is the biggest lever."
+ }
+]

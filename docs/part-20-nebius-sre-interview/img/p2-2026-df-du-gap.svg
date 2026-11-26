@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>df says 100 GB used, du finds about 40 GB: the deleted-open file</title>
+  <desc>Visual reasoning chain explaining how deleted open files cause a mismatch between df and du disk usage, root-cause investigation with lsof, and safe remediation steps.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="11" refY="7" orient="auto">
+      <path d="M 0,2 L 12,7 L 0,12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="50" dy="0">df says 100 GB used, du finds about 40 GB:</tspan>
+    <tspan x="50" dy="56">the deleted-open file</tspan>
+  </text>
+
+  
+
+  
+  <g id="box-1">
+    <rect x="50" y="170" width="345" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="94" cy="214" r="24" fill="#207448" />
+    <text x="94" y="222" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g stroke="#207448" stroke-width="4" fill="none">
+      <ellipse cx="330" cy="202" rx="26" ry="10" />
+      <path d="M 304,202 v 28 c 0,5.5 11.6,10 26,10 c 14.4,0 26,-4.5 26,-10 v -28" />
+      <path d="M 304,216 c 0,5.5 11.6,10 26,10 c 14.4,0 26,-4.5 26,-10" />
+    </g>
+    
+    <text x="74" y="278" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0" font-family="monospace" font-weight="bold">df:</tspan> 100 GB size,
+      <tspan x="74" dy="36">100 GB used,</tspan>
+      <tspan x="74" dy="36">0 available,</tspan>
+      <tspan x="74" dy="36">100 percent</tspan>
+    </text>
+    
+    <rect x="74" y="440" width="297" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <rect x="74" y="440" width="297" height="48" rx="8" fill="#207448" />
+  </g>
+
+  
+  <path d="M 395,330 L 445,330" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <g id="box-2">
+    <rect x="445" y="170" width="345" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="489" cy="214" r="24" fill="#207448" />
+    <text x="489" y="222" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+      <path d="M 700,200 h 20 l 6,8 h 26 c 3,0 6,3 6,6 v 20 c 0,3 -3,6 -6,6 h -52 c -3,0 -6,-3 -6,-6 v -28 c 0,-3 3,-6 6,-6 z" />
+    </g>
+    
+    <text x="469" y="278" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="469" dy="0"><tspan font-family="monospace" font-weight="bold">du</tspan> of /var:</tspan>
+      <tspan x="469" dy="34">/var/log/pods 18 GB,</tspan>
+      <tspan x="469" dy="34">/var/lib/containerd</tspan>
+      <tspan x="469" dy="34">22 GB, about 40 GB</tspan>
+    </text>
+    
+    <rect x="469" y="440" width="297" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+    <rect x="469" y="440" width="119" height="48" rx="8" fill="#207448" />
+    
+    <path d="M 588,496 v 14 h 89 v 12 v -12 h 89 v -14" fill="none" stroke="#207448" stroke-width="3" />
+    
+    <text x="668" y="546" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="668" dy="0">About 60 GB</tspan>
+      <tspan x="668" dy="28">unexplained by du</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 790,330 L 840,330" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <g id="box-3">
+    <rect x="840" y="170" width="345" height="420" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="884" cy="214" r="24" fill="#207448" />
+    <text x="884" y="222" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g stroke="#db8129" stroke-width="4" fill="none">
+      <circle cx="1115" cy="210" r="16" />
+      <path d="M 1127,222 L 1143,238" stroke-linecap="round" />
+    </g>
+    
+    <text x="864" y="278" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="864" dy="0" font-family="monospace" font-weight="bold">lsof +L1:</tspan>
+      <tspan x="864" dy="36">the engine process</tspan>
+      <tspan x="864" dy="36">holds a deleted</tspan>
+      <tspan x="864" dy="36">log file open, 58 GB</tspan>
+    </text>
+    
+    <g transform="translate(864, 440)">
+      <rect x="0" y="0" width="297" height="60" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+      <circle cx="36" cy="30" r="14" fill="#e8f1ea" stroke="#db8129" stroke-width="2" />
+      <path d="M 50,30 L 100,30" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="4,3" marker-end="url(#arrowhead)" />
+      <rect x="110" y="14" width="168" height="32" rx="4" fill="#fdf0e2" stroke="#db8129" stroke-width="2" />
+      <line x1="120" y1="22" x2="134" y2="38" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="134" y1="22" x2="120" y2="38" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  <path d="M 1185,330 L 1235,330" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <g id="box-4">
+    <rect x="1235" y="170" width="315" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1279" cy="214" r="24" fill="#207448" />
+    <text x="1279" y="222" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g stroke="#207448" stroke-width="4" fill="none">
+      <circle cx="1505" cy="214" r="20" />
+      <path d="M 1505,200 v 14 l 10,6" stroke-linecap="round" />
+    </g>
+    
+    <text x="1255" y="278" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1255" dy="0">A cleanup cron</tspan>
+      <tspan x="1255" dy="34">removed the file</tspan>
+      <tspan x="1255" dy="34">at 02:00 but the</tspan>
+      <tspan x="1255" dy="34">process still</tspan>
+      <tspan x="1255" dy="34">writes to it</tspan>
+    </text>
+    
+    <g transform="translate(1255, 470)">
+      <rect x="0" y="0" width="275" height="48" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <path d="M 35,24 L 240,24" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="6,4" />
+      <circle cx="85" cy="24" r="10" fill="#207448" />
+      <circle cx="190" cy="24" r="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    </g>
+  </g>
+
+  
+  
+  <path d="M 1392,590 L 1392,624" fill="none" stroke="#207448" stroke-width="4" />
+  
+  <path d="M 1392,624 L 735,624 L 735,660" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+  
+  <path d="M 1392,624 L 1485,624 L 1485,905 L 1420,905" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)" />
+
+  
+  <g id="fix-row">
+    <rect x="50" y="660" width="1370" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="75" y="680" width="270" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="210" y="736" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="210" dy="0">Cordon the</tspan>
+      <tspan x="210" dy="34">node first</tspan>
+    </text>
+
+    
+    <rect x="365" y="680" width="390" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="560" y="720" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="560" dy="0">Free the file:</tspan>
+      <tspan x="560" dy="32">restart its holder or</tspan>
+      <tspan x="560" dy="32">truncate through /proc</tspan>
+    </text>
+
+    
+    <rect x="775" y="680" width="270" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="910" y="736" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="910" dy="0">Turn debug</tspan>
+      <tspan x="910" dy="34">logging off</tspan>
+    </text>
+
+    
+    <rect x="1065" y="680" width="330" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1230" y="720" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1230" dy="0">Add a disk alert</tspan>
+      <tspan x="1230" dy="32">and fix the</tspan>
+      <tspan x="1230" dy="32">cleanup job</tspan>
+    </text>
+  </g>
+
+  
+  <g id="warning-card">
+    <rect x="50" y="855" width="1370" height="100" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <g stroke="#db8129" stroke-width="3" fill="none" stroke-linejoin="round">
+      <path d="M 95,882 L 118,926 H 72 Z" />
+      <line x1="95" y1="896" x2="95" y2="910" stroke-linecap="round" />
+      <circle cx="95" cy="918" r="1.5" fill="#db8129" />
+    </g>
+    
+    <text x="140" y="915" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      Do not wipe images or the model cache that running replicas use
+    </text>
+  </g>
+
+  
+  <g id="caption-bar">
+    <rect x="50" y="980" width="1500" height="84" rx="12" fill="#207448" />
+    <text x="800" y="1032" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      The gap between df and du is the clue.
+    </text>
+  </g>
+</svg>

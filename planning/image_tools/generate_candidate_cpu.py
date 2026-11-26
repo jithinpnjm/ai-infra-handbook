@@ -1,0 +1,171 @@
+import xml.etree.ElementTree as ET
+import re
+import subprocess
+import os
+
+svg_template = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>A CPU limit of 1 and five busy threads</title>
+  <desc>Technical infographic illustrating how five concurrent threads exhaust a 1-CPU 100 ms CFS quota in the first 20 ms, causing 80 ms of throttling and tail latency.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1020" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A CPU limit of 1 and five busy threads</text>
+
+  <!-- ==================== TOP ROW: TWO CONFIG / MONITORING CARDS ==================== -->
+  <!-- Card 1: Quota Rule (Left, x=50, width=960) -->
+  <g id="quota-rule-card">
+    <rect x="50" y="95" width="960" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Chip Icon (56x56 outline, green stroke 4) -->
+    <g transform="translate(75, 122)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="6" />
+      <rect x="20" y="20" width="16" height="16" stroke-width="2.5" />
+      <line x1="18" y1="3" x2="18" y2="10" />
+      <line x1="28" y1="3" x2="28" y2="10" />
+      <line x1="38" y1="3" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="53" />
+      <line x1="28" y1="46" x2="28" y2="53" />
+      <line x1="38" y1="46" x2="38" y2="53" />
+      <line x1="3" y1="18" x2="10" y2="18" />
+      <line x1="3" y1="28" x2="10" y2="28" />
+      <line x1="3" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="53" y2="18" />
+      <line x1="46" y1="28" x2="53" y2="28" />
+      <line x1="46" y1="38" x2="53" y2="38" />
+    </g>
+
+    <text x="155" y="142" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="155" dy="0">limit 1 CPU = 100 ms of CPU time per 100 ms period</tspan>
+      <tspan x="155" dy="32">regardless of thread count</tspan>
+    </text>
+  </g>
+
+  <!-- Card 2: Metric Monitoring (Right, x=1050, width=500) -->
+  <g id="metric-card">
+    <rect x="1050" y="95" width="500" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Gauge / Activity Icon (56x56 outline, green stroke 4) -->
+    <g transform="translate(1075, 122)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 44 A 20 20 0 1 1 46 44" />
+      <line x1="28" y1="28" x2="38" y2="18" stroke-width="3.5" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+      <line x1="12" y1="44" x2="44" y2="44" stroke-width="2.5" />
+    </g>
+
+    <text x="1150" y="158" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">cpu.stat nr_throttled counts it</text>
+  </g>
+
+  <!-- ==================== MIDDLE ROW: TIMELINE CONTAINER ==================== -->
+  <g id="timeline-container">
+    <rect x="50" y="235" width="1500" height="425" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Clock Icon (56x56 outline, green stroke 4) -->
+    <g transform="translate(75, 255)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="28,14 28,28 38,28" stroke-width="3.5" />
+      <line x1="28" y1="2" x2="28" y2="6" stroke-width="3" />
+      <line x1="28" y1="50" x2="28" y2="54" stroke-width="3" />
+      <line x1="2" y1="28" x2="6" y2="28" stroke-width="3" />
+      <line x1="50" y1="28" x2="54" y2="28" stroke-width="3" />
+    </g>
+
+    <!-- Timeline Container Title (30px bold) -->
+    <text x="150" y="293" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Timeline of one 100 ms CFS period</text>
+
+    <!-- Timeline axis header markers -->
+    <!-- Axis line -->
+    <line x1="100" y1="330" x2="1480" y2="330" stroke="#a9c4b3" stroke-width="2" />
+    <line x1="100" y1="322" x2="100" y2="338" stroke="#207448" stroke-width="3" />
+    <line x1="376" y1="322" x2="376" y2="338" stroke="#207448" stroke-width="3" />
+    <line x1="1480" y1="322" x2="1480" y2="338" stroke="#207448" stroke-width="3" />
+
+    <!-- 0 to 20 ms section: width = 276 px (20% of 1380 px) -->
+    <!-- Label above 20ms section -->
+    <text x="100" y="375" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="100" dy="0">the shared budget of 100 ms of CPU time is used up</tspan>
+      <tspan x="100" dy="30">in the first 20 ms (5 threads times 20 ms)</tspan>
+    </text>
+
+    <!-- 5 Thread Lanes in the first 20 ms (x=100 to x=376) -->
+    <g id="five-thread-lanes">
+      <!-- Outer boundary for the 5 lanes -->
+      <rect x="100" y="425" width="276" height="155" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <!-- Lane 1 -->
+      <rect x="108" y="433" width="260" height="23" rx="4" fill="#207448" />
+      <!-- Lane 2 -->
+      <rect x="108" y="463" width="260" height="23" rx="4" fill="#207448" />
+      <!-- Lane 3 -->
+      <rect x="108" y="493" width="260" height="23" rx="4" fill="#207448" />
+      <!-- Lane 4 -->
+      <rect x="108" y="523" width="260" height="23" rx="4" fill="#207448" />
+      <!-- Lane 5 -->
+      <rect x="108" y="553" width="260" height="23" rx="4" fill="#207448" />
+    </g>
+
+    <!-- 20 ms to 100 ms section: Throttled Grey Block (80% of 1380 px = 1104 px, x=376 to 1480) -->
+    <!-- The single most important element is highlighted with orange stroke -->
+    <g id="throttled-block">
+      <rect x="376" y="425" width="1104" height="155" rx="8" fill="#e4eae5" stroke="#db8129" stroke-width="3" />
+      
+      <!-- Stalled / idle hatch pattern lines (visual texture without text) -->
+      <line x1="420" y1="435" x2="420" y2="570" stroke="#cbd7ce" stroke-width="2" stroke-dasharray="6,6" />
+      <line x1="600" y1="435" x2="600" y2="570" stroke="#cbd7ce" stroke-width="2" stroke-dasharray="6,6" />
+      <line x1="800" y1="435" x2="800" y2="570" stroke="#cbd7ce" stroke-width="2" stroke-dasharray="6,6" />
+      <line x1="1000" y1="435" x2="1000" y2="570" stroke="#cbd7ce" stroke-width="2" stroke-dasharray="6,6" />
+      <line x1="1200" y1="435" x2="1200" y2="570" stroke="#cbd7ce" stroke-width="2" stroke-dasharray="6,6" />
+      <line x1="1400" y1="435" x2="1400" y2="570" stroke="#cbd7ce" stroke-width="2" stroke-dasharray="6,6" />
+
+      <!-- Label inside throttled block -->
+      <text x="928" y="492" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="928" dy="0">throttled for the remaining 80 ms</tspan>
+        <tspan x="928" dy="34">even though the node may have idle CPU</tspan>
+      </text>
+    </g>
+
+    <!-- Refill marker / label at the end of the period (x=1480) -->
+    <rect x="900" y="598" width="580" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1190" y="630" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">the next period starts and the budget refreshes</text>
+  </g>
+
+  <!-- ==================== BOTTOM ROW: TWO CARDS ==================== -->
+  <!-- Card 3: Side Note (Left, x=50, width=680) -->
+  <g id="sidenote-card">
+    <rect x="50" y="690" width="680" height="290" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Wave / Latency / Tail Icon (56x56 outline, green stroke 4) -->
+    <g transform="translate(75, 715)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="4,48 16,48 24,14 34,48 42,32 50,48" stroke-width="3.5" />
+      <line x1="4" y1="52" x2="52" y2="52" stroke-width="2" />
+    </g>
+
+    <text x="145" y="750" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="145" dy="0">average looks fine, tail latency grows;</tspan>
+      <tspan x="145" dy="36">requests arriving late in a period wait</tspan>
+    </text>
+  </g>
+
+  <!-- Card 4: Probe Consequence (Right, x=770, width=780) -->
+  <g id="probe-card">
+    <rect x="770" y="690" width="780" height="290" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    <!-- Shield / Heartbeat / Probe Icon (56x56 outline, green stroke 4) -->
+    <g transform="translate(795, 715)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 V 28 C 48 42 28 52 28 52 C 28 52 8 42 8 28 V 14 Z" />
+      <polyline points="18,28 24,24 28,34 34,22 38,28" stroke-width="3" />
+    </g>
+
+    <text x="865" y="745" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="865" dy="0">default timeoutSeconds 1 on a throttled pod</tspan>
+      <tspan x="865" dy="34">can fail a healthy liveness probe past 1000 ms</tspan>
+      <tspan x="865" dy="34">and restart a healthy container; raise</tspan>
+      <tspan x="865" dy="34">timeoutSeconds to 5 to 10 seconds</tspan>
+    </text>
+  </g>
+</svg>"""
+
+with open("generate_candidate_cpu.svg", "w") as f:
+    f.write(svg_template.strip())
+print("Saved generate_candidate_cpu.svg")

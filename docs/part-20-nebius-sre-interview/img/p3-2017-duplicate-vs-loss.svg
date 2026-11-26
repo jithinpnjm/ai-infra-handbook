@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Billing: a duplicate costs twenty times a tolerated loss</title>
+  <desc>Infographic illustrating how duplicate event billing costs twenty times more than tolerated event loss, highlighting the importance of deduplication.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="78" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Billing: a duplicate costs twenty times a tolerated loss</text>
+
+  
+  <rect x="50" y="120" width="730" height="610" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g>
+    <rect x="70" y="140" width="690" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <circle cx="115" cy="192" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M115,178 L115,192 L127,192" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="165" y="182" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Events per day: 1,000 requests per second</text>
+    <text x="165" y="218" font-family="sans-serif" font-size="24" fill="#303a36">x 86,400 = 86.4 million</text>
+  </g>
+
+  
+  <g>
+    <rect x="70" y="260" width="690" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <ellipse cx="115" cy="292" rx="20" ry="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M95,292 L95,322 C95,329 135,329 135,322 L135,292" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M95,307 C95,314 135,314 135,307" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <text x="165" y="302" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Storage per day at 200 B per event</text>
+    <text x="165" y="337" font-family="sans-serif" font-size="24" fill="#303a36">= 17.3 GB</text>
+  </g>
+
+  
+  <g>
+    <rect x="70" y="370" width="690" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <circle cx="106" cy="417" r="13" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M119,417 L137,417 M129,417 L129,425 M135,417 L135,423" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="165" y="412" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Dedupe keys at 16 B for one day</text>
+    <text x="165" y="447" font-family="sans-serif" font-size="24" fill="#303a36">= 1.38 GB</text>
+  </g>
+
+  
+  <g>
+    <rect x="70" y="480" width="690" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="97" y="520" width="36" height="50" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="105" y1="535" x2="125" y2="535" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="105" y1="547" x2="125" y2="547" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="105" y1="559" x2="117" y2="559" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="165" y="518" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Revenue per day: 86.4M x (800 x 0.10 + 300 x 0.40) / 1M</text>
+    <text x="165" y="554" font-family="sans-serif" font-size="24" fill="#303a36">= 17,280 dollars</text>
+    <text x="165" y="628" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">(prices 0.10 and 0.40 dollars per million tokens</tspan>
+      <tspan x="165" dy="34">in and out)</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="820" y="120" width="730" height="610" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g>
+    <rect x="840" y="145" width="690" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <path d="M867,230 L907,230 M887,230 L887,200 M873,200 L901,200" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M873,200 L865,216 M901,200 L909,216" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M860,216 Q865,222 870,216 M904,216 Q909,222 914,216" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <text x="940" y="195" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Loss at the tolerated 0.1 percent:</text>
+    <text x="940" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">17.28 dollars per day</text>
+    
+    <rect x="940" y="270" width="560" height="40" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="940" y="270" width="28" height="40" rx="6" fill="#207448"/>
+  </g>
+
+  
+  <g>
+    <rect x="840" y="375" width="690" height="330" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="870" y="440" width="32" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <rect x="860" y="452" width="32" height="42" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="876" y1="464" x2="876" y2="478" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="876" cy="486" r="2" fill="#db8129"/>
+    <text x="940" y="430" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Overbilling if 2 percent of events duplicate:</text>
+    <text x="940" y="475" font-family="sans-serif" font-size="36" font-weight="bold" fill="#db8129">345.60 dollars per day</text>
+    
+    <rect x="940" y="525" width="560" height="56" rx="8" fill="#fbeee2" stroke="#db8129" stroke-width="2"/>
+    
+    <rect x="940" y="525" width="560" height="56" rx="8" fill="#db8129"/>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="750" width="1500" height="100" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="95" cy="800" r="15" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="80" y1="795" x2="72" y2="790" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="80" y1="805" x2="72" y2="810" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="110" y1="795" x2="118" y2="790" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="110" y1="805" x2="118" y2="810" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M90,788 L84,778 M100,788 L106,778" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="155" y="808" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">a consumer replay after a bug fix, without dedupe, bills customers twice</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="870" width="1500" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M95,910 L115,920 C115,940 95,955 95,955 C95,955 75,940 75,920 Z" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M87,930 L93,937 L105,924" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="155" y="915" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="155" dy="0" font-weight="bold">at-least-once delivery plus idempotent consumption equals effectively once;</tspan>
+      <tspan x="155" dy="34">unique request id written at request end;</tspan>
+      <tspan x="155" dy="34">a cancelled stream still bills the tokens already sent</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="1025" width="1500" height="115" rx="12" fill="#207448"/>
+    
+    <circle cx="95" cy="1082" r="20" fill="none" stroke="#ffffff" stroke-width="3.5"/>
+    <path d="M86,1082 L92,1089 L106,1075" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="155" y="1065" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      <tspan x="155" dy="0">duplicates are 20 times worse than the tolerated loss,</tspan>
+      <tspan x="155" dy="36">so dedupe is the key design point; charging a customer twice breaks trust</tspan>
+    </text>
+  </g>
+</svg>

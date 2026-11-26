@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Diagnosing the fabric in three rungs</title>
+  <desc>Infographic illustrating the three-rung network diagnosis ladder: Reachability, AllReduce sweep, and Point-to-point latency.</desc>
+
+  <defs>
+    <marker id="ladder-arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1,2 L 10,6 L 1,10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="95" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Diagnosing the fabric in three rungs</text>
+
+  
+  <rect x="220" y="140" width="16" height="870" rx="8" fill="#c8ddcb" />
+  <rect x="1060" y="140" width="16" height="870" rx="8" fill="#c8ddcb" />
+
+  
+  <line x1="105" y1="970" x2="105" y2="180" stroke="#207448" stroke-width="5" marker-end="url(#ladder-arrow)" />
+  <g transform="translate(62, 575) rotate(-90)">
+    <text x="0" y="0" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">work from small to large</text>
+  </g>
+
+  
+  
+  <rect x="160" y="160" width="960" height="240" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <circle cx="208" cy="204" r="24" fill="#207448" />
+  <text x="208" y="204" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+
+  
+  <g transform="translate(250, 176)">
+    <circle cx="28" cy="28" r="22" stroke="#207448" stroke-width="4" fill="none" />
+    <polyline points="28,16 28,28 39,28" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <line x1="24" y1="1" x2="32" y2="1" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="325" y="213" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Point-to-point latency</text>
+
+  
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="208" y="260">100 round trips of a one-element tensor</tspan>
+    <tspan x="208" y="294">between rank 0 and the target</tspan>
+  </text>
+
+  
+  <rect x="195" y="326" width="885" height="50" rx="8" fill="#e8f1ea" />
+  <text x="215" y="359" font-family="monospace" font-size="24" fill="#303a36">one-way latency = (elapsed / 200) * 1e6 microseconds</text>
+
+  
+  <line x1="1120" y1="280" x2="1160" y2="280" stroke="#207448" stroke-width="3" stroke-dasharray="6,4" />
+
+  
+  <rect x="1160" y="212" width="400" height="136" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1360" y="252">low bandwidth means</tspan>
+    <tspan x="1360" y="284">bisect the node list</tspan>
+    <tspan x="1360" y="316">with exclude</tspan>
+  </text>
+
+  
+  
+  <rect x="160" y="455" width="960" height="240" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <circle cx="208" cy="499" r="24" fill="#207448" />
+  <text x="208" y="499" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+
+  
+  <g transform="translate(250, 471)">
+    <line x1="28" y1="12" x2="13" y2="42" stroke="#207448" stroke-width="4" />
+    <line x1="28" y1="12" x2="43" y2="42" stroke="#207448" stroke-width="4" />
+    <line x1="13" y1="42" x2="43" y2="42" stroke="#207448" stroke-width="4" />
+    <circle cx="28" cy="12" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <circle cx="13" cy="42" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <circle cx="43" cy="42" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+  </g>
+
+  
+  <text x="325" y="508" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">AllReduce sweep</text>
+
+  
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="208" y="555">tensor sizes 1, 10, 100 and 500 MB</tspan>
+    <tspan x="208" y="589">3 warmup calls and 10 timed calls</tspan>
+  </text>
+
+  
+  <rect x="195" y="621" width="885" height="50" rx="8" fill="#e8f1ea" />
+  <text x="215" y="654" font-family="monospace" font-size="24" fill="#303a36">bandwidth = (size_mb * 2 * 10) / elapsed</text>
+
+  
+  
+  <rect x="160" y="750" width="960" height="240" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  <rect x="160" y="750" width="14" height="240" rx="7" fill="#db8129" />
+
+  
+  <circle cx="208" cy="794" r="24" fill="#207448" />
+  <text x="208" y="794" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+
+  
+  <g transform="translate(250, 766)">
+    <rect x="2" y="5" width="52" height="44" rx="6" stroke="#207448" stroke-width="4" fill="none" />
+    <line x1="2" y1="18" x2="54" y2="18" stroke="#207448" stroke-width="3" />
+    <polyline points="12,28 19,33 12,38" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    <line x1="25" y1="38" x2="35" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="325" y="803" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Reachability</text>
+
+  
+  <text x="208" y="855" font-family="sans-serif" font-size="24" fill="#303a36">each node pings the others</text>
+
+  
+  <rect x="195" y="894" width="885" height="52" rx="8" fill="#e8f1ea" />
+  <text x="215" y="929" font-family="monospace" font-size="24" fill="#303a36">srun -N 2 bash -c echo hostname and ping</text>
+
+  
+  <line x1="1120" y1="870" x2="1160" y2="870" stroke="#207448" stroke-width="3" stroke-dasharray="6,4" />
+
+  
+  <rect x="1160" y="802" width="400" height="136" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1360" y="842">If this fails,</tspan>
+    <tspan x="1360" y="874">nothing above it</tspan>
+    <tspan x="1360" y="906">can work.</tspan>
+  </text>
+
+  
+  <rect x="40" y="1050" width="1520" height="80" rx="12" fill="#207448" />
+  <text x="800" y="1098" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">Test reachability first, then bandwidth, then latency.</text>
+</svg>

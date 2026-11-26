@@ -156,6 +156,10 @@ Always keep a second administrator session open when you test a lock-down change
 
 ## 3. File permissions: read, write, execute
 
+![A decision flow showing the kernel checks owner, then group, then other, and stops at the first match, with alice denied and bob granted on a file with mode 0070.](./img/p3-0106-check-order.svg)
+
+*Figure 1.6.3. The owner triple is used if you are the owner, even when the group triple would allow more, so alice is denied and bob is granted.*
+
 A teammate messages you in the afternoon: she cannot open a file the whole group needs to edit. You run `ls -l` and see a string of letters and dashes. `ls -l` shows the mode as ten characters. Every file and directory has an owner, which is a UID, a group, which is a GID, and a **mode**, which is a set of permission bits. The diagram below labels each part.
 
 ```
@@ -171,7 +175,7 @@ The first character is the file type, which chapter 1.3 covers. The other nine f
 
 ![Reading permission bits](./img/ch06-fig1-permbits.jpg)
 
-*Figure 1.6.3. Reading -rwxr-x---: three triples, octal 750, and what r, w, x mean on files versus directories.*
+*Figure 1.6.4. Reading -rwxr-x---: three triples, octal 750, and what r, w, x mean on files versus directories.*
 
 ### What the bits mean: files versus directories
 
@@ -220,6 +224,10 @@ Be careful with world-writable files. Obviously, you should not make a file writ
 
 ### `umask`: default permissions for new files
 
+![A table showing the file and directory modes produced by umask 022, 077 and 002 starting from 666 and 777, with who each suits.](./img/p3-0106-umask-table.svg)
+
+*Figure 1.6.5. A new file starts from 666 and a new directory from 777, and the umask removes bits from those starting modes.*
+
 Every new file starts life with a default set of permissions, and the umask decides what those are. New regular files start from 666, which is read-write for everyone. New files are not executable by default. New directories start from 777. The **umask** is a mask of bits to remove from those starting values. With the common `umask 022`, a new file gets `666 - 022 = 644`, and a new directory gets `755`. With `umask 077`, they get `600` and `700`, which is private. With `umask 002`, which allows group write, files get `664` and directories get `775`. The umask is really a bit mask rather than a subtraction, but for normal masks the result is the same.
 
 ```bash
@@ -244,7 +252,7 @@ Two familiar examples show the bits at work. `/usr/bin/passwd` and `/usr/bin/sud
 
 ![setuid, setgid, sticky and umask](./img/ch06-fig2-special.jpg)
 
-*Figure 1.6.4. The three special bits, with a umask 022 example.*
+*Figure 1.6.6. The three special bits, with a umask 022 example.*
 
 ### A recipe: a safe shared project directory
 
@@ -267,7 +275,7 @@ Before you hand a directory to a team, set the setgid bit and check that members
 
 ![ACLs add named user and group entries on top of owner, group and other, limited by a mask.](./img/l06-acl.svg)
 
-*Figure 1.6.5. An ACL lets you grant specific users or groups access without changing the owner or group.*
+*Figure 1.6.7. An ACL lets you grant specific users or groups access without changing the owner or group.*
 
 A teammate from another team needs to read one project directory, and nothing else. Classic permissions give you one owner, one group and "everyone else", so there is nowhere obvious to put her. Real teams often need a rule like this: alice and bob can read and write, carol can only read, and nobody else gets in. Without ACLs, you would need a special group for every combination. **POSIX ACLs** solve the problem. They add lists of extra users and groups, each with its own permissions, to a file or directory. Common Linux filesystems support them. ext4 and XFS support them by default, and others need the `acl` mount option. NFSv4 has its own form of ACLs. Not every network or parallel filesystem supports them, so check before you depend on them.
 
@@ -325,7 +333,7 @@ Utilities such as `su` and `sudo` combine these rules. They are setuid-root prog
 
 ![A setuid program keeps your real UID while its effective UID becomes the file owner.](./img/l06-setuid-ids.svg)
 
-*Figure 1.6.6. The effective UID is used for permission checks while the real UID records who started the process.*
+*Figure 1.6.8. The effective UID is used for permission checks while the real UID records who started the process.*
 
 A setuid program has to act as another user and then give that power back. For that reason, a process carries more than one user ID.
 
@@ -350,7 +358,7 @@ Keep three words distinct. **Identification** answers "who are you?" and is ulti
 
 ![Identification, authentication, authorization before sudo](./img/ch06-fig3-sudo.jpg)
 
-*Figure 1.6.7. The three questions sudo answers before a command runs as root.*
+*Figure 1.6.9. The three questions sudo answers before a command runs as root.*
 
 A program that needs its own username calls `geteuid()` to get the number. Then it asks the C library to map that number to a name with `getpwuid()`. The library decides where to look, and the site can configure that, as section 8.5 explains. This extra step is what lets a site move from local files to a network directory without changing any program. The old approach of simply reading `/etc/passwd` had three limits. It used one fixed hashing method, it always prompted for a password, and it had no support for tokens or smart cards. **PAM**, the Pluggable Authentication Modules framework, was created to remove those limits, as chapter 1.21 explains.
 
@@ -399,7 +407,7 @@ As chapter 1.2 introduced, the file that gets read depends on the kind of shell 
 
 ![Which file is read when (bash)](./img/ch06-d2-luna.svg)
 
-*Figure 1.6.8. Which file is read when (bash).*
+*Figure 1.6.10. Which file is read when (bash).*
 
 Two practical facts govern bash startup. First, login shells do not read `~/.bashrc`, and non-login shells do not read `~/.bash_profile`. The standard fix is to keep your settings in `~/.bashrc` and have `~/.bash_profile` or `~/.profile` source it. You can do that with a symlink or a one-liner, `[ -f ~/.bashrc ] && . ~/.bashrc`, and that is what the default files on Ubuntu do. Second, you can test which kind of shell you are in. `echo $0` shows a leading `-` for a login shell. Inside a startup file, `case $- in *i*)` tests for an interactive shell, because `$-` contains `i` only then. That keeps commands that print output or need a terminal away from scripts.
 
@@ -502,6 +510,10 @@ In most clusters, keeping the core identity fields in sync is enough. Those fiel
 
 ### 8.2 The classic file-synchronization approach and the pull-based `/usr/sbin/master-sync` design
 
+![Compute nodes pulling the account files from the master at boot and when triggered, with a staggered trigger loop and a timeout watchdog.](./img/p3-0106-pull-sync.svg)
+
+*Figure 1.6.11. Each node pulls the account files from the master at boot and on a staggered trigger, so a replaced node repairs itself and the network is not shocked.*
+
 Historically, Linux stored accounts in `/etc/passwd`, `/etc/shadow` and `/etc/group`. Keeping an identical copy of those three files on every node has clear trade-offs compared with a network directory server.
 
 - The classic file approach excels at job launch. First, when a large job starts across hundreds of compute nodes at once, each node resolves `uid` and `gid` from its local disk or page cache in microseconds. It does not hammer a central server. Second, the lookup is a local file read, not a network round trip, so latency stays low. Third, a short directory-server hiccup cannot block logins or job steps across the cluster, because no single network service sits in the path.
@@ -600,7 +612,7 @@ Read each line from left to right. The local files come first, `/etc/passwd` and
 
 ![Cluster identity: NSS and SSSD caching](./img/ch06-d3-luna.svg)
 
-*Figure 1.6.9. Cluster identity: NSS and SSSD caching.*
+*Figure 1.6.12. Cluster identity: NSS and SSSD caching.*
 
 Before you move a site from local files to a directory service, confirm that `getent passwd` returns the same answer on every node.
 
@@ -646,6 +658,10 @@ Identity failures usually show up as "permission denied" or as a job that cannot
 
 ### 7. A `sudo` command behaves differently: environment and redirection surprises
 **Symptom:** `sudo ./train.sh` cannot find a variable or program that works for you. Or `sudo echo x > /root/f` reports permission denied. **Cause:** `sudo` resets the environment and `PATH`. Also, the `>` redirection is performed by *your* shell before `sudo` starts. **Fix:** use `sudo env VAR=value command`, or `sudo -E` where the policy allows it, and use full paths. For writing a root file, use `echo x | sudo tee /root/f` or `sudo sh -c 'echo x > /root/f'`.
+
+![Two timelines comparing sudo echo with a redirect, where the unprivileged shell opens the file and fails, with piping into sudo tee, where tee runs as root.](./img/p3-0106-sudo-redirect.svg)
+
+*Figure 1.6.13. The redirection happens in your own shell before sudo runs, so let a root process such as tee open the file instead.*
 
 ## Hands-on lab: permissions, ACLs, sudo, and VM drills
 

@@ -1,0 +1,209 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Slow playbook causes and levers</title>
+  <desc>Infographic illustrating Ansible playbook performance optimization: a measure-first loop at the top, six cause-to-lever rows, and large fleet scaling advice in the footer.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M1 1 L11 6 L1 11 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Slow playbook causes and levers</text>
+
+  
+  <rect x="60" y="100" width="1480" height="185" rx="16" fill="#fffcf9" stroke="#db8129" stroke-width="3.5"/>
+
+  
+  <line x1="402" y1="192" x2="441" y2="192" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <line x1="687" y1="192" x2="726" y2="192" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <line x1="962" y1="192" x2="1001" y2="192" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  <line x1="1207" y1="192" x2="1246" y2="192" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="90" y="115" width="310" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="245" cy="148" r="24" fill="#207448"/>
+  <text x="245" y="156" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="245" y="196" text-anchor="middle" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="24" fill="#303a36">profile_tasks</text>
+  <text x="245" y="224" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">and timer</text>
+  <text x="245" y="252" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">callbacks</text>
+
+  
+  <rect x="445" y="115" width="240" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="565" cy="148" r="24" fill="#207448"/>
+  <text x="565" y="156" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="565" y="210" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">write down</text>
+  <text x="565" y="240" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">the run time</text>
+
+  
+  <rect x="730" y="115" width="230" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="845" cy="148" r="24" fill="#207448"/>
+  <text x="845" y="156" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="845" y="210" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">change one</text>
+  <text x="845" y="240" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">setting</text>
+
+  
+  <rect x="1005" y="115" width="200" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="1105" cy="148" r="24" fill="#207448"/>
+  <text x="1105" y="156" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1105" y="224" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">measure again</text>
+
+  
+  <rect x="1250" y="115" width="250" height="155" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <circle cx="1375" cy="148" r="24" fill="#207448"/>
+  <text x="1375" y="156" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  <text x="1375" y="210" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">undo if it</text>
+  <text x="1375" y="240" text-anchor="middle" font-family="system-ui, sans-serif" font-size="24" fill="#303a36">did not move</text>
+
+  
+  <g transform="translate(0, 305)">
+    
+    <rect x="60" y="0" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="85" y="28" width="30" height="15" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="85" y="49" width="30" height="15" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="85" y="70" width="30" height="15" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="127" cy="55" r="11" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="135" y1="63" x2="147" y2="75" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="165" y="63" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#303a36">fact gathering slow</text>
+
+    
+    <line x1="624" y1="55" x2="716" y2="55" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="720" y="0" width="820" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <ellipse cx="765" cy="35" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M747 35 v18 c0 4 8 7 18 7 s18 -3 18 -7 v-18" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M747 53 v18 c0 4 8 7 18 7 s18 -3 18 -7 v-18" fill="none" stroke="#207448" stroke-width="3"/>
+    <text x="815" y="48" font-family="system-ui, sans-serif" font-size="24" font-weight="bold" fill="#207448">subset or cache, gathering smart,</text>
+    <text x="815" y="80" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">fact_caching jsonfile</text>
+  </g>
+
+  
+  <g transform="translate(0, 435)">
+    
+    <rect x="60" y="0" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M85 45 l18 -10 l18 10 v22 l-18 10 l-18 -10 z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="103" y1="35" x2="103" y2="57" stroke="#207448" stroke-width="2.5"/>
+    <path d="M130 52 a14 14 0 1 1 -3 -8" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="124,40 131,43 128,50" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="165" y="63" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#303a36">apt update every run</text>
+
+    
+    <line x1="624" y1="55" x2="716" y2="55" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="720" y="0" width="820" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="765" cy="55" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <polyline points="765,42 765,55 776,55" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <polyline points="774,68 780,74 790,62" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="815" y="64" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="28" font-weight="bold" fill="#207448">cache_valid_time</text>
+  </g>
+
+  
+  <g transform="translate(0, 565)">
+    
+    <rect x="60" y="0" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="85" y="45" width="24" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="97" y="33" width="24" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M128 62 a12 12 0 1 0 0 -16" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <polyline points="126,42 131,46 126,51" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="155" y="47" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">per-item loops or git clone</text>
+    <text x="155" y="79" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">on every host</text>
+
+    
+    <line x1="624" y1="55" x2="716" y2="55" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="720" y="0" width="820" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="746" y="35" width="38" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="754" y1="55" x2="776" y2="55" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <polyline points="770,49 776,55 770,61" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="815" y="64" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#207448">single calls</text>
+  </g>
+
+  
+  <g transform="translate(0, 695)">
+    
+    <rect x="60" y="0" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M85 35 h14 l18 16 v18 h-6" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="89" cy="55" r="3.5" fill="#207448"/>
+    <circle cx="99" cy="55" r="3.5" fill="#207448"/>
+    <circle cx="109" cy="55" r="3.5" fill="#207448"/>
+    <text x="145" y="47" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">serial 1 on a huge group</text>
+    <text x="145" y="79" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">or forks 5</text>
+
+    
+    <line x1="624" y1="55" x2="716" y2="55" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="720" y="0" width="820" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M746 55 h12 m0 0 l14 -16 h14 m-28 16 l14 -5 h14 m-28 5 l14 5 h14 m-28 -5 l14 16 h14" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="815" y="64" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="28" font-weight="bold" fill="#207448">forks</text>
+  </g>
+
+  
+  <g transform="translate(0, 825)">
+    
+    <rect x="60" y="0" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="98" cy="46" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M108 46 h20 v8 m-6 -8 v6" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M85 75 q10 -8 20 0 t20 0" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <text x="155" y="63" font-family="system-ui, sans-serif" font-size="28" font-weight="bold" fill="#303a36">SSH setup slow</text>
+
+    
+    <line x1="624" y1="55" x2="716" y2="55" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="720" y="0" width="820" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="746" y="44" width="38" height="22" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M768 33 l-9 18 h10 l-4 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="815" y="48" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">ControlPersist, pipelining,</text>
+    <text x="815" y="80" font-family="'SF Mono', Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#207448">sshd reverse DNS</text>
+  </g>
+
+  
+  <g transform="translate(0, 955)">
+    
+    <rect x="60" y="0" width="560" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="126" y1="30" x2="126" y2="80" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="86" y1="42" x2="118" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="86" y1="68" x2="100" y2="68" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <text x="145" y="47" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">strategy linear waits</text>
+    <text x="145" y="79" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#303a36">for stragglers</text>
+
+    
+    <line x1="624" y1="55" x2="716" y2="55" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="720" y="0" width="820" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M746 42 h32 l-6 -5 m6 5 l-6 5" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M746 56 h38 l-6 -5 m6 5 l-6 5" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M746 70 h28 l-6 -5 m6 5 l-6 5" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="815" y="64" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#207448"><tspan font-family="'SF Mono', Menlo, Consolas, monospace">strategy free</tspan> for independent work</text>
+  </g>
+
+  
+  <rect x="60" y="1090" width="1480" height="70" rx="12" fill="#207448"/>
+  <circle cx="105" cy="1125" r="14" fill="none" stroke="#ffffff" stroke-width="3"/>
+  <circle cx="125" cy="1115" r="8" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+  <circle cx="125" cy="1135" r="8" fill="none" stroke="#ffffff" stroke-width="2.5"/>
+  <text x="800" y="1134" text-anchor="middle" font-family="system-ui, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">very large fleets use ansible-pull, AWX or AAP execution nodes</text>
+</svg>

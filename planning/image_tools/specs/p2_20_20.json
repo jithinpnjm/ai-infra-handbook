@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p2-2020-leading-lagging",
+  "title": "Leading signals move before users feel the pain",
+  "spec": "A time axis from left to right with a vertical dashed line labelled 'Users first complain'. Three signal rows drawn as small line charts above a shared axis. Row 1 'Concurrent requests: vllm:num_requests_running' with a line that rises early, before the dashed line, with a green marker labelled 'Leads: rises with load before any queue forms'. Row 2 'Waiting queue: vllm:num_requests_waiting' with a flat line at zero and then a rise just after the dashed line, labelled 'Lags: zero until slots are full'. Row 3 'Time to first token' with a rise at the dashed line, labelled 'Lags: rises with the pain'. A replay note under the chart: 'Lay the candidate metric next to the first complaint, and see which line moved first.' Orange outline on the leading row. Bottom note: 'A poor signal rises together with the pain, and by then the autoscaler is already late.'",
+  "anchor": "### 2. Signals that work, and the difference between leading and lagging",
+  "alt": "Concurrent requests rise before users complain and so lead, while the waiting queue and time to first token lag behind the complaint.",
+  "cap": "Concurrent requests lead the complaint because they rise before any queue forms, while the waiting queue and time to first token lag behind it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "p2-2020-scale-up-clock",
+  "title": "Scale-up latency: the clock from crossing the line to serving",
+  "spec": "A horizontal timeline of six stacked segments left to right, starting from a marker labelled 'Metric crosses the target', ending in a marker 'Stream is served'. Segment 1 'Decision: scrape, polling and 15 s sync' (short). Segment 2 'Node provision by the cluster autoscaler' (long). Segment 3 'Image pull' (medium). Segment 4 'Weight load from storage to GPU memory' (medium). Segment 5 'Warm-up: first requests, graph capture, caches' (short). Segment 6 'Registration: readiness passes, router adds it' (short). Above the long segments small cure chips: 'Warm node pool, placeholder pods' above node provision; 'Pre-pulled image, smaller image' above image pull; 'Local volume cache, fast storage' above weight load; 'Warm-up request in the startup probe' above warm-up. A warm-node bypass arrow that skips node provision when a spare node is waiting, labelled 'Warm node: the pod skips provisioning'. Orange outline on node provision as the largest assumed stage. Caption: 'The values are assumptions, not measurements.'",
+  "anchor": "### 5. Scale-up latency, broken down",
+  "alt": "Scale-up runs through decision, node provision, image pull, weight load, warm-up and registration, and a warm node pool skips the slow provisioning step.",
+  "cap": "Scale-up runs through six stages from the metric crossing the target to serving, and a warm node pool skips the slowest one."
+ }
+]

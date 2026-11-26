@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
+
+# Let's write the complete generator and test script for this SVG
+svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>How much can filesystem tuning buy? Look at the share of the request</title>
+  <desc>How much can filesystem tuning buy? Look at the share of the request</desc>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1600" height="1020" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="40" y="84" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">How much can filesystem tuning buy?</tspan>
+    <tspan x="40" dy="54">Look at the share of the request</tspan>
+  </text>
+
+  <!-- Top row: instruction 1 (left) -->
+  <g id="panel-measure">
+    <rect x="40" y="190" width="740" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: timer / gauge outline -->
+    <g transform="translate(65, 237)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="28,14 28,28 38,28"/>
+    </g>
+    <text x="145" y="232" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">Measure the time of file operations at the</tspan>
+      <tspan x="145" dy="28">layer you can reach: application metrics,</tspan>
+      <tspan x="145" dy="28">strace -T, perf trace, or VFS and</tspan>
+      <tspan x="145" dy="28">filesystem tracing</tspan>
+    </text>
+  </g>
+
+  <!-- Top row: instruction 2 (right) -->
+  <g id="panel-histograms">
+    <rect x="820" y="190" width="740" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: histogram bar chart outline -->
+    <g transform="translate(845, 237)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="4" y1="50" x2="52" y2="50"/>
+      <rect x="10" y="26" width="8" height="24"/>
+      <rect x="24" y="10" width="8" height="40"/>
+      <rect x="38" y="20" width="8" height="30"/>
+    </g>
+    <text x="925" y="258" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="925" dy="0">Prefer histograms to averages: cache hits</tspan>
+      <tspan x="925" dy="32">dominate averages and hide outliers</tspan>
+    </text>
+  </g>
+
+  <!-- Card A: 90% file I/O -->
+  <g id="card-a">
+    <rect x="40" y="380" width="740" height="480" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: clock / request timer -->
+    <g transform="translate(65, 405)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <line x1="28" y1="12" x2="28" y2="28"/>
+      <line x1="28" y1="28" x2="40" y2="34"/>
+    </g>
+    <!-- Card A Title -->
+    <text x="145" y="445" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">A request takes 200 ms</text>
+
+    <!-- Horizontal bar (Card A): total 680 px wide (x=70 to 750) -->
+    <!-- 90% orange segment (612 px wide) -->
+    <rect x="70" y="490" width="612" height="70" rx="6" fill="#db8129"/>
+    <text x="95" y="533" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">180 ms blocked in file I/O (90%)</text>
+
+    <!-- 10% other work segment (68 px wide) -->
+    <rect x="682" y="490" width="68" height="70" rx="6" fill="#d2dfd5" stroke="#207448" stroke-width="2"/>
+
+    <!-- Callout box and leader line for 20 ms other work -->
+    <line x1="716" y1="560" x2="716" y2="585" stroke="#207448" stroke-width="2"/>
+    <rect x="470" y="585" width="280" height="65" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="495" y="625" font-family="sans-serif" font-size="24" fill="#303a36">20 ms other work</text>
+
+    <!-- Verdict Card A -->
+    <rect x="70" y="690" width="680" height="140" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="95" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="95" dy="0">The filesystem is 90% of the time:</tspan>
+      <tspan x="95" dy="32">removing its latency could give up</tspan>
+      <tspan x="95" dy="32">to a 10x speedup</tspan>
+    </text>
+  </g>
+
+  <!-- Card B: 1% file I/O -->
+  <g id="card-b">
+    <rect x="820" y="380" width="740" height="480" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: CPU / processor chip outline -->
+    <g transform="translate(845, 405)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4"/>
+      <line x1="20" y1="4" x2="20" y2="12"/>
+      <line x1="28" y1="4" x2="28" y2="12"/>
+      <line x1="36" y1="4" x2="36" y2="12"/>
+      <line x1="20" y1="44" x2="20" y2="52"/>
+      <line x1="28" y1="44" x2="28" y2="52"/>
+      <line x1="36" y1="44" x2="36" y2="52"/>
+      <line x1="4" y1="20" x2="12" y2="20"/>
+      <line x1="4" y1="28" x2="12" y2="28"/>
+      <line x1="4" y1="36" x2="12" y2="36"/>
+      <line x1="44" y1="20" x2="52" y2="20"/>
+      <line x1="44" y1="28" x2="52" y2="28"/>
+      <line x1="44" y1="36" x2="52" y2="36"/>
+    </g>
+    <!-- Card B Title -->
+    <text x="925" y="428" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="925" dy="0">Same request,</tspan>
+      <tspan x="925" dy="36">only 2 ms in file I/O (1%)</tspan>
+    </text>
+
+    <!-- Horizontal bar (Card B): total 680 px wide (x=850 to 1530) -->
+    <!-- 1% tiny sliver (14 px wide) -->
+    <rect x="850" y="490" width="14" height="70" rx="4" fill="#207448"/>
+
+    <!-- 99% other work segment (666 px wide) -->
+    <rect x="864" y="490" width="666" height="70" rx="6" fill="#d2dfd5" stroke="#207448" stroke-width="2"/>
+    <text x="895" y="533" font-family="sans-serif" font-size="24" fill="#303a36">other work 198 ms</text>
+
+    <!-- Callout box and leader line for 2 ms file I/O -->
+    <line x1="857" y1="560" x2="857" y2="585" stroke="#207448" stroke-width="2"/>
+    <rect x="850" y="585" width="250" height="65" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="875" y="625" font-family="sans-serif" font-size="24" fill="#303a36">2 ms file I/O</text>
+
+    <!-- Verdict Card B -->
+    <rect x="850" y="690" width="680" height="140" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <text x="875" y="746" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="875" dy="0">The filesystem is irrelevant:</tspan>
+      <tspan x="875" dy="32">look elsewhere</tspan>
+    </text>
+  </g>
+
+  <!-- Bottom Takeaway Bar -->
+  <g id="bottom-takeaway">
+    <rect x="40" y="900" width="1520" height="70" rx="8" fill="#207448"/>
+    <text x="800" y="943" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">If you can measure only one thing, measure how long the application spends in file operations</text>
+  </g>
+</svg>'''
+
+with open("test_fs_tuning.svg", "w") as f:
+    f.write(svg_content)
+
+print("Wrote test_fs_tuning.svg successfully.")

@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Three srun flags that change how steps share a node</title>
+  <desc>Visual comparison of Slurm srun flags --overlap, --exact, and -K or --kill-on-bad-exit, along with key step execution defaults.</desc>
+
+  <rect width="1600" height="1120" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three srun flags that change how steps share a node</text>
+
+  
+  <g id="card-overlap">
+    <rect x="50" y="120" width="473" height="700" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(74, 144)">
+      <rect x="0" y="12" width="34" height="34" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="18" y="0" width="34" height="34" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    </g>
+    
+    <text x="146" y="184" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">--overlap</text>
+
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" y="240">steps do not share resources</tspan>
+      <tspan x="74" y="272">by default; a second</tspan>
+      <tspan x="74" y="304">concurrent srun that wants</tspan>
+      <tspan x="74" y="336">CPUs or GPUs used by the</tspan>
+      <tspan x="74" y="368">first either waits or is</tspan>
+      <tspan x="74" y="400">rejected;</tspan>
+
+      <tspan x="74" y="448">--overlap allows steps to</tspan>
+      <tspan x="74" y="480">share all resources (CPUs,</tspan>
+      <tspan x="74" y="512">memory and GRES) with all</tspan>
+      <tspan x="74" y="544">other steps;</tspan>
+
+      <tspan x="74" y="592">explains why srun nvidia-smi</tspan>
+      <tspan x="74" y="624">in a second terminal of an</tspan>
+      <tspan x="74" y="656">interactive allocation can</tspan>
+      <tspan x="74" y="688">hang;</tspan>
+
+      <tspan x="74" y="736">use srun --overlap</tspan>
+      <tspan x="74" y="768">--jobid=JOBID to monitor</tspan>
+      <tspan x="74" y="800">GPUs of a running training job</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-exact">
+    <rect x="563" y="120" width="473" height="700" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(587, 144)">
+      <rect x="4" y="4" width="44" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M16 4 V16 M36 4 V16 M4 26 H16 M36 26 H48 M16 48 V36 M36 48 V36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    <text x="659" y="184" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">--exact</text>
+
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="587" y="240">without it a step may use</tspan>
+      <tspan x="587" y="272">all non-GRES resources on</tspan>
+      <tspan x="587" y="304">each node in the step</tspan>
+      <tspan x="587" y="336">allocation and take more CPU</tspan>
+      <tspan x="587" y="368">and memory than it needs;</tspan>
+
+      <tspan x="587" y="424">with it the step is limited</tspan>
+      <tspan x="587" y="456">to exactly what it</tspan>
+      <tspan x="587" y="488">requested;</tspan>
+
+      <tspan x="587" y="544">use it for several</tspan>
+      <tspan x="587" y="576">concurrent steps with</tspan>
+      <tspan x="587" y="608">different shapes;</tspan>
+
+      <tspan x="587" y="664">often default when you set</tspan>
+      <tspan x="587" y="696">--cpus-per-task or</tspan>
+      <tspan x="587" y="728">--cpus-per-gpu, check your</tspan>
+      <tspan x="587" y="760">release</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-kill">
+    <rect x="1076" y="120" width="473" height="700" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    
+    
+    <g transform="translate(1100, 144)">
+      <polygon points="16,4 36,4 48,16 48,36 36,48 16,48 4,36 4,16" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M18 18 L34 34 M34 18 L18 34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    <text x="1166" y="184" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">-K or --kill-on-bad-exit</text>
+
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1100" y="240">one non-zero exit ends the</tspan>
+      <tspan x="1100" y="272">whole step;</tspan>
+
+      <tspan x="1100" y="328">default comes from</tspan>
+      <tspan x="1100" y="360">KillOnBadExit;</tspan>
+
+      <tspan x="1100" y="416">without it one dead rank</tspan>
+      <tspan x="1100" y="448">leaves the others hanging in</tspan>
+      <tspan x="1100" y="480">a collective until the time</tspan>
+      <tspan x="1100" y="512">limit, wasting GPU hours</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer-panel">
+    <rect x="50" y="850" width="1499" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(74, 937)">
+      <rect x="0" y="0" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="14" x2="56" y2="14" stroke="#207448" stroke-width="3"/>
+      <path d="M12 24 L20 30 L12 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="26" y1="36" x2="38" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="156" y="898">srun outside an allocation creates one and blocks, for example</tspan>
+      <tspan x="156" y="934">srun -N1 --gres=gpu:1 --pty bash; --pty gives a terminal;</tspan>
+      <tspan x="156" y="970">srun --jobid=ID attaches to a running job allocation;</tspan>
+      <tspan x="156" y="1006">--mpi=list shows plugins, pmix and pmi2 are common;</tspan>
+      <tspan x="156" y="1042">--label prefixes output with the task id</tspan>
+    </text>
+  </g>
+</svg>

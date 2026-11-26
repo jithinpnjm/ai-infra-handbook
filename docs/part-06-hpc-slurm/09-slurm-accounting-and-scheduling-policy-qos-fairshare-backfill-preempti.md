@@ -38,24 +38,9 @@ This chapter builds on 6.7, which covers the accounting database and association
 
 Suppose a user asks why their job waited longer than a colleague's job on the same cluster. To answer, you need two records. The first says which account each job was charged to. The second says who belongs to which group. Slurm keeps the second record as a tree, and the figure below shows one example.
 
-```mermaid
-flowchart TB
-  subgraph TREE["sacctmgr Association Tree (Cluster: mycluster)"]
-    ROOT["root account (100 total shares)"]
-    PHYS["physics account (shares=60, LF=0.622)"]
-    BIO["biology account (shares=40, LF=11.400)"]
-    ALICE["alice (usage=5000, FairShare=0.25)"]
-    BOB["bob (usage=500, FairShare=0.50)"]
-    CAROL["carol (usage=100, FairShare=1.00)"]
-    DAVE["dave (usage=100, FairShare=0.75)"]
-    ROOT --> PHYS
-    ROOT --> BIO
-    PHYS --> ALICE
-    PHYS --> BOB
-    BIO --> CAROL
-    BIO --> DAVE
-  end
-```
+![The accounting model](./img/m6-09-1.svg)
+
+*Figure 6.9.1. The accounting model, as a diagram.*
 
 With `slurmdbd` and a database (6.7), Slurm records every job. It also keeps a tree of associations. An association is a tuple of cluster, account, user and, optionally, partition. In plain words, it is the record that says this user, in this account, on this cluster, may run jobs and may have these limits. Limits, shares and a default QOS attach to that record.
 

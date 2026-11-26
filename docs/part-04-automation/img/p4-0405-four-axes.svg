@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Model the cluster on four independent axes</title>
+  <desc>Four independent axes for modeling cluster hosts: Role, Hardware trait, Location or topology, and Lifecycle, showing their questions, example groups, and use cases, with variable examples and agreement principles.</desc>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Model the cluster on four independent axes</text>
+
+  
+  <rect x="40" y="100" width="1520" height="48" rx="8" fill="#207448"/>
+  <text x="60" y="133" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Axis</text>
+  <text x="385" y="133" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Question it answers</text>
+  <text x="635" y="133" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Example groups</text>
+  <text x="1135" y="133" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Used for</text>
+
+  
+  <rect x="40" y="156" width="1520" height="122" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <line x1="370" y1="156" x2="370" y2="278" stroke="#c0d6c4" stroke-width="1.5"/>
+  <line x1="620" y1="156" x2="620" y2="278" stroke="#c0d6c4" stroke-width="1.5"/>
+  <line x1="1120" y1="156" x2="1120" y2="278" stroke="#c0d6c4" stroke-width="1.5"/>
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="85" cy="217" r="14"/>
+    <circle cx="85" cy="217" r="6"/>
+    <path d="M85 197 v6 M85 231 v6 M65 217 h6 M99 217 h6 M71 203 l4 4 M95 227 l4 4 M71 231 l4 -4 M95 207 l4 -4"/>
+  </g>
+  <text x="130" y="227" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Role</text>
+
+  
+  <text x="385" y="206" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="385" dy="0">what does the</tspan>
+    <tspan x="385" dy="32">host run?</tspan>
+  </text>
+
+  
+  <text x="635" y="186" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="635" dy="0">login, gpu, slurm_controller,</tspan>
+    <tspan x="635" dy="27">slurm_db, storage_client,</tspan>
+    <tspan x="635" dy="27">monitoring, bmc, switch_leaf,</tspan>
+    <tspan x="635" dy="27">switch_spine</tspan>
+  </text>
+
+  
+  <text x="1135" y="206" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135" dy="0">what software and config</tspan>
+    <tspan x="1135" dy="32">the host runs</tspan>
+  </text>
+
+  
+  <rect x="40" y="284" width="1520" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <line x1="370" y1="284" x2="370" y2="404" stroke="#c0d6c4" stroke-width="1.5"/>
+  <line x1="620" y1="284" x2="620" y2="404" stroke="#c0d6c4" stroke-width="1.5"/>
+  <line x1="1120" y1="284" x2="1120" y2="404" stroke="#c0d6c4" stroke-width="1.5"/>
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="67" y="326" width="36" height="36" rx="4"/>
+    <rect x="76" y="335" width="18" height="18" rx="2"/>
+    <path d="M74 326 v-6 M85 326 v-6 M96 326 v-6 M74 362 v6 M85 362 v6 M96 362 v6 M67 334 h-6 M67 344 h-6 M67 354 h-6 M103 334 h6 M103 344 h6 M103 354 h6"/>
+  </g>
+  <text x="130" y="334" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="130" dy="0">Hardware</tspan>
+    <tspan x="130" dy="36">trait</tspan>
+  </text>
+
+  
+  <text x="385" y="336" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="385" dy="0">what hardware</tspan>
+    <tspan x="385" dy="32">does it carry?</tspan>
+  </text>
+
+  
+  <text x="635" y="325" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="635" dy="0">gpu_h100, gpu_a100, gpu_gb200,</tspan>
+    <tspan x="635" dy="30">nic_cx7, nic_bf3, cpu_amd,</tspan>
+    <tspan x="635" dy="30">cpu_intel</tspan>
+  </text>
+
+  
+  <text x="1135" y="336" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135" dy="0">driver branch, NCCL tuning,</tspan>
+    <tspan x="1135" dy="32">kernel params</tspan>
+  </text>
+
+  
+  <rect x="40" y="410" width="1520" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <line x1="370" y1="410" x2="370" y2="530" stroke="#c0d6c4" stroke-width="1.5"/>
+  <line x1="620" y1="410" x2="620" y2="530" stroke="#c0d6c4" stroke-width="1.5"/>
+  <line x1="1120" y1="410" x2="1120" y2="530" stroke="#c0d6c4" stroke-width="1.5"/>
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M85 448 c-10 0 -19 8 -19 18 c0 14 19 26 19 26 s19 -12 19 -26 c0 -10 -9 -18 -19 -18 z"/>
+    <circle cx="85" cy="466" r="6"/>
+  </g>
+  <text x="130" y="460" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="130" dy="0">Location or</tspan>
+    <tspan x="130" dy="36">topology</tspan>
+  </text>
+
+  
+  <text x="385" y="462" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="385" dy="0">where is it</tspan>
+    <tspan x="385" dy="32">physically?</tspan>
+  </text>
+
+  
+  <text x="635" y="462" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="635" dy="0">site_dc1, pod_a, rack_r07,</tspan>
+    <tspan x="635" dy="32">rail_0 to rail_7, fabric_ib1</tspan>
+  </text>
+
+  
+  <text x="1135" y="447" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135" dy="0">rolling update batches,</tspan>
+    <tspan x="1135" dy="30">topology-aware Slurm config,</tspan>
+    <tspan x="1135" dy="30">failure domains</tspan>
+  </text>
+
+  
+  <rect x="40" y="536" width="1520" height="114" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <line x1="370" y1="536" x2="370" y2="650" stroke="#c0d6c4" stroke-width="1.5"/>
+  <line x1="620" y1="536" x2="620" y2="650" stroke="#c0d6c4" stroke-width="1.5"/>
+  <line x1="1120" y1="536" x2="1120" y2="650" stroke="#c0d6c4" stroke-width="1.5"/>
+
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="85" cy="593" r="19"/>
+    <polyline points="85,581 85,593 94,593"/>
+  </g>
+  <text x="130" y="603" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Lifecycle</text>
+
+  
+  <text x="385" y="573" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="385" dy="0">where is it in</tspan>
+    <tspan x="385" dy="30">its change</tspan>
+    <tspan x="385" dy="30">cycle?</tspan>
+  </text>
+
+  
+  <text x="635" y="586" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="635" dy="0">canary, maint_window_sat,</tspan>
+    <tspan x="635" dy="32">retired</tspan>
+  </text>
+
+  
+  <text x="1135" y="601" font-family="sans-serif" font-size="24" fill="#303a36">safe rollout and exclusions</text>
+
+  
+  <rect x="40" y="664" width="1520" height="136" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M72 713 h18 l12 12 v32 h-30 z"/>
+    <path d="M90 713 v12 h12"/>
+    <line x1="78" y1="737" x2="96" y2="737"/>
+    <line x1="78" y1="747" x2="92" y2="747"/>
+  </g>
+  <text x="125" y="705" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">group_vars/gpu_h100.yml sets gpu_clocks, nccl_env and nvidia_driver_branch for H100 hosts;</tspan>
+    <tspan x="125" dy="33">group_vars/rack_r07.yml sets values for rack r07 alone: a value describing the room belongs on</tspan>
+    <tspan x="125" dy="33">the rack group, a value describing the chip on the chip's group</tspan>
+  </text>
+
+  
+  <rect x="40" y="812" width="1520" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="70" y="848" width="28" height="14" rx="2"/>
+    <circle cx="76" cy="855" r="1.5" fill="#207448"/>
+    <line x1="84" y1="855" x2="92" y2="855"/>
+    <rect x="70" y="868" width="28" height="14" rx="2"/>
+    <circle cx="76" cy="875" r="1.5" fill="#207448"/>
+    <line x1="84" y1="875" x2="92" y2="875"/>
+  </g>
+  <text x="125" y="855" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">bmc group hosts connect with ansible_connection local or httpapi, or through the redfish modules</tspan>
+    <tspan x="125" dy="34">with baseuri &quot;{{ bmc_address }}&quot;</tspan>
+  </text>
+
+  
+  <rect x="40" y="930" width="1520" height="110" rx="8" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
+  <g stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M84 964 l18 7 v16 c0 12 -18 20 -18 20 s-18 -8 -18 -20 v-16 z"/>
+    <polyline points="76,987 82,993 94,981"/>
+  </g>
+  <text x="125" y="976" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="125" dy="0">settle the axes first so every playbook targets the same slices: a driver, Slurm and firmware</tspan>
+    <tspan x="125" dy="35">playbook all use the same names; otherwise a rack one playbook calls r07 another calls rack7</tspan>
+  </text>
+
+  
+  <rect x="40" y="1054" width="1520" height="66" rx="8" fill="#207448"/>
+  <text x="800" y="1097" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A host answers all four questions at once</text>
+</svg>

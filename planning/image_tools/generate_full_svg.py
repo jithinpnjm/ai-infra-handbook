@@ -1,0 +1,538 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
+import sys
+
+def build_full_svg():
+    svg = '''<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Baseline and static audit: what to record and what usually turns up</title>
+  <desc>Comparison of healthy-node baseline collection against static audit findings for AI infrastructure nodes.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- ==================== MAIN TITLE ==================== -->
+  <text id="main-title" x="800" y="64" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Baseline and static audit: </tspan>
+    <tspan x="800" dy="48">what to record and what usually turns up</tspan>
+  </text>
+
+  <!-- ==================== LEFT PANEL: Record a baseline on a healthy node ==================== -->
+  <rect id="left-panel" x="40" y="142" width="600" height="958" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  <!-- Left Panel Header Icon (Clipboard / Health checklist icon 56x56) -->
+  <g transform="translate(60, 156)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="10" width="44" height="42" rx="5"/>
+    <path d="M 18 10 V 6 A 4 4 0 0 1 22 2 H 34 A 4 4 0 0 1 38 6 V 10 Z"/>
+    <path d="M 16 26 L 24 34 L 40 18"/>
+  </g>
+
+  <!-- Left Panel Title -->
+  <text id="left-title" x="132" y="190" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="132" dy="0">Record a baseline on a </tspan>
+    <tspan x="132" dy="34">healthy node</tspan>
+  </text>
+
+  <!-- Checklist Container Box -->
+  <rect id="checklist-box" x="60" y="244" width="560" height="558" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+  <!-- Item 1: the 60-second checklist outputs -->
+  <rect id="chk-item-1" x="76" y="256" width="528" height="62" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 269)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="14"/>
+    <polyline points="18,10 18,18 24,22"/>
+  </g>
+  <text id="chk-item-1-text" x="140" y="296" font-family="sans-serif" font-size="24" fill="#303a36">the 60-second checklist outputs</text>
+
+  <!-- Item 2: sysctl -a -->
+  <rect id="chk-item-2" x="76" y="326" width="528" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 339)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="10,12 18,18 10,24"/>
+    <line x1="20" y1="24" x2="26" y2="24"/>
+  </g>
+  <text id="chk-item-2-text" x="140" y="366" font-family="monospace" font-size="24" fill="#303a36">sysctl -a</text>
+
+  <!-- Item 3: lscpu -->
+  <rect id="chk-item-3" x="76" y="396" width="528" height="62" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 409)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="20" height="20" rx="3"/>
+    <line x1="14" y1="4" x2="14" y2="8"/>
+    <line x1="22" y1="4" x2="22" y2="8"/>
+    <line x1="14" y1="28" x2="14" y2="32"/>
+    <line x1="22" y1="28" x2="22" y2="32"/>
+    <line x1="4" y1="14" x2="8" y2="14"/>
+    <line x1="4" y1="22" x2="8" y2="22"/>
+    <line x1="28" y1="14" x2="32" y2="14"/>
+    <line x1="28" y1="22" x2="32" y2="22"/>
+  </g>
+  <text id="chk-item-3-text" x="140" y="436" font-family="monospace" font-size="24" fill="#303a36">lscpu</text>
+
+  <!-- Item 4: lspci -vv link states -->
+  <rect id="chk-item-4" x="76" y="466" width="528" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 479)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="10" width="24" height="16" rx="2"/>
+    <line x1="10" y1="26" x2="10" y2="30"/>
+    <line x1="16" y1="26" x2="16" y2="30"/>
+    <line x1="22" y1="26" x2="22" y2="30"/>
+  </g>
+  <text id="chk-item-4-text" x="140" y="506" font-family="sans-serif" font-size="24" fill="#303a36">lspci -vv link states</text>
+
+  <!-- Item 5: nvidia-smi -q -->
+  <rect id="chk-item-5" x="76" y="536" width="528" height="62" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 549)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="24" height="24" rx="4"/>
+    <circle cx="18" cy="18" r="6"/>
+  </g>
+  <text id="chk-item-5-text" x="140" y="576" font-family="monospace" font-size="24" fill="#303a36">nvidia-smi -q</text>
+
+  <!-- Item 6: firmware versions -->
+  <rect id="chk-item-6" x="76" y="606" width="528" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 619)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="12" width="20" height="14" rx="2"/>
+    <circle cx="18" cy="19" r="3"/>
+    <line x1="18" y1="6" x2="18" y2="12"/>
+  </g>
+  <text id="chk-item-6-text" x="140" y="646" font-family="sans-serif" font-size="24" fill="#303a36">firmware versions</text>
+
+  <!-- Item 7: benchmark results: nccl-tests, dcgmi diag, a small reference training step -->
+  <rect id="chk-item-7" x="76" y="676" width="528" height="114" rx="8" fill="#f8faf8" stroke="#207448" stroke-width="1.2"/>
+  <g transform="translate(90, 712)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 30 L 14 18 L 22 24 L 30 10"/>
+  </g>
+  <text id="chk-item-7-text" x="132" y="716" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="132" dy="0">benchmark results: </tspan>
+    <tspan x="132" dy="24">nccl-tests, dcgmi diag, </tspan>
+    <tspan x="132" dy="24">a small reference training step</tspan>
+  </text>
+
+  <!-- Connecting Arrow pointing DOWN from checklist container to Note box -->
+  <line x1="90" y1="808" x2="90" y2="964" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  <!-- Arrow Label Text (wrapped onto 4 lines beside the arrow) -->
+  <text id="arrow-label" x="120" y="850" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="120" dy="0">store it with the image version, </tspan>
+    <tspan x="120" dy="25">then diff after every incident </tspan>
+    <tspan x="120" dy="25">or change; take baselines </tspan>
+    <tspan x="120" dy="25">before and after every change</tspan>
+  </text>
+
+  <!-- Note Box at the bottom of Left Panel -->
+  <rect id="note-box" x="60" y="974" width="560" height="114" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4"/>
+  <g transform="translate(76, 1002)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="15"/>
+    <line x1="20" y1="14" x2="20" y2="21"/>
+    <circle cx="20" cy="27" r="1.5" fill="#207448"/>
+  </g>
+  <text id="note-text" x="120" y="1014" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="120" dy="0">If none exists, </tspan>
+    <tspan x="120" dy="24">summary-since-boot counters </tspan>
+    <tspan x="120" dy="24">are a coarse substitute</tspan>
+  </text>
+
+  <!-- ==================== RIGHT PANEL: Static audit findings ==================== -->
+  <rect id="right-panel" x="670" y="142" width="890" height="958" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  <!-- Right Panel Header Icon (Audit inspection / Server magnifying glass 56x56) -->
+  <g transform="translate(692, 156)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="10" width="44" height="42" rx="5"/>
+    <line x1="16" y1="22" x2="30" y2="22"/>
+    <line x1="16" y1="32" x2="26" y2="32"/>
+    <circle cx="34" cy="36" r="8"/>
+    <line x1="40" y1="42" x2="48" y2="50"/>
+  </g>
+
+  <!-- Right Panel Title -->
+  <text id="right-title" x="768" y="196" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Static audit findings</text>
+
+  <!-- Four Audit Questions Box -->
+  <rect id="questions-box" x="692" y="226" width="846" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(712, 268)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="15"/>
+    <path d="M 13 13 C 13 8 23 8 23 15 C 23 20 18 20 18 24"/>
+    <circle cx="18" cy="28" r="1" fill="#207448"/>
+  </g>
+  <text id="questions-text" x="760" y="266" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="760" dy="0">Does each component make sense for the workload? </tspan>
+    <tspan x="760" dy="24">Is it configured for it? </tspan>
+    <tspan x="760" dy="24">Was it autoconfigured wrongly? </tspan>
+    <tspan x="760" dy="24">Has it degraded?</tspan>
+  </text>
+
+  <!-- ==================== 10 AUDIT FINDINGS CARDS (2 cols x 5 rows) ==================== -->
+  <!-- Row 0: y = 376, h = 136 -->
+  <!-- Card 1 (ORANGE HIGHLIGHT): a 400 Gb NIC that negotiated 100 Gb or runs at PCIe x8 -->
+  <rect id="card-1" x="692" y="376" width="414" height="136" rx="10" fill="#fff9f4" stroke="#db8129" stroke-width="2.5"/>
+  <g transform="translate(706, 420)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="40" height="28" rx="4"/>
+    <circle cx="16" cy="22" r="3"/>
+    <circle cx="26" cy="22" r="3"/>
+    <circle cx="36" cy="22" r="3"/>
+    <line x1="16" y1="36" x2="16" y2="44"/>
+    <line x1="36" y1="36" x2="36" y2="44"/>
+  </g>
+  <text id="card-1-text" x="768" y="422" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="768" dy="0">a 400 Gb NIC that </tspan>
+    <tspan x="768" dy="26">negotiated 100 Gb or </tspan>
+    <tspan x="768" dy="26">runs at PCIe x8</tspan>
+  </text>
+
+  <!-- Card 2: a failed RAID member -->
+  <rect id="card-2" x="1124" y="376" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 420)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="26" cy="12" rx="18" ry="6"/>
+    <path d="M 8 12 V 24 C 8 28 44 28 44 24 V 12"/>
+    <path d="M 8 24 V 36 C 8 40 44 40 44 36 V 24"/>
+    <line x1="18" y1="42" x2="34" y2="26"/>
+    <line x1="34" y1="42" x2="18" y2="26"/>
+  </g>
+  <text id="card-2-text" x="1204" y="450" font-family="sans-serif" font-size="24" fill="#303a36">a failed RAID member</text>
+
+  <!-- Row 1: y = 520, h = 136 -->
+  <!-- Card 3: a GPU with a downgraded PCIe link: check lspci -vv LnkSta -->
+  <rect id="card-3" x="692" y="520" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(706, 564)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="40" height="28" rx="4"/>
+    <line x1="14" y1="16" x2="22" y2="16"/>
+    <line x1="14" y1="24" x2="30" y2="24"/>
+    <line x1="34" y1="12" x2="42" y2="20"/>
+  </g>
+  <text id="card-3-text" x="768" y="560" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="768" dy="0">a GPU with a </tspan>
+    <tspan x="768" dy="24">downgraded PCIe </tspan>
+    <tspan x="768" dy="24">link: check </tspan>
+    <tspan x="768" dy="24" font-family="monospace">lspci -vv LnkSta</tspan>
+  </text>
+
+  <!-- Card 4: stale kernel or firmware -->
+  <rect id="card-4" x="1124" y="520" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 564)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 26 8 A 18 18 0 1 0 44 26"/>
+    <polyline points="44,14 44,26 32,26"/>
+  </g>
+  <text id="card-4-text" x="1204" y="582" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1204" dy="0">stale kernel or </tspan>
+    <tspan x="1204" dy="28">firmware</tspan>
+  </text>
+
+  <!-- Row 2: y = 664, h = 136 -->
+  <!-- Card 5: IP forwarding enabled -->
+  <rect id="card-5" x="692" y="664" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(706, 708)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="14" cy="24" r="6"/>
+    <circle cx="38" cy="24" r="6"/>
+    <line x1="20" y1="24" x2="32" y2="24"/>
+    <polyline points="28,18 34,24 28,30"/>
+  </g>
+  <text id="card-5-text" x="768" y="738" font-family="sans-serif" font-size="24" fill="#303a36">IP forwarding enabled</text>
+
+  <!-- Card 6: THP or governor settings that have drifted -->
+  <rect id="card-6" x="1124" y="664" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 708)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="26" cy="26" r="16"/>
+    <line x1="26" y1="26" x2="36" y2="16"/>
+  </g>
+  <text id="card-6-text" x="1204" y="710" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1204" dy="0">THP or governor </tspan>
+    <tspan x="1204" dy="26">settings that </tspan>
+    <tspan x="1204" dy="26">have drifted</tspan>
+  </text>
+
+  <!-- Row 3: y = 808, h = 136 -->
+  <!-- Card 7: a small ulimit -l -->
+  <rect id="card-7" x="692" y="808" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(706, 852)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="16" width="32" height="24" rx="4"/>
+    <path d="M 18 16 V 10 A 8 8 0 0 1 34 10 V 16"/>
+  </g>
+  <text id="card-7-text" x="768" y="882" font-family="sans-serif" font-size="24" fill="#303a36">a small ulimit -l</text>
+
+  <!-- Card 8: a cgroup driver mismatch -->
+  <rect id="card-8" x="1124" y="808" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 852)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="8" width="16" height="16" rx="2"/>
+    <rect x="28" y="26" width="16" height="16" rx="2"/>
+    <line x1="16" y1="24" x2="16" y2="34"/>
+    <line x1="16" y1="34" x2="28" y2="34"/>
+  </g>
+  <text id="card-8-text" x="1204" y="870" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1204" dy="0">a cgroup driver </tspan>
+    <tspan x="1204" dy="28">mismatch</tspan>
+  </text>
+
+  <!-- Row 4: y = 952, h = 136 -->
+  <!-- Card 9: debug logging left on: NCCL_DEBUG=INFO in production, CUDA_LAUNCH_BLOCKING=1 -->
+  <rect id="card-9" x="692" y="952" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(700, 996)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 14 16 L 24 8 L 34 16 L 34 32 L 24 40 L 14 32 Z"/>
+    <line x1="24" y1="18" x2="24" y2="28"/>
+    <circle cx="24" cy="33" r="1.5" fill="#207448"/>
+  </g>
+  <text id="card-9-text" x="754" y="992" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="754" dy="0">debug logging left </tspan>
+    <tspan x="754" dy="24">on: <tspan font-family="monospace">NCCL_DEBUG=INFO</tspan> </tspan>
+    <tspan x="754" dy="24">in production, </tspan>
+    <tspan x="754" dy="24" font-family="monospace">CUDA_LAUNCH_BLOCKING=1</tspan>
+  </text>
+
+  <!-- Card 10: a filesystem nearly full -->
+  <rect id="card-10" x="1124" y="952" width="414" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <g transform="translate(1140, 996)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 12 L 18 12 L 22 18 L 44 18 L 44 40 L 6 40 Z"/>
+    <line x1="6" y1="34" x2="44" y2="34"/>
+  </g>
+  <text id="card-10-text" x="1204" y="1014" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1204" dy="0">a filesystem </tspan>
+    <tspan x="1204" dy="28">nearly full</tspan>
+  </text>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR ==================== -->
+  <rect id="bottom-bar" x="40" y="1118" width="1520" height="64" rx="8" fill="#207448"/>
+  <text id="bottom-bar-text" x="800" y="1158" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Configuration drift is the most common cause of identical nodes behaving differently</text>
+</svg>'''
+    return svg
+
+def audit_full():
+    svg_str = build_full_svg()
+    root = ET.fromstring(svg_str)
+
+    # 1. First children check: <title> and <desc>
+    children = list(root)
+    first_tag = children[0].tag.split('}')[-1]
+    second_tag = children[1].tag.split('}')[-1]
+    print(f"1. First child: <{first_tag}>, Second child: <{second_tag}>")
+    assert first_tag == 'title', f"First child must be title, got {first_tag}"
+    assert second_tag == 'desc', f"Second child must be desc, got {second_tag}"
+
+    # 2. Dimensions
+    width = root.get('width')
+    viewBox = root.get('viewBox')
+    height = root.get('height')
+    print(f"2. Dimensions: width={width}, height={height}, viewBox={viewBox}")
+    assert width == "1600", f"Expected width 1600, got {width}"
+    assert viewBox.startswith("0 0 1600 "), f"viewBox must start with '0 0 1600 ', got {viewBox}"
+    vb_parts = [float(x) for x in viewBox.split()]
+    assert vb_parts[0] == 0 and vb_parts[1] == 0 and vb_parts[2] == 1600
+    assert 900 <= vb_parts[3] <= 1200, f"Height {vb_parts[3]} outside 900-1200 range"
+    assert int(height) == int(vb_parts[3]), f"height {height} != viewBox height {vb_parts[3]}"
+
+    # 3. Check font-size >= 24 on all text and tspans
+    text_elements = []
+    for elem in root.iter('{http://www.w3.org/2000/svg}text'):
+        full_text = "".join(elem.itertext()).strip()
+        full_text = re.sub(r'\s+', ' ', full_text)
+        fs = elem.attrib.get('font-size')
+        assert fs is not None, f"Missing font-size on text '{full_text}'"
+        size = float(fs)
+        assert size >= 24, f"Text '{full_text}' font-size {size} < 24!"
+        for tsp in elem.iter('{http://www.w3.org/2000/svg}tspan'):
+            tfs = tsp.attrib.get('font-size')
+            if tfs is not None:
+                assert float(tfs) >= 24, f"tspan font-size {tfs} < 24 in '{full_text}'"
+        text_elements.append((full_text, size))
+
+    print(f"\n3. Total text elements: {len(text_elements)} (all font-sizes >= 24px)")
+
+    # 4. Expected labels
+    expected_labels = [
+        "Baseline and static audit: what to record and what usually turns up",
+        "Record a baseline on a healthy node",
+        "the 60-second checklist outputs",
+        "sysctl -a",
+        "lscpu",
+        "lspci -vv link states",
+        "nvidia-smi -q",
+        "firmware versions",
+        "benchmark results: nccl-tests, dcgmi diag, a small reference training step",
+        "store it with the image version, then diff after every incident or change; take baselines before and after every change",
+        "If none exists, summary-since-boot counters are a coarse substitute",
+        "Static audit findings",
+        "Does each component make sense for the workload? Is it configured for it? Was it autoconfigured wrongly? Has it degraded?",
+        "a 400 Gb NIC that negotiated 100 Gb or runs at PCIe x8",
+        "a failed RAID member",
+        "a GPU with a downgraded PCIe link: check lspci -vv LnkSta",
+        "stale kernel or firmware",
+        "IP forwarding enabled",
+        "THP or governor settings that have drifted",
+        "a small ulimit -l",
+        "a cgroup driver mismatch",
+        "debug logging left on: NCCL_DEBUG=INFO in production, CUDA_LAUNCH_BLOCKING=1",
+        "a filesystem nearly full",
+        "Configuration drift is the most common cause of identical nodes behaving differently"
+    ]
+
+    found_texts = [t for t, fs in text_elements]
+    assert len(found_texts) == len(expected_labels), f"Text element count mismatch: {len(found_texts)} != {len(expected_labels)}"
+    for exp in expected_labels:
+        cnt = found_texts.count(exp)
+        assert cnt == 1, f"Expected '{exp}' once, got {cnt}"
+
+    # 5. Check forbidden words
+    forbidden = ['orange', 'green', 'grey', 'gray', 'bold', 'monospace', 'arrow']
+    for t in found_texts:
+        words = re.findall(r'\b[a-zA-Z]+\b', t.lower())
+        for f in forbidden:
+            assert f not in words, f"Forbidden word '{f}' in '{t}'!"
+
+    # 6. Check orange count
+    orange_matches = re.findall(r'#db8129', svg_str, re.IGNORECASE)
+    assert 1 <= len(orange_matches) <= 3, f"Unexpected orange count: {len(orange_matches)}"
+
+    # 7. Check arrows count
+    lines = [e for e in root.iter('{http://www.w3.org/2000/svg}line') if "marker-end" in e.attrib]
+    paths = [e for e in root.iter('{http://www.w3.org/2000/svg}path') if "marker-end" in e.attrib]
+    total_arrows = len(lines) + len(paths)
+    assert total_arrows == 1, f"Expected exactly 1 arrow, got {total_arrows}"
+
+    # 8. Check paddings
+    boxes = {
+        "title": (0, 0, 1600, 142),
+        "left-panel": (40, 142, 600, 958),
+        "chk-item-1": (76, 256, 528, 62),
+        "chk-item-2": (76, 326, 528, 62),
+        "chk-item-3": (76, 396, 528, 62),
+        "chk-item-4": (76, 466, 528, 62),
+        "chk-item-5": (76, 536, 528, 62),
+        "chk-item-6": (76, 606, 528, 62),
+        "chk-item-7": (76, 676, 528, 114),
+        "arrow-area": (100, 808, 530, 160),
+        "note-box": (60, 974, 560, 114),
+        "right-panel": (670, 142, 890, 958),
+        "questions-box": (692, 226, 846, 136),
+        "card-1": (692, 376, 414, 136),
+        "card-2": (1124, 376, 414, 136),
+        "card-3": (692, 520, 414, 136),
+        "card-4": (1124, 520, 414, 136),
+        "card-5": (692, 664, 414, 136),
+        "card-6": (1124, 664, 414, 136),
+        "card-7": (692, 808, 414, 136),
+        "card-8": (1124, 808, 414, 136),
+        "card-9": (692, 952, 414, 136),
+        "card-10": (1124, 952, 414, 136),
+        "bottom-bar": (40, 1118, 1520, 64)
+    }
+
+    mapping = [
+        ("Baseline and static audit", "title"),
+        ("Record a baseline", "left-panel"),
+        ("the 60-second checklist", "chk-item-1"),
+        ("sysctl -a", "chk-item-2"),
+        ("lscpu", "chk-item-3"),
+        ("a GPU with a downgraded", "card-3"),
+        ("lspci -vv link", "chk-item-4"),
+        ("nvidia-smi", "chk-item-5"),
+        ("firmware versions", "chk-item-6"),
+        ("benchmark results", "chk-item-7"),
+        ("store it with the image", "arrow-area"),
+        ("If none exists", "note-box"),
+        ("Static audit findings", "right-panel"),
+        ("Does each component", "questions-box"),
+        ("a 400 Gb NIC", "card-1"),
+        ("a failed RAID", "card-2"),
+        ("stale kernel", "card-4"),
+        ("IP forwarding", "card-5"),
+        ("THP or governor", "card-6"),
+        ("a small ulimit", "card-7"),
+        ("a cgroup driver", "card-8"),
+        ("debug logging left on", "card-9"),
+        ("a filesystem nearly full", "card-10"),
+        ("Configuration drift", "bottom-bar"),
+    ]
+
+    for elem in root.iter('{http://www.w3.org/2000/svg}text'):
+        full_text = "".join(elem.itertext()).strip()
+        full_text = re.sub(r'\s+', ' ', full_text)
+        
+        box_name = None
+        for prefix, bname in mapping:
+            if prefix in full_text:
+                box_name = bname
+                break
+        
+        bx, by, bw, bh = boxes[box_name]
+        base_fs = float(elem.attrib.get('font-size', 24))
+        anchor = elem.attrib.get('text-anchor', 'start')
+        elem_x = float(elem.attrib.get('x', 0))
+        elem_y = float(elem.attrib.get('y', 0))
+
+        tspans = elem.findall('{http://www.w3.org/2000/svg}tspan')
+        if not tspans:
+            t = full_text
+            fs = base_fs
+            is_mono = 'monospace' in elem.attrib.get('font-family', '')
+            factor = 0.62 if is_mono else 0.60
+            w = len(t) * factor * fs
+            if anchor == 'middle':
+                xs = elem_x - w / 2
+                xe = elem_x + w / 2
+            elif anchor == 'end':
+                xs = elem_x - w
+                xe = elem_x
+            else:
+                xs = elem_x
+                xe = elem_x + w
+            
+            top_y = elem_y - fs
+            bot_y = elem_y + 0.25 * fs
+
+            pad_l = xs - bx
+            pad_r = (bx + bw) - xe
+            pad_t = top_y - by
+            pad_b = (by + bh) - bot_y
+
+            print(f"[{box_name:14s}] '{t[:28]:28s}' L={pad_l:5.1f} R={pad_r:5.1f} T={pad_t:5.1f} B={pad_b:5.1f}")
+            assert pad_l >= 15.9, f"Left pad {pad_l:.1f} < 16 for '{t}' in {box_name}"
+            assert pad_r >= 15.9, f"Right pad {pad_r:.1f} < 16 for '{t}' in {box_name}"
+            assert pad_t >= 15.9, f"Top pad {pad_t:.1f} < 16 for '{t}' in {box_name}"
+            assert pad_b >= 15.9, f"Bottom pad {pad_b:.1f} < 16 for '{t}' in {box_name}"
+        else:
+            cur_y = elem_y
+            for tsp in tspans:
+                t = (tsp.text or "").strip()
+                if not t:
+                    continue
+                fs = float(tsp.attrib.get('font-size', base_fs))
+                is_mono = 'monospace' in tsp.attrib.get('font-family', elem.attrib.get('font-family', ''))
+                factor = 0.62 if is_mono else 0.60
+                w = len(t) * factor * fs
+
+                tx = float(tsp.attrib.get('x', elem_x))
+                dy_str = tsp.attrib.get('dy', None)
+                if dy_str is not None:
+                    cur_y += float(dy_str)
+                else:
+                    cur_y = float(tsp.attrib.get('y', cur_y))
+
+                tsp_anchor = tsp.attrib.get('text-anchor', anchor)
+                if tsp_anchor == 'middle':
+                    xs = tx - w / 2
+                    xe = tx + w / 2
+                elif tsp_anchor == 'end':
+                    xs = tx - w
+                    xe = tx
+                else:
+                    xs = tx
+                    xe = tx + w
+                
+                top_y = cur_y - fs
+                bot_y = cur_y + 0.25 * fs
+
+                pad_l = xs - bx
+                pad_r = (bx + bw) - xe
+                pad_t = top_y - by
+                pad_b = (by + bh) - bot_y
+
+                print(f"[{box_name:14s}] (tspan) '{t[:20]:20s}' L={pad_l:5.1f} R={pad_r:5.1f} T={pad_t:5.1f} B={pad_b:5.1f}")
+                assert pad_l >= 15.9, f"Left pad {pad_l:.1f} < 16 for '{t}' in {box_name}"
+                assert pad_r >= 15.9, f"Right pad {pad_r:.1f} < 16 for '{t}' in {box_name}"
+                assert pad_t >= 15.9, f"Top pad {pad_t:.1f} < 16 for '{t}' in {box_name}"
+                assert pad_b >= 15.9, f"Bottom pad {pad_b:.1f} < 16 for '{t}' in {box_name}"
+
+    print("\nALL AUDIT CHECKS AND PADDING CHECKS PASSED PERFECTLY!")
+
+if __name__ == "__main__":
+    audit_full()

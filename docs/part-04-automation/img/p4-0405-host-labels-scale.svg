@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>The labels every host should carry, and what changes at thousands of hosts</title>
+  <desc>Visual comparison of essential per-host inventory labels versus architectural practices required at scale with thousands of hosts.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="64" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The labels every host should carry,</text>
+  <text x="40" y="118" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">and what changes at thousands of hosts</text>
+
+  
+  <rect x="40" y="145" width="740" height="715" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(64, 168)">
+    <rect x="0" y="0" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M12 24 L24 12 L36 24 L24 36 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="24" cy="24" r="3" fill="#207448"/>
+  </g>
+  <text x="128" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Per-host labels</text>
+
+  
+  
+  <rect x="64" y="232" width="336" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="232" y="264" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">ansible_host</text>
+
+  
+  <rect x="420" y="232" width="336" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="588" y="264" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">bmc_address</text>
+
+  
+  <rect x="64" y="292" width="336" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="232" y="324" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">rack</text>
+
+  
+  <rect x="420" y="292" width="336" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="588" y="324" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">u_position</text>
+
+  
+  <rect x="64" y="352" width="336" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="232" y="384" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gpu_count</text>
+
+  
+  <rect x="420" y="352" width="336" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="588" y="384" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">mgmt_mac</text>
+
+  
+  <rect x="64" y="412" width="336" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="232" y="444" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">serial_number</text>
+
+  
+  <rect x="420" y="412" width="336" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="588" y="444" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">asset_tag</text>
+
+  
+  <rect x="64" y="472" width="692" height="48" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <text x="410" y="504" text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">ib_hcas</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> (a list of HCA device names)</tspan>
+  </text>
+
+  
+  <rect x="64" y="534" width="692" height="114" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(80, 567)">
+    <circle cx="20" cy="20" r="18" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M14 14 C14 8, 26 8, 26 15 C26 20, 20 20, 20 25" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="20" cy="30" r="2" fill="#207448"/>
+  </g>
+  <text x="136" y="566" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="136" dy="0">each label answers a question asked</tspan>
+    <tspan x="136" dy="32">during an incident: which rack,</tspan>
+    <tspan x="136" dy="32">which BMC address, which serial number</tspan>
+  </text>
+
+  
+  <rect x="64" y="662" width="692" height="180" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(80, 722)">
+    <path d="M22 6 L38 12 L38 28 C38 38, 22 46, 22 46 C22 46, 6 38, 6 28 L6 12 Z" fill="none" stroke="#db8129" stroke-width="3.5"/>
+    <line x1="22" y1="16" x2="22" y2="28" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="22" cy="34" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="136" y="698" font-size="24" fill="#303a36">
+    <tspan x="136" dy="0" font-family="system-ui, -apple-system, sans-serif">check them at the start of every</tspan>
+    <tspan x="136" dy="34" font-family="system-ui, -apple-system, sans-serif">run with an argument spec or an</tspan>
+    <tspan x="136" dy="34" font-family="system-ui, -apple-system, sans-serif">assert play: assert that rack is</tspan>
+    <tspan x="136" dy="34" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">defined and gpu_count | int > 0</tspan>
+  </text>
+
+
+  
+  <rect x="820" y="145" width="740" height="715" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(844, 168)">
+    <rect x="0" y="0" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="0" y="17" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="0" y="34" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="10" cy="7" r="2" fill="#207448"/>
+    <circle cx="10" cy="24" r="2" fill="#207448"/>
+    <circle cx="10" cy="41" r="2" fill="#207448"/>
+  </g>
+  <text x="908" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">At thousands of hosts</text>
+
+  
+  
+  <rect x="844" y="232" width="692" height="76" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <g transform="translate(860, 248)">
+    <rect x="0" y="0" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M12 18 L20 24 L12 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="22" y1="30" x2="32" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="920" y="262" font-size="24" fill="#303a36">
+    <tspan x="920" dy="0">
+      <tspan font-family="system-ui, -apple-system, sans-serif">return </tspan>
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">_meta</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> to avoid per-host</tspan>
+    </tspan>
+    <tspan x="920" dy="30">
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">--host</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> script calls</tspan>
+    </tspan>
+  </text>
+
+  
+  <rect x="844" y="320" width="692" height="60" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <g transform="translate(860, 329)">
+    <ellipse cx="22" cy="12" rx="16" ry="6" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M6 12 L6 30 C6 34, 38 34, 38 30 L38 12" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M6 21 C6 25, 38 25, 38 21" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="920" y="358" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif">use </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">keyed_groups</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> and caching</tspan>
+  </text>
+
+  
+  <rect x="844" y="392" width="692" height="60" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <g transform="translate(860, 401)">
+    <circle cx="12" cy="21" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="32" cy="11" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="32" cy="31" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M17 21 L27 11 M17 21 L27 31" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="920" y="430" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">split the inventory into several sources</text>
+
+  
+  <rect x="844" y="464" width="692" height="60" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <g transform="translate(860, 473)">
+    <line x1="8" y1="21" x2="36" y2="21" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="10" x2="36" y2="10" stroke="#207448" stroke-width="3"/>
+    <line x1="8" y1="32" x2="36" y2="32" stroke="#207448" stroke-width="3"/>
+    <path d="M26 4 L36 10 L26 16 M26 15 L36 21 L26 27 M26 26 L36 32 L26 38" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="920" y="502" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif">raise </tspan>
+    <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">forks</tspan>
+  </text>
+
+  
+  <rect x="844" y="536" width="692" height="76" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <g transform="translate(860, 552)">
+    <circle cx="22" cy="22" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M22 10 L22 22 L30 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="920" y="566" font-size="24" fill="#303a36">
+    <tspan x="920" dy="0">
+      <tspan font-family="system-ui, -apple-system, sans-serif">choose </tspan>
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">strategy: free</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> or </tspan>
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">serial</tspan>
+    </tspan>
+    <tspan x="920" dy="30" font-family="system-ui, -apple-system, sans-serif">on purpose (chapter 4.14)</tspan>
+  </text>
+
+  
+  <rect x="844" y="624" width="692" height="218" rx="8" fill="#ffffff" stroke="#c2d8c6" stroke-width="1.5"/>
+  <g transform="translate(860, 712)">
+    <circle cx="16" cy="14" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="30" cy="14" r="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M8 34 C8 26, 38 26, 38 34" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="920" y="666" font-size="24" fill="#303a36">
+    <tspan x="920" dy="0" font-family="system-ui, -apple-system, sans-serif">when a host belongs to many groups</tspan>
+    <tspan x="920" dy="38">
+      <tspan font-family="system-ui, -apple-system, sans-serif">set </tspan>
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace">ansible_group_priority</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif"> and</tspan>
+    </tspan>
+    <tspan x="920" dy="38" font-family="system-ui, -apple-system, sans-serif">use consistent names so the</tspan>
+    <tspan x="920" dy="38" font-family="system-ui, -apple-system, sans-serif">result stays unambiguous</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="880" width="1520" height="72" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="924" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">each shortcut that was harmless at fifty hosts becomes a slow run</text>
+
+
+  
+  <rect x="40" y="972" width="1520" height="84" rx="12" fill="#207448"/>
+  <text x="800" y="1024" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A small cluster forgives a messy layout, thousands of hosts do not</text>
+</svg>

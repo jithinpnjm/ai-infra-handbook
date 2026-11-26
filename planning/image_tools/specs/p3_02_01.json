@@ -1,0 +1,132 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-strace-diary",
+  "title": "Reading the strace diary of curl: which call belongs to which stage",
+  "spec": "A vertical timeline of the system calls from the chapter strace command, top to bottom, each a row with a stage tag on the right. Rows: 'openat /etc/resolv.conf, /etc/nsswitch.conf, /etc/hosts' with tag 'Stage: finding out how to look a name up (files before DNS)'. 'socket(AF_INET, SOCK_DGRAM, ...)' with tag 'the phone line for the DNS question (UDP/53)'. 'sendto and recvfrom (DNS query and answer)' with tag 'name resolution'. 'socket(AF_INET6 or AF_INET, SOCK_STREAM, ...)' with tag 'a second line for the real conversation (TCP)'. 'connect(fd, address, port 443)' with tag 'triggers the three-way handshake' in orange. 'sendto and recvfrom (TLS and HTTP bytes)' with tag 'TLS handshake then HTTP request and response'. 'close' with tag 'teardown'. Left side a small panel 'curl splits the URL': scheme 'https' (default port 443, which language to speak), host 'example.com' (who to talk to), path '/' (what to ask for); an arrow 'curl hands the networking to libcurl, which asks the C library to resolve names and the kernel for sockets'. Bottom strip with the command 'strace -f -tt -e trace=openat,socket,connect,sendto,recvfrom,sendmsg,recvmsg,close curl -s https://example.com/ -o /dev/null 2>&1 | head -80'. Bottom bar: 'The strace output is the program's own diary of the journey'.",
+  "anchor": "## 2. Step 0: the process and the URL",
+  "alt": "A timeline of curl system calls from opening resolver files through a UDP DNS socket, a TCP socket and connect, to TLS and HTTP bytes and close, each tagged with its stage.",
+  "cap": "Each system call in the strace output belongs to one stage: file lookups, the UDP DNS socket, the TCP socket and connect, then TLS and HTTP bytes."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-ndots-search",
+  "title": "Search domains and ndots: why one lookup becomes several",
+  "spec": "A flow top to bottom. Start 'Name typed: myhost'. Diamond 'Does the name have fewer dots than ndots?' (default ndots 1; Kubernetes sets 5). 'Yes' leads to a stacked trial list in order: 'try myhost.corp.example.com (the first search suffix)' then 'try each further search suffix' then finally 'try myhost as typed'. 'No' leads to 'try the name as typed first'. A second panel 'Why this bites in Kubernetes' (orange): 'a pod's /etc/resolv.conf has ndots:5; example.com has one dot, fewer than 5, so the resolver tries it with each search suffix before the real name, and every extra try is a DNS query; A and AAAA are asked in parallel, so queries multiply'. Right panel 'What a failed lookup looks like': 'Could not resolve host (curl exit code 6)', 'Temporary failure in name resolution', 'a long pause before anything else, shown as a large time_namelookup'. Footer 'Other causes: wrong resolver in /etc/resolv.conf (set by hand or DHCP), split-horizon DNS, stale cache controlled by the TTL, AAAA answers for hosts you cannot reach over IPv6, firewalls blocking UDP/53 or TCP/53, DNSSEC failures, a dead first resolver'. Bottom bar: 'One lookup can quietly turn into several'.",
+  "anchor": "## 3. Step 1: name resolution (what is the IP address?)",
+  "alt": "A decision on whether a name has fewer dots than ndots, leading to search suffix attempts before the name as typed, with the Kubernetes ndots 5 effect on query count.",
+  "cap": "A name with fewer dots than ndots is tried with each search suffix first, so ndots 5 in Kubernetes multiplies DNS queries."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-encapsulation-frame",
+  "title": "Packing the parcel: data, segment, packet, frame, bits and the Ethernet frame fields",
+  "spec": "Top: nested boxes drawn from the inside out, each wrapping the previous. Innermost 'Data (application)', then 'TCP Segment: source and destination ports', then 'IP Packet: source and destination IP, TTL', then 'Ethernet Frame: destination and source MAC', then 'Bits on the wire'. Under it the Ethernet II frame as a horizontal strip of labelled fields with byte widths: 'Preamble + SFD, 8 bytes (10101010...10101011)', 'Destination MAC, 6 bytes: for traffic that leaves the subnet this is the next hop's MAC, the gateway's, not the final destination's' (orange), 'Source MAC, 6 bytes: this NIC', 'EtherType, 2 bytes: 0x0800 IPv4, 0x86DD IPv6, 0x0806 ARP', 'Payload, 46 to 1,500 bytes', 'FCS, 4 bytes: a CRC trailer'. Right panel 'Then the kernel hands it to hardware': 'egress queueing discipline (qdisc): the waiting line; tc qdisc show dev ens4; default fq_codel, or fq or mq', 'NIC driver and a transmit ring in DMA-able memory', 'NIC offload: checksums, and TSO/GSO segmentation of large TCP chunks'. Note 'On a VM the NIC is virtual (virtio-net or a cloud-specific NIC) and its next hop is the cloud's virtual network'. Bottom bar: 'Each layer adds its own header around the one above'.",
+  "anchor": "## 5. Step 3: from IP to Ethernet (ARP or NDP) and out of the NIC",
+  "alt": "Nested boxes showing data wrapped in a TCP segment, IP packet and Ethernet frame, with the Ethernet frame fields and byte widths and the handoff through the qdisc to the NIC.",
+  "cap": "Each layer wraps the one above, and the Ethernet frame carries the next hop's MAC as its destination."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-arp-neighbour",
+  "title": "ARP and NDP: turning the next hop's IP address into a MAC address",
+  "spec": "Two lanes. Upper lane 'IPv4: ARP' with a host 10.0.0.15 and a gateway 10.0.0.1 and other hosts on the segment. Step 1 arrow to everyone labelled 'broadcast to ff:ff:ff:ff:ff:ff: who has 10.0.0.1? tell 10.0.0.15'. Step 2 unicast arrow back labelled 'the owner replies with its MAC'. Result box 'stored in the neighbour table (ip neigh) so the shout is not repeated for every packet'. Lower lane 'IPv6: NDP' with 'neighbour solicitation to a solicited-node multicast address' and 'neighbour advertisement from the owner'. Right panel 'Neighbour states in ip neigh': 'REACHABLE', 'STALE', 'DELAY', 'PROBE', 'FAILED' with FAILED in orange and the note 'the shout got no answer: a very different problem from a bad route'. Command strip 'ip neigh show', 'ip neigh flush dev ens4 (careful on production hosts)', 'sudo tcpdump -nn -e -i ens4 arp or icmp6', 'arping -I ens4 10.0.0.1 (also detects duplicate addresses)'. Bottom bar: 'When a host cannot reach its gateway, check ip neigh show before you look anywhere else'.",
+  "anchor": "## 5. Step 3: from IP to Ethernet (ARP or NDP) and out of the NIC",
+  "alt": "An ARP broadcast and unicast reply that fill the neighbour table, the IPv6 NDP equivalent, and the neighbour states with FAILED highlighted.",
+  "cap": "ARP asks the whole segment for the next hop's MAC and caches the answer in the neighbour table, and a FAILED entry means no one answered."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-hop-rewrite",
+  "title": "What changes at each router hop and what stays the same",
+  "spec": "A horizontal path: 'Laptop 10.0.0.15' then 'Router 1 (gateway 10.0.0.1)' then 'Router 2' then 'Server 93.184.216.34'. Above each link a small header card with four rows. Link 1 card: 'src MAC: laptop NIC', 'dst MAC: gateway's MAC (bb:bb:bb:00:00:01)', 'src IP 10.0.0.15', 'dst IP 93.184.216.34', 'TTL: initial'. Link 2 card: 'src MAC: router 1', 'dst MAC: router 2' (changed, orange), 'src and dst IP: same', 'TTL: one lower'. Link 3 card: 'src MAC: router 2', 'dst MAC: server' (changed), 'IP: same', 'TTL: one lower again'. Colour the MAC rows orange where they change and the IP rows green where they stay. Below the path a parcel comparison strip 'The IP address is the street address and never changes; the MAC address is the next-depot label and is rewritten at every stop'. Side note 'Unless NAT is involved: at the edge of a private network, NAT or PAT swaps a private source address and port for a public one and reverses it for replies; RFC 1918 ranges 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16'. Bottom bar: 'MAC addresses change at every router hop, but IP addresses stay the same end to end unless NAT is involved'.",
+  "anchor": "## 6. Step 4: the switch, the router, NAT and the Internet",
+  "alt": "A path of three links showing the MAC addresses and TTL changing at every router hop while the source and destination IP addresses stay the same.",
+  "cap": "MAC addresses are rewritten at every router hop and the TTL drops by one, while the IP addresses stay the same unless NAT is involved."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-router-four-steps",
+  "title": "What a router does to your packet, and how it differs from a switch",
+  "spec": "Left panel 'Switch (layer 2)': a frame arrives on port 3. Step 'learn: the source MAC lives on this port, recorded in the MAC address table' and step 'forward to the port where the destination MAC was learned; if the destination is unknown or broadcast, flood to every port except the one it came in on'. Note 'ignores IP addresses; defines the broadcast domain, the set of machines that hear each other's shouts; ARP broadcasts reach every host in the VLAN or subnet'. Right panel 'Router (the default gateway)': a vertical chain of four numbered steps. 1 'Longest prefix match of the destination in the routing table (the FIB)'. 2 'Decrement the TTL (hop limit) and recompute the IPv4 header checksum; at zero drop the packet and send ICMP Time Exceeded, which is how traceroute works' (orange). 3 'Choose the egress interface and next hop, resolve its MAC with ARP or ND, build a new Ethernet header and forward'. 4 'If the packet is larger than the egress MTU: fragment it for IPv4 when DF is not set, otherwise drop it and send ICMP Fragmentation Needed or Packet Too Big (Path MTU Discovery)'. Intro line on the router panel 'receives frames addressed to its own MAC, strips the Ethernet header and examines the IP header'. Footer 'A typical path has 8 to 20 hops; routers build tables with OSPF or IS-IS inside networks and BGP between them; anycast announces one IP from many places'. Bottom bar: 'If the destination looks slow, trace the path first'.",
+  "anchor": "## 6. Step 4: the switch, the router, NAT and the Internet",
+  "alt": "A switch learning and flooding frames by MAC compared with a router's four steps of prefix lookup, TTL decrement, next hop MAC rewrite and MTU handling.",
+  "cap": "A switch learns and forwards by MAC address, while a router matches the prefix, decrements the TTL, rewrites the MAC and handles the MTU."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-pmtud-stall",
+  "title": "Works for small requests, stalls for big downloads: the blocked ICMP trap",
+  "spec": "A left to right path 'Client' to 'Router with smaller egress MTU' to 'Server'. Upper lane 'ICMP allowed': a large packet with DF set reaches the router, the router drops it and sends back 'ICMP Fragmentation Needed or Packet Too Big', the client lowers its packet size and the transfer continues (Path MTU Discovery works). Lower lane 'ICMP filtered by a firewall' (orange): the same large packet is dropped, the ICMP message never reaches the client, and the transfer stalls; label 'blackhole'. Side column 'Why small things still work': 'the handshake and tiny responses fit under the MTU; container layer downloads are large and stall'. Below, a test strip 'ping -M do -s 1472 host (DF set, payload sized to the MTU)', 'tracepath host', 'ss -ti', 'tcpdump'. Rule 'MSS is typically the MTU minus 40, for example 1460'. Bottom bar: 'The MTU is the largest packet a link will carry, and blocked ICMP breaks the discovery of it'.",
+  "anchor": "## 6. Step 4: the switch, the router, NAT and the Internet",
+  "alt": "A path where a router with a smaller MTU sends Packet Too Big, which works when ICMP is allowed and blackholes large transfers when a firewall filters ICMP.",
+  "cap": "When a firewall filters ICMP Packet Too Big, large transfers stall while small requests still work."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-tls-handshake",
+  "title": "The TLS handshake: what each side sends and how the client checks the server",
+  "spec": "Two vertical lanes 'Client (curl)' and 'Server'. Arrow 1 from client labelled 'ClientHello: supported TLS versions and cipher suites, a random value, a key share (TLS 1.3: a guessed key-exchange group and its public key), SNI example.com in clear text so a shared front end picks the right certificate, ALPN offering h2 and http/1.1'. Arrow 2 from server labelled 'ServerHello: chosen parameters, its key share, certificate chain leaf then intermediate then root, CertificateVerify signature, Finished'. A middle note 'both sides derive the session keys; ephemeral Diffie-Hellman gives forward secrecy; TLS 1.3 costs one round trip before application data, TLS 1.2 needs two; 0-RTT resumption sends data earlier but has replay caveats'. Right panel 'Step 3: the client verifies the chain' as four checks: 'chain against the trust store (/etc/ssl/certs, a CA bundle)', 'hostname matches a SAN, here example.com', 'validity period and key usage', 'revocation through OCSP stapling or CRLs, often soft-fail'. Below, a failure strip in orange 'certificate verify failed: unable to get local issuer certificate (missing intermediate or CA bundle in a minimal container image)', 'expired certificate', 'hostname mismatch: an IP address or the wrong SNI', 'corporate proxy with an unknown CA', 'clock skew makes a valid certificate look not yet valid', 'old servers: protocol and cipher mismatches'. Command strip 'openssl s_client -connect example.com:443 -servername example.com -tls1_3'. Footer 'TLS cost = time_appconnect minus time_connect'. Bottom bar: 'When TLS fails, test the exact hostname with openssl s_client before you change anything on the server'.",
+  "anchor": "## 8. Step 6: TLS handshake (HTTPS)",
+  "alt": "A client server exchange of ClientHello and ServerHello with SNI, ALPN and certificate chain, the client's four verification checks and the common TLS failure causes.",
+  "cap": "The client sends ClientHello with SNI and ALPN, the server answers with its key share and certificate chain, and the client verifies the chain, hostname, validity and revocation."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-http-versions",
+  "title": "HTTP/1.1, HTTP/2 and HTTP/3 compared: how the request travels",
+  "spec": "Three columns, each a version with a sketch of the transport stack and key facts. Column 'HTTP/1.1': stack 'HTTP text over TLS over TCP'; the request drawn as lines 'GET / HTTP/1.1', 'Host: example.com', 'User-Agent', 'Accept', optional 'Authorization', a blank line; response 'HTTP/1.1 200 OK', headers 'Content-Type, Content-Length or Transfer-Encoding: chunked, caching headers, Set-Cookie', blank line, body; note 'keep-alive reuses the TCP and TLS connection for several requests'. Column 'HTTP/2': stack 'binary HTTP over TLS (ALPN h2) over TCP'; picture of many streams multiplexed on one connection; notes 'compresses headers', 'head-of-line blocking now happens at the TCP level: one stalled TCP packet holds up every stream' (orange). Column 'HTTP/3': stack 'HTTP over QUIC (includes TLS 1.3) over UDP/443'; notes 'recovers from loss per stream', 'faster connection setup', 'supports connection migration', 'try curl --http3 if your build supports it'. Bottom strip 'Redirects 301, 302, 307, 308 trigger a new request, maybe a new connection: curl -L; proxies, CDNs and load balancers may terminate TLS, rewrite headers such as X-Forwarded-For, cache and retry'. Timing strip 'TTFB = time_starttransfer = DNS + connect + TLS + server think time + one RTT; time_total adds the body transfer'. Bottom bar: 'If headers look right but the page is slow, compare time_starttransfer with time_total'.",
+  "anchor": "## 9. Step 7: the HTTP request and response",
+  "alt": "Three columns comparing HTTP 1.1 over TCP, HTTP 2 multiplexing over TCP with head of line blocking, and HTTP 3 over QUIC on UDP port 443.",
+  "cap": "HTTP/2 multiplexes streams over one TCP connection, so one lost packet holds up all of them, while HTTP/3 over QUIC recovers per stream."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-loss-teardown",
+  "title": "Transfer, loss recovery and teardown: why TIME_WAIT fills up",
+  "spec": "Left panel 'Receiving the body': segments arrive shuffled, drawn as numbered boxes in the wrong order, then the 'socket receive buffer' reorders them, the receiver 'sends ACKs, often one for every second segment, with delayed ACK timers' and 'advertises its window: the amount of data it is ready to accept right now'; curl reads with recv. Middle panel 'Loss': two routes 'fast retransmit after three duplicate ACKs, or through SACK' and 'retransmission timeout fires'; both lead to 'congestion window collapses, then regrows' with a small sawtooth sketch. Right panel 'Closing': sequence 'FIN, ACK exchange (or RST on abort)' leading to 'the side that closes first holds the connection in TIME_WAIT for about 60 seconds on Linux' with the reason 'stops late packets from corrupting a new connection that reuses the same 5-tuple'. Warning card in orange 'Thousands of short connections can exhaust ephemeral ports (32768 to 60999) or fill the table with TIME_WAIT entries'. Command strip 'ss -s', 'ss -tni dst 93.184.216.34 (rtt, cwnd, mss, retrans, bytes)'. Bottom bar: 'If your service opens thousands of short connections, watch the TIME_WAIT count before you scale it up'.",
+  "anchor": "## 10. Step 8: transfer, acknowledgements and teardown",
+  "alt": "Reordering segments with ACKs and a window, loss recovery by fast retransmit or timeout with a collapsing congestion window, and FIN teardown into TIME_WAIT.",
+  "cap": "Loss collapses the congestion window, and the side that closes first sits in TIME_WAIT for about 60 seconds, which thousands of short connections can pile up."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-bisect-strategies",
+  "title": "Two ways to find the broken layer: bottom up, or bisect from the middle",
+  "spec": "Two panels. Left panel 'Test bottom up' as a vertical chain of ten boxes with arrows, each box one test: 'link', 'address', 'route', 'ARP', 'ping the gateway', 'ping the destination', 'DNS', 'TCP port', 'TLS', 'HTTP'. A bracket labelled 'each layer fails in its own way'. Right panel 'Bisect from the middle' as a binary tree. Top diamond 'Can you reach the gateway?'. 'No' leads to 'look below: link, address, route, ARP'. 'Yes' leads to diamond 'Can you reach an IP on the Internet?'. 'No' leads to 'routing, NAT, firewall beyond the gateway'. 'Yes' leads to diamond 'Can you resolve names?'. 'No' leads to 'DNS: resolver, search domains, port 53'. 'Yes' leads to 'TCP, TLS or HTTP: use curl -v and the exit code'. Comparison note 'Bisecting is like finding a break in a long string of lights by testing the middle bulb first'. Footer 'Start with the layer the message points to, and test one layer at a time; check the client side first, including proxy settings and the DNS view'. Orange outline on the 'Can you reach an IP on the Internet?' diamond. Bottom bar: 'Method details are in chapter 2.30'.",
+  "anchor": "## 12. A map from symptom to layer",
+  "alt": "A ten step bottom up test chain beside a bisect decision tree that tests the gateway, then an Internet IP, then name resolution.",
+  "cap": "Test bottom up through ten layers, or bisect by checking the gateway, then an Internet IP, then name resolution."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-ai-journey",
+  "title": "The same journey for AI workloads: which steps each one uses",
+  "spec": "A matrix with rows for workloads and columns for the six stages 'DNS', 'route and ARP', 'TCP', 'TLS', 'HTTP', 'RDMA bypass'. Rows: 'Container image pull': DNS yes (registry name), TCP yes, TLS yes (often through a corporate proxy or mirror, authenticates), HTTP yes (layers over HTTP/2 or HTTP/1.1); note 'slow pulls: DNS, TLS chain or proxy, MTU black holes on cloud overlays, rate limits, a congested NAT gateway'. 'Object storage (GCS, S3)': HTTPS with many parallel connections; note 'per-connection throughput limited by RTT and window; per instance by the NIC and cloud caps; per prefix or bucket by quotas; private endpoints change DNS and path'. 'Cluster bootstrap (torchrun, MPI, NCCL rendezvous)': TCP on the management or front-end network; note 'depends on hostnames, DNS, /etc/hosts, NCCL_SOCKET_IFNAME'; then bulk transfer marked 'RDMA verbs over InfiniBand or RoCE bypass the kernel TCP/IP stack; GPUDirect RDMA reads GPU memory without CPU copies' in orange. 'Pod request': 'CoreDNS lookups with ndots:5, service virtual IPs translated by kube-proxy or eBPF through DNAT, a CNI veth or bridge or a VXLAN overlay, NetworkPolicy, then the node's normal path'. 'Cloud': 'the router and switch are virtual: VPC routing, firewall rules, NAT gateways, load balancers, peering'. Callout 'A cluster can show healthy RDMA traffic and still fail to start a job, because the ordinary TCP part broke first'. Second callout 'RDMA traffic is not visible to tcpdump, iptables or ss: use RDMA tools and NIC counters'. Bottom bar: 'List which steps a workload uses before you start troubleshooting its network'.",
+  "anchor": "## 13. The same journey in AI infrastructure",
+  "alt": "A matrix of AI workloads such as image pulls, object storage, cluster bootstrap with RDMA, pod requests and cloud traffic against the network stages each one uses or skips.",
+  "cap": "Every AI workload walks a version of the curl journey, and RDMA bulk transfers bypass the kernel TCP/IP stack while the control path still uses TCP."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p3-0201-lab-faults",
+  "title": "Break it on purpose: four faults and the symptom each one produces",
+  "spec": "A four row table with columns 'Fault to inject (undo it afterwards)', 'What you should observe', 'Layer it points to'. Row a 'Point /etc/resolv.conf at an unused IP (use a copy and restore the original)': 'a delay, then the resolve error (curl exit code 6); large time_namelookup': 'name resolution'. Row b 'sudo ip route del default (VM with console access only; restore with the original ip route add default via ...)': 'Network is unreachable (ENETUNREACH), exit code 7': 'routing'. Row c 'curl http://<server IP>:81/ against a closed port versus a port blocked by iptables -A OUTPUT -p tcp --dport 81 -j DROP': 'closed port gives Connection refused at once (RST); the DROP rule gives silence then Connection timed out (retries after 1 s, 2 s, 4 s)' in orange: 'transport'. Row d 'curl https://example.com --cacert /dev/null, or an expired-cert test host such as https://expired.badssl.com/': 'certificate verify failed, exit code 60': 'TLS and PKI'. Side column 'Companion checks': 'strace the request and list files, sockets, addresses', 'capture with sudo tcpdump -nn -i any -w curl.pcap and label DNS, SYN, SYN-ACK, ACK, ClientHello, ServerHello and Certificate, application data, FIN', 'ip route get <server IP> and flush the neighbour to see ARP', 'run curl -w five times; --resolve skips DNS; compare --http1.1 and --http2; a plain HTTP URL removes the TLS time'. Bottom bar: 'Write down which phase of your own run was the largest, and which layer it points to'.",
+  "anchor": "## 14. Hands-on lab: trace one request end to end",
+  "alt": "A table of four lab faults, a bad resolver, a deleted default route, a closed port versus a dropped port, and a bad certificate, with the symptom and layer each produces.",
+  "cap": "Each injected fault produces a distinct curl symptom that points to one layer: resolver, route, transport or TLS."
+ }
+]

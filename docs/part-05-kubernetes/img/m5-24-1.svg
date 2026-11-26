@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>Prometheus and the Operator</title>
+  <desc>Visual infographic of Prometheus and the Operator architecture including GPU worker node sources, observability pipeline, Alertmanager, and Thanos/Mimir long-term storage.</desc>
+
+  <defs>
+    <marker id="arrowhead" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="40" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Prometheus and the Operator</text>
+
+  
+  <rect x="40" y="115" width="360" height="655" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  <text x="65" y="155" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">GPU Worker Node</text>
+
+  
+  <rect x="55" y="180" width="330" height="315" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(80, 202)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="8" y="8" width="32" height="32" rx="4" />
+    <circle cx="24" cy="24" r="6" />
+    <line x1="16" y1="2" x2="16" y2="8" />
+    <line x1="24" y1="2" x2="24" y2="8" />
+    <line x1="32" y1="2" x2="32" y2="8" />
+    <line x1="16" y1="40" x2="16" y2="46" />
+    <line x1="24" y1="40" x2="24" y2="46" />
+    <line x1="32" y1="40" x2="32" y2="46" />
+    <line x1="2" y1="16" x2="8" y2="16" />
+    <line x1="2" y1="24" x2="8" y2="24" />
+    <line x1="2" y1="32" x2="8" y2="32" />
+    <line x1="40" y1="16" x2="46" y2="16" />
+    <line x1="40" y1="24" x2="46" y2="24" />
+    <line x1="40" y1="32" x2="46" y2="32" />
+  </g>
+  <text x="80" y="290" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="80" dy="0">cAdvisor /</tspan>
+    <tspan x="80" dy="36">kubelet</tspan>
+  </text>
+  <text x="80" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">node-exporter /</tspan>
+    <tspan x="80" dy="30">DCGM</tspan>
+    <tspan x="80" dy="32">App </tspan><tspan font-family="ui-monospace, monospace">/metrics</tspan><tspan> +</tspan>
+    <tspan x="80" dy="30">OTel SDK</tspan>
+  </text>
+
+  
+  <rect x="55" y="520" width="330" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(80, 540)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 10 6 L 30 6 L 40 16 L 40 44 L 10 44 Z" />
+    <polyline points="30,6 30,16 40,16" />
+    <line x1="16" y1="24" x2="34" y2="24" />
+    <line x1="16" y1="31" x2="34" y2="31" />
+    <line x1="16" y1="38" x2="26" y2="38" />
+  </g>
+  <text x="80" y="626" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="80" dy="0">Fluent Bit /</tspan>
+    <tspan x="80" dy="36">Alloy</tspan>
+  </text>
+  <text x="80" y="705" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="80" dy="0">(/var/log/pods</tspan>
+    <tspan x="80" dy="30" font-family="system-ui, -apple-system, sans-serif">+ journald)</tspan>
+  </text>
+
+  
+  <rect x="580" y="115" width="400" height="915" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  <text x="605" y="155" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Observability Pipeline</text>
+
+  
+  <rect x="600" y="180" width="360" height="340" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  
+  <g transform="translate(625, 202)" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 6 36 A 20 20 0 1 1 42 36" />
+    <line x1="24" y1="28" x2="34" y2="18" />
+    <circle cx="24" cy="28" r="3" fill="#db8129" />
+    <line x1="24" y1="8" x2="24" y2="13" />
+    <line x1="10" y1="18" x2="14" y2="21" />
+    <line x1="38" y1="18" x2="34" y2="21" />
+  </g>
+  <text x="625" y="290" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="625" dy="0">Prometheus</tspan>
+    <tspan x="625" dy="36">(Operator)</tspan>
+  </text>
+  <text x="625" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="625" dy="0">ServiceMonitor /</tspan>
+    <tspan x="625" dy="30">PodMonitor</tspan>
+    <tspan x="625" dy="32">PrometheusRule</tspan>
+    <tspan x="625" dy="30">(SLO burn)</tspan>
+  </text>
+
+  
+  <rect x="600" y="545" width="360" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(625, 565)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <ellipse cx="20" cy="12" rx="14" ry="5" />
+    <path d="M 6 12 L 6 32 C 6 35 12 37 20 37" />
+    <path d="M 34 12 L 34 20" />
+    <path d="M 6 22 C 6 25 12 27 20 27" />
+    <circle cx="33" cy="33" r="8" />
+    <line x1="39" y1="39" x2="47" y2="47" />
+  </g>
+  <text x="625" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Loki / OpenSearch</text>
+  <text x="625" y="694" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="625" dy="0">(Low-cardinality</tspan>
+    <tspan x="625" dy="30">labels)</tspan>
+  </text>
+
+  
+  <rect x="600" y="775" width="360" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(625, 795)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="12" cy="24" r="5" />
+    <circle cx="36" cy="12" r="5" />
+    <circle cx="36" cy="36" r="5" />
+    <line x1="17" y1="21" x2="31" y2="15" />
+    <line x1="17" y1="27" x2="31" y2="33" />
+    <circle cx="24" cy="24" r="2" fill="#207448" />
+  </g>
+  <text x="625" y="878" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="625" dy="0">OTel Collector -&gt;</tspan>
+    <tspan x="625" dy="36">Tempo / Jaeger</tspan>
+  </text>
+  <text x="625" y="958" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="625" dy="0">(Trace -&gt; Span -&gt;</tspan>
+    <tspan x="625" dy="30">Tags)</tspan>
+  </text>
+
+  
+  <rect x="1220" y="180" width="340" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(1245, 202)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 10 32 A 8 8 0 0 1 14 18 A 12 12 0 0 1 36 18 A 9 9 0 0 1 40 32 Z" />
+    <line x1="16" y1="38" x2="34" y2="38" />
+    <line x1="20" y1="44" x2="30" y2="44" />
+  </g>
+  <text x="1245" y="285" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Thanos / Mimir</text>
+  <text x="1245" y="328" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1245" dy="0">(S3 Long-Term Store</tspan>
+    <tspan x="1245" dy="30">+ Dedup)</tspan>
+  </text>
+
+  
+  <rect x="1220" y="420" width="340" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(1245, 440)" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 24 6 C 20 6 12 12 12 24 L 8 36 L 40 36 L 36 24 C 36 12 28 6 24 6 Z" />
+    <circle cx="24" cy="42" r="4" />
+    <path d="M 42 16 A 14 14 0 0 1 44 28" />
+  </g>
+  <text x="1245" y="525" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Alertmanager</text>
+  <text x="1245" y="568" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1245" dy="0">(Group / Inhibit /</tspan>
+    <tspan x="1245" dy="30">Route)</tspan>
+  </text>
+
+  
+
+  
+  <line x1="385" y1="330" x2="600" y2="330" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+  <rect x="408" y="295" width="170" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="493" y="324" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="493" dy="0">Pull scrape</tspan>
+    <tspan x="493" dy="28">(15s)</tspan>
+  </text>
+
+  
+  <line x1="960" y1="280" x2="1220" y2="280" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+  <rect x="985" y="245" width="210" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1090" y="274" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1090" dy="0">Remote Write /</tspan>
+    <tspan x="1090" dy="28">Sidecar</tspan>
+  </text>
+
+  
+  <line x1="960" y1="470" x2="1220" y2="470" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+  <rect x="980" y="435" width="220" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1090" y="464" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1090" dy="0">Firing alerts +</tspan>
+    <tspan x="1090" dy="28">Watchdog</tspan>
+  </text>
+
+  
+  <line x1="385" y1="645" x2="600" y2="645" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+</svg>

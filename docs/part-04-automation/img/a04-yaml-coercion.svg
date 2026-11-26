@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Unquoted values change type, quoted values stay text</title>
+  <desc>Visual infographic explaining how YAML 1.1 unquoted values are coerced to other types while quoted values remain text.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 10" refX="10" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Unquoted values change type, quoted values stay text</text>
+
+  
+  <g id="col-left-header">
+    <rect x="70" y="115" width="480" height="65" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(92, 123)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 4 L 28 4 L 40 16 L 40 44 L 6 44 Z"/>
+      <path d="M 28 4 L 28 16 L 40 16"/>
+      <line x1="14" y1="25" x2="32" y2="25" stroke-width="3"/>
+      <line x1="14" y1="33" x2="26" y2="33" stroke-width="3"/>
+    </g>
+    <text x="148" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">You write (unquoted)</text>
+  </g>
+
+  
+  <g id="col-right-header">
+    <rect x="840" y="115" width="650" height="65" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g transform="translate(862, 123)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round">
+      <ellipse cx="24" cy="11" rx="18" ry="6"/>
+      <path d="M 6 11 L 6 25 A 18 6 0 0 0 42 25 L 42 11"/>
+      <path d="M 6 25 L 6 39 A 18 6 0 0 0 42 39 L 42 25"/>
+    </g>
+    <text x="920" y="158" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">The parser stores</text>
+  </g>
+
+  
+  <g id="row-0">
+    
+    <rect x="170" y="210" width="280" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="310" y="256" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">NO</text>
+
+    
+    <text x="645" y="225" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">parser reads</text>
+    <line x1="465" y1="247" x2="825" y2="247" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="840" y="210" width="260" height="74" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="970" y="256" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#db8129">false</text>
+
+    
+    <rect x="1120" y="210" width="370" height="74" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="1305" y="256" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">the Norway problem</text>
+  </g>
+
+  
+  <g id="row-1">
+    
+    <rect x="170" y="305" width="280" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="310" y="351" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">1.10</text>
+
+    
+    <text x="645" y="320" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">parser reads</text>
+    <line x1="465" y1="342" x2="825" y2="342" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="840" y="305" width="260" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="970" y="351" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">1.1</text>
+  </g>
+
+  
+  <g id="row-2">
+    
+    <rect x="170" y="400" width="280" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="310" y="446" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">010</text>
+
+    
+    <text x="645" y="415" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">parser reads</text>
+    <line x1="465" y1="437" x2="825" y2="437" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="840" y="400" width="260" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="970" y="446" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">8</text>
+  </g>
+
+  
+  <g id="row-3">
+    
+    <rect x="170" y="495" width="280" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="310" y="541" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">22:30</text>
+
+    
+    <text x="645" y="510" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">parser reads</text>
+    <line x1="465" y1="532" x2="825" y2="532" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="840" y="495" width="260" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="970" y="541" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">a number</text>
+  </g>
+
+  
+  <g id="row-4">
+    
+    <rect x="170" y="590" width="280" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="310" y="636" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">0644</text>
+
+    
+    <text x="645" y="605" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">parser reads</text>
+    <line x1="465" y1="627" x2="825" y2="627" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="840" y="590" width="260" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="970" y="636" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">420</text>
+  </g>
+
+  
+  <g id="row-5">
+    
+    <rect x="170" y="685" width="280" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="310" y="731" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">~</text>
+
+    
+    <text x="645" y="700" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">parser reads</text>
+    <line x1="465" y1="722" x2="825" y2="722" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+    
+    <rect x="840" y="685" width="260" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="970" y="731" text-anchor="middle" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">null</text>
+  </g>
+
+  
+  <g id="bottom-panel">
+    <rect x="70" y="805" width="1460" height="225" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(100, 828)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 22 L 22 6 L 40 6 L 46 12 L 46 30 L 30 46 L 6 22 Z"/>
+      <circle cx="36" cy="16" r="3.5" fill="#207448"/>
+    </g>
+
+    
+    <text x="165" y="864" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Fix: quote it</text>
+
+    
+    <rect x="100" y="910" width="310" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="255" y="957" text-anchor="middle" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">country: &quot;NO&quot;</text>
+
+    
+    <rect x="440" y="910" width="280" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="580" y="957" text-anchor="middle" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448">mode: &quot;0644&quot;</text>
+
+    
+    <rect x="750" y="910" width="740" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1120" y="957" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">A quoted value is never reinterpreted.</text>
+  </g>
+</svg>

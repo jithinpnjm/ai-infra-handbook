@@ -1,0 +1,287 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Two ways to find the broken layer: bottom up, or bisect from the middle</title>
+  <desc>Visual comparison between bottom-up layer testing and bisection troubleshooting methods.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Two ways to find the broken layer:</tspan>
+    <tspan x="800" dy="54">bottom up, or bisect from the middle</tspan>
+  </text>
+
+  
+  <rect x="40" y="135" width="630" height="905" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="355" y="178" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Test bottom up</text>
+
+  
+  
+  <g transform="translate(60, 210)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 24 35 L 34 25 M 31 22 L 37 16 C 41 12 47 12 51 16 C 55 20 55 26 51 30 L 45 36 M 27 24 L 21 30 C 17 34 17 40 21 44 C 25 48 31 48 35 44 L 41 38" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">link</text>
+  </g>
+  <line x1="255" y1="270" x2="255" y2="288" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 288)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="20" y="16" width="34" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="30" cy="26" r="3" fill="#207448" />
+    <line x1="25" y1="36" x2="48" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">address</text>
+  </g>
+  <line x1="255" y1="348" x2="255" y2="366" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 366)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="25" cy="42" r="4" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="48" cy="18" r="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 25 38 C 25 26 48 34 48 22" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">route</text>
+  </g>
+  <line x1="255" y1="426" x2="255" y2="444" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 444)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="20" y="17" width="16" height="26" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 36 30 L 44 30 M 41 26 L 45 30 L 41 34" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+    <circle cx="51" cy="30" r="3" fill="#207448" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">ARP</text>
+  </g>
+  <line x1="255" y1="504" x2="255" y2="522" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 522)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="24" cy="30" r="4" fill="#207448" />
+    <path d="M 31 23 A 10 10 0 0 1 31 37 M 37 17 A 18 18 0 0 1 37 43" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <rect x="44" y="20" width="10" height="20" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">ping the gateway</text>
+  </g>
+  <line x1="255" y1="582" x2="255" y2="600" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 600)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="36" cy="30" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="36" cy="30" r="5" fill="#207448" />
+    <line x1="36" y1="12" x2="36" y2="48" stroke="#207448" stroke-width="2" />
+    <line x1="18" y1="30" x2="54" y2="30" stroke="#207448" stroke-width="2" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">ping the destination</text>
+  </g>
+  <line x1="255" y1="660" x2="255" y2="678" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 678)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 20 18 L 35 18 C 41 18 43 20 48 18 L 52 18 L 52 42 C 46 44 42 42 35 42 L 20 42 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="35" y1="18" x2="35" y2="42" stroke="#207448" stroke-width="3" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">DNS</text>
+  </g>
+  <line x1="255" y1="738" x2="255" y2="756" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 756)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="22" y="20" width="24" height="20" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="29" y1="26" x2="29" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="39" y1="26" x2="39" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <line x1="46" y1="30" x2="52" y2="30" stroke="#207448" stroke-width="3" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">TCP port</text>
+  </g>
+  <line x1="255" y1="816" x2="255" y2="834" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 834)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="22" y="26" width="26" height="20" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 28 26 L 28 21 C 28 17 32 14 35 14 C 38 14 42 17 42 21 L 42 26" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="35" cy="35" r="2.5" fill="#207448" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">TLS</text>
+  </g>
+  <line x1="255" y1="894" x2="255" y2="912" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(60, 912)">
+    <rect width="390" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="20" y="16" width="34" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="20" y1="24" x2="54" y2="24" stroke="#207448" stroke-width="2" />
+    <circle cx="25" cy="20" r="1.5" fill="#207448" />
+    <circle cx="30" cy="20" r="1.5" fill="#207448" />
+    <text x="130" y="40" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">HTTP</text>
+  </g>
+
+  
+  <path d="M 470 216 L 485 216 L 485 596 L 498 610 L 485 624 L 485 966 L 470 966" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="510" y="570" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="510" dy="0">each layer</tspan>
+    <tspan x="510" dy="32">fails in its</tspan>
+    <tspan x="510" dy="32">own way</tspan>
+  </text>
+
+  
+  <rect x="690" y="135" width="870" height="905" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1125" y="178" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Bisect from the middle</text>
+
+  
+  <rect x="715" y="196" width="820" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1125" y="224" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-style="italic" fill="#303a36" text-anchor="middle">
+    <tspan x="1125" dy="0">Bisecting is like finding a break in a long string of lights</tspan>
+    <tspan x="1125" dy="28">by testing the middle bulb first</tspan>
+  </text>
+
+  
+  
+  <g transform="translate(705, 332)">
+    <rect x="0" y="8" width="46" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="8" y1="22" x2="38" y2="22" stroke="#207448" stroke-width="3" />
+    <path d="M 16 16 L 8 22 L 16 28 M 30 16 L 38 22 L 30 28" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <polygon points="940,290 1115,350 940,410 765,350" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <text x="940" y="342" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="940" dy="0">Can you reach</tspan>
+    <tspan x="940" dy="32">the gateway?</tspan>
+  </text>
+
+  
+  <line x1="1115" y1="350" x2="1175" y2="350" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="1145" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">No</text>
+
+  
+  <rect x="1178" y="295" width="362" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1192, 326)">
+    <path d="M 22 4 L 40 14 L 22 24 L 4 14 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 4 23 L 22 33 L 40 23" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <path d="M 4 32 L 22 42 L 40 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="1248" y="340" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1248" font-size="26" font-weight="bold" fill="#207448">look below:</tspan>
+    <tspan x="1248" dy="32" font-size="24">link, address,</tspan>
+    <tspan x="1248" dy="28" font-size="24">route, ARP</tspan>
+  </text>
+
+  
+  <line x1="940" y1="410" x2="940" y2="470" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="965" y="446" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes</text>
+
+  
+  
+  <g transform="translate(705, 514)">
+    <circle cx="23" cy="23" r="20" fill="none" stroke="#db8129" stroke-width="3" />
+    <line x1="3" y1="23" x2="43" y2="23" stroke="#db8129" stroke-width="2.5" />
+    <ellipse cx="23" cy="23" rx="10" ry="20" fill="none" stroke="#db8129" stroke-width="2.5" />
+  </g>
+  <polygon points="940,472 1120,537 940,602 760,537" fill="#ffffff" stroke="#db8129" stroke-width="4.5" />
+  <text x="940" y="528" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="940" dy="0">Can you reach an IP</tspan>
+    <tspan x="940" dy="32">on the Internet?</tspan>
+  </text>
+
+  
+  <line x1="1120" y1="537" x2="1175" y2="537" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="1148" y="527" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">No</text>
+
+  
+  <rect x="1178" y="482" width="362" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1192, 513)">
+    <path d="M 22 4 L 40 10 L 40 24 C 40 36 22 44 22 44 C 22 44 4 36 4 24 L 4 10 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    <line x1="22" y1="12" x2="22" y2="36" stroke="#207448" stroke-width="2.5" />
+    <line x1="10" y1="24" x2="34" y2="24" stroke="#207448" stroke-width="2.5" />
+  </g>
+  <text x="1248" y="518" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1248" font-size="24" font-weight="bold" fill="#207448">routing, NAT,</tspan>
+    <tspan x="1248" dy="30" font-size="24">firewall beyond</tspan>
+    <tspan x="1248" dy="28" font-size="24">the gateway</tspan>
+  </text>
+
+  
+  <line x1="940" y1="602" x2="940" y2="662" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="965" y="638" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes</text>
+
+  
+  
+  <g transform="translate(705, 704)">
+    <rect x="4" y="6" width="36" height="34" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="12" y1="14" x2="32" y2="14" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="12" y1="22" x2="26" y2="22" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    <line x1="12" y1="30" x2="30" y2="30" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  </g>
+  <polygon points="940,664 1115,724 940,784 765,724" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  <text x="940" y="716" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="940" dy="0">Can you resolve</tspan>
+    <tspan x="940" dy="32">names?</tspan>
+  </text>
+
+  
+  <line x1="1115" y1="724" x2="1175" y2="724" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="1145" y="714" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">No</text>
+
+  
+  <rect x="1178" y="669" width="362" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1192, 700)">
+    <rect x="4" y="6" width="38" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="12" cy="13" r="2" fill="#207448" />
+    <circle cx="20" cy="13" r="2" fill="#207448" />
+    <rect x="4" y="26" width="38" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="12" cy="33" r="2" fill="#207448" />
+    <circle cx="20" cy="33" r="2" fill="#207448" />
+  </g>
+  <text x="1248" y="705" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1248" font-size="24" font-weight="bold" fill="#207448">DNS: resolver,</tspan>
+    <tspan x="1248" dy="30" font-size="24">search domains,</tspan>
+    <tspan x="1248" dy="28" font-size="24">port 53</tspan>
+  </text>
+
+  
+  <line x1="940" y1="784" x2="940" y2="850" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+  <text x="965" y="824" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">Yes</text>
+
+  
+  <rect x="715" y="852" width="825" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(738, 878)">
+    <rect x="0" y="0" width="52" height="46" rx="6" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 12 15 L 22 23 L 12 31" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <line x1="26" y1="31" x2="40" y2="31" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="815" y="894" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">TCP, TLS or HTTP:</text>
+  <text x="815" y="930" font-size="24" fill="#303a36">
+    <tspan font-family="system-ui, -apple-system, sans-serif">use </tspan>
+    <tspan font-family="ui-monospace, 'SF Mono', Menlo, Consolas, monospace" font-weight="bold" fill="#207448">curl -v</tspan>
+    <tspan font-family="system-ui, -apple-system, sans-serif"> and the exit code</tspan>
+  </text>
+
+  
+  <rect x="40" y="1055" width="1520" height="58" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="1079" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Start with the layer the message points to, and test one layer at a time;</tspan>
+    <tspan x="800" dy="26">check the client side first, including proxy settings and the DNS view</tspan>
+  </text>
+
+  
+  <rect x="40" y="1125" width="1520" height="50" rx="8" fill="#207448" />
+  <text x="800" y="1158" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Method details are in chapter 2.30</text>
+</svg>

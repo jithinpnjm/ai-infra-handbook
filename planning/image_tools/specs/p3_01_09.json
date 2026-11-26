@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p3-0109-param-path",
+  "title": "Cutting a path apart with parameter expansion, no external commands",
+  "spec": "Top: the string path=/data/run42/model.final.ckpt drawn as a long bar split into labelled segments: '/data/run42' then '/' then 'model.final' then '.' then 'ckpt'. Under the bar four bracket rows, each with the expression in monospace and its result. Row 1 '${path##*/}' removes the longest matching prefix up to the last slash: result 'model.final.ckpt' (same as basename). Row 2 '${path%/*}' removes the shortest matching suffix starting at the last slash: result '/data/run42' (same as dirname). Row 3 '${path%.*}' removes the shortest suffix starting at the last dot: result '/data/run42/model.final'. Row 4 '${path##*.}' removes the longest prefix up to the last dot: result 'ckpt'. Each row shows the removed part greyed out and the kept part in green. A small key at the side: '# / ## remove shortest / longest prefix', '% / %% remove shortest / longest suffix', '${#path} length'. Orange on the first row. Bottom strip with the guards: '${var:-default}', '${var:=default}', '${var:?message}'.",
+  "anchor": "### Parameter expansion: string work without extra processes",
+  "alt": "A path string split into segments with four parameter expansions showing which part is removed and what remains, such as basename and dirname equivalents.",
+  "cap": "Hash removes a prefix and percent removes a suffix, so bash can do basename and dirname work without starting a process."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p3-0109-and-or-trap",
+  "title": "a && b || c is not an if/else",
+  "spec": "Two side-by-side flow diagrams for the same three commands. Left panel 'if a; then b; else c; fi' (correct): start, diamond 'a succeeds?' yes goes to box 'b' then end; no goes to box 'c' then end. Right panel 'a && b || c' (trap): start, diamond 'a succeeds?'; yes goes to box 'b', then a second diamond 'b succeeded?' with yes to end and no to box 'c' (orange outlined, 'c runs even though a succeeded'); the first diamond's no arrow goes to box 'c'. Two arrows into box 'c' in the right panel are labelled 'a failed' and 'b failed'. Below, a short list of good one-line guards from the chapter in monospace: '[ -d \"$d\" ] || mkdir -p \"$d\"', 'command -v nvidia-smi >/dev/null || exit 0', 'cd \"$dir\" || exit 1', '[ -z \"$x\" ] && { echo \"empty\" >&2; exit 1; }'. Bottom note: '&& runs the next command only if the last one succeeded; || only if it failed'.",
+  "anchor": "### Logical constructs: `&&` and `||` as one-line conditionals",
+  "alt": "Two flow diagrams comparing an if else statement with a and b or c, showing that c also runs when b fails.",
+  "cap": "In a and b or c, command c runs both when a fails and when b fails, so it is not a true if else."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p3-0109-sbatch-anatomy",
+  "title": "Anatomy of a Slurm batch script: comments for Slurm, shell for the node",
+  "spec": "A script drawn as a tall card in monospace with numbered callout lines pointing to the right. Script lines: '#!/bin/bash', '#SBATCH --job-name=train --nodes=2 --ntasks-per-node=8 --gres=gpu:8 --time=04:00:00', '#SBATCH --output=%x-%j.out', 'set -euo pipefail', 'module purge && module load cuda/12.4 nccl', 'export NCCL_DEBUG=INFO', 'head_node=$(scontrol show hostnames \"$SLURM_JOB_NODELIST\" | head -n1)', 'srun --export=ALL bash -c ...', 'srun python train.py --master-addr \"$head_node\" \"$@\"'. Callouts with number circles: 1 'Shebang: bash, because the script uses bash features'; 2 '#SBATCH lines look like comments to the shell but Slurm reads them as resource requests: 2 nodes, 8 tasks per node, 8 GPUs per node, 4 hours'; 3 'strict mode: a failing step shows in the job exit code'; 4 'environment modules set the CUDA and NCCL environment'; 5 'scontrol show hostnames expands the node list; head -n1 picks the first node as the head node'; 6 'srun launches one task per rank on the allocated nodes'. Orange outline on the #SBATCH lines. Footer: 'The flags and variable names are illustrative; check the documentation for your versions'.",
+  "anchor": "## 12. AI-infrastructure patterns",
+  "alt": "An annotated Slurm batch script with callouts for the shebang, SBATCH resource directives, strict mode, modules, head node discovery and srun launches.",
+  "cap": "The SBATCH lines are comments to the shell but resource requests to Slurm, and the rest is ordinary bash that runs on the allocated nodes."
+ }
+]

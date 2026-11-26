@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four encoding settings, and the 5, 7 and 5 byte worked example</title>
+  <desc>Four encoding settings, and the 5, 7 and 5 byte worked example</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Four encoding settings, and the 5, 7 and 5 byte worked example</text>
+
+  
+  <g id="left-panel">
+    <rect x="40" y="110" width="480" height="920" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(62, 130)">
+      <rect x="4" y="2" width="46" height="52" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="14" y1="16" x2="40" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="14" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="14" y1="40" x2="26" y2="40" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="136" y="170" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">AÄBèC</text>
+
+    
+    <rect x="60" y="215" width="440" height="74" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="76" y="260" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">len = 5 characters</text>
+
+    
+    <rect x="60" y="303" width="440" height="152" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="76" y="340" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="76">.encode(utf-8) = 7 bytes:</tspan>
+      <tspan x="76" dy="28">b"A\xc3\x84B\xc3\xa8C"</tspan>
+      <tspan x="76" dy="28">(the two accented characters</tspan>
+      <tspan x="76" dy="28">need 2 bytes each)</tspan>
+    </text>
+
+    
+    <rect x="60" y="469" width="440" height="152" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="76" y="506" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="76">.encode(latin-1) = 5 bytes:</tspan>
+      <tspan x="76" dy="28">b"A\xc4B\xe8C"</tspan>
+      <tspan x="76" dy="28">(one byte per code point</tspan>
+      <tspan x="76" dy="28">from 0 to 255)</tspan>
+    </text>
+
+    
+    <rect x="60" y="635" width="440" height="124" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="2.5"/>
+    <text x="76" y="673" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="76">.encode(ascii) raises</tspan>
+      <tspan x="76" dy="28">UnicodeEncodeError</tspan>
+      <tspan x="76" dy="28">(no room for either accent)</tspan>
+    </text>
+
+    
+    <rect x="60" y="773" width="440" height="152" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="76" y="810" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="76">ord(a) == 97 == 0x61,</tspan>
+      <tspan x="76" dy="28">ord(Ä) == 196 == 0xc4,</tspan>
+      <tspan x="76" dy="28">ord of the smiling face ==</tspan>
+      <tspan x="76" dy="28">128578 == 0x1f642</tspan>
+    </text>
+  </g>
+
+  
+  <g id="centre-panel">
+    <rect x="560" y="110" width="480" height="920" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(582, 130)">
+      <circle cx="27" cy="27" r="12" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M27,5 L27,11 M27,43 L27,49 M5,27 L11,27 M43,27 L49,27 M11,11 L16,16 M38,38 L43,43 M11,43 L16,38 M38,16 L43,11" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="652" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      <tspan x="652">Four settings that</tspan>
+      <tspan x="652" dy="32">cause surprises</tspan>
+    </text>
+
+    
+    <rect x="580" y="215" width="440" height="80" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="596" y="250" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="596">sys.getdefaultencoding()</tspan>
+      <tspan x="596" dy="27">returns utf-8</tspan>
+    </text>
+
+    
+    <rect x="580" y="309" width="440" height="188" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="596" y="342" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="596">locale.getpreferredencoding(</tspan>
+      <tspan x="596" dy="27">False) is the default for</tspan>
+      <tspan x="596" dy="27">open() when you omit</tspan>
+      <tspan x="596" dy="27">encoding=; with LANG=C it</tspan>
+      <tspan x="596" dy="27">can be ANSI_X3.4-1968 or</tspan>
+      <tspan x="596" dy="27">ASCII; on Windows cp1252</tspan>
+    </text>
+
+    
+    <rect x="580" y="511" width="440" height="106" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="596" y="545" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="596">sys.stdout.encoding controls</tspan>
+      <tspan x="596" dy="27">print output,</tspan>
+      <tspan x="596" dy="27">PYTHONIOENCODING overrides it</tspan>
+    </text>
+
+    
+    <rect x="580" y="631" width="440" height="214" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="596" y="663" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="596">sys.getfilesystemencoding()</tspan>
+      <tspan x="596" dy="27">covers OS file names;</tspan>
+      <tspan x="596" dy="27">os.listdir and os.walk</tspan>
+      <tspan x="596" dy="27">return str for a str</tspan>
+      <tspan x="596" dy="27">directory and bytes for a</tspan>
+      <tspan x="596" dy="27">bytes directory such as</tspan>
+      <tspan x="596" dy="27">os.walk(b".")</tspan>
+    </text>
+
+    
+    <rect x="580" y="859" width="440" height="134" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="596" y="893" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="596">set PYTHONUTF8=1 or -X utf8</tspan>
+      <tspan x="596" dy="27">(PEP 540, 597, 686), and</tspan>
+      <tspan x="596" dy="27">still pass encoding="utf-8"</tspan>
+      <tspan x="596" dy="27">explicitly</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="1080" y="110" width="480" height="920" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1102, 130)">
+      <path d="M27,4 L47,12 L47,28 C47,40 37,49 27,53 C17,49 7,40 7,28 L7,12 Z" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="27" y1="18" x2="27" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="27" cy="38" r="2.5" fill="#207448"/>
+    </g>
+    <text x="1170" y="170" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Error and BOM cases</text>
+
+    
+    <rect x="1100" y="215" width="440" height="240" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="1116" y="247" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="1116">UnicodeDecodeError: bytes</tspan>
+      <tspan x="1116" dy="27">not valid in the assumed</tspan>
+      <tspan x="1116" dy="27">encoding; UnicodeEncodeError:</tspan>
+      <tspan x="1116" dy="27">the target codec cannot</tspan>
+      <tspan x="1116" dy="27">represent some characters;</tspan>
+      <tspan x="1116" dy="27">errors=ignore, replace,</tspan>
+      <tspan x="1116" dy="27">xmlcharrefreplace,</tspan>
+      <tspan x="1116" dy="27">backslashreplace</tspan>
+    </text>
+
+    
+    <rect x="1100" y="469" width="440" height="132" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="1116" y="503" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="1116">diagnose with file -i,</tspan>
+      <tspan x="1116" dy="27">chardet, charset-normalizer</tspan>
+      <tspan x="1116" dy="27">or bytes.decode(utf-8,</tspan>
+      <tspan x="1116" dy="27">errors=replace)</tspan>
+    </text>
+
+    
+    <rect x="1100" y="615" width="440" height="186" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="1116" y="648" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="1116">opaque filenames: os.fsdecode</tspan>
+      <tspan x="1116" dy="27">and os.fsencode with</tspan>
+      <tspan x="1116" dy="27">surrogateescape (PEP 383)</tspan>
+      <tspan x="1116" dy="27">maps each lone byte</tspan>
+      <tspan x="1116" dy="27">0x80..0xFF to U+DC80..U+DCFF</tspan>
+      <tspan x="1116" dy="27">and restores the exact bytes</tspan>
+    </text>
+
+    
+    <rect x="1100" y="815" width="440" height="132" rx="8" fill="#ffffff" stroke="#b2d2bd" stroke-width="1.5"/>
+    <text x="1116" y="849" font-family="ui-monospace, Menlo, Consolas, monospace" font-size="24" fill="#303a36">
+      <tspan x="1116">BOM: utf-16-le starts</tspan>
+      <tspan x="1116" dy="27">b"\xff\xfe", utf-16-be starts</tspan>
+      <tspan x="1116" dy="27">b"\xfe\xff", utf-8-sig strips</tspan>
+      <tspan x="1116" dy="27">the UTF-8 BOM b"\xef\xbb\xbf"</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1060" width="1520" height="80" rx="12" fill="#207448"/>
+    <text x="800" y="1109" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Always pass encoding="utf-8": a setting you wrote down is one you can read again in six months</text>
+  </g>
+</svg>

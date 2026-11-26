@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>Which timestamp changes when you do what to a file</title>
+  <desc>A matrix comparing how file operations alter mtime, ctime, and atime in Linux, highlighting relatime behavior and the immutable progression of ctime.</desc>
+
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which timestamp changes when you do what to a file</text>
+
+  
+  <g transform="translate(1080, 48)">
+    <circle cx="20" cy="16" r="14" fill="#207448"/>
+    <text x="46" y="24" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">changes</text>
+    
+    <circle cx="180" cy="16" r="13" fill="none" stroke="#303a36" stroke-width="4"/>
+    <text x="206" y="24" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">unchanged</text>
+  </g>
+
+  
+  
+  <g transform="translate(50, 110)">
+    <rect width="450" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <rect x="24" y="28" width="56" height="54" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 38 48 L 50 60 L 38 72" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="56" y1="72" x2="68" y2="72" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="96" y="74" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">action</text>
+  </g>
+
+  
+  <g transform="translate(520, 110)">
+    <rect width="210" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="48" cy="55" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="48,40 48,55 58,55" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="84" y="48" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">mtime</text>
+    <text x="84" y="78" font-family="sans-serif" font-size="24" fill="#303a36">(contents written)</text>
+  </g>
+
+  
+  <g transform="translate(750, 110)">
+    <rect width="210" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="48" cy="55" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="48,40 48,55 58,55" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="84" y="48" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">ctime</text>
+    <text x="84" y="78" font-family="sans-serif" font-size="24" fill="#303a36">(inode changed)</text>
+  </g>
+
+  
+  <g transform="translate(980, 110)">
+    <rect width="210" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="48" cy="55" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="48,40 48,55 58,55" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="84" y="48" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">atime</text>
+    <text x="84" y="78" font-family="sans-serif" font-size="24" fill="#303a36">(file read)</text>
+  </g>
+
+  
+  <g transform="translate(50, 240)">
+    <rect width="450" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="24" y="54" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">echo more &gt;&gt; f1</text>
+    <text x="24" y="94" font-family="sans-serif" font-size="24" fill="#586761">(append)</text>
+  </g>
+  
+  <g transform="translate(520, 240)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="26" fill="#207448"/>
+  </g>
+  
+  <g transform="translate(750, 240)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="26" fill="#207448"/>
+  </g>
+  
+  <g transform="translate(980, 240)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="24" fill="none" stroke="#303a36" stroke-width="4"/>
+  </g>
+
+  
+  <g transform="translate(50, 390)">
+    <rect width="450" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="24" y="54" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">chmod 600 f1</text>
+    <text x="24" y="94" font-family="sans-serif" font-size="24" fill="#586761">(permissions)</text>
+  </g>
+  
+  <g transform="translate(520, 390)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="24" fill="none" stroke="#303a36" stroke-width="4"/>
+  </g>
+  
+  <g transform="translate(750, 390)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="5"/>
+    <circle cx="105" cy="65" r="26" fill="#207448"/>
+  </g>
+  
+  <g transform="translate(980, 390)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="24" fill="none" stroke="#303a36" stroke-width="4"/>
+  </g>
+
+  
+  <g transform="translate(50, 540)">
+    <rect width="450" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="24" y="54" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">cat f1</text>
+    <text x="24" y="94" font-family="sans-serif" font-size="24" fill="#586761">(read)</text>
+  </g>
+  
+  <g transform="translate(520, 540)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="24" fill="none" stroke="#303a36" stroke-width="4"/>
+  </g>
+  
+  <g transform="translate(750, 540)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="24" fill="none" stroke="#303a36" stroke-width="4"/>
+  </g>
+  
+  <g transform="translate(980, 540)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="45" r="22" fill="#207448"/>
+    <text x="105" y="100" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">rarely: relatime</text>
+  </g>
+
+  
+  <g transform="translate(50, 690)">
+    <rect width="450" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="24" y="44" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">ln f1 f2</text>
+    <text x="24" y="78" font-family="sans-serif" font-size="24" fill="#586761">(new hard link,</text>
+    <text x="24" y="108" font-family="sans-serif" font-size="24" fill="#586761">link count changes)</text>
+  </g>
+  
+  <g transform="translate(520, 690)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="24" fill="none" stroke="#303a36" stroke-width="4"/>
+  </g>
+  
+  <g transform="translate(750, 690)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="45" r="22" fill="#207448"/>
+    <text x="105" y="100" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#586761">(link count)</text>
+  </g>
+  
+  <g transform="translate(980, 690)">
+    <rect width="210" height="130" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="65" r="24" fill="none" stroke="#303a36" stroke-width="4"/>
+  </g>
+
+  
+  <g transform="translate(50, 840)">
+    <rect width="450" height="150" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="24" y="52" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">touch -d</text>
+    <text x="24" y="88" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">&quot;2026-01-01 12:00&quot; f1</text>
+  </g>
+  
+  <g transform="translate(520, 840)">
+    <rect width="210" height="150" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="75" r="26" fill="#207448"/>
+  </g>
+  
+  <g transform="translate(750, 840)">
+    <rect width="210" height="150" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="40" r="22" fill="#207448"/>
+    <text x="105" y="90" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">ctime still moves,</text>
+    <text x="105" y="122" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">cannot be set</text>
+  </g>
+  
+  <g transform="translate(980, 840)">
+    <rect width="210" height="150" rx="10" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <circle cx="105" cy="75" r="26" fill="#207448"/>
+  </g>
+
+  
+  <g transform="translate(1220, 110)">
+    <rect width="330" height="880" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    
+    <circle cx="56" cy="56" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="56" y1="46" x2="56" y2="48" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+    <line x1="56" y1="56" x2="56" y2="70" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    
+    <text x="96" y="65" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Inspection</text>
+
+    
+    <rect x="20" y="120" width="290" height="130" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="36" y="170" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">stat</text>
+    <text x="36" y="212" font-family="sans-serif" font-size="24" fill="#303a36">shows all three</text>
+
+    
+    <rect x="20" y="280" width="290" height="130" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="36" y="330" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">ls -l</text>
+    <text x="36" y="372" font-family="sans-serif" font-size="24" fill="#303a36">shows mtime</text>
+
+    
+    <rect x="20" y="440" width="290" height="130" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="36" y="490" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">ls -lc</text>
+    <text x="36" y="532" font-family="sans-serif" font-size="24" fill="#303a36">ctime</text>
+
+    
+    <rect x="20" y="600" width="290" height="130" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="2"/>
+    <text x="36" y="650" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">ls -lu</text>
+    <text x="36" y="692" font-family="sans-serif" font-size="24" fill="#303a36">atime</text>
+  </g>
+
+  
+  <g transform="translate(50, 1020)">
+    <rect width="1500" height="80" rx="12" fill="#207448"/>
+    <text x="750" y="1070" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">ctime is not the creation time</text>
+  </g>
+</svg>

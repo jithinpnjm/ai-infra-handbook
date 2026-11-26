@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>The State, Optimisation, Surface triangle</title>
+  <desc>Visual explanation of the State, Optimisation, and Surface trade-off triangle and related infrastructure examples.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">The State, Optimisation, Surface triangle</text>
+
+  
+
+  
+  <rect x="260" y="120" width="480" height="185" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(285, 138)">
+    <path d="M 5 36 A 20 20 0 1 1 43 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="24" y1="28" x2="35" y2="16" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="24" cy="28" r="3" fill="#207448" />
+  </g>
+  <text x="345" y="168" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Optimisation:</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="285" y="212">how well resources are used,</tspan>
+    <tspan x="285" y="246">shortest paths, load balance,</tspan>
+    <tspan x="285" y="280">low latency, cost</tspan>
+  </text>
+
+  
+  <rect x="50" y="520" width="420" height="205" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(75, 538)">
+    <ellipse cx="22" cy="10" rx="18" ry="6" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 4 10 v 12 a 18 6 0 0 0 36 0 v -12" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 4 22 v 12 a 18 6 0 0 0 36 0 v -12" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="135" y="568" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">State:</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" y="615">what devices must hold,</tspan>
+    <tspan x="75" y="652">routes, ACLs, MAC tables,</tspan>
+    <tspan x="75" y="689">flows</tspan>
+  </text>
+
+  
+  <rect x="550" y="520" width="450" height="225" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(575, 538)">
+    <circle cx="10" cy="12" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="38" cy="12" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="24" cy="36" r="6" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="16" y1="12" x2="32" y2="12" stroke="#207448" stroke-width="3" />
+    <line x1="14" y1="17" x2="21" y2="31" stroke="#207448" stroke-width="3" />
+    <line x1="34" y1="17" x2="27" y2="31" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="635" y="568" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Surface:</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="575" y="612">where components interact,</tspan>
+    <tspan x="575" y="646">protocols, interfaces,</tspan>
+    <tspan x="575" y="680">configuration touch points,</tspan>
+    <tspan x="575" y="714">failure interactions</tspan>
+  </text>
+
+  
+
+  
+  <rect x="90" y="350" width="340" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="260" y="388">less state tends to</tspan>
+    <tspan x="260" y="420">cost optimisation</tspan>
+    <tspan x="260" y="452">or add surfaces</tspan>
+  </text>
+  <path d="M 120 520 C 65 480 65 320 252 240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="570" y="350" width="370" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="755" y="388">more optimisation tends</tspan>
+    <tspan x="755" y="420">to need more state</tspan>
+    <tspan x="755" y="452">or more surfaces</tspan>
+  </text>
+  <path d="M 740 240 C 970 300 970 450 880 512" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="270" y="765" width="460" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="500" y="802">less surface tends to cost</tspan>
+    <tspan x="500" y="834">optimisation or state</tspan>
+  </text>
+  <path d="M 800 745 L 800 865 L 220 865 L 220 733" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1035" y="120" width="515" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1065, 145)">
+    <circle cx="22" cy="22" r="20" fill="none" stroke="#207448" stroke-width="3" />
+    <polygon points="22,6 31,31 22,25 13,31" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+  </g>
+  <text x="1125" y="175" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Sat-nav:</text>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065" y="230">the absolute fastest route means</tspan>
+    <tspan x="1065" y="270">tracking live traffic everywhere</tspan>
+    <tspan x="1065" y="310">(more state) and trusting</tspan>
+    <tspan x="1065" y="350">more moving parts (more surface)</tspan>
+  </text>
+
+  
+  <rect x="1035" y="450" width="515" height="395" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(1065, 475)">
+    <rect x="0" y="0" width="46" height="12" rx="3" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="8" cy="6" r="2" fill="#db8129" />
+    <rect x="0" y="16" width="46" height="12" rx="3" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="8" cy="22" r="2" fill="#db8129" />
+    <rect x="0" y="32" width="46" height="12" rx="3" fill="none" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="8" cy="38" r="2" fill="#db8129" />
+  </g>
+  <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1065" y="580">rail-optimised topology</tspan>
+    <tspan x="1065" y="625">exception, custom NCCL</tspan>
+    <tspan x="1065" y="670">topology file, per-tenant</tspan>
+    <tspan x="1065" y="715">policy: count the state</tspan>
+    <tspan x="1065" y="760">and surface of each</tspan>
+  </text>
+
+  
+  <rect x="50" y="875" width="1500" height="135" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(75, 915)">
+    <line x1="5" y1="15" x2="55" y2="15" stroke="#207448" stroke-width="3" stroke-dasharray="4,4" />
+    <path d="M 5 45 Q 30 5 55 45" fill="none" stroke="#207448" stroke-width="3.5" />
+    <circle cx="5" cy="30" r="4" fill="#207448" />
+    <circle cx="55" cy="30" r="4" fill="#207448" />
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" y="930" font-weight="bold">Stretch = the shortest physical path versus the path traffic actually takes;</tspan>
+    <tspan x="155" y="970">any policy such as traffic engineering or PBR increases stretch</tspan>
+  </text>
+
+  
+  <rect x="50" y="1035" width="1500" height="85" rx="16" fill="#207448" />
+  <text x="800" y="1088" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">If you have not found the trade-off, you have not looked hard enough</text>
+</svg>

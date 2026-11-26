@@ -26,6 +26,10 @@ In a real round the follow-up often arrives while you are still drawing, and it 
 
 ### 1. A failing GPU shows up in three places before the customer notices
 
+![Three columns for hardware counters, physical state and workload comparison, with the workload check catching quiet throttling.](./img/p3-2016-three-places.svg)
+
+*Figure 20.16.1. Comparing a replica to the fleet median catches the slowdown that no counter reports.*
+
 Picture a replica serving a model on eight GPUs, the processors that do the arithmetic for the model. One GPU starts to overheat and slows down. Every token step waits for the slowest GPU, so the whole replica gets slower. A token is a short piece of text the model writes, one after another. The customer sees a worse time to first token, which is the wait before the first word of the answer appears, long before anything crashes. The failure is real, but no error appears anywhere, and that is exactly why it is hard to catch.
 
 So where should a design look? You can catch that failure in three places. The hardware reports its own errors, which are Xid messages, ECC counters, PCIe replays and NVLink errors. Xid is NVIDIA's numbered code for GPU faults. ECC means error-correcting memory, and its counters tell you when memory had to fix a bit. PCIe is the bus that connects the GPU to the host machine, and NVLink is the fast link between GPUs. The physical state shows stress, which means temperature, power and clock throttling. Throttling is when the GPU slows itself down to protect its hardware. The workload shows the effect, which means tokens per second per GPU compared with its peers. A good design watches all three, because each one misses failures that the others catch.
@@ -35,6 +39,10 @@ The third place is the one most designs skip, and it catches the quiet failures.
 **Watch the hardware, the physical state and the workload, because each one hides failures from the others.**
 
 ### 2. The signals, with their real names
+
+![A timeline where the Xid gauge stays at 79 after repair and a naive equals-79 alert keeps firing.](./img/p3-2016-xid-gauge-trap.svg)
+
+*Figure 20.16.2. Alert on the Xid value together with how recently it changed.*
 
 It is the middle of the night and an alert names a metric you have to explain on the spot. Before anyone acts, you must say what it means. NVIDIA's DCGM exporter publishes GPU counters as Prometheus metrics on port 9400. DCGM is NVIDIA's data center GPU manager, and the exporter is the small program that turns its counters into a format Prometheus can scrape. The version I checked is 4.9.0, released 2026-11-06. An important detail: in that release's default counter file, the ECC, throttle and NVLink error counters are present but commented out. You must enable them in your own counters file before they appear. Metric names have also changed between releases, so check `/metrics` on your version before you copy a name. The exporter listens on `:9400` by default. In the 4.9.0 source, GPU series carry the labels `gpu`, `UUID`, `pci_bus_id`, `device` and `modelName`, and host-level series carry `hostname`. The `UUID` label name is selectable in the source, so confirm it on your build. In Kubernetes, `pod`, `namespace` and `container` labels appear only when the exporter's pod mapping is enabled. Labels are the key-value tags on each series, and they let a query narrow down to one GPU or one node. The rules in this chapter select on `instance` and `gpu`.
 
@@ -58,6 +66,10 @@ AI Systems Performance Engineering, chapter 16, says that DCGM tracks Xid counte
 **Verify each metric name against `/metrics` on your exporter version before you write an alert on it.**
 
 ### 3. What each Xid means for the fleet
+
+![An Xid code is ignored, marked suspect, or drained, depending on its catalog action and on whether an application-level code repeats three times within an hour.](./img/x16-xid-policy.svg)
+
+*Figure 20.16.3. The catalog says what one GPU needs, and the fleet policy turns that into ignore, suspect or drain while remembering repeats on each node.*
 
 Now the alert says "Xid 79", and the kernel log shows the same line. An on-call engineer needs to know what to do in the next minute, not in the next hour. NVIDIA's Xid catalog gives each code an immediate action. I fetched it on 2026-11-09. The page shows no version number, so treat the table below as a snapshot and not as a permanent fact. When the catalog's action and your own policy disagree, write down the reason before you act.
 
@@ -86,6 +98,10 @@ One rule turns suspects into drains, and it exists because a single application 
 
 ### 4. Passive and active checks
 
+![Passive versus active checks with the four dcgmi diag levels, their durations, and where each runs in the lifecycle.](./img/p3-2016-passive-active-ladder.svg)
+
+*Figure 20.16.4. Use passive checks to find faults and active checks to prove a node before it returns.*
+
 A passive check reads what the hardware already reports, and it is the first thing a fleet monitor should run. Picture a smoke alarm that only sounds when smoke is already in the room. That is cheap and always on, and it is what a passive check is. Its weakness is that it only sees faults that already produced an error. An active check does work on the GPU and compares the result with what a healthy GPU does. It finds weak hardware that has not failed yet, but it uses the GPU, so the node usually has to be out of service while it runs.
 
 DCGM ships an active check, `dcgmi diag`, with four run levels. You pick the level before the run, and the higher levels take longer. The documentation gives the durations below. The Diagnostic plugin multiplies large matrices while watching for Xids, temperature violations and memory errors. Multiplying large matrices is a heavy workload that pushes the GPU hard, and that is the point of the test. The same heavy work is why it cannot share the GPU with customer work.
@@ -107,6 +123,10 @@ My mapping is reasoning, not Nebius practice, and it is simple. Passive signals 
 
 ### 5. Kubernetes node problem detector: where it fits
 
+![Three boxes for detect, decide and act showing node problem detector feeding a custom controller that calls cordon and drain.](./img/p3-2016-detect-decide-act.svg)
+
+*Figure 20.16.5. Node problem detector reports problems but the repair logic is yours to build.*
+
 The signals above live in GPU land, but Kubernetes only sees nodes, so somebody has to carry the news across. The Kubernetes documentation describes node problem detector as a daemon that collects node problems from various daemons and reports them to the API server as node conditions or as events. A daemon is a background program that runs on every node, and the API server is the front door of the cluster's control plane. A condition marks a lasting state of the node. An event reports something that happened once. Think of a condition as a sign on the door and an event as a note in the logbook.
 
 I read the whole node problem detector page on 2026-11-09. It says the daemon reports problems as node conditions for permanent faults and as events for temporary ones, and it says nothing about repair. That silence is useful. It tells you that detection and remediation are separate jobs, so you must build the repair part yourself. My reading is that a controller of your own watches the conditions, applies the policy from section 3, and calls the cordon and drain APIs. A controller is a program that keeps comparing what you want with what you have, and then acts to close the gap. The capstone in Part 19, chapter 6, builds such a controller and the Go code lives in `code/gpuhealth`. The GPU Operator, described in Part 11 chapter 4, deploys the driver, the DCGM exporter and the validator as node daemons. The operator docs I fetched list them as components but say little about what the validator checks, so read chapter 11.4 for the mechanism.
@@ -115,23 +135,15 @@ I read the whole node problem detector page on 2026-11-09. It says the daemon re
 
 ### 6. The node lifecycle
 
+![Four words for a node out of service: cordon sends no new work, drain moves work off, quarantine holds the node out, and validation runs the active checks.](./img/p2-2016-node-words.svg)
+
+*Figure 20.16.6. Cordon, drain, quarantine and validation are the four words for a node out of service, and a node counts against the budget until it is proven healthy.*
+
 Picture a node that a monitor flagged on Tuesday night. Someone cordoned it, the work moved off, a technician swapped a part, and then the node came back, or did not. A node does not go from broken to fixed in one step. It passes through states, and each state has an owner and a time limit. Make this explicit in the design. Most silent capacity loss comes from a node that entered a state nobody was watching.
 
-```mermaid
-flowchart LR
-  H["Healthy"] -->|"soft signal"| S["Suspect"]
-  S -->|"clean for a while"| H
-  H -->|"hard signal"| C["Cordoned"]
-  S -->|"hard signal"| C
-  C --> D["Draining"]
-  D --> Q["Quarantined"]
-  Q --> R["Repairing"]
-  R -->|"vendor swap"| M["RMA"]
-  M --> V["Validating"]
-  R --> V
-  V -->|"diag passes"| H
-  V -->|"diag fails"| Q
-```
+![The node lifecycle](./img/m20-16-1.svg)
+
+*Figure 20.16.7. The node lifecycle, as a diagram.*
 
 Four words carry this whole section, and the interviewer will check that you use them correctly. Cordon means "send no new work". Drain means "move the existing work off". Quarantine means "this node is out until a human or a repair process clears it". Validation means "run the active checks". The state machine in the code below enforces these moves. It refuses an illegal jump, such as repairing a node that was never drained, by raising an error.
 
@@ -140,6 +152,10 @@ One detail matters for safety, and it is easy to miss. In the code a node holds 
 **Give every state an owner and a maximum time, and keep the node counted as lost until it is proven healthy.**
 
 ### 7. Blast radius: how automation avoids draining the fleet
+
+![Four limits on automated drains stop the seventh flagged node after four cordons, and the circuit breaker freezes the fleet at 196 of 200 serving.](./img/x16-blast-radius.svg)
+
+*Figure 20.16.8. Blast-radius limits make automation stop and hand over to a human when many nodes fail together.*
 
 Think about a bad driver rollout, a wrong exporter configuration or a power event. Many nodes can look sick at the same moment for a reason that is not hardware. An automation that obeys every signal will cordon them all, and capacity falls to zero while the dashboard says you are healthy. This is the most important failure mode of the whole design, and it is what the interviewer is waiting for you to raise. Say it early, before they ask.
 
@@ -352,6 +368,14 @@ A cordon on its own is cheap, since no work is lost. It still removes capacity, 
 
 ### 8. Spare pool and X+1 sizing
 
+![A table showing spares rising from 2 to 7 as repair time grows, beside a comparison of pooled and per-customer spares.](./img/p3-2016-repair-time-spares.svg)
+
+*Figure 20.16.9. A slower repair loop raises the spare count from three to seven without any change in failure rate.*
+
+![A 512-node fleet with 10 percent annual failure and 72-hour repairs averages 0.42 nodes in repair and needs 3 spares for 99.9 percent coverage.](./img/x16-spare-math.svg)
+
+*Figure 20.16.10. The average number of nodes in repair is failure rate times repair time, and a Poisson tail turns that average into a spare count.*
+
 Suppose a customer buys 30 replicas on a dedicated endpoint, which is a private serving setup for one customer, and the platform promises 99.9 percent availability. Availability here means the share of time the endpoint can answer requests. If one node fails and the only copy of that capacity is the node, the promise is broken until repair finishes. A spare pool is a set of healthy nodes kept ready to take the place of failed ones. The question is how many spares the pool needs.
 
 X+1 means you need X units to serve the load and you keep one more. It is the right idea but the wrong size for a large fleet, because one spare for a whole fleet is too few for some groups and wasteful for others. The right size depends on two numbers: how often nodes need repair and how long repair takes. Little's law gives the average number of nodes in repair at any moment, which is the arrival rate multiplied by the time each node stays. Little's law is a plain identity from queueing theory: the average number in a system equals the rate of arrivals times the average time each one spends there. Repair arrivals are rare and independent, so a Poisson model gives the chance that more than the average are out together. A Poisson model assumes events arrive at random, at a steady average rate, with no memory of the past.
@@ -429,6 +453,10 @@ if __name__ == "__main__":
 
 ### 9. Silent capacity loss: nodes that never rejoin
 
+![Ways a node can go missing quietly and the three defence layers that each catch a different kind of silence.](./img/p3-2016-silent-capacity-layers.svg)
+
+*Figure 20.16.11. No single layer is enough because each one catches a different kind of silence.*
+
 Picture an on-call shift where every dashboard panel is green, yet the customer's requests are slower and the capacity graph slopes down. The Nebius case study describes workers that restarted and sometimes did not rejoin the pool. Capacity shrank without any alert, because every alert was about a failure and nothing had failed. The pool was simply smaller. This is the hardest class of problem to see, since the evidence is an absence, and an absence does not fire an alarm.
 
 A node can go missing in many ways, and each one looks like a normal node from far away. It was cordoned and the uncordon step never ran, so it stays out of service with no ticket to bring it back. Uncordon is the reverse of cordon, and it is the step that lets the scheduler place work on the node again. It passed repair but the validation job crashed and nobody read the result. It came back but its readiness probe never passed. A readiness probe is the health check that tells the cluster a pod can take traffic. The device plugin did not re-register its GPUs. The device plugin is the piece that advertises GPUs to the Kubernetes scheduler. The node is up and the dashboard is green, but it advertises zero GPUs.
@@ -443,6 +471,10 @@ The lesson from chapter 20.18 about aggressive liveness probes applies here as w
 
 ### 10. Draining a node that is serving inference
 
+![A 4,096-token answer at 40 tokens per second needs 102 seconds, so a 120-second grace period covers it while the default 30 seconds would cut it.](./img/x16-grace-period.svg)
+
+*Figure 20.16.12. The termination grace period is a promise that a stream in progress will finish, so it must exceed the longest stream.*
+
 Imagine a customer who is halfway through a long answer when their node is drained. Inference is different from batch work. A request is a stream that may last a minute or more, and a customer is watching it. If you kill the pod, the stream breaks. So draining has an order. Stop new requests first. Let current streams finish. Then stop the process. Batch work can be retried later with little harm, but a half-written answer that a person is reading cannot be undone.
 
 In Kubernetes the sequence for a planned drain goes like this. Picture the steps as a checklist that runs in order. The cordon marks the node unschedulable, so nothing new lands there. The eviction API then removes pods one by one, and it respects PodDisruptionBudgets and the termination grace period. A PodDisruptionBudget is a rule that limits how many replicas of an app may be down at once, and the termination grace period is the time a pod has to shut down cleanly. The Kubernetes documentation says an eviction blocked by a budget returns HTTP 429 and may be retried. HTTP 429 is the "too many requests" status, here meaning the eviction must wait. The same documentation says the control plane removes the pod from endpoint slices during deletion. Endpoint slices are the lists that tell a load balancer where to send traffic. Production Kubernetes, chapter 14, adds that a pre-stop hook runs first, then the container gets SIGTERM, and the grace period clock starts at 30 seconds by default. A pre-stop hook is a command the pod runs before shutdown begins, and SIGTERM is the polite stop signal a process receives. The pod lifecycle page, fetched 2026-11-09, confirms that order. It also says endpoint removal runs at the same time as shutdown, not before it, and that terminating endpoints keep `serving` true while `ready` is false. A load balancer that reads only `ready` stops sending new requests, but ones already in flight continue. For vLLM at tag v0.33.0, `--shutdown-timeout` defaults to 0, which aborts in-flight requests. vLLM is an open-source server for running language models, and in-flight requests are the ones already running. A value above 0 waits for them. Set it from your longest stream and keep it below the grace period. The pre-stop hook does not run when a node fails outright.
@@ -453,24 +485,19 @@ The reason the number matters is simple to state and easy to forget. The grace p
 
 There are two paths, and the design must choose between them. Pick the path by asking whether the GPU still works. In a graceful drain the GPU is healthy, for instance a thermal warning, so you stop routing, wait for streams and then evict. A thermal warning means the card is running hot but still computing. In a hard drain the GPU has already failed, for instance Xid 79, and the streams on it are already dead. Waiting for them is pointless. Fence the node at the router at once so retries go elsewhere, then evict immediately. Fencing means cutting the node off from new traffic, and it is the router's job. Chapter 20.21, planned for this volume, covers retry budgets, which cap how many retries the system may send so that retries do not swamp a struggling pool.
 
-```mermaid
-flowchart TD
-  A["Verdict: drain"] --> B{"GPU still serving?"}
-  B -->|"yes, soft fault"| C["Router stops new requests"]
-  C --> D["Wait for streams or grace limit"]
-  D --> E["Evict pod"]
-  B -->|"no, hard fault"| F["Fence node at router now"]
-  F --> E
-  E --> G{"Eviction blocked 429?"}
-  G -->|"yes"| H["Retry with timeout, then escalate"]
-  G -->|"no"| I["Node quarantined"]
-```
+![Draining a node that is serving inference](./img/m20-16-2.svg)
+
+*Figure 20.16.13. Draining a node that is serving inference, as a diagram.*
 
 A PodDisruptionBudget protects availability during voluntary disruption, which means planned maintenance rather than a sudden crash. On a node with a dead GPU, the budget may protect a replica that is not serving anyway and block the drain. That is the conflict to name. The kubectl drain page says its timeout of zero means wait forever. The eviction page says a stuck eviction can return 429 or 500 until someone intervenes, and suggests pausing the automation or deleting the pod directly. For a hardware drain I would set a timeout and then escalate to a deletion of the pod, accepting the budget violation because the replica is already broken. That is my judgment, and you should state the trade-off out loud, because a budget violation is a real cost even when it is the right call.
 
 **Set the grace period from your longest stream, fence a hard-failed node at the router first, and put a timeout on every drain.**
 
 ### 11. A fleet-level capacity SLO
+
+![Three capacity SLIs with an example objective of 99 percent spare pool and a 5 day repair p90.](./img/p3-2016-capacity-slos.svg)
+
+*Figure 20.16.14. Supply SLIs warn before any customer-facing SLO moves.*
 
 Imagine the review meeting where someone asks whether the fleet is healthy. Your availability SLO, the service level objective that measures requests, is about requests. A capacity SLO is about supply, and it leads the request SLO by hours or days. Define it so that an interviewer can see you measure what matters. Chapter 20.19 covers the request SLIs, which are the measured indicators behind the request objective, so this section adds the supply side only.
 
@@ -481,6 +508,10 @@ An example objective, with numbers I chose, reads like this: spare pool at or ab
 **Alert on spare pool shrinkage and slow repair, because they warn you before any customer-facing SLO moves.**
 
 ### 12. The vendor RMA flow, at a conceptual level
+
+![The vendor RMA flow quarantines the node, keeps the evidence, opens a case, waits for replacement and validates before the node returns to the pool.](./img/p2-2016-rma-queue.svg)
+
+*Figure 20.16.15. The vendor RMA flow quarantines the node, keeps the evidence, waits for a replacement and validates before return, tracking the age of each open case.*
 
 Picture a technician on a cold floor holding a replacement part, with the faulty card in a bag. When a node's GPU is truly broken, a swap is needed. RMA means return merchandise authorisation, the vendor process for replacing faulty hardware. I did not find Nebius's process published, and it also depends on contract terms. The outline below is a reasonable design, not a description of Nebius.
 
@@ -510,6 +541,10 @@ You have 45 minutes and a whiteboard. Say the structure first, then fill it in. 
 
 ### Scenario A. Three GPUs report Xid 79 within five minutes
 
+![A five step ladder from recognising a cross-rack pattern to confirming the Xid in dmesg and draining only confirmed nodes.](./img/p3-2016-xid79-triage.svg)
+
+*Figure 20.16.16. Read the pattern and check recent changes before draining anything.*
+
 The pager shows Xid 79 on three nodes in different racks, all within five minutes. A new engineer might drain all three, because each alert looks like a bad GPU. Reason it through step by step, and do not act until you have read the pattern.
 
 Xid 79 means a GPU fell off the PCIe bus. That is serious on one node. Three nodes at once is a pattern, and a shared cause is likelier than three coincident hardware faults. A coincident fault is one that happens by chance at the same moment. Candidates are a driver or firmware rollout, a bad exporter restart that re-emitted a stuck gauge, or a power or cooling event. A stuck gauge is the last-value trap from section 2, where a number stays high after its cause is gone. First check what changed in the last hour. Next, check `dmesg` on one node to confirm the Xid is real, not only a gauge value that stayed high. If the limiter allowed it, the first drains went ahead, which is acceptable because the rate was small. The `FleetWideXid79` alert tells you to freeze.
@@ -517,6 +552,10 @@ Xid 79 means a GPU fell off the PCIe bus. That is serious on one node. Three nod
 Answer: confirm on one node, check recent changes, keep the freeze, and drain only the nodes whose logs show a new Xid. Say the order out loud, because the order is the answer. The simulation in section 7 shows the system doing the freeze by itself, so you can point to it as evidence that the design holds.
 
 ### Scenario B. The spare pool for a growing fleet
+
+![Three fleet sizes showing spares growing from 3 to 4 to 7 while the share of the fleet shrinks.](./img/p3-2016-spare-growth.svg)
+
+*Figure 20.16.17. Spares grow much more slowly than the fleet, so repair speed matters more than node count.*
 
 A planner asks: "We have 512 nodes and we are adding 256. How many more spares?" This is a question about growth, and the trap is to assume that spares grow in step with nodes. Use the calculator. The inputs remain assumptions. For 768 nodes at 10 percent per year and 72 hours, the average in repair is 0.63. The calculator gives 4 spares, so the 256 new nodes need one more spare, not eight.
 
@@ -529,6 +568,10 @@ Do not just quote the output. Explain that spares do not scale linearly with fle
 Be ready for the follow-up about where the inputs come from. The honest answer is that the failure rate and the repair time come from the fleet's own history, and until that history exists, the 10 percent and the 72 hours are placeholders. A planner who hears you say that will trust the arithmetic more, because you have shown which numbers are soft.
 
 ### Scenario C. A node has been cordoned for nine days
+
+![A decision tree from a nine-day cordon alert to vendor chasing or ownerless node, ending in a validation failure fix.](./img/p3-2016-cordoned-nine-days.svg)
+
+*Figure 20.16.18. Find who owns the node before asking why it got stuck.*
 
 Prometheus fires `NodeCordonedTooLong`, and the page is about a node that has been out for nine days. Reason like this. Look at the lifecycle state first. If the node is in `repairing` and a vendor case is open, the age is a vendor issue and you chase the case. If the node is in `cordoned` with no ticket, nothing owns it. This is the silent loss. Run the stuck-state check, find the ticketless nodes, and give each an owner. Then ask why it happened. A common cause is a validation step that failed and was only logged. The fix is a rule that a failed validation sends the node back to quarantine and raises a ticket, which is the `VALIDATING` to `QUARANTINED` edge in the state machine.
 

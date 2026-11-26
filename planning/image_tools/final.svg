@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Inside an X.509 certificate: the fields that matter and what each is checked for</title>
+  <desc>Visual breakdown of X.509 certificate fields, verification checks, and diagnostic OpenSSL commands.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold, two lines, within canvas bounds) -->
+  <text x="40" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">Inside an X.509 certificate: the fields that matter</tspan>
+    <tspan x="40" dy="54">and what each is checked for</tspan>
+  </text>
+
+  <!-- Analogy Callout Box -->
+  <rect x="40" y="148" width="1520" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Passport Outline Icon -->
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="56" y="155" width="22" height="30" rx="3" />
+    <circle cx="67" cy="165" r="4" />
+    <line x1="61" y1="175" x2="73" y2="175" />
+  </g>
+  <text x="96" y="179" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">a passport: a trusted office vouches that this photograph belongs to this name</text>
+
+  <!-- Left Column: Certificate Card (x: 40..720, y: 232..812, w: 680, h: 580) -->
+  <rect x="40" y="232" width="680" height="580" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  <!-- Card Row 1: Subject -->
+  <rect x="52" y="241" width="656" height="36" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="267" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Subject: who it is for</text>
+
+  <!-- Card Row 2: Issuer -->
+  <rect x="52" y="283" width="656" height="36" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="309" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Issuer: the CA that signed it</text>
+
+  <!-- Card Row 3: Validity -->
+  <rect x="52" y="325" width="656" height="58" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="350" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="68" dy="0">Validity: notBefore and notAfter,</tspan>
+    <tspan x="68" dy="26">checked against the client&apos;s own clock</tspan>
+  </text>
+
+  <!-- Card Row 4: Public key -->
+  <rect x="52" y="389" width="656" height="36" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="415" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Public key</text>
+
+  <!-- Card Row 5: SAN (Single Most Important Item: Orange Highlight) -->
+  <rect x="52" y="431" width="656" height="106" rx="5" fill="#fff7ed" stroke="#db8129" stroke-width="2.5" />
+  <text x="68" y="456" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="68" dy="0">Subject Alternative Names (SAN):</tspan>
+    <tspan x="68" dy="25">the DNS names or IPs the certificate is</tspan>
+    <tspan x="68" dy="25">valid for; browsers and modern libraries</tspan>
+    <tspan x="68" dy="25">ignore the old CN field</tspan>
+  </text>
+
+  <!-- Card Row 6: Key usage and extended key usage -->
+  <rect x="52" y="543" width="656" height="56" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="568" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="68" dy="0">Key usage and extended key usage:</tspan>
+    <tspan x="68" dy="26">serverAuth, clientAuth</tspan>
+  </text>
+
+  <!-- Card Row 7: Basic constraints -->
+  <rect x="52" y="605" width="656" height="36" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="631" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Basic constraints: whether this is a CA</text>
+
+  <!-- Card Row 8: Authority and subject key identifiers -->
+  <rect x="52" y="647" width="656" height="36" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="673" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Authority and subject key identifiers</text>
+
+  <!-- Card Row 9: CRL and OCSP URLs -->
+  <rect x="52" y="689" width="656" height="36" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="715" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">CRL and OCSP URLs</text>
+
+  <!-- Card Row 10: Issuer's signature -->
+  <rect x="52" y="731" width="656" height="36" rx="5" fill="#f5f8f5" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="757" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Issuer&apos;s signature</text>
+
+  <!-- Connecting Arrows from Card to Checks -->
+  <!-- Arrow 1: Issuer -> chain built... -->
+  <line x1="720" y1="301" x2="812" y2="301" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 2: Validity -> validity dates -->
+  <path d="M 720 354 L 766 354 L 766 382 L 812 382" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 3: SAN -> name against the SAN (Orange) -->
+  <line x1="720" y1="484" x2="812" y2="484" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+
+  <!-- Arrow 4: Key usage & Basic constraints -> key usage and basic constraints -->
+  <line x1="720" y1="582" x2="812" y2="582" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 5: CRL and OCSP URLs -> revocation status if enabled -->
+  <line x1="720" y1="682" x2="812" y2="682" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 6: Issuer's signature -> each signature -->
+  <path d="M 720 749 L 766 749 L 766 782 L 812 782" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Right Column: 6 Validation Check Nodes (x: 820..1560, w: 740, all gaps exactly 40px) -->
+
+  <!-- Check 1: Chain built from leaf... (y: 232..312, h=80) -->
+  <rect x="820" y="232" width="740" height="80" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Outline Chain Icon (52px, green stroke 4) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="838" y="261" width="22" height="14" rx="7" transform="rotate(-45 849 268)" />
+    <rect x="854" y="277" width="22" height="14" rx="7" transform="rotate(-45 865 284)" />
+    <line x1="850" y1="274" x2="860" y2="284" />
+  </g>
+  <text x="908" y="264" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="908" dy="0">chain built from leaf to trusted root</tspan>
+    <tspan x="908" dy="28">using the intermediates the server presents</tspan>
+  </text>
+
+  <!-- Gap 40px (312..352) -->
+
+  <!-- Check 2: Validity dates (y: 352..412, h=60) -->
+  <rect x="820" y="352" width="740" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Outline Clock Icon (52px, green stroke 4) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="862" cy="382" r="18" />
+    <polyline points="862,371 862,382 872,382" />
+  </g>
+  <text x="908" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">validity dates</text>
+
+  <!-- Gap 40px (412..452) -->
+
+  <!-- Check 3: Name against the SAN (y: 452..512, h=60, Orange Emphasis) -->
+  <rect x="820" y="452" width="740" height="60" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="2.5" />
+  <!-- Outline Globe Icon (52px, orange stroke 4) -->
+  <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="862" cy="482" r="18" />
+    <ellipse cx="862" cy="482" rx="8" ry="18" stroke-width="3" />
+    <line x1="844" y1="482" x2="880" y2="482" stroke-width="3" />
+  </g>
+  <text x="908" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">name against the SAN</text>
+
+  <!-- Gap 40px (512..552) -->
+
+  <!-- Check 4: Key usage and basic constraints (y: 552..612, h=60) -->
+  <rect x="820" y="552" width="740" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Outline Key Icon (52px, green stroke 4) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="852" cy="582" r="10" />
+    <line x1="862" y1="582" x2="880" y2="582" />
+    <line x1="872" y1="582" x2="872" y2="590" />
+    <line x1="878" y1="582" x2="878" y2="590" />
+  </g>
+  <text x="908" y="590" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">key usage and basic constraints</text>
+
+  <!-- Gap 40px (612..652) -->
+
+  <!-- Check 5: Revocation status if enabled (y: 652..712, h=60) -->
+  <rect x="820" y="652" width="740" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Outline Shield Icon (52px, green stroke 4) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 846 669 L 862 663 L 878 669 C 878 685 862 697 862 697 C 862 697 846 685 846 669 Z" />
+    <polyline points="854,680 860,686 870,676" stroke-width="3" />
+  </g>
+  <text x="908" y="690" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">revocation status if enabled</text>
+
+  <!-- Gap 40px (712..752) -->
+
+  <!-- Check 6: Each signature (y: 752..812, h=60) -->
+  <rect x="820" y="752" width="740" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Outline Seal Icon (52px, green stroke 4) -->
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="862" cy="778" r="12" />
+    <polyline points="856,788 852,798 862,793 872,798 868,788" stroke-width="3" />
+  </g>
+  <text x="908" y="790" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">each signature</text>
+
+  <!-- Gap 40px (812..852) -->
+
+  <!-- Command Strip Container (y: 852..1070, h=218) -->
+  <rect x="40" y="852" width="1520" height="218" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  <!-- Command 1 (y: 862..900, h=38) -->
+  <rect x="52" y="862" width="1496" height="38" rx="5" fill="#ffffff" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="889" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">openssl x509 -in cert.pem -noout -text</text>
+
+  <!-- Command 2 (y: 908..972, h=64, wrapped onto 2 lines to strictly fit width) -->
+  <rect x="52" y="908" width="1496" height="64" rx="5" fill="#ffffff" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="934" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">
+    <tspan x="68" dy="0">openssl x509 -noout -subject -issuer -dates -ext </tspan>
+    <tspan x="68" dy="26">subjectAltName,basicConstraints,keyUsage,extendedKeyUsage</tspan>
+  </text>
+
+  <!-- Command 3 (y: 980..1018, h=38) -->
+  <rect x="52" y="980" width="1496" height="38" rx="5" fill="#ffffff" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="1007" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">openssl x509 -noout -checkend 2592000 (non-zero exit if it expires within 30 days)</text>
+
+  <!-- Command 4 (y: 1026..1064, h=38) -->
+  <rect x="52" y="1026" width="1496" height="38" rx="5" fill="#ffffff" stroke="#b2cfb9" stroke-width="1.5" />
+  <text x="68" y="1053" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">openssl verify -CAfile ca.pem -untrusted intermediate.pem leaf.pem</text>
+
+  <!-- Gap 40px (1070..1110) -->
+
+  <!-- Bottom Takeaway Bar (y: 1110..1154, h=44) -->
+  <rect x="40" y="1110" width="1520" height="44" rx="8" fill="#207448" />
+  <text x="800" y="1140" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Each validation step can fail for a different reason</text>
+</svg>

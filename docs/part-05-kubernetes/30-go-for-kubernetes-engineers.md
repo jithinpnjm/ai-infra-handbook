@@ -372,13 +372,9 @@ Serializers live in `k8s.io/apimachinery/pkg/runtime/serializer`. A serializer t
 
 The third is pointer versus value receivers, and `net/netip` (*Network Programmability and Automation*, Chapter 7). A type `T` with a pointer receiver method, `func (r *Router) Trim()`, satisfies an interface only when you pass a pointer, `*Router`. Pass a plain `Router` and the compiler stops you with `Router does not implement Trimmable (method has pointer receiver)`. The fix is almost always to pass the address of the value, or to change the receiver. For IP and CIDR work in Kubernetes network controllers, Go 1.18 and later offer `net/netip`, with `netip.ParseAddr` and `netip.ParsePrefix`. It is an immutable, comparable, allocation-free value type that replaces the legacy `net.IP` slices. Immutable means a value cannot change after it is made, which makes it safe to share.
 
-```mermaid
-flowchart LR
-    API["kube-apiserver<br/>(/api & /apis List+Watch)"] -->|"Reflector<br/>(List @ rv -> Watch)"| DF["DeltaFIFO Queue<br/>(Added / Updated / Deleted)"]
-    DF -->|"Pop & Index"| Store["Indexer & Local Thread-Safe Store<br/>(Lister reads here; DeepCopy before mutate)"]
-    DF -->|"ResourceEventHandler"| WQ["WorkQueue (RateLimitingInterface)<br/>(Enqueue 'namespace/name' key only)"]
-    WQ -->|"Get() -> Reconcile -> Done()/Forget()<br/>or AddRateLimited() on err"| Worker["Worker Goroutines<br/>(Apply / Patch via Clientset)"]
-```
+![JSON, YAML and Kubernetes types](./img/m5-30-1.svg)
+
+*Figure 5.30.1. JSON, YAML and Kubernetes types, as a diagram.*
 
 Read the diagram from left to right. The reflector feeds the queue, and the work queue carries `namespace/name` keys rather than whole objects. The reflector is the part that lists and watches the API server. The queue holds the work to do, and the indexer is the local store that the lister reads from. Keep the picture in mind when the informer code appears in section 5, because each piece in that code matches a box here.
 

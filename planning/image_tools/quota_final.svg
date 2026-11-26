@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Borrowing and lending quota inside a cohort</title>
+  <desc>Infographic explaining borrowing and lending quota inside a cohort with worked example numbers for ClusterQueue research, preemption settings, and workload preemption story.</desc>
+
+  <defs>
+    <pattern id="diagonalHatch" width="12" height="12" patternTransform="rotate(45 0 0)" patternUnits="userSpaceOnUse">
+      <line x1="0" y1="0" x2="0" y2="12" stroke="#207448" stroke-width="3" />
+    </pattern>
+  </defs>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- ==================== TITLE ==================== -->
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Borrowing and lending quota inside a cohort</text>
+
+  <!-- ==================== SECTION 1: WORKED EXAMPLE OVERVIEW ==================== -->
+  <g id="overview-panel">
+    <rect x="40" y="125" width="1520" height="135" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Chip / Hardware Icon (56px) placed to the left -->
+    <g transform="translate(65, 164)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <line x1="18" y1="2" x2="18" y2="10" /><line x1="28" y1="2" x2="28" y2="10" /><line x1="38" y1="2" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="54" /><line x1="28" y1="46" x2="28" y2="54" /><line x1="38" y1="46" x2="38" y2="54" />
+      <line x1="2" y1="18" x2="10" y2="18" /><line x1="2" y1="28" x2="10" y2="28" /><line x1="2" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="54" y2="18" /><line x1="46" y1="28" x2="54" y2="28" /><line x1="46" y1="38" x2="54" y2="38" />
+    </g>
+    <text x="835" y="167" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="835" dy="0">Worked example with the chapter's numbers for ClusterQueue research, flavor h100-ondemand, </tspan>
+      <tspan x="835" dy="32">resource nvidia.com/gpu: nominalQuota 128, borrowingLimit 64, lendingLimit 32; </tspan>
+      <tspan x="835" dy="32">cpu nominalQuota 1024, memory nominalQuota 8Ti.</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== SECTION 2: QUOTA BARS ==================== -->
+  <g id="quota-bars-panel">
+    <rect x="40" y="295" width="1520" height="305" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    <!-- Visual Bar Representation -->
+    <!-- 128 Owned Quota Bar (x=70 to 1030, width=960) -->
+    <rect x="70" y="318" width="960" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Marked slice of 32 lendable GPUs (x=790 to 1030, width=240) -->
+    <rect x="790" y="318" width="240" height="46" rx="8" fill="url(#diagonalHatch)" stroke="#207448" stroke-width="2" opacity="0.85" />
+    <!-- Dashed extension of up to 64 borrowed GPUs (x=1050 to 1510, width=460) -->
+    <rect x="1050" y="318" width="460" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6" />
+
+    <!-- Card 1: 128 GPUs owned by research (center x=295) -->
+    <rect x="70" y="385" width="450" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Server / Base Icon (56px) centered above text at x=295 -->
+    <g transform="translate(267, 400)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="18" rx="3" /><rect x="6" y="30" width="44" height="18" rx="3" />
+      <circle cx="16" cy="17" r="2.5" fill="#207448" /><circle cx="16" cy="39" r="2.5" fill="#207448" />
+      <line x1="28" y1="17" x2="42" y2="17" /><line x1="28" y1="39" x2="42" y2="39" />
+    </g>
+    <text x="295" y="505" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">128 GPUs owned by research</text>
+
+    <!-- Card 2: 32 GPUs that research may lend out when idle (center x=785) -->
+    <rect x="560" y="385" width="450" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Share / Lend Slice Icon (56px) centered above text at x=785 -->
+    <g transform="translate(757, 400)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="28" r="6" /><circle cx="42" cy="14" r="6" /><circle cx="42" cy="42" r="6" />
+      <line x1="19" y1="25" x2="37" y2="16" /><line x1="19" y1="31" x2="37" y2="40" />
+    </g>
+    <text x="785" y="490" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="785" dy="0">32 GPUs that research </tspan>
+      <tspan x="785" dy="32">may lend out when idle</tspan>
+    </text>
+
+    <!-- Card 3: up to 64 GPUs borrowed from idle quota of other ClusterQueues in cohort gpu-fleet (center x=1280) -->
+    <rect x="1050" y="385" width="460" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Borrow / Inflow Icon (56px) centered above text at x=1280 -->
+    <g transform="translate(1252, 395)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="16" width="40" height="34" rx="4" stroke-dasharray="6 4" />
+      <line x1="28" y1="4" x2="28" y2="26" />
+      <polyline points="20,18 28,26 36,18" />
+    </g>
+    <text x="1280" y="470" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1280" dy="0">up to 64 GPUs borrowed </tspan>
+      <tspan x="1280" dy="28">from idle quota of other </tspan>
+      <tspan x="1280" dy="28">ClusterQueues in </tspan>
+      <tspan x="1280" dy="28">cohort gpu-fleet</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== SECTION 3: PREEMPTION SETTINGS ==================== -->
+  <!-- Single Orange Highlight on the most important item: reclaimWithinCohort Any -->
+  <g id="preemption-settings">
+    <!-- Setting 1 (Orange highlight) -->
+    <rect x="70" y="630" width="450" height="190" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <!-- Shield / Reclaim Icon (56px) in orange -->
+    <g transform="translate(267, 643)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 49 14 L 49 28 C 49 41 28 50 28 50 C 28 50 7 41 7 28 L 7 14 Z" />
+      <polyline points="20,27 26,33 36,21" />
+    </g>
+    <text x="295" y="720" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="295" dy="0" font-weight="bold">reclaimWithinCohort Any: </tspan>
+      <tspan x="295" dy="30">take back lent quota </tspan>
+      <tspan x="295" dy="30">from borrowers</tspan>
+    </text>
+
+    <!-- Setting 2 -->
+    <rect x="560" y="630" width="450" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Sliders / Policy Icon (56px) -->
+    <g transform="translate(757, 643)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="8" y1="12" x2="48" y2="12" /><line x1="8" y1="28" x2="48" y2="28" /><line x1="8" y1="44" x2="48" y2="44" />
+      <circle cx="20" cy="12" r="4" fill="#207448" /><circle cx="36" cy="28" r="4" fill="#207448" /><circle cx="18" cy="44" r="4" fill="#207448" />
+    </g>
+    <text x="785" y="720" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="785" dy="0" font-weight="bold">borrowWithinCohort policy </tspan>
+      <tspan x="785" dy="30">LowerPriority with </tspan>
+      <tspan x="785" dy="30">maxPriorityThreshold 100</tspan>
+    </text>
+
+    <!-- Setting 3 -->
+    <rect x="1050" y="630" width="460" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Queue Layers Icon (56px) -->
+    <g transform="translate(1252, 643)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,7 49,17 28,27 7,17" />
+      <polyline points="7,27 28,37 49,27" />
+      <polyline points="7,37 28,47 49,37" />
+    </g>
+    <text x="1280" y="735" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1280" dy="0" font-weight="bold">withinClusterQueue </tspan>
+      <tspan x="1280" dy="32">LowerPriority</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== SECTION 4: STORY (3 STEPS) ==================== -->
+  <g id="story-steps">
+    <!-- Step 1 Card -->
+    <rect x="70" y="850" width="450" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="295" cy="887" r="24" fill="#207448" />
+    <text x="295" y="896" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="295" y="955" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="295" dy="0">Team A borrows </tspan>
+      <tspan x="295" dy="32">idle quota</tspan>
+    </text>
+
+    <!-- Step 2 Card -->
+    <rect x="560" y="850" width="450" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="785" cy="887" r="24" fill="#207448" />
+    <text x="785" y="896" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="785" y="947" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="785" dy="0">Team B submits a job </tspan>
+      <tspan x="785" dy="28">and reclaims its own quota </tspan>
+      <tspan x="785" dy="28">through preemption</tspan>
+    </text>
+
+    <!-- Step 3 Card -->
+    <rect x="1050" y="850" width="460" height="190" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1280" cy="887" r="24" fill="#207448" />
+    <text x="1280" y="896" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="1280" y="955" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1280" dy="0">watch Workload </tspan>
+      <tspan x="1280" dy="32">conditions</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== SECTION 5: TAKEAWAY FOOTER BAR ==================== -->
+  <g id="footer-bar">
+    <rect x="40" y="1070" width="1520" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1114" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">WorkloadPriorityClass sets queueing priority independent of pod priority</text>
+  </g>
+</svg>

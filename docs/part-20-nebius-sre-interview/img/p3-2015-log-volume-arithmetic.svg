@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1010" width="1600" height="1010">
+  <title>Log volume arithmetic and what to keep</title>
+  <desc>Infographic illustrating log volume arithmetic, keep/drop sampling policy, Loki label strip, and metric alerting rules.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1 L 9 5 L 0 9 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1010" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Log volume arithmetic and what to keep</text>
+
+  
+  <rect x="50" y="105" width="940" height="525" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(80, 128)">
+    <rect x="0" y="0" width="30" height="38" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="5" y="5" width="20" height="8" rx="2" fill="#207448"/>
+    <circle cx="9" cy="20" r="2" fill="#207448"/>
+    <circle cx="21" cy="20" r="2" fill="#207448"/>
+    <circle cx="9" cy="28" r="2" fill="#207448"/>
+    <circle cx="21" cy="28" r="2" fill="#207448"/>
+  </g>
+  <text x="125" y="154" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">assumed inputs, arithmetic is the author&apos;s</text>
+
+  
+  <rect x="70" y="185" width="220" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(155, 215)">
+    <path d="M 0 0 L 32 0 L 46 14 L 46 54 L 0 54 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 32 0 L 32 16 L 46 16" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="10" y1="28" x2="34" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="10" y1="38" x2="34" y2="38" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="180" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="180" dy="0">One line</tspan>
+    <tspan x="180" dy="36">per request</tspan>
+    <tspan x="180" dy="36">at 500 bytes</tspan>
+  </text>
+
+  
+  <line x1="290" y1="392" x2="330" y2="392" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="330" y="185" width="265" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(435, 215)">
+    <circle cx="27" cy="27" r="27" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="27" y1="27" x2="43" y2="13" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="27" cy="27" r="4" fill="#207448"/>
+    <line x1="9" y1="27" x2="15" y2="27" stroke="#207448" stroke-width="3"/>
+    <line x1="27" y1="9" x2="27" y2="15" stroke="#207448" stroke-width="3"/>
+    <line x1="45" y1="27" x2="39" y2="27" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="462" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="462" dy="0">x 2,000 requests</tspan>
+    <tspan x="462" dy="36">per second =</tspan>
+    <tspan x="462" dy="36">1 MB per second</tspan>
+  </text>
+
+  
+  <line x1="595" y1="392" x2="635" y2="392" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="635" y="185" width="335" height="415" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(775, 215)">
+    <ellipse cx="27" cy="10" rx="27" ry="9" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0 10 v 16 a 27 9 0 0 0 54 0 v -16" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 0 26 v 16 a 27 9 0 0 0 54 0 v -16" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="802" y="315" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="802" dy="0">x 86,400 seconds =</tspan>
+    <tspan x="802" dy="32">86.4 GB per day</tspan>
+    <tspan x="802" dy="32">before replication;</tspan>
+    <tspan x="802" dy="32">replication</tspan>
+    <tspan x="802" dy="32">multiplies storage</tspan>
+    <tspan x="802" dy="32">again</tspan>
+  </text>
+
+  
+  <rect x="1015" y="105" width="535" height="525" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="1035" y="125" width="495" height="98" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1055, 147)">
+    <path d="M 26 2 L 52 48 L 0 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="26" y1="18" x2="26" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="26" cy="40" r="3" fill="#207448"/>
+  </g>
+  <text x="1125" y="165" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1125" dy="0">errors and warnings:</tspan>
+    <tspan x="1125" dy="32">keep every one</tspan>
+  </text>
+
+  
+  <rect x="1035" y="238" width="495" height="142" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1055, 282)">
+    <path d="M 2 2 L 50 2 L 34 26 L 34 46 L 18 46 L 18 26 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+  <text x="1125" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1125" dy="0" font-weight="bold">successful request lines:</tspan>
+    <tspan x="1125" dy="28">sample by a hash of the</tspan>
+    <tspan x="1125" dy="28">trace id so the same requests</tspan>
+    <tspan x="1125" dy="28">stay sampled across services</tspan>
+  </text>
+
+  
+  <rect x="1035" y="395" width="495" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1055, 413)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="8" y1="8" x2="40" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1125" y="447" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">debug lines: drop by default</text>
+
+  
+  <rect x="1035" y="495" width="495" height="118" rx="10" fill="#fff9f5" stroke="#db8129" stroke-width="3"/>
+  <g transform="translate(1055, 532)">
+    <rect x="0" y="4" width="50" height="30" rx="15" fill="none" stroke="#db8129" stroke-width="4"/>
+    <circle cx="35" cy="19" r="10" fill="#db8129"/>
+  </g>
+  <text x="1125" y="532" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1125" dy="0" font-weight="bold" fill="#db8129">switch: raise the sample</tspan>
+    <tspan x="1125" dy="28">rate for one service for an</tspan>
+    <tspan x="1125" dy="28">hour during an incident</tspan>
+  </text>
+
+  
+  <rect x="50" y="655" width="1500" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(80, 698)">
+    <path d="M 0 24 L 24 0 L 48 0 L 48 24 L 24 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="36" cy="12" r="4" fill="#207448"/>
+  </g>
+  <text x="155" y="712" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">
+    <tspan x="155" dy="0" font-weight="bold">Loki-style: labels only namespace, cluster, app;</tspan>
+    <tspan x="155" dy="36">request id and trace id go in the line or structured metadata, never labels</tspan>
+  </text>
+
+  
+  <rect x="50" y="815" width="1500" height="150" rx="12" fill="#207448"/>
+  <g transform="translate(80, 865)">
+    <path d="M 6 36 A 20 20 0 0 1 42 36 L 46 42 L 2 42 Z" fill="none" stroke="#ffffff" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="24" y1="12" x2="24" y2="16" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 19 46 A 5 5 0 0 0 29 46" fill="none" stroke="#ffffff" stroke-width="3"/>
+  </g>
+  <text x="155" y="876" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#ffffff">
+    <tspan x="155" dy="0" font-weight="bold">alert from a metric, not from log text, because a reworded message</tspan>
+    <tspan x="155" dy="36" font-weight="bold">silently breaks the alert; logs are for investigation, metrics for detection</tspan>
+  </text>
+</svg>

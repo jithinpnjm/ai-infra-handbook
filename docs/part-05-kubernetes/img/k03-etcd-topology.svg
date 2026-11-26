@@ -1,0 +1,179 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" font-family="Helvetica, Arial, sans-serif">
+  <title>Stacked versus external etcd</title>
+  <desc>Two side-by-side panels. In the stacked etcd panel, each of three control-plane nodes runs kube-apiserver, kube-controller-manager, kube-scheduler and an etcd member as stacked rows. In the external etcd panel, three control-plane nodes run kube-apiserver, kube-controller-manager and kube-scheduler, and below them a separate row of three etcd member boxes runs on dedicated nodes. Both panels sit above one shared load balancer box with an arrow into each control-plane group. An orange note marks the coupled failure domains on the stacked panel, and a green bar carries the takeaway.</desc>
+
+  <defs>
+    <symbol id="ico-api" viewBox="0 0 30 30">
+      <g fill="none" stroke="#207448" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2.6" y="4.6" width="24.8" height="20.8" rx="3"/>
+        <line x1="2.6" y1="11.2" x2="27.4" y2="11.2"/>
+      </g>
+      <circle cx="7.2" cy="7.9" r="1.5" fill="#207448"/>
+      <circle cx="12" cy="7.9" r="1.5" fill="#207448"/>
+    </symbol>
+
+    <symbol id="ico-gear" viewBox="0 0 30 30">
+      <g fill="none" stroke="#207448" stroke-width="3.2" stroke-linecap="round">
+        <circle cx="15" cy="15" r="8.4"/>
+        <circle cx="15" cy="15" r="2.6"/>
+        <line x1="25.5" y1="15" x2="28.4" y2="15"/>
+        <line x1="4.5" y1="15" x2="1.6" y2="15"/>
+        <line x1="15" y1="4.5" x2="15" y2="1.6"/>
+        <line x1="15" y1="25.5" x2="15" y2="28.4"/>
+        <line x1="22.4" y1="7.6" x2="24.5" y2="5.5"/>
+        <line x1="7.6" y1="22.4" x2="5.5" y2="24.5"/>
+        <line x1="22.4" y1="22.4" x2="24.5" y2="24.5"/>
+        <line x1="7.6" y1="7.6" x2="5.5" y2="5.5"/>
+      </g>
+    </symbol>
+
+    <symbol id="ico-clock" viewBox="0 0 30 30">
+      <g fill="none" stroke="#207448" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="15" cy="15" r="11.6"/>
+        <path d="M15 8.2 V15 L20.6 17.8"/>
+      </g>
+    </symbol>
+
+    <symbol id="ico-disk" viewBox="0 0 30 30">
+      <g fill="none" stroke="#207448" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="15" cy="8.2" rx="11.4" ry="4.6"/>
+        <path d="M3.6 8.2 V21.8 A11.4 4.6 0 0 0 26.4 21.8 V8.2"/>
+        <path d="M3.6 15 A11.4 4.6 0 0 0 26.4 15"/>
+      </g>
+    </symbol>
+
+    <symbol id="ico-server" viewBox="0 0 44 44">
+      <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5.5" y="5.5" width="33" height="33" rx="4"/>
+        <line x1="5.5" y1="16.5" x2="38.5" y2="16.5"/>
+        <line x1="5.5" y1="27.5" x2="38.5" y2="27.5"/>
+      </g>
+      <circle cx="12.5" cy="11" r="1.8" fill="#207448"/>
+      <circle cx="12.5" cy="22" r="1.8" fill="#207448"/>
+      <circle cx="12.5" cy="33" r="1.8" fill="#207448"/>
+    </symbol>
+
+    <symbol id="ico-balance" viewBox="0 0 44 44">
+      <g fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="22" cy="9" r="4.4"/>
+        <path d="M22 13.6 V22"/>
+        <path d="M22 22 H10.5 V29"/>
+        <path d="M22 22 H33.5 V29"/>
+        <circle cx="10.5" cy="33.4" r="3.4"/>
+        <circle cx="33.5" cy="33.4" r="3.4"/>
+      </g>
+    </symbol>
+  </defs>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="60" y="58" font-size="48" font-weight="700" fill="#303a36">Stacked versus external etcd</text>
+
+  <rect x="48" y="84" width="732" height="840" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="820" y="84" width="732" height="840" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  <text x="88" y="134" font-size="34" font-weight="700" fill="#207448">Stacked etcd</text>
+  <text x="860" y="134" font-size="34" font-weight="700" fill="#207448">External etcd</text>
+
+  
+  <rect x="88" y="156" width="652" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-api" x="116" y="165" width="30" height="30"/>
+  <text x="168" y="188" font-size="24" font-family="monospace" fill="#303a36">kube-apiserver</text>
+  <use href="#ico-gear" x="116" y="199" width="30" height="30"/>
+  <text x="168" y="222" font-size="24" font-family="monospace" fill="#303a36">kube-controller-manager</text>
+  <use href="#ico-clock" x="116" y="233" width="30" height="30"/>
+  <text x="168" y="256" font-size="24" font-family="monospace" fill="#303a36">kube-scheduler</text>
+  <use href="#ico-disk" x="116" y="267" width="30" height="30"/>
+  <text x="168" y="290" font-size="24" font-family="monospace" fill="#303a36">etcd member</text>
+  <use href="#ico-server" x="650" y="209" width="44" height="44"/>
+
+  <rect x="88" y="346" width="652" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-api" x="116" y="355" width="30" height="30"/>
+  <text x="168" y="378" font-size="24" font-family="monospace" fill="#303a36">kube-apiserver</text>
+  <use href="#ico-gear" x="116" y="389" width="30" height="30"/>
+  <text x="168" y="412" font-size="24" font-family="monospace" fill="#303a36">kube-controller-manager</text>
+  <use href="#ico-clock" x="116" y="423" width="30" height="30"/>
+  <text x="168" y="446" font-size="24" font-family="monospace" fill="#303a36">kube-scheduler</text>
+  <use href="#ico-disk" x="116" y="457" width="30" height="30"/>
+  <text x="168" y="480" font-size="24" font-family="monospace" fill="#303a36">etcd member</text>
+  <use href="#ico-server" x="650" y="399" width="44" height="44"/>
+
+  <rect x="88" y="536" width="652" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-api" x="116" y="545" width="30" height="30"/>
+  <text x="168" y="568" font-size="24" font-family="monospace" fill="#303a36">kube-apiserver</text>
+  <use href="#ico-gear" x="116" y="579" width="30" height="30"/>
+  <text x="168" y="602" font-size="24" font-family="monospace" fill="#303a36">kube-controller-manager</text>
+  <use href="#ico-clock" x="116" y="613" width="30" height="30"/>
+  <text x="168" y="636" font-size="24" font-family="monospace" fill="#303a36">kube-scheduler</text>
+  <use href="#ico-disk" x="116" y="647" width="30" height="30"/>
+  <text x="168" y="670" font-size="24" font-family="monospace" fill="#303a36">etcd member</text>
+  <use href="#ico-server" x="650" y="589" width="44" height="44"/>
+
+  <rect x="88" y="726" width="652" height="64" rx="12" fill="#f5f8f5" stroke="#db8129" stroke-width="3"/>
+  <text x="116" y="767" font-size="26" fill="#db8129">the failure domains are coupled.</text>
+
+  <text x="88" y="830" font-size="26" fill="#303a36">simpler, fewer machines, one node</text>
+  <text x="88" y="864" font-size="26" fill="#303a36">loss takes one API server and one</text>
+  <text x="88" y="898" font-size="26" fill="#303a36">etcd member together.</text>
+
+  
+  <rect x="860" y="156" width="652" height="116" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-api" x="888" y="165" width="30" height="30"/>
+  <text x="940" y="188" font-size="24" font-family="monospace" fill="#303a36">kube-apiserver</text>
+  <use href="#ico-gear" x="888" y="199" width="30" height="30"/>
+  <text x="940" y="222" font-size="24" font-family="monospace" fill="#303a36">kube-controller-manager</text>
+  <use href="#ico-clock" x="888" y="233" width="30" height="30"/>
+  <text x="940" y="256" font-size="24" font-family="monospace" fill="#303a36">kube-scheduler</text>
+  <use href="#ico-server" x="1420" y="192" width="44" height="44"/>
+
+  <rect x="860" y="312" width="652" height="116" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-api" x="888" y="321" width="30" height="30"/>
+  <text x="940" y="344" font-size="24" font-family="monospace" fill="#303a36">kube-apiserver</text>
+  <use href="#ico-gear" x="888" y="355" width="30" height="30"/>
+  <text x="940" y="378" font-size="24" font-family="monospace" fill="#303a36">kube-controller-manager</text>
+  <use href="#ico-clock" x="888" y="389" width="30" height="30"/>
+  <text x="940" y="412" font-size="24" font-family="monospace" fill="#303a36">kube-scheduler</text>
+  <use href="#ico-server" x="1420" y="348" width="44" height="44"/>
+
+  <rect x="860" y="468" width="652" height="116" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-api" x="888" y="477" width="30" height="30"/>
+  <text x="940" y="500" font-size="24" font-family="monospace" fill="#303a36">kube-apiserver</text>
+  <use href="#ico-gear" x="888" y="511" width="30" height="30"/>
+  <text x="940" y="534" font-size="24" font-family="monospace" fill="#303a36">kube-controller-manager</text>
+  <use href="#ico-clock" x="888" y="545" width="30" height="30"/>
+  <text x="940" y="568" font-size="24" font-family="monospace" fill="#303a36">kube-scheduler</text>
+  <use href="#ico-server" x="1420" y="504" width="44" height="44"/>
+
+  <rect x="861" y="624" width="190" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-disk" x="875" y="657" width="30" height="30"/>
+  <text x="919" y="662" font-size="24" font-family="monospace" fill="#303a36">etcd</text>
+  <text x="919" y="690" font-size="24" font-family="monospace" fill="#303a36">member</text>
+
+  <rect x="1091" y="624" width="190" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-disk" x="1105" y="657" width="30" height="30"/>
+  <text x="1149" y="662" font-size="24" font-family="monospace" fill="#303a36">etcd</text>
+  <text x="1149" y="690" font-size="24" font-family="monospace" fill="#303a36">member</text>
+
+  <rect x="1321" y="624" width="190" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-disk" x="1335" y="657" width="30" height="30"/>
+  <text x="1379" y="662" font-size="24" font-family="monospace" fill="#303a36">etcd</text>
+  <text x="1379" y="690" font-size="24" font-family="monospace" fill="#303a36">member</text>
+
+  <text x="1186" y="752" font-size="24" text-anchor="middle" fill="#303a36">on dedicated nodes</text>
+
+  <text x="860" y="830" font-size="26" fill="#303a36">more isolation and independent scaling,</text>
+  <text x="860" y="864" font-size="26" fill="#303a36">more machines to operate.</text>
+
+  
+  <path d="M600 1002 H414 V944" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="414,924 403,944 425,944" fill="#207448"/>
+  <path d="M1000 1002 H1186 V944" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+  <polygon points="1186,924 1175,944 1197,944" fill="#207448"/>
+
+  <rect x="600" y="964" width="400" height="76" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <use href="#ico-balance" x="654" y="980" width="44" height="44"/>
+  <text x="712" y="1012" font-size="30" font-weight="700" fill="#303a36">load balancer</text>
+
+  <rect x="48" y="1080" width="1504" height="64" rx="16" fill="#207448"/>
+  <text x="800" y="1121" font-size="30" font-weight="700" fill="#ffffff" text-anchor="middle">stacked uses fewer hosts, external isolates etcd.</text>
+</svg>

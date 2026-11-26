@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>Connection variables: the delivery slip for each host</title>
+  <desc>A grouped table of the variables that tell Ansible how to reach a host.</desc>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Connection variables: the delivery slip for each host</text>
+  <text x="50" y="105" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">A grouped table of the variables that tell Ansible how to reach a host.</text>
+
+  
+  <g id="group-where">
+    <rect x="50" y="135" width="730" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M103 165 C91 165 82 174 82 186 C82 202 103 221 103 221 C103 221 124 202 124 186 C124 174 115 165 103 165 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="103" cy="185" r="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <text x="150" y="185" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Where: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">ansible_host</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24"> (the address), </tspan>
+      <tspan x="150" dy="42" font-family="ui-monospace, monospace" font-size="24">ansible_port</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-how">
+    <rect x="820" y="135" width="730" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="850" y="176" width="20" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="855" y1="168" x2="855" y2="176" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="865" y1="168" x2="865" y2="176" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <rect x="882" y="176" width="20" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="870" y1="193" x2="882" y2="193" stroke="#207448" stroke-width="4"/>
+    <line x1="840" y1="193" x2="850" y2="193" stroke="#207448" stroke-width="4"/>
+    <line x1="902" y1="193" x2="912" y2="193" stroke="#207448" stroke-width="4"/>
+    <text x="930" y="178" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">How: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">ansible_connection</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24"> with values </tspan>
+      <tspan x="930" dy="36" font-family="ui-monospace, monospace" font-size="24">ssh, local, docker, winrm, </tspan>
+      <tspan x="930" dy="34" font-family="ui-monospace, monospace" font-size="24">network_cli, httpapi, kubectl</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-who">
+    <rect x="50" y="300" width="730" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="103" cy="342" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M83 378 C83 364 92 360 103 360 C114 360 123 364 123 378" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="150" y="352" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Who: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">ansible_user</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24">, </tspan>
+      <tspan x="150" dy="42" font-family="ui-monospace, monospace" font-size="24">ansible_ssh_private_key_file</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24"> (key file)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-through-what">
+    <rect x="820" y="300" width="730" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M848 376 L848 344 C848 338 854 334 860 334 L886 334 C892 334 898 338 898 344 L898 376" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M862 376 L862 358 C862 352 867 348 873 348 C879 348 884 352 884 358 L884 376" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="840" y1="376" x2="906" y2="376" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="930" y="352" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Through what: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">ansible_ssh_common_args</tspan>
+      <tspan x="930" dy="42" font-family="system-ui, -apple-system, sans-serif" font-size="24">(ProxyJump for a jump host)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-privilege">
+    <rect x="50" y="465" width="730" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M103 495 L125 505 C125 527 115 545 103 551 C91 545 81 527 81 505 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <circle cx="103" cy="517" r="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="103" y1="521" x2="103" y2="531" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="150" y="508" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Privilege: </tspan>
+      <tspan font-family="ui-monospace, monospace" font-size="24">ansible_become</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24">, </tspan>
+      <tspan x="150" dy="36" font-family="ui-monospace, monospace" font-size="24">ansible_become_method</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24">, </tspan>
+      <tspan x="150" dy="36" font-family="ui-monospace, monospace" font-size="24">ansible_become_user</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-remote-python">
+    <rect x="820" y="465" width="730" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="846" y="512" width="54" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M858 528 L866 535 L858 542" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="872" y1="542" x2="886" y2="542" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="930" y="525" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Remote Python: </tspan>
+      <tspan x="930" dy="42" font-family="ui-monospace, monospace" font-size="24">ansible_python_interpreter</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-shell">
+    <rect x="50" y="635" width="1500" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="76" y="682" width="54" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M88 700 L98 706 L88 712" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="104" y1="712" x2="116" y2="712" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <text x="150" y="675" fill="#303a36">
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Shell: </tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="24">Ansible assumes Bourne shell syntax (/bin/sh); </tspan>
+      <tspan x="150" dy="38" font-family="system-ui, -apple-system, sans-serif" font-size="24">if the remote login shell is csh or fish set ansible_shell_type=csh or fish so that </tspan>
+      <tspan x="150" dy="36" font-family="system-ui, -apple-system, sans-serif" font-size="24">environment exports and command wrappers are formatted for it</tspan>
+    </text>
+  </g>
+
+  
+  <g id="group-warning">
+    <rect x="50" y="805" width="1500" height="100" rx="12" fill="#faeee2" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M103 827 L127 871 L79 871 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="103" y1="843" x2="103" y2="855" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="103" cy="863" r="2.5" fill="#db8129"/>
+    <text x="150" y="863" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">keep passwords in Vault or a secrets lookup, never in plaintext inventory</text>
+  </g>
+
+  
+  <g id="group-takeaway">
+    <rect x="50" y="925" width="1500" height="80" rx="12" fill="#207448"/>
+    
+    <circle cx="95" cy="965" r="18" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <path d="M87 965 L93 971 L103 959" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="135" y="974" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Set ansible_host, ansible_port, ansible_user and ansible_connection most often</text>
+  </g>
+</svg>

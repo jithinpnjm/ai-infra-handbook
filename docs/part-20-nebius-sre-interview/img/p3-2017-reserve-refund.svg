@@ -1,0 +1,147 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Token limiter: reserve up front, refund after</title>
+  <desc>Visual infographic explaining token rate limiting with reserve up front, refund after mechanism, capacity comparison, side numbers, and distributed design strip.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 18 18" refX="16" refY="9" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Token limiter: reserve up front, refund after</text>
+
+  
+  <rect x="40" y="105" width="1520" height="315" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  
+  <text x="70" y="148" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Timeline for one request against a bucket of 100,000 tokens per minute per tenant per model (assumed)</text>
+
+  
+  <rect x="70" y="175" width="430" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="115" cy="215" r="24" fill="#207448" />
+  <text x="115" y="224" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  <text x="155" y="225" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+  
+  
+  <path d="M 440 200 L 470 200 L 470 230 L 440 230 Z M 447 200 L 447 190 A 8 8 0 0 1 463 190 L 463 200" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  <text x="95" y="278" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="95" dy="0">admission: output length unknown,</tspan>
+    <tspan x="95" dy="34">so reserve prompt 800 +</tspan>
+    <tspan x="95" dy="34">max_tokens 1,024 = 1,824 tokens</tspan>
+  </text>
+
+  
+  <line x1="500" y1="282" x2="540" y2="282" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="550" y="175" width="430" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="595" cy="215" r="24" fill="#207448" />
+  <text x="595" y="224" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  <text x="635" y="225" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+
+  
+  <path d="M 925 215 A 15 15 0 1 0 955 215 A 15 15 0 1 0 925 215 M 940 193 L 940 200 M 940 230 L 940 237 M 918 215 L 925 215 M 955 215 L 962 215" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+
+  <text x="575" y="295" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="575" dy="0">request runs;</tspan>
+    <tspan x="575" dy="36">actual use is 1,100</tspan>
+  </text>
+
+  
+  <line x1="980" y1="282" x2="1020" y2="282" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <rect x="1030" y="175" width="495" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="1075" cy="215" r="24" fill="#207448" />
+  <text x="1075" y="224" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  <text x="1115" y="225" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+
+  
+  <path d="M 1465 200 A 18 18 0 1 0 1485 225 M 1465 190 L 1465 205 L 1480 205" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+
+  <text x="1055" y="295" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1055" dy="0">refund</tspan>
+    <tspan x="1055" dy="36">1,824 - 1,100 = 724 tokens</tspan>
+  </text>
+
+  
+  <rect x="40" y="450" width="880" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="75" y="498" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Comparison</text>
+
+  
+  <rect x="70" y="520" width="820" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="105" cy="565" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <text x="135" y="573" font-family="sans-serif" font-size="24" fill="#303a36">requests per full bucket if reserved and never refunded: 100,000 / 1,824 = 54</text>
+
+  
+  <rect x="70" y="625" width="820" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <circle cx="105" cy="670" r="14" fill="#207448" />
+  <text x="135" y="678" font-family="sans-serif" font-size="24" fill="#303a36">with refund, actual use 1,100: 100,000 / 1,100 = 90</text>
+
+  
+  <rect x="70" y="735" width="820" height="110" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+  <path d="M 100 770 L 115 805 L 85 805 Z" fill="#db8129" />
+  <text x="100" y="800" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">!</text>
+  <text x="135" y="782" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="135" dy="0">without the refund the tenant gets 54 requests</tspan>
+    <tspan x="135" dy="34">where the limit should allow 90</tspan>
+  </text>
+
+  
+  <rect x="950" y="450" width="610" height="425" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="985" y="498" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Side numbers</text>
+
+  
+  <rect x="980" y="520" width="550" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <circle cx="1020" cy="567" r="20" fill="none" stroke="#207448" stroke-width="3" />
+  <polyline points="1020,555 1020,567 1032,567" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="1055" y="560" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1055" dy="0">refill rate</tspan>
+    <tspan x="1055" dy="30">100,000 / 60 = 1,667 tokens per second</tspan>
+  </text>
+
+  
+  <rect x="980" y="630" width="550" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <rect x="1005" y="650" width="30" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="1005" y1="662" x2="1035" y2="662" stroke="#207448" stroke-width="2" />
+  <line x1="1005" y1="672" x2="1035" y2="672" stroke="#207448" stroke-width="2" />
+  <text x="1055" y="670" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1055" dy="0">state:</tspan>
+    <tspan x="1055" dy="30">5,000 tenants x 50 models x 64 B = 16 MB</tspan>
+  </text>
+
+  
+  <rect x="980" y="740" width="550" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  <path d="M 1005 780 L 1030 780 M 1024 774 L 1030 780 L 1024 786" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <path d="M 1035 798 L 1010 798 M 1016 792 L 1010 798 L 1016 804" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="1055" y="785" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1055" dy="0">store operations:</tspan>
+    <tspan x="1055" dy="30">2 x 2,000 requests per second = 4,000 per second</tspan>
+  </text>
+
+  
+  <rect x="40" y="905" width="1520" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="75" y="950" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Design strip</text>
+
+  <rect x="70" y="970" width="1460" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  
+  
+  <rect x="95" y="1005" width="34" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <rect x="95" y="1045" width="34" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="112" y1="1031" x2="112" y2="1045" stroke="#207448" stroke-width="3" />
+
+  <text x="150" y="1015" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="150" dy="0">central store against local buckets with leases of 5,000 tokens per gateway;</tspan>
+    <tspan x="150" dy="36">error bounded by lease size times gateway count;</tspan>
+    <tspan x="150" dy="36">store down: fail open with a local safety limit, stated as a choice</tspan>
+  </text>
+
+</svg>

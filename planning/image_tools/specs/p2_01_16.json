@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "16",
+  "name": "p2-0116-cron-user-system",
+  "title": "A user crontab has five fields, and a system crontab adds a sixth for the user",
+  "spec": "Two side-by-side panels with green headings. Left panel, heading 'User crontab (crontab -e)': a row of five boxes labelled 'minute', 'hour', 'day of month', 'month', 'day of week', then a sixth box 'command' at the end. Under it, a monospace example line '15 09 * * * /home/juser/bin/spmake' with the note 'No user field: the owner is the account that edits it'. Right panel, orange outline, heading 'System crontab (/etc/crontab, /etc/cron.d/)': the same five boxes, then a new box 'user' inserted before the command, highlighted, with the monospace example '42 6 * * * root /usr/local/bin/cleansystem' and the note 'The sixth field names the user the job runs as'. Below both panels, a strip of storage labels: 'crontab -e edits /var/spool/cron/' on the left and '/etc/cron.d/ files are owned by root' on the right. Caption: 'Same schedule, one extra field for system files.'",
+  "anchor": "### Where crontabs live",
+  "alt": "A user crontab has five time fields and the command, while a system crontab adds a user field before the command.",
+  "cap": "A user crontab has five time fields followed by the command, while a system crontab adds a user field before the command."
+ }
+]

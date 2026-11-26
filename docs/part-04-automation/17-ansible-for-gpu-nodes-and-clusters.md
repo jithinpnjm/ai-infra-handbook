@@ -42,25 +42,9 @@ Before you start, you need chapters 4.3 to 4.16, plus the Linux and GPU basics f
 
 Suppose a freshly built node comes up with a driver that will not load. Before you touch anything, you need to know which step went wrong, and that means knowing the order the steps depend on. The graph below shows that order. Read each arrow as "needs", so the box at the end of an arrow needs the box at its start. The round markers show where a reboot or module reload has to happen, because the kernel will not swap modules under a running driver.
 
-```mermaid
-flowchart TB
-  F["Firmware & BIOS\n(virtualisation/IOMMU, SR-IOV, NPS, power profile, PCIe settings)"] --> OS["OS install / image\n(kernel, headers, base packages, time sync, users)"]
-  OS --> K["Kernel params & tuning\n(hugepages, IOMMU, isolcpus, sysctl, limits)"]
-  K --> OFED["MLNX_OFED / DOCA\n(RDMA, ConnectX/BlueField drivers)"]
-  OFED --> R1(("reboot / module reload"))
-  R1 --> DRV["NVIDIA driver\n(open or proprietary; DKMS or precompiled)"]
-  DRV --> R2(("reboot / reload"))
-  R2 --> FM["Fabric Manager\n(NVSwitch systems)"]
-  DRV --> PM["nvidia-persistenced\npersistence mode, clocks, power cap, MIG"]
-  DRV --> PEER["nvidia-peermem / GDRCopy\n(GPUDirect RDMA)"]
-  FM --> DCGM["DCGM + exporter\n(telemetry, health)"]
-  PM --> DCGM
-  PEER --> CT["Container toolkit\n(runtime config)"]
-  DCGM --> VAL["Validation & burn-in\n(DCGM diag, NCCL tests)"]
-  CT --> VAL
-  VAL --> SCH["Scheduler / Kubernetes agent\n(slurmd, kubelet, GPU Operator parts)"]
-  SCH --> OK["Node released to workloads"]
-```
+![The node bring-up dependency graph](./img/m4-17-1.svg)
+
+*Figure 4.17.1. The node bring-up dependency graph, as a diagram.*
 
 The graph gives you five rules, and each one prevents a failure you will eventually meet. First, install the RDMA stack before the GPU driver, because the driver's peer-memory module binds to it. If the order is reversed, `nvidia_peermem` loads without its RDMA partner and GPUDirect quietly stops working. Second, reboot or reload modules at every boundary where kernel modules change. Third, start Fabric Manager only after a matching driver is loaded, and before CUDA workloads run. Fourth, validate the node before the scheduler sees it, so a bad GPU never receives a job. Fifth, register the node with the scheduler last. Each rule is a dependency in the graph, so you can check your playbook against the arrows instead of against memory.
 

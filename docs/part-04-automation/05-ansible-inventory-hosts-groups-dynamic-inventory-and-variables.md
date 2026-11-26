@@ -47,6 +47,10 @@ Ansible reads its inventory in a few formats. INI is a flat list of hosts with b
 
 ### INI
 
+![An annotated INI inventory with login, GPU H100 and A100 groups using ranges, children groups and a vars section, with the rules for host lines, suffixes and ranges.](./img/p4-0405-ini-anatomy.svg)
+
+*Figure 4.5.1. Each INI host line is a row of key=value columns, with ranges, children groups and inline group variables.*
+
 ```ini
 # inventories/prod/hosts.ini
 mgmt01 ansible_host=10.1.0.2
@@ -84,6 +88,10 @@ The INI format has a few quirks you will hit early. Values on host lines are par
 
 ### YAML
 
+![A YAML inventory drawn as a tree from all through login, gpu with H100 and A100 children and slurm_controller, showing which settings gpu001 inherits from each level.](./img/p4-0405-yaml-tree.svg)
+
+*Figure 4.5.2. Reading the YAML tree from the top shows which variables a host inherits from all and its parent groups before its own braces.*
+
 ```yaml
 # inventories/prod/hosts.yml
 all:
@@ -116,6 +124,26 @@ Choose YAML when your variables are structured, such as lists and dicts stored o
 
 ### Special groups, names and connection variables
 
+![A five step ladder of ansible-inventory --graph, --graph --vars, --host, --list --yaml and --list-hosts with the question each answers.](./img/p4-0405-inspect-ladder.svg)
+
+*Figure 4.5.3. Run --graph first for the shape, then --host for the merged variables of one machine, and count --list-hosts.*
+
+![A grouped table of Ansible connection variables for address, user and key, connection type, jump host, privilege escalation, Python interpreter and shell type, with the rule to keep passwords out of inventory.](./img/p4-0405-connection-vars.svg)
+
+*Figure 4.5.4. Connection variables say where to go, who signs in, how to connect and which interpreter and shell to use.*
+
+![Pets named one by one with city hostnames versus cattle numbered with ranges such as gpu001 to gpu032, web01 to web20 and web-a to web-t, with zero padding preserved.](./img/p4-0405-pets-cattle-ranges.svg)
+
+*Figure 4.5.5. Name pets one at a time, but number a GPU fleet with ranges, where zero padding is kept automatically.*
+
+![The built-in groups all, ungrouped and the implicit localhost that is not part of all, with the naming rules for hosts and groups.](./img/p4-0405-special-groups.svg)
+
+*Figure 4.5.6. all holds every host, ungrouped holds the rest, and the implicit localhost is not in all unless you define it.*
+
+![Three Vagrant entries that share 127.0.0.1 collapse into one host, and aliases with their own ports keep all three.](./img/a05-vagrant-collapse.svg)
+
+*Figure 4.5.7. Listing three Vagrant VMs by address alone collapses them into one host, so each machine needs its own alias.*
+
 `all` contains every host. `ungrouped` contains the hosts that belong to no other group. `localhost` is implicit, with the connection `local`, and it is not part of `all` unless you define it explicitly.
 
 Give each host a stable logical name, and put its network address in `ansible_host`. The name in the inventory, `inventory_hostname`, can differ from that address. The trap appears when several machines share one address. A lab with three local Vagrant VMs shows this trap. The first is `vagrant1` on port `2222`, the second is `vagrant2` on port `2200`, and the third is `vagrant3` on port `2201`. If you list `127.0.0.1:2222`, `127.0.0.1:2200` and `127.0.0.1:2201` without aliases, Ansible uses the hostname `127.0.0.1` as the unique dictionary key for the host. All three lines then overwrite the same entry. As a result, `ansible vagrant -m ping` pings only one machine, `127.0.0.1` on port `2201`. The file looks full of hosts, yet only one entry survives. Count the lines that `--list-hosts` prints for the group. A count smaller than the number of machines you started is the first sign of this trap.
@@ -144,6 +172,18 @@ Run `--graph` first to check the shape, then `--host` to see the final variables
 
 ## 2. Host patterns
 
+![A play with hosts gpu narrowed by --limit to gpu_h100 without ever widening, a rerun of failed hosts from a captured file, and the four order values sorted, reverse_sorted, reverse_inventory and shuffle.](./img/p4-0405-limit-rolling.svg)
+
+*Figure 4.5.8. --limit only narrows the play, a captured failure file reruns only failed hosts, and order shuffle spreads risk.*
+
+![A table of ten host pattern forms including all, group, union, intersection, exclusion, wildcard, regex, subscript, explicit list and file, with the analogy of filters on a contact list.](./img/p4-0405-pattern-table.svg)
+
+*Figure 4.5.9. Colon joins, ampersand intersects, bang excludes, and patterns are checked against the inventory before anything runs.*
+
+![Venn diagram showing union, intersection and exclusion for host patterns over gpu, login and rack groups.](./img/a05-pattern-venn.svg)
+
+*Figure 4.5.10. Host patterns combine groups with union, intersection and exclusion, so you can pick an exact slice of the fleet.*
+
 An engineer needs to restart the Slurm daemon on every GPU node except the one under repair. Typing the names by hand invites a typo, and a missed node is hard to notice. A host pattern expresses the same selection in one short string. It is also checked against the inventory before anything runs, so you can see the matched hosts first.
 
 Suppose you want to target only the GPU hosts in rack r01. A host pattern lets you say that in one short string. Think of a pattern as a filter on a contact list. The simplest filter is a group name, which returns everyone in that group. The rest of the table adds operators on top. A colon joins two selections, an `&` keeps only what two selections share, and a `!` removes a group from the result. Each row shows one operator, and you can combine them in a single string.
@@ -166,6 +206,14 @@ Picture a driver rollout over the whole GPU group. The `hosts: gpu` line sets th
 Before a rolling change, decide the order and make sure failures are captured, so a rerun can target them. Think of the failure list as the sign-in sheet for a workshop. If you did not collect the sheet, you have no way to tell who attended, and the rerun has to start from the full roster again. Choose the order on purpose as well. `sorted` gives the same sequence every time, which makes a log easy to compare with the last run. `shuffle` spreads the risk, so one bad rack does not always come first.
 
 ## 3. Variables: group_vars, host_vars, and layout
+
+![A placement table for hardware traits, role settings, cluster-wide values, exceptions, defaults and overrides, with the move-it-to-another-rack test, role prefix naming and vault pointer variables.](./img/p4-0405-var-ownership.svg)
+
+*Figure 4.5.11. Put each variable on the group that owns it, prefix names by role, and point plain variables at vaulted secrets.*
+
+![An annotated inventories directory with prod and staging environments, group_vars with main.yml and vault.yml, a host_vars one-off, and the rule to select an environment with -i instead of using Git branches.](./img/p4-0405-vars-layout-tree.svg)
+
+*Figure 4.5.12. Give each environment its own inventory directory and variable tree, and split plain settings from vault files.*
 
 A new cluster needs a different NTP server than the old one. If that value lives inside a playbook, every change means editing code, and two clusters drift apart. Variables kept in inventory files let one playbook serve both clusters. Each cluster's values sit next to its hosts, where a reviewer can see them.
 
@@ -205,6 +253,18 @@ To check the merged result, run `ansible-inventory --host`. Inside a play, `debu
 
 ### Variable precedence (summary)
 
+![Two worked precedence scenarios for nvidia_driver_branch, where the group value 550 beats a role default and a command-line extra var beats everything, with the bottom-up debugging method.](./img/p4-0405-precedence-worked.svg)
+
+*Figure 4.5.13. The group value beats the role default, extra vars beat both, and the layer to edit is the one that replaced the expected value.*
+
+![A seven step precedence ladder from role defaults and command-line values at the bottom through group_vars, host_vars, facts, play vars and task vars up to extra vars, with the practical placement rule.](./img/p4-0405-precedence-ladder.svg)
+
+*Figure 4.5.14. Role defaults sit lowest, group_vars and host_vars above them, play and role vars higher, and -e always wins.*
+
+![A host dictionary replaces the whole group dictionary and drops its other keys, while the combine filter keeps all keys.](./img/a05-hash-replace.svg)
+
+*Figure 4.5.15. A host dictionary replaces the group dictionary by default, so the combine filter is needed to keep the other keys.*
+
 Think of precedence as a stack of transparent sheets. Where the top sheet has writing, you read that value. Where it is blank, the sheet below shows through. A variable in a more specific place is written on a higher sheet, so it overrides the general value underneath. The list below is the stack, from the bottom sheet to the top.
 
 Picture a driver branch that you set to `550` in a group, then find an older value in a job. Before you can say which value is right, you need the rule. Ansible has about 22 precedence levels, which is more than anyone should keep in their head. The practical order, from lowest to highest, is this:
@@ -225,19 +285,17 @@ Dictionaries deserve their own warning, because they behave differently from sin
 
 The diagram below shows the same order.
 
-```mermaid
-flowchart BT
-    L1["1. Role defaults (roles/x/defaults/main.yml) — lowest"] --> L2["2. Inventory group_vars/all -> parent group_vars -> child group_vars"]
-    L2 --> L3["3. Inventory host_vars/ (host-specific exceptions)"]
-    L3 --> L4["4. Host facts (setup) & registered / set_fact vars"]
-    L4 --> L5["5. Play vars / vars_files & Role vars (roles/x/vars/main.yml)"]
-    L5 --> L6["6. Block & Task vars / include_vars / role params"]
-    L6 --> L7["7. Extra vars (-e key=val / -e @file.yml) — ALWAYS WINS"]
-```
+![Variable precedence (summary)](./img/m4-05-1.svg)
+
+*Figure 4.5.16. Variable precedence (summary), as a diagram.*
 
 Decide which group owns each variable before you write it. A quick test helps. Ask whether the value would still be true if the host were moved to a different rack, and if the answer is no, the value belongs on a rack group or a host, not on a hardware group.
 
 ## 4. Runtime grouping: add_host and group_by
+
+![Two panels showing group_by computing groups such as gpu_model_h100 from facts for existing hosts and add_host recording a newly provisioned VM in memory for a later play, plus meta refresh_inventory.](./img/p4-0405-group-by-add-host.svg)
+
+*Figure 4.5.17. group_by builds groups from facts for existing hosts, add_host records new hosts in memory, and both last only for the current run.*
 
 A cloud job creates three new VMs in the middle of a play. The next task needs those machines in a group, so it can configure them. The inventory was read at the start of the run, so it does not know about them yet. Runtime grouping lets a play add hosts and groups while it runs, so the rest of the play can address the new machines by name.
 
@@ -272,6 +330,22 @@ Walk through the first play as Ansible runs it. It gathers facts from every host
 Use `group_by` to branch plays on facts, such as the OS family or the GPU model. Use `add_host` right after provisioning a VM, so that the following play can configure it. Both change only the current run. If you need Ansible to re-read the inventory sources partway through a run, use `meta: refresh_inventory`. Use `group_by` for hosts that already exist, and `add_host` for hosts that are new.
 
 ## 5. Dynamic inventory
+
+![An inventory directory mixing a vagrant script, AWS, GCP and Azure plugin configs and static files with group_vars, merged by Ansible into one inventory, set as default in ansible.cfg.](./img/p4-0405-mixed-sources.svg)
+
+*Figure 4.5.18. Point ansible.cfg at an inventory directory and Ansible merges every static file, script and plugin into one list.*
+
+![A five row table of inventory plugin settings keyed_groups, groups, compose, filters and cache, beside the inventory plugins grouped by cloud, container, constructed, source of truth and built-in format.](./img/p4-0405-plugin-settings.svg)
+
+*Figure 4.5.19. Five settings do most of the work, and plugins group into cloud, container, constructed, source-of-truth and built-in formats.*
+
+![An annotated GCP inventory plugin config with projects, zones, workload identity auth, server-side filters, compose for ansible_host, keyed_groups from labels and zone and a machine-type group, beside the AWS equivalent.](./img/p4-0405-plugin-config-annotated.svg)
+
+*Figure 4.5.20. filters narrow the query at the cloud, compose sets ansible_host, and keyed_groups and groups turn attributes into groups.*
+
+![A dynamic inventory plugin reads its config, queries the cloud API with filters, builds groups, and returns the current host list.](./img/a05-dynamic-flow.svg)
+
+*Figure 4.5.21. A dynamic inventory plugin asks the cloud for the current hosts on each run, so the list never goes stale.*
 
 Think of a static inventory file as a printed phone directory. It is accurate on the day it was printed, and every change after that makes it a little less useful. Nodes come and go with autoscaling and repair cycles. A static list of hosts can be stale within a day. A dynamic inventory asks the cloud, or a source of truth, for the current list every time you run. The list is then always as fresh as the system that owns it, and the work moves from keeping a file correct to keeping the source correct.
 
@@ -328,6 +402,14 @@ You can combine sources. Picture a cluster that runs most of its GPUs on premise
 
 ### Script and custom plugins
 
+![The two steps of the vagrant.py inventory script: --list filtering running machines from machine-readable status, and --host mapping ssh-config fields to ansible_host, port, user and key file.](./img/p4-0405-vagrant-py-walk.svg)
+
+*Figure 4.5.22. --list returns the running machines and --host maps ssh-config fields onto Ansible connection variables.*
+
+![The flow of an inventory script calling sinfo, grouping nodes by partition and returning JSON with _meta hostvars so Ansible skips per-host calls, with the rules for executable, deterministic and non-zero exit.](./img/p4-0405-script-sinfo.svg)
+
+*Figure 4.5.23. The script builds groups from sinfo and returns _meta.hostvars so Ansible never needs a per-host call.*
+
 Think of an inventory script as a handmade roster that you assemble on demand. It runs, prints JSON, and Ansible reads the output. An inventory script is the older way to build a dynamic inventory. It is any executable that prints JSON for `--list` and `--host <name>`. It is simple, but it is unmaintained by convention. The recommended extension point is an inventory plugin: a Python class that subclasses `BaseInventoryPlugin`, optionally `Constructable` and `Cacheable`, shipped inside a collection.
 
 The script below builds a Slurm inventory from the output of `sinfo`.
@@ -371,6 +453,10 @@ Set `inventory = inventory` in `ansible.cfg`, where `inventory/` is a directory.
 
 ### Source of truth for GPU fleets
 
+![A generated inventory fed by NetBox or Nautobot, Base Command Manager, the Slurm scheduler and cloud or Terraform state, with the RMA node story and the rule to test the inventory source like code.](./img/p4-0405-source-of-truth.svg)
+
+*Figure 4.5.24. Generate the inventory from NetBox, BCM, the scheduler or Terraform state so it cannot drift, and test the generator like code.*
+
 Ask who owns the list of machines. If the answer is a spreadsheet that nobody updates, the inventory will lie to you, and every run will miss the hosts that were added last month. Picture a node that was pulled for RMA last week. The spreadsheet still lists it as healthy, so a driver rollout sends it a job it cannot run. A source of truth, such as a DCIM or CMDB system, is the place where the list should come from. Point the inventory at it, and the automation inherits its accuracy.
 
 Think of a source of truth as the one ledger that the accountant trusts, with every other list copied from it. Large AI clusters keep their truth in several places, and each place owns a different slice of the picture. NetBox or Nautobot holds devices, interfaces, IPs, racks, cables and tags. NVIDIA Base Command Manager (BCM) holds node categories and provisioning data. The scheduler holds Slurm node definitions, and cloud or Terraform state holds the cloud side. Generating your inventory from one of these sources removes the problem where the inventory says `gpu77` exists but it was RMA'd. It also enables cabling-aware automation, such as checking which rail each NIC connects to.
@@ -380,6 +466,14 @@ Treat the inventory source as code. Review its changes, validate it for unique n
 Generate the inventory from a source of truth, and test it like code.
 
 ## 6. Designing inventory for GPU clusters
+
+![Nine per-host labels such as rack, bmc_address and gpu_count with an assert guard, beside the scale measures of _meta, keyed_groups, caching, several sources, forks and group priority.](./img/p4-0405-host-labels-scale.svg)
+
+*Figure 4.5.25. Give every host rack, BMC and GPU labels checked by an assert play, and use _meta, caching and priorities at scale.*
+
+![A table of four inventory axes of role, hardware trait, location and lifecycle with the question, example groups and use for each, plus where H100 and rack variables live and the need for shared group names.](./img/p4-0405-four-axes.svg)
+
+*Figure 4.5.26. Role, hardware, location and lifecycle groups let a playbook target any slice, and every team must use the same group names.*
 
 Picture a new engineer on the first day of a cluster rebuild. They open the inventory, look for the H100 driver value, and need to know within a minute whether it lives on the hardware group or on the rack. A GPU rack usually holds three kinds of machines: compute nodes, login nodes and storage gateways. Each kind needs different variables, and some values are shared across all of them. A good layout makes that difference visible in the directory structure. A new engineer should be able to find the right value in one place, without searching every file.
 
@@ -401,6 +495,10 @@ A small cluster forgives a messy layout, because a person can keep the whole fle
 Settle the group axes first, so that every playbook can target the same slices. A driver playbook, a Slurm playbook and a firmware playbook then all use the same names, and a rollout to rack r07 means the same set of hosts in each of them. Without that agreement, each team invents its own names, and a rack that one playbook calls `r07` another playbook calls `rack7`.
 
 ## 7. Debugging inventory and variable problems
+
+![A table of eight inventory symptoms including no hosts matched, wrong variable value, undefined variable, ignored group_vars, lost dictionary keys, slow dynamic inventory, unused plugin and wrong connection, with causes and checks.](./img/p4-0405-debug-table.svg)
+
+*Figure 4.5.27. Match the symptom to its row, then run ansible-inventory to see the same merged view Ansible uses.*
 
 Picture a playbook that reports the NCCL setting it expects, while the task output shows a different one. You have checked the group file twice, and it looks right. Before you touch anything else, you need a method. A variable shows the value you expected in the playbook, but a task uses another value. The cause is almost always precedence. A variable set in a more specific place overrides the one you were reading. The steps below show you how to find which layer won, and they start with the cheapest check.
 
@@ -446,6 +544,10 @@ Think of the exercises below as a rehearsal on a control node with `ansible-core
 11. Clean up when you finish.
 
 ## 9. Common mistakes
+
+![Five common inventory habits and four smaller errors, with the green-dashboard story of a rack that never received the driver and the habit of counting targeted hosts before a run.](./img/p4-0405-mistake-list.svg)
+
+*Figure 4.5.28. Count the hosts a run targets before starting it, because inventory mistakes are quiet and the run can still report success.*
 
 Inventory mistakes are quiet. A host is missing from the list, so a change skips it, and the run still reports success. Picture a green dashboard after a rollout, and one rack that never received the new driver. Nothing failed, because nothing was asked to run there. The habit that prevents this is to count the hosts that a run targets before you start it. Read this list with one question in mind: which host did this miss?
 

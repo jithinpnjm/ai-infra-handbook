@@ -1,0 +1,134 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1170" width="1600" height="1170">
+  <title>Type hint forms and the checker rules that matter most</title>
+  <desc>Infographic explaining Python type hint forms, checker rules including Postel's Law and Any versus object, gradual typing runtime behavior, and CI enforcement.</desc>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Type hint forms and the checker rules that matter most</text>
+
+  
+  <rect x="40" y="85" width="1520" height="460" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  
+  <rect x="55" y="97" width="725" height="112" rx="6" fill="#e8f1ea"/>
+  <text x="75" y="125" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">Iterable[Node] | None (3.10+ union; Optional[X] is </tspan>
+    <tspan x="75" dy="28">X | None): the checker forces you to handle None; </tspan>
+    <tspan x="75" dy="28">narrow with if x is not None, isinstance, assert x </tspan>
+    <tspan x="75" dy="28">or an early return</tspan>
+  </text>
+
+  
+  <rect x="55" y="215" width="725" height="46" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="75" y="247" font-family="monospace" font-size="24" fill="#303a36">dict[str, list[Node]] builtin generics (3.9+)</text>
+
+  
+  <rect x="55" y="267" width="725" height="74" rx="6" fill="#e8f1ea"/>
+  <text x="75" y="297" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0">Callable[[], T] with TypeVar T for a function that </tspan>
+    <tspan x="75" dy="28">keeps the type it receives</tspan>
+  </text>
+
+  
+  <rect x="55" y="347" width="725" height="46" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="75" y="379" font-family="monospace" font-size="24" fill="#303a36">NewType(Port, int): a distinct type for the checker</text>
+
+  
+  <rect x="55" y="399" width="725" height="46" rx="6" fill="#e8f1ea"/>
+  <text x="75" y="431" font-family="monospace" font-size="24" fill="#303a36">Final: MAX_RETRIES: Final = 5</text>
+
+  
+  <rect x="55" y="451" width="725" height="46" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="75" y="483" font-family="monospace" font-size="24" fill="#303a36">Literal[dry-run, apply]</text>
+
+  
+  
+  <rect x="820" y="97" width="725" height="112" rx="6" fill="#e8f1ea"/>
+  <text x="840" y="125" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="840" dy="0">TypedDict(total=False): the shape of a dict; zero </tspan>
+    <tspan x="840" dy="28">runtime validation, a from_json returning arbitrary </tspan>
+    <tspan x="840" dy="28">JSON passes at runtime unless you validate with </tspan>
+    <tspan x="840" dy="28">pydantic</tspan>
+  </text>
+
+  
+  <rect x="820" y="215" width="725" height="66" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="840" y="243" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="840" dy="0">TypeAlias: JsonScalar = str | int | float | bool | </tspan>
+    <tspan x="840" dy="28">None</tspan>
+  </text>
+
+  
+  <rect x="820" y="287" width="725" height="88" rx="6" fill="#e8f1ea"/>
+  <text x="840" y="315" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="840" dy="0">@overload: several signatures plus one unannotated </tspan>
+    <tspan x="840" dy="28">implementation, for sum and max with or without </tspan>
+    <tspan x="840" dy="28">key= and default=</tspan>
+  </text>
+
+  
+  <rect x="820" y="381" width="725" height="46" rx="6" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+  <text x="840" y="413" font-family="monospace" font-size="24" fill="#303a36">Self types fluent methods and classmethods</text>
+
+  
+  <rect x="820" y="433" width="725" height="66" rx="6" fill="#e8f1ea"/>
+  <text x="840" y="461" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="840" dy="0">Annotated[int, Field(ge=0)] attaches metadata for </tspan>
+    <tspan x="840" dy="28">pydantic and FastAPI</tspan>
+  </text>
+
+  
+  <rect x="40" y="560" width="1520" height="235" rx="8" fill="#fef9f3" stroke="#db8129" stroke-width="3"/>
+
+  
+  <rect x="55" y="575" width="725" height="205" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text x="75" y="605" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" dy="0" font-weight="bold">Postel's Law: </tspan><tspan>accept general types (Iterable, </tspan>
+    <tspan x="75" dy="28">Sequence, Mapping), return concrete list or dict; </tspan>
+    <tspan x="75" dy="28">do not annotate a read-only parameter as dict or </tspan>
+    <tspan x="75" dy="28">list when Mapping, Sequence or Iterable will do; </tspan>
+    <tspan x="75" dy="28">name2hex(name: str, color_map: Mapping[str, int]) </tspan>
+    <tspan x="75" dy="28">accepts dict, defaultdict, ChainMap or UserDict</tspan>
+  </text>
+
+  
+  <rect x="820" y="575" width="725" height="205" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+  <text x="840" y="602" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="840" dy="0" font-weight="bold">Any versus object: </tspan><tspan>Any is both a subtype and a </tspan>
+    <tspan x="840" dy="26">supertype of every type, so it turns checking off </tspan>
+    <tspan x="840" dy="26">and the effect spreads, as with json.loads(); object </tspan>
+    <tspan x="840" dy="26">accepts any value but allows only operations every </tspan>
+    <tspan x="840" dy="26">object supports until you narrow it; typing.cast </tspan>
+    <tspan x="840" dy="26">and # type: ignore[code] switch off checking for </tspan>
+    <tspan x="840" dy="26">that line</tspan>
+  </text>
+
+  
+  <rect x="40" y="810" width="1520" height="142" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="85" cy="881" r="20" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="100" y1="896" x2="115" y2="911" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="135" y="844" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">CPython ignores hints at runtime and stores them in __annotations__; mypy, pyright, pyre, pytype read them; </tspan>
+    <tspan x="135" dy="28">unannotated functions are ignored by default; keep fixed-length tuple[str, float, str] separate from </tspan>
+    <tspan x="135" dy="28">tuple[int, ...]; TYPE_CHECKING blocks for annotation-only imports; reveal_type(x); get_type_hints(func) </tspan>
+    <tspan x="135" dy="28">and inspect.signature(func) read lazy annotations</tspan>
+  </text>
+
+  
+  <rect x="40" y="967" width="1520" height="100" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 85 987 L 105 997 L 105 1017 Q 105 1037 85 1047 Q 65 1037 65 1017 L 65 997 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <polyline points="76,1017 83,1024 95,1009" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="135" y="1008" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="135" dy="0">annotate public APIs first, then mypy --strict, per-module overrides (ignore_missing_imports for redfish.* and </tspan>
+    <tspan x="135" dy="32">paramiko.*), stubgen, types-requests; new errors fail the build</tspan>
+  </text>
+
+  
+  <rect x="40" y="1082" width="1520" height="58" rx="8" fill="#207448"/>
+  <text x="800" y="1119" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Typing pays off most at boundaries: API clients, config models and plugin interfaces</text>
+</svg>

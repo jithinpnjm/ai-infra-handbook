@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>The average looks fine while one user in twenty waits eight seconds</title>
+  <desc>Infographic showing latency distribution where 950 requests stream at 0.4 seconds, bringing the mean to 0.78 seconds below the 1 second limit, while 50 requests wait 8 seconds.</desc>
+
+  <defs>
+    <marker id="axis-arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The average looks fine while one user in twenty waits eight seconds</text>
+
+  
+  <g id="left-group-panel">
+    <rect x="50" y="130" width="230" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="165" y="172" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">950 requests</text>
+    <text x="165" y="214" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">start streaming</tspan>
+      <tspan x="165" dy="28">after 0.4 s</tspan>
+    </text>
+  </g>
+
+  
+  <g id="limit-line">
+    <rect x="350" y="130" width="170" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+    <text x="435" y="168" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">1 s limit</text>
+    <line x1="340" y1="186" x2="340" y2="750" stroke="#207448" stroke-width="3" stroke-dasharray="8 8"/>
+  </g>
+
+  
+  <g id="mean-line">
+    <rect x="110" y="285" width="225" height="125" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="222" y="324" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Mean 0.78 s</text>
+    <text x="222" y="362" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="222" dy="0">the average is</tspan>
+      <tspan x="222" dy="28">under the limit</tspan>
+    </text>
+    <line x1="309" y1="410" x2="309" y2="750" stroke="#207448" stroke-width="3.5"/>
+  </g>
+
+  
+  <g id="left-dots" fill="#207448">
+    
+    <circle cx="241" cy="440" r="4.5"/><circle cx="251" cy="440" r="4.5"/><circle cx="261" cy="440" r="4.5"/><circle cx="271" cy="440" r="4.5"/>
+    <circle cx="241" cy="452" r="4.5"/><circle cx="251" cy="452" r="4.5"/><circle cx="261" cy="452" r="4.5"/><circle cx="271" cy="452" r="4.5"/>
+    <circle cx="241" cy="464" r="4.5"/><circle cx="251" cy="464" r="4.5"/><circle cx="261" cy="464" r="4.5"/><circle cx="271" cy="464" r="4.5"/>
+    <circle cx="241" cy="476" r="4.5"/><circle cx="251" cy="476" r="4.5"/><circle cx="261" cy="476" r="4.5"/><circle cx="271" cy="476" r="4.5"/>
+    <circle cx="241" cy="488" r="4.5"/><circle cx="251" cy="488" r="4.5"/><circle cx="261" cy="488" r="4.5"/><circle cx="271" cy="488" r="4.5"/>
+    <circle cx="241" cy="500" r="4.5"/><circle cx="251" cy="500" r="4.5"/><circle cx="261" cy="500" r="4.5"/><circle cx="271" cy="500" r="4.5"/>
+    <circle cx="241" cy="512" r="4.5"/><circle cx="251" cy="512" r="4.5"/><circle cx="261" cy="512" r="4.5"/><circle cx="271" cy="512" r="4.5"/>
+    <circle cx="241" cy="524" r="4.5"/><circle cx="251" cy="524" r="4.5"/><circle cx="261" cy="524" r="4.5"/><circle cx="271" cy="524" r="4.5"/>
+    <circle cx="241" cy="536" r="4.5"/><circle cx="251" cy="536" r="4.5"/><circle cx="261" cy="536" r="4.5"/><circle cx="271" cy="536" r="4.5"/>
+    <circle cx="241" cy="548" r="4.5"/><circle cx="251" cy="548" r="4.5"/><circle cx="261" cy="548" r="4.5"/><circle cx="271" cy="548" r="4.5"/>
+    <circle cx="241" cy="560" r="4.5"/><circle cx="251" cy="560" r="4.5"/><circle cx="261" cy="560" r="4.5"/><circle cx="271" cy="560" r="4.5"/>
+    <circle cx="241" cy="572" r="4.5"/><circle cx="251" cy="572" r="4.5"/><circle cx="261" cy="572" r="4.5"/><circle cx="271" cy="572" r="4.5"/>
+    <circle cx="241" cy="584" r="4.5"/><circle cx="251" cy="584" r="4.5"/><circle cx="261" cy="584" r="4.5"/><circle cx="271" cy="584" r="4.5"/>
+    <circle cx="241" cy="596" r="4.5"/><circle cx="251" cy="596" r="4.5"/><circle cx="261" cy="596" r="4.5"/><circle cx="271" cy="596" r="4.5"/>
+    <circle cx="241" cy="608" r="4.5"/><circle cx="251" cy="608" r="4.5"/><circle cx="261" cy="608" r="4.5"/><circle cx="271" cy="608" r="4.5"/>
+    <circle cx="241" cy="620" r="4.5"/><circle cx="251" cy="620" r="4.5"/><circle cx="261" cy="620" r="4.5"/><circle cx="271" cy="620" r="4.5"/>
+    <circle cx="241" cy="632" r="4.5"/><circle cx="251" cy="632" r="4.5"/><circle cx="261" cy="632" r="4.5"/><circle cx="271" cy="632" r="4.5"/>
+    <circle cx="241" cy="644" r="4.5"/><circle cx="251" cy="644" r="4.5"/><circle cx="261" cy="644" r="4.5"/><circle cx="271" cy="644" r="4.5"/>
+    <circle cx="241" cy="656" r="4.5"/><circle cx="251" cy="656" r="4.5"/><circle cx="261" cy="656" r="4.5"/><circle cx="271" cy="656" r="4.5"/>
+    <circle cx="241" cy="668" r="4.5"/><circle cx="251" cy="668" r="4.5"/><circle cx="261" cy="668" r="4.5"/><circle cx="271" cy="668" r="4.5"/>
+    <circle cx="241" cy="680" r="4.5"/><circle cx="251" cy="680" r="4.5"/><circle cx="261" cy="680" r="4.5"/><circle cx="271" cy="680" r="4.5"/>
+    <circle cx="241" cy="692" r="4.5"/><circle cx="251" cy="692" r="4.5"/><circle cx="261" cy="692" r="4.5"/><circle cx="271" cy="692" r="4.5"/>
+    <circle cx="241" cy="704" r="4.5"/><circle cx="251" cy="704" r="4.5"/><circle cx="261" cy="704" r="4.5"/><circle cx="271" cy="704" r="4.5"/>
+    <circle cx="241" cy="716" r="4.5"/><circle cx="251" cy="716" r="4.5"/><circle cx="261" cy="716" r="4.5"/><circle cx="271" cy="716" r="4.5"/>
+    <circle cx="241" cy="728" r="4.5"/><circle cx="251" cy="728" r="4.5"/><circle cx="261" cy="728" r="4.5"/><circle cx="271" cy="728" r="4.5"/>
+    <circle cx="241" cy="740" r="4.5"/><circle cx="251" cy="740" r="4.5"/><circle cx="261" cy="740" r="4.5"/><circle cx="271" cy="740" r="4.5"/>
+  </g>
+
+  
+  <g id="right-group-panel">
+    <rect x="1130" y="500" width="380" height="150" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="2.5"/>
+    <text x="1320" y="545" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">50 requests</text>
+    <text x="1320" y="590" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1320" dy="0">wait 8 s after queueing</tspan>
+      <tspan x="1320" dy="28">behind a long prompt</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-dots" fill="#db8129">
+    <circle cx="1305" cy="716" r="4.5"/><circle cx="1315" cy="716" r="4.5"/><circle cx="1325" cy="716" r="4.5"/><circle cx="1335" cy="716" r="4.5"/>
+    <circle cx="1305" cy="728" r="4.5"/><circle cx="1315" cy="728" r="4.5"/><circle cx="1325" cy="728" r="4.5"/><circle cx="1335" cy="728" r="4.5"/>
+    <circle cx="1305" cy="740" r="4.5"/><circle cx="1315" cy="740" r="4.5"/><circle cx="1325" cy="740" r="4.5"/><circle cx="1335" cy="740" r="4.5"/>
+  </g>
+
+  
+  <g id="latency-axis">
+    <line x1="140" y1="750" x2="1415" y2="750" stroke="#207448" stroke-width="4" marker-end="url(#axis-arrow)"/>
+
+    
+    <line x1="200" y1="750" x2="200" y2="765" stroke="#207448" stroke-width="3"/>
+    <text x="200" y="800" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">0 s</text>
+
+    <line x1="480" y1="750" x2="480" y2="765" stroke="#207448" stroke-width="3"/>
+    <text x="480" y="800" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">2 s</text>
+
+    <line x1="760" y1="750" x2="760" y2="765" stroke="#207448" stroke-width="3"/>
+    <text x="760" y="800" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">4 s</text>
+
+    <line x1="1040" y1="750" x2="1040" y2="765" stroke="#207448" stroke-width="3"/>
+    <text x="1040" y="800" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">6 s</text>
+
+    <line x1="1320" y1="750" x2="1320" y2="765" stroke="#207448" stroke-width="3"/>
+    <text x="1320" y="800" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">8 s</text>
+  </g>
+
+  
+  <g id="clock-latency">
+    <circle cx="1475" cy="738" r="20" stroke="#207448" stroke-width="3.5" fill="#e8f1ea"/>
+    <path d="M 1475 724 L 1475 738 L 1486 738" stroke="#207448" stroke-width="3" stroke-linecap="round" fill="none"/>
+    <text x="1475" y="785" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">latency</text>
+  </g>
+
+  
+  <g id="bracket-right">
+    <path d="M 1260 822 C 1260 832, 1290 832, 1310 832 L 1315 836 L 1320 843 L 1325 836 L 1330 832 C 1350 832, 1380 832, 1380 822" fill="none" stroke="#207448" stroke-width="2"/>
+    <text x="1320" y="874" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">5% of users</text>
+  </g>
+
+  
+  <text x="800" y="948" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Total 1,000 requests. Mean = (950 x 0.4 + 50 x 8) / 1,000 = 0.78 s.</text>
+</svg>

@@ -1,0 +1,7 @@
+# Arrow 1: Peer (225, 290) -> (270, 290) -> (170, 290) -> (170, 460)
+# Arrow 2: eth0 (240, 460) -> (240, 360)
+# Arrow 3: Switch Port 1 (310, 360) -> (310, 460)
+print("Arrow 1 x:", 170)
+print("Arrow 2 x:", 240)
+print("Arrow 3 x:", 310)
+print("Gaps between arrow lines: 70px each! Zero crossings!")

@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>A retry budget is a bucket that real traffic refills</title>
+  <desc>A retry budget is a bucket that real traffic refills</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="10000" height="10000" fill="#f5f8f5" />
+
+  
+  <text x="60" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A retry budget is a bucket that real traffic refills</text>
+
+  
+  
+  <g transform="translate(60, 285)" stroke="#207448" stroke-width="3" fill="none">
+    <rect x="0" y="0" width="34" height="16" rx="8" fill="#e8f1ea" />
+    <path d="M 12 8 L 22 8 M 19 5 L 23 8 L 19 11" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <rect x="14" y="24" width="34" height="16" rx="8" fill="#e8f1ea" />
+    <path d="M 26 32 L 36 32 M 33 29 L 37 32 L 33 35" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <rect x="0" y="48" width="34" height="16" rx="8" fill="#e8f1ea" />
+    <path d="M 12 56 L 22 56 M 19 53 L 23 56 L 19 59" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <text x="170" y="195" font-family="sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">
+    <tspan x="170" dy="0">Real traffic</tspan>
+    <tspan x="170" dy="30">refills the</tspan>
+    <tspan x="170" dy="30">bucket as</tspan>
+    <tspan x="170" dy="30">it arrives</tspan>
+  </text>
+
+  
+  <line x1="110" y1="320" x2="274" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+
+  
+  <rect x="280" y="160" width="360" height="310" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  
+  <g transform="translate(410, 185)">
+    
+    <path d="M 16 38 C 16 10, 84 10, 84 38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <ellipse cx="50" cy="38" rx="38" ry="10" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    
+    <path d="M 13 40 L 24 95 C 25 102, 75 102, 76 95 L 87 40" fill="#e8f1ea" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    
+    <ellipse cx="50" cy="58" rx="20" ry="6" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <ellipse cx="50" cy="70" rx="18" ry="5.5" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+    
+    <g transform="translate(92, 45) scale(0.65)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="8" fill="#e8f1ea" />
+      <path d="M 20 4 L 20 8 M 20 32 L 20 36 M 4 20 L 8 20 M 32 20 L 36 20 M 8.7 8.7 L 11.5 11.5 M 28.5 28.5 L 31.3 31.3 M 8.7 31.3 L 11.5 28.5 M 28.5 11.5 L 31.3 8.7" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  <text x="460" y="340" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="460" dy="0">Retry token</tspan>
+    <tspan x="460" dy="38">bucket</tspan>
+  </text>
+
+  
+  <text x="460" y="420" font-family="monospace" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="460" dy="0">held in one place,</tspan>
+    <tspan x="460" dy="30">usually the gateway</tspan>
+  </text>
+
+
+  
+  
+  <text x="740" y="240" font-family="sans-serif" font-size="24" font-weight="600" fill="#303a36" text-anchor="middle">
+    <tspan x="740" dy="0">Each retry</tspan>
+    <tspan x="740" dy="30">spends</tspan>
+    <tspan x="740" dy="30">one token</tspan>
+  </text>
+
+  
+  <line x1="640" y1="320" x2="834" y2="320" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="840" y="195" width="310" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+  
+  <g transform="translate(967, 220)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="22" rx="4" fill="#e8f1ea" />
+    <circle cx="10" cy="11" r="2.5" fill="#207448" />
+    <circle cx="18" cy="11" r="2.5" fill="#207448" />
+    <line x1="32" y1="11" x2="48" y2="11" stroke-linecap="round" />
+    <rect x="0" y="28" width="56" height="22" rx="4" fill="#e8f1ea" />
+    <circle cx="10" cy="39" r="2.5" fill="#207448" />
+    <circle cx="18" cy="39" r="2.5" fill="#207448" />
+    <line x1="32" y1="39" x2="48" y2="39" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="995" y="325" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="995" dy="0">Retry sent to</tspan>
+    <tspan x="995" dy="38">another replica</tspan>
+  </text>
+
+
+  
+  
+  <text x="485" y="545" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Bucket empty</text>
+
+  
+  <line x1="460" y1="470" x2="460" y2="604" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="280" y="610" width="360" height="220" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+
+  
+  <g transform="translate(432, 635)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linejoin="round">
+    <path d="M 28 4 L 8 13 L 8 28 C 8 44, 28 54, 28 54 C 28 54, 48 44, 48 28 L 48 13 Z" fill="#fff5eb" />
+    <path d="M 28 20 L 28 32 M 28 39 L 28 41" stroke-linecap="round" />
+  </g>
+
+  
+  <text x="460" y="740" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="460" dy="0">The failure goes</tspan>
+    <tspan x="460" dy="38">back to the user</tspan>
+  </text>
+
+
+  
+  <rect x="1190" y="160" width="370" height="670" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g transform="translate(1353, 190)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linejoin="round">
+    <path d="M 6 38 A 22 22 0 1 1 38 38" stroke-linecap="round" />
+    <line x1="22" y1="24" x2="31" y2="15" stroke-linecap="round" />
+    <circle cx="22" cy="24" r="3.5" fill="#207448" />
+  </g>
+
+  
+  <text x="1375" y="280" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448" text-anchor="middle">Load limit</text>
+
+  
+  <text x="1375" y="375" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">load is at most 1 + b</text>
+
+  
+  <line x1="1230" y1="415" x2="1520" y2="415" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3" />
+
+  
+  <text x="1375" y="465" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="1375" dy="0">b = 0.1 gives 1.10</tspan>
+    <tspan x="1375" dy="36">and 1.11</tspan>
+  </text>
+
+  
+  <g transform="translate(1242, 570)">
+    <rect x="0" y="30" width="206" height="34" rx="6" fill="#207448" />
+    <rect x="212" y="30" width="54" height="34" rx="6" fill="#db8129" />
+    <path d="M 0 18 L 0 10 L 266 10 L 266 18" stroke="#207448" stroke-width="2.5" fill="none" />
+    <line x1="206" y1="72" x2="206" y2="82" stroke="#207448" stroke-width="2" />
+    <line x1="266" y1="72" x2="266" y2="82" stroke="#db8129" stroke-width="2" />
+  </g>
+
+
+  
+  <rect x="50" y="880" width="1500" height="70" rx="12" fill="#207448" />
+  <text x="800" y="924" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The retries can never outgrow the work the fleet is actually doing.</text>
+
+</svg>

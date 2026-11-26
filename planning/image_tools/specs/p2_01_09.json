@@ -1,0 +1,92 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-shebang-split",
+  "title": "The same #!/bin/sh line runs different shells on different distributions",
+  "spec": "Two side-by-side panels with green headings. Left panel, heading 'Debian and Ubuntu': a box 'Script starts with #!/bin/sh' with a file icon, an arrow down to a box '/bin/sh is dash', then a box 'Small POSIX shell: no [[ ]], arrays, ${var//x/y} or process substitution' with a red-outline cross labelled 'bashisms fail'. Right panel, heading 'RHEL family': the same top box 'Script starts with #!/bin/sh', an arrow to a box '/bin/sh is bash in POSIX mode', then a box 'bash extensions still work' with a tick. Under both panels, a shared orange-outlined rule box: 'Rule: if you use any bash feature, write #!/usr/bin/env bash or #!/bin/bash.' Small note under the rule: 'If you write #!/bin/sh, keep to POSIX and test with dash.' Caption: 'Same shebang, different shell, so the script fails on one family only.'",
+  "anchor": "### Choosing the interpreter",
+  "alt": "On Ubuntu, a #!/bin/sh script runs dash and fails on bash features, while on RHEL the same line runs bash and works.",
+  "cap": "The same #!/bin/sh shebang runs dash on Ubuntu and bash on RHEL, so bash features work on one family and fail on the other."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-dollar-100",
+  "title": "Four ways to write the dollar-100 text, and only two print it",
+  "spec": "A table-like grid with four rows, each row a command box on the left, an arrow in the middle, and a result box on the right. Row 1: command box 'echo $100' (monospace), arrow labelled 'shell reads $1 (empty) then 00', result box '00' with a red-outline cross 'wrong'. Row 2: command box 'echo \"$100\"' with arrow labelled 'double quotes still expand $1', result box '00' with a cross. Row 3: command box 'echo '$100'' with arrow labelled 'single quotes keep it literal', result box '$100' with a tick. Row 4, orange outline: command box 'echo \\$100' with arrow labelled 'backslash makes $ literal', result box '$100' with a tick. Below the grid, a green note box with the monospace text 'echo \"${1}00\"' and the caption 'writes $1 followed by 00 on purpose'. Heading across the top: 'Print the literal text $100'.",
+  "anchor": "### The three kinds of quoting (*How Linux Works* Section 11.2)",
+  "alt": "Echo of dollar-100 prints 00 unquoted or in double quotes, and prints the literal dollar-100 only with single quotes or a backslash.",
+  "cap": "Unquoted and double-quoted dollar-100 print 00, while single quotes or a backslash print the literal text dollar-100."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-word-split",
+  "title": "Unquoted variables split on spaces and expand to the wrong arguments",
+  "spec": "Two worked examples stacked vertically, each with two columns, 'Unquoted (DANGER)' on the left in an orange-outlined panel and 'Quoted (correct)' on the right in a green panel. Example 1: left shows 'rm $file' with an arrow to two argument boxes 'my' and 'report.txt' labelled 'two arguments'. Right shows 'rm \"$file\"' with an arrow to one box 'my report.txt' labelled 'one argument'. Example 2: left shows 'rm -rf $dir/*' with dir empty, an arrow to a box 'rm -rf /*' with a red warning label. Right shows 'rm -rf \"${dir:?dir is unset or empty}\"/*' with an arrow to a box 'aborts instead'. Caption under the grid: 'Always double-quote every expansion, such as \"$var\", \"$(cmd)\" and \"$@\".'",
+  "anchor": "### Word splitting: why `$var` should almost always be `\"$var\"`",
+  "alt": "An unquoted file name with a space becomes two arguments, and an empty directory variable expands rm to the root, while quoted forms stay safe.",
+  "cap": "Unquoted variables split on spaces and can expand to the root directory when empty, so quote them and guard with a required-value check."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-exit-map",
+  "title": "Exit codes tell you what happened, from 0 for success to 128 plus N for a signal",
+  "spec": "A horizontal number line from 0 to 255 along the top, with coloured segments. Labelled markers on the line: '0' green box 'Success'; '1' box 'General error. For grep, diff and cmp: no match or files differ, not an error'; '2' box 'Misuse of a command, or a real error for grep and diff'; '126' box 'Found but not executable'; '127' box 'Command not found'; a wide segment labelled '128 + N' split into three small markers '130 Ctrl-C', '137 SIGKILL', '143 SIGTERM'; and '255' box 'Status out of range, or ssh connection failure'. Each marker has a short leader line down to its text box in a row beneath the line. The 128 plus N segment in orange outline. Caption: 'Read the code, then check which program produced it.'",
+  "anchor": "### Exit codes",
+  "alt": "A number line of exit codes marks success at 0, general errors, command not found at 127, and 128 plus N for signals such as 137 SIGKILL and 143 SIGTERM.",
+  "cap": "Exit codes run from 0 for success through error codes to 128 plus N, where 137 means SIGKILL and 143 means SIGTERM."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-if-exit",
+  "title": "An if statement runs a command and branches on its exit code",
+  "spec": "A flow chart read top to bottom. Start oval 'if grep -q daemon: /etc/passwd'. Arrow down to a diamond 'Exit code 0?'. From the diamond, a 'yes, true' arrow to a green box 'then: echo found'. A 'no, false' arrow goes to a second diamond 'elif -e /etc/passwd ?' with a 'yes' arrow to box 'echo file exists but no daemon user' and a 'no' arrow to box 'else: echo no passwd file at all to stderr'. Both branches meet at a final oval 'fi'. Orange outline on the first diamond with a gear icon, and a note beside it: 'if does not test an expression. It runs a command and reads the exit code.' Side note: 'Zero means true. Anything non-zero means false.'",
+  "anchor": "### `if` runs a command and tests its exit code",
+  "alt": "An if statement runs grep, branches to then when the exit code is zero, tries elif, and falls back to else.",
+  "cap": "An if statement runs a command and takes the branch based on its exit code, where zero means true."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-set-e-contexts",
+  "title": "set -e aborts on a bare failure but is silently ignored in these contexts",
+  "spec": "Two columns. Left column, green heading 'set -e aborts the script': three stacked boxes, each with a red stop icon: 'false' (bare command, script stops), 'grep -q pattern file' with no match (bare command, script stops), and 'cmd | head -1' with pipefail set (pipeline fails). Right column, orange-outlined heading 'set -e is silently ignored': four stacked boxes, each with a grey dashed border: 'if or while condition', 'left side of && or ||', 'command negated with !', 'function called from one of these contexts'. Under the right column, a code-like monospace line 'set -e; if false; then :; fi; echo reached'. Under both columns, a note: 'set -euo pipefail is a safety net, not a design. Check the commands that matter.' Caption: 'Handle expected failures explicitly.'",
+  "anchor": "### Strict mode, and its traps",
+  "alt": "A bare failing command stops a script with set -e, but failures inside if or while conditions, left sides of and-or lists, negated commands, and functions called from those contexts do not.",
+  "cap": "Under set -e a bare failing command stops the script, but failures in conditions, and-or lists, negations and functions called from them do not."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-flock-lanes",
+  "title": "Two cron runs collide, and flock makes the second one exit",
+  "spec": "A swimlane diagram with three vertical lanes headed 'cron run A', 'cron run B' and 'lock file /var/lock/mytool.lock', time running top to bottom with numbered circles 1 to 5. Step 1, in lane A: 'exec 9 > lock file' opening the file on file descriptor 9. Step 2, arrow from lane A to the lock lane, labelled 'flock -n 9 succeeds'. Step 3, in lane A: 'work runs, lock held until the script exits'. Step 4, in lane B, starting while A works: arrow from lane B to the lock lane labelled 'flock -n 9 fails'. Step 5, in lane B: 'prints already running and exits 0'. Dashed bar across lane B's middle labelled 'overlap blocked'. Grey note: 'The kernel releases the lock when the process dies, even after a crash.' Caption: 'Hand-made lock files race and stay behind after a crash.'",
+  "anchor": "### Locking: only one copy at a time",
+  "alt": "Cron run A takes the flock on file descriptor 9 and works, while run B fails the non-blocking flock and exits.",
+  "cap": "The first cron run holds the flock while it works, so a second run that overlaps fails the non-blocking lock and exits."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-health-flow",
+  "title": "A node health check runs fast, bounded tests and exits non-zero with a reason",
+  "spec": "A vertical flow of five check boxes, each with a timeout clock icon and an arrow down to the next. Check 1: 'GPU count matches EXPECT_GPUS (timeout 20 s)', with a 'no' exit to a red-outline box 'HEALTH FAIL: expected N GPUs, found M'. Check 2: 'Uncorrected ECC errors = 0 (timeout 20 s)', 'no' exit to 'HEALTH FAIL: uncorrectable ECC errors'. Check 3: 'mountpoint /mnt/shared (no timeout needed)', 'no' exit to 'HEALTH FAIL: /mnt/shared not mounted'. Check 4: 'ls /mnt/shared responds (timeout 5 s)', 'no' exit to 'HEALTH FAIL: /mnt/shared not responding'. Check 5: '/tmp under 95 percent full', 'no' exit to 'HEALTH FAIL: /tmp over 95%'. Bottom box, green: 'exit 0: node is healthy'. Orange outline on the Check 4 box. Caption: 'Every command that could hang has a timeout, and the checks are cheap enough to run on every job.'",
+  "anchor": "## 12. AI-infrastructure patterns",
+  "alt": "A node health check runs five bounded checks in order, each failing with a message, and exits 0 only if all pass.",
+  "cap": "A node health check runs five bounded checks in order, and each failed check exits non-zero with a reason."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "09",
+  "name": "p2-0109-pipe-subshell",
+  "title": "A variable set after a pipe disappears, but a redirect keeps it",
+  "spec": "Two rows, each showing a loop reading a list and adding to a count. Top row, orange outline, heading 'Pipe: cat f | while read ...': a box 'cat input' with an arrow into a dashed box labelled 'subshell: the while loop runs here', inside which a box 'count=count+n' sits. An arrow from the dashed box to a box 'parent shell: count is still 0' with a cross. Bottom row, green heading 'Redirect: while read ... done < input.txt': a box 'input.txt' with an arrow into a solid box 'while loop in the current shell', an arrow to a box 'parent shell: count holds the total' with a tick. Under the bottom row, a monospace line 'done < <(cmd)' with the caption 'Process substitution also keeps the loop in the current shell.' Caption under the top: 'Each pipeline stage runs in its own subshell.'",
+  "anchor": "### Reading a file line by line (the right way)",
+  "alt": "Piping a file into a while loop runs the loop in a subshell, so the count is lost, while redirecting the file into the loop keeps the count.",
+  "cap": "Piping into a while loop runs it in a subshell and loses the variable, while redirecting the file into the loop keeps the variable."
+ }
+]

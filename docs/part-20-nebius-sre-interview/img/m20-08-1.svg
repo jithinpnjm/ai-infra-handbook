@@ -1,0 +1,110 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1000" viewBox="0 0 1600 1000" role="img" aria-labelledby="svgTitle svgDesc">
+  <title id="svgTitle">The 60-minute structure</title>
+  <desc id="svgDesc">Seven steps of a 60-minute structure linked in order: Clarify, Examples, Brute force, Optimise, Code, Test by hand, Complexity, with a dashed stuck return from Optimise to Brute force and a dashed bug found return from Test by hand to Code.</desc>
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+  <defs>
+    <marker id="arw" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M2 2 L17 9 L2 16 Z" fill="#207448"/>
+    </marker>
+  </defs>
+  <style>
+    text { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
+    .ttl { font-size: 48px; font-weight: 700; fill: #303a36; }
+    .nd  { font-size: 30px; font-weight: 700; fill: #303a36; }
+    .dur { font-size: 28px; font-weight: 400; fill: #207448; }
+    .edg { font-size: 24px; font-weight: 600; fill: #207448; }
+    .box { fill: #e8f1ea; stroke: #207448; stroke-width: 2; }
+    .ico { fill: none; stroke: #207448; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+  </style>
+
+  <text class="ttl" x="800" y="84" text-anchor="middle">The 60-minute structure</text>
+
+  
+  <rect class="box" x="40" y="150" width="320" height="220" rx="14"/>
+  <rect class="box" x="440" y="150" width="320" height="220" rx="14"/>
+  <rect class="box" x="840" y="150" width="320" height="220" rx="14"/>
+  <rect class="box" x="1240" y="150" width="320" height="220" rx="14"/>
+
+  
+  <rect x="240" y="600" width="320" height="220" rx="14" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+  <rect class="box" x="640" y="600" width="320" height="220" rx="14"/>
+  <rect class="box" x="1040" y="600" width="320" height="220" rx="14"/>
+
+  
+  <g class="ico" transform="translate(172,178)">
+    <circle cx="23" cy="23" r="13"/>
+    <line x1="33" y1="33" x2="43" y2="43"/>
+  </g>
+  <g class="ico" transform="translate(572,178)">
+    <rect x="9" y="3" width="38" height="50" rx="5"/>
+    <line x1="17" y1="17" x2="39" y2="17"/>
+    <line x1="17" y1="28" x2="39" y2="28"/>
+    <line x1="17" y1="39" x2="32" y2="39"/>
+  </g>
+  <g class="ico" transform="translate(972,178)">
+    <rect x="4" y="8" width="32" height="12" rx="3"/>
+    <rect x="16" y="20" width="8" height="30" rx="3"/>
+  </g>
+  <g class="ico" transform="translate(1372,178)">
+    <circle cx="28" cy="28" r="11"/>
+    <circle cx="28" cy="28" r="4"/>
+    <line x1="39" y1="28" x2="45" y2="28"/>
+    <line x1="35.8" y1="35.8" x2="40" y2="40"/>
+    <line x1="28" y1="39" x2="28" y2="45"/>
+    <line x1="20.2" y1="35.8" x2="16" y2="40"/>
+    <line x1="17" y1="28" x2="11" y2="28"/>
+    <line x1="20.2" y1="20.2" x2="16" y2="16"/>
+    <line x1="28" y1="17" x2="28" y2="11"/>
+    <line x1="35.8" y1="20.2" x2="40" y2="16"/>
+  </g>
+  <g transform="translate(372,628)" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="16,15 5,28 16,41"/>
+    <polyline points="40,15 51,28 40,41"/>
+    <line x1="33" y1="13" x2="23" y2="43"/>
+  </g>
+  <g class="ico" transform="translate(772,628)">
+    <circle cx="28" cy="28" r="21"/>
+    <polyline points="17,28 25,36 40,19"/>
+  </g>
+  <g class="ico" transform="translate(1172,628)">
+    <polyline points="10,8 10,48 50,48"/>
+    <path d="M13 45 C 25 43, 34 33, 46 12"/>
+  </g>
+
+  
+  <text class="nd" x="200" y="284" text-anchor="middle">1 Clarify</text>
+  <text class="dur" x="200" y="326" text-anchor="middle">2 min</text>
+
+  <text class="nd" x="600" y="284" text-anchor="middle">2 Examples</text>
+  <text class="dur" x="600" y="326" text-anchor="middle">3 min</text>
+
+  <text class="nd" x="1000" y="284" text-anchor="middle">3 Brute force</text>
+  <text class="dur" x="1000" y="326" text-anchor="middle">3 min</text>
+
+  <text class="nd" x="1400" y="284" text-anchor="middle">4 Optimise</text>
+  <text class="dur" x="1400" y="326" text-anchor="middle">5 min</text>
+
+  <text class="nd" x="400" y="734" text-anchor="middle">5 Code</text>
+  <text class="dur" x="400" y="776" text-anchor="middle">10 min</text>
+
+  <text class="nd" x="800" y="734" text-anchor="middle">6 Test by hand</text>
+  <text class="dur" x="800" y="776" text-anchor="middle">5 min</text>
+
+  <text class="nd" x="1200" y="734" text-anchor="middle">7 Complexity</text>
+  <text class="dur" x="1200" y="776" text-anchor="middle">2 min</text>
+
+  
+  <path d="M360 260 H440" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+  <path d="M760 260 H840" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+  <path d="M1160 260 H1240" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+  <path d="M1400 370 V545 H400 V600" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" marker-end="url(#arw)"/>
+  <path d="M560 710 H640" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+  <path d="M960 710 H1040" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  
+  <path d="M1360 370 C1360 468 1000 468 1000 370" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="10 8" marker-end="url(#arw)"/>
+  <text class="edg" x="1180" y="492" text-anchor="middle">stuck</text>
+
+  <path d="M760 820 C760 900 400 900 400 820" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="10 8" marker-end="url(#arw)"/>
+  <text class="edg" x="580" y="932" text-anchor="middle">bug found</text>
+</svg>

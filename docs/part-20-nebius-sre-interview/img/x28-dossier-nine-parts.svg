@@ -1,0 +1,265 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>The one-page dossier: nine parts in the order a good story is told</title>
+  <desc>A visual guide to the nine parts of a one-page dossier arranged in story order across two rows with consecutive flow arrows.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="16" markerHeight="16" orient="auto" markerUnits="userSpaceOnUse">
+      <path d="M 0 2 L 15 8 L 0 14 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="bold" text-anchor="middle">The one-page dossier: nine parts</text>
+  <text x="800" y="112" fill="#303a36" font-family="sans-serif" font-size="48" font-weight="bold" text-anchor="middle">in the order a good story is told</text>
+
+  
+  
+  <line x1="312" y1="340" x2="352" y2="340" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="624" y1="340" x2="664" y2="340" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="936" y1="340" x2="976" y2="340" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="1248" y1="340" x2="1288" y2="340" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+  <path d="M 1424 520 L 1424 548 Q 1424 560 1412 560 L 344 560 Q 332 560 332 572 L 332 600" fill="none" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+  <line x1="468" y1="780" x2="508" y2="780" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="780" y1="780" x2="820" y2="780" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+  <line x1="1092" y1="780" x2="1132" y2="780" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow)"/>
+
+  
+
+  
+  <g id="box-1">
+    <rect x="40" y="160" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="76" cy="196" r="24" fill="#207448"/>
+    <text x="76" y="196" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g transform="translate(236, 172)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="24" cy="24" r="22"/>
+      <polygon points="24,8 30,24 24,40 18,24" fill="#207448" fill-opacity="0.15"/>
+      <circle cx="24" cy="24" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="58" y="270" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">Context</text>
+    <line x1="58" y1="292" x2="294" y2="292" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    
+    <text x="58" y="332" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="58" dy="0">Why the project</tspan>
+      <tspan x="58" dy="32">existed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-2">
+    <rect x="352" y="160" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="388" cy="196" r="24" fill="#207448"/>
+    <text x="388" y="196" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g transform="translate(548, 172)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="18" cy="16" r="8"/>
+      <path d="M 6 42 C 6 30, 30 30, 30 42"/>
+      <circle cx="34" cy="14" r="6"/>
+      <path d="M 28 32 C 32 26, 44 26, 44 38"/>
+    </g>
+    
+    <text x="370" y="260" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">
+      <tspan x="370" dy="0">My role and</tspan>
+      <tspan x="370" dy="36">the team</tspan>
+    </text>
+    <line x1="370" y1="316" x2="606" y2="316" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    
+    <text x="370" y="352" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="370" dy="0">What I owned</tspan>
+      <tspan x="370" dy="32">and who else</tspan>
+      <tspan x="370" dy="32">mattered</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-3">
+    <rect x="664" y="160" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="700" cy="196" r="24" fill="#207448"/>
+    <text x="700" y="196" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <g transform="translate(860, 172)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="10" y="20" width="28" height="22" rx="4"/>
+      <path d="M 16 20 V 14 C 16 9.5, 32 9.5, 32 14 V 20"/>
+      <circle cx="24" cy="29" r="2.5" fill="#207448"/>
+      <line x1="24" y1="31.5" x2="24" y2="36"/>
+    </g>
+    
+    <text x="682" y="270" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">Constraints</text>
+    <line x1="682" y1="292" x2="918" y2="292" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    
+    <text x="682" y="332" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="682" dy="0">Time, budget,</tspan>
+      <tspan x="682" dy="32">risk limit,</tspan>
+      <tspan x="682" dy="32">fixed things</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-4">
+    <rect x="976" y="160" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="1012" cy="196" r="24" fill="#207448"/>
+    <text x="1012" y="196" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <g transform="translate(1172, 172)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="6" y1="42" x2="42" y2="42"/>
+      <rect x="10" y="28" width="6" height="14" rx="1"/>
+      <rect x="20" y="18" width="6" height="24" rx="1"/>
+      <rect x="30" y="10" width="6" height="32" rx="1"/>
+    </g>
+    
+    <text x="994" y="270" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">Numbers</text>
+    <line x1="994" y1="292" x2="1230" y2="292" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    
+    <text x="994" y="328" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="994" dy="0">Scale, normal</tspan>
+      <tspan x="994" dy="30">and peak load,</tspan>
+      <tspan x="994" dy="30">availability,</tspan>
+      <tspan x="994" dy="30">cost</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-5">
+    <rect x="1288" y="160" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="1324" cy="196" r="24" fill="#207448"/>
+    <text x="1324" y="196" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">5</text>
+    
+    <g transform="translate(1484, 172)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="15" y="6" width="18" height="12" rx="2"/>
+      <line x1="24" y1="18" x2="24" y2="26"/>
+      <line x1="12" y1="26" x2="36" y2="26"/>
+      <line x1="12" y1="26" x2="12" y2="32"/>
+      <line x1="36" y1="26" x2="36" y2="32"/>
+      <rect x="4" y="32" width="16" height="12" rx="2"/>
+      <rect x="28" y="32" width="16" height="12" rx="2"/>
+    </g>
+    
+    <text x="1306" y="270" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">Architecture</text>
+    <line x1="1306" y1="292" x2="1542" y2="292" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    
+    <text x="1306" y="332" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="1306" dy="0">One request</tspan>
+      <tspan x="1306" dy="32">or deploy,</tspan>
+      <tspan x="1306" dy="32">start to end</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="box-6">
+    <rect x="196" y="600" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+    <circle cx="232" cy="636" r="24" fill="#207448"/>
+    <text x="232" y="636" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">6</text>
+    
+    <g transform="translate(392, 612)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="24" y1="42" x2="24" y2="26"/>
+      <path d="M 24 26 C 24 16, 10 16, 10 8"/>
+      <path d="M 24 26 C 24 16, 38 16, 38 8"/>
+      <circle cx="10" cy="8" r="3" fill="#207448"/>
+      <circle cx="38" cy="8" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="214" y="710" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">Decisions</text>
+    <line x1="214" y1="732" x2="450" y2="732" stroke="#db8129" stroke-width="1.5" stroke-opacity="0.4"/>
+    
+    <text x="214" y="768" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="214" dy="0">Chosen,</tspan>
+      <tspan x="214" dy="30">alternatives,</tspan>
+      <tspan x="214" dy="30">why, cost</tspan>
+      <tspan x="214" dy="30">accepted</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-7">
+    <rect x="508" y="600" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+    <circle cx="544" cy="636" r="24" fill="#207448"/>
+    <text x="544" y="636" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">7</text>
+    
+    <g transform="translate(704, 612)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 24 6 L 44 40 C 45 42, 44 44, 41 44 H 7 C 4 44, 3 42, 4 40 Z"/>
+      <line x1="24" y1="18" x2="24" y2="28"/>
+      <circle cx="24" cy="36" r="2" fill="#207448"/>
+    </g>
+    
+    <text x="526" y="710" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">Failures</text>
+    <line x1="526" y1="732" x2="762" y2="732" stroke="#db8129" stroke-width="1.5" stroke-opacity="0.4"/>
+    
+    <text x="526" y="764" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="526" dy="0">What broke,</tspan>
+      <tspan x="526" dy="28">detection,</tspan>
+      <tspan x="526" dy="28">root cause,</tspan>
+      <tspan x="526" dy="28">what changed,</tspan>
+      <tspan x="526" dy="28">what I got wrong</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-8">
+    <rect x="820" y="600" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="856" cy="636" r="24" fill="#207448"/>
+    <text x="856" y="636" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">8</text>
+    
+    <g transform="translate(1016, 612)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 24 8 A 16 16 0 0 1 40 24"/>
+      <polyline points="34,8 40,8 40,14"/>
+      <path d="M 24 40 A 16 16 0 0 1 8 24"/>
+      <polyline points="14,40 8,40 8,34"/>
+      <line x1="18" y1="24" x2="30" y2="24"/>
+      <line x1="24" y1="18" x2="24" y2="30"/>
+    </g>
+    
+    <text x="838" y="700" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">
+      <tspan x="838" dy="0">What I would</tspan>
+      <tspan x="838" dy="36">change</tspan>
+    </text>
+    <line x1="838" y1="756" x2="1074" y2="756" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    
+    <text x="838" y="790" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="838" dy="0">One change,</tspan>
+      <tspan x="838" dy="30">its evidence,</tspan>
+      <tspan x="838" dy="30">what I would</tspan>
+      <tspan x="838" dy="30">leave alone</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-9">
+    <rect x="1132" y="600" width="272" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="1168" cy="636" r="24" fill="#207448"/>
+    <text x="1168" y="636" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold" text-anchor="middle" dominant-baseline="central">9</text>
+    
+    <g transform="translate(1328, 612)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 14 10 H 34 V 22 C 34 29, 29 34, 24 34 C 19 34, 14 29, 14 22 Z"/>
+      <path d="M 14 14 H 8 V 20 C 8 23, 14 23, 14 23"/>
+      <path d="M 34 14 H 40 V 20 C 40 23, 34 23, 34 23"/>
+      <line x1="24" y1="34" x2="24" y2="40"/>
+      <line x1="16" y1="40" x2="32" y2="40"/>
+    </g>
+    
+    <text x="1150" y="700" fill="#303a36" font-family="sans-serif" font-size="30" font-weight="bold">
+      <tspan x="1150" dy="0">Metrics of</tspan>
+      <tspan x="1150" dy="36">success</tspan>
+    </text>
+    <line x1="1150" y1="756" x2="1386" y2="756" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+    
+    <text x="1150" y="792" fill="#303a36" font-family="sans-serif" font-size="24">
+      <tspan x="1150" dy="0">Before, after,</tspan>
+      <tspan x="1150" dy="32">same unit,</tspan>
+      <tspan x="1150" dy="32">same method</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="40" y="1000" width="1520" height="76" rx="14" fill="#207448"/>
+  <text x="800" y="1038" fill="#ffffff" font-family="sans-serif" font-size="32" font-weight="bold" text-anchor="middle" dominant-baseline="central">Write the dossier before you rehearse</text>
+</svg>

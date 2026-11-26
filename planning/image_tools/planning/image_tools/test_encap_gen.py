@@ -1,0 +1,134 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
+import asyncio
+from playwright.async_api import async_playwright
+import pathlib
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>Encapsulation overhead and ECMP entropy</title>
+  <desc>Horizontal bar chart of encapsulation overhead in bytes for IPv4 underlay, contrasting UDP-based encapsulations that provide ECMP entropy against portless tunnels that hash to a single path.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="980" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Encapsulation overhead and ECMP entropy</text>
+
+  <!-- Subtitle Container -->
+  <g id="chart-header">
+    <rect x="40" y="78" width="1520" height="54" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g transform="translate(60, 83)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="36" height="32" rx="3" />
+      <line x1="12" y1="28" x2="12" y2="20" />
+      <line x1="22" y1="28" x2="22" y2="14" />
+      <line x1="32" y1="28" x2="32" y2="24" />
+    </g>
+    <text x="800" y="115" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Horizontal bar chart of overhead in bytes (IPv4 underlay)</text>
+  </g>
+
+  <!-- Baseline Grid Axis (x=920 is 0 B baseline) -->
+  <line x1="920" y1="145" x2="920" y2="845" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" opacity="0.4" />
+
+  <!-- 1. MPLS Card (L2.5 Shim) -->
+  <g id="mpls-card">
+    <rect x="40" y="146" width="1520" height="66" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(56, 151)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 16 L 24 8 L 40 16 L 24 24 Z" />
+      <path d="M 8 26 L 24 34 L 40 26" />
+      <path d="M 8 36 L 24 44 L 40 36" />
+    </g>
+    <text x="116" y="188" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">MPLS 4 B per label</text>
+    <!-- Bar: 4 B * 8 px/B = 32 px -->
+    <rect x="920" y="163" width="32" height="32" rx="4" fill="#207448" />
+  </g>
+
+  <!-- 2. UDP-based Group Container (Green) -->
+  <g id="udp-group">
+    <rect x="40" y="226" width="1520" height="290" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Header banner inside group -->
+    <rect x="40" y="226" width="1520" height="54" rx="10" fill="#e8f1ea" />
+    <g transform="translate(56, 230)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16" />
+      <polyline points="16,24 22,30 32,18" />
+    </g>
+    <text x="116" y="263" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">UDP-based: ECMP entropy from outer source port</text>
+
+    <!-- Row: VXLAN -->
+    <g id="row-vxlan">
+      <text x="60" y="328" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">VXLAN 50 B (outer Ethernet 14 + IP 20 + UDP 8 + VXLAN 8)</text>
+      <!-- Bar: 50 B * 8 px/B = 400 px -->
+      <rect x="920" y="304" width="400" height="32" rx="4" fill="#207448" />
+    </g>
+
+    <!-- Row: GENEVE -->
+    <g id="row-geneve">
+      <text x="60" y="400" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">GENEVE 50+ B</text>
+      <!-- Bar: 50 B base = 400 px, plus 24px dashed tip for "+" -->
+      <rect x="920" y="376" width="400" height="32" rx="4" fill="#207448" />
+      <rect x="920" y="376" width="424" height="32" rx="4" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="4,4" />
+    </g>
+
+    <!-- Row: WireGuard -->
+    <g id="row-wireguard">
+      <text x="60" y="472" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">WireGuard 60 B</text>
+      <!-- Bar: 60 B * 8 px/B = 480 px -->
+      <rect x="920" y="448" width="480" height="32" rx="4" fill="#207448" />
+    </g>
+  </g>
+
+  <!-- 3. No Ports Group Container (Orange - Important Warning) -->
+  <g id="noports-group">
+    <rect x="40" y="530" width="1520" height="290" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <!-- Header banner inside group -->
+    <rect x="40" y="530" width="1520" height="54" rx="10" fill="#fdf3eb" />
+    <g transform="translate(56, 534)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 24 8 L 42 38 L 6 38 Z" />
+      <line x1="24" y1="20" x2="24" y2="28" />
+      <circle cx="24" cy="33" r="1.5" fill="currentColor" stroke="none" />
+    </g>
+    <text x="116" y="567" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">no ports: all traffic between two endpoints hashes to one path</text>
+
+    <!-- The 3 bars in the orange group share orange fill via parent group to keep orange occurrences minimal -->
+    <g fill="#db8129">
+      <!-- Row: IPIP -->
+      <g id="row-ipip">
+        <text x="60" y="632" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IPIP 20 B</text>
+        <!-- Bar: 20 B * 8 px/B = 160 px -->
+        <rect x="920" y="608" width="160" height="32" rx="4" />
+      </g>
+
+      <!-- Row: GRE -->
+      <g id="row-gre">
+        <text x="60" y="704" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">GRE 24 B</text>
+        <!-- Bar: 24 B * 8 px/B = 192 px -->
+        <rect x="920" y="680" width="192" height="32" rx="4" />
+      </g>
+
+      <!-- Row: IPsec ESP -->
+      <g id="row-esp">
+        <text x="60" y="776" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">IPsec ESP about 50 to 73 B</text>
+        <!-- Bar: 50 B solid (400 px) to 73 B (584 px) range -->
+        <rect x="920" y="752" width="400" height="32" rx="4" />
+        <rect x="1320" y="752" width="184" height="32" rx="4" fill-opacity="0.45" />
+      </g>
+    </g>
+  </g>
+
+  <!-- 4. Footer Takeaway Bar -->
+  <g id="footer-bar">
+    <rect x="40" y="836" width="1520" height="64" rx="8" fill="#207448" />
+    <g transform="translate(60, 842)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="16" />
+      <line x1="24" y1="14" x2="24" y2="24" />
+      <line x1="24" y1="24" x2="30" y2="28" />
+    </g>
+    <text x="800" y="877" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">VXLAN is L2 over UDP/4789, GENEVE UDP/6081</text>
+  </g>
+</svg>
+"""
+
+with open("planning/image_tools/test_encap.svg", "w") as f:
+    f.write(svg_content.strip())
+
+print("SVG written successfully. Running audits...")

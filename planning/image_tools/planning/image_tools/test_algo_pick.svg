@@ -1,0 +1,273 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Pick the algorithm by the unit of work it counts</title>
+  <desc>A table pairing each unit of work with its load balancing algorithm and pitfall, with four key principles and takeaway rule.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <!-- Title -->
+  <text x="800" y="54" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Pick the algorithm by the unit of work it counts</text>
+  <!-- Row 1 Col 1 -->
+  <rect x="40" y="92" width="360" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="124.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="220.0" dy="0">Short stateless</tspan>
+    <tspan x="220.0" dy="26">equal requests</tspan>
+  </text>
+  <line x1="400" y1="129.0" x2="422" y2="129.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 1 Col 2 -->
+  <rect x="422" y="92" width="324" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="124.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">round robin or</tspan>
+    <tspan x="584.0" dy="26">weighted round robin</tspan>
+  </text>
+  <line x1="746" y1="129.0" x2="768" y2="129.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 1 Col 3 -->
+  <rect x="768" y="92" width="382" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="124.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">ignores request cost</tspan>
+    <tspan x="959.0" dy="26">and backend load</tspan>
+  </text>
+  <!-- Row 2 Col 1 -->
+  <rect x="40" y="178" width="360" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="209.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="220.0" dy="0">Long-lived connections</tspan>
+    <tspan x="220.0" dy="26">or variable-length</tspan>
+    <tspan x="220.0" dy="26">requests</tspan>
+  </text>
+  <line x1="400" y1="227.0" x2="422" y2="227.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 2 Col 2 -->
+  <rect x="422" y="178" width="324" height="98" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="235.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">least connections</text>
+  <line x1="746" y1="227.0" x2="768" y2="227.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 2 Col 3 -->
+  <rect x="768" y="178" width="382" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="209.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">counts connections, not</tspan>
+    <tspan x="959.0" dy="26">work; needs shared state</tspan>
+    <tspan x="959.0" dy="26">across LB instances</tspan>
+  </text>
+  <!-- Row 3 Col 1 -->
+  <rect x="40" y="288" width="360" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="333.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">HTTP or gRPC requests</text>
+  <line x1="400" y1="325.0" x2="422" y2="325.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 3 Col 2 -->
+  <rect x="422" y="288" width="324" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="320.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">least outstanding</tspan>
+    <tspan x="584.0" dy="26">requests</tspan>
+  </text>
+  <line x1="746" y1="325.0" x2="768" y2="325.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 3 Col 3 -->
+  <rect x="768" y="288" width="382" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="333.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">same, request-granular</text>
+  <!-- Row 4 Col 1 -->
+  <rect x="40" y="374" width="360" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="406.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="220.0" dy="0">Heterogeneous</tspan>
+    <tspan x="220.0" dy="26">backends</tspan>
+  </text>
+  <line x1="400" y1="411.0" x2="422" y2="411.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 4 Col 2 -->
+  <rect x="422" y="374" width="324" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="406.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">least response time,</tspan>
+    <tspan x="584.0" dy="26">EWMA, peak-EWMA</tspan>
+  </text>
+  <line x1="746" y1="411.0" x2="768" y2="411.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 4 Col 3 -->
+  <rect x="768" y="374" width="382" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="406.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">needs measurement; can</tspan>
+    <tspan x="959.0" dy="26">oscillate (herding)</tspan>
+  </text>
+  <!-- Row 5 Col 1 -->
+  <rect x="40" y="460" width="360" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="492.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="220.0" dy="0">Large pools with</tspan>
+    <tspan x="220.0" dy="26">imperfect load info</tspan>
+  </text>
+  <line x1="400" y1="497.0" x2="422" y2="497.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 5 Col 2 -->
+  <rect x="422" y="460" width="324" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="492.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">power of two</tspan>
+    <tspan x="584.0" dy="26">random choices</tspan>
+  </text>
+  <line x1="746" y1="497.0" x2="768" y2="497.0" stroke="#db8129" stroke-width="2.5" marker-end="url(#arrow-orange)" />
+  <!-- Row 5 Col 3 -->
+  <rect x="768" y="460" width="382" height="74" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <text x="959.0" y="492.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">needs load info</tspan>
+    <tspan x="959.0" dy="26">per backend</tspan>
+  </text>
+  <!-- Row 6 Col 1 -->
+  <rect x="40" y="546" width="360" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="578.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="220.0" dy="0">Session affinity or</tspan>
+    <tspan x="220.0" dy="26">cache locality</tspan>
+  </text>
+  <line x1="400" y1="583.0" x2="422" y2="583.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 6 Col 2 -->
+  <rect x="422" y="546" width="324" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="578.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">source, URL or</tspan>
+    <tspan x="584.0" dy="26">header hash</tspan>
+  </text>
+  <line x1="746" y1="583.0" x2="768" y2="583.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 6 Col 3 -->
+  <rect x="768" y="546" width="382" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="578.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">remaps most keys</tspan>
+    <tspan x="959.0" dy="26">when N changes</tspan>
+  </text>
+  <!-- Row 7 Col 1 -->
+  <rect x="40" y="632" width="360" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="663.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="220.0" dy="0">Caches, sticky</tspan>
+    <tspan x="220.0" dy="26">sessions, sharded</tspan>
+    <tspan x="220.0" dy="26">stores</tspan>
+  </text>
+  <line x1="400" y1="681.0" x2="422" y2="681.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 7 Col 2 -->
+  <rect x="422" y="632" width="324" height="98" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="663.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">consistent hashing</tspan>
+    <tspan x="584.0" dy="26">(ring, rendezvous,</tspan>
+    <tspan x="584.0" dy="26">jump hash)</tspan>
+  </text>
+  <line x1="746" y1="681.0" x2="768" y2="681.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 7 Col 3 -->
+  <rect x="768" y="632" width="382" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="676.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">load imbalance; virtual</tspan>
+    <tspan x="959.0" dy="26">nodes help; hot keys</tspan>
+  </text>
+  <!-- Row 8 Col 1 -->
+  <rect x="40" y="742" width="360" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="799.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">L4 LBs behind ECMP</text>
+  <line x1="400" y1="791.0" x2="422" y2="791.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 8 Col 2 -->
+  <rect x="422" y="742" width="324" height="98" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="799.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">Maglev hashing</text>
+  <line x1="746" y1="791.0" x2="768" y2="791.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 8 Col 3 -->
+  <rect x="768" y="742" width="382" height="98" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="773.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">table rebuild cost;</tspan>
+    <tspan x="959.0" dy="26">small disruption</tspan>
+    <tspan x="959.0" dy="26">on change</tspan>
+  </text>
+  <!-- Row 9 Col 1 -->
+  <rect x="40" y="852" width="360" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="897.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Cost and latency</text>
+  <line x1="400" y1="889.0" x2="422" y2="889.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 9 Col 2 -->
+  <rect x="422" y="852" width="324" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="884.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">locality or</tspan>
+    <tspan x="584.0" dy="26">zone-aware</tspan>
+  </text>
+  <line x1="746" y1="889.0" x2="768" y2="889.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 9 Col 3 -->
+  <rect x="768" y="852" width="382" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="884.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">capacity imbalance</tspan>
+    <tspan x="959.0" dy="26">across zones</tspan>
+  </text>
+  <!-- Row 10 Col 1 -->
+  <rect x="40" y="938" width="360" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="983.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">DR and spillover</text>
+  <line x1="400" y1="975.0" x2="422" y2="975.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 10 Col 2 -->
+  <rect x="422" y="938" width="324" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="970.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">priority or failover</tspan>
+    <tspan x="584.0" dy="26">groups</tspan>
+  </text>
+  <line x1="746" y1="975.0" x2="768" y2="975.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 10 Col 3 -->
+  <rect x="768" y="938" width="382" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="983.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">cold backups</text>
+  <!-- Row 11 Col 1 -->
+  <rect x="40" y="1024" width="360" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="220.0" y="1069.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">LLM inference</text>
+  <line x1="400" y1="1061.0" x2="422" y2="1061.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 11 Col 2 -->
+  <rect x="422" y="1024" width="324" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.8" />
+  <text x="584.0" y="1056.0" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="584.0" dy="0">load-aware custom:</tspan>
+    <tspan x="584.0" dy="26">GPU, queue, KV-cache</tspan>
+  </text>
+  <line x1="746" y1="1061.0" x2="768" y2="1061.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)" />
+  <!-- Row 11 Col 3 -->
+  <rect x="768" y="1024" width="382" height="74" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="959.0" y="1056.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="959.0" dy="0">needs telemetry; careful</tspan>
+    <tspan x="959.0" dy="26">staleness handling</tspan>
+  </text>
+  <!-- Right Panel: Four principles -->
+  <rect x="1180" y="92" width="380" height="1006" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1204, 106)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="20" cy="20" r="14" />
+    <line x1="20" y1="2" x2="20" y2="6" stroke-width="4.5" />
+    <line x1="20" y1="34" x2="20" y2="38" stroke-width="4.5" />
+    <line x1="2" y1="20" x2="6" y2="20" stroke-width="4.5" />
+    <line x1="34" y1="20" x2="38" y2="20" stroke-width="4.5" />
+    <line x1="7" y1="7" x2="10" y2="10" stroke-width="4.5" />
+    <line x1="30" y1="30" x2="33" y2="33" stroke-width="4.5" />
+    <line x1="7" y1="33" x2="10" y2="30" stroke-width="4.5" />
+    <line x1="30" y1="10" x2="33" y2="7" stroke-width="4.5" />
+    <circle cx="20" cy="20" r="6" fill="#207448" />
+  </g>
+  <text x="1256" y="136" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Four principles</text>
+  <!-- Principle Card 1 -->
+  <rect x="1195" y="168" width="350" height="176" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="1370.0" y="216.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1370.0" dy="0">choose the metric that</tspan>
+    <tspan x="1370.0" dy="26">represents work:</tspan>
+    <tspan x="1370.0" dy="26">connections, requests,</tspan>
+    <tspan x="1370.0" dy="26">tokens and GPU-seconds</tspan>
+    <tspan x="1370.0" dy="26">differ</tspan>
+  </text>
+  <!-- Principle Card 2 -->
+  <rect x="1195" y="366" width="350" height="254" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="1370.0" y="414.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1370.0" dy="0">many LB instances each</tspan>
+    <tspan x="1370.0" dy="26">doing local least</tspan>
+    <tspan x="1370.0" dy="26">connections herd onto</tspan>
+    <tspan x="1370.0" dy="26">the same backend, like</tspan>
+    <tspan x="1370.0" dy="26">drivers following one</tspan>
+    <tspan x="1370.0" dy="26">satnav to one empty</tspan>
+    <tspan x="1370.0" dy="26">car park; a randomised</tspan>
+    <tspan x="1370.0" dy="26">pick breaks it up</tspan>
+  </text>
+  <!-- Principle Card 3 -->
+  <rect x="1195" y="642" width="350" height="228" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="1370.0" y="690.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1370.0" dy="0">hash affinity serves</tspan>
+    <tspan x="1370.0" dy="26">cache locality and</tspan>
+    <tspan x="1370.0" dy="26">state but accepts</tspan>
+    <tspan x="1370.0" dy="26">uneven load: plan for</tspan>
+    <tspan x="1370.0" dy="26">reshuffling with</tspan>
+    <tspan x="1370.0" dy="26">consistent or</tspan>
+    <tspan x="1370.0" dy="26">resilient hashing</tspan>
+  </text>
+  <!-- Principle Card 4 -->
+  <rect x="1195" y="892" width="350" height="176" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.8" />
+  <text x="1370.0" y="940.0" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1370.0" dy="0">slow start ramps up</tspan>
+    <tspan x="1370.0" dy="26">the weight of a new or</tspan>
+    <tspan x="1370.0" dy="26">recovered backend</tspan>
+    <tspan x="1370.0" dy="26">while its JIT, caches</tspan>
+    <tspan x="1370.0" dy="26">and GPU warm up</tspan>
+  </text>
+  <!-- Bottom Takeaway Bar -->
+  <rect x="40" y="1132" width="1520" height="52" rx="8" fill="#207448" />
+  <text x="800" y="1165" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff">Name the unit of work first, then pick the algorithm that counts it</text>
+</svg>

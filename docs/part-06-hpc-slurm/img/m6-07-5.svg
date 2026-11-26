@@ -1,0 +1,103 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Accounting: the account tree</title>
+  <desc>Account tree showing root account for cluster mycluster branching to account ai-research with share 60 and account platform-eng with share 40, leading to user alice, user bob, and user carol.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Accounting: the account tree</text>
+
+  
+  
+  <path d="M 550 250 V 320 H 410 V 390" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  
+  <path d="M 1050 250 V 320 H 1190 V 390" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  
+  <path d="M 280 520 V 600 H 220 V 680" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  
+  <path d="M 540 520 V 600 H 600 V 680" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+  
+  <path d="M 1190 520 V 680" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow)" />
+
+  
+  <g id="node-root">
+    <rect x="410" y="140" width="780" height="110" rx="10" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5" />
+    
+    <g transform="translate(440, 167)">
+      <rect x="4" y="4" width="48" height="20" rx="4" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <circle cx="14" cy="14" r="2.5" fill="#db8129" />
+      <line x1="25" y1="14" x2="43" y2="14" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <rect x="4" y="28" width="48" height="20" rx="4" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <circle cx="14" cy="38" r="2.5" fill="#db8129" />
+      <line x1="25" y1="38" x2="43" y2="38" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="520" y="206" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">root account (cluster mycluster)</text>
+  </g>
+
+  
+  <g id="node-ai">
+    <rect x="150" y="390" width="520" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(180, 427)">
+      <path d="M 21 6 L 21 16 L 7 42 C 5 46 8 50 13 50 L 43 50 C 48 50 51 46 49 42 L 35 16 L 35 6 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <line x1="17" y1="6" x2="39" y2="6" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <path d="M 13 36 Q 28 32 43 36" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <circle cx="24" cy="25" r="2.5" fill="#207448" />
+    </g>
+    <text x="260" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">account ai-research</text>
+    <text x="260" y="485" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">share 60</text>
+  </g>
+
+  
+  <g id="node-eng">
+    <rect x="930" y="390" width="520" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(960, 427)">
+      <path d="M 28 8 L 28 13 M 28 43 L 28 48 M 8 28 L 13 28 M 43 28 L 48 28 M 14 14 L 18 18 M 38 38 L 42 42 M 14 42 L 18 38 M 38 18 L 42 14" stroke="#207448" stroke-width="4.5" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="28" cy="28" r="5" fill="none" stroke="#207448" stroke-width="3.5" />
+    </g>
+    <text x="1040" y="445" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">account platform-eng</text>
+    <text x="1040" y="485" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">share 40</text>
+  </g>
+
+  
+  <g id="node-u1">
+    <rect x="60" y="680" width="320" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(85, 707)">
+      <circle cx="28" cy="18" r="11" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 10 46 C 10 34 18 31 28 31 C 38 31 46 34 46 46" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="165" y="746" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">user alice</text>
+  </g>
+
+  
+  <g id="node-u2">
+    <rect x="440" y="680" width="320" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(465, 707)">
+      <circle cx="28" cy="18" r="11" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 10 46 C 10 34 18 31 28 31 C 38 31 46 34 46 46" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="545" y="746" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">user bob</text>
+  </g>
+
+  
+  <g id="node-u3">
+    <rect x="1030" y="680" width="320" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1055, 707)">
+      <circle cx="28" cy="18" r="11" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 10 46 C 10 34 18 31 28 31 C 38 31 46 34 46 46" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="1135" y="746" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">user carol</text>
+  </g>
+</svg>

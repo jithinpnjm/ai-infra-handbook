@@ -36,21 +36,15 @@ This section walks through setting up GPUs as GRES, either by hand or with AutoD
 
 ## 1. Generic resources (GRES)
 
+![slurm.conf and gres.conf merge into the controller's GPU view and slurmd -G shows the merged result.](./img/p3-0610-gres-two-files.svg)
+
+*Figure 6.10.1. slurmd -G on the node shows the merged GRES configuration to check type, files and cores.*
+
 Your first GPU node is on the rack, and the controller has never heard of its GPUs. Before Slurm can place a job on a GPU, it needs to know that the GPU exists. The diagram below shows how that knowledge gets built up from two files and then applied at launch time.
 
-```mermaid
-flowchart LR
-  subgraph Discovery["1. Node GRES Discovery (slurmd -G)"]
-    NVML["gres.conf: AutoDetect=nvml<br/>Type, File, Cores, Links, MIG"]
-    SConf["slurm.conf: GresTypes=gpu<br/>NodeName=gpu[01-16] Gres=gpu:h100:8"]
-    NVML --> Sched["slurmctld (select/cons_tres)<br/>Tracks GRES, NUMA Sockets & NVLink"]
-    SConf --> Sched
-  end
-  subgraph Launch["2. Isolation & Task Binding (slurmstepd)"]
-    Sched --> Cgroup["cgroup.conf: ConstrainDevices=yes<br/>Allows only /dev/nvidia3, /dev/nvidia7"]
-    Cgroup --> Bind["--gpus-per-task=1 / --gpu-bind=closest<br/>Rank 0 -> CVD=0; Rank 1 -> CVD=1"]
-  end
-```
+![Generic resources (GRES)](./img/m6-10-1.svg)
+
+*Figure 6.10.2. Generic resources (GRES), as a diagram.*
 
 That knowledge lives in configuration. A GRES, or generic resource, is a consumable resource other than CPU and memory. Consumable means that Slurm keeps a count and subtracts what each job takes. GPUs are the common case, but licences, network devices, burst buffers and bandwidth tokens also count as GRES. Each one has a name, such as `gpu`. It can also have a type, such as `h100` or `a100_3g.20gb`, a count per node, and optionally device files and topology. The configuration is split across two files. The first one lives with the controller and describes the whole cluster. The second one lives on each GPU node and describes the hardware in front of it. Keeping those two views separate means the controller can plan without needing to probe every device, while each node still reports exactly what it has.
 
@@ -68,6 +62,10 @@ The second file is `gres.conf`. It describes the devices on each node, including
 
 ### AutoDetect
 
+![A table of AutoDetect values with what each covers and an example of mixing detection modes across node groups.](./img/p3-0610-autodetect-values.svg)
+
+*Figure 6.10.3. Use AutoDetect=nvml on NVIDIA data-centre nodes and verify with slurmd -G.*
+
 Typing out every device by hand is slow and easy to get wrong. A single typo in a device path can leave one GPU invisible to the scheduler until someone notices. `AutoDetect` in `gres.conf` asks slurmd to discover the hardware for you. The man page lists these values for the current development version. `nvml` covers NVIDIA GPUs through the NVIDIA Management Library, and it needs Slurm built with NVML support and the library present. `nvidia` covers NVIDIA GPUs without a library. It "doesn't detect MIGs or NVlinks", and it was added in 24.11. `rsmi` and `amd` cover AMD GPUs. `oneapi` covers Intel. `nrt` covers AWS Trainium and Inferentia. `full` tries all of these in order, and `off` turns detection off.
 
 For NVIDIA data-centre nodes, use `AutoDetect=nvml`. It fills in `Type`, `File`, `Cores` (the CPU affinity), `Links` (the NVLink connectivity) and `UUID` for each GPU. It is also the only mode that handles MIG devices. To check the result, run `slurmd -G`. When you read its output, check three things for each device. Confirm that the type matches the product you bought, that the file list covers every GPU in the box, and that the cores belong to the socket the GPU is attached to. A mistake in any of the three shows up later as a job that gets the wrong GPU or the wrong CPUs. The man page says it "prints GRES configuration (based upon `slurm.conf` GRES merged with `gres.conf` contents for this node) and exit":
@@ -79,6 +77,10 @@ slurmd -G        # run on the GPU node; check type, file, cores, links for each 
 A cluster can use different settings for different node groups. The man page examples include `NodeName=tux[0-7] AutoDetect=nvml` and `NodeName=tux[8-11] AutoDetect=rsmi`. They also show `NodeName=tux[12-15] Name=gpu File=/dev/nvidia[0-3]` for nodes with a manual definition. A single node can set `AutoDetect=off` to override its group. This matters in a mixed cluster, where an older AMD node and a newer NVIDIA node share one config.
 
 ### Manual definition
+
+![Two manual gres.conf lines with callouts for Name, Type, File, Cores and Links.](./img/p3-0610-gres-manual-anatomy.svg)
+
+*Figure 6.10.4. The File field turns a name into a real device that the cgroup can allow or deny.*
 
 Sometimes autodetection is not possible, or you want to override what it finds. In that case you write the definitions yourself. Imagine a driver update that stops the detection library from loading. Your manual lines keep the scheduler correct until the library is back.
 
@@ -104,6 +106,10 @@ This example is illustrative. A real `Links` list needs one entry per device of 
 Set `Type` to the product name, such as `h100`, `a100` or `l40s`. Users can then ask for a specific model with `--gres=gpu:h100:4`, and mixed clusters stay schedulable. Keep type strings short and stable. Once they appear in accounting and user scripts, they are hard to rename. The MIG profile docs say a type may be requested as a substring-compatible token.
 
 ## 2. Requesting GPUs
+
+![A two-node example contrasts per-node GPU counts with a total GPU count and lists request recipes for common job shapes.](./img/p3-0610-per-node-vs-total.svg)
+
+*Figure 6.10.5. --gres counts per node while --gpus counts for the whole job.*
 
 Many users type `--gres=gpu:1` and expect something sensible. Whether they get it depends on which request option they use, so it helps to know the differences. A user who asks for four GPUs per node in a two-node job and a user who asks for four GPUs in total have asked for very different allocations. The table lists the main options from the `sbatch`, `srun` and `salloc` man pages.
 
@@ -132,6 +138,10 @@ Defaults protect users who type only `--gres=gpu:1`. Think of the defaults as th
 
 ### Portable resource allocation rules (*Distributed AI Systems* Chapter 8)
 
+![An sbatch header annotated with the five resource dimensions that should be stated explicitly and why --exclusive helps.](./img/p3-0610-portable-header.svg)
+
+*Figure 6.10.6. State nodes, GPUs, CPUs, memory and time explicitly so cluster defaults cannot surprise the job.*
+
 *Distributed AI Systems* (chapter 8, *Best practices: Resource allocation*) makes a point that matters here. Relying on implicit cluster defaults is one of the most common causes of silent training failures. The failures usually appear when batch scripts move from a lab cluster to a shared production HPC system. A script that worked on the lab cluster quietly inherits different defaults on the production system, and the training run fails somewhere far from the cause. The fix is to make every GPU batch script portable and self-documenting. You do that by naming all five core resource dimensions explicitly.
 
 1. Always specify `--nodes`, `--gres`, `--cpus-per-task` (or `--cpus-per-gpu`), `--mem` (or `--mem-per-cpu` / `--mem-per-gpu`), and `--time`. Clusters set very different defaults, such as 1 CPU core or 2 GiB of host RAM per task. With those defaults, PyTorch `DataLoader` workers (`num_workers > 0`) can exhaust host memory and get killed by the Linux OOM killer, even while GPU VRAM has plenty of headroom.
@@ -140,6 +150,10 @@ Defaults protect users who type only `--gres=gpu:1`. Think of the defaults as th
 Before you move a batch script to another cluster, write down all five dimensions in its header. That header is the first thing the next person will read, and it saves them from guessing what the cluster used to supply by default.
 
 ### What the job sees
+
+![Allocated GPUs 3 and 7 appear inside the job as CUDA_VISIBLE_DEVICES 0 and 1, one for each task.](./img/h10-task-remap.svg)
+
+*Figure 6.10.7. Inside a job, the allocated GPUs are renumbered from zero, so physical GPU 3 can appear as device 0.*
 
 Once the job starts, it needs to know which GPUs it received. Slurm sets a group of environment variables for this, and the `sbatch` man page lists them. `SLURM_JOB_GPUS` holds the GPU indices allocated to the job on the node. The others are `SLURM_GPUS_ON_NODE`, `SLURM_GPUS_PER_NODE`, `SLURM_GPUS_PER_SOCKET`, `SLURM_GPUS` (the total requested) and `SLURM_GPU_BIND`. Each task also gets `CUDA_VISIBLE_DEVICES`. For other vendors, the matching variables are `ROCR_VISIBLE_DEVICES`, `ZE_AFFINITY_MASK` and `GPU_DEVICE_ORDINAL`. When device constraints are on, the indices are relative to the job's allocation. The first allocated GPU is `0`, even if its physical index is 3. That is why a script that hard-codes `CUDA_VISIBLE_DEVICES=3` breaks on one node and works on another. The job sees a renumbered world, and the scripts should follow the renumbering rather than the physical labels.
 
@@ -155,6 +169,14 @@ On a machine with no Slurm and no GPUs, the script prints each key as `<unset>` 
 
 ## 3. Binding GPUs to tasks and CPUs
 
+![Two lanes show which GPU a task gets and which CPUs it may use, for a two-socket eight-GPU node.](./img/p3-0610-bind-two-questions.svg)
+
+*Figure 6.10.8. Bind both questions so a rank's CPUs and GPU sit on the same socket.*
+
+![On a two-socket node, GPUs 0 to 3 sit on socket 0 with cores 0 to 31, and GPUs 4 to 7 sit on socket 1 with cores 32 to 63.](./img/h10-numa-binding.svg)
+
+*Figure 6.10.9. On a two-socket node, each GPU has a local socket, so binding keeps a rank's CPUs and GPU on the same side.*
+
 Binding answers two separate questions. The first is which GPU each task gets. The second is which CPUs a task may use, given its GPU. Picture four ranks on one node. If rank 2 gets a GPU that sits on the other side of the machine from its CPU cores, every host-to-device copy crosses the slow path. The data still arrives, so nothing fails, but each copy takes the long way round. Binding is how you prevent that. It is a promise made at launch, and it costs nothing when the layout is already right.
 
 The first question is answered by `--gpu-bind` or `--tres-bind=gres/gpu:...`. The `srun` man page describes the options. `closest` binds each task to the nearest GRES, which may be several in a NUMA environment. `map:<list>` assigns GPU IDs to tasks, as in `map:0,1,2,3` or `map:0*4,1*4`. `mask:<list>` uses hexadecimal masks per task. `none` turns binding off, including the implicit binding from `--gpus-per-task`.
@@ -168,6 +190,10 @@ A short walkthrough makes the idea concrete. Take a typical 8-GPU, 2-socket HGX 
 Before you choose a `--gpu-bind` mode, decide whether your ranks need their GPUs placed near their CPUs, and confirm the layout with `nvidia-smi topo -m`. If the answer is yes, bind. If your ranks do not share data much, a looser setting may be fine. A common mistake is to copy a binding flag from a forum post without checking the topology of the node you are on. The flag is correct for one layout and wrong for another.
 
 ## 4. Isolation: what actually stops a job from using other GPUs
+
+![An environment variable is contrasted with cgroup device control, with two check commands run after every change.](./img/p3-0610-isolation-layers.svg)
+
+*Figure 6.10.10. Only ConstrainDevices=yes physically stops a job from opening other GPUs.*
 
 An environment variable is only a suggestion. A user's job runs `nvidia-smi` and lists every GPU in the box, and the reason is that nothing stopped it. A process can ignore `CUDA_VISIBLE_DEVICES` and open `/dev/nvidia3` directly, even if that GPU belongs to someone else. Real isolation comes from cgroup device control. Set `TaskPlugin=task/cgroup` and `ConstrainDevices=yes` in `cgroup.conf` (6.8). The default for `ConstrainDevices` is `no`, so you have to turn it on. With it on, the job's cgroup gets only the device files of its allocated GRES. Opening any other device then fails with a permission error, and `nvidia-smi` lists only the GPUs you were allocated. This requires that GRES have `File=` entries, or that autodetect supplied them.
 
@@ -183,6 +209,14 @@ srun --gres=gpu:1 bash -c 'CUDA_VISIBLE_DEVICES=1 nvidia-smi -L'    # should not
 Run these checks after every driver or runtime change, before you trust the node with jobs again. A check that takes a minute is far cheaper than a job that quietly shares a GPU with someone else. Read the output with a specific question in mind. The first command should show exactly one GPU in the list. The second should show no GPU that the job was not given.
 
 ## 5. Sharing a GPU: MIG, MPS and sharding
+
+![A decision table from workload need to whole GPU, MIG, MPS or sharding with the slurm.conf syntax for each.](./img/p3-0610-sharing-decision.svg)
+
+*Figure 6.10.11. MIG instances must exist before slurmd starts because Slurm does not partition GPUs dynamically.*
+
+![Whole GPUs, MIG, MPS and sharding sit on a spectrum from strong isolation to high density.](./img/h10-sharing-spectrum.svg)
+
+*Figure 6.10.12. Each way of sharing a GPU gives up some isolation to fit more jobs on one device.*
 
 Whole-GPU allocation is the default, and it is the right default for training. Small workloads such as inference, notebooks and debugging are different. If each one takes a whole 80 GB GPU, the rest of that capacity goes unused. Slurm offers three mechanisms for sharing, and the `gres` documentation describes each of them. Each one trades isolation for density, so choose by what the workload can tolerate.
 
@@ -224,6 +258,10 @@ Mixing MIG and whole-GPU nodes in one cluster is common. A MIG partition serves 
 
 ## 6. Accounting and limits for GPUs
 
+![Four lanes for recording, capping, billing and checking GPU usage with the Slurm settings for each.](./img/p3-0610-gpu-accounting-levers.svg)
+
+*Figure 6.10.13. Accounting counts allocated GPU hours, so pair it with utilisation monitoring to see wasted time.*
+
 Someone will always ask who used the GPUs and how much. A manager wants to know which team used the most H100 hours last month. Accounting answers that question, and limits cap what any one account can take. When the question arrives, you want the answer to come from the database, not from a spreadsheet that someone updated by hand. Start by adding `AccountingStorageTRES=gres/gpu` and any typed variants. That makes GPU usage appear in `sacct` and `sreport`. You can check it with `sacct -X --format=JobID,AllocTRES%60`.
 
 For limits, `GrpTRES=gres/gpu=64` goes on accounts, and `MaxTRESPerUser=gres/gpu=32` goes on QOS (see 6.9). For billing, give GPUs a high weight with `TRESBillingWeights=GRES/gpu=10,...` on the partition. Add `PriorityFlags=MAX_TRES_GRES`, which the man page says needs Slurm 25.05 or later. That way GPU hours dominate cost and fair-share. Typed TRES, such as `gres/gpu:h100`, let you set per-model limits and reports.
@@ -251,6 +289,10 @@ Once a multi-node GPU job is running, you need to confirm that every allocated G
 3. You can profile GPU compute against `ncclAllReduce` communication. When GPU utilisation looks high but step throughput is slow, the cause may be NCCL polling loops, which spin CUDA kernels at 100% utilization. Wrap 5 training steps in `torch.profiler.profile(activities=[ProfilerActivity.CPU, ProfilerActivity.CUDA], record_shapes=True, profile_memory=True, with_stack=True)`. Put `record_function("forward")`, `record_function("backward")` and `record_function("optimizer")` around the matching parts. Export the Chrome trace only on rank 0, with `if dist.get_rank() == 0: prof.export_chrome_trace("trace.json")`. Then print `prof.key_averages().table(sort_by="cuda_time_total", row_limit=10)`. If `ncclAllReduce` dominates `cuda_time_total`, you have an inter-node communication bottleneck. The remedies are a larger micro-batch size, gradient accumulation, or overlapping communication with computation. For lower-level transport diagnostics, enable `export NCCL_DEBUG=INFO`, `export NCCL_DEBUG_SUBSYS=ALL` and `export TORCH_DISTRIBUTED_DEBUG=DETAIL` selectively. Run this profile before you change the model code, because it shows whether the time goes to compute or to communication.
 
 ## 8. Troubleshooting
+
+![A table of nine GPU scheduling symptoms with likely cause and the check for each.](./img/p3-0610-troubleshoot-table.svg)
+
+*Figure 6.10.14. Run the single check in the row that matches before changing any configuration.*
 
 A job stays pending, or a node sits in drain, and it is not clear whether the fault is in Slurm or in the training script. Picture the page at two in the morning. The training script looks fine, and the queue is not moving. The checks below separate the two, so you know which team needs to look first. Start with the three quick triage commands, because they take seconds and rule out whole categories at once.
 

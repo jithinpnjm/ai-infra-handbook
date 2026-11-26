@@ -1,0 +1,72 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "p3-2018-retry-attempts",
+  "title": "Retry amplification: expected attempts per request",
+  "spec": "Formula strip 'expected attempts = 1 + p + p squared + ... up to p to the power k minus 1, where p is the chance one attempt fails and k is the attempts a client allows; each term is the chance the request reaches that attempt'. Bar chart for k = 4 with three bars: 'p = 0.1: 1.11 attempts per request'; 'p = 0.5: 1.875'; 'p = 0.8: 2.95'. Loop diagram of four boxes in a circle: 'half the replicas fail'; 'survivors get doubled traffic and p rises'; 'clients retry, so request rate at the gateway exceeds the user request rate'; 'load rises again'. Right column: 'confirm: compare gateway request rate against unique user requests; look for vllm:admission_rejections_total rising together with client retries'; 'mitigate now: cut client retries, return 503 with a back-off hint, shed at the edge'; 'fix later: retry budget (a cap on retries as a fraction of requests), jittered exponential back-off, circuit breaker, idempotency keys'. Rule 'during a partial outage reduce attempts first, more capacity will not catch up with a growing retry loop'. Text at least 24px.",
+  "anchor": "### 9. Retry amplification during a partial outage",
+  "alt": "Bars of 1.11, 1.875 and 2.95 expected attempts at failure rates 0.1, 0.5 and 0.8, beside the loop that raises load.",
+  "cap": "The higher the failure rate, the more retries arrive, which raises the failure rate again."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "p3-2018-hang-health-lies",
+  "title": "A hang that /health and status codes do not show",
+  "spec": "Two panels. Panel 1 'Stall': 'rate(vllm:generation_tokens_total[1m]) is zero while waiting plus running is above zero; process alive, CPU idle, a GPU may sit at 100 percent'. Cause line 'tensor-parallel hang: one rank waiting for another in a collective (NCCL), the rest wait forever; Docker default shared memory is only 64 MB and tensor-parallel workers route NCCL and IPC buffers through it'. Trap box 'v0.32.0 /health returns 200 unless the engine is marked dead; the check only reads an error flag, so the route reports a crash, not a stall; a hung engine keeps answering 200'. Panel 2 'Failure after the first token': 'the server already sent HTTP 200 and cannot change it; a GenerationError becomes one data: error chunk then data: [DONE]; the engine counts it in vllm:request_success_total with finished_reason error, or abort if the client left first; a status-code SLI misses it, the finish-reason counter sees it'. Action strip 'mitigate: capture logs and a stack dump, drain the replica, restart it, cordon the node for hardware Xid codes; fix later: NCCL timeouts, a watchdog on token rate, automated cordon on fatal Xid'. Rule 'zero tokens with work present is a hang, and a green /health does not change that'. Text at least 24px.",
+  "anchor": "### 6. CUDA and NCCL hangs and Xid errors",
+  "alt": "A stall with zero token rate behind a green health route, and a mid-stream error that a status code SLI misses.",
+  "cap": "Alert on token rate and finish reason, because health routes and status codes can both stay green."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "p3-2018-silent-shrink",
+  "title": "Silent shrink: eight replicas became five, nothing is red",
+  "spec": "Left: three-step story. 'Liveness probe with a short timeout (default probe timeout is 1 second) or a path that waits behind generation work fails on a healthy busy pod'; 'Kubernetes restarts it and drops every in-flight request'; 'restarted worker must pass readiness and re-register with router discovery; if registration fails the pod looks fine to Kubernetes but receives no traffic'. Center bar 'capacity drops from eight replicas to five; latency alerts stay quiet until load rises'. Right detection table: 'ready less than desired replicas'; 'router backend list compared with ready pods: the gap is where the silence lives'; 'per-replica request rate of zero for a ready pod'; 'pod last state and events: restart reason names the failed probe; tokens flowing just before the restart means the worker was healthy and busy'. Fix strip 'relax the liveness timeout and raise failureThreshold to 3 or higher; move load checks to readiness; add a startup probe; restart workers that are ready but unregistered; X+1 spare capacity [vendor]'. Rule 'liveness answers should this process be killed, readiness answers should it get traffic'. Text at least 24px.",
+  "anchor": "### 8. Probes that hurt: liveness kills and silent pool shrink [vendor]",
+  "alt": "A healthy busy pod restarted by liveness fails to re-register, dropping eight replicas to five, with the signals that reveal it.",
+  "cap": "Compare ready pods with desired replicas and with the router's backend list."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "p3-2018-metric-deprecation",
+  "title": "A removed metric looks like a healthy, idle system",
+  "spec": "Timeline of three vLLM versions. 'version X.Y: metric deprecated, still works'; 'version X.Y+1: metric hidden'; 'version X.Y+2: metric removed'. Below the timeline, a dashboard or autoscaler that reads the removed metric: 'goes blind; the drop shows as no data, which many alert rules treat as healthy'. Second strip of a router and engine upgraded unevenly: 'router and engine share API fields, token accounting, metric names and defaults; errors or odd outputs begin right after a rollout and only on some routes'. Checklist: 'confirm: put engine version and router version in labels or a startup log line and compare across hops; query /metrics to see which names exist; if a name is missing, check the version pair before assuming the system is idle'; 'mitigate: pin both sides to a known pair and roll back the newer one'; 'fix later: compatibility matrix in CI, rollout order for control plane and data plane, alerts that treat missing series as a fault'. Rule 'after any rollout, check versions at every hop before debugging behaviour'. Text at least 24px.",
+  "anchor": "### 12. Version skew between router and engine",
+  "alt": "A three-step deprecation timeline ending in a removed metric that looks like no data, with a version-pair checklist.",
+  "cap": "Treat a missing series as a fault, not as a quiet system."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "p3-2018-burst-sim",
+  "title": "The 16-request burst: same traffic, two memory budgets",
+  "spec": "Header 'Llama-2-7B FP16 on a 24 GB GPU: weights 14 GB leave 10 GB; 0.5 MB per token = 20,480 tokens of cache; 16 requests of 3,000 prompt plus 1,000 output tokens, each growing to 4,000'. Two columns from the toy simulator (not vLLM, assumes the newest request is the victim). Column '10 GB free': 'capacity 20,480 tokens; peak KV usage 1.0; 2 preemptions; 11 requests waiting at the worst moment; 6,759 recomputed tokens; 3,000 steps'. Column '34 GB free (the L40S case from the book)': 'no preemptions; 1,000 steps'. Bottom line 'three times as many steps on the small GPU because admission is limited'. Walk-through sequence 'by prompt size six are admitted, the rest wait; as admitted requests grow the cache fills; the newest is preempted and recomputed'. Answer box 'KV exhaustion with queueing. Now: lower batch size limits or send the job to a bigger pool. Later: size the endpoint for the longest realistic request or add replicas'. Text at least 24px.",
+  "anchor": "### Scenario A. The 16-request burst",
+  "alt": "A two-column comparison of the toy simulator at 10 GB and 34 GB of free cache, showing preemptions and step counts.",
+  "cap": "The same 16 requests are calm with enough cache and crowded without it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "p3-2018-rolling-restart-gap",
+  "title": "Restarting eight replicas at once leaves a zero-capacity gap",
+  "spec": "Worked numbers: '70 billion parameters x 2 bytes = 140 GB; shared source 14 GB per second'. Timeline A 'all eight restart together: 8 x 140 / 14 = 80 s each under the equal-share model, endpoint has no capacity during that window; retries in the gap make the first minute after recovery worse'. Timeline B 'small groups, at least X+1 replicas keep serving; weights staged on local disk so the source stops being the shared bottleneck; one replica alone needs 10 s'. Footer 'measure the load time in the startup log and use that number in your answer; saying you will measure first is more credible than a number you cannot defend; the gap is the window to plan for, not the steady state'. Text at least 24px.",
+  "anchor": "### Scenario C. A rolling restart of eight replicas",
+  "alt": "Two timelines comparing eight replicas loading together for 80 seconds with small groups and staged weights.",
+  "cap": "Restart in small groups and stage weights locally so some capacity always serves."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "18",
+  "name": "p3-2018-alert-to-cause",
+  "title": "Alert to likely causes to first check",
+  "spec": "Table, eight rows with columns Alert, Likely causes in order, First check. 'TTFT p99 high | queue growth, cache hit collapse, head-of-line blocking, KV exhaustion | vllm:request_queue_time_seconds p99 versus vllm:num_requests_waiting'. 'Inter-token latency high | KV exhaustion, head-of-line blocking, low speculative acceptance | vllm:num_preemptions_total rate and prompt-token tail'. 'Waiting queue growing | capacity, noisy tenant, retry amplification | vllm:num_requests_running at limit, per-tenant tokens'. '503s rising | admission limit, pool shrink, overload | vllm:admission_rejections_total and ready replicas'. 'Tokens per second is zero | hang, Xid fault, crash loop | dmesg Xid lines and NCCL log'. 'Pods restarting | liveness kill, startup OOM, runtime OOM | pod last state and restart reason'. 'Ready below desired | shrink, herd, slow load | router backend list, load time in startup log'. 'Output complaints, infra green | finish_reason drift, quantisation, version skew, sampling defaults | vllm:request_success_total shares by finished_reason'. Footer 'use the tree first and the table second: anchor symptom, then supporting evidence'. Text at least 24px.",
+  "anchor": "### 13. A decision tree, an alert-to-cause table and a classifier",
+  "alt": "A table mapping eight alerts to ranked likely causes and the single first check that separates them.",
+  "cap": "Use the tree to pick a family of causes, then the table to find the one number that separates them."
+ }
+]

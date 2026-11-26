@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Build the account tree before turning enforcement on</title>
+  <desc>Infographic showing the 5-step sequence for establishing Slurm accounting associations and trees before setting enforcement, contrasting with the lockout trap, and detailing the association model and database housekeeping.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 8" refX="8" refY="4" markerWidth="10" markerHeight="8" orient="auto">
+      <path d="M 0 0 L 10 4 L 0 8 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="40" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Build the account tree before turning enforcement on</text>
+
+  
+
+  
+  <rect x="40" y="110" width="820" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="76" cy="148" r="24" fill="#207448" />
+  <text x="76" y="148" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <rect x="115" y="132" width="38" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="123" cy="139" r="2" fill="#207448" />
+  <line x1="131" y1="139" x2="145" y2="139" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <rect x="115" y="150" width="38" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+  <circle cx="123" cy="157" r="2" fill="#207448" />
+  <line x1="131" y1="157" x2="145" y2="157" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="175" y="157" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+  <text x="70" y="198" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">sacctmgr add cluster mycluster</text>
+
+  
+  <line x1="450" y1="220" x2="450" y2="248" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="250" width="820" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="76" cy="288" r="24" fill="#207448" />
+  <text x="76" y="288" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <rect x="126" y="272" width="16" height="10" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <path d="M 134 282 L 134 290 M 120 290 L 148 290 M 120 290 L 120 296 M 148 290 L 148 296" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="112" y="296" width="16" height="10" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="140" y="296" width="16" height="10" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <text x="175" y="297" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+  <text x="70" y="338" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">sacctmgr add account ai-research</tspan>
+    <tspan x="70" dy="34">Description=AI research Organization=lab;</tspan>
+    <tspan x="70" dy="34" font-family="system-ui, -apple-system, sans-serif">sub-account with parent, for example</tspan>
+    <tspan x="70" dy="34" font-family="ui-monospace, monospace">sacctmgr add account llm-pretrain parent=genai</tspan>
+  </text>
+
+  
+  <line x1="450" y1="465" x2="450" y2="493" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="495" width="820" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="76" cy="533" r="24" fill="#207448" />
+  <text x="76" y="533" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <circle cx="134" cy="525" r="7" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M 120 545 C 120 536 126 536 134 536 C 142 536 148 536 148 545" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="175" y="542" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+  <text x="70" y="583" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">sacctmgr add user alice Account=ai-research</text>
+
+  
+  <line x1="450" y1="605" x2="450" y2="633" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="635" width="820" height="215" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="76" cy="673" r="24" fill="#207448" />
+  <text x="76" y="673" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <circle cx="130" cy="668" r="10" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="138" y1="676" x2="148" y2="686" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M 126 668 L 129 671 L 135 664" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="175" y="682" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 4</text>
+  <text x="70" y="723" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">sacctmgr list associations</tspan>
+    <tspan x="70" dy="34">format=cluster,account,user,share,qos</tspan>
+    <tspan x="70" dy="34">and sacctmgr show tree to check each user sits</tspan>
+    <tspan x="70" dy="34" font-family="system-ui, -apple-system, sans-serif">under the expected account</tspan>
+  </text>
+
+  
+  <line x1="450" y1="850" x2="450" y2="878" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="880" width="820" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="76" cy="918" r="24" fill="#207448" />
+  <text x="76" y="918" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+  
+  <path d="M 134 901 L 148 906 V 918 C 148 928 134 934 134 934 C 134 934 120 928 120 918 V 906 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+  <path d="M 127 917 L 132 922 L 141 912" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="175" y="927" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 5</text>
+  <text x="70" y="968" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="70" dy="0">only now set</tspan>
+    <tspan x="70" dy="34" font-family="ui-monospace, monospace">AccountingStorageEnforce=associations,limits,qos</tspan>
+    <tspan x="70" dy="34" font-family="ui-monospace, monospace">in slurm.conf</tspan>
+  </text>
+
+  
+
+  
+  <rect x="900" y="110" width="660" height="250" rx="12" fill="#fdf6f0" stroke="#db8129" stroke-width="3" />
+  
+  <path d="M 945 127 L 966 163 L 924 163 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+  <line x1="945" y1="139" x2="945" y2="151" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+  <circle cx="945" cy="157" r="1.8" fill="#db8129" />
+  <text x="985" y="153" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Trap</text>
+  <text x="930" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="930" dy="0">enforcement on before the tree exists:</tspan>
+    <tspan x="930" dy="34">a submit from a user with no association</tspan>
+    <tspan x="930" dy="34">is rejected with Invalid account or</tspan>
+    <tspan x="930" dy="34">account/partition combination and</tspan>
+    <tspan x="930" dy="34">everyone is locked out</tspan>
+  </text>
+
+  
+  <rect x="900" y="390" width="660" height="350" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="926" y="412" width="14" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <rect x="954" y="412" width="14" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <line x1="940" y1="418" x2="954" y2="418" stroke="#207448" stroke-width="2.5" />
+  <rect x="940" y="432" width="14" height="12" rx="2" fill="none" stroke="#207448" stroke-width="2.5" />
+  <line x1="933" y1="424" x2="940" y2="432" stroke="#207448" stroke-width="2.5" />
+  <line x1="961" y1="424" x2="954" y2="432" stroke="#207448" stroke-width="2.5" />
+  <text x="985" y="433" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Model</text>
+  <text x="930" y="475" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="930" dy="0">association is a tuple of cluster,</tspan>
+    <tspan x="930" dy="34">account, user and optionally partition;</tspan>
+    <tspan x="930" dy="34">limits and shares attach to associations</tspan>
+    <tspan x="930" dy="34">and accounts; each account is a pot of</tspan>
+    <tspan x="930" dy="34">shares, a user draws from the pot of</tspan>
+    <tspan x="930" dy="34">their account; AdminLevel Admin,</tspan>
+    <tspan x="930" dy="34">Operator or None; coordinators manage</tspan>
+    <tspan x="930" dy="34">users inside an account</tspan>
+  </text>
+
+  
+  <rect x="900" y="770" width="660" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="946" cy="805" r="13" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="946" y1="796" x2="946" y2="805" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="946" y1="805" x2="953" y2="810" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <line x1="946" y1="788" x2="946" y2="792" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="946" y1="818" x2="946" y2="822" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="929" y1="805" x2="933" y2="805" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <line x1="959" y1="805" x2="963" y2="805" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  <text x="985" y="813" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Housekeeping</text>
+  <text x="930" y="855" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="930" dy="0">PurgeJobAfter and PurgeStepAfter and</tspan>
+    <tspan x="930" dy="34">related Purge*After settings, never</tspan>
+    <tspan x="930" dy="34">purged if unset; ArchiveJobs=yes writes</tspan>
+    <tspan x="930" dy="34">purged records out; MaxQueryTimeRange</tspan>
+    <tspan x="930" dy="34">limits how wide one sacct or sreport</tspan>
+    <tspan x="930" dy="34">query may be; slurmdbd.conf readable</tspan>
+    <tspan x="930" dy="34">only by SlurmUser</tspan>
+  </text>
+</svg>

@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Exact-length outages are timers: find the timer</title>
+  <desc>Visual comparison table of three exact-length outage cases, their underlying timers, and control-plane or receiver fixes.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Exact-length outages are timers: find the timer</text>
+
+  
+  
+  <rect x="40" y="120" width="610" height="364" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="62" y="142" width="56" height="40" rx="6"/>
+    <line x1="72" y1="162" x2="80" y2="162"/>
+    <circle cx="90" cy="162" r="3" fill="#207448"/>
+    <path d="M 98 166 L 104 158 L 110 166"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="132" y="172" font-size="30" font-weight="bold">Case 6 BGP route dampening:</tspan>
+    <tspan x="62" y="212" font-size="24">the management network goes down for</tspan>
+    <tspan x="62" y="240" font-size="24">exactly five minutes, repeating at</tspan>
+    <tspan x="62" y="268" font-size="24">random; a failing transceiver flaps</tspan>
+    <tspan x="62" y="296" font-size="24">a link every few seconds; the host's</tspan>
+    <tspan x="62" y="324" font-size="24">FRR advertises then withdraws a route;</tspan>
+    <tspan x="62" y="352" font-size="24">the spine applies route-flap dampening</tspan>
+    <tspan x="62" y="380" font-size="24">and suppresses the route for a penalty</tspan>
+    <tspan x="62" y="408" font-size="24">period; each flap adds a penalty, past</tspan>
+    <tspan x="62" y="436" font-size="24">a threshold the route stays suppressed</tspan>
+    <tspan x="62" y="464" font-size="24">even after the link is stable</tspan>
+  </text>
+
+  
+  <rect x="1070" y="120" width="490" height="364" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1092" y="142" width="52" height="36" rx="4"/>
+    <path d="M 1104 142 L 1104 134 L 1132 134 L 1132 142"/>
+    <path d="M 1108 160 L 1116 168 L 1130 152"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1160" y="172" font-size="30" font-weight="bold" fill="#207448">fix:</tspan>
+    <tspan x="1092" y="222" font-size="24">DOM showed bad Rx power so</tspan>
+    <tspan x="1092" y="258" font-size="24">replace the optic; keep</tspan>
+    <tspan x="1092" y="294" font-size="24">dampening, it protects the</tspan>
+    <tspan x="1092" y="330" font-size="24">control plane</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="504" width="610" height="236" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="90" cy="535" r="24"/>
+    <ellipse cx="90" cy="535" rx="12" ry="24"/>
+    <line x1="66" y1="535" x2="114" y2="535"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="132" y="546" font-size="30" font-weight="bold">Case 13 DNS 5-second delays:</tspan>
+    <tspan x="62" y="586" font-size="24">occasional 5-second latency on</tspan>
+    <tspan x="62" y="612" font-size="24">external calls; A and AAAA queries</tspan>
+    <tspan x="62" y="638" font-size="24">leave from one source port in parallel;</tspan>
+    <tspan x="62" y="664" font-size="24">conntrack and NAT race the two and</tspan>
+    <tspan x="62" y="690" font-size="24">one is dropped; the stub resolver</tspan>
+    <tspan x="62" y="716" font-size="24">waits out its default 5-second timeout;</tspan>
+    <tspan x="62" y="742" font-size="24" dy="-26">ndots:5 multiplies the queries</tspan>
+  </text>
+
+  
+  <rect x="1070" y="504" width="490" height="236" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 1118 512 L 1138 520 L 1138 542 C 1138 554 1118 564 1118 564 C 1118 564 1098 554 1098 542 L 1098 520 Z"/>
+    <path d="M 1108 536 L 1116 544 L 1128 530"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1160" y="546" font-size="30" font-weight="bold" fill="#207448">fix:</tspan>
+    <tspan x="1092" y="590" font-size="24">single-request-reopen,</tspan>
+    <tspan x="1092" y="626" font-size="24">NodeLocal DNSCache, lower</tspan>
+    <tspan x="1092" y="662" font-size="24">ndots, newer kernel</tspan>
+    <tspan x="1092" y="698" font-size="24">(chapter 2.8)</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="760" width="610" height="236" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="62" y="780" width="56" height="42" rx="6"/>
+    <line x1="62" y1="794" x2="118" y2="794"/>
+    <circle cx="72" cy="787" r="2" fill="#207448"/>
+    <circle cx="80" cy="787" r="2" fill="#207448"/>
+    <rect x="74" y="804" width="32" height="10" rx="2"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="132" y="802" font-size="30" font-weight="bold">Case 10 TCP zero window:</tspan>
+    <tspan x="62" y="842" font-size="24">a transfer stalls for 5 to 10 seconds,</tspan>
+    <tspan x="62" y="870" font-size="24">then resumes; capture shows TCP Window</tspan>
+    <tspan x="62" y="898" font-size="24">Size: 0 from the receiver; the</tspan>
+    <tspan x="62" y="926" font-size="24">receiving application is not reading</tspan>
+    <tspan x="62" y="954" font-size="24">fast enough, disk or CPU; the</tspan>
+    <tspan x="62" y="982" font-size="24">network is fine</tspan>
+  </text>
+
+  
+  <rect x="1070" y="760" width="490" height="236" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="1096" y="780" width="44" height="44" rx="4"/>
+    <rect x="1106" y="790" width="24" height="24" rx="2"/>
+    <line x1="1104" y1="774" x2="1104" y2="780"/>
+    <line x1="1118" y1="774" x2="1118" y2="780"/>
+    <line x1="1132" y1="774" x2="1132" y2="780"/>
+    <line x1="1104" y1="824" x2="1104" y2="830"/>
+    <line x1="1118" y1="824" x2="1118" y2="830"/>
+    <line x1="1132" y1="824" x2="1132" y2="830"/>
+    <line x1="1090" y1="792" x2="1096" y2="792"/>
+    <line x1="1090" y1="802" x2="1096" y2="802"/>
+    <line x1="1090" y1="812" x2="1096" y2="812"/>
+    <line x1="1140" y1="792" x2="1146" y2="792"/>
+    <line x1="1140" y1="802" x2="1146" y2="802"/>
+    <line x1="1140" y1="812" x2="1146" y2="812"/>
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+    <tspan x="1160" y="802" font-size="30" font-weight="bold" fill="#207448">fix:</tspan>
+    <tspan x="1092" y="852" font-size="24">the receiver's I/O, CPU</tspan>
+    <tspan x="1092" y="890" font-size="24">or buffering</tspan>
+  </text>
+
+  
+  <rect x="670" y="120" width="380" height="876" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+
+  
+  <line x1="690" y1="494" x2="1030" y2="494" stroke="#db8129" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.6"/>
+  <line x1="690" y1="750" x2="1030" y2="750" stroke="#db8129" stroke-width="1.5" stroke-dasharray="6 4" opacity="0.6"/>
+
+  
+  <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="860" cy="165" r="26"/>
+    <path d="M 860 148 L 860 165 L 874 165"/>
+    <line x1="860" y1="133" x2="860" y2="139"/>
+    <line x1="850" y1="133" x2="870" y2="133"/>
+  </g>
+
+  
+  <text font-family="system-ui, -apple-system, sans-serif" text-anchor="middle" fill="#303a36">
+    <tspan x="860" y="235" font-size="30" font-weight="bold" fill="#db8129">timer in play:</tspan>
+    <tspan x="860" y="325" font-size="24" font-weight="bold">dampening penalty,</tspan>
+    <tspan x="860" y="625" font-size="24" font-weight="bold">stub resolver timeout,</tspan>
+    <tspan x="860" y="865" font-size="24" font-weight="bold">window probes until the</tspan>
+    <tspan x="860" y="902" font-size="24" font-weight="bold">application reads again</tspan>
+  </text>
+
+  
+  <rect x="40" y="1030" width="1520" height="110" rx="12" fill="#207448"/>
+  <g stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="90" cy="1085" r="22"/>
+    <path d="M 90 1072 L 90 1085 L 100 1085"/>
+  </g>
+  <text x="820" y="1094" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">An exact N-second delay is a timer, so match it to a default</text>
+</svg>

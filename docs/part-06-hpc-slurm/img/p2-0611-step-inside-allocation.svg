@@ -1,0 +1,192 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>A second srun inside an allocation can wait for GPUs</title>
+  <desc>Infographic demonstrating how a second srun step inside an existing allocation waits when the first step holds the GPUs, why steps do not share resources by default, and how the --exact and -K flags behave.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1060" fill="#f5f8f5" />
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A second srun inside an allocation can wait for GPUs</text>
+
+  
+  <g id="terminal-1">
+    <rect x="50" y="130" width="510" height="450" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="50" y="130" width="510" height="42" rx="16" ry="16" fill="#207448" fill-opacity="0.15" />
+    <circle cx="75" cy="151" r="6" fill="#207448" />
+    <circle cx="95" cy="151" r="6" fill="#207448" fill-opacity="0.5" />
+    <circle cx="115" cy="151" r="6" fill="#207448" fill-opacity="0.5" />
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="75" y="190" width="56" height="46" rx="8" />
+      <line x1="75" y1="205" x2="131" y2="205" />
+      <polyline points="87,217 93,222 87,227" />
+      <line x1="99" y1="227" x2="111" y2="227" />
+    </g>
+
+    
+    <text x="148" y="212" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="148" dy="0">Terminal 1:</tspan>
+      <tspan x="148" dy="38">interactive allocation</tspan>
+    </text>
+
+    
+    <g id="held-gpus-box">
+      <rect x="70" y="275" width="470" height="285" rx="12" ry="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+      
+      <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+        <rect x="90" y="295" width="46" height="46" rx="6" />
+        <rect x="100" y="305" width="26" height="26" rx="3" />
+        <line x1="100" y1="289" x2="100" y2="295" />
+        <line x1="113" y1="289" x2="113" y2="295" />
+        <line x1="126" y1="289" x2="126" y2="295" />
+        <line x1="100" y1="341" x2="100" y2="347" />
+        <line x1="113" y1="341" x2="113" y2="347" />
+        <line x1="126" y1="341" x2="126" y2="347" />
+        <line x1="84" y1="305" x2="90" y2="305" />
+        <line x1="84" y1="318" x2="90" y2="318" />
+        <line x1="84" y1="331" x2="90" y2="331" />
+        <line x1="136" y1="305" x2="142" y2="305" />
+        <line x1="136" y1="318" x2="142" y2="318" />
+        <line x1="136" y1="331" x2="142" y2="331" />
+      </g>
+
+      
+      <text x="155" y="318" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+        <tspan x="155" dy="0">GPUs held by</tspan>
+        <tspan x="155" dy="34">the first step</tspan>
+      </text>
+
+      
+      <g id="gpu-bar">
+        <rect x="90" y="380" width="430" height="155" rx="10" ry="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+        
+        
+        
+        <rect x="105" y="395" width="90" height="125" rx="6" ry="6" fill="#207448" />
+        <circle cx="150" cy="450" r="24" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="8 4" />
+        <circle cx="150" cy="450" r="8" fill="#ffffff" />
+        <rect x="115" y="405" width="70" height="8" rx="2" fill="#ffffff" fill-opacity="0.5" />
+
+        
+        <rect x="210" y="395" width="90" height="125" rx="6" ry="6" fill="#207448" />
+        <circle cx="255" cy="450" r="24" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="8 4" />
+        <circle cx="255" cy="450" r="8" fill="#ffffff" />
+        <rect x="220" y="405" width="70" height="8" rx="2" fill="#ffffff" fill-opacity="0.5" />
+
+        
+        <rect x="315" y="395" width="90" height="125" rx="6" ry="6" fill="#207448" />
+        <circle cx="360" cy="450" r="24" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="8 4" />
+        <circle cx="360" cy="450" r="8" fill="#ffffff" />
+        <rect x="325" y="405" width="70" height="8" rx="2" fill="#ffffff" fill-opacity="0.5" />
+
+        
+        <rect x="420" y="395" width="90" height="125" rx="6" ry="6" fill="#207448" />
+        <circle cx="465" cy="450" r="24" fill="none" stroke="#ffffff" stroke-width="3" stroke-dasharray="8 4" />
+        <circle cx="465" cy="450" r="8" fill="#ffffff" />
+        <rect x="430" y="405" width="70" height="8" rx="2" fill="#ffffff" fill-opacity="0.5" />
+      </g>
+    </g>
+  </g>
+
+  
+  
+  <text x="800" y="278" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Waits, or is rejected,</tspan>
+    <tspan x="800" dy="34">unless resources are free</tspan>
+  </text>
+
+  
+  <line x1="1040" y1="365" x2="565" y2="365" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" />
+  <polygon points="540,365 565,353 565,377" fill="#207448" />
+
+  
+  <rect x="585" y="420" width="430" height="110" rx="14" ry="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="468" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Steps do not share</tspan>
+    <tspan x="800" dy="34">resources by default</tspan>
+  </text>
+
+  
+  <g id="terminal-2">
+    <rect x="1040" y="130" width="510" height="450" rx="16" ry="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <rect x="1040" y="130" width="510" height="42" rx="16" ry="16" fill="#207448" fill-opacity="0.15" />
+    <circle cx="1065" cy="151" r="6" fill="#207448" />
+    <circle cx="1085" cy="151" r="6" fill="#207448" fill-opacity="0.5" />
+    <circle cx="1105" cy="151" r="6" fill="#207448" fill-opacity="0.5" />
+
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="1065" y="190" width="56" height="46" rx="8" />
+      <line x1="1065" y1="205" x2="1121" y2="205" />
+      <polyline points="1077,217 1083,222 1077,227" />
+      <line x1="1089" y1="227" x2="1101" y2="227" />
+    </g>
+
+    
+    <text x="1138" y="212" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1138" dy="0">Terminal 2:</tspan>
+      <tspan x="1138" dy="38" font-family="monospace">srun nvidia-smi</tspan>
+    </text>
+
+    
+    <rect x="1060" y="275" width="470" height="285" rx="12" ry="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+
+    
+    <g id="spinner" transform="translate(1140, 418)">
+      <circle cx="0" cy="0" r="40" fill="none" stroke="#db8129" stroke-width="6" stroke-dasharray="185 70" stroke-linecap="round" />
+      <circle cx="0" cy="0" r="26" fill="none" stroke="#db8129" stroke-width="3" stroke-dasharray="35 25" stroke-linecap="round" stroke-opacity="0.6" />
+      <circle cx="0" cy="0" r="8" fill="#db8129" />
+    </g>
+
+    
+    <text x="1215" y="428" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">no output yet</text>
+  </g>
+
+  
+  <g id="flag-comparison-card">
+    <rect x="50" y="610" width="1500" height="145" rx="14" ry="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <line x1="85" y1="662" x2="135" y2="662" />
+      <circle cx="102" cy="662" r="6" fill="#e8f1ea" />
+      <line x1="85" y1="682" x2="135" y2="682" />
+      <circle cx="120" cy="682" r="6" fill="#e8f1ea" />
+      <line x1="85" y1="702" x2="135" y2="702" />
+      <circle cx="95" cy="702" r="6" fill="#e8f1ea" />
+    </g>
+
+    
+    <text x="160" y="666" font-family="sans-serif" font-size="25" fill="#303a36">Without <tspan font-family="monospace" font-weight="bold">--exact</tspan>: the step may use all non-GRES resources on each node</text>
+    
+    
+    <text x="160" y="721" font-family="sans-serif" font-size="25" fill="#303a36">With <tspan font-family="monospace" font-weight="bold">--exact</tspan>: the step takes only what it asks for</text>
+  </g>
+
+  
+  <g id="third-flag-card">
+    <rect x="50" y="785" width="1500" height="105" rx="14" ry="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 110,812 L 134,822 L 134,844 C 134,858 110,866 110,866 C 110,866 86,858 86,844 L 86,822 Z" />
+      <line x1="110" y1="828" x2="110" y2="842" />
+      <circle cx="110" cy="850" r="1.5" fill="#207448" />
+    </g>
+
+    
+    <text x="160" y="848" font-family="sans-serif" font-size="25" fill="#303a36">With <tspan font-family="monospace" font-weight="bold">-K (--kill-on-bad-exit)</tspan>: one non-zero exit ends the whole step</text>
+  </g>
+
+  
+  <g id="caption-bar">
+    <rect x="50" y="925" width="1500" height="85" rx="14" ry="14" fill="#207448" />
+    <text x="800" y="978" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Nothing is broken; the first terminal already holds the GPUs.</text>
+  </g>
+</svg>

@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "x27-five-part-incident-story",
+  "title": "The five parts of an incident story, each with one number",
+  "spec": "A left-to-right row of five equal boxes, each a light green panel with a number circle (r=24, white number) at its top-left, numbered 1 to 5 in time order. Box 1 title 'Impact' with sub-text 'Who, how bad, since when' and a number line 'Share of requests, minutes, error budget used'. Box 2 title 'Role' with sub-text 'What you owned and what you delegated' and the number line 'Team size, roles filled'. Box 3 title 'Decisions' with sub-text 'Two or three choices, each with the rejected option' and the number line 'Time each decision took'. Box 4 title 'Result' with sub-text 'How you mitigated, then resolved' and the number line 'Minutes to detect, mitigate, resolve'. Box 5 title 'Change' with sub-text 'The fix that stops it recurring' and the number line 'Alert window, gate, drill time'. Each box has a small outline icon (clock, person, shield, chart, gear) above its title. Arrows run left to right between the boxes. Below the row, a note strip with the text 'About three minutes, then stop'. Orange only on Box 1 Impact, because the impact in numbers comes first. Monospace is not needed on this figure.",
+  "anchor": "### 1. A behavioural answer about an incident is a short report with numbers",
+  "alt": "Five parts of a behavioural incident answer in order: impact, role, decisions, result and change, each with the number to include",
+  "cap": "Incident story: give the impact in numbers first, then your role, decisions, result and the measurable change, in about three minutes."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "x27-action-types-matrix",
+  "title": "Three action types, and which one changes tomorrow",
+  "spec": "A three-column layout, one column per action type, each column a green-bordered panel with a simple outline icon at the top (a shield for prevent, a circle with a dot for detect, a gear for mitigate). Column 1 title 'Prevent' with the sub-text 'Stops the same failure from happening again' and an example box 'Canary latency gate'. Column 2 title 'Detect' with the sub-text 'Finds the failure sooner' and an example box 'Per-group TTFT p99 alert'. Column 3 title 'Mitigate' with the sub-text 'Makes the response faster or safer' and an example box 'Runbook step for the gateway weight'. Under the three columns, a wide strip with a green panel titled 'Weak action: Improve monitoring' on the left side and an arrow pointing to a second panel 'Strong version: one owner, a due date, a measure' on the right. Keep the arrow short and horizontal. Orange only on the Prevent column, because a prevent item is the one that changes tomorrow. Note in small text under the Prevent column: 'If every item is detect or mitigate, you have described how to live with the failure.' Monospace is not needed.",
+  "anchor": "### 5. Action items are where most post-mortems fail",
+  "alt": "Three post-mortem action types, prevent, detect and mitigate, each with an example, and the rewrite of a weak action into a checkable one",
+  "cap": "Action items: a prevent item changes the system so the failure cannot repeat, while detect and mitigate items only shorten or soften the next one."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "x27-toil-breakeven",
+  "title": "Toil arithmetic: when an automation fix pays for itself",
+  "spec": "Two side-by-side worked panels with a shared visual language. Left panel titled 'Made-up task: a restart' with three stacked calculation boxes connected by downward arrows: Box A 'Restart 15 times a month' with a clock icon, Box B 'At 20 minutes each: 300 minutes' and Box C 'That is 5 hours a month'. Beside Box C a result box 'Automation of 40 hours pays back in 8 months' in green, and a bar split into 8 equal blocks, each labelled with a month number, with the first 8 blocks shaded green to show the payback period. Right panel titled 'Workbook example: break-even' with two boxes: 'A fix that takes 120 working hours' and 'Each page costs about 4 hours to handle', an arrow down to a result box 'Pays for itself after about 30 pages' in orange. Monospace for the numbers 300 minutes, 40 hours, 120 working hours, 4 hours and 30 pages, and the time units. A thin green divider between the two panels. Below both panels, a green takeaway strip with the text 'Rank toil by hours per month and by the cost of getting it wrong'.",
+  "anchor": "### 6. Toil is the work that tells you what to automate",
+  "alt": "Two break-even calculations for toil automation: a restart task that pays back in eight months, and a workbook example that pays back after thirty pages",
+  "cap": "Toil break-even: divide the automation cost by the monthly cost of the repetitive work to see when a fix pays for itself."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "27",
+  "name": "x27-incident-time-measures",
+  "title": "Incident timeline measured from when impact started",
+  "spec": "A horizontal timeline axis across the middle, with seven event nodes placed in time order and numbered with green number circles (r=24, white number) from 1 to 7. Each event node has a short label box above or below the axis, alternating above and below so labels do not overlap. Node 1 at 09:12 UTC, label 'Rollout of config v42 to replica group B begins', tagged started, marked as the zero point with a bold tick. Node 2 at 09:31 UTC, 'Pager fires: TTFT p99 above 4 s for 5 minutes', tagged detected. Node 3 at 09:35 UTC, 'On-call declares SEV2, takes commander role'. Node 4 at 09:44 UTC, 'Preemption counter rising only on group B pods'. Node 5 at 09:52 UTC, 'Group B set to weight 0 at the gateway, p99 recovers', tagged mitigated. Node 6 at 10:40 UTC, 'Config v41 restored on group B, traffic ramped back'. Node 7 at 11:05 UTC, 'SLO burn back to normal, incident closed', tagged resolved. Brackets under the axis from node 1 to node 2 labelled 'Time to detect: 19 min', from node 1 to node 5 labelled 'Time to mitigate: 40 min', and from node 1 to node 7 labelled 'Time to resolve: 113 min'. Monospace for times and the minute values. Orange only on the 'Time to detect: 19 min' bracket. A green strip at the bottom reads 'Measured from when impact started, not from the page'. Put the bracket labels on separate lines so no text touches a box edge.",
+  "anchor": "### Scenario 2: timeline and time-to-resolve from messy notes",
+  "alt": "Timeline of seven incident events from rollout start to incident closed, with detect, mitigate and resolve times measured from the start of impact",
+  "cap": "Incident timeline: detect, mitigate and resolve times are all measured from the moment impact started, so a late page cannot shrink the numbers."
+ }
+]

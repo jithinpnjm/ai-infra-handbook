@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Putting it together: a secure pipeline sketch</title>
+  <desc>Visual architecture infographic showing a secure CI/CD pipeline from pull request to plan, policy checks, approval gate, apply job, secret manager, and encrypted state storage.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 1 2 L 14 8 L 1 14 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Putting it together: a secure pipeline sketch</text>
+
+  
+
+  
+  <g id="node-pr">
+    <rect x="60" y="120" width="350" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="105" cy="165" r="24" fill="#207448" />
+    <text x="105" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="215" cy="165" r="7" />
+      <circle cx="215" cy="215" r="7" />
+      <circle cx="255" cy="180" r="7" />
+      <line x1="215" y1="172" x2="215" y2="208" />
+      <path d="M 215 200 C 215 185 235 180 248 180" />
+    </g>
+    
+    <text x="235" y="295" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">Pull request</text>
+  </g>
+
+  
+  <path d="M 410 260 L 500 260" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)" />
+
+  
+  <g id="node-plan">
+    <rect x="500" y="120" width="540" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="545" cy="165" r="24" fill="#207448" />
+    <text x="545" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="595" y="142" width="42" height="50" rx="5" />
+      <line x1="607" y1="158" x2="625" y2="158" />
+      <line x1="607" y1="168" x2="625" y2="168" />
+      <line x1="607" y1="178" x2="619" y2="178" />
+    </g>
+    
+    <text x="655" y="176" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Plan job</text>
+    <text x="545" y="235" font-family="sans-serif" font-size="24" fill="#303a36">OIDC → read-only role</text>
+    <text x="545" y="278" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="545" dy="0">state read,</tspan>
+      <tspan x="545" dy="34">no secrets in artefact</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1040 260 L 1130 260" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)" />
+
+  
+  <g id="node-pol">
+    <rect x="1130" y="120" width="410" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="1175" cy="165" r="24" fill="#207448" />
+    <text x="1175" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 1222 145 C 1222 145 1242 140 1247 140 C 1252 140 1272 145 1272 145 C 1272 170 1257 188 1247 194 C 1237 188 1222 170 1222 145 Z" />
+      <path d="M 1237 167 L 1244 174 L 1258 158" />
+    </g>
+    
+    <text x="1285" y="176" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Policy checks</text>
+    <text x="1155" y="248" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1155" dy="0">(no static keys,</tspan>
+      <tspan x="1155" dy="36">encryption on, tags)</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 1335 400 L 1335 465 L 250 465 L 250 530" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" marker-end="url(#arrow)" />
+
+  
+
+  
+  <g id="node-approve">
+    <rect x="60" y="530" width="380" height="380" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <circle cx="105" cy="575" r="24" fill="#db8129" />
+    <text x="105" y="584" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="225" y="605" width="50" height="40" rx="7" />
+      <path d="M 235 605 V 590 C 235 577 265 577 265 590 V 605" />
+      <circle cx="250" cy="622" r="3.5" fill="#db8129" />
+      <line x1="250" y1="626" x2="250" y2="635" />
+    </g>
+    
+    <text x="250" y="700" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="250" dy="0">Approval gate</tspan>
+      <tspan x="250" dy="42">(prod)</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 440 720 L 520 720" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)" />
+
+  
+  <g id="node-apply">
+    <rect x="520" y="530" width="530" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="565" cy="575" r="24" fill="#207448" />
+    <text x="565" y="584" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="615" y="552" width="52" height="44" rx="6" />
+      <line x1="615" y1="566" x2="667" y2="566" />
+      <path d="M 625 577 L 632 584 L 625 591" />
+      <line x1="638" y1="591" x2="648" y2="591" />
+    </g>
+    
+    <text x="680" y="583" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="680" dy="0">Apply job</tspan>
+      <tspan x="560" dy="55">(protected branch)</tspan>
+    </text>
+    <text x="560" y="725" font-family="sans-serif" font-size="24" fill="#303a36">OIDC → env-specific write role</text>
+  </g>
+
+  
+  <path d="M 1050 620 L 1130 620" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)" />
+
+  
+  <g id="node-sm">
+    <rect x="1130" y="530" width="410" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="1175" cy="580" r="14" />
+      <path d="M 1185 590 L 1205 610" />
+      <line x1="1195" y1="600" x2="1203" y2="592" />
+      <line x1="1200" y1="605" x2="1208" y2="597" />
+    </g>
+    
+    <text x="1225" y="590" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Secret manager</text>
+    <text x="1160" y="655" font-family="sans-serif" font-size="24" fill="#303a36">values set out-of-band</text>
+  </g>
+
+  
+  <path d="M 1050 820 L 1130 820" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" marker-end="url(#arrow)" />
+
+  
+  <g id="node-st">
+    <rect x="1130" y="735" width="410" height="175" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <ellipse cx="1180" cy="768" rx="22" ry="8" />
+      <path d="M 1158 768 V 802 C 1158 810 1202 810 1202 802 V 768" />
+      <path d="M 1158 785 C 1158 793 1202 793 1202 785" />
+    </g>
+    
+    <text x="1220" y="780" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1220" dy="0">Encrypted</tspan>
+      <tspan x="1220" dy="36">remote state</tspan>
+    </text>
+    <text x="1160" y="872" font-family="sans-serif" font-size="24" fill="#303a36">restricted access</text>
+  </g>
+</svg>

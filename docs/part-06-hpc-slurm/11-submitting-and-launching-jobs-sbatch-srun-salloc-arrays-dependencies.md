@@ -34,15 +34,15 @@ You need 6.2 and 6.7 to 6.10 first. This chapter follows a job from the moment y
 
 ## 1. Allocations, batch jobs and steps
 
+![In a two-node batch script, echo lines run once on the first node, while srun hostname runs four tasks across both nodes.](./img/h11-batch-vs-steps.svg)
+
+*Figure 6.11.1. In a multi-node batch script, only the lines that start with srun reach the second node.*
+
 Picture a script that works perfectly on your workstation. You copy it to the cluster, ask for two nodes, and find that only one of them did any work. The GPU graphs on the second node are flat. Nothing crashed, and the scheduler reports success. The reason is almost always where each command runs, so that is where this section starts.
 
-```mermaid
-flowchart LR
-  Submit["1. Submit (sbatch / salloc / srun)<br/>SPANK & job_submit plugins"] --> Prolog["2. Job Start (All Allocated Nodes)<br/>Root Prolog: verify GPUs & /dev/shm"]
-  Prolog --> Batch["3. Batch Step (Node 0 Only)<br/>slurmstepd + cgroup namespace"]
-  Batch --> Steps["4. Job Steps (srun JOBID.0, .1)<br/>Tasks across nodes + HealthCheckProgram"]
-  Steps --> End["5. Termination & Epilog<br/>SIGTERM -> SIGKILL + Root Epilog cleanup"]
-```
+![Allocations, batch jobs and steps](./img/m6-11-1.svg)
+
+*Figure 6.11.2. Allocations, batch jobs and steps, as a diagram.*
 
 Slurm separates three ideas, and you need all three to predict what a script will do. A useful way to hold them is a restaurant booking. The reservation is the table and the chairs you hold for the evening. The note you leave with the host says what should happen at that table. Each dish the kitchen sends out to the table is a separate event. In Slurm, the reservation is the allocation, the note is the batch script, and each dish is a job step.
 
@@ -83,6 +83,10 @@ Stage 6 is the end of the job. The batch script may exit, be cancelled, or hit i
 
 ### Simulating a multi-node GPU cluster on a single physical machine (*Distributed AI Systems* Chapter 8)
 
+![One 8-GPU host runs two virtual Slurm nodes on different ports each mapped to its own GPU device file.](./img/p3-0611-virtual-nodes.svg)
+
+*Figure 6.11.3. Two slurmd daemons on different ports let you test multi-node scripts without queue waits.*
+
 You have written a multi-node training script, and the shared production queue is busy. Each test submission can wait for hours before it even starts, and a bug found at the end of that wait costs the whole afternoon. A faster way is to test the script on one multi-GPU workstation first. You can run several `slurmd` daemons, each on its own TCP port, so that they act as separate nodes. The scheduler sees two machines, and your script sees two nodes, even though only one physical box is involved.
 
 This technique is covered in *Distributed AI Systems*, Chapter 8, under *Simulating a Multi-Node cluster*. It requires Slurm built with `--enable-multiple-slurmd`. The configuration below creates two virtual nodes on one 8-GPU host. Each virtual node gets its own port, and each one is mapped to its own physical GPU device, so that the two nodes do not fight over the same card.
@@ -101,6 +105,10 @@ NodeName=node7 Name=gpu File=/dev/nvidia7
 Once the daemons start, `sinfo` reports `gpu* up infinite 2 idle node[6-7]`. That line is your first proof that the scheduler sees two nodes. You can then verify multi-node execution with `srun -N 1 hostname` and `srun -N 2 hostname`, or with a quick smoke test such as `srun -N 2 --gres=gpu:1 --cpus-per-task=4 python code/train.py`. The first command should print one hostname, and the second should print two. Run these checks before you move the script to production, because a mistake that is cheap to find here is expensive to find in the shared queue.
 
 ## 2. A batch script
+
+![A batch script header annotated line by line with what each directive does and the rules about directive order.](./img/p3-0611-batch-header-anatomy.svg)
+
+*Figure 6.11.4. A batch script puts every setting in one reviewable file, and options on the command line override it.*
 
 It is Monday morning, and you want to start a BERT pretraining run across two nodes that have eight GPUs each. You could type every setting at the prompt, but then nobody can repeat the run next week. A batch script puts all the settings in one file that you can read, review and submit again. The script below requests a two-node job named `bert-pretrain`. Read it from top to bottom, because each `#SBATCH` line sets a resource or a behaviour before the job starts.
 
@@ -167,6 +175,10 @@ Read the table as a quick reference. Options such as `--dependency` and `--reque
 
 ### Rank-specific logging vs interleaved stdout (*Distributed AI Systems* Chapter 8)
 
+![Three layers of logging from per-node files to task-prefixed output to per-rank Python logs.](./img/p3-0611-log-layers.svg)
+
+*Figure 6.11.5. Separate logs by node, then by task label, then by rank to read a distributed run.*
+
 Imagine a multi-rank training job that has been running for a while. You open the log to check the loss, and you find progress bars, warnings and a stack trace all mixed together, with lines from different processes in the middle of each other. In multi-node distributed training, every rank writes to the same `slurm-%j.out` file by default, so this is what you get. *Distributed AI Systems*, Chapter 8, under *Logging and output*, covers this. You have three clean layers of control, and each one fixes a different part of the problem.
 
 Layer 1 is a per-node log file. Use `#SBATCH --output=logs/train_%j_%N.out` and `#SBATCH --error=logs/train_%j_%N.err`, so that each node (`%N`) writes to its own file. This keeps the nodes apart, but the ranks on one node still share a file.
@@ -176,6 +188,10 @@ Layer 2 is task-prefixed output. Running `srun --label python train.py` prefixes
 Layer 3 is a per-rank Python log. Configure Python's `logging` module so that every rank logs to `train_rank_{rank}.log`. Only `rank == 0` attaches a `logging.StreamHandler()` to console stdout. The other ranks write quietly to their own files, and the console shows the progress of the one rank that matters most for a human reading along.
 
 ### Environment variables
+
+![Slurm variables split into those set for the batch shell and those set per task by srun.](./img/p3-0611-env-where-set.svg)
+
+*Figure 6.11.6. Rank variables exist only inside tasks started by srun, never in the batch shell.*
 
 Slurm sets many environment variables, and the man pages list them all. The ones below are the ones you will use constantly. Picture a script that works when you test it by hand inside `salloc`, then fails inside a batch job with an empty rank. The fix is almost always to know which variable exists in which context, so the table is worth a careful read.
 
@@ -193,6 +209,10 @@ Slurm sets many environment variables, and the man pages list them all. The ones
 
 ### Distributed-training rendezvous from Slurm variables
 
+![A mapping from Slurm variables to MASTER_ADDR, MASTER_PORT, RANK, LOCAL_RANK and WORLD_SIZE with two launch styles.](./img/p3-0611-rendezvous-mapping.svg)
+
+*Figure 6.11.7. Build all four rendezvous values from Slurm variables instead of hard-coding them.*
+
 Think of a group of workers that start on four nodes at the same moment. Each one needs to find the others before any training can begin. PyTorch needs a master address, a port, a world size and a rank before its workers can find each other. This handshake is called rendezvous, which simply means a meeting point that everyone agrees on in advance. If the address is wrong, the workers wait forever, with no error message, because each one is still looking for the master.
 
 With one task per GPU launched by `srun`, you can build all four values from Slurm variables. The first line picks the first host in the allocation as the master. The second line picks a port that is unlikely to collide with another job on the same nodes. The `srun` line then sets the rank and world size for each task, from Slurm's own counters.
@@ -207,6 +227,14 @@ srun bash -c 'export RANK=$SLURM_PROCID LOCAL_RANK=$SLURM_LOCALID WORLD_SIZE=$SL
 A different option is one task per node, which launches `torchrun --nnodes=$SLURM_NNODES --nproc-per-node=8 --rdzv-backend=c10d --rdzv-endpoint=$MASTER_ADDR:29500 train.py`. In that layout, torchrun starts the per-GPU processes on each node itself. Chapter 6.12 compares the two approaches. The `MASTER_PORT` formula is a convenience, not a guarantee. Two jobs can still pick the same port by chance, and some sites provide port management through `--resv-ports` or through MPI and PMIx plugins. Choose your launcher first, then check what port management your site provides.
 
 ## 3. srun
+
+![Three cards explain --overlap, --exact and --kill-on-bad-exit with the problem each one solves.](./img/p3-0611-srun-flags.svg)
+
+*Figure 6.11.8. Steps do not share resources by default, so diagnostic steps need --overlap.*
+
+![A second srun in the same allocation waits for GPUs already held by the first step, and --exact limits what a step takes.](./img/p2-0611-step-inside-allocation.svg)
+
+*Figure 6.11.9. A second srun inside the same allocation waits for GPUs held by the first step, and --exact stops a step taking more than it asks for.*
 
 Picture a colleague who opens a second terminal on their interactive allocation, types `srun nvidia-smi` to check the GPUs, and sees the prompt sit there with no output. Nothing is broken. The first terminal already holds the GPUs, and a second step has to wait for them. Understanding why that happens is the key to using `srun` well.
 
@@ -225,6 +253,10 @@ Run `srun` without an allocation and it creates one for the command. For example
 Imagine a launch script that calls `mpirun` on a two-node job, and the ranks land on the wrong cores. Nobody notices until the throughput is half of what the benchmark promised. `srun --mpi=pmix` hands rank wire-up to Slurm's PMIx plugin. Wire-up is the step where each process learns where its peers are. Chapters 6.4 and 6.12 cover that path. Running `mpirun` inside a script also works with Open MPI's Slurm integration. The catch is that `mpirun` does its own launching and binding. Binding is the decision about which cores each process uses. Prefer `srun`, because then Slurm sets the binding through `--cpu-bind` and `--gpu-bind`, tracks processes in the job cgroup, and accounts usage per step.
 
 ## 4. Interactive jobs
+
+![Two ways to get an interactive GPU shell, salloc then srun --pty or a single srun --pty, with where each shell runs.](./img/p3-0611-interactive-paths.svg)
+
+*Figure 6.11.10. Release interactive allocations with exit because an idle shell still holds its GPU.*
 
 Suppose you have written a new data loader and want to check it on a real GPU before you commit a long batch run. You need a shell on a compute node, with the GPU attached, for an hour or two. `salloc` and interactive steps give you that shell.
 
@@ -266,6 +298,10 @@ Always throttle with `%N`, because the throttle protects shared storage and fair
 
 ### 2D hyperparameter grid search with job arrays (*Distributed AI Systems* Chapter 8)
 
+![Array task 5 maps to learning rate 3e-4 and batch size 32 using modulo and integer division.](./img/h11-array-grid.svg)
+
+*Figure 6.11.11. Each array task index maps to one learning rate and one batch size, so task 5 runs 3e-4 with batch size 32.*
+
 Imagine you want all 12 combinations of 4 learning rates and 3 batch sizes. You could write 12 config files, but then the files and the array can drift apart. Instead of keeping an external config file, you can map `SLURM_ARRAY_TASK_ID` straight onto a 2D grid. In bash, integer modulo (`%`) selects the learning rate, and integer division (`/`) selects the batch size. Modulo gives the remainder after dividing by the number of learning rates, and integer division gives the whole part. Together they turn one number into a pair of indices. The method comes from *Distributed AI Systems*, Chapter 8, under *Job arrays for hyperparameter tuning* and *Implement job array for hyperparameter search*.
 
 ```bash
@@ -296,6 +332,14 @@ Pick the throttle before you submit, because it caps how many tasks hit shared s
 
 ## 6. Dependencies and pipelines
 
+![A chooser table from the wish for what happens after a previous job to the Slurm dependency type, with combining rules and the afterok trap.](./img/p3-0611-dependency-types.svg)
+
+*Figure 6.11.12. Use afterany between training segments because a timeout counts as a failure.*
+
+![Two training segments run one after another with afterany, and an evaluation job runs with afterok after the last segment.](./img/h11-dependency-chain.svg)
+
+*Figure 6.11.13. Dependencies chain training segments and an evaluation job so the run continues past one time limit.*
+
 A training run can need more wall-clock time than one batch job is allowed. You could submit the next segment by hand after each one finishes, but that means you must be awake at the right moment. Dependencies let the next segment start when the previous one ends, so the run continues without you resubmitting it by hand. The same idea lets an evaluation wait for training, and a cleanup job run only when something went wrong.
 
 `--dependency=<type>:<jobid>[:<jobid>...]` defers a job until conditions on other jobs are met, according to the man page. The types are listed in the table below. The table is a lookup, so read the row that matches what you want to happen after the previous job.
@@ -324,6 +368,14 @@ J3=$(sbatch --parsable --dependency=afterok:$J2 evaluate.sh)
 Use `afterany` between training segments, because a timeout counts as a failure. If you used `afterok` there, a segment that stopped cleanly at its time limit would leave the next one waiting forever. Each segment should resume from the latest checkpoint, so that the second segment picks up where the first one stopped and does not repeat the work. For a self-resubmitting job, trap the warning signal, checkpoint, and run `scontrol requeue $SLURM_JOB_ID`.
 
 ## 7. Time limits, signals, checkpoints, requeue
+
+![Four layers of protection for a long run: periodic checkpoints, a warning signal, a safe in-program handler and the preemption grace window.](./img/p3-0611-checkpoint-layers.svg)
+
+*Figure 6.11.14. Periodic checkpoints are the real safety net and signals only reduce lost work.*
+
+![At a warning signal, the batch shell stops the training process, waits for it to exit, and requeues the job with the same ID.](./img/h11-signal-requeue.svg)
+
+*Figure 6.11.15. A warning signal lets the batch script stop training cleanly and requeue the job under the same ID.*
 
 At three in the morning, a node fails in the middle of a long run. Or the job reaches its time limit, one minute before the last checkpoint. Either way, the training must survive the interruption and continue from where it stopped. Training must survive the time limit, preemption and node failures. Slurm provides a tool for each. Chapter 6.9 covers preemption.
 
@@ -374,6 +426,10 @@ Test the signal path on a short time limit before you rely on it in a long run. 
 
 ## 8. Monitoring, modifying, cancelling
 
+![A menu pairing each job question with the squeue, scontrol, sacct, sstat or scancel command that answers it.](./img/p3-0611-query-tools.svg)
+
+*Figure 6.11.16. Use sstat for running steps and sacct after they finish.*
+
 Once a job is queued or running, you will ask two questions again and again. Where is it, and what is it doing? A job that has been pending since lunch makes the first question urgent, and a job that is running but quiet makes the second one urgent. Slurm's query commands answer both.
 
 `squeue` supports short (`-o`) and long (`-O`) format specifiers, as shown in *Supercomputers for Linux SysAdmins*, Chapter 15, `Table 15-2`. The default format is `"%.18i %.9P %.8j %.8u %.2t %.10M %.6D %R"`, where a dot right-aligns the column. You can change the format to show exactly the columns you care about, which is much easier to read than the default when you have many jobs.
@@ -405,6 +461,10 @@ Use `sstat` for a step that is still running, and `sacct` once it has finished. 
 
 ## 9. A linter for batch scripts
 
+![Linter messages grouped into ERROR, warn and info tiers with an example for each.](./img/p3-0611-linter-findings.svg)
+
+*Figure 6.11.17. Catch directive mistakes before the script waits in the queue.*
+
 A colleague's script has a small typo in a directive, and it sits in the queue for two hours before it fails with a message nobody understands. A linter catches that kind of mistake before the script ever reaches the queue. The script `code/part06/sbatch_lint.py` reads the `#SBATCH` lines in a batch script. It checks each option against a list taken from the `sbatch` man page. It also checks the rules that the man page states, along with standard practice. Here is the output for one clean script and one broken script.
 
 ```text
@@ -431,6 +491,10 @@ You can run a linter from a `job_submit` plugin, which is written in Lua, or fro
 
 ## 10. Submission patterns for AI workloads
 
+![A table pairing nine AI workloads with the sbatch and srun pattern that suits each.](./img/p3-0611-submission-patterns.svg)
+
+*Figure 6.11.18. Recognise the kind of work first and reuse the pattern that already works for it.*
+
 Most of the time you do not need to invent a submission. You need to recognise which kind of work you have, and then use the pattern that already works for it. Each row of the table pairs a common AI workload with the submission pattern that suits it.
 
 | Workload | Pattern |
@@ -448,6 +512,10 @@ Most of the time you do not need to invent a submission. You need to recognise w
 Long runs combine several of these patterns at once: checkpoints, requeue, a signal and a dependency chain. Match your job to a row first. Then check the long run row before you submit anything that might hit its time limit. A debugging hang is the row you will reach for most often, so keep it close. The `salloc` line gives you the same shape as the failing job, and `py-spy` shows what each Python process is doing.
 
 ## 11. Common mistakes
+
+![A grouped list of submission mistakes and what each one causes.](./img/p3-0611-mistake-table.svg)
+
+*Figure 6.11.19. Most submission tickets come from a missing srun, unset memory or a dependency on a timeout.*
 
 These are the mistakes that turn into support tickets. They are grouped below by what they break, so you can spot the pattern when a job misbehaves.
 

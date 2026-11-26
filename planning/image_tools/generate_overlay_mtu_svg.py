@@ -1,0 +1,238 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
+
+def build_svg():
+    svg = []
+    svg.append('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">')
+    svg.append('  <title>Overlay MTU on a 1500 and a 9000 underlay: how many bytes each tunnel takes</title>')
+    svg.append('  <desc>Visual infographic explaining how encapsulation tunnels (VXLAN, Geneve, GRE, IPIP, WireGuard, IPsec, MPLS) reduce underlay MTU, where MTU mismatches cause silent failures, and how to verify MTUs.</desc>')
+    
+    # Defs: Icons and markers
+    svg.append('  <defs>')
+    
+    # Icon 1: Alert / Warning Gear (56x56)
+    svg.append('    <g id="icon-warning-gear" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <circle cx="28" cy="28" r="12"/>')
+    svg.append('      <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 11 L 45 15"/>')
+    svg.append('      <line x1="28" y1="22" x2="28" y2="28"/>')
+    svg.append('      <circle cx="28" cy="34" r="1.5" fill="#207448"/>')
+    svg.append('    </g>')
+
+    # Icon 2: Terminal / CLI (56x56)
+    svg.append('    <g id="icon-terminal" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <rect x="6" y="8" width="44" height="40" rx="6" fill="#e8f1ea"/>')
+    svg.append('      <polyline points="14,22 22,28 14,34"/>')
+    svg.append('      <line x1="26" y1="34" x2="38" y2="34"/>')
+    svg.append('    </g>')
+
+    # Icon 3: Ping / Gauge (56x56)
+    svg.append('    <g id="icon-gauge" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">')
+    svg.append('      <circle cx="28" cy="28" r="22" fill="#e8f1ea"/>')
+    svg.append('      <line x1="28" y1="28" x2="38" y2="18"/>')
+    svg.append('      <circle cx="28" cy="28" r="3" fill="#207448"/>')
+    svg.append('      <line x1="14" y1="28" x2="18" y2="28"/>')
+    svg.append('      <line x1="38" y1="28" x2="42" y2="28"/>')
+    svg.append('      <line x1="28" y1="14" x2="28" y2="18"/>')
+    svg.append('    </g>')
+
+    svg.append('  </defs>')
+
+    # Background
+    svg.append('  <!-- Background -->')
+    svg.append('  <rect width="1600" height="1200" fill="#f5f8f5"/>')
+
+    # Diagram Title (48px bold, 2 lines)
+    svg.append('  <!-- Diagram Title -->')
+    svg.append('  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">')
+    svg.append('    <tspan x="800" dy="0">Overlay MTU on a 1500 and a 9000 underlay:</tspan>')
+    svg.append('    <tspan x="800" dy="54">how many bytes each tunnel takes</tspan>')
+    svg.append('  </text>')
+
+    # ==================== LEFT PANEL: Horizontal Bar Chart ====================
+    svg.append('  <!-- ==================== LEFT PANEL: Horizontal Bar Chart ==================== -->')
+    svg.append('  <g id="chart-panel">')
+    svg.append('    <rect x="40" y="160" width="920" height="710" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>')
+
+    # Encapsulation Cards
+    # Total 7 cards, y: 175, 273, 371, 469, 567, 665, 763 (h=86, gap=12)
+    # Card 1: VXLAN (Orange highlight)
+    svg.append('    <!-- Bar 1: VXLAN (orange highlight) -->')
+    svg.append('    <g id="bar-vxlan">')
+    svg.append('      <rect x="60" y="175" width="880" height="86" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>')
+    # Cut-off overhead zone on the right (orange highlight)
+    svg.append('      <rect x="830" y="180" width="100" height="76" rx="6" fill="#fff5ec" stroke="#db8129" stroke-width="2" stroke-dasharray="5 4"/>')
+    svg.append('      <line x1="830" y1="175" x2="830" y2="261" stroke="#db8129" stroke-width="2.5" stroke-dasharray="4 3"/>')
+    # Text
+    svg.append('      <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">')
+    svg.append('        <tspan x="80" y="211">VXLAN: 50 added (outer Ethernet 14, often not</tspan>')
+    svg.append('        <tspan x="80" y="241">counted, + IP 20 + UDP 8 + VXLAN 8): 1450 and 8950</tspan>')
+    svg.append('      </text>')
+    svg.append('    </g>')
+
+    # Card 2: Geneve
+    svg.append('    <!-- Bar 2: Geneve -->')
+    svg.append('    <g id="bar-geneve">')
+    svg.append('      <rect x="60" y="273" width="880" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    # Cut-off overhead zone
+    svg.append('      <rect x="830" y="278" width="100" height="76" rx="6" fill="#f0f4f1" stroke="#207448" stroke-width="1.5" stroke-dasharray="5 4"/>')
+    svg.append('      <line x1="830" y1="273" x2="830" y2="359" stroke="#207448" stroke-width="2" stroke-dasharray="4 3"/>')
+    # Text
+    svg.append('      <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('        <tspan x="80" y="309">Geneve no options: 50, variable with options:</tspan>')
+    svg.append('        <tspan x="80" y="339">about 1450 and 8950</tspan>')
+    svg.append('      </text>')
+    svg.append('    </g>')
+
+    # Card 3: GRE
+    svg.append('    <!-- Bar 3: GRE -->')
+    svg.append('    <g id="bar-gre">')
+    svg.append('      <rect x="60" y="371" width="880" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    # Cut-off overhead zone
+    svg.append('      <rect x="850" y="376" width="80" height="76" rx="6" fill="#f0f4f1" stroke="#207448" stroke-width="1.5" stroke-dasharray="5 4"/>')
+    svg.append('      <line x1="850" y1="371" x2="850" y2="457" stroke="#207448" stroke-width="2" stroke-dasharray="4 3"/>')
+    # Text (1 line)
+    svg.append('      <text x="80" y="422" font-family="sans-serif" font-size="24" fill="#303a36">GRE: 24 (IP 20 + GRE 4): 1476 and 8976</text>')
+    svg.append('    </g>')
+
+    # Card 4: IPIP
+    svg.append('    <!-- Bar 4: IPIP -->')
+    svg.append('    <g id="bar-ipip">')
+    svg.append('      <rect x="60" y="469" width="880" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    # Cut-off overhead zone
+    svg.append('      <rect x="855" y="474" width="75" height="76" rx="6" fill="#f0f4f1" stroke="#207448" stroke-width="1.5" stroke-dasharray="5 4"/>')
+    svg.append('      <line x1="855" y1="469" x2="855" y2="555" stroke="#207448" stroke-width="2" stroke-dasharray="4 3"/>')
+    # Text (1 line)
+    svg.append('      <text x="80" y="520" font-family="sans-serif" font-size="24" fill="#303a36">IPIP: 20: 1480 and 8980</text>')
+    svg.append('    </g>')
+
+    # Card 5: WireGuard
+    svg.append('    <!-- Bar 5: WireGuard -->')
+    svg.append('    <g id="bar-wireguard">')
+    svg.append('      <rect x="60" y="567" width="880" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    # Cut-off overhead zone
+    svg.append('      <rect x="820" y="572" width="110" height="76" rx="6" fill="#f0f4f1" stroke="#207448" stroke-width="1.5" stroke-dasharray="5 4"/>')
+    svg.append('      <line x1="820" y1="567" x2="820" y2="653" stroke="#207448" stroke-width="2" stroke-dasharray="4 3"/>')
+    # Text
+    svg.append('      <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('        <tspan x="80" y="603">WireGuard: 60 on IPv4, 80 on IPv6:</tspan>')
+    svg.append('        <tspan x="80" y="633">1420 or 1400, and 8940 or 8920</tspan>')
+    svg.append('      </text>')
+    svg.append('    </g>')
+
+    # Card 6: IPsec ESP tunnel
+    svg.append('    <!-- Bar 6: IPsec ESP -->')
+    svg.append('    <g id="bar-ipsec">')
+    svg.append('      <rect x="60" y="665" width="880" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    # Cut-off overhead zone
+    svg.append('      <rect x="820" y="670" width="110" height="76" rx="6" fill="#f0f4f1" stroke="#207448" stroke-width="1.5" stroke-dasharray="5 4"/>')
+    svg.append('      <line x1="820" y1="665" x2="820" y2="751" stroke="#207448" stroke-width="2" stroke-dasharray="4 3"/>')
+    # Text
+    svg.append('      <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('        <tspan x="80" y="701">IPsec ESP tunnel: about 50 to 73, NAT-T adds 8:</tspan>')
+    svg.append('        <tspan x="80" y="731">about 1400 to 1430, about 8930</tspan>')
+    svg.append('      </text>')
+    svg.append('    </g>')
+
+    # Card 7: MPLS
+    svg.append('    <!-- Bar 7: MPLS -->')
+    svg.append('    <g id="bar-mpls">')
+    svg.append('      <rect x="60" y="763" width="880" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    # Cut-off overhead zone
+    svg.append('      <rect x="870" y="768" width="60" height="76" rx="6" fill="#f0f4f1" stroke="#207448" stroke-width="1.5" stroke-dasharray="5 4"/>')
+    svg.append('      <line x1="870" y1="763" x2="870" y2="849" stroke="#207448" stroke-width="2" stroke-dasharray="4 3"/>')
+    # Text (1 line)
+    svg.append('      <text x="80" y="814" font-family="sans-serif" font-size="24" fill="#303a36">MPLS: 4 per label: 1496 per label</text>')
+    svg.append('    </g>')
+
+    svg.append('  </g>')
+
+    # ==================== RIGHT PANEL: Where mismatches bite ====================
+    svg.append('  <!-- ==================== RIGHT PANEL: Where mismatches bite ==================== -->')
+    svg.append('  <g id="mismatches-panel">')
+    svg.append('    <rect x="1000" y="160" width="560" height="710" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>')
+    
+    # Title & Icon
+    svg.append('    <use href="#icon-warning-gear" x="1025" y="180"/>')
+    svg.append('    <text x="1095" y="218" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Where mismatches bite</text>')
+
+    # Right Card 1: Kubernetes CNIs
+    svg.append('    <!-- Right Card 1: Kubernetes CNIs -->')
+    svg.append('    <g id="card-cni">')
+    svg.append('      <rect x="1025" y="250" width="510" height="230" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    svg.append('      <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('        <tspan x="1045" y="286">Kubernetes CNIs such as Calico</tspan>')
+    svg.append('        <tspan x="1045" y="316">(VXLAN or IPIP), Flannel and</tspan>')
+    svg.append('        <tspan x="1045" y="346">Cilium set the pod MTU from the</tspan>')
+    svg.append('        <tspan x="1045" y="376">underlay MTU and the overlay; a</tspan>')
+    svg.append('        <tspan x="1045" y="406">mismatch is a top cause of</tspan>')
+    svg.append('        <tspan x="1045" y="436">services work for tiny</tspan>')
+    svg.append('        <tspan x="1045" y="466">requests only</tspan>')
+    svg.append('      </text>')
+    svg.append('    </g>')
+
+    # Right Card 2: GCP VPC
+    svg.append('    <!-- Right Card 2: GCP VPC -->')
+    svg.append('    <g id="card-gcp">')
+    svg.append('      <rect x="1025" y="496" width="510" height="86" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    svg.append('      <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('        <tspan x="1045" y="532">GCP VPC defaults to MTU 1460,</tspan>')
+    svg.append('        <tspan x="1045" y="562">configurable up to 8896</tspan>')
+    svg.append('      </text>')
+    svg.append('    </g>')
+
+    # Right Card 3: AWS VPC
+    svg.append('    <!-- Right Card 3: AWS VPC -->')
+    svg.append('    <g id="card-aws">')
+    svg.append('      <rect x="1025" y="598" width="510" height="206" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>')
+    svg.append('      <text font-family="sans-serif" font-size="24" fill="#303a36">')
+    svg.append('        <tspan x="1045" y="634">AWS supports 9001 inside a VPC</tspan>')
+    svg.append('        <tspan x="1045" y="664">but only 1500 across the</tspan>')
+    svg.append('        <tspan x="1045" y="694">Internet and on many</tspan>')
+    svg.append('        <tspan x="1045" y="724">inter-region and VPN paths:</tspan>')
+    svg.append('        <tspan x="1045" y="754">validate jumbo designs</tspan>')
+    svg.append('        <tspan x="1045" y="784">path by path</tspan>')
+    svg.append('      </text>')
+    svg.append('    </g>')
+
+    svg.append('  </g>')
+
+    # ==================== LOWER SECTION: Verify strip & Lab check values ====================
+    svg.append('  <!-- ==================== LOWER SECTION: Verify strip & Lab check values ==================== -->')
+    
+    # Left Card: Verify strip
+    svg.append('  <!-- Verify strip -->')
+    svg.append('  <g id="verify-strip">')
+    svg.append('    <rect x="40" y="910" width="740" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>')
+    svg.append('    <use href="#icon-terminal" x="65" y="942"/>')
+    svg.append('    <text font-family="monospace" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="145" y="958">ip -d link show shows the mtu and the</tspan>')
+    svg.append('      <tspan x="145" y="990">encapsulation device; then ping -M do</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+
+    # Right Card: Lab check values
+    svg.append('  <!-- Lab check values -->')
+    svg.append('  <g id="lab-check-values">')
+    svg.append('    <rect x="820" y="910" width="740" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>')
+    svg.append('    <use href="#icon-gauge" x="845" y="942"/>')
+    svg.append('    <text font-family="monospace" font-size="24" fill="#303a36">')
+    svg.append('      <tspan x="925" y="958">largest ping -M do -s payloads:</tspan>')
+    svg.append('      <tspan x="925" y="990">1472 IPv4, 1452 IPv6, 8972 jumbo</tspan>')
+    svg.append('    </text>')
+    svg.append('  </g>')
+
+    # ==================== BOTTOM BAR: Takeaway ====================
+    svg.append('  <!-- Bottom takeaway bar -->')
+    svg.append('  <g id="takeaway-bar">')
+    svg.append('    <rect x="40" y="1070" width="1520" height="80" rx="12" fill="#207448" stroke="#207448"/>')
+    svg.append('    <text x="800" y="1118" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Compute, don\'t guess: overlay MTU is the underlay MTU minus the added bytes</text>')
+    svg.append('  </g>')
+
+    svg.append('</svg>')
+    return '\n'.join(svg)
+
+with open('overlay_mtu_candidate.svg', 'w') as f:
+    f.write(build_svg())
+
+print("Built overlay_mtu_candidate.svg successfully!")

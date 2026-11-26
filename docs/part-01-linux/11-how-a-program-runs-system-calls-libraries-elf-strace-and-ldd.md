@@ -285,6 +285,10 @@ Inside a container, the libraries come from the **image**, not from the host. Th
 
 ### Preloading and debugging the loader
 
+![A five step library search order from RPATH through LD_LIBRARY_PATH, RUNPATH, the ldconfig cache and default directories, with three ways to fix a missing library.](./img/p3-0111-lib-search.svg)
+
+*Figure 1.11.8. The loader tries RPATH, LD_LIBRARY_PATH, RUNPATH, the ldconfig cache and the default directories in that order.*
+
 - **`LD_PRELOAD=/path/lib.so`** forces a library to load first, so its symbols override the normal ones. People use it to replace the allocator, such as `jemalloc` or `tcmalloc`, without recompiling. They also use it to intercept calls for debugging or profiling, which some GPU tools do, or to work around a library bug. The same mechanism is used by malware, and it is ignored for set-uid programs. It can also break programs in subtle ways, so treat it as a sharp tool.
 
 - **`LD_DEBUG`** makes the loader explain itself. `LD_DEBUG=libs ./prog` shows where it looked and what it loaded. `LD_DEBUG=bindings` shows symbol resolution. `LD_DEBUG=files`, `LD_DEBUG=versions` and `LD_DEBUG=statistics` each cover their own topic, and `LD_DEBUG=help` lists them all.
@@ -311,7 +315,7 @@ When a library will not load, check the search path before you reinstall anythin
 
 ![A table that maps common symptoms to what to look for in a strace output.](./img/l11-strace-reading.svg)
 
-*Figure 1.11.8. Read a trace with one question in mind and use the matching filter or summary flag.*
+*Figure 1.11.9. Read a trace with one question in mind and use the matching filter or summary flag.*
 
 When a program fails or hangs, and its logs say nothing useful, `strace` is usually the first tool to reach for. You can see the process in `ps`, but you get no error, no stack and no clue why it stopped moving. Chapter 1.8 introduced `strace` in section 3. It prints the system calls the program makes, one line per call, so the kernel boundary where it stopped becomes visible. Start with a broad trace, then narrow it down to the calls that matter. The commands below follow that routine.
 
@@ -404,6 +408,10 @@ Lock contention limits scalability, because a single global lock serialises the 
 
 ### The analysis methods
 
+![A stylised CPU flame graph with annotations that width is the share of samples, height is call depth, and a wide top box is where CPU time goes.](./img/p3-0111-flamegraph-read.svg)
+
+*Figure 1.11.10. In a flame graph the width of a box is its share of samples, the height is call depth, and the order left to right carries no time meaning.*
+
 Each method below answers a different question. Use the first one that fits your symptom.
 
 1. **CPU profiling (on-CPU).** Sample the call stacks of the running code, typically 49 or 99 times per second per CPU. Use `perf record -F 99 -g` or the BCC `profile` tool. Then aggregate the samples and view them as a **flame graph**. Each rectangle is a function, or stack frame. The vertical axis is the call chain, with callees on top. The **width is the proportion of samples**. Left-to-right order has no meaning. Look for wide plateaus, which are the places where CPU time goes.
@@ -452,6 +460,10 @@ Before you trust a flame graph, check that its stacks are complete. A short stac
 
 ## 8. AI-infrastructure patterns
 
+![Two columns showing CUDA libraries that travel with the application and the driver files that come from the host and are injected into containers, with the order in which they load.](./img/p3-0111-cuda-who-brings.svg)
+
+*Figure 1.11.11. CUDA toolkit libraries ship inside the wheel or image, while libcuda.so.1 and the kernel module must come from the host driver.*
+
 Now apply these ideas to the software that matters most on a GPU node. When a CUDA job fails to start, the useful question is concrete: which files does it load, and in what order? The answer tells you which layer owns the piece that is missing.
 
 **What a CUDA program loads.** Run `strace -f -e trace=openat python -c 'import torch; torch.zeros(1).cuda()' 2>&1 | grep -E '\.so|nvidia'` on a GPU node, then read the order. You will see Python's extension modules first. Next come the CUDA libraries that the framework bundles, such as `libcudart`, `libcublas`, `libcudnn`, `libnccl` and `libtorch_cuda`. Then the program opens the **driver library** `libcuda.so.1`, which the CUDA runtime loads with `dlopen`. After that you see `openat("/dev/nvidiactl")`, `/dev/nvidia0` and `/dev/nvidia-uvm`, followed by a storm of `ioctl` calls.
@@ -493,6 +505,10 @@ For custom CUDA code, `nvcc` produces a **fat binary**. It contains architecture
 Before you blame the framework for a slow or hung job, check which files it loads and from where.
 
 ## How it fails
+
+![A six stage startup pipeline with the error messages that come from each stage and the first command to run for each.](./img/p3-0111-error-to-stage.svg)
+
+*Figure 1.11.12. Match the error message to the startup stage that produces it, then run the first check for that stage.*
 
 Most of these failures show up with a clear message. The message rarely says which layer is at fault, though, so each item below gives you the cause and then the first thing to check.
 

@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "15",
+  "name": "p2-0115-unit-anatomy",
+  "title": "A unit file has three sections, and each one answers a different question",
+  "spec": "A tall sheet drawn as a file, with the monospace file name '/etc/systemd/system/gpu-exporter.service' in a header bar. Inside the sheet three stacked panels, top to bottom. Panel 1, heading '[Unit]', green: sub-text 'Identity and relationships', lines 'Description=GPU metrics exporter', 'After=network-online.target nvidia-persistenced.service', 'Wants=network-online.target', 'Requires=nvidia-persistenced.service'. Panel 2, heading '[Service]', orange outline: sub-text 'How the unit behaves', lines 'Type=simple', 'ExecStart=/usr/local/bin/gpu-exporter', 'Restart=on-failure', 'RestartSec=5s'. Panel 3, heading '[Install]', green: sub-text 'Enablement, read by systemctl enable', line 'WantedBy=multi-user.target'. Arrows from the [Unit] panel labelled 'when to start', from the [Service] panel labelled 'how to run', and from the [Install] panel labelled 'which target wants it'. A grey note on the right side: 'Exec lines run without a shell: pipes, redirects and && do not work.' Caption: 'Three sections, three conversations with systemd.'",
+  "anchor": "### Anatomy of a service unit",
+  "alt": "A service unit file has a Unit section for relationships, a Service section for behaviour, and an Install section for enablement.",
+  "cap": "A service unit file has three sections: Unit for relationships, Service for how it runs, and Install for enabling it at boot."
+ }
+]

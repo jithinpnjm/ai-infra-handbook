@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Parallel I/O in HPC: MPI-IO and HDF5</title>
+  <desc>Flowchart illustrating the parallel I/O software stack in HPC from Application arrays per rank through HDF5 self-describing format and MPI-IO coordination down to the POSIX parallel file system client.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="960" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="72" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Parallel I/O in HPC: MPI-IO and HDF5</text>
+
+  
+  <g id="node-app">
+    <rect x="220" y="135" width="1160" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(260, 177)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="6"/>
+      <line x1="4" y1="16" x2="52" y2="16"/>
+      <circle cx="11" cy="10" r="1.5" fill="#207448"/>
+      <circle cx="17" cy="10" r="1.5" fill="#207448"/>
+      <line x1="28" y1="16" x2="28" y2="52"/>
+      <line x1="4" y1="34" x2="52" y2="34"/>
+      <rect x="10" y="22" width="12" height="7" rx="1.5" fill="#207448" fill-opacity="0.15"/>
+      <rect x="34" y="22" width="12" height="7" rx="1.5" fill="#207448" fill-opacity="0.15"/>
+      <rect x="10" y="39" width="12" height="7" rx="1.5" fill="#207448" fill-opacity="0.15"/>
+      <rect x="34" y="39" width="12" height="7" rx="1.5" fill="#207448" fill-opacity="0.15"/>
+    </g>
+    <line x1="345" y1="160" x2="345" y2="250" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+    <text x="375" y="193" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="375" dy="0" font-size="32" font-weight="bold" fill="#207448">Application:</tspan>
+      <tspan x="375" dy="40" font-size="26" font-weight="normal" fill="#303a36">arrays per rank</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="275" x2="800" y2="338" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-h5">
+    <rect x="220" y="340" width="1160" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(260, 382)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 4 L 36 4 L 48 16 L 48 52 L 8 52 Z"/>
+      <path d="M 36 4 L 36 16 L 48 16"/>
+      <line x1="16" y1="26" x2="40" y2="26"/>
+      <line x1="16" y1="34" x2="32" y2="34"/>
+      <line x1="16" y1="42" x2="38" y2="42"/>
+      <circle cx="22" cy="14" r="3" fill="#207448" fill-opacity="0.2"/>
+    </g>
+    <line x1="345" y1="365" x2="345" y2="455" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+    <text x="375" y="398" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="375" dy="0" font-size="32" font-weight="bold" fill="#207448">HDF5 / NetCDF / ADIOS:</tspan>
+      <tspan x="375" dy="40" font-size="26" font-weight="normal" fill="#303a36">self-describing format</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="480" x2="800" y2="543" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-mpiio">
+    <rect x="220" y="545" width="1160" height="140" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+    <g transform="translate(260, 587)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="14" r="6"/>
+      <circle cx="28" cy="14" r="6"/>
+      <circle cx="44" cy="14" r="6"/>
+      <line x1="6" y1="28" x2="50" y2="28" stroke-width="4"/>
+      <line x1="12" y1="20" x2="12" y2="28"/>
+      <line x1="28" y1="20" x2="28" y2="28"/>
+      <line x1="44" y1="20" x2="44" y2="28"/>
+      <line x1="28" y1="28" x2="28" y2="44"/>
+      <path d="M 20 44 L 36 44 L 36 52 L 20 52 Z" fill="#db8129" fill-opacity="0.15"/>
+    </g>
+    <line x1="345" y1="570" x2="345" y2="660" stroke="#db8129" stroke-opacity="0.35" stroke-width="2"/>
+    <text x="375" y="603" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="375" dy="0" font-size="32" font-weight="bold" fill="#db8129">MPI-IO:</tspan>
+      <tspan x="375" dy="40" font-size="26" font-weight="normal" fill="#303a36">collective and independent file access</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="800" y1="685" x2="800" y2="748" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-fs">
+    <rect x="220" y="750" width="1160" height="140" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <g transform="translate(260, 792)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="20" ry="6.5"/>
+      <path d="M 8 14 v 12 c 0 3.6 9 6.5 20 6.5 s 20 -2.9 20 -6.5 v -12"/>
+      <path d="M 8 26 v 12 c 0 3.6 9 6.5 20 6.5 s 20 -2.9 20 -6.5 v -12"/>
+      <path d="M 8 38 v 12 c 0 3.6 9 6.5 20 6.5 s 20 -2.9 20 -6.5 v -12"/>
+    </g>
+    <line x1="345" y1="775" x2="345" y2="865" stroke="#207448" stroke-opacity="0.25" stroke-width="2"/>
+    <text x="375" y="808" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="375" dy="0" font-size="32" font-weight="bold" fill="#207448">POSIX / parallel file system client:</tspan>
+      <tspan x="375" dy="40" font-size="26" font-weight="normal" fill="#303a36">Lustre, GPFS, NFS</tspan>
+    </text>
+  </g>
+</svg>

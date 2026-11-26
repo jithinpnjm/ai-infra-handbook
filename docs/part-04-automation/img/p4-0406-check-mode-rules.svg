@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>The rules of check mode: what it previews, and where it misleads</title>
+  <desc>The rules of check mode: what it previews, and where it misleads</desc>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The rules of check mode:</tspan>
+    <tspan x="800" dy="52">what it previews, and where it misleads</tspan>
+  </text>
+
+  
+  <g id="card-1">
+    <rect x="40" y="145" width="740" height="320" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="65" y="165" width="48" height="40" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="65" y1="177" x2="113" y2="177" stroke="#207448" stroke-width="3.5"/>
+    <line x1="73" y1="189" x2="90" y2="189" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="73" y1="197" x2="105" y2="197" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="130" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="130" dy="0">1 Most core modules</tspan>
+      <tspan x="130" dy="37">support check mode</tspan>
+    </text>
+    
+    <text x="65" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">and report what they would change;</tspan>
+      <tspan x="65" dy="32">--diff adds before and after content for</tspan>
+      <tspan x="65" dy="32">files and templates; together the fleet's</tspan>
+      <tspan x="65" dy="32">terraform plan:</tspan>
+      <tspan x="65" dy="36" font-family="monospace">ansible-playbook site.yml</tspan>
+      <tspan x="65" dy="30" font-family="monospace">  --check --diff --limit gpu001</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-2">
+    <rect x="820" y="145" width="740" height="285" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="845" y="165" width="48" height="40" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 854 180 L 862 185 L 854 190" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="867" y1="190" x2="879" y2="190" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="910" y="195" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="910" dy="0">2 command, shell and raw</tspan>
+      <tspan x="910" dy="37">skip in check mode</tspan>
+    </text>
+    
+    <text x="845" y="275" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">unless they have creates or removes;</tspan>
+      <tspan x="845" dy="32"><tspan font-family="monospace">check_mode: false</tspan> runs them anyway,</tspan>
+      <tspan x="845" dy="32">only for read-only commands; modules</tspan>
+      <tspan x="845" dy="32">without check mode support are</tspan>
+      <tspan x="845" dy="32">skipped with a note</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-3">
+    <rect x="40" y="490" width="740" height="385" rx="12" fill="#fbf3ea" stroke="#db8129" stroke-width="3"/>
+    
+    <path d="M 89 514 L 112 554 L 66 554 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="89" y1="527" x2="89" y2="540" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="89" cy="547" r="2" fill="#db8129"/>
+    
+    <text x="130" y="540" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+      <tspan x="130" dy="0">3 Dependent tasks</tspan>
+      <tspan x="130" dy="37">mispredict:</tspan>
+    </text>
+    
+    <text x="65" y="620" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">installing a package then configuring</tspan>
+      <tspan x="65" dy="32">its file; in check mode the earlier step</tspan>
+      <tspan x="65" dy="32">never happens, like judging an oven that</tspan>
+      <tspan x="65" dy="32">is still cold; mitigate with</tspan>
+      <tspan x="65" dy="34" font-family="monospace">when: not ansible_check_mode or</tspan>
+      <tspan x="65" dy="32" font-family="monospace">ignore_errors: "{{ ansible_check_mode }}",</tspan>
+      <tspan x="65" dy="34">and set <tspan font-family="monospace">check_mode false</tspan> on reads</tspan>
+      <tspan x="65" dy="32">such as stat and probes</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-4">
+    <rect x="820" y="450" width="740" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="845" y="475" width="40" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 855 475 V 467 A 10 10 0 0 1 875 467 V 475" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="865" cy="487" r="2.5" fill="#207448"/>
+    <line x1="865" y1="489" x2="865" y2="495" stroke="#207448" stroke-width="2.5"/>
+    
+    <text x="910" y="500" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="910" dy="0">4 --diff can leak secrets:</tspan>
+    </text>
+    
+    <text x="845" y="548" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">set <tspan font-family="monospace">diff: false</tspan> on any task that</tspan>
+      <tspan x="845" dy="32">renders secrets</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-5">
+    <rect x="820" y="625" width="740" height="250" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 865 645 L 886 653 C 886 669 876 681 865 686 C 854 681 844 669 844 653 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 856 665 L 862 671 L 874 659" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="910" y="675" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="910" dy="0">5 Treat check mode as a</tspan>
+      <tspan x="910" dy="37">risk reducer, not proof:</tspan>
+    </text>
+    
+    <text x="845" y="752" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">follow it with a canary application</tspan>
+      <tspan x="845" dy="32">and verification; scan the recap for</tspan>
+      <tspan x="845" dy="32">skipped counts, a skipped task has</tspan>
+      <tspan x="845" dy="32">not been previewed at all</tspan>
+    </text>
+  </g>
+
+  
+  <g id="override-strip">
+    <rect x="40" y="900" width="1520" height="110" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="68" y1="940" x2="110" y2="940" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="78" cy="940" r="5" fill="#207448"/>
+    <line x1="68" y1="966" x2="110" y2="966" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="100" cy="966" r="5" fill="#207448"/>
+    
+    <text x="135" y="945" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="135" dy="0"><tspan font-family="monospace">check_mode: true</tspan> forces a dry run for one task even in a real run;</tspan>
+      <tspan x="135" dy="37"><tspan font-family="monospace">check_mode: false</tspan> forces execution in check mode</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1030" width="1520" height="70" rx="10" fill="#207448"/>
+    <text x="800" y="1074" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">A clean check run means less if a risky task is in the skipped group</text>
+  </g>
+</svg>

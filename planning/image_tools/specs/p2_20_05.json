@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "p2-2005-quota-stall",
+  "title": "A 100 ms quota stalls five threads in blocks",
+  "spec": "A horizontal timeline bar labelled 'One CFS period: 100 ms', divided into two segments. First segment, green, from 0 to 20 ms, labelled 'Five busy threads run: quota used up at 20 ms'. Second segment, grey hatched, from 20 to 100 ms, labelled 'Throttled: nothing runs for 80 ms'. A marker at the end of the bar labelled 'New period, quota refilled'. Above the timeline a small panel with the card 'Container limit: 1 CPU' and a monitoring gauge showing 'Average CPU: 1 CPU (looks calm)'. Below the timeline a note row with a p99 stall icon labelled 'Requests stall in 80 ms blocks'. Orange outline on the grey throttled segment. Caption at bottom: 'The average looks calm, but the slowest requests land in the stalled block.'",
+  "anchor": "### 3. CPU throttling from cgroup limits in containers",
+  "alt": "A 100 ms CFS period in which five busy threads use up a one-CPU quota in 20 ms and the container is throttled for the remaining 80 ms.",
+  "cap": "A 100 ms CFS quota period in which five threads use the quota in 20 ms, leaving 80 ms of throttling that makes requests stall."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "p2-2005-steal-time",
+  "title": "The hypervisor takes time the guest cannot see",
+  "spec": "Two layers drawn one above the other. Top layer labelled 'Guest virtual machine' containing a box 'Guest CPU looks idle' and a growing queue icon labelled 'Run queue grows, threads runnable'. Middle layer labelled 'Hypervisor', a box shared among several tenants, with a dark block marked 'Hypervisor takes the CPU' and small tenant chips 'Other tenant' around it. Bottom layer labelled 'Physical CPU'. Arrow from the physical CPU up to the hypervisor and from the hypervisor down to the guest CPU, the arrow labelled 'Time stolen'. Counters panel on the right: 'vmstat: st column', 'mpstat: %steal'. Orange outline on the hypervisor take-back block. Note under the guest box: 'Tuning the guest scheduler cannot give back stolen time.'",
+  "anchor": "### 4. Steal time",
+  "alt": "A guest virtual machine looks idle while the hypervisor takes its CPU time, which shows up as steal in vmstat and mpstat.",
+  "cap": "Steal time is CPU taken by the hypervisor from a guest, visible as st in vmstat and %steal in mpstat, and guest tuning cannot recover it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "p2-2005-cgroup-wall",
+  "title": "The cgroup wall, not the node, decides the kill",
+  "spec": "Left: a large box labelled 'Node: 512 GiB memory', showing mostly empty space with the label 'Plenty free'. Inside it a smaller box labelled 'Pod cgroup, memory.max: 24 GiB' drawn as a wall with brick outlines. Inside the wall two stacked bars: 'Working set (cannot be given back cheaply)' and, above it in a lighter colour, 'Page cache (reclaimable)'. An arrow from the bars to the wall labelled 'Limit reached'. A red-outlined box labelled 'OOM kill: memory.events oom_kill rises'. Right side: a small card 'Alert on' with two rows: 'working set against the limit' (green check) and 'memory.current including cache' (grey cross, labelled 'looks alarming, rarely a kill'). Orange outline on the wall. Bottom note: 'The limit is the wall. Compare the working set to the cgroup limit, not to node memory.'",
+  "anchor": "### 8. cgroup memory limits versus node memory",
+  "alt": "A pod with a 24 GiB cgroup limit is killed on a 512 GiB node, because the kill depends on the cgroup wall and the working set rather than free node memory.",
+  "cap": "A pod is killed at its cgroup memory limit even when the node has plenty of memory, so the working set is compared with the limit."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "p2-2005-pinned-budget",
+  "title": "Pinned memory budget for a 24 GiB pod",
+  "spec": "Left column: an input card titled 'Hypothetical inference pod' listing: 'Limit: 24 GiB', 'Worker processes: 4', 'Pinned staging buffers per worker: 4 GiB', 'Runtime memory per worker: 3 GiB', 'Cached weights: 15 GiB'. Middle: a stacked bar 'Cannot be reclaimed' made of four segments of 7 GiB labelled 'Worker 1 (4 + 3)', 'Worker 2 (4 + 3)', 'Worker 3 (4 + 3)', 'Worker 4 (4 + 3)', totalling 28 GiB, with a vertical marker at 24 GiB labelled 'Limit'. Right: verdict box in orange outline 'OOM kill expected: 28.0 GiB cannot be reclaimed, limit is lower'. Below, a second scenario card with a 40 GiB limit: 'Fits, but page cache will be reclaimed constantly' and a cache total of 28 plus 15 equals 43 GiB. Formula strip at the bottom in monospace: 'unreclaimable = workers x (pinned + runtime)'. Note: 'Page cache is left out of the sum.'",
+  "anchor": "### 12. Pinned memory and why GPU inference hosts hit host-memory limits",
+  "alt": "A worked host-memory budget where four workers with pinned and runtime memory total 28 GiB against a 24 GiB limit, so an OOM kill is expected.",
+  "cap": "A worked host-memory budget where unreclaimable worker memory of 28 GiB exceeds a 24 GiB pod limit, so an OOM kill is expected."
+ }
+]

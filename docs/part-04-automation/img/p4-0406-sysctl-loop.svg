@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Five kernel settings from one looped task</title>
+  <desc>Visual explanation of applying five persistent sysctl kernel parameters through a single looped Ansible task using dict2items and a shared configuration file.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="56" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Five kernel settings from one looped task</text>
+
+  
+  <g transform="translate(40, 78)">
+    <rect x="0" y="0" width="1520" height="84" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(36, 14)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 42 A 24 24 0 1 1 50 42" />
+      <line x1="28" y1="28" x2="40" y2="16" />
+      <circle cx="28" cy="28" r="4" fill="#207448" />
+    </g>
+    
+    <text x="790" y="34" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="790" dy="0">kernel parameters are dials on the control panel;</tspan>
+      <tspan x="790" dy="30">some need a value only for this boot, others must survive a reboot</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g transform="translate(40, 184)">
+    <rect x="0" y="0" width="880" height="246" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="48" cy="40" r="24" fill="#207448" />
+    <text x="48" y="48" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(88, 12)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 18 10 C 10 10 10 20 10 28 C 10 34 4 36 4 36 C 4 36 10 38 10 44 C 10 52 10 62 18 62" />
+      <path d="M 38 10 C 46 10 46 20 46 28 C 46 34 52 36 52 36 C 52 36 46 38 46 44 C 46 52 46 62 38 62" />
+    </g>
+    
+    <text x="160" y="48" font-family="monospace" font-size="32" font-weight="bold" fill="#207448">sysctl_settings</text>
+
+    
+    <rect x="24" y="78" width="832" height="152" rx="8" fill="#f5f8f5" stroke="#cbd8cf" stroke-width="1.5" />
+    <text x="48" y="106" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="48" dy="0">vm.swappiness: 1</tspan>
+      <tspan x="48" dy="28">net.core.rmem_max: 268435456</tspan>
+      <tspan x="48" dy="28">net.core.wmem_max: 268435456</tspan>
+      <tspan x="48" dy="28">net.ipv4.tcp_congestion_control: bbr</tspan>
+      <tspan x="48" dy="28">kernel.numa_balancing: 0</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="160" y1="430" x2="160" y2="520" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <g transform="translate(190, 442)">
+    <rect x="0" y="0" width="670" height="66" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="24" y="27" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">dict2items turns the dictionary into</tspan>
+      <tspan x="24" dy="28">a list of key and value pairs</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 520)">
+    <rect x="0" y="0" width="880" height="84" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    <circle cx="48" cy="42" r="24" fill="#db8129" />
+    <text x="48" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(88, 14)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 44 20 A 18 18 0 1 0 48 34" />
+      <polyline points="44 10 46 22 34 22" />
+    </g>
+    
+    <text x="160" y="51" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">loop runs the sysctl task once per pair</text>
+  </g>
+
+  
+  <line x1="160" y1="604" x2="160" y2="656" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(40, 656)">
+    <rect x="0" y="0" width="880" height="194" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="48" cy="42" r="24" fill="#207448" />
+    <text x="48" y="50" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(88, 14)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="10" />
+      <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" />
+    </g>
+    
+    <text x="160" y="49" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">ansible.posix.sysctl</text>
+    <rect x="24" y="74" width="832" height="106" rx="8" fill="#f5f8f5" stroke="#cbd8cf" stroke-width="1.5" />
+    <text x="44" y="104" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="44" dy="0">name {{ item.key }}, value {{ item.value }},</tspan>
+      <tspan x="44" dy="32">sysctl_file /etc/sysctl.d/90-ai.conf,</tspan>
+      <tspan x="44" dy="32">state present, reload true</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="160" y1="850" x2="160" y2="900" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <g transform="translate(40, 900)">
+    <rect x="0" y="0" width="880" height="124" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="48" cy="62" r="24" fill="#207448" />
+    <text x="48" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(88, 34)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8" />
+      <path d="M 6 14 L 6 42 C 6 48 16 52 28 52 C 40 52 50 48 50 42 L 50 14" />
+      <path d="M 6 28 C 6 34 16 38 28 38 C 40 38 50 34 50 28" />
+    </g>
+    
+    <text x="160" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" dy="0">all five settings go to /etc/sysctl.d/90-ai.conf,</tspan>
+      <tspan x="160" dy="32">so they persist across reboots</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g transform="translate(960, 184)">
+    <rect x="0" y="0" width="600" height="396" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(36, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 14 L 50 30 C 50 44 40 54 28 60 C 16 54 6 44 6 30 L 6 14 Z" />
+      <polyline points="18 30 26 38 38 22" />
+    </g>
+    
+    <text x="36" y="130" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="36" dy="0">each pass checks its own key against</tspan>
+      <tspan x="36" dy="38">the live value and against the file;</tspan>
+      <tspan x="36" dy="38">only keys that differ are written,</tspan>
+      <tspan x="36" dy="38">so a setting that already matches</tspan>
+      <tspan x="36" dy="38">reports no change</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(960, 608)">
+    <rect x="0" y="0" width="600" height="416" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(36, 28)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 8 L 52 50 L 4 50 Z" />
+      <line x1="28" y1="24" x2="28" y2="34" />
+      <circle cx="28" cy="42" r="2" fill="#207448" />
+    </g>
+    
+    <text x="36" y="134" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="36" dy="0">five separate tasks would repeat</tspan>
+      <tspan x="36" dy="38">the same file name and reload flag,</tspan>
+      <tspan x="36" dy="38">and a typo in one would</tspan>
+      <tspan x="36" dy="38">go unnoticed</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(40, 1056)">
+    <rect x="0" y="0" width="1520" height="72" rx="12" fill="#207448" />
+    <text x="760" y="46" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">One loop, one file, persistent settings</text>
+  </g>
+</svg>

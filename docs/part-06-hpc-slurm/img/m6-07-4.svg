@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Configuration files and configless mode</title>
+  <desc>Visual infographic explaining Slurm configuration files and their relationships to the central slurm.conf and the slurmdbd accounting daemon.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Configuration files and configless mode</text>
+
+  
+  
+  <path d="M 670 330 V 255 H 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+
+  
+  <path d="M 580 535 H 460" fill="none" stroke="#207448" stroke-width="3.5"/>
+
+  
+  <path d="M 670 740 V 815 H 460" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+
+  
+  <path d="M 930 330 V 255 H 1140" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="8,6" stroke-linejoin="round" marker-end="url(#arrow)"/>
+  <text x="1035" y="242" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">accounting</text>
+
+  
+  <path d="M 1020 535 H 1140" fill="none" stroke="#207448" stroke-width="3.5"/>
+
+  
+  <path d="M 930 740 V 815 H 1140" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+
+  
+  <g>
+    <rect x="50" y="140" width="410" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="80" y="165" width="40" height="40" rx="6"/>
+      <rect x="89" y="174" width="22" height="22" rx="3"/>
+      <line x1="94" y1="158" x2="94" y2="165"/>
+      <line x1="106" y1="158" x2="106" y2="165"/>
+      <line x1="94" y1="205" x2="94" y2="212"/>
+      <line x1="106" y1="205" x2="106" y2="212"/>
+      <line x1="73" y1="179" x2="80" y2="179"/>
+      <line x1="73" y1="191" x2="80" y2="191"/>
+      <line x1="120" y1="179" x2="127" y2="179"/>
+      <line x1="120" y1="191" x2="127" y2="191"/>
+    </g>
+    <text x="150" y="200" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">cgroup.conf</text>
+    <text x="80" y="265" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">how cgroups constrain</tspan>
+      <tspan x="80" dy="38">cores, memory, devices</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="420" width="410" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="78" y="452" width="44" height="28" rx="4"/>
+      <circle cx="91" cy="466" r="7"/>
+      <circle cx="109" cy="466" r="7"/>
+      <line x1="84" y1="480" x2="84" y2="487"/>
+      <line x1="94" y1="480" x2="94" y2="487"/>
+      <line x1="104" y1="480" x2="104" y2="487"/>
+      <line x1="78" y1="447" x2="78" y2="487"/>
+    </g>
+    <text x="150" y="480" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">gres.conf</text>
+    <text x="80" y="545" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">per-node GPU and other</tspan>
+      <tspan x="80" dy="38">generic resources;</tspan>
+      <tspan x="80" dy="38">autodetect</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="700" width="410" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="91" y="728" width="18" height="12" rx="2"/>
+      <rect x="74" y="764" width="16" height="12" rx="2"/>
+      <rect x="92" y="764" width="16" height="12" rx="2"/>
+      <rect x="110" y="764" width="16" height="12" rx="2"/>
+      <line x1="100" y1="740" x2="100" y2="752"/>
+      <line x1="82" y1="752" x2="118" y2="752"/>
+      <line x1="82" y1="752" x2="82" y2="764"/>
+      <line x1="100" y1="752" x2="100" y2="764"/>
+      <line x1="118" y1="752" x2="118" y2="764"/>
+    </g>
+    <text x="150" y="760" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">topology.conf</text>
+    <text x="80" y="825" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="80" dy="0">switch tree for</tspan>
+      <tspan x="80" dy="38">topology-aware placement</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="580" y="330" width="440" height="410" rx="18" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    <rect x="580" y="330" width="440" height="10" rx="5" fill="#db8129"/>
+    
+    <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="800" cy="400" r="14"/>
+      <circle cx="800" cy="400" r="26" stroke-dasharray="8,6" stroke-width="6"/>
+      <circle cx="800" cy="400" r="4" fill="#db8129"/>
+    </g>
+    <text x="800" y="475" text-anchor="middle" font-family="monospace" font-size="34" font-weight="bold" fill="#303a36">slurm.conf</text>
+    <text x="800" y="535" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">cluster, nodes,</tspan>
+      <tspan x="800" dy="40">partitions, plugins,</tspan>
+      <tspan x="800" dy="40">timers, accounting hooks</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1140" y="140" width="410" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="1195" cy="170" rx="22" ry="8"/>
+      <path d="M 1173 170 V 202 C 1173 210, 1217 210, 1217 202 V 170"/>
+      <path d="M 1173 186 C 1173 194, 1217 194, 1217 186"/>
+    </g>
+    <text x="1245" y="200" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">slurmdbd.conf</text>
+    <text x="1170" y="265" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1170" dy="0">database connection</tspan>
+      <tspan x="1170" dy="38">and daemon settings</tspan>
+      <tspan x="1170" dy="38">(mode 600)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1140" y="420" width="410" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="1182" y="462" width="28" height="22" rx="4"/>
+      <line x1="1189" y1="448" x2="1189" y2="462"/>
+      <line x1="1203" y1="448" x2="1203" y2="462"/>
+      <line x1="1196" y1="484" x2="1196" y2="496"/>
+    </g>
+    <text x="1245" y="480" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">plugstack.conf</text>
+    <text x="1170" y="550" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1170" dy="0">SPANK plugins,</tspan>
+      <tspan x="1170" dy="38">for example Pyxis</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1140" y="700" width="410" height="230" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    
+    <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 1180 730 H 1204 L 1216 742 V 776 H 1180 Z"/>
+      <path d="M 1204 730 V 742 H 1216"/>
+      <path d="M 1192 756 L 1188 760 L 1192 764"/>
+      <path d="M 1204 756 L 1208 760 L 1204 764"/>
+      <line x1="1200" y1="754" x2="1196" y2="766"/>
+    </g>
+    <text x="1245" y="760" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">job_submit.lua</text>
+    <text x="1170" y="835" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1170" dy="0">policy hook script</tspan>
+    </text>
+  </g>
+</svg>

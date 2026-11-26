@@ -1,0 +1,331 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The daemons</title>
+  <desc>Visual architecture of Slurm daemons, user commands, and authentication fabric.</desc>
+  <defs>
+    <marker id="arr" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arr-start" viewBox="0 0 12 12" refX="2" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 11 2 L 2 6 L 11 10 Z" fill="#207448" />
+    </marker>
+    <filter id="card-shadow" x="-3%" y="-3%" width="106%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#000000" flood-opacity="0.06"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title -->
+  <text x="800" y="52" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">The daemons</text>
+
+  <!-- Subgraph: Login / submit nodes -->
+  <g id="subgraph-users">
+    <rect x="100" y="75" width="1440" height="150" rx="14" fill="#e8f1ea" stroke="#b8d5bf" stroke-width="2" />
+    <text x="125" y="104" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448">Login / submit nodes</text>
+
+    <!-- Node U1 -->
+    <g id="node-u1" filter="url(#card-shadow)">
+      <rect x="120" y="115" width="650" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Terminal Icon -->
+      <g transform="translate(138, 133)">
+        <rect x="2" y="6" width="52" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+        <line x1="2" y1="18" x2="54" y2="18" stroke="#207448" stroke-width="3"/>
+        <circle cx="10" cy="12" r="2" fill="#207448"/>
+        <circle cx="18" cy="12" r="2" fill="#207448"/>
+        <path d="M 12 28 L 20 34 L 12 40" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+        <line x1="26" y1="40" x2="38" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <text x="212" y="148" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="212" dy="0">sbatch, srun, salloc,</tspan>
+        <tspan x="212" dy="32">squeue, sinfo, scancel</tspan>
+      </text>
+    </g>
+
+    <!-- Node U2 -->
+    <g id="node-u2" filter="url(#card-shadow)">
+      <rect x="800" y="115" width="720" height="92" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Report Icon -->
+      <g transform="translate(818, 133)">
+        <path d="M 10 4 L 34 4 L 46 16 L 46 52 L 10 52 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M 34 4 L 34 16 L 46 16" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+        <line x1="18" y1="26" x2="38" y2="26" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+        <line x1="18" y1="34" x2="38" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+        <line x1="18" y1="42" x2="30" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <text x="892" y="148" fill="#303a36">
+        <tspan x="892" dy="0" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" font-weight="bold">sacct, sacctmgr, sreport</tspan>
+        <tspan x="892" dy="32" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24">(accounting queries)</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- Subgraph: Control plane -->
+  <g id="subgraph-control">
+    <rect x="100" y="280" width="1440" height="355" rx="14" fill="#e8f1ea" stroke="#b8d5bf" stroke-width="2" />
+    <text x="125" y="309" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448">Control plane</text>
+
+    <!-- Node REST -->
+    <g id="node-rest" filter="url(#card-shadow)">
+      <rect x="120" y="330" width="280" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Cloud API Icon -->
+      <g transform="translate(136, 345)">
+        <path d="M 12 36 C 8 36 4 32 4 28 C 4 24 8 20 12 20 C 13 14 18 8 26 8 C 34 8 39 13 41 18 C 46 18 50 22 50 27 C 50 32 46 36 41 36 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+        <path d="M 22 24 L 16 28 L 22 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+        <path d="M 32 24 L 38 28 L 32 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      </g>
+      <text x="202" y="365" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="202" dy="0">slurmrestd</tspan>
+        <tspan x="202" dy="28" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="normal">(optional)</tspan>
+        <tspan x="202" dy="32" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448">REST API</tspan>
+      </text>
+    </g>
+
+    <!-- Node BACKUP -->
+    <g id="node-backup" filter="url(#card-shadow)">
+      <rect x="120" y="480" width="280" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Backup Controller Icon -->
+      <g transform="translate(136, 498)">
+        <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5" stroke-dasharray="6,4"/>
+        <rect x="18" y="18" width="20" height="20" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+        <line x1="28" y1="2" x2="28" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="2" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+        <line x1="46" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      </g>
+      <text x="202" y="515" fill="#303a36">
+        <tspan x="202" dy="0" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" font-weight="bold">backup slurmctld</tspan>
+        <tspan x="202" dy="28" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24">(optional)</tspan>
+        <tspan x="136" dy="42" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24">shared StateSaveLocation</tspan>
+      </text>
+    </g>
+
+    <!-- Node CTLD (ORANGE HIGHLIGHT: Single most important item!) -->
+    <g id="node-ctld" filter="url(#card-shadow)">
+      <rect x="440" y="325" width="410" height="290" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+      <!-- Controller Chip Icon (Orange) -->
+      <g transform="translate(465, 345)">
+        <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#db8129" stroke-width="4"/>
+        <rect x="18" y="18" width="20" height="20" rx="2" fill="#fdf6ee" stroke="#db8129" stroke-width="3"/>
+        <line x1="18" y1="2" x2="18" y2="10" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="28" y1="2" x2="28" y2="10" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="38" y1="2" x2="38" y2="10" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="18" y1="46" x2="18" y2="54" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="28" y1="46" x2="28" y2="54" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="38" y1="46" x2="38" y2="54" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="2" y1="18" x2="10" y2="18" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="2" y1="28" x2="10" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="2" y1="38" x2="10" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="46" y1="18" x2="54" y2="18" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="46" y1="28" x2="54" y2="28" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+        <line x1="46" y1="38" x2="54" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      </g>
+      <text x="540" y="380" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="34" font-weight="bold" fill="#db8129">slurmctld</text>
+      <text x="465" y="440" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="465" dy="0" font-weight="bold">controller, port 6817</tspan>
+        <tspan x="465" dy="40">queue, scheduler,</tspan>
+        <tspan x="465" dy="34">node and job state</tspan>
+      </text>
+    </g>
+
+    <!-- Node DBD -->
+    <g id="node-dbd" filter="url(#card-shadow)">
+      <rect x="910" y="335" width="310" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Accounting Daemon Icon -->
+      <g transform="translate(928, 350)">
+        <path d="M 28 14 L 32 18 L 38 17 L 39 23 L 45 25 L 43 31 L 47 36 L 43 40 L 44 46 L 38 47 L 35 52 L 29 50 L 25 54 L 21 50 L 15 51 L 14 45 L 8 43 L 10 37 L 6 32 L 10 28 L 9 22 L 15 21 L 18 16 L 24 18 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+        <circle cx="27" cy="34" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="1000" y="380" fill="#303a36">
+        <tspan x="1000" dy="0" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="28" font-weight="bold">slurmdbd, port 6819</tspan>
+        <tspan x="1000" dy="42" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24">accounting daemon</tspan>
+      </text>
+    </g>
+
+    <!-- Node DB -->
+    <g id="node-db" filter="url(#card-shadow)">
+      <rect x="1260" y="335" width="260" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Database Cylinder Icon -->
+      <g transform="translate(1276, 350)">
+        <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4"/>
+        <path d="M 6 14 L 6 44 C 6 48 16 52 28 52 C 40 52 50 48 50 44 L 50 14" fill="none" stroke="#207448" stroke-width="4"/>
+        <path d="M 6 29 C 6 33 16 37 28 37 C 40 37 50 33 50 29" fill="none" stroke="#207448" stroke-width="4"/>
+      </g>
+      <text x="1348" y="380" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" fill="#303a36">
+        <tspan x="1348" dy="0" font-size="26" font-weight="bold">MariaDB / MySQL</tspan>
+        <tspan x="1348" dy="42" font-size="24">accounting database</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- Subgraph: Compute nodes (data plane) -->
+  <g id="subgraph-compute">
+    <rect x="100" y="685" width="870" height="475" rx="14" fill="#e8f1ea" stroke="#b8d5bf" stroke-width="2" />
+    <text x="125" y="714" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#207448">Compute nodes (data plane)</text>
+
+    <!-- Node D1 -->
+    <g id="node-d1" filter="url(#card-shadow)">
+      <rect x="120" y="735" width="370" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Server Node Icon -->
+      <g transform="translate(136, 752)">
+        <rect x="4" y="8" width="48" height="40" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+        <line x1="4" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="3"/>
+        <circle cx="14" cy="18" r="3" fill="#207448"/>
+        <circle cx="24" cy="18" r="3" fill="#207448"/>
+        <circle cx="14" cy="38" r="3" fill="#207448"/>
+        <circle cx="24" cy="38" r="3" fill="#207448"/>
+      </g>
+      <text x="206" y="792" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="26" font-weight="bold" fill="#303a36">slurmd, port 6818</text>
+    </g>
+
+    <!-- Node STEPD -->
+    <g id="node-stepd" filter="url(#card-shadow)">
+      <rect x="120" y="885" width="370" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Stepped process icon -->
+      <g transform="translate(136, 908)">
+        <rect x="4" y="6" width="18" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <path d="M 13 20 L 13 32 L 28 32 L 28 36" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <rect x="19" y="36" width="18" height="14" rx="2" fill="none" stroke="#207448" stroke-width="3.5"/>
+      </g>
+      <text x="192" y="928" fill="#303a36">
+        <tspan x="192" dy="0" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="28" font-weight="bold">slurmstepd</tspan>
+        <tspan x="192" dy="36" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24">one per job step per node</tspan>
+      </text>
+    </g>
+
+    <!-- Node JOB -->
+    <g id="node-job" filter="url(#card-shadow)">
+      <rect x="120" y="1045" width="370" height="90" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- App process window icon -->
+      <g transform="translate(136, 1060)">
+        <rect x="4" y="6" width="48" height="44" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+        <line x1="4" y1="18" x2="52" y2="18" stroke="#207448" stroke-width="3"/>
+        <circle cx="12" cy="12" r="2.5" fill="#207448"/>
+        <circle cx="20" cy="12" r="2.5" fill="#207448"/>
+        <circle cx="28" cy="12" r="2.5" fill="#207448"/>
+        <rect x="12" y="26" width="14" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+        <rect x="30" y="26" width="14" height="16" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+      </g>
+      <text x="206" y="1101" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="26" font-weight="bold" fill="#303a36">application processes</text>
+    </g>
+
+    <!-- Node D2 -->
+    <g id="node-d2" filter="url(#card-shadow)">
+      <rect x="530" y="735" width="190" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Small Server Icon -->
+      <g transform="translate(546, 754)">
+        <rect x="2" y="6" width="36" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <line x1="2" y1="23" x2="38" y2="23" stroke="#207448" stroke-width="2.5"/>
+        <circle cx="10" cy="14" r="2.5" fill="#207448"/>
+        <circle cx="10" cy="31" r="2.5" fill="#207448"/>
+      </g>
+      <text x="600" y="792" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="28" font-weight="bold" fill="#303a36">slurmd</text>
+    </g>
+
+    <!-- Node D3 -->
+    <g id="node-d3" filter="url(#card-shadow)">
+      <rect x="755" y="735" width="190" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Small Server Icon -->
+      <g transform="translate(771, 754)">
+        <rect x="2" y="6" width="36" height="34" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+        <line x1="2" y1="23" x2="38" y2="23" stroke="#207448" stroke-width="2.5"/>
+        <circle cx="10" cy="14" r="2.5" fill="#207448"/>
+        <circle cx="10" cy="31" r="2.5" fill="#207448"/>
+      </g>
+      <text x="825" y="792" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="28" font-weight="bold" fill="#303a36">slurmd</text>
+    </g>
+  </g>
+
+  <!-- Standalone: MUNGE -->
+  <g id="node-munge" filter="url(#card-shadow)">
+    <rect x="1000" y="725" width="540" height="165" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <!-- Shield / Key Icon -->
+    <g transform="translate(1025, 750)">
+      <path d="M 28 4 C 14 4 8 12 8 24 C 8 40 20 50 28 54 C 36 50 48 40 48 24 C 48 12 42 4 28 4 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <circle cx="28" cy="24" r="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="30" x2="28" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="1100" y="775" fill="#303a36">
+      <tspan x="1100" dy="0" font-family="'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="30" font-weight="bold">munge on every node</tspan>
+      <tspan x="1100" dy="42" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24">(shared key, authenticates</tspan>
+      <tspan x="1100" dy="32" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24">every request)</tspan>
+    </text>
+  </g>
+
+  <!-- Connections -->
+  <g id="arrows" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+
+    <!-- 1. U1 -> CTLD ("RPC + munge credential") -->
+    <path d="M 540 207 L 540 325" marker-end="url(#arr)" />
+
+    <!-- 2. U2 -> DBD ("RPC") -->
+    <path d="M 1060 207 L 1060 335" marker-end="url(#arr)" />
+
+    <!-- 3. CTLD <--> BACKUP -->
+    <path d="M 400 545 L 440 545" marker-start="url(#arr-start)" marker-end="url(#arr)" />
+
+    <!-- 4. REST -> CTLD -->
+    <path d="M 400 392 L 440 392" marker-end="url(#arr)" />
+
+    <!-- 5. CTLD -> DBD ("job and usage records") -->
+    <path d="M 850 410 L 910 410" marker-end="url(#arr)" />
+
+    <!-- 6. DBD -> DB -->
+    <path d="M 1220 410 L 1260 410" marker-end="url(#arr)" />
+
+    <!-- 7. CTLD -> D1 ("launch and control RPCs") -->
+    <path d="M 490 615 L 490 660 L 305 660 L 305 735" marker-end="url(#arr)" />
+
+    <!-- 8. CTLD -> D2 -->
+    <path d="M 625 615 L 625 735" marker-end="url(#arr)" />
+
+    <!-- 9. CTLD -> D3 -->
+    <path d="M 750 615 L 750 660 L 850 660 L 850 735" marker-end="url(#arr)" />
+
+    <!-- 10. D1 -> STEPD -->
+    <path d="M 305 830 L 305 885" marker-end="url(#arr)" />
+
+    <!-- 11. STEPD -> JOB ("runs your program") -->
+    <path d="M 305 990 L 305 1045" marker-end="url(#arr)" />
+
+    <!-- 12. U1 -> D1 ("srun talks to slurmd and slurmstepd directly") -->
+    <path d="M 120 161 L 45 161 L 45 782 L 120 782" marker-end="url(#arr)" />
+
+    <!-- 13. MUNGE -.-> CTLD (dashed) -->
+    <path d="M 1000 755 L 870 755 L 870 560 L 850 560" stroke-dasharray="8,6" marker-end="url(#arr)" />
+
+    <!-- 14. MUNGE -.-> DBD (dashed) -->
+    <path d="M 1080 725 L 1080 485" stroke-dasharray="8,6" marker-end="url(#arr)" />
+
+    <!-- 15. MUNGE -.-> D1 (dashed) -->
+    <path d="M 1000 855 L 490 855 L 490 810" stroke-dasharray="8,6" marker-end="url(#arr)" />
+  </g>
+
+  <!-- Arrow Labels -->
+  <g font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+
+    <!-- Label 1: RPC + munge credential -->
+    <text x="555" y="258" font-weight="bold">
+      <tspan x="555" dy="0">RPC +</tspan>
+      <tspan x="555" dy="28">munge credential</tspan>
+    </text>
+
+    <!-- Label 2: RPC -->
+    <text x="1075" y="275" font-weight="bold">RPC</text>
+
+    <!-- Label 5: job and usage records -->
+    <text x="880" y="375" text-anchor="middle" font-weight="bold">
+      <tspan x="880" dy="0">job and</tspan>
+      <tspan x="880" dy="26">usage records</tspan>
+    </text>
+
+    <!-- Label 7: launch and control RPCs -->
+    <text x="395" y="650" text-anchor="middle" font-weight="bold">launch and control RPCs</text>
+
+    <!-- Label 11: runs your program -->
+    <text x="325" y="1022" font-weight="bold">runs your program</text>
+
+    <!-- Label 12: srun talks to slurmd and slurmstepd directly (rotated on vertical arrow) -->
+    <text x="-471" y="28" transform="rotate(-90)" text-anchor="middle" font-weight="bold">srun talks to slurmd and slurmstepd directly</text>
+  </g>
+</svg>

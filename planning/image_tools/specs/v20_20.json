@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "x20-utilisation-saturates-queue-grows",
+  "title": "GPU utilisation hits its ceiling while the queue keeps growing",
+  "spec": "A line chart with time on the horizontal axis (no tick numbers needed, label the axis 'Time' at the right end) and two stacked panels sharing that axis. Top panel labelled 'Load' shows a line rising steadily from left to right, with a short label 'Requests arrive' near its start. Middle panel labelled 'GPU utilisation' shows a line that rises quickly and then flattens at the top, at a flat ceiling labelled '100 percent'. A vertical green dashed marker in the middle of the chart labelled 'Batch is full'. The utilisation line stays flat after this marker. Bottom panel labelled 'Waiting queue' shows a line that stays at zero until the batch-full marker and then rises steadily to the right, with a small label 'Queue grows, utilisation cannot rise'. The utilisation panel and the queue panel must both be visible at the same time. One orange highlight on the flat part of the utilisation line with a callout 'Looks busy at light load and at overload'. A small chip icon at the left of the utilisation panel labelled 'GPU'. Title: 'GPU utilisation saturates while the queue keeps growing'. Small monospace note at the bottom-right: 'vllm:num_requests_waiting'. Takeaway bar at the bottom in green: 'Utilisation cannot tell busy from overloaded.'",
+  "anchor": "### 1. Why CPU and GPU utilisation fail for LLM engines",
+  "alt": "Three stacked line charts share one time axis. Load rises steadily. GPU utilisation climbs quickly and flattens at 100 percent once the batch is full. The waiting queue stays at zero until the batch is full and then grows, so utilisation cannot tell busy from overloaded.",
+  "cap": "Continuous batching saturates the GPU early, so utilisation reads the same at light load and at overload while the queue grows."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "x20-hpa-two-syncs-worked",
+  "title": "Two HPA syncs: the ratio doubles, then the not-ready rule stops a runaway",
+  "spec": "Two columns side by side, left column headed 'Sync 1 at 0 s' and right column headed 'Sync 2 at 15 s', each a vertical stack of boxes connected by downward arrows. Left column boxes top to bottom: box 'Ready replicas: 4' with the detail 'each holds 22 in-flight requests'; box 'Target: 11 per replica'; box 'Ratio: 22 / 11 = 2.0' (monospace); box 'desiredReplicas = ceil(4 x 2.0) = 8' (monospace, this is the single orange highlight); result box 'Scale up from 4 to 8'. Right column boxes top to bottom: box 'Ready replicas: 4, plus 4 new pods still loading weights'; box 'In-flight requests: 88'; box 'Not-ready pods count as 0 percent of target'; box 'Average: 88 / 8 pods = 11' (monospace); box 'Ratio: 11 / 11 = 1.0' (monospace); result box 'Within tolerance, no change'. Use a small green number circle (r=24, white number) at the top of each column, 1 and 2, because these are time order steps. A thin horizontal dashed arrow between the two columns labelled 'waits 15 s'. Each column has a small outline clock icon. Title: 'Two HPA syncs: the ratio doubles, then the not-ready rule stops a runaway'. Takeaway bar at the bottom in green: 'Every step is bounded, and the bound keeps the burst from turning into a runaway.'",
+  "anchor": "### 3. The HPA formula, with a worked example",
+  "alt": "Two HPA sync steps side by side. At the first sync four ready replicas hold 22 requests each against a target of 11, so the ratio is 2.0 and the desired count is 8. Fifteen seconds later the four new pods are not ready, the average over eight pods is 11, the ratio is 1.0, and nothing changes.",
+  "cap": "The HPA doubles on the first sync, then the not-ready rule keeps the second sync from asking for more replicas on an inflated average."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "x20-stabilization-window-rolling-max",
+  "title": "The scale-down window keeps the highest recent recommendation",
+  "spec": "A horizontal timeline of recommendations with time on the horizontal axis from left to right, and a vertical axis labelled 'Recommended replicas'. Draw a row of small dots, one per sync, with no numbers written on them, showing a higher level of recommendations on the left, a brief dip in the middle and a return to the higher level on the right. A horizontal bracket spanning the last 300 seconds labelled 'Stabilization window 300 s' sits above the most recent dots. Inside the bracket, a bold green horizontal line drawn at the level of the highest recommendation in the window labelled 'Highest recommendation in the window'. Below the timeline, a box labelled 'Scale down to' with the text 'highest recommendation in the window' in monospace, showing the controller does not drop to the dip level. A second small callout beside the box labelled 'A short dip in load changes nothing'. Add a small clock icon at the left of the window bracket labelled 'Window'. A thin orange outline around the dip dot labelled 'Dip in load'. Keep all text at least 24 px. Title: 'The scale-down window keeps the highest recent recommendation'. Takeaway bar at the bottom in green: 'Scale-up is fast by default, scale-down waits for the highest recommendation in the window.'",
+  "anchor": "### 4. Stabilization windows and flapping",
+  "alt": "A row of recommended replica counts over time shows a short dip to 5. A 300 second stabilization window keeps the highest recommendation inside it, so the scale-down to 8 is held and the short dip changes nothing.",
+  "cap": "The scale-down window works as a rolling maximum, so a short dip in load does not remove replicas that the next burst will need."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "20",
+  "name": "x20-scale-down-termination-steps",
+  "title": "Four layers keep a streaming pod alive until its streams finish",
+  "spec": "A vertical numbered sequence of five rows from top to bottom, each row a rounded box with a small outline icon at left, a numbered green circle (r=24, white number) and a bold sans title with one line of detail. Row 1: title 'Scale-down picks the pod', detail 'Pending pods go first, then pod-deletion-cost, then pods on busier nodes, then newer pods. Open streams are not checked.' icon: gear. Row 2: title 'preStop hook runs', detail 'sleep 15 gives load balancers time to stop sending new requests.' icon: clock. Row 3: title 'SIGTERM is sent to the engine', detail 'vLLM --shutdown-timeout 0 aborts every in-flight request at once. Above 0 it stops new requests and lets running ones finish.' Use monospace for '--shutdown-timeout' and 'SIGTERM'. icon: shield. Row 4: title 'terminationGracePeriodSeconds ends', detail 'The default is 30 seconds. Set it above the longest stream plus the drain timeout.' icon: timer. Row 5: title 'SIGKILL', detail 'The pod is force-killed when the grace period ends.' Row 5 is the single orange highlight. Thin vertical green arrows connect rows 1 to 5 in order with arrowheads about 18 px. At the right side, a separate box titled 'PodDisruptionBudget' with the monospace line 'maxUnavailable: 1' and the sans line 'limits how many pods of one service can be removed at once' with a small lock icon, connected with a dashed line to row 1. Title: 'Four layers keep a streaming pod alive until its streams finish'. Takeaway bar at the bottom in green: 'Set a grace period, a preStop pause, an engine drain and a disruption budget together.'",
+  "anchor": "### 7. Scale-down safety and connection draining",
+  "alt": "A five step termination sequence shows the scale-down choosing a pod, the preStop sleep running, SIGTERM reaching the engine which drains or aborts based on its shutdown timeout, the grace period ending, and SIGKILL. A PodDisruptionBudget with maxUnavailable 1 sits beside the sequence.",
+  "cap": "Kubernetes removes pods without checking open streams, so the grace period, preStop pause, engine drain and disruption budget must work together."
+ }
+]

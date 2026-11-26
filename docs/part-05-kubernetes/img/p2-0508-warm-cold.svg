@@ -1,0 +1,104 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 940" width="1600" height="940">
+  <title>Warm node versus cold node start times</title>
+  <desc>Visual comparison of pod start timelines on a warm node with cached images versus a cold node downloading a 20 GB image.</desc>
+
+  
+  <rect width="1600" height="940" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Warm node versus cold node start times</text>
+
+  
+  <rect x="60" y="120" width="230" height="570" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <g transform="translate(147, 260)">
+    <circle cx="28" cy="28" r="26" fill="#ffffff" stroke="#207448" stroke-width="4" />
+    <polyline points="28,12 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  
+  <text x="175" y="370" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Pod start</text>
+
+  
+  <line x1="290" y1="120" x2="290" y2="690" stroke="#207448" stroke-width="3" stroke-dasharray="6 4" />
+
+  
+  <rect x="310" y="120" width="1230" height="270" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(335, 140)">
+    <ellipse cx="28" cy="14" rx="24" ry="8" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <path d="M 4 14 V 42 C 4 46.4 14.7 50 28 50 C 41.3 50 52 46.4 52 42 V 14" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+    <path d="M 4 28 C 4 32.4 14.7 36 28 36 C 41.3 36 52 32.4 52 28" fill="none" stroke="#207448" stroke-width="3" />
+  </g>
+
+  
+  <text x="410" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Warm node: image cached on disk</text>
+
+  
+  
+  <rect x="310" y="225" width="250" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="435" y="260" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="435" dy="0">API and</tspan>
+    <tspan x="435" dy="26">scheduling:</tspan>
+    <tspan x="435" dy="26">tens of</tspan>
+    <tspan x="435" dy="26">milliseconds</tspan>
+  </text>
+
+  
+  <rect x="560" y="225" width="230" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="675" y="273" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="675" dy="0">Sandbox</tspan>
+    <tspan x="675" dy="28">and CNI:</tspan>
+    <tspan x="675" dy="28">100 to 500 ms</tspan>
+  </text>
+
+  
+  <rect x="790" y="225" width="190" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="885" y="273" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="885" dy="0">Container</tspan>
+    <tspan x="885" dy="28">starts:</tspan>
+    <tspan x="885" dy="28">under 1 s</tspan>
+  </text>
+
+  
+  <rect x="310" y="420" width="1230" height="270" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(335, 440)">
+    <path d="M 14 42 C 8 42 4 37 4 31 C 4 25.5 8.5 21 14 21 C 15 21 16 21.2 17 21.6 C 19.5 13 27 7 36 7 C 46.5 7 55 15.5 55 26 C 55 27 54.9 28 54.7 29 C 58.9 31 62 35.5 62 40.5 C 62 46.5 57 51 51 51 L 14 51 Z" fill="#e8f1ea" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  </g>
+
+  
+  <text x="410" y="478" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Cold node: 20 GB image</text>
+
+  
+  
+  <rect x="310" y="525" width="560" height="135" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+  <text x="590" y="600" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Pull and unpack: minutes</text>
+
+  
+  <rect x="870" y="525" width="320" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="1030" y="573" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1030" dy="0">PVC attach</tspan>
+    <tspan x="1030" dy="28">from cloud:</tspan>
+    <tspan x="1030" dy="28">5 to 60 s</tspan>
+  </text>
+
+  
+  <rect x="1190" y="525" width="320" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="1350" y="573" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1350" dy="0">Load model into</tspan>
+    <tspan x="1350" dy="28">GPU memory:</tspan>
+    <tspan x="1350" dy="28">minutes</tspan>
+  </text>
+
+  
+  <rect x="60" y="720" width="1480" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+  <text x="800" y="766" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Fifty cold nodes pulling at once make the whole job wait for the slowest.</text>
+
+  
+  <rect x="60" y="825" width="1480" height="70" rx="12" fill="#207448" />
+  <text x="800" y="868" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Find the step where the pod time goes before you tune anything.</text>
+</svg>

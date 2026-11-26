@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>The controller loop: compare desired with observed</title>
+  <desc>A circular loop of four stages drawn clockwise showing observe, compare, act, and write status, flanked by controller properties and a reconciliation example.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The controller loop: compare desired with observed</text>
+
+  
+  <rect x="50" y="150" width="375" height="740" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <rect x="70" y="175" width="335" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="95" cy="222" r="7" fill="#207448"/>
+  <text x="115" y="230" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Declarative input</text>
+
+  
+  <rect x="70" y="290" width="335" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="95" cy="337" r="7" fill="#207448"/>
+  <text x="115" y="345" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Level-triggered</text>
+
+  
+  <rect x="70" y="405" width="335" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="95" cy="465" r="7" fill="#207448"/>
+  <text x="115" y="452" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">Idempotent and</tspan>
+    <tspan x="115" dy="32">convergent</tspan>
+  </text>
+
+  
+  <rect x="70" y="545" width="335" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="95" cy="620" r="7" fill="#207448"/>
+  <text x="115" y="590" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">Single</tspan>
+    <tspan x="115" dy="32">responsibility,</tspan>
+    <tspan x="115" dy="32">loose coupling</tspan>
+  </text>
+
+  
+  <rect x="70" y="715" width="335" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="95" cy="782" r="7" fill="#207448"/>
+  <text x="115" y="768" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="115" dy="0">Self-healing and</tspan>
+    <tspan x="115" dy="32">drift correction</tspan>
+  </text>
+
+  
+  <rect x="1175" y="290" width="375" height="460" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+  
+  <rect x="1195" y="315" width="335" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1215" y="380" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Desired: 3 replicas.</text>
+
+  
+  <rect x="1195" y="455" width="335" height="115" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1215" y="520" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Observed: 2 Pods.</text>
+
+  
+  <rect x="1195" y="595" width="335" height="125" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1215" y="648" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="1215" dy="0">Action: create</tspan>
+    <tspan x="1215" dy="34">one Pod.</tspan>
+  </text>
+
+  
+  <rect x="465" y="150" width="310" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <circle cx="503" cy="188" r="24" fill="#207448"/>
+  <text x="503" y="196" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <path d="M 590 205 Q 620 180 650 205 Q 620 230 590 205 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <circle cx="620" cy="205" r="10" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="620" cy="205" r="4" fill="#207448"/>
+  <text x="620" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="620" dy="0">Observe the</tspan>
+    <tspan x="620" dy="40">current state</tspan>
+  </text>
+
+  
+  <rect x="845" y="150" width="310" height="330" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="6"/>
+  <circle cx="883" cy="188" r="24" fill="#207448"/>
+  <text x="883" y="196" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <line x1="1000" y1="180" x2="1000" y2="230" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="985" y1="230" x2="1015" y2="230" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="975" y1="188" x2="1025" y2="188" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="975" y1="188" x2="966" y2="208" stroke="#207448" stroke-width="2.5"/>
+  <line x1="975" y1="188" x2="984" y2="208" stroke="#207448" stroke-width="2.5"/>
+  <path d="M 962 208 Q 975 218 988 208 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1025" y1="188" x2="1016" y2="208" stroke="#207448" stroke-width="2.5"/>
+  <line x1="1025" y1="188" x2="1034" y2="208" stroke="#207448" stroke-width="2.5"/>
+  <path d="M 1012 208 Q 1025 218 1038 208 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="1000" cy="188" r="3.5" fill="#207448"/>
+  <text x="1000" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1000" dy="0">Compare with</tspan>
+    <tspan x="1000" dy="38">the desired</tspan>
+    <tspan x="1000" dy="38">state in spec</tspan>
+  </text>
+
+  
+  <rect x="845" y="560" width="310" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <circle cx="883" cy="598" r="24" fill="#207448"/>
+  <text x="883" y="606" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="7" stroke-linecap="round">
+    <line x1="1000" y1="588" x2="1000" y2="642"/>
+    <line x1="973" y1="615" x2="1027" y2="615"/>
+    <line x1="981" y1="596" x2="1019" y2="634"/>
+    <line x1="981" y1="634" x2="1019" y2="596"/>
+  </g>
+  <circle cx="1000" cy="615" r="21" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <circle cx="1000" cy="615" r="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+  <text x="1000" y="685" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1000" dy="0">Act on the</tspan>
+    <tspan x="1000" dy="38">difference,</tspan>
+    <tspan x="1000" dy="38">idempotently</tspan>
+  </text>
+
+  
+  <rect x="465" y="560" width="310" height="330" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <circle cx="503" cy="598" r="24" fill="#207448"/>
+  <text x="503" y="606" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <circle cx="620" cy="615" r="26" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="620" y1="615" x2="620" y2="597" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <line x1="620" y1="615" x2="634" y2="615" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="620" cy="615" r="3.5" fill="#207448"/>
+  <line x1="620" y1="591" x2="620" y2="595" stroke="#207448" stroke-width="2.5"/>
+  <line x1="644" y1="615" x2="640" y2="615" stroke="#207448" stroke-width="2.5"/>
+  <line x1="620" y1="639" x2="620" y2="635" stroke="#207448" stroke-width="2.5"/>
+  <line x1="596" y1="615" x2="600" y2="615" stroke="#207448" stroke-width="2.5"/>
+  <text x="620" y="675" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="620" dy="0">Write status</tspan>
+    <tspan x="620" dy="38">and wait for</tspan>
+    <tspan x="620" dy="38">the next event</tspan>
+    <tspan x="620" dy="38">or resync</tspan>
+  </text>
+
+  
+  
+  <line x1="775" y1="315" x2="845" y2="315" stroke="#207448" stroke-width="5" marker-end="url(#arrow)"/>
+  
+  <line x1="1000" y1="480" x2="1000" y2="560" stroke="#207448" stroke-width="5" marker-end="url(#arrow)"/>
+  
+  <line x1="845" y1="725" x2="775" y2="725" stroke="#207448" stroke-width="5" marker-end="url(#arrow)"/>
+  
+  <line x1="620" y1="560" x2="620" y2="480" stroke="#207448" stroke-width="5" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="940" width="1500" height="80" rx="12" fill="#207448"/>
+  <text x="800" y="990" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Level-triggered: a missed event is fixed on the next pass.</text>
+</svg>

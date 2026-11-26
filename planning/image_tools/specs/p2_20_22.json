@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p2-2022-three-layers",
+  "title": "Engine, server and orchestrator: place each tool on its layer",
+  "spec": "A vertical stack of three layers from top to bottom, drawn as bands with labels on the left. Top band 'Orchestrator: how many copies, where they run, how requests reach them' containing the chips 'Ray Serve LLM' and 'Kubernetes'. Middle band 'Server layer: wraps engines in an API, model repository, health and metrics' containing the chips 'vllm serve', 'trtllm-serve', 'Triton'. Bottom band 'Engine: runs the model on the GPU, batches requests, manages the KV cache' containing the chips 'vLLM', 'TensorRT-LLM', 'SGLang'. A GPU block at the very bottom labelled 'GPUs: weights and KV cache'. Arrows down the stack from client to orchestrator to server to engine to GPUs. Orange outline on the engine band with the note 'Triton is the older general server; the engines are built for LLMs'. Caption: 'Before you compare tools, place each one on its layer.'",
+  "anchor": "### 1. Four tools, three layers: engine, server, orchestrator",
+  "alt": "Four serving tools placed on three layers: orchestrators such as Ray Serve LLM and Kubernetes, servers such as Triton, and engines such as vLLM, TensorRT-LLM and SGLang.",
+  "cap": "Serving tools sit on three layers, with orchestrators such as Ray Serve LLM above servers such as Triton, which wrap engines such as vLLM."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p2-2022-parallelism-cost",
+  "title": "Four parallelism kinds, each with its cost",
+  "spec": "A table drawn as four rows of cards with columns 'Kind', 'What it splits', 'Use it when', 'Cost and risk'. Row 1 'Tensor (TP)': 'Each layer weights across GPUs'; 'Model too big for one GPU, or more cache per GPU'; 'Every layer synchronises, needs fast links such as NVLink'. Row 2 'Pipeline (PP)': 'Layers across GPUs or nodes'; 'Model too big for one node, or GPUs lack NVLink'; 'Latency penalty'. Row 3 'Data (DP)': 'Whole model replicated'; 'More throughput, not more size'; 'Full weights per copy, no latency gain for one request'. Row 4 'Expert (EP)': 'Experts of an MoE model'; 'Mixture-of-experts models'; 'Uses the TP degree, MoE layers shard over TP times DP'. Guide chips on rows 1 and 2: 'Set TP to GPUs per node' and 'Set PP to the number of nodes'. Orange outline on the Tensor row's cost cell 'Constant communication'. Bottom note: 'Read the cost column before the kind column.'",
+  "anchor": "### 5. Parallelism: tensor, pipeline, data and expert",
+  "alt": "Four parallelism kinds, tensor, pipeline, data and expert, each with what it splits, when to use it, and its cost.",
+  "cap": "Tensor, pipeline, data and expert parallelism each split work differently, and each trades memory, throughput or latency against communication cost."
+ }
+]

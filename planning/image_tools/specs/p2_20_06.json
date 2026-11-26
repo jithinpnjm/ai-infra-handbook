@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "p2-2006-half-split",
+  "title": "Half split: test the middle of the path first",
+  "spec": "A horizontal path of seven boxes left to right, each joined by a line: 'Application', 'Resolver', 'Pod network', 'Node', 'Fabric', 'Remote node', 'Remote service'. A bracket above the path marks the full path with the label 'Fault somewhere on this path'. A green test marker sits on the 'Node' box with a bold arrow labelled 'Test 1: can the node reach the destination IP?'. Two outcome branches below the path. Left branch, labelled 'Node reaches the IP': 'Fault is above the network layer: names, ports or the application', with a bracket covering the left half of the path. Right branch, labelled 'Node does not reach the IP': 'Fault is in the fabric or the remote node', with a bracket covering the right half. Orange outline on the test marker. Caption at the bottom: 'Each test removes about half the places a fault can hide.'",
+  "anchor": "### 2. The method: split the path in half",
+  "alt": "A network path from application to remote service, with one test at the middle node that sends the search to either the left or right half.",
+  "cap": "A half-split test at the node tells you whether the fault sits in the left half of the path or in the fabric and remote side."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "p2-2006-port-budget",
+  "title": "Ephemeral port budget under TIME_WAIT",
+  "spec": "A parking-lot picture on the left: a grid of 65,536 small spaces labelled 'Ephemeral port range' with rows of parked cars, each car labelled 'connection' and each space held for a 'TIME_WAIT: 60 seconds' timer. On the right, a calculation card drawn as three stacked rows: 'Ports: 65,536', 'TIME_WAIT hold: 60 seconds', and a result row 'Sustained safe rate: 65,536 / 60 = about 1,092 per second' with the result in an orange outline. A second smaller row below, in grey: 'Netflix range 10240 to 65535: 55,296 ports, about 922 per second'. Under the card a branch with two boxes: 'Many TIME_WAIT rows to one address and port: budget argument applies' and 'Rows spread across many destinations: budget is fine, look elsewhere'. Bottom note: 'TIME_WAIT is a safety state. The fix is to open fewer connections.'",
+  "anchor": "### 5. TIME_WAIT and ephemeral ports",
+  "alt": "The ephemeral port range as a parking lot where each closed connection holds its port for sixty seconds, giving a safe rate of about 1,092 connections per second.",
+  "cap": "The TIME_WAIT port budget: 65,536 ports held for 60 seconds gives a sustained safe rate of about 1,092 connections per second."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "p2-2006-mtu-tunnel",
+  "title": "A VXLAN tunnel quietly cuts the usable MTU",
+  "spec": "A row of three stacked bars, each bar representing a packet length to scale. Bar 1 labelled 'Underlay link MTU: 1,500 bytes'. Bar 2 labelled 'VXLAN adds 50 bytes' shown as a dark segment at the end of a 1,500 bar. Bar 3 labelled 'Pod MTU after tunnel: 1,450 bytes' shown shorter. Between bar 2 and bar 3 a red-outlined overflow stripe labelled 'Full-size 1,500 packet: dropped silently'. Right side: a small arithmetic card in monospace: 'IPv4 header 20, TCP header 20: largest TCP payload at 1,500 = 1,460', 'ICMP header 8: largest ping payload at 1,500 = 1,472'. Orange outline on the overflow stripe. A note under the bars: 'The handshake and health checks are small, so they still pass.'",
+  "anchor": "### 8. MTU and path MTU black holes",
+  "alt": "A 1,500-byte link with VXLAN taking 50 bytes leaves 1,450 bytes for the pod, so full-size packets are dropped without a message.",
+  "cap": "VXLAN takes 50 bytes from a 1,500-byte link, leaving 1,450 bytes for the pod, so full-size packets are silently dropped."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "06",
+  "name": "p2-2006-tls-layers",
+  "title": "Split the TCP result from the TLS result",
+  "spec": "Two stacked layers drawn as bands. Top band labelled 'TLS handshake: encryption, certificates, names' with the note 'Name checked with SNI'. Bottom band labelled 'TCP handshake: connect to host and port' with the note 'Socket can look perfectly healthy'. A decision flow on the left: step 1 'TCP connect succeeds' (green check). Step 2 'TLS handshake fails' (orange outline). Step 3 'Name the failing step' with a small outcome list in monospace: 'Verification error: hostname mismatch, return code 62', 'verify error:num=18:self-signed certificate, return code 18', 'connect:errno=111 (closed port, refused)'. Right side: a note 'Good handshake: New, TLSv1.3, Verification: OK'. Caption at the bottom: 'Separate the TCP result from the TLS result, then name the failing step.'",
+  "anchor": "### 10. TLS handshake failures",
+  "alt": "A TCP connect that succeeds followed by a failed TLS handshake, with the typical hostname mismatch, self-signed certificate and closed-port results.",
+  "cap": "A TCP connect that works while the TLS handshake fails points the search at the name or certificate, not the path or port."
+ }
+]

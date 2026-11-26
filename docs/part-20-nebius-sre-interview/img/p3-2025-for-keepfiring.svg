@@ -1,0 +1,123 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>for ignores blips and keep_firing_for stops flapping</title>
+  <desc>Timeline of gateway queue depth over time compared against alerting behavior with no for clause, for 5m, and keep_firing_for 3m.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">for ignores blips and keep_firing_for stops flapping</text>
+
+  
+  <g>
+    <rect x="50" y="126" width="1500" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="75" y="136" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="75" y1="152" x2="123" y2="152" stroke="#207448" stroke-width="2"/>
+    <circle cx="85" cy="144" r="3" fill="#207448"/>
+    <circle cx="95" cy="144" r="3" fill="#207448"/>
+    <circle cx="105" cy="144" r="3" fill="#207448"/>
+    <polyline points="85,170 93,163 85,156" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="98" y1="170" x2="114" y2="170" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    
+    <text x="145" y="170" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">alert QueueDeep: gateway_queue_depth &gt; 500, for 5m, keep_firing_for 3m, severity ticket</text>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="236" width="1500" height="220" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <rect x="75" y="252" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="83,285 93,270 103,280 115,260" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="83" y1="290" x2="115" y2="290" stroke="#207448" stroke-width="2"/>
+    
+    <text x="145" y="278" font-family="sans-serif">
+      <tspan font-size="30" font-weight="bold" fill="#207448">Timeline of gateway queue depth over time: </tspan>
+      <tspan x="145" dy="34" font-size="24" fill="#303a36">two short spikes, then a long plateau, then the queue drains</tspan>
+    </text>
+
+    
+    
+    <line x1="180" y1="375" x2="1480" y2="375" stroke="#207448" stroke-width="2" stroke-dasharray="8,6" opacity="0.6"/>
+    
+    <line x1="180" y1="425" x2="1480" y2="425" stroke="#303a36" stroke-width="2" opacity="0.4"/>
+    
+    <path d="M 180,425 L 280,425 Q 320,335 360,425 L 450,425 Q 490,335 530,425 L 620,425 Q 650,345 680,345 L 1150,345 Q 1195,345 1240,425 L 1480,425 Z" fill="#e8f1ea" opacity="0.8"/>
+    
+    <path d="M 180,425 L 280,425 Q 320,335 360,425 L 450,425 Q 490,335 530,425 L 620,425 Q 650,345 680,345 L 1150,345 Q 1195,345 1240,425 L 1480,425" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="496" width="1500" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 99,512 C 92,512 87,517 87,524 L 87,537 C 84,541 81,546 81,549 L 117,549 C 117,546 114,541 111,537 L 111,524 C 111,517 106,512 99,512 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="99" cy="554" r="3.5" fill="#207448"/>
+    
+    <text x="145" y="542" font-family="sans-serif">
+      <tspan font-size="30" font-weight="bold" fill="#207448">no for clause: </tspan>
+      <tspan font-size="24" fill="#303a36">becomes active on the first evaluation;</tspan>
+      <tspan x="145" dy="36" font-size="24" fill="#303a36">fires at the first spike (minute two); one noisy sample pages a person</tspan>
+    </text>
+    
+    <rect x="180" y="596" width="1300" height="20" rx="6" fill="#e8f1ea"/>
+    
+    <rect x="295" y="596" width="50" height="20" rx="4" fill="#207448"/>
+    
+    <rect x="465" y="596" width="50" height="20" rx="4" fill="#207448"/>
+    
+    <rect x="635" y="596" width="560" height="20" rx="4" fill="#207448"/>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="676" width="1500" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="99" cy="700" r="20" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="99,688 99,700 109,700" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="145" y="722" font-family="sans-serif">
+      <tspan font-size="30" font-weight="bold" fill="#207448">for: 5m: </tspan>
+      <tspan font-size="24" fill="#303a36">held in pending until active for the whole duration;</tspan>
+      <tspan x="145" dy="36" font-size="24" fill="#303a36">stays quiet through both spikes; fires during the plateau</tspan>
+    </text>
+    
+    <rect x="180" y="776" width="1300" height="20" rx="6" fill="#e8f1ea"/>
+    
+    <rect x="735" y="776" width="460" height="20" rx="4" fill="#207448"/>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="856" width="1500" height="140" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 99,874 L 115,881 L 115,897 C 115,908 99,915 99,915 C 99,915 83,908 83,897 L 83,881 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="91,893 96,898 107,887" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    
+    <text x="145" y="902" font-family="sans-serif">
+      <tspan font-size="30" font-weight="bold" fill="#207448">for: 5m plus keep_firing_for: 3m: </tspan>
+      <tspan font-size="24" fill="#303a36">keeps firing for three minutes after the queue drains,</tspan>
+      <tspan x="145" dy="36" font-size="24" fill="#303a36">preventing flapping and false resolutions caused by data gaps</tspan>
+    </text>
+    
+    <rect x="180" y="956" width="1300" height="20" rx="6" fill="#e8f1ea"/>
+    
+    <rect x="735" y="956" width="460" height="20" fill="#207448"/>
+    
+    <rect x="1195" y="956" width="120" height="20" rx="4" fill="#db8129"/>
+  </g>
+
+  
+  <g>
+    <rect x="50" y="1036" width="1500" height="100" rx="12" fill="#207448"/>
+    
+    <circle cx="99" cy="1076" r="14" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <line x1="93" y1="1094" x2="105" y2="1094" stroke="#ffffff" stroke-width="3"/>
+    <line x1="95" y1="1099" x2="103" y2="1099" stroke="#ffffff" stroke-width="2.5"/>
+    
+    <text x="145" y="1076" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="145" dy="0">a burn-rate alert from chapter 20.19 can skip for because its two windows already filter noise;</tspan>
+      <tspan x="145" dy="34">everything else should have one</tspan>
+    </text>
+  </g>
+</svg>

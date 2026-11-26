@@ -50,6 +50,10 @@ Keep this stack in mind when you read the rest of the chapter. Each tool you use
 
 ## 2. The `ip` command family
 
+![The first line of ip addr shows the UP and LOWER_UP flags, MTU, qdisc and state, and the address lines show the MAC, IPv4 address and lifetime.](./img/p2-0222-ip-addr-anatomy.svg)
+
+*Figure 2.22.2. The first line of ip addr shows whether the interface is enabled and has carrier, and the address lines show its MAC, address and lifetime.*
+
 Suppose a server has lost connectivity, and you need to see what the kernel thinks is configured. The `ip` command from the iproute2 package is where you start. It replaced `ifconfig`, `route`, `arp` and `netstat -r`. It talks to the kernel over netlink, which is the kernel's channel for configuration messages, and it handles IPv4, IPv6 and every virtual device type.
 
 The commands below cover the views you will use most. The `-br` flag prints one line per interface, `-c` adds colour, and `-j` prints JSON for scripts.
@@ -106,6 +110,10 @@ Manual configuration is useful for experiments and emergencies, but it is fragil
 
 ### `ethtool`: the hardware side
 
+![A table pairing hardware questions about link speed, driver, counters, rings, queues, offloads, pause frames and optics with the ethtool command, plus a worked case of low receive power on a dirty connector.](./img/p3-0222-ethtool-map.svg)
+
+*Figure 2.22.3. Each ethtool option answers one hardware question, and low receive power in ethtool -m points at a dirty connector rather than a switch setting.*
+
 Where `ip` shows the kernel's view, `ethtool` shows the NIC itself. Use it to check link speed, driver, ring buffers, queues, offloads and optics. A ring buffer is the queue of packet slots shared between the NIC and the driver, and an offload is a job, such as checksumming, that the NIC does so the CPU does not have to.
 
 ```bash
@@ -128,9 +136,17 @@ A cable that has been pulled, or a switch port that is down, shows `Link detecte
 
 ## 3. Persistent configuration: managers and files
 
+![A Netplan file annotated for a DHCP link, a static jumbo-MTU fabric NIC marked optional and a VLAN, with the equivalent nmcli and networkctl commands.](./img/p3-0222-netplan-read.svg)
+
+*Figure 2.22.4. One Netplan file can describe a DHCP link, a static fabric NIC with MTU 9000 and a VLAN, rendered by networkd or NetworkManager.*
+
+![A table of NetworkManager, systemd-networkd, Netplan, ifupdown and cloud-init with their files, the four step NetworkManager connection choice, and rules for safe interface changes.](./img/p3-0222-manager-rules.svg)
+
+*Figure 2.22.5. Choose one manager per interface and test changes with netplan try, which rolls back by itself if you lose the connection.*
+
 ![Network configuration managers](./img/n22-netmanagers.svg)
 
-*Figure 2.22.2. Netplan and cloud-init are front ends that render configuration for NetworkManager or systemd-networkd.*
+*Figure 2.22.6. Netplan and cloud-init are front ends that render configuration for NetworkManager or systemd-networkd.*
 
 Why not just run a boot script? Because networks change all the time. A laptop moves between wired, Wi-Fi and VPN. Servers get their addresses from DHCP. Clouds assign addresses and routes through metadata. Interfaces also appear and disappear through hotplug, containers and SR-IOV VFs. A configuration manager has to decide which interface to use. It brings up the physical layer and configures the IP layer, either static or DHCP/SLAAC. It lets users change connectivity without being root, and it decides what to do when connectivity is lost.
 
@@ -225,9 +241,13 @@ When an interface goes up or down, NetworkManager runs the scripts in `/etc/Netw
 
 ## 4. Sockets: how processes use the network
 
+![Three listener variants bound to all addresses, loopback only or one specific address, with the socket life cycle, the two kinds of server sockets and the socket types.](./img/p3-0222-bind-reach.svg)
+
+*Figure 2.22.7. The address a server binds to decides who can connect, and a server holds one listening socket plus one socket per client.*
+
 ![TCP server socket life cycle](./img/n22-socketlife.svg)
 
-*Figure 2.22.3. A server calls socket, bind and listen, then accept returns a new connected socket for each client.*
+*Figure 2.22.8. A server calls socket, bind and listen, then accept returns a new connected socket for each client.*
 
 Picture a web server handling thousands of clients at the same time, each with its own conversation. The server cannot hold every conversation in its head at once, and it cannot start a new server for every client. Sockets are the handles that let one process keep many conversations open together. The section explains how a server uses them, and what the kernel keeps for it.
 
@@ -242,6 +262,10 @@ Sockets are file descriptors. They show up in `/proc/<pid>/fd`, they are limited
 **Unix domain sockets** give you local communication through the socket API, with no network involved. They can be bound to a filesystem path, such as `/var/run/docker.sock`, `/run/dbus/system_bus_socket` or `/var/run/mysqld/mysqld.sock`. Ordinary file permissions then control who can connect, and the socket stays off the network. They also skip the IP stack, so they are faster than loopback TCP. Programs use them to pass file descriptors and credentials (`SCM_RIGHTS`, `SO_PEERCRED`). Access to `docker.sock` is equivalent to root, so protect it. `ss -xlp` and `lsof -U` list them.
 
 ### Inspecting sockets
+
+![On a listening socket Recv-Q counts connections waiting for accept and Send-Q is the queue capacity, while on a connected socket they count unread and unacknowledged bytes.](./img/p2-0222-recvq-sendq.svg)
+
+*Figure 2.22.9. On a listening socket Recv-Q counts waiting connections and Send-Q is the queue limit, while on a connected socket they count unread and unacknowledged bytes.*
 
 The commands below show listening ports, established connections, per-socket TCP internals and the Unix sockets on a host.
 
@@ -277,6 +301,10 @@ If you write network programs, the socket interface is the tool you must learn. 
 
 ### Unix domain sockets
 
+![Loopback TCP through the full network stack compared with a Unix domain socket at a file path controlled by file permissions, with how to read lsof -U output.](./img/p3-0222-unix-sockets.svg)
+
+*Figure 2.22.10. A Unix domain socket skips the network stack, is controlled by file permissions, and is listed with ss -xlp or lsof -U.*
+
 Two programs on one machine often need to talk. They could send data through the loopback addresses `127.0.0.1` or `::1`, but they usually use a Unix domain socket instead. It behaves almost like a network socket. A process can listen, accept connections, and even pick a TCP-like or UDP-like socket type.
 
 Keep one idea in mind: a Unix domain socket is not a network socket. No network stands behind it, so you do not need networking configured to use one. It also does not have to live at a file path. A process can create an unnamed Unix domain socket and share its address with another process.
@@ -304,6 +332,10 @@ Read the `NAME` column first. A path such as `/var/run/mysqld/mysqld.sock` names
 
 ### Who is using a port: `lsof -i`
 
+![Annotated lsof -i rows for rpcbind, avahi, cupsd, an SSH client and a web client connection, with the -n and -P options and related ss and lsof commands.](./img/p3-0222-lsof-read.svg)
+
+*Figure 2.22.11. lsof -i shows listeners and established connections per process, and -n -P keep it fast by skipping name lookups.*
+
 You have seen `lsof` track open files. It can also list the programs that use or listen on network ports. Run `sudo lsof -i` to see them all. As a regular user you see only your own processes, while as root you see the whole system:
 
 ```bash
@@ -323,11 +355,19 @@ By default, `lsof` tries to turn every IP address into a hostname, and that slow
 
 ## 5. Counters: where packets disappear
 
+![A timeline of reading a counter, waiting with the workload running, reading again and subtracting, with outcomes of old history or live drops, and the first pass script checks.](./img/p3-0222-delta-method.svg)
+
+*Figure 2.22.12. Read a counter twice with the workload running and subtract, because a large running total says nothing about drops happening now.*
+
+![A table mapping counter types such as CRC errors, dropped, softnet time_squeeze, TCP retransmits, ListenOverflows, pause counters and conntrack failures to the layer responsible and the fix.](./img/p3-0222-counter-types.svg)
+
+*Figure 2.22.13. Errors point at the physical layer, drops at a host that cannot keep up, softnet at softirq starvation, and ListenOverflows at a full accept queue.*
+
 Many network problems are packets that never arrived, or that arrived late. Nobody sees the packet vanish, so you need the evidence it leaves behind. Counters tell you which layer lost it. The diagram follows a received packet from the wire up to the application, and it marks where each layer records its drops.
 
 ![Counters: where packets disappear](./img/m2-22-2.svg)
 
-*Figure 2.22.4. Counters: where packets disappear, as a diagram.*
+*Figure 2.22.14. Counters: where packets disappear, as a diagram.*
 
 The table lists the tools that read those counters. Start with the tool closest to the symptom you see.
 
@@ -367,6 +407,10 @@ Run the script when you first reach a host, and compare its output with the coun
 
 ## 6. Performance methodology
 
+![Six analysis methods in order from performance monitoring and USE to static tuning, workload characterization, specific analyses and micro-benchmarks, with the tools method and its weakness.](./img/p3-0222-method-order.svg)
+
+*Figure 2.22.15. Follow a method, monitoring first, then USE, static tuning and workload characterization, so you know which numbers to read first.*
+
 Picture a colleague who opens every monitoring tool they know, reads a hundred numbers, and cannot say which one matters. The result is a long meeting and no fix. A method prevents that. It tells you which numbers to read first, and which question each number answers. This section describes the method the rest of the chapter depends on.
 
 Use a method, not random tool-running. Without one, you run every tool you know, collect a hundred numbers, and cannot tell which of them matter. A method tells you which numbers to read first. For network analysis, the recommended order is performance monitoring (a baseline over time), then the USE method, then static performance tuning, then workload characterization. Latency analysis, TCP analysis and packet sniffing answer specific questions. Micro-benchmarking then confirms your hypotheses.
@@ -377,6 +421,10 @@ The tools method walks through the available tools and looks at the key metric i
 
 ### USE method
 
+![The USE method of utilization, saturation and errors per interface and direction, with a PCIe Gen4 x16 slot at 252 Gb/s limiting a 400G NIC to about 63 percent versus Gen5 at 504 Gb/s.](./img/p3-0222-use-pcie.svg)
+
+*Figure 2.22.16. A PCIe Gen4 x16 slot delivers about 252 Gb/s, so a 400G NIC in it reaches only about 63 percent of line rate.*
+
 For each interface and each direction (RX and TX), check three things. The first is **utilization**: the busy fraction, which is throughput divided by the negotiated speed, counting all headers. With cloud caps, use the limit the cloud imposes. The second is **saturation**, which means queueing. Look at the qdisc backlog and drops, application threads blocked on send, TCP retransmits as a symptom, and NIC ring overruns. The third is **errors**. On RX, look for bad checksums and frames that are too short or too long. On TX, look for late collisions and carrier errors. Check errors first.
 
 Apply the same method to the NIC controller and the bus. Sum the port throughputs, and compare the total with the PCIe bandwidth. Here is a worked example. A PCIe Gen4 x16 slot delivers about 252 Gb/s usable. A single 400G NIC in that slot therefore reaches only about 63 percent of its line rate, because 252 divided by 400 is 0.63. A Gen5 x16 slot provides about 504 Gb/s, which is enough for a 400G port. Apply the method to the kernel stack too, covering softirq CPU, memory for socket buffers and the conntrack table.
@@ -386,6 +434,10 @@ Apply the same method to the NIC controller and the bus. Sum the port throughput
 Measure what the system is being asked to do before you judge how it performs. Track interface throughput in bytes per second for RX and TX, packet rates in frames per second, and TCP connection rates for active and passive opens. Also record average packet sizes, flows by protocol, port and peer, burstiness, and how all of these change over the time of day. Then ask some direct questions. Who are the top talkers? Is the traffic mostly small packets, which makes it packet-rate bound, or large packets, which makes it bandwidth bound? Is some of the traffic unnecessary, such as chatty protocols, repeated DNS lookups or uncached fetches? Removing unnecessary work is often the biggest win.
 
 ### Latency analysis
+
+![A request split into DNS lookup, path RTT, TCP handshake, first byte and per-request latency with the tool for each, expected rack, DC and cross-continent latencies and the rwnd_limited story.](./img/p3-0222-latency-split.svg)
+
+*Figure 2.22.17. Split a slow request into lookup, handshake and first-byte time, and find the part that grows before changing anything.*
 
 Picture a user who says that the internal app is slow, but only from one office. The team does not start by changing servers. They split the wait into parts. The name lookup is the first part, and a `dig` with statistics shows whether it takes too long. The handshake is the second, and the connection time from `curl -w` shows whether it is slow. The first-byte time is the third, and it shows whether the server is slow once the connection is open. Each part has its own cause, so the team learns which one grows before it changes anything.
 
@@ -399,11 +451,19 @@ Look at the TCP-specific behaviour. Check the send and receive buffer sizes and 
 
 ### Static performance tuning
 
+![Twenty identical servers with one slow outlier prompting a configuration comparison, and a throughput test ladder from a single stream to parallel streams and NUMA pinning.](./img/p3-0222-drift-bench.svg)
+
+*Figure 2.22.18. One odd node among identical ones is usually configuration drift, and a single versus parallel stream test shows whether the limit is per flow or per link.*
+
 Picture a rack of identical servers that run one job. Nineteen show the expected throughput, and one runs much slower on the same workload. The team does not start by profiling the job. They compare the configuration of the slow node with the others: the negotiated speed, the MTU, the offloads, the driver version. In most cases one line differs, and that line explains the whole gap. A systematic check across the fleet finds the difference in minutes, while a hunt for a mysterious cause can take days.
 
 Check the configuration for deviations from best practice before any load arrives. Look at the negotiated link speed, duplex and FEC. Confirm that the MTU is consistent end to end, that offloads are on, and that ring sizes and queue counts are right. Check IRQ affinity, the NUMA locality of the NIC and the GPU, interrupt coalescing, the qdisc, TCP buffer limits and congestion control. Also check `somaxconn` and the backlog, conntrack limits, firewall rule counts, routing correctness, bonding and LACP state, DNS configuration, the NIC firmware and driver versions, and the kernel version. Most real problems are configuration drift, such as one node with a 1 GbE negotiated link, a wrong MTU, a disabled offload or a different driver. One odd machine among a hundred identical ones is a configuration problem far more often than a mystery.
 
 ### Resource controls
+
+![Five places a bandwidth cap can sit, tc, cgroup v2 eBPF, Kubernetes annotations, cloud instance caps and SR-IOV or switch policing, all of which look like a slow network from inside a pod.](./img/p3-0222-bandwidth-caps.svg)
+
+*Figure 2.22.19. Bandwidth can be capped by tc, cgroups, Kubernetes annotations, the cloud or the NIC and switch, and each looks like a slow network.*
 
 Picture a pod that downloads model weights and takes the whole node's bandwidth. Other pods on the node slow down, and their health checks start to fail. The fix is to give the download pod a cap, so the others keep their share. Before blaming the network, the team checks which limit is in force. A cap set by the cloud, an SR-IOV rate, and a Kubernetes annotation each look like a slow network from inside the pod, so the question of which one applies comes first.
 
@@ -421,9 +481,13 @@ Pin the CPUs to the same NUMA node as the NIC, and run long enough to smooth out
 
 ### `ss -ti` fields
 
+![An ss -ti output line read in order, from established and cubic to rtt 0.31 ms, cwnd 10, delivery rate below pacing rate and the app_limited and small rwnd_limited share.](./img/p3-0222-ssti-story.svg)
+
+*Figure 2.22.20. A delivery rate well below the pacing rate with app_limited flagged means the application, not the network, is the limit.*
+
 ![Fields of ss -ti](./img/n22-ssti.svg)
 
-*Figure 2.22.5. Each ss -ti field describes one aspect of how a single connection is performing.*
+*Figure 2.22.21. Each ss -ti field describes one aspect of how a single connection is performing.*
 
 The output below comes from one established connection to `10.0.0.5:443`. Each field tells you something about how that connection is doing.
 
@@ -440,6 +504,10 @@ Read the example line from left to right, as one story. The connection is establ
 The field `rtt:avg/var` gives the round-trip time, and `cwnd` and `ssthresh` give the congestion window state. The `retrans:current/total` field counts retransmits. `delivery_rate` is what the connection actually achieves, and `pacing_rate` is what it aims for. The limiter times, `busy`, `rwnd_limited`, `sndbuf_limited` and `cwnd_limited`, are shown as percentages. `app_limited` means the application is not providing data fast enough. `reordering` and `minrtt` complete the picture.
 
 ### BCC and bpftrace tools
+
+![A table pairing questions such as which sessions exist, who connects where, which flows retransmit and why packets dropped with tcplife, tcpconnect, tcpretrans and tcpdrop, plus bpftrace one-liners.](./img/p3-0222-ebpf-by-question.svg)
+
+*Figure 2.22.22. BCC tools such as tcplife, tcpconnlat, tcpretrans and tcpdrop answer which process, how slow and why dropped, which counters cannot.*
 
 eBPF tools observe the kernel with low overhead. They run small, verified programs inside the kernel and report back, so you can watch events that no counter records. Install `bcc-tools` or `bpftrace`, run them as root, and use a kernel with BTF enabled for the CO-RE tools.
 
@@ -474,6 +542,14 @@ Capturing at full line rate is impractical on a fast network. Filter narrowly, a
 Pick the tool that matches the question, and keep the test repeatable.
 
 ## 8. Putting it together: a top-down and bottom-up checklist
+
+![A ten step bottom-up ladder from link up through speed, errors, rings, IRQ, qdisc, IP counters and TCP retransmits to whether the application reads its data, with how to choose the direction.](./img/p3-0222-bottom-up.svg)
+
+*Figure 2.22.23. Go top-down when the application reports the failure and bottom-up when counters are already rising, and both end at the same place.*
+
+![An eight-step top-down checklist moves from listening sockets and connection tests through DNS, routing, firewall, neighbour, interface health and packet capture to the wire.](./img/p2-0222-topdown-ladder.svg)
+
+*Figure 2.22.24. The top-down checklist moves from the listening socket and connection test through DNS, routing, firewall, neighbour and interface checks to a packet capture.*
 
 Work from the symptom inward. When a service is unreachable, you can start at the application and move down toward the wire. Or you can start at the hardware and move up toward the application. Both directions end at the same place, and the table at the end maps common symptoms to their first checks.
 

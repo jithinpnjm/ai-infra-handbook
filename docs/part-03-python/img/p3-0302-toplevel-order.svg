@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Top-level code runs in order, a def body runs only when called</title>
+  <desc>Visual infographic explaining Python top-level code execution order, forward references, and namespace state at import time.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="800" dy="0">Top-level code runs in order,</tspan>
+    <tspan x="800" dy="56">a def body runs only when called</tspan>
+  </text>
+
+  
+  <g id="rule-box">
+    <rect x="40" y="145" width="1520" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 185)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="46" height="56" rx="6"/>
+      <line x1="10" y1="16" x2="36" y2="16"/>
+      <line x1="10" y1="28" x2="36" y2="28"/>
+      <line x1="10" y1="40" x2="26" y2="40"/>
+    </g>
+    <text x="140" y="185" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">when Python first imports or reloads a module it runs top-level statements</tspan>
+      <tspan x="140" dy="34">from top to bottom, so top-level code cannot use names assigned lower down;</tspan>
+      <tspan x="140" dy="34">a def body can refer to a name defined later as long as it exists by the time of the call</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-column-header">
+    <rect x="1150" y="302" width="410" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1355" y="334" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">names assigned so far</text>
+  </g>
+
+  
+  <g id="step-1">
+    
+    <circle cx="75" cy="404" r="24" fill="#207448"/>
+    <text x="75" y="412" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(115, 376)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="8"/>
+      <line x1="28" y1="16" x2="28" y2="32"/>
+      <circle cx="28" cy="42" r="1.5" fill="#207448"/>
+    </g>
+
+    
+    <rect x="185" y="360" width="935" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="413" xml:space="preserve" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold">1 func1()</tspan>
+      <tspan font-family="sans-serif">  would raise NameError: func1 not yet assigned</tspan>
+    </text>
+
+    
+    <rect x="1150" y="360" width="410" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1355" y="413" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">none</text>
+  </g>
+
+  
+  <g id="step-2">
+    
+    <circle cx="75" cy="504" r="24" fill="#207448"/>
+    <text x="75" y="512" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(115, 476)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="8"/>
+      <polyline points="16,32 24,24 16,16"/>
+      <line x1="28" y1="36" x2="42" y2="36"/>
+    </g>
+
+    
+    <rect x="185" y="460" width="935" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="496" xml:space="preserve" font-size="24" fill="#303a36">
+      <tspan x="210" dy="0" font-family="monospace" font-weight="bold">2 def func1(): print(func2())</tspan>
+      <tspan x="210" dy="32" font-family="sans-serif">  binds the name func1; the body does not run</tspan>
+    </text>
+
+    
+    <rect x="1150" y="460" width="410" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1355" y="513" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">func1</text>
+  </g>
+
+  
+  <g id="step-3">
+    
+    <circle cx="75" cy="604" r="24" fill="#207448"/>
+    <text x="75" y="612" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(115, 576)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="8"/>
+      <circle cx="28" cy="28" r="16"/>
+      <line x1="28" y1="20" x2="28" y2="28"/>
+      <circle cx="28" cy="34" r="1.5" fill="#207448"/>
+    </g>
+
+    
+    <rect x="185" y="560" width="935" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="596" xml:space="preserve" font-size="24" fill="#303a36">
+      <tspan x="210" dy="0" font-family="monospace" font-weight="bold">3 func1() here </tspan>
+      <tspan x="210" dy="32" font-family="sans-serif">raises NameError: func2 not yet assigned when func1 runs</tspan>
+    </text>
+
+    
+    <rect x="1150" y="560" width="410" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1355" y="613" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">func1</text>
+  </g>
+
+  
+  <g id="step-4">
+    
+    <circle cx="75" cy="704" r="24" fill="#207448"/>
+    <text x="75" y="712" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+
+    
+    <g transform="translate(115, 676)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="8"/>
+      <polyline points="16,36 28,22 40,36"/>
+      <line x1="28" y1="24" x2="28" y2="44"/>
+    </g>
+
+    
+    <rect x="185" y="660" width="935" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="210" y="713" font-family="monospace" font-weight="bold" font-size="24" fill="#303a36">4 def func2(): return "Hello"</text>
+
+    
+    <rect x="1150" y="660" width="410" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1355" y="713" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">func1, func2</text>
+  </g>
+
+  
+  <g id="step-5">
+    
+    <circle cx="75" cy="804" r="24" fill="#db8129"/>
+    <text x="75" y="812" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+
+    
+    <g transform="translate(115, 776)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="0" y="0" width="56" height="56" rx="8"/>
+      <polyline points="14,28 24,38 42,18"/>
+    </g>
+
+    
+    <rect x="185" y="760" width="935" height="88" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    <text x="210" y="813" font-size="24" fill="#303a36">
+      <tspan font-family="monospace" font-weight="bold" fill="#db8129">5 func1() works:</tspan>
+      <tspan font-family="sans-serif" font-weight="bold" fill="#303a36"> both names assigned, prints Hello</tspan>
+    </text>
+
+    
+    <rect x="1150" y="760" width="410" height="88" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1355" y="813" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">func1, func2</text>
+  </g>
+
+  
+  <g id="extra-strip">
+    <rect x="40" y="870" width="1520" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(65, 935)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="28" cy="28" r="26"/>
+      <line x1="28" y1="12" x2="28" y2="28"/>
+      <line x1="28" y1="28" x2="40" y2="28"/>
+      <circle cx="28" cy="28" r="3" fill="#207448"/>
+    </g>
+    <text x="140" y="915" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">Keep import-time work small: no network calls, config file reads, thread starts</tspan>
+      <tspan x="140" dy="34">or heavy imports at the top of a module; in command-line tools move a heavy import</tspan>
+      <tspan x="140" dy="34">into the function that needs it; measure with python -X importtime; module with</tspan>
+      <tspan x="140" dy="34">print("util loaded") shows side effects at import time: avoid in libraries</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1080" width="1520" height="75" rx="10" fill="#207448"/>
+    <text x="800" y="1127" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">The name must exist by the time of the call, not by the time of the def</text>
+  </g>
+</svg>

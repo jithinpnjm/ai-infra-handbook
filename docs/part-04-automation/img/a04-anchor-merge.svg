@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>A merge key copies defaults, and a local key overrides them</title>
+  <desc>A YAML merge key copies default values into nodes, and local keys override the copied defaults.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A merge key copies defaults, and a local key overrides them</text>
+
+  
+  <g id="box-defaults">
+    <rect x="420" y="110" width="760" height="250" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    
+    <g transform="translate(450, 128)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 10 L 32 10 L 46 24 L 28 42 L 10 42 Z"/>
+      <circle cx="20" cy="20" r="4" fill="#207448"/>
+      <line x1="28" y1="42" x2="44" y2="48"/>
+    </g>
+
+    
+    <text x="525" y="167" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">defaults (anchor: node_defaults)</text>
+
+    
+    <rect x="450" y="205" width="700" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="480" y="243" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#303a36">gpus: 8</text>
+    <text x="480" y="281" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#303a36">os: ubuntu-22.04</text>
+    <text x="480" y="319" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#303a36">tags: [h100]</text>
+  </g>
+
+  
+  
+  <path d="M 590 360 V 425 H 580" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 8"/>
+  <path d="M 200 425 V 530" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="badge-arrow-1">
+    <rect x="200" y="395" width="380" height="60" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="240" cy="425" r="24" fill="#207448"/>
+    <text x="240" y="434" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    <text x="280" y="434" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#207448">&lt;&lt;: *node_defaults</text>
+  </g>
+
+  
+  <path d="M 1010 360 V 425 H 1020" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 8"/>
+  <path d="M 1400 425 V 530" fill="none" stroke="#207448" stroke-width="4" stroke-dasharray="10 8" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="badge-arrow-2">
+    <rect x="1020" y="395" width="380" height="60" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    <circle cx="1060" cy="425" r="24" fill="#207448"/>
+    <text x="1060" y="434" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    
+    <text x="1100" y="434" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#207448">&lt;&lt;: *node_defaults</text>
+  </g>
+
+  
+  <g id="box-gpu01">
+    <rect x="60" y="530" width="700" height="375" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(90, 550)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="18" rx="4"/>
+      <rect x="6" y="30" width="44" height="18" rx="4"/>
+      <circle cx="14" cy="17" r="2" fill="#207448"/>
+      <circle cx="14" cy="39" r="2" fill="#207448"/>
+      <line x1="24" y1="17" x2="42" y2="17"/>
+      <line x1="24" y1="39" x2="42" y2="39"/>
+    </g>
+
+    
+    <text x="165" y="590" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">gpu01</text>
+
+    
+    <rect x="90" y="625" width="640" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(115, 725)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <polyline points="18,28 26,36 38,18"/>
+    </g>
+
+    
+    <text x="195" y="690" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#207448">gpus: 8</text>
+    <text x="195" y="755" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#207448">os</text>
+    <text x="195" y="820" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#207448">tags</text>
+  </g>
+
+  
+  <g id="box-gpu02">
+    <rect x="840" y="530" width="700" height="375" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+    
+    <g transform="translate(870, 550)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="18" rx="4"/>
+      <rect x="6" y="30" width="44" height="18" rx="4"/>
+      <circle cx="14" cy="17" r="2" fill="#207448"/>
+      <circle cx="14" cy="39" r="2" fill="#207448"/>
+      <line x1="24" y1="17" x2="42" y2="17"/>
+      <line x1="24" y1="39" x2="42" y2="39"/>
+    </g>
+
+    
+    <text x="945" y="590" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">gpu02</text>
+
+    
+    <rect x="870" y="625" width="640" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="900" y="665" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#207448">os</text>
+    <text x="900" y="703" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#207448">tags</text>
+
+    
+    <rect x="870" y="740" width="640" height="140" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <text x="900" y="780" font-family="'SF Mono', 'Courier New', monospace" font-size="26" font-weight="bold" fill="#db8129">gpus: 4</text>
+    
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129"><tspan x="900" y="820">override wins, </tspan><tspan x="900" y="855">local key comes after the merge</tspan></text>
+  </g>
+
+  
+  <g id="note-under-gpu02">
+    <rect x="840" y="950" width="700" height="65" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1190" y="991" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">The other keys still come from the defaults.</text>
+  </g>
+</svg>

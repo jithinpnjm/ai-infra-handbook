@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>What happens when a cgroup exceeds its limits: throttled, killed or refused</title>
+  <desc>Visual explanation of Linux cgroup v2 resource limits: cpu.max throttling, memory.max OOM killer invocation, and pids.max fork failure, along with setup commands and tree rules.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 2 L 10 6 L 2 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1050" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">What happens when a cgroup exceeds its limits:</tspan>
+    <tspan x="800" dy="56">throttled, killed or refused</tspan>
+  </text>
+
+  
+
+  
+  <g>
+    <rect x="40" y="150" width="430" height="330" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(64, 168)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="50" height="42" rx="6" />
+      <path d="M 10 14 L 18 21 L 10 28" />
+      <line x1="24" y1="28" x2="38" y2="28" />
+    </g>
+    <text x="130" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Setup:</text>
+    <text x="64" y="248" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">mkdir demo;</tspan>
+      <tspan x="64" dy="36">echo +cpu +memory +pids</tspan>
+      <tspan x="64" dy="36">into</tspan>
+      <tspan x="64" dy="36">cgroup.subtree_control;</tspan>
+      <tspan x="64" dy="36">echo PID into</tspan>
+      <tspan x="64" dy="36">cgroup.procs</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="510" y="150" width="580" height="330" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(534, 168)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 4 10 L 18 10 L 24 16 L 46 16 A 4 4 0 0 1 50 20 L 50 42 A 4 4 0 0 1 46 46 L 4 46 A 4 4 0 0 1 0 42 L 0 14 A 4 4 0 0 1 4 10 Z" />
+      <line x1="16" y1="28" x2="34" y2="28" />
+      <line x1="25" y1="28" x2="25" y2="38" />
+    </g>
+    <text x="598" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">cgroup /sys/fs/cgroup/demo</text>
+
+    
+    <rect x="530" y="228" width="540" height="74" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="545" y="258" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">cpu.max = 50000 100000</text>
+    <text x="545" y="288" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(50 ms per 100 ms period = half a core)</text>
+
+    
+    <rect x="530" y="314" width="540" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="545" y="347" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">memory.max = 200M</text>
+
+    
+    <rect x="530" y="374" width="540" height="48" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="545" y="407" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">pids.max = 100</text>
+  </g>
+
+  
+  <g>
+    <rect x="1130" y="150" width="430" height="330" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1154, 168)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 25 4 L 46 11 L 46 25 C 46 38 25 48 25 48 C 25 48 4 38 4 25 L 4 11 Z" />
+      <path d="M 16 24 L 22 30 L 34 18" />
+    </g>
+    <text x="1220" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Rules:</text>
+    <text x="1154" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1154" dy="0">processes only in leaf</tspan>
+      <tspan x="1154" dy="32">cgroups;</tspan>
+      <tspan x="1154" dy="40">a child uses only controllers</tspan>
+      <tspan x="1154" dy="32">its parent enabled;</tspan>
+      <tspan x="1154" dy="40">one unified tree in v2</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 640 480 V 520 Q 640 530 630 530 H 290 Q 280 530 280 540 V 580" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 800 480 V 580" fill="none" stroke="#db8129" stroke-width="4.5" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 960 480 V 520 Q 960 530 970 530 H 1310 Q 1320 530 1320 540 V 580" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+
+  
+  <g>
+    <rect x="40" y="580" width="480" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(64, 600)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="30" height="30" rx="4" />
+      <line x1="18" y1="2" x2="18" y2="10" />
+      <line x1="32" y1="2" x2="32" y2="10" />
+      <line x1="18" y1="40" x2="18" y2="48" />
+      <line x1="32" y1="40" x2="32" y2="48" />
+      <line x1="2" y1="18" x2="10" y2="18" />
+      <line x1="2" y1="32" x2="10" y2="32" />
+      <line x1="40" y1="18" x2="48" y2="18" />
+      <line x1="40" y1="32" x2="48" y2="32" />
+      <line x1="21" y1="18" x2="21" y2="32" stroke-width="4" />
+      <line x1="29" y1="18" x2="29" y2="32" stroke-width="4" />
+    </g>
+    <text x="130" y="626" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Over cpu.max:</text>
+    <text x="130" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">THROTTLED,</text>
+    <text x="64" y="704" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">paused until the next period;</tspan>
+      <tspan x="64" dy="35">shows as nr_throttled and</tspan>
+      <tspan x="64" dy="35">throttled_usec in cpu.stat;</tspan>
+      <tspan x="64" dy="35">latency spikes in containers</tspan>
+      <tspan x="64" dy="35">with small CPU limits</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="560" y="580" width="480" height="320" rx="12" fill="#fffcf7" stroke="#db8129" stroke-width="3.5" />
+    
+    <g transform="translate(584, 600)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="10" width="42" height="30" rx="4" />
+      <line x1="12" y1="34" x2="12" y2="40" />
+      <line x1="20" y1="34" x2="20" y2="40" />
+      <line x1="28" y1="34" x2="28" y2="40" />
+      <line x1="36" y1="34" x2="36" y2="40" />
+      <path d="M 25 14 L 37 30 L 13 30 Z" />
+      <line x1="25" y1="20" x2="25" y2="24" stroke-width="3" />
+      <circle cx="25" cy="27" r="1" fill="#db8129" />
+    </g>
+    <text x="650" y="626" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#db8129">Over memory.max</text>
+    <text x="650" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">and cannot reclaim:</text>
+    <text x="584" y="704" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="584" dy="0">cgroup OOM killer kills a</tspan>
+      <tspan x="584" dy="35">process inside the group;</tspan>
+      <tspan x="584" dy="35">oom_kill count in</tspan>
+      <tspan x="584" dy="35">memory.events;</tspan>
+      <tspan x="584" dy="35" font-weight="bold" fill="#db8129">container exit code 137</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1080" y="580" width="480" height="320" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(1104, 600)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="25" r="6" />
+      <path d="M 18 25 L 30 25 L 38 15" />
+      <circle cx="44" cy="15" r="5" />
+      <path d="M 30 25 L 38 35" />
+      <circle cx="44" cy="35" r="5" />
+      <line x1="39" y1="30" x2="49" y2="40" stroke="#207448" stroke-width="3.5" />
+    </g>
+    <text x="1170" y="635" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Over pids.max:</text>
+
+    
+    <rect x="1104" y="690" width="432" height="110" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1320" y="756" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="34" font-weight="bold" fill="#207448">fork() fails</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="940" width="1520" height="74" rx="12" fill="#207448" />
+    <text x="800" y="986" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Before you cap a workload, check which cgroup it actually runs in</text>
+  </g>
+</svg>

@@ -1,0 +1,239 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>group_by versus add_host: two ways to change the inventory during a run</title>
+  <desc>Visual comparison between group_by for existing inventory hosts and add_host for dynamically discovered or created hosts in Ansible.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">group_by versus add_host:</tspan>
+    <tspan x="800" dy="54">two ways to change the inventory during a run</tspan>
+  </text>
+
+  
+  <g id="top-strip">
+    <rect x="40" y="145" width="1520" height="76" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 157)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 18 A 16 16 0 1 0 42 32"/>
+      <polyline points="38 10 38 19 47 19"/>
+    </g>
+    <text x="125" y="177" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="125" dy="0">both change only the current run;</tspan>
+      <tspan x="125" dy="30">to re-read inventory sources partway through a run use meta: refresh_inventory</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-group-by">
+    <rect x="40" y="245" width="720" height="860" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="40" y="245" width="720" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(60, 260)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+      <rect x="4" y="6" width="38" height="12" rx="3"/>
+      <rect x="4" y="22" width="38" height="12" rx="3"/>
+      <circle cx="12" cy="12" r="1.5" fill="#207448"/>
+      <circle cx="12" cy="28" r="1.5" fill="#207448"/>
+      <line x1="28" y1="12" x2="36" y2="12"/>
+      <line x1="28" y1="28" x2="36" y2="28"/>
+    </g>
+    <text x="125" y="298" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">group_by: for hosts that already exist</text>
+
+    
+    <rect x="65" y="350" width="670" height="82" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+    
+    <g transform="translate(82, 364)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="8" cy="12" r="4"/>
+      <circle cx="36" cy="10" r="4"/>
+      <circle cx="36" cy="38" r="4"/>
+      <path d="M 8 16 v 16 c 0 6 6 10 12 10 h 12"/>
+      <path d="M 12 16 c 6 0 12 -4 12 -6 h 8"/>
+    </g>
+    <text x="140" y="383" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">branch plays on facts such</tspan>
+      <tspan x="140" dy="30">as OS family or GPU model</tspan>
+    </text>
+
+    
+    <rect x="65" y="450" width="670" height="355" rx="8" fill="#fdfdfd" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="98" cy="482" r="22" fill="#207448"/>
+    <text x="98" y="490" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <text x="132" y="492" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">play 1</text>
+    
+    
+    <g transform="translate(670, 462)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <rect x="8" y="8" width="28" height="28" rx="4"/>
+      <rect x="15" y="15" width="14" height="14"/>
+      <line x1="14" y1="2" x2="14" y2="8"/>
+      <line x1="22" y1="2" x2="22" y2="8"/>
+      <line x1="30" y1="2" x2="30" y2="8"/>
+      <line x1="14" y1="36" x2="14" y2="42"/>
+      <line x1="22" y1="36" x2="22" y2="42"/>
+      <line x1="30" y1="36" x2="30" y2="42"/>
+      <line x1="2" y1="14" x2="8" y2="14"/>
+      <line x1="2" y1="22" x2="8" y2="22"/>
+      <line x1="2" y1="30" x2="8" y2="30"/>
+      <line x1="36" y1="14" x2="42" y2="14"/>
+      <line x1="36" y1="22" x2="42" y2="22"/>
+      <line x1="36" y1="30" x2="42" y2="30"/>
+    </g>
+
+    
+    <rect x="85" y="515" width="630" height="152" rx="6" fill="#f0f4f1" stroke="#cbdcd0" stroke-width="1"/>
+    <text x="100" y="542" font-family="monospace" font-size="24" fill="#207448">
+      <tspan x="100" dy="0">hosts: all, gather_facts true;</tspan>
+      <tspan x="100" dy="28">group_by key "gpu_model_{{ gpu_model |</tspan>
+      <tspan x="100" dy="28">default(none) | lower |</tspan>
+      <tspan x="100" dy="28">replace(space, underscore) }}"</tspan>
+      <tspan x="100" dy="28">parents gpu_by_model</tspan>
+    </text>
+
+    
+    <text x="85" y="698" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">computes the group name per host, lowercase</tspan>
+      <tspan x="85" dy="27">and underscores: a host with an H100 model</tspan>
+      <tspan x="85" dy="27">lands in gpu_model_h100 and a host with</tspan>
+      <tspan x="85" dy="27">no model lands in gpu_model_none</tspan>
+    </text>
+
+    
+    <line x1="400" y1="805" x2="400" y2="838" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <rect x="65" y="845" width="670" height="235" rx="8" fill="#fdfdfd" stroke="#207448" stroke-width="2"/>
+    
+    
+    <circle cx="98" cy="877" r="22" fill="#207448"/>
+    <text x="98" y="885" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <text x="132" y="887" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">play 2</text>
+    
+    
+    <g transform="translate(670, 858)" stroke="#207448" stroke-width="2.5" fill="none" stroke-linecap="round">
+      <circle cx="22" cy="22" r="8"/>
+      <path d="M 22 6 v 4 M 22 34 v 4 M 6 22 h 4 M 34 22 h 4 M 11 11 l 3 3 M 30 30 l 3 3 M 11 33 l 3 -3 M 30 14 l 3 -3"/>
+    </g>
+
+    
+    <rect x="85" y="910" width="630" height="52" rx="6" fill="#f0f4f1" stroke="#cbdcd0" stroke-width="1"/>
+    <text x="100" y="945" font-family="monospace" font-size="24" fill="#207448">hosts: gpu_model_h100</text>
+
+    
+    <text x="85" y="995" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="85" dy="0">reads that group by name</tspan>
+      <tspan x="85" dy="30">and runs debug H100 here</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-add-host">
+    <rect x="840" y="245" width="720" height="860" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+    
+    
+    <rect x="840" y="245" width="720" height="85" rx="12" fill="#fbf2e9" stroke="#db8129" stroke-width="2"/>
+    
+    <g transform="translate(860, 260)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round">
+      <rect x="4" y="6" width="36" height="14" rx="3"/>
+      <circle cx="12" cy="13" r="1.5" fill="#db8129"/>
+      <line x1="24" y1="13" x2="32" y2="13"/>
+      <path d="M 18 32 h 12 M 24 26 v 12"/>
+    </g>
+    <text x="925" y="298" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">add_host: for hosts that are new</text>
+
+    
+    <rect x="865" y="350" width="670" height="152" rx="8" fill="#fbf2e9" stroke="#db8129" stroke-width="1.5" stroke-dasharray="4 4"/>
+    
+    <g transform="translate(882, 365)" stroke="#db8129" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="36" height="40" rx="2"/>
+      <line x1="10" y1="14" x2="34" y2="14"/>
+      <line x1="10" y1="22" x2="28" y2="22"/>
+      <line x1="10" y1="30" x2="22" y2="30"/>
+    </g>
+    <text x="935" y="380" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="935" dy="0">a cloud job creates three new VMs mid-play;</tspan>
+      <tspan x="935" dy="28">the inventory was read at the start, so it does</tspan>
+      <tspan x="935" dy="28">not know about them; sticky notes added to a</tspan>
+      <tspan x="935" dy="28">whiteboard during a meeting</tspan>
+    </text>
+
+    
+    <rect x="865" y="525" width="670" height="555" rx="8" fill="#fdfdfd" stroke="#db8129" stroke-width="2"/>
+    
+    
+    <circle cx="898" cy="557" r="22" fill="#db8129"/>
+    <text x="898" y="565" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <text x="932" y="567" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">play 3</text>
+    
+    
+    <g transform="translate(1470, 537)" stroke="#db8129" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 32 a 10 10 0 0 1 0 -18 a 14 14 0 0 1 24 -2 a 11 11 0 0 1 8 10 a 9 9 0 0 1 -4 10 z"/>
+      <line x1="24" y1="18" x2="24" y2="28"/>
+      <line x1="19" y1="23" x2="29" y2="23"/>
+    </g>
+
+    
+    <rect x="885" y="595" width="630" height="152" rx="6" fill="#fdf6ef" stroke="#edd3be" stroke-width="1"/>
+    <text x="900" y="625" font-family="monospace" font-size="24" fill="#db8129">
+      <tspan x="900" dy="0">hosts: localhost;</tspan>
+      <tspan x="900" dy="30">add_host name "{{ new_vm_ip }}"</tspan>
+      <tspan x="900" dy="30">groups new_nodes</tspan>
+      <tspan x="900" dy="30">ansible_user automation</tspan>
+    </text>
+
+    
+    <text x="885" y="785" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="885" dy="0">does not contact the new machine, it only</tspan>
+      <tspan x="885" dy="30">records the name, the group and the user</tspan>
+      <tspan x="885" dy="30">in memory so a later play can reach it</tspan>
+    </text>
+
+    
+    <g transform="translate(885, 895)">
+      <rect x="0" y="0" width="630" height="160" rx="6" fill="#fbf2e9" stroke="#db8129" stroke-width="1.5"/>
+      
+      <g transform="translate(25, 45)" stroke="#db8129" stroke-width="2.5" fill="none" stroke-linecap="round">
+        <rect x="0" y="0" width="130" height="70" rx="4"/>
+        <rect x="15" y="15" width="22" height="26" fill="#edd3be"/>
+        <rect x="52" y="15" width="22" height="26" fill="#edd3be"/>
+        <rect x="89" y="15" width="22" height="26" fill="#edd3be"/>
+        <line x1="10" y1="70" x2="10" y2="76"/>
+        <line x1="25" y1="70" x2="25" y2="76"/>
+        <line x1="40" y1="70" x2="40" y2="76"/>
+        <line x1="55" y1="70" x2="55" y2="76"/>
+        <line x1="70" y1="70" x2="70" y2="76"/>
+        <line x1="85" y1="70" x2="85" y2="76"/>
+        <line x1="100" y1="70" x2="100" y2="76"/>
+        <line x1="115" y1="70" x2="115" y2="76"/>
+      </g>
+      
+      <line x1="180" y1="80" x2="380" y2="80" stroke="#db8129" stroke-width="2.5" stroke-dasharray="6 6"/>
+      <circle cx="280" cy="80" r="14" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+      <line x1="272" y1="72" x2="288" y2="88" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+      <line x1="288" y1="72" x2="272" y2="88" stroke="#db8129" stroke-width="2.5" stroke-linecap="round"/>
+      
+      <g transform="translate(415, 35)" stroke="#db8129" stroke-width="2.5" fill="none" stroke-linecap="round">
+        <rect x="0" y="0" width="170" height="90" rx="6" fill="#ffffff"/>
+        <line x1="15" y1="25" x2="155" y2="25"/>
+        <circle cx="30" cy="13" r="3" fill="#db8129"/>
+        <circle cx="45" cy="13" r="3" fill="#db8129"/>
+        <rect x="15" y="42" width="140" height="35" rx="3" fill="#fdf6ef"/>
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1125" width="1520" height="52" rx="8" fill="#207448"/>
+    <text x="800" y="1160" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">group_by for existing hosts, add_host for new ones</text>
+  </g>
+</svg>

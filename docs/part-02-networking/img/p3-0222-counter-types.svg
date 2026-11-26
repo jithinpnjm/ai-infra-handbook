@@ -1,0 +1,293 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a counter by its type: which layer lost the packet and what to try</title>
+  <desc>A diagnostic infographic mapping network error counter types to the failure layer and corresponding fixes.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">
+    <tspan x="40" dy="0">Reading a counter by its type:</tspan>
+    <tspan x="40" dy="54" fill="#303a36">which layer lost the packet and what to try</tspan>
+  </text>
+
+  
+  <rect x="30" y="135" width="290" height="916" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(151, 155)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 6a14 14 0 0 0-14 14c0 3 .8 5.8 2.3 8.2L2.5 42a3 3 0 0 0 4.2 4.2l13.8-13.8c2.4 1.5 5.2 2.3 8.2 2.3a14 14 0 0 0 14-14c0-3-.8-5.8-2.3-8.2L35 18l-5-5 5.5-5.5A13.9 13.9 0 0 0 28 6z"/>
+    <circle cx="28" cy="20" r="3" fill="#207448"/>
+  </g>
+
+  
+  <text x="48" y="235" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="48" dy="0" font-weight="bold" fill="#207448">tool closest</tspan>
+    <tspan x="48" dy="28" font-weight="bold" fill="#207448">to the symptom:</tspan>
+    <tspan x="48" dy="34" font-family="ui-monospace, monospace">ip -s link,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">ethtool -S,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">nstat -az,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">netstat -s,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">/proc/net/dev,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">softnet_stat,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">/proc/net/snmp</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">and netstat,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">sar -n DEV,EDEV,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">TCP,ETCP,SOCK 1,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">nicstat 1</tspan>
+    <tspan x="48" dy="28">(utilisation</tspan>
+    <tspan x="48" dy="28">and saturation),</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">tc -s,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">conntrack -S,</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">/sys/class/net/</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">eth0/</tspan>
+    <tspan x="48" dy="28" font-family="ui-monospace, monospace">statistics/*</tspan>
+  </text>
+
+  
+
+  
+  <g transform="translate(340, 135)">
+    <rect x="0" y="0" width="1230" height="126" rx="8" fill="#ffffff" stroke="#c8d9cc" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 38)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="10" width="22" height="28" rx="3"/>
+      <line x1="18" y1="2" x2="18" y2="10"/>
+      <line x1="28" y1="2" x2="28" y2="10"/>
+      <path d="M23 38 v10 c0 4-4 6-8 6 H4"/>
+    </g>
+    
+    <rect x="65" y="8" width="375" height="110" rx="6" fill="#e8f1ea"/>
+    <text x="82" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="82" dy="0" font-weight="bold">Errors labelled CRC,</tspan>
+      <tspan x="82" dy="26" font-weight="bold">frame or length</tspan>
+      <tspan x="82" dy="26" font-family="ui-monospace, monospace">(ip -s link, ethtool -S</tspan>
+      <tspan x="82" dy="24" font-family="ui-monospace, monospace">rx_crc_errors)</tspan>
+    </text>
+    
+    <rect x="450" y="8" width="320" height="110" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="35" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="466" dy="0">physical layer:</tspan>
+      <tspan x="466" dy="26">cable, optics, FEC,</tspan>
+      <tspan x="466" dy="26">speed or duplex</tspan>
+      <tspan x="466" dy="26">mismatch</tspan>
+    </text>
+    
+    <rect x="780" y="8" width="440" height="110" rx="6" fill="#e8f1ea"/>
+    <text x="798" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="798" dy="0">swap or clean the</tspan>
+      <tspan x="798" dy="28">cable or optic,</tspan>
+      <tspan x="798" dy="28">check FEC and speed</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(340, 269)">
+    <rect x="0" y="0" width="1230" height="146" rx="8" fill="#ffffff" stroke="#c8d9cc" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 48)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="28" height="28" rx="2"/>
+      <line x1="16" y1="4" x2="16" y2="10"/><line x1="24" y1="4" x2="24" y2="10"/><line x1="32" y1="4" x2="32" y2="10"/>
+      <line x1="16" y1="38" x2="16" y2="44"/><line x1="24" y1="38" x2="24" y2="44"/><line x1="32" y1="38" x2="32" y2="44"/>
+      <line x1="4" y1="16" x2="10" y2="16"/><line x1="4" y1="24" x2="10" y2="24"/><line x1="4" y1="32" x2="10" y2="32"/>
+      <line x1="38" y1="16" x2="44" y2="16"/><line x1="38" y1="24" x2="44" y2="24"/><line x1="38" y1="32" x2="44" y2="32"/>
+    </g>
+    
+    <rect x="65" y="8" width="375" height="130" rx="6" fill="#e8f1ea"/>
+    <text x="82" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="82" dy="0" font-weight="bold">Dropped, missed,</tspan>
+      <tspan x="82" dy="28" font-weight="bold">no_buffer</tspan>
+      <tspan x="82" dy="28" font-family="ui-monospace, monospace">(rx_missed_errors,</tspan>
+      <tspan x="82" dy="26" font-family="ui-monospace, monospace">rx_no_buffer)</tspan>
+    </text>
+    
+    <rect x="450" y="8" width="320" height="130" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="466" dy="0">the host could</tspan>
+      <tspan x="466" dy="30">not keep up</tspan>
+    </text>
+    
+    <rect x="780" y="8" width="440" height="130" rx="6" fill="#e8f1ea"/>
+    <text x="798" y="34" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="798" dy="0">larger rings,</tspan>
+      <tspan x="798" dy="24">more RSS queues,</tspan>
+      <tspan x="798" dy="24">correct IRQ affinity,</tspan>
+      <tspan x="798" dy="24">lower per-packet cost,</tspan>
+      <tspan x="798" dy="24">more CPU, or XDP</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(340, 423)">
+    <rect x="0" y="0" width="1230" height="126" rx="8" fill="#ffffff" stroke="#c8d9cc" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 38)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="18"/>
+      <polyline points="24 14 24 24 32 28"/>
+    </g>
+    
+    <rect x="65" y="8" width="375" height="110" rx="6" fill="#e8f1ea"/>
+    <text x="82" y="34" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="82" dy="0" font-weight="bold">Softnet dropped and</tspan>
+      <tspan x="82" dy="26" font-weight="bold">time_squeeze</tspan>
+      <tspan x="82" dy="26" font-family="ui-monospace, monospace">(/proc/net/softnet_stat</tspan>
+      <tspan x="82" dy="24">columns 2 and 3)</tspan>
+    </text>
+    
+    <rect x="450" y="8" width="320" height="110" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="66" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="466" dy="0">softirq starvation</tspan>
+    </text>
+    
+    <rect x="780" y="8" width="440" height="110" rx="6" fill="#e8f1ea"/>
+    <text x="798" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="798" dy="0">tune</tspan>
+      <tspan x="798" dy="26" font-family="ui-monospace, monospace">net.core.netdev_budget</tspan>
+      <tspan x="798" dy="26" font-family="ui-monospace, monospace">and netdev_max_backlog,</tspan>
+      <tspan x="798" dy="26">or RPS and RFS</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(340, 557)">
+    <rect x="0" y="0" width="1230" height="126" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+    
+    <g transform="translate(18, 38)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="12" cy="34" r="6"/>
+      <circle cx="36" cy="34" r="6"/>
+      <circle cx="24" cy="14" r="6"/>
+      <line x1="16" y1="29" x2="20" y2="19"/>
+      <line x1="28" y1="19" x2="32" y2="29"/>
+      <line x1="18" y1="34" x2="30" y2="34" stroke-dasharray="2 3"/>
+    </g>
+    
+    <rect x="65" y="8" width="375" height="110" rx="6" fill="#fff5ec" stroke="#db8129" stroke-width="1"/>
+    <text x="82" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="82" dy="0" font-weight="bold">TCP retransmits</tspan>
+      <tspan x="82" dy="32" font-family="ui-monospace, monospace">(TcpRetransSegs)</tspan>
+    </text>
+    
+    <rect x="450" y="8" width="320" height="110" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="466" dy="0">loss somewhere</tspan>
+      <tspan x="466" dy="28">on the path</tspan>
+    </text>
+    
+    <rect x="780" y="8" width="440" height="110" rx="6" fill="#e8f1ea"/>
+    <text x="798" y="34" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="798" dy="0">compare with a baseline:</tspan>
+      <tspan x="798" dy="26">Internet-facing flows</tspan>
+      <tspan x="798" dy="26">retransmit more than</tspan>
+      <tspan x="798" dy="26">rack-local ones</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(340, 691)">
+    <rect x="0" y="0" width="1230" height="56" rx="8" fill="#ffffff" stroke="#c8d9cc" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 12)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="6" width="32" height="8" rx="2"/>
+      <rect x="8" y="18" width="32" height="8" rx="2"/>
+    </g>
+    
+    <rect x="65" y="6" width="375" height="44" rx="6" fill="#e8f1ea"/>
+    <text x="82" y="36" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      ListenOverflows
+    </text>
+    
+    <rect x="450" y="6" width="770" height="44" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      accept queue full
+    </text>
+  </g>
+
+  
+  <g transform="translate(340, 755)">
+    <rect x="0" y="0" width="1230" height="56" rx="8" fill="#ffffff" stroke="#c8d9cc" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 12)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 10 C8 6, 40 6, 40 10 L40 22 C40 26, 8 26, 8 22 Z"/>
+      <path d="M8 16 C8 20, 40 20, 40 16"/>
+      <path d="M8 22 C8 26, 40 26, 40 22"/>
+    </g>
+    
+    <rect x="65" y="6" width="375" height="44" rx="6" fill="#e8f1ea"/>
+    <text x="82" y="36" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      UdpRcvbufErrors
+    </text>
+    
+    <rect x="450" y="6" width="770" height="44" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      socket buffers overflowed
+    </text>
+  </g>
+
+  
+  <g transform="translate(340, 819)">
+    <rect x="0" y="0" width="1230" height="56" rx="8" fill="#ffffff" stroke="#c8d9cc" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 12)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="8" width="8" height="18" rx="2"/>
+      <rect x="28" y="8" width="8" height="18" rx="2"/>
+    </g>
+    
+    <rect x="65" y="6" width="375" height="44" rx="6" fill="#e8f1ea"/>
+    <text x="82" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      Pause and PFC counters
+    </text>
+    
+    <rect x="450" y="6" width="770" height="44" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      backpressure (chapter 2.19)
+    </text>
+  </g>
+
+  
+  <g transform="translate(340, 883)">
+    <rect x="0" y="0" width="1230" height="68" rx="8" fill="#ffffff" stroke="#c8d9cc" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 14)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="8 8 40 8 28 22 28 34 20 34 20 22 8 8"/>
+    </g>
+    
+    <rect x="65" y="6" width="375" height="56" rx="6" fill="#e8f1ea"/>
+    <text x="82" y="30" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="82" dy="0">tc -s qdisc drops</tspan>
+      <tspan x="82" dy="24" font-family="system-ui, -apple-system, sans-serif" font-weight="normal">and requeues</tspan>
+    </text>
+    
+    <rect x="450" y="6" width="770" height="56" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="41" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      egress queue saturation
+    </text>
+  </g>
+
+  
+  <g transform="translate(340, 959)">
+    <rect x="0" y="0" width="1230" height="92" rx="8" fill="#ffffff" stroke="#c8d9cc" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 22)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M24 6 L10 12 v12 c0 10 14 16 14 16 s14-6 14-16 V12 Z"/>
+      <line x1="24" y1="16" x2="24" y2="28"/>
+      <line x1="18" y1="22" x2="30" y2="22"/>
+    </g>
+    
+    <rect x="65" y="6" width="375" height="80" rx="6" fill="#e8f1ea"/>
+    <text x="82" y="30" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="82" dy="0">conntrack -S</tspan>
+      <tspan x="82" dy="24">insert_failed, drop,</tspan>
+      <tspan x="82" dy="24" font-family="system-ui, -apple-system, sans-serif" font-weight="normal">table full in dmesg</tspan>
+    </text>
+    
+    <rect x="450" y="6" width="770" height="80" rx="6" fill="#f0f5f1"/>
+    <text x="466" y="52" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      connection tracking failure
+    </text>
+  </g>
+
+  
+  <rect x="30" y="1080" width="1540" height="65" rx="8" fill="#207448"/>
+  <text x="800" y="1122" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+    The label on the counter tells you which layer to look at
+  </text>
+</svg>

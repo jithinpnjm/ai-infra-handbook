@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900">
+  <title>CPU throttling from cgroup limits in containers</title>
+  <desc>Sequence diagram with two participants: 5 busy threads and a CFS quota of 100 ms per 100 ms. The threads ask the quota to run all 5 at once, the quota is used up from 0 to 20 ms, the threads are throttled, nothing runs from 20 to 100 ms, and a new period refills the quota.</desc>
+
+  <defs>
+    <marker id="ah-green" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" refX="18" refY="9" viewBox="0 0 18 18" orient="auto">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#207448"/>
+    </marker>
+    <marker id="ah-orange" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" refX="18" refY="9" viewBox="0 0 18 18" orient="auto">
+      <path d="M0,0 L18,9 L0,18 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="900" fill="#f5f8f5"/>
+
+  <text x="800" y="78" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="48" font-weight="700" fill="#303a36">CPU throttling from cgroup limits in containers</text>
+
+  
+  <line x1="480" y1="312" x2="480" y2="805" stroke="#a9c4b3" stroke-width="3" stroke-dasharray="10 10"/>
+  <line x1="1120" y1="312" x2="1120" y2="805" stroke="#a9c4b3" stroke-width="3" stroke-dasharray="10 10"/>
+
+  
+  <rect x="260" y="112" width="440" height="200" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <rect x="900" y="112" width="440" height="200" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+
+  
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <rect x="458" y="148" width="44" height="44" rx="6"/>
+    <rect x="472" y="162" width="16" height="16" stroke-width="3"/>
+    <line x1="466" y1="140" x2="466" y2="148"/>
+    <line x1="480" y1="140" x2="480" y2="148"/>
+    <line x1="494" y1="140" x2="494" y2="148"/>
+    <line x1="466" y1="192" x2="466" y2="200"/>
+    <line x1="480" y1="192" x2="480" y2="200"/>
+    <line x1="494" y1="192" x2="494" y2="200"/>
+    <line x1="450" y1="156" x2="458" y2="156"/>
+    <line x1="450" y1="170" x2="458" y2="170"/>
+    <line x1="450" y1="184" x2="458" y2="184"/>
+    <line x1="502" y1="156" x2="510" y2="156"/>
+    <line x1="502" y1="170" x2="510" y2="170"/>
+    <line x1="502" y1="184" x2="510" y2="184"/>
+  </g>
+  <text x="480" y="262" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="32" font-weight="700" fill="#303a36">5 busy threads</text>
+
+  
+  <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <circle cx="1120" cy="170" r="25"/>
+    <line x1="1120" y1="170" x2="1120" y2="152"/>
+    <line x1="1120" y1="170" x2="1134" y2="170"/>
+    <line x1="1120" y1="140" x2="1120" y2="134"/>
+    <line x1="1120" y1="200" x2="1120" y2="206"/>
+    <line x1="1090" y1="170" x2="1084" y2="170"/>
+    <line x1="1150" y1="170" x2="1156" y2="170"/>
+  </g>
+  <text x="1120" y="236" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="32" font-weight="700" fill="#303a36">CFS quota:</text>
+  <text x="1120" y="274" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="32" font-weight="700" fill="#303a36">100 ms per 100 ms</text>
+
+  
+  <text x="800" y="360" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="700" fill="#303a36">run, all 5 at once</text>
+  <line x1="480" y1="380" x2="1120" y2="380" stroke="#207448" stroke-width="4" marker-end="url(#ah-green)"/>
+
+  
+  <rect x="300" y="420" width="1000" height="72" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="466" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="28" fill="#303a36">0 to 20 ms: quota used up</text>
+
+  
+  <text x="800" y="544" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="700" fill="#db8129">throttled</text>
+  <line x1="1120" y1="564" x2="480" y2="564" stroke="#db8129" stroke-width="4" stroke-dasharray="14 9" marker-end="url(#ah-orange)"/>
+
+  
+  <rect x="300" y="604" width="1000" height="72" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="650" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="28" fill="#303a36">20 to 100 ms: nothing runs</text>
+
+  
+  <text x="800" y="728" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="700" fill="#303a36">new period, quota refilled</text>
+  <line x1="1120" y1="748" x2="480" y2="748" stroke="#207448" stroke-width="4" marker-end="url(#ah-green)"/>
+</svg>

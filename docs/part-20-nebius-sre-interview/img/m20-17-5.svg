@@ -1,0 +1,139 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Detecting a failing GPU before the customer does [report]</title>
+  <desc>Visual infographic showing the flow from driver and DCGM telemetry, idle active testing, and serving token rate signals through passive rules into rate-limited quarantine and spare pool replacement.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 1 3 L 16 9 L 1 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Detecting a failing GPU </tspan>
+    <tspan x="800" dy="58">before the customer does [report]</tspan>
+  </text>
+
+  
+  <g id="node-d">
+    <rect x="60" y="210" width="320" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="194" y="234" width="52" height="52" rx="8" />
+      <rect x="206" y="246" width="28" height="28" rx="4" />
+      <line x1="206" y1="226" x2="206" y2="234" />
+      <line x1="220" y1="226" x2="220" y2="234" />
+      <line x1="234" y1="226" x2="234" y2="234" />
+      <line x1="206" y1="286" x2="206" y2="294" />
+      <line x1="220" y1="286" x2="220" y2="294" />
+      <line x1="234" y1="286" x2="234" y2="294" />
+      <line x1="186" y1="246" x2="194" y2="246" />
+      <line x1="186" y1="260" x2="194" y2="260" />
+      <line x1="186" y1="274" x2="194" y2="274" />
+      <line x1="246" y1="246" x2="254" y2="246" />
+      <line x1="246" y1="260" x2="254" y2="260" />
+      <line x1="246" y1="274" x2="254" y2="274" />
+    </g>
+    <text x="220" y="340" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="220" dy="0">Driver and </tspan>
+      <tspan x="220" dy="40">DCGM</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-a">
+    <rect x="60" y="470" width="320" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 194 546 A 26 26 0 1 1 246 546" />
+      <line x1="220" y1="524" x2="236" y2="508" />
+      <circle cx="220" cy="524" r="4" fill="#207448" stroke="none" />
+      <line x1="194" y1="546" x2="202" y2="542" />
+      <line x1="246" y1="546" x2="238" y2="542" />
+      <line x1="220" y1="498" x2="220" y2="506" />
+    </g>
+    <text x="220" y="600" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="220" dy="0">Idle active </tspan>
+      <tspan x="220" dy="40">test</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-s">
+    <rect x="60" y="730" width="320" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="220" cy="780" r="26" />
+      <line x1="220" y1="780" x2="220" y2="762" />
+      <line x1="220" y1="780" x2="236" y2="780" />
+      <line x1="214" y1="748" x2="226" y2="748" />
+      <line x1="220" y1="748" x2="220" y2="754" />
+    </g>
+    <text x="220" y="860" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="220" dy="0">Serving </tspan>
+      <tspan x="220" dy="40">token rate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-p">
+    <rect x="470" y="455" width="290" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="615" cy="516" r="14" />
+      <circle cx="615" cy="516" r="26" stroke-dasharray="12 8.4" stroke-width="6" />
+    </g>
+    <text x="615" y="605" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Passive rules</text>
+  </g>
+
+  
+  <g id="node-q">
+    <rect x="860" y="455" width="330" height="240" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4" />
+    
+    <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 1025 488 L 1051 498 V 520 C 1051 536 1025 548 1025 548 C 1025 548 999 536 999 520 V 498 Z" />
+      <path d="M 1017 516 L 1023 522 L 1035 510" />
+    </g>
+    <text x="1025" y="590" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1025" dy="0">Quarantine, </tspan>
+      <tspan x="1025" dy="40">rate limited</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-r">
+    <rect x="1270" y="455" width="280" height="240" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 1395 504 A 20 20 0 0 1 1432 512" />
+      <polyline points="1424,512 1434,512 1434,502" />
+      <path d="M 1425 532 A 20 20 0 0 1 1388 524" />
+      <polyline points="1396,524 1386,524 1386,534" />
+      <circle cx="1410" cy="518" r="4" fill="#207448" stroke="none" />
+    </g>
+    <text x="1410" y="590" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1410" dy="0">Replace from </tspan>
+      <tspan x="1410" dy="40">spare pool</tspan>
+    </text>
+  </g>
+
+  
+  
+  <path d="M 380 315 L 425 315 L 425 525 L 470 525" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="380" y1="575" x2="470" y2="575" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 380 835 L 425 835 L 425 625 L 470 625" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="760" y1="575" x2="860" y2="575" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="1190" y1="575" x2="1270" y2="575" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+</svg>

@@ -1,0 +1,262 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five design questions every load balancer must answer</title>
+  <desc>Visual infographic explaining the five fundamental design questions for load balancers, architectural families, summary trade-offs, and failure handling.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Five design questions every load balancer must answer</text>
+
+  
+  <g id="summary-card">
+    <rect x="40" y="120" width="390" height="628" rx="12" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    
+    <g transform="translate(207, 142)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M28 6 V48"/>
+      <path d="M12 48 H44"/>
+      <path d="M10 18 H46"/>
+      <path d="M10 18 L2 34 H18 Z"/>
+      <path d="M46 18 L38 34 H54 Z"/>
+    </g>
+    
+    <text x="65" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">A load balancer gives</tspan>
+      <tspan x="65" dy="30">you: scale (the pool</tspan>
+      <tspan x="65" dy="30">holds more capacity</tspan>
+      <tspan x="65" dy="30">than one server),</tspan>
+      <tspan x="65" dy="30">availability (health</tspan>
+      <tspan x="65" dy="30">checks remove failed</tspan>
+      <tspan x="65" dy="30">backends),</tspan>
+      <tspan x="65" dy="30">maintainability (drain</tspan>
+      <tspan x="65" dy="30">a backend, upgrade</tspan>
+      <tspan x="65" dy="30">it and return it), and</tspan>
+      <tspan x="65" dy="30">often security and</tspan>
+      <tspan x="65" dy="30">policy such as TLS</tspan>
+      <tspan x="65" dy="30">termination, rate</tspan>
+      <tspan x="65" dy="30">limiting, a WAF or</tspan>
+      <tspan x="65" dy="30">authentication</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-1">
+    
+    <rect x="455" y="120" width="505" height="116" rx="10" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    <g transform="translate(473, 154)" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="24" cy="24" r="20"/>
+      <path d="M24 12 V36"/>
+      <path d="M12 24 H36"/>
+      <path d="M18 18 L30 30"/>
+    </g>
+    <text x="536" y="168" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="536" dy="0">1 Where is the</tspan>
+      <tspan x="536" dy="36">decision made?</tspan>
+    </text>
+
+    
+    <rect x="980" y="120" width="580" height="116" rx="10" fill="#ffffff" stroke="#cde0d2" stroke-width="2"/>
+    <text x="1005" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1005" dy="0">on the client, in DNS, in the network</tspan>
+      <tspan x="1005" dy="29">with ECMP, on a dedicated L4 device,</tspan>
+      <tspan x="1005" dy="29">on an L7 proxy, or on the server</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-2">
+    
+    <rect x="455" y="248" width="505" height="116" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    
+    <g transform="translate(473, 282)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M24 6 L44 16 V38 L24 48 L4 38 V16 Z"/>
+      <path d="M4 16 L24 26 L44 16"/>
+      <path d="M24 26 V48"/>
+    </g>
+    <text x="536" y="296" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="536" dy="0">2 What identifies</tspan>
+      <tspan x="536" dy="36">a unit of work?</tspan>
+    </text>
+
+    
+    <rect x="980" y="248" width="580" height="116" rx="10" fill="#ffffff" stroke="#cde0d2" stroke-width="2"/>
+    <text x="1005" y="284" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1005" dy="0">a packet, a flow or connection,</tspan>
+      <tspan x="1005" dy="29">an HTTP request, a gRPC stream,</tspan>
+      <tspan x="1005" dy="29">or a token-generation job</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-3">
+    
+    <rect x="455" y="376" width="505" height="116" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    
+    <g transform="translate(473, 410)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="24" cy="24" r="8"/>
+      <path d="M24 6 V12 M24 36 V42 M6 24 H12 M36 24 H42"/>
+      <path d="M11 11 L16 16 M32 32 L37 37 M11 37 L16 32 M32 16 L37 11"/>
+    </g>
+    <text x="536" y="424" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="536" dy="0">3 How is a</tspan>
+      <tspan x="536" dy="36">backend chosen?</tspan>
+    </text>
+
+    
+    <rect x="980" y="376" width="580" height="116" rx="10" fill="#ffffff" stroke="#cde0d2" stroke-width="2"/>
+    <text x="1005" y="426" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1005" dy="0">by which algorithm</tspan>
+      <tspan x="1005" dy="30">and with what state</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-4">
+    
+    <rect x="455" y="504" width="505" height="116" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    
+    <g transform="translate(473, 538)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M8 18 H34 C40 18 44 22 44 28 C44 34 40 38 34 38 H12"/>
+      <path d="M18 32 L10 38 L18 44"/>
+      <circle cx="8" cy="18" r="3" fill="#207448"/>
+    </g>
+    <text x="536" y="552" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="536" dy="0">4 How does the</tspan>
+      <tspan x="536" dy="36">reply return?</tspan>
+    </text>
+
+    
+    <rect x="980" y="504" width="580" height="116" rx="10" fill="#ffffff" stroke="#cde0d2" stroke-width="2"/>
+    <text x="1005" y="554" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1005" dy="0">through the LB as a proxy or NAT,</tspan>
+      <tspan x="1005" dy="30">or directly as DSR</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-5">
+    
+    <rect x="455" y="632" width="505" height="116" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    
+    <g transform="translate(473, 666)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M24 6 L42 12 V24 C42 36 24 44 24 44 C24 44 6 36 6 24 V12 Z"/>
+      <path d="M14 25 H20 L23 19 L26 31 L29 25 H34"/>
+    </g>
+    <text x="536" y="680" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="536" dy="0">5 How are failures</tspan>
+      <tspan x="536" dy="36">detected and handled?</tspan>
+    </text>
+
+    
+    <rect x="980" y="632" width="580" height="116" rx="10" fill="#ffffff" stroke="#cde0d2" stroke-width="2"/>
+    <text x="1005" y="682" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1005" dy="0">health checks, outlier detection,</tspan>
+      <tspan x="1005" dy="30">retries and draining</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="family-dns">
+    <rect x="40" y="772" width="486" height="104" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    <g transform="translate(58, 804)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="20" cy="20" r="16"/>
+      <path d="M4 20 H36"/>
+      <path d="M20 4 C14 10 14 30 20 36"/>
+      <path d="M20 4 C26 10 26 30 20 36"/>
+    </g>
+    <text x="116" y="818" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" dy="0">DNS or GSLB:</tspan>
+      <tspan x="116" dy="30">name resolution</tspan>
+    </text>
+  </g>
+
+  
+  <g id="family-l3">
+    <rect x="556" y="772" width="486" height="104" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    <g transform="translate(574, 804)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="10" width="32" height="20" rx="3"/>
+      <path d="M12 20 H28"/>
+      <path d="M24 16 L28 20 L24 24"/>
+    </g>
+    <text x="632" y="818" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="632" dy="0">L3 ECMP or anycast:</tspan>
+      <tspan x="632" dy="30">packet or flow hash</tspan>
+    </text>
+  </g>
+
+  
+  <g id="family-l4">
+    <rect x="1072" y="772" width="486" height="104" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    <g transform="translate(1090, 804)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="6" width="28" height="28" rx="4"/>
+      <circle cx="14" cy="20" r="3" fill="#207448"/>
+      <circle cx="26" cy="20" r="3" fill="#207448"/>
+      <path d="M14 20 H26"/>
+    </g>
+    <text x="1148" y="818" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1148" dy="0">L4: TCP or UDP</tspan>
+      <tspan x="1148" dy="30">connections (5-tuple)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="family-l7">
+    <rect x="40" y="890" width="486" height="104" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    <g transform="translate(58, 922)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="6" width="28" height="28" rx="4"/>
+      <path d="M6 14 H34"/>
+      <path d="M12 21 H28"/>
+      <path d="M12 27 H22"/>
+    </g>
+    <text x="116" y="936" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" dy="0">L7: HTTP or gRPC</tspan>
+      <tspan x="116" dy="30">requests, headers, paths</tspan>
+    </text>
+  </g>
+
+  
+  <g id="family-client">
+    <rect x="556" y="890" width="486" height="104" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    <g transform="translate(574, 922)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="6" y="8" width="28" height="20" rx="3"/>
+      <path d="M2 32 H38"/>
+    </g>
+    <text x="632" y="936" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="632" dy="0">client-side:</tspan>
+      <tspan x="632" dy="30">the client library</tspan>
+    </text>
+  </g>
+
+  
+  <g id="family-mesh">
+    <rect x="1072" y="890" width="486" height="104" rx="10" fill="#e8f1ea" stroke="#b8d5c0" stroke-width="2"/>
+    <g transform="translate(1090, 922)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="12" cy="14" r="6"/>
+      <circle cx="28" cy="14" r="6"/>
+      <circle cx="20" cy="28" r="6"/>
+      <path d="M16 17 L24 25 M24 17 L16 25 M18 14 H22"/>
+    </g>
+    <text x="1148" y="936" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1148" dy="0">in-cluster or mesh: per-pod</tspan>
+      <tspan x="1148" dy="30">sidecars or node proxies</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footnote-card">
+    <rect x="40" y="1018" width="1520" height="64" rx="10" fill="#ffffff" stroke="#cde0d2" stroke-width="2"/>
+    <g transform="translate(62, 1034)" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="2" y="6" width="28" height="20" rx="2"/>
+      <path d="M2 6 L16 18 L30 6"/>
+    </g>
+    <text x="110" y="1058" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Lower layers decide faster but see less: an L4 balancer reads the envelope address but not the letter</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1100" width="1520" height="68" rx="10" fill="#207448"/>
+    <text x="800" y="1144" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">When a design feels confusing, find out which question it answers badly</text>
+  </g>
+</svg>

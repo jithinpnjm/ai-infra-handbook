@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Why except Exception does not catch Ctrl-C or sys.exit</title>
+  <desc>Visual class hierarchy of Python BaseException showing why except Exception catches ordinary errors but misses KeyboardInterrupt and SystemExit.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Why except Exception does not catch Ctrl-C or sys.exit</text>
+
+  
+  
+  <path d="M 800 185 L 800 220" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  
+  <path d="M 500 220 L 1250 220" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  
+  <path d="M 500 220 L 500 260" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  
+  <path d="M 1250 220 L 1250 240 L 960 240 L 960 420" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 960 305 L 980 305" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 960 420 L 980 420" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  
+  <path d="M 140 365 L 140 850" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 140 467 L 180 467" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 140 580 L 180 580" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 140 665 L 180 665" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 140 757 L 180 757" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+  <path d="M 140 850 L 180 850" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round"/>
+
+  
+  <g transform="translate(620, 110)">
+    <rect width="360" height="75" rx="12" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    
+    <g transform="translate(24, 12)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="14" y="2" width="24" height="18" rx="4"/>
+      <path d="M 26 20 L 26 34"/>
+      <path d="M 8 34 L 44 34"/>
+      <path d="M 8 34 L 8 46"/>
+      <path d="M 44 34 L 44 46"/>
+      <circle cx="8" cy="46" r="3" fill="#207448"/>
+      <circle cx="44" cy="46" r="3" fill="#207448"/>
+    </g>
+    <text x="90" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">BaseException</text>
+  </g>
+
+  
+  <g transform="translate(100, 120)">
+    <rect width="270" height="65" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="135" y="42" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">except Exception</text>
+  </g>
+  
+  <path d="M 235 185 L 235 255" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" stroke-linecap="round"/>
+
+  
+  <g transform="translate(80, 260)">
+    <rect width="840" height="105" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    
+    <g transform="translate(24, 24)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 28 4 L 50 12 C 50 34 28 50 28 50 C 28 50 6 34 6 12 Z"/>
+      <path d="M 18 26 L 25 33 L 38 18"/>
+    </g>
+    <text x="96" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">
+      <tspan>Exception:</tspan>
+      <tspan font-weight="normal" fill="#303a36" dx="12" font-size="25">where ordinary errors live. Catch here.</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(980, 260)">
+    <rect width="540" height="90" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(24, 18)" stroke="#db8129" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="4" y="8" width="46" height="36" rx="6"/>
+      <line x1="12" y1="18" x2="16" y2="18"/>
+      <line x1="24" y1="18" x2="28" y2="18"/>
+      <line x1="36" y1="18" x2="40" y2="18"/>
+      <line x1="16" y1="28" x2="36" y2="28"/>
+    </g>
+    <text x="92" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">KeyboardInterrupt</text>
+    <text x="92" y="74" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">(Ctrl-C)</text>
+  </g>
+
+  
+  <g transform="translate(980, 375)">
+    <rect width="540" height="90" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <g transform="translate(24, 18)" stroke="#db8129" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 28 8 L 10 8 C 7 8 6 10 6 13 L 6 39 C 6 42 7 44 10 44 L 28 44"/>
+      <path d="M 24 26 L 46 26"/>
+      <path d="M 36 16 L 46 26 L 36 36"/>
+    </g>
+    <text x="92" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">SystemExit</text>
+    <text x="92" y="74" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">(sys.exit)</text>
+  </g>
+
+  
+  <g transform="translate(980, 500)">
+    <rect width="540" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(24, 28)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <path d="M 26 6 L 48 44 L 4 44 Z"/>
+      <line x1="26" y1="20" x2="26" y2="30"/>
+      <circle cx="26" cy="38" r="2" fill="#207448"/>
+    </g>
+    <text x="92" y="55" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+      <tspan x="92" dy="0">A bare <tspan font-family="ui-monospace, monospace" font-weight="bold">except:</tspan> catches all three</tspan>
+      <tspan x="92" dy="44">branches, which hides typos</tspan>
+      <tspan x="92" dy="44">and swallows exits.</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g transform="translate(180, 405)">
+    <rect width="740" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(20, 36)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="6" y="8" width="40" height="34" rx="4"/>
+      <line x1="6" y1="22" x2="46" y2="22"/>
+      <circle cx="16" cy="32" r="2" fill="#207448"/>
+      <circle cx="26" cy="32" r="2" fill="#207448"/>
+    </g>
+    <text x="84" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">OSError</text>
+    <text x="84" y="74" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="84" dy="0">(FileNotFoundError, PermissionError,</tspan>
+      <tspan x="84" dy="32">TimeoutError)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(180, 545)">
+    <rect width="740" height="70" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(20, 11)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <line x1="16" y1="8" x2="12" y2="40"/>
+      <line x1="32" y1="8" x2="28" y2="40"/>
+      <line x1="6" y1="18" x2="40" y2="18"/>
+      <line x1="4" y1="30" x2="38" y2="30"/>
+    </g>
+    <text x="84" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">ValueError</text>
+  </g>
+
+  
+  <g transform="translate(180, 630)">
+    <rect width="740" height="70" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(20, 11)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <circle cx="14" cy="24" r="8"/>
+      <rect x="28" y="16" width="16" height="16" rx="2"/>
+    </g>
+    <text x="84" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">TypeError</text>
+  </g>
+
+  
+  <g transform="translate(180, 715)">
+    <rect width="740" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(20, 18)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <circle cx="20" cy="20" r="12"/>
+      <line x1="30" y1="30" x2="42" y2="42"/>
+    </g>
+    <text x="84" y="38" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">LookupError</text>
+    <text x="270" y="38" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">(KeyError, IndexError)</text>
+  </g>
+
+  
+  <g transform="translate(180, 815)">
+    <rect width="740" height="70" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <g transform="translate(20, 11)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="6" y="8" width="38" height="32" rx="4"/>
+      <circle cx="20" cy="22" r="5"/>
+      <line x1="30" y1="18" x2="38" y2="18"/>
+      <line x1="30" y1="26" x2="38" y2="26"/>
+    </g>
+    <text x="84" y="45" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">NameError</text>
+  </g>
+
+  
+  <g transform="translate(80, 940)">
+    <rect width="1440" height="80" rx="14" fill="#207448"/>
+    <text x="720" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">except Exception is narrower than a bare except, but still broad.</text>
+  </g>
+</svg>

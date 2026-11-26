@@ -1,0 +1,235 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1180" viewBox="0 0 1600 1180">
+  <title>Kernel OOM kill versus kubelet eviction</title>
+  <desc>Visual comparison between Linux kernel cgroup OOM kill and Kubernetes kubelet node-pressure eviction mechanisms, triggers, actors, rankings, and results.</desc>
+
+  <defs>
+    <marker id="ah-green" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" refX="16" refY="9" viewBox="0 0 18 18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="ah-orange" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" refX="16" refY="9" viewBox="0 0 18 18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+
+    <!-- Icon: Kernel Chip -->
+    <g id="icon-chip" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="6"/>
+      <rect x="18" y="18" width="20" height="20" rx="3"/>
+      <line x1="18" y1="2" x2="18" y2="8"/>
+      <line x1="28" y1="2" x2="28" y2="8"/>
+      <line x1="38" y1="2" x2="38" y2="8"/>
+      <line x1="18" y1="48" x2="18" y2="54"/>
+      <line x1="28" y1="48" x2="28" y2="54"/>
+      <line x1="38" y1="48" x2="38" y2="54"/>
+      <line x1="2" y1="18" x2="8" y2="18"/>
+      <line x1="2" y1="28" x2="8" y2="28"/>
+      <line x1="2" y1="38" x2="8" y2="38"/>
+      <line x1="48" y1="18" x2="54" y2="18"/>
+      <line x1="48" y1="28" x2="54" y2="28"/>
+      <line x1="48" y1="38" x2="54" y2="38"/>
+    </g>
+
+    <!-- Icon: Memory Gauge / Meter -->
+    <g id="icon-memory" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="12" width="44" height="32" rx="4"/>
+      <line x1="14" y1="44" x2="14" y2="50"/>
+      <line x1="22" y1="44" x2="22" y2="50"/>
+      <line x1="30" y1="44" x2="30" y2="50"/>
+      <line x1="38" y1="44" x2="38" y2="50"/>
+      <rect x="12" y="18" width="8" height="12" rx="1"/>
+      <rect x="24" y="18" width="8" height="12" rx="1"/>
+      <rect x="36" y="18" width="8" height="12" rx="1"/>
+      <line x1="6" y1="36" x2="50" y2="36" stroke-dasharray="3 3"/>
+    </g>
+
+    <!-- Icon: Lightning Bolt / SIGKILL -->
+    <g id="icon-sigkill" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 32 4 L 14 28 L 28 28 L 22 52 L 42 24 L 28 24 Z"/>
+    </g>
+
+    <!-- Icon: Process Restart / OOM Exit (Orange) -->
+    <g id="icon-restart-orange" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="14" width="40" height="34" rx="6"/>
+      <line x1="8" y1="24" x2="48" y2="24"/>
+      <path d="M 20 36 A 8 8 0 1 1 34 32"/>
+      <polyline points="32,26 36,32 30,34"/>
+    </g>
+
+    <!-- Icon: Node / Cluster Server -->
+    <g id="icon-node" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="16" rx="4"/>
+      <circle cx="14" cy="16" r="2.5" fill="#207448"/>
+      <line x1="22" y1="16" x2="42" y2="16"/>
+      <rect x="6" y="30" width="44" height="16" rx="4"/>
+      <circle cx="14" cy="38" r="2.5" fill="#207448"/>
+      <line x1="22" y1="38" x2="42" y2="38"/>
+    </g>
+
+    <!-- Icon: Pressure Dial / Threshold -->
+    <g id="icon-pressure" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 40 A 20 20 0 1 1 46 40"/>
+      <circle cx="28" cy="38" r="4" fill="#207448"/>
+      <line x1="28" y1="38" x2="38" y2="22"/>
+      <line x1="28" y1="46" x2="28" y2="52"/>
+    </g>
+
+    <!-- Icon: Eviction Manager Gear -->
+    <g id="icon-gear" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="10"/>
+      <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12"/>
+    </g>
+
+    <!-- Icon: Ranking Ladder / Stepped Bars -->
+    <g id="icon-ranking" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="46" x2="12" y2="36"/>
+      <line x1="22" y1="46" x2="22" y2="26"/>
+      <line x1="32" y1="46" x2="32" y2="16"/>
+      <line x1="42" y1="46" x2="42" y2="6"/>
+      <polyline points="8,20 22,10 44,10"/>
+    </g>
+
+    <!-- Icon: Pod Reschedule / Relocate -->
+    <g id="icon-reschedule" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="24" height="24" rx="4"/>
+      <path d="M 24 22 L 44 22 L 36 14 M 44 22 L 36 30"/>
+      <rect x="24" y="26" width="24" height="22" rx="4" stroke-dasharray="4 3"/>
+    </g>
+
+    <!-- Icon: Shield / Policy Note -->
+    <g id="icon-shield" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 V 28 C 48 42 28 52 28 52 C 28 52 8 42 8 28 V 14 Z"/>
+      <polyline points="20,28 26,34 38,20"/>
+    </g>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  <!-- Diagram Title -->
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Kernel OOM kill versus kubelet eviction</text>
+
+  <!-- ==================== LANE 1: Kernel cgroup OOM kill ==================== -->
+  <g id="lane-1">
+    <!-- Lane Container -->
+    <rect x="40" y="100" width="730" height="915" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Lane 1 Header Box -->
+    <rect x="65" y="120" width="680" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <use href="#icon-chip" x="85" y="132"/>
+    <text x="160" y="170" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Kernel cgroup OOM kill</text>
+
+    <!-- Lane 1 Card 1: Trigger -->
+    <g id="lane1-trigger">
+      <rect x="65" y="235" width="680" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-memory" x="88" y="297"/>
+      <text font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="168" y="290">memory.current reaches</tspan>
+        <tspan x="168" y="324">memory.max (set from</tspan>
+        <tspan x="168" y="358">limits.memory)</tspan>
+      </text>
+    </g>
+
+    <!-- Arrow L1 Trigger -> Actor -->
+    <line x1="405" y1="415" x2="405" y2="465" stroke="#207448" stroke-width="3.5" marker-end="url(#ah-green)"/>
+
+    <!-- Lane 1 Card 2: Actor -->
+    <g id="lane1-actor">
+      <rect x="65" y="465" width="680" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-sigkill" x="88" y="492"/>
+      <text font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="168" y="515">Linux kernel,</tspan>
+        <tspan x="168" y="550">synchronous, SIGKILL</tspan>
+      </text>
+    </g>
+
+    <!-- Arrow L1 Actor -> Result (Orange highlight) -->
+    <line x1="405" y1="575" x2="405" y2="645" stroke="#db8129" stroke-width="3.5" marker-end="url(#ah-orange)"/>
+
+    <!-- Lane 1 Card 3: Result (Orange outline for synchronous kill) -->
+    <g id="lane1-result">
+      <rect x="65" y="645" width="680" height="305" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+      <use href="#icon-restart-orange" x="88" y="769"/>
+      <text font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="168" y="710">container exits OOMKilled,</tspan>
+        <tspan x="168" y="744">exit code 137; kubelet restarts</tspan>
+        <tspan x="168" y="778">it in place if restartPolicy allows;</tspan>
+        <tspan x="168" y="812" font-family="monospace">memory.events shows oom and</tspan>
+        <tspan x="168" y="846" font-family="monospace">oom_kill</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== LANE 2: Kubelet node-pressure eviction ==================== -->
+  <g id="lane-2">
+    <!-- Lane Container -->
+    <rect x="830" y="100" width="730" height="915" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Lane 2 Header Box -->
+    <rect x="855" y="120" width="680" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <use href="#icon-node" x="875" y="132"/>
+    <text x="950" y="170" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Kubelet node-pressure eviction</text>
+
+    <!-- Lane 2 Card 1: Trigger -->
+    <g id="lane2-trigger">
+      <rect x="855" y="235" width="680" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-pressure" x="878" y="297"/>
+      <text font-family="monospace" font-size="24" fill="#303a36">
+        <tspan x="958" y="268">node-wide memory.available</tspan>
+        <tspan x="958" y="300">below evictionHard (for</tspan>
+        <tspan x="958" y="332">example 100Mi) or</tspan>
+        <tspan x="958" y="364">nodefs.available below 10</tspan>
+        <tspan x="958" y="396">percent</tspan>
+      </text>
+    </g>
+
+    <!-- Arrow L2 Trigger -> Actor -->
+    <line x1="1195" y1="415" x2="1195" y2="465" stroke="#207448" stroke-width="3.5" marker-end="url(#ah-green)"/>
+
+    <!-- Lane 2 Card 2: Actor -->
+    <g id="lane2-actor">
+      <rect x="855" y="465" width="680" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-gear" x="878" y="492"/>
+      <text font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="958" y="515">kubelet eviction manager</tspan>
+        <tspan x="958" y="550">in user space</tspan>
+      </text>
+    </g>
+
+    <!-- Arrow L2 Actor -> Ranking -->
+    <line x1="1195" y1="575" x2="1195" y2="625" stroke="#207448" stroke-width="3.5" marker-end="url(#ah-green)"/>
+
+    <!-- Lane 2 Card 3: Ranking -->
+    <g id="lane2-ranking">
+      <rect x="855" y="625" width="680" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-ranking" x="878" y="662"/>
+      <text font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="958" y="668">BestEffort, then Burstable</tspan>
+        <tspan x="958" y="702">over requests, then</tspan>
+        <tspan x="958" y="736">Guaranteed</tspan>
+      </text>
+    </g>
+
+    <!-- Arrow L2 Ranking -> Result -->
+    <line x1="1195" y1="755" x2="1195" y2="805" stroke="#207448" stroke-width="3.5" marker-end="url(#ah-green)"/>
+
+    <!-- Lane 2 Card 4: Result -->
+    <g id="lane2-result">
+      <rect x="855" y="805" width="680" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <use href="#icon-reschedule" x="878" y="850"/>
+      <text font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="958" y="852">whole pod Failed with Reason</tspan>
+        <tspan x="958" y="886">Evicted; owning controller</tspan>
+        <tspan x="958" y="920">reschedules</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== FOOTER ==================== -->
+  <g id="footer-bar">
+    <rect x="40" y="1040" width="1520" height="95" rx="14" fill="#207448"/>
+    <use href="#icon-shield" x="65" y="1060"/>
+    <text font-family="sans-serif" font-size="24" fill="#ffffff">
+      <tspan x="145" y="1078">Eviction ignores PodDisruptionBudgets; BestEffort and Burstable over requests</tspan>
+      <tspan x="145" y="1110" font-family="monospace">are preferred OOM victims via oom_score_adj</tspan>
+    </text>
+  </g>
+</svg>

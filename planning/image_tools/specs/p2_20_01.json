@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "01",
+  "name": "p2-2001-think-aloud",
+  "title": "The seven-step think-aloud script",
+  "spec": "A vertical sequence of seven numbered steps, top to bottom, each step a rounded box with a number circle (1 to 7) at its left. Step 1 box text: 'Restate the problem in one sentence'; sub-line in monospace: 'So the input is, the output is, and the limit is'. Step 2: 'Ask two clarifying questions'; sub-line: 'Can the input be empty? What size should I plan for?'. Step 3: 'Say your plan before you act'; sub-line: 'My first approach is X. It costs about Y.' Step 4: 'Work in small steps and name each one'; sub-line: 'Now I am parsing the line. Next I will count.' Step 5: 'Check as you go'; sub-line: 'Let me test this on a small example.' Step 6: 'Review at the end'; sub-line: 'Let me read it once for off-by-one errors and empty input.' Step 7: 'Offer an alternative'; sub-line: 'A different way is Z, which trades memory for speed.' Step 3 box gets the orange outline as the step where the interviewer can comment on the plan. Right side, a small note panel titled 'Same steps, other rounds': 'Console: state the symptom, say what you will check first, run one command, say what the output means, name the next hypothesis.' and 'Incident: step 3 says what you will do to protect users before you know the cause.' Bottom green bar: 'Practise until the sentences are boring.'",
+  "anchor": "### 5. The think-aloud protocol as a script",
+  "alt": "A numbered list of seven spoken steps for a technical round, from restating the problem to offering an alternative, with the plan step highlighted.",
+  "cap": "The seven-step think-aloud script, in the order you say it during a coding, console, design or incident round."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "01",
+  "name": "p2-2001-stuck-ladder",
+  "title": "Five rungs out of being stuck",
+  "spec": "A staircase with five steps climbing from left to right, each step a box with a number. Rung 1 text: 'Say it plainly' with monospace quote 'I am not sure how to get below this complexity.' Rung 2: 'Shrink the problem' with note 'Solve a smaller case by hand and say what you see.' Rung 3: 'Say what you do know' with quote 'I know the answer must visit every item once.' Rung 4: 'Ask a specific question' with quote 'Would a hash map be the right direction here?' Rung 5, orange outline as the final fallback: 'Offer the slow answer and improve it' with quote 'The brute force is quadratic. Let me write that first.' A dashed timer bar along the bottom labelled 'Never silent for more than about 30 seconds' with the note 'If you need to think, say I need a moment to think about X, then do.' Small note under rung 5: 'Quadratic: the work grows with the square of the input.'",
+  "anchor": "### 6. How to handle being stuck",
+  "alt": "A five-step ladder for handling being stuck, from saying so plainly to offering a slow answer and improving it, with a thirty-second silence limit.",
+  "cap": "The five-step order for handling being stuck in a technical round, with the thirty-second silence rule."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "01",
+  "name": "p2-2001-report-spread",
+  "title": "Candidate reports disagree on rounds and duration",
+  "spec": "Top banner: an official box on the left labelled 'Official page: three technical interviews plus a final hour, days' tagged [official], and on the right a box labelled 'Candidate reports: 4 to 7 rounds, a week to 3 months' tagged [report]. Below, a horizontal range axis labelled 'Number of rounds' from 4 to 7, with a green bar from 4 to 7 for the reports and a short orange marker at 4 for the official three technical plus final hour count (shown as 4 stages). Under it, four report cards in a row: 'Amsterdam SRE: four stages, 30-minute production-incident stress interview, hardest, prepare for this one' (orange outline); 'Dublin SRE or DevOps: recruiter screen, up to six or seven rounds'; 'London Senior SRE: five rounds, mostly junior-level questions'; 'Czech Senior SRE, June 2025: about a week, no offer'. Bottom note: 'Read the reports as a range, not as promises.'",
+  "anchor": "### 3. How the candidate reports differ, and what to make of it",
+  "alt": "Four candidate reports shown against the official page, with the range of rounds from four to seven and the Amsterdam report marked as the hardest to prepare for.",
+  "cap": "The four candidate reports disagree on number of rounds and duration, so the Amsterdam version is the one to prepare for."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "01",
+  "name": "p2-2001-reader-map",
+  "title": "Which chapters serve which interview stage",
+  "spec": "Five horizontal lanes, one per interview stage, each lane a green-headed row. Left column of stage boxes: 'Recruiter call, CV' with chapters '20.1, 20.2'; 'Linux console and troubleshooting' with '20.3, 20.4, 20.5, 20.6, 20.7'; 'Coding and algorithms' with '20.8, 20.9, 20.10, 20.11'; 'System design' with '20.12, 20.13, 20.14, 20.15, 20.16' and a follow-on box '20.17 timed drills' with an arrow from 20.13 to 20.16 into 20.17; 'Stress interview, 30-minute incident' with '20.26, 20.27' (orange outline as the report-only round); 'Final hour, project deep dive' with '20.28'. Each lane ends with a small tag box: [official], [official] and [report], [report], [official]. Bottom note: 'Start with Part B console and Part D design, because both appear in every report.'",
+  "anchor": "### 10. A reader's map: which chapter serves which stage",
+  "alt": "A map linking each interview stage, such as the console round, coding, system design and the final hour, to the handbook chapters that prepare for it.",
+  "cap": "A reader's map that matches each interview stage to the volume chapters to study for it, with the design drills after the depth chapters."
+ }
+]

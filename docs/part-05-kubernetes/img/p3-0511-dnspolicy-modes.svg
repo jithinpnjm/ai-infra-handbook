@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1175" width="1600" height="1175">
+  <title>The four dnsPolicy values and what they put in resolv.conf</title>
+  <desc>Four cards compare ClusterFirst, Default, ClusterFirstWithHostNet and None dnsPolicy values.</desc>
+
+  
+  <rect width="1600" height="1175" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The four dnsPolicy values and what they put in resolv.conf</text>
+
+  
+  
+  <g id="card-clusterfirst">
+    <rect x="50" y="115" width="730" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="10" />
+      <circle cx="10" cy="14" r="6" />
+      <circle cx="46" cy="14" r="6" />
+      <circle cx="14" cy="44" r="6" />
+      <circle cx="42" cy="44" r="6" />
+      <line x1="20" y1="22" x2="14" y2="18" />
+      <line x1="36" y1="22" x2="42" y2="18" />
+      <line x1="22" y1="34" x2="18" y2="40" />
+      <line x1="34" y1="34" x2="38" y2="40" />
+    </g>
+    
+    <text x="75" y="173" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="150" y="173" font-size="30" font-weight="bold" fill="#207448">ClusterFirst (the real default): </tspan>
+      <tspan x="75" y="227">nameserver is the kube-dns ClusterIP; search </tspan>
+      <tspan x="75" y="263">ns.svc.domain svc.domain domain plus node </tspan>
+      <tspan x="75" y="299">search domains; options ndots:5; names outside </tspan>
+      <tspan x="75" y="335">the cluster domain are forwarded upstream by </tspan>
+      <tspan x="75" y="371">CoreDNS</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-default">
+    <rect x="820" y="115" width="730" height="340" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(845, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="4" />
+      <line x1="8" y1="22" x2="48" y2="22" />
+      <line x1="8" y1="34" x2="48" y2="34" />
+      <circle cx="16" cy="15" r="2" fill="#207448" />
+      <circle cx="16" cy="28" r="2" fill="#207448" />
+      <circle cx="16" cy="41" r="2" fill="#207448" />
+      <line x1="26" y1="15" x2="40" y2="15" />
+      <line x1="26" y1="28" x2="40" y2="28" />
+      <line x1="26" y1="41" x2="40" y2="41" />
+    </g>
+    
+    <text x="845" y="158" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" y="158" font-size="30" font-weight="bold" fill="#207448">Default (not the default </tspan>
+      <tspan x="920" y="194" font-size="30" font-weight="bold" fill="#207448">despite the name): </tspan>
+      <tspan x="845" y="248">inherit the node resolver config from the </tspan>
+      <tspan x="845" y="284">node resolv.conf or kubelet resolvConf</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="card-clusterfirstwithhostnet">
+    <rect x="50" y="495" width="730" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 515)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="36" rx="4" />
+      <line x1="16" y1="10" x2="16" y2="46" />
+      <line x1="28" y1="28" x2="42" y2="28" />
+      <polyline points="36,22 42,28 36,34" />
+      <circle cx="16" cy="28" r="3" fill="#207448" />
+    </g>
+    
+    <text x="75" y="553" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="150" y="553" font-size="30" font-weight="bold" fill="#207448">ClusterFirstWithHostNet: </tspan>
+      <tspan x="75" y="607">for hostNetwork true pods that still want </tspan>
+      <tspan x="75" y="643">cluster DNS; plain ClusterFirst is ignored </tspan>
+      <tspan x="75" y="679">for hostNetwork pods</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-none">
+    <rect x="820" y="495" width="730" height="330" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(845, 515)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="8" width="40" height="40" rx="6" />
+      <line x1="14" y1="20" x2="38" y2="20" />
+      <line x1="14" y1="36" x2="38" y2="36" />
+      <circle cx="22" cy="20" r="4" fill="#e8f1ea" />
+      <circle cx="32" cy="36" r="4" fill="#e8f1ea" />
+    </g>
+    
+    <text x="845" y="553" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="920" y="553" font-size="30" font-weight="bold" fill="#207448">None: </tspan>
+      <tspan x="845" y="607">use only dnsConfig (custom nameservers, </tspan>
+      <tspan x="845" y="643">searches, options)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-dnsconfig-example">
+    <rect x="50" y="865" width="1500" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(75, 897)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="10" />
+      <path d="M28 8 v6 M28 44 v6 M8 28 h6 M44 28 h6 M14 14 l4 4 M38 38 l4 4 M14 42 l4 -4 M38 18 l4 -4" />
+    </g>
+    
+    <text x="150" y="920" font-family="monospace" font-size="26" fill="#303a36">
+      <tspan x="150" y="920" font-weight="bold" fill="#207448">options ndots 2, single-request-reopen, </tspan>
+      <tspan x="150" y="958" fill="#303a36">timeout 2, attempts 3; searches extra.example.com</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-callout">
+    <rect x="50" y="1025" width="1500" height="100" rx="14" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+    
+    <g transform="translate(75, 1047)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 8 L48 16 V28 C48 40 28 48 28 48 C28 48 8 40 8 28 V16 Z" />
+      <line x1="28" y1="20" x2="28" y2="30" />
+      <circle cx="28" cy="38" r="2" fill="#207448" />
+    </g>
+    
+    <text x="150" y="1083" font-family="sans-serif" font-size="26" fill="#303a36">
+      <tspan font-weight="bold">job title trap: </tspan>Default sounds standard but its job is narrower
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>How a partial outage feeds itself through retries</title>
+  <desc>Visual explanation of how client retries create a self-sustaining feedback loop during partial outages.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#207448" />
+    </marker>
+
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 2 L 14 8 L 0 14 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5" />
+
+  
+  <text x="70" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">How a partial outage feeds itself through retries</text>
+
+  
+  
+  <line x1="490" y1="255" x2="588" y2="255" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="850" y1="370" x2="850" y2="498" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <line x1="590" y1="615" x2="492" y2="615" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 330 500 V 447 Q 330 435 342 435 H 688 Q 700 435 700 423 V 372" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="415" y="413" width="200" height="44" rx="22" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  <text x="515" y="443" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129" text-anchor="middle">More retries</text>
+
+  
+
+  
+  <g id="box-1">
+    <rect x="70" y="140" width="420" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(105, 165)">
+      <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <rect x="19" y="19" width="18" height="18" rx="2" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <line x1="18" y1="2" x2="18" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="28" y1="2" x2="28" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="38" y1="2" x2="38" y2="10" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      
+      <line x1="18" y1="46" x2="18" y2="54" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="38" y1="46" x2="38" y2="54" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      
+      <line x1="2" y1="18" x2="10" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="2" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="2" y1="38" x2="10" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      
+      <line x1="46" y1="18" x2="54" y2="18" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="46" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="46" y1="38" x2="54" y2="38" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+
+    
+    <circle cx="446" cy="188" r="22" fill="#207448" />
+    <text x="446" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+
+    
+    <text x="105" y="265" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="105" dy="0">Half the replicas</tspan>
+      <tspan x="105" dy="40">fail</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-2">
+    <rect x="590" y="140" width="420" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(625, 168)">
+      <rect x="2" y="2" width="52" height="42" rx="5" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="2" y1="14" x2="54" y2="14" stroke="#207448" stroke-width="2.5" />
+      <circle cx="10" cy="8" r="2" fill="#207448" />
+      <circle cx="17" cy="8" r="2" fill="#207448" />
+      <circle cx="24" cy="8" r="2" fill="#207448" />
+      <polyline points="12,26 18,31 12,36" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="23" y1="36" x2="34" y2="36" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+    </g>
+
+    
+    <circle cx="966" cy="188" r="22" fill="#207448" />
+    <text x="966" y="196" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+
+    
+    <text x="625" y="265" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="625" dy="0">Clients retry</tspan>
+      <tspan x="625" dy="40">every error</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-3">
+    <rect x="590" y="500" width="420" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(625, 525)">
+      <path d="M 24 4 h 8 v 6 a 18 18 0 0 1 6 3 l 5 -4 l 6 6 l -4 5 a 18 18 0 0 1 3 6 h 6 v 8 h -6 a 18 18 0 0 1 -3 6 l 4 5 l -6 6 l -5 -4 a 18 18 0 0 1 -6 3 v 6 h -8 v -6 a 18 18 0 0 1 -6 -3 l -5 4 l -6 -6 l 4 -5 a 18 18 0 0 1 -3 -6 h -6 v -8 h 6 a 18 18 0 0 1 3 -6 l -4 -5 l 6 -6 l 5 4 a 18 18 0 0 1 6 -3 z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+      <circle cx="28" cy="28" r="7" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    </g>
+
+    
+    <circle cx="966" cy="548" r="22" fill="#207448" />
+    <text x="966" y="556" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+
+    
+    <text x="625" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="625" dy="0">Survivors get the</tspan>
+      <tspan x="625" dy="38">original traffic</tspan>
+      <tspan x="625" dy="38">plus the retries</tspan>
+    </text>
+  </g>
+
+  
+  <g id="box-4">
+    <rect x="70" y="500" width="420" height="230" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(105, 525)">
+      <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="3.5" />
+      <circle cx="28" cy="28" r="2.5" fill="#207448" />
+      <line x1="28" y1="28" x2="19" y2="17" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="28" y1="28" x2="40" y2="19" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="28" y1="9" x2="28" y2="13" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+      <line x1="47" y1="28" x2="43" y2="28" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+      <line x1="28" y1="47" x2="28" y2="43" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+      <line x1="9" y1="28" x2="13" y2="28" stroke="#207448" stroke-width="2" stroke-linecap="round" />
+    </g>
+
+    
+    <circle cx="446" cy="548" r="22" fill="#207448" />
+    <text x="446" y="556" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+
+    
+    <text x="105" y="628" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="105" dy="0">Slow replicas</tspan>
+      <tspan x="105" dy="40">time out</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="70" y="765" width="940" height="72" rx="14" fill="#207448" />
+  <text x="540" y="810" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The loop keeps going after the original fault is gone</text>
+
+  
+
+  
+  <g id="side-panel-1">
+    <rect x="1060" y="140" width="470" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <text x="1090" y="195" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1090" dy="0">Expected attempts</tspan>
+      <tspan x="1090" dy="38">with k = 4</tspan>
+    </text>
+
+    
+    <rect x="1085" y="260" width="420" height="190" rx="12" fill="#ffffff" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="1115" y="308" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">p = 0.1 gives 1.11</text>
+    <text x="1115" y="362" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">p = 0.5 gives 1.875</text>
+    <text x="1115" y="416" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">p = 0.8 gives 2.95</text>
+  </g>
+
+  
+  <g id="side-panel-2">
+    <rect x="1060" y="500" width="470" height="337" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    
+    <text x="1090" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Layers multiply</text>
+
+    
+    <rect x="1085" y="590" width="420" height="215" rx="12" fill="#ffffff" stroke="#c8dcce" stroke-width="1.5" />
+    <text x="1115" y="670" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="1115" dy="0">4 attempts per layer,</tspan>
+      <tspan x="1115" dy="42">3 layers gives 64</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="70" y="870" width="1460" height="72" rx="14" fill="#207448" />
+  <text x="800" y="915" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Retries multiply load exactly when the system is weakest.</text>
+</svg>

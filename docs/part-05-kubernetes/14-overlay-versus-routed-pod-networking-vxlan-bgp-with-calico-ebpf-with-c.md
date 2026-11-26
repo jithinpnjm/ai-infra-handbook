@@ -67,19 +67,9 @@ Here is one way to read the table. Suppose the fabric cannot learn pod routes, a
 
 Picture a pod on Node A that must reach a pod on Node B, while the physical network knows only how to reach nodes. An overlay closes that gap. It wraps each pod packet inside a packet addressed between node IPs, so the underlay needs only node-to-node reachability.
 
-```mermaid
-sequenceDiagram
-  participant P1 as Pod A 10.244.1.5 (Node A 192.168.0.11)
-  participant VA as Node A vxlan/geneve device
-  participant U as Underlay network
-  participant VB as Node B vxlan/geneve device
-  participant P2 as Pod B 10.244.2.9 (Node B 192.168.0.12)
-  P1->>VA: IP packet 10.244.1.5 → 10.244.2.9 (MTU 1450)
-  VA->>VA: lookup: 10.244.2.0/24 is on VTEP 192.168.0.12 (FDB/route)
-  VA->>U: outer UDP 4789: 192.168.0.11 → 192.168.0.12 + VXLAN VNI (network identifier) + inner packet
-  U->>VB: delivered by normal routing
-  VB->>P2: decapsulate → inner packet delivered to pod veth
-```
+![Overlay networks](./img/m5-14-1.svg)
+
+*Figure 5.14.1. Overlay networks, as a diagram.*
 
 Read the diagram as one packet's trip. The packet leaves Pod A, and the Node A device looks up which VTEP, the tunnel endpoint that does the wrapping, owns the destination subnet. It then wraps the packet in an outer UDP packet addressed from Node A to Node B. Node B strips the outer layer and hands the inner packet to Pod B.
 
@@ -105,25 +95,9 @@ Choose an overlay when you have no control of the underlay, when the environment
 
 Imagine the fabric could route straight to pod addresses. Then no packet would need an outer header. Without encapsulation, each node advertises its pod CIDR(s) to the fabric, or the fabric learns the routes from the nodes over BGP. Pod traffic is then plain IP on the wire, and pod IPs stay visible from end to end.
 
-```mermaid
-flowchart TB
-  subgraph Spine["Spine layer"]
-    S1["spine1"]; S2["spine2"]
-  end
-  subgraph Rack1["Rack 1"]
-    L1["leaf1 (ASN 65101)"]
-    N1["node1 (ASN 65201) pods 10.244.1.0/26"]
-    N2["node2 pods 10.244.1.64/26"]
-  end
-  subgraph Rack2["Rack 2"]
-    L2["leaf2 (ASN 65102)"]
-    N3["node3 pods 10.244.2.0/26"]
-  end
-  N1 -- eBGP --> L1
-  N2 -- eBGP --> L1
-  N3 -- eBGP --> L2
-  L1 --- S1; L1 --- S2; L2 --- S1; L2 --- S2
-```
+![Routed designs with BGP](./img/m5-14-2.svg)
+
+*Figure 5.14.2. Routed designs with BGP, as a diagram.*
 
 The diagram shows one leaf switch per rack. Each node peers over eBGP with its rack's leaf, and every leaf connects to both spines. The leaves use ASNs 65101 and 65102, and node1 uses ASN 65201.
 

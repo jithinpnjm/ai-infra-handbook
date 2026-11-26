@@ -1,0 +1,171 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Reading an API URL: group, version, resource, subresource</title>
+  <desc>Visual explanation of Kubernetes API URL structures including core and named groups, version, resource, object, and subresource with a filing-cabinet analogy.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#207448"/>
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1 L 11 6 L 1 11 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#207448">Reading an API URL: group, version, resource, subresource</text>
+
+  
+  
+  
+  <rect x="40" y="125" width="1000" height="825" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(65, 145)">
+    
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <ellipse cx="28" cy="28" rx="12" ry="24" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="4" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <rect x="140" y="145" width="510" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="395" y="182" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">core group (empty name), legacy path</text>
+  
+  <path d="M 205 203 L 205 260" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="670" y="145" width="345" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="842" y="182" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">namespace default</text>
+  
+  <path d="M 695 203 L 695 260" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="65" y="265" width="950" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="145" y="273" width="120" height="52" rx="6" fill="#e8f1ea"/>
+  <rect x="272" y="273" width="70" height="52" rx="6" fill="#d2e4d6"/>
+  <rect x="350" y="273" width="410" height="52" rx="6" fill="#e8f1ea"/>
+  <rect x="768" y="273" width="125" height="52" rx="6" fill="#d2e4d6"/>
+  
+  <text x="85" y="310" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">/api/v1/namespaces/default/pods</text>
+
+  
+  <rect x="520" y="370" width="495" height="58" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="767" y="407" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">resource pods (lowercase plural)</text>
+  
+  <path d="M 830 333 L 830 365" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  
+  
+  <rect x="195" y="455" width="220" height="62" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="305" y="494" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">version v1</text>
+  
+  <path d="M 305 455 L 305 338" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  
+  <path d="M 305 517 L 305 600" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <g transform="translate(65, 535)">
+    
+    <rect x="18" y="4" width="20" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="4" y="34" width="18" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="34" y="34" width="18" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 20 L 28 28 M 13 28 L 43 28 M 13 28 L 13 34 M 43 28 L 43 34" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <rect x="65" y="605" width="950" height="68" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  
+  <rect x="75" y="613" width="200" height="52" rx="6" fill="#e8f1ea"/>
+  <rect x="280" y="613" width="60" height="52" rx="6" fill="#d2e4d6"/>
+  <rect x="348" y="613" width="338" height="52" rx="6" fill="#e8f1ea"/>
+  <rect x="690" y="613" width="168" height="52" rx="6" fill="#d2e4d6"/>
+  <rect x="862" y="613" width="55" height="52" rx="6" fill="#e8f1ea"/>
+  <rect x="922" y="613" width="88" height="52" rx="6" fill="#fef3e7" stroke="#db8129" stroke-width="1.5"/>
+  
+  <text x="80" y="649" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36">/apis/apps/v1/namespaces/default/deployments/web/status</text>
+
+  
+  <rect x="65" y="710" width="280" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="205" y="748" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">named group apps</text>
+  
+  <path d="M 175 673 L 175 705" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="365" y="710" width="345" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="537" y="748" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">resource deployments</text>
+  
+  <path d="M 770 673 L 770 690 L 537 690 L 537 705" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="730" y="710" width="180" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="820" y="748" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">object web</text>
+  
+  <path d="M 885 673 L 885 690 L 820 690 L 820 705" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="685" y="830" width="330" height="64" rx="8" fill="#fef3e7" stroke="#db8129" stroke-width="3"/>
+  <text x="850" y="870" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">subresource /status</text>
+  
+  <path d="M 965 673 L 965 825" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  
+  
+  <rect x="1070" y="125" width="490" height="825" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="1095" y="150" width="440" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1287, 170)">
+    <rect x="0" y="0" width="56" height="38" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="18" y="14" width="20" height="10" rx="3" fill="#207448"/>
+  </g>
+  <text x="1315" y="270" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="1315" dy="0">Resource = the drawer </tspan>
+    <tspan x="1315" dy="36">(deployments)</tspan>
+  </text>
+
+  
+  <rect x="1095" y="375" width="440" height="200" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1287, 395)">
+    <path d="M 4 8 L 22 8 L 28 14 L 52 14 A 4 4 0 0 1 56 18 L 56 42 A 4 4 0 0 1 52 46 L 4 46 A 4 4 0 0 1 0 42 L 0 12 A 4 4 0 0 1 4 8 Z" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="1315" y="495" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1315" dy="0">Kind = label on a type </tspan>
+    <tspan x="1315" dy="36">of folder (Deployment)</tspan>
+  </text>
+
+  
+  <rect x="1095" y="600" width="440" height="325" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1287, 620)">
+    <path d="M 4 4 L 40 4 L 52 16 L 52 48 A 4 4 0 0 1 48 52 L 4 52 A 4 4 0 0 1 0 48 L 0 8 A 4 4 0 0 1 4 4 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 40 4 L 40 16 L 52 16" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="1315" y="720" text-anchor="middle" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1315" dy="0" font-weight="bold">Subresource = sticky note </tspan>
+    <tspan x="1315" dy="34" font-weight="bold">on one folder </tspan>
+    <tspan x="1315" dy="38">(/status, /scale, /binding, </tspan>
+    <tspan x="1315" dy="34">/eviction, /log, /exec)</tspan>
+  </text>
+
+  
+  
+  
+  <rect x="40" y="975" width="1520" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(65, 995)">
+    <circle cx="22" cy="22" r="20" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="22" y1="20" x2="22" y2="32" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="22" cy="13" r="2.5" fill="#207448"/>
+  </g>
+  <text x="125" y="1028" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">PUT .../status updates only .status and does not increment metadata.generation</text>
+</svg>

@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Piping only stderr: the 3&gt;&amp;1 1&gt;&amp;2 2&gt;&amp;3 swap, one step at a time</title>
+  <desc>Visual step-by-step explanation of the 3&gt;&amp;1 1&gt;&amp;2 2&gt;&amp;3 descriptor swap in shell pipelines to redirect only standard error into grep while keeping stdout on the terminal.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="64" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Piping only stderr: the 3&gt;&amp;1 1&gt;&amp;2 2&gt;&amp;3 swap, one step at a time</text>
+
+  <!-- ==================== LEFT COMMAND PANEL ==================== -->
+  <g id="command-panel">
+    <rect x="40" y="110" width="420" height="935" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Terminal window outline icon (56x44) -->
+    <g transform="translate(222, 230)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="44" rx="6" />
+      <line x1="0" y1="14" x2="56" y2="14" stroke-width="3" />
+      <circle cx="10" cy="7" r="2.5" fill="#207448" />
+      <circle cx="20" cy="7" r="2.5" fill="#207448" />
+      <path d="M 12 24 L 20 29 L 12 34" stroke-width="3" />
+      <line x1="26" y1="34" x2="42" y2="34" stroke-width="3" />
+    </g>
+
+    <!-- Command window card -->
+    <rect x="65" y="340" width="370" height="480" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <line x1="65" y1="395" x2="435" y2="395" stroke="#ccdcd0" stroke-width="2" />
+    <circle cx="92" cy="368" r="5" fill="#207448" />
+    <circle cx="110" cy="368" r="5" fill="#207448" />
+    <circle cx="128" cy="368" r="5" fill="#207448" />
+
+    <text font-family="monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle" xml:space="preserve">
+      <tspan x="250" y="520">my_command</tspan>
+      <tspan x="250" dy="56">3&gt;&amp;1  1&gt;&amp;2  2&gt;&amp;3</tspan>
+      <tspan x="250" dy="56">| grep -i warning</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 0: Start (y=110..310) ==================== -->
+  <g id="row-0">
+    <rect x="500" y="110" width="1060" height="200" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Icon: Gear (40x40) -->
+    <g transform="translate(530, 126)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="10" />
+      <path d="M 20 4 L 20 9 M 20 31 L 20 36 M 4 20 L 9 20 M 31 20 L 36 20 M 9 9 L 13 13 M 27 27 L 31 31 M 9 31 L 13 27 M 27 13 L 31 9" />
+    </g>
+    <text x="585" y="154" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Start</text>
+
+    <!-- Col 1: fd 1 -> pipe -->
+    <rect x="535" y="180" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="685" y="210" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 1 (stdout)</text>
+    <line x1="685" y1="224" x2="685" y2="248" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="535" y="250" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="685" y="279" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">pipe</text>
+
+    <!-- Col 2: fd 2 -> terminal -->
+    <rect x="880" y="180" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1030" y="210" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 2 (stderr)</text>
+    <line x1="1030" y1="224" x2="1030" y2="248" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="880" y="250" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1030" y="279" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">terminal</text>
+
+    <!-- Col 3: fd 3 -> closed -->
+    <rect x="1225" y="180" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="210" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 3</text>
+    <line x1="1375" y1="224" x2="1375" y2="248" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1225" y="250" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="279" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#707874">closed</text>
+  </g>
+
+  <!-- ==================== ROW 1: 3>&1  saves stdout (y=355..555) ==================== -->
+  <g id="row-1">
+    <rect x="500" y="355" width="1060" height="200" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Circle 1 -->
+    <circle cx="538" cy="389" r="22" fill="#207448" />
+    <text x="538" y="397" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    <!-- Icon: Copy / Branch (40x40) -->
+    <g transform="translate(575, 369)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="26" height="26" rx="4" />
+      <path d="M 6 26 L 6 6 L 26 6" />
+    </g>
+    <text x="635" y="399" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" xml:space="preserve">3&gt;&amp;1  saves stdout</text>
+
+    <!-- Col 1: fd 1 -> pipe -->
+    <rect x="535" y="425" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="685" y="455" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 1 (stdout)</text>
+    <line x1="685" y1="469" x2="685" y2="493" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="535" y="495" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="685" y="524" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">pipe</text>
+
+    <!-- Col 2: fd 2 -> terminal -->
+    <rect x="880" y="425" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1030" y="455" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 2 (stderr)</text>
+    <line x1="1030" y1="469" x2="1030" y2="493" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="880" y="495" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1030" y="524" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">terminal</text>
+
+    <!-- Col 3: fd 3 -> pipe -->
+    <rect x="1225" y="425" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="455" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 3</text>
+    <line x1="1375" y1="469" x2="1375" y2="493" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1225" y="495" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="524" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">pipe</text>
+  </g>
+
+  <!-- ==================== ROW 2: 1>&2  stdout goes where stderr goes (y=600..800) ==================== -->
+  <g id="row-2">
+    <rect x="500" y="600" width="1060" height="200" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Circle 2 -->
+    <circle cx="538" cy="634" r="22" fill="#207448" />
+    <text x="538" y="642" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    <!-- Icon: Redirect / Swap (40x40) -->
+    <g transform="translate(575, 614)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 12 L 28 12 L 22 6" />
+      <path d="M 32 28 L 12 28 L 18 34" />
+    </g>
+    <text x="635" y="644" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" xml:space="preserve">1&gt;&amp;2  stdout goes where stderr goes</text>
+
+    <!-- Col 1: fd 1 -> terminal -->
+    <rect x="535" y="670" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="685" y="700" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 1 (stdout)</text>
+    <line x1="685" y1="714" x2="685" y2="738" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="535" y="740" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="685" y="769" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">terminal</text>
+
+    <!-- Col 2: fd 2 -> terminal -->
+    <rect x="880" y="670" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1030" y="700" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 2 (stderr)</text>
+    <line x1="1030" y1="714" x2="1030" y2="738" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="880" y="740" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1030" y="769" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">terminal</text>
+
+    <!-- Col 3: fd 3 -> pipe -->
+    <rect x="1225" y="670" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="700" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 3</text>
+    <line x1="1375" y1="714" x2="1375" y2="738" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1225" y="740" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="769" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">pipe</text>
+  </g>
+
+  <!-- ==================== ROW 3: 2>&3  stderr goes to saved fd 3 (y=845..1045) ==================== -->
+  <g id="row-3">
+    <rect x="500" y="845" width="1060" height="200" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Circle 3 -->
+    <circle cx="538" cy="879" r="22" fill="#207448" />
+    <text x="538" y="887" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    <!-- Icon: Target Pipe / Funnel (40x40) -->
+    <g transform="translate(575, 859)" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 6 10 L 34 10 L 24 22 L 24 34 L 16 34 L 16 22 Z" />
+    </g>
+    <text x="635" y="889" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" xml:space="preserve">2&gt;&amp;3  stderr goes to saved fd 3</text>
+
+    <!-- Col 1: fd 1 -> terminal -->
+    <rect x="535" y="915" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="685" y="945" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 1 (stdout)</text>
+    <line x1="685" y1="959" x2="685" y2="983" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="535" y="985" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="685" y="1014" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">terminal</text>
+
+    <!-- Col 2: fd 2 -> pipe (ORANGE ARROW - The one important result) -->
+    <rect x="880" y="915" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1030" y="945" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 2 (stderr)</text>
+    <line x1="1030" y1="959" x2="1030" y2="983" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+    <rect x="880" y="985" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1030" y="1014" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">pipe</text>
+
+    <!-- Col 3: fd 3 -> pipe -->
+    <rect x="1225" y="915" width="300" height="44" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="945" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">fd 3</text>
+    <line x1="1375" y1="959" x2="1375" y2="983" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <rect x="1225" y="985" width="300" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1375" y="1014" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">pipe</text>
+  </g>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR (y=1090..1160) ==================== -->
+  <g id="takeaway-bar">
+    <rect x="40" y="1090" width="1520" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1134" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">A pipe carries only fd 1, so after the swap the errors flow down the pipe into grep</text>
+  </g>
+</svg>

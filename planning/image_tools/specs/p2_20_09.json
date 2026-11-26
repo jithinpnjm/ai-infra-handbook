@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p2-2009-two-pointers",
+  "title": "Two pointers walk toward each other on sorted data",
+  "spec": "A horizontal sorted array drawn as a row of cells labelled a[0], a[1], a[2] and so on up to a[n-1], with the dots '...' between the last two. Pointer i is a green arrow under the first cell labelled 'i' and pointer j is a green arrow under the last cell labelled 'j'. A target box above the row reads 'a[i] + a[j] = target?'. A short decision table beside the row in monospace with three rows: 'sum too big: move j left', 'sum too small: move i right', 'sum equal: return (i, j)'. Each row shows an arrow from the sum test to the pointer that moves. Orange outline on the 'sum too big: move j left' row, the step the comparison tells you to take. A note at the bottom: 'Sortedness tells you which pointer can never help again.'",
+  "anchor": "### 3. Two pointers",
+  "alt": "Two pointers move inward over a sorted list, moving one pointer depending on whether the pair sum is too big or too small.",
+  "cap": "Two pointers walk inward over a sorted list, moving the pointer that the sum comparison says can help."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p2-2009-lru-links",
+  "title": "LRU cache: a hash map and a linked list with sentinels",
+  "spec": "Left: a box labelled 'Hash map: key to node' with a small table of keys 'k1', 'k2', 'k3' each with an arrow to a node. Right: a horizontal doubly linked list between two grey end cells labelled 'Head sentinel' and 'Tail sentinel'. Between them three nodes in order from left to right, each node showing a key and value, 'k3 most recent' near the left end, 'k1 least recent' near the right end; each node has arrows both ways to its neighbours. A green label above the head side: 'Most recent'. A label above the tail side: 'Evicted first'. Under the list two operation rows in monospace: 'get(k1): move the node to the front', 'put when full: remove the node next to the tail sentinel and delete its key from the map'. Orange outline on the evicted node 'k1'. Bottom note: 'Each node stores its key, so eviction can delete the map entry.'",
+  "anchor": "### 7. LRU cache",
+  "alt": "An LRU cache built from a hash map that points at nodes of a doubly linked list, with sentinels at both ends and the least recent node evicted first.",
+  "cap": "An LRU cache pairs a hash map for lookup with a doubly linked list that keeps the most recent entry at the front and evicts from the back."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "09",
+  "name": "p2-2009-hash-ring",
+  "title": "Consistent hashing ring with virtual nodes",
+  "spec": "A large circle drawn as a ring, with the label 'Hash ring' in the centre. Three real nodes placed on the ring, labelled 'Node A', 'Node B' and 'Node C', each with several small grey dots around the ring labelled 'virtual points'. Three key markers as small squares on the ring. Each key has a short arrow clockwise to the next node point, labelled 'first node clockwise'. A dashed arc near Node B shows a new node 'Node D' inserted, with the note 'Adding a node steals only the arc just before it'. Orange outline on Node D's arc as the moved keys. Right-side table with two rows in monospace: 'vnodes = 1: balance ratio 1.935', 'vnodes = 1000: balance ratio 1.035'. Caption: 'Balance is the highest node load divided by the mean.'",
+  "anchor": "### 8. Consistent hashing with virtual nodes",
+  "alt": "A hash ring where keys move clockwise to the first node, adding a node moves only one arc, and many virtual points flatten the load.",
+  "cap": "On a consistent hash ring, a key belongs to the first node clockwise, and virtual points flatten load from a ratio of 1.935 to 1.035."
+ }
+]

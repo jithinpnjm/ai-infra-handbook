@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p2-0201-route-pick",
+  "title": "The kernel picks a road by longest matching prefix, and the default route catches the rest",
+  "anchor": "## 4. Step 2: the socket, the route and the source address",
+  "spec": "A top-down flow with numbered circles 1 to 4. Step 1 box, network icon: 'connect() to 93.184.216.34 port 443'. Arrow to a diamond 'Inside a connected subnet, such as 10.0.0.0/24?'. The 'yes' arrow goes to a box 'Send straight to the neighbour on the link'. The 'no' arrow goes to step 2 box, orange outline: 'Default route: default via 10.0.0.1 (0.0.0.0/0)', labelled 'longest matching prefix wins, default catches the rest'. From step 2, arrow to step 3 box: 'Source IP: primary address in the next hop's subnet, here src 10.0.0.15'. Arrow to step 4 box: 'Source port: ephemeral, from 32768 to 60999, which makes the 5-tuple unique'. Bottom, two grey error boxes side by side: 'No route at all: Network is unreachable (ENETUNREACH)' and 'Route exists, next hop cannot be resolved: No route to host (EHOSTUNREACH)'. Monospace strip at the bottom: 'ip route get 93.184.216.34'. Caption: 'Run ip route get first when a connection fails right away.'",
+  "alt": "A connect call checks whether the destination sits in a connected subnet, otherwise it uses the default route via the gateway, then picks the source IP and an ephemeral port.",
+  "cap": "The kernel sends directly for a connected subnet and otherwise uses the default route, then picks a source IP and ephemeral port."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "01",
+  "name": "p2-0201-tcp-handshake",
+  "title": "Refused and timed out look alike, but the handshake shows the difference",
+  "anchor": "## 7. Step 5: TCP connection establishment",
+  "spec": "Two sections stacked vertically. Top section, heading 'Three-way handshake': two vertical lanes headed 'Client (curl)' on the left and 'Server (port 443)' on the right. Messages top to bottom, with numbered circles 1, 2 and 3. Arrow 1 from Client to Server labelled 'SYN: sequence number, MSS, window scale, SACK, timestamps'. Arrow 2 from Server to Client labelled 'SYN-ACK: server sequence number and its options'. Arrow 3 from Client to Server labelled 'ACK: both sides ESTABLISHED'. Bottom section, heading 'When the SYN does not get a clean answer': two side-by-side boxes. Left box, green: 'No listener on the port: server replies RST at once, client sees Connection refused'. Right box, orange outline: 'Firewall drops the SYN: no answer, retries after 1 s, 2 s and 4 s, then Connection timed out'. Caption under the section: 'time_connect is about one round trip when the handshake works.'",
+  "alt": "The TCP handshake exchanges SYN, SYN-ACK and ACK, while a reset gives a fast refusal and a silently dropped SYN gives retries and a timeout.",
+  "cap": "The three-way handshake takes about one round trip, and a reset gives a fast refusal while a dropped SYN gives a timeout after retries."
+ }
+]

@@ -34,16 +34,15 @@ Every estimate below is computed by `c17_estimates.py` at the end of this chapte
 
 Halfway through a round, the clock says that 15 minutes are gone and nothing is on the board yet. The outline below exists to stop that from happening. The 40-minute outline always has the same spine: 5 minutes of requirements and questions, 5 of estimates, 5 of API and data, 15 of architecture and scaling, 7 of failure and security, 3 of operations and wrap-up. Each prompt tweaks the weights, so keep the spine and move the time.
 
-```mermaid
-flowchart LR
-  A["0-5 ask"] --> B["5-10 estimate"]
-  B --> C["10-15 API and data"]
-  C --> D["15-30 architecture, scale"]
-  D --> E["30-37 failure, security"]
-  E --> F["37-40 operate, wrap"]
-```
+![How to use the twelve prompts](./img/m20-17-1.svg)
+
+*Figure 20.17.1. How to use the twelve prompts, as a diagram.*
 
 ### 1. GPU job scheduling [report]
+
+![A step-by-step calculation from GPU failure rate to a 153 minute checkpoint interval and 2.8 percent overhead.](./img/p3-2017-checkpoint-interval.svg)
+
+*Figure 20.17.2. Memorise the shape of the calculation, because the interviewer will change an input.*
 
 The room is quiet, the marker is in your hand, and the scheduling prompt is still on the board. You have to decide where to start before the interviewer repeats it.
 
@@ -68,15 +67,9 @@ The reason to memorise the shape rather than the number is that the interviewer 
 
 **40 minutes.** 0-5 ask and numbers. 5-10 job model: gang size, priority, preemptible or not. 10-25 scheduler: queue, fair-share by usage decay, topology-aware placement, backfill. 25-33 failures: node health, requeue from checkpoint. 33-40 observability and what you would measure. Notice that the scheduler gets the longest slot, because it is the part the prompt is really about.
 
-```mermaid
-flowchart LR
-  U["Teams"] --> Q["Queue and fair share"]
-  Q --> P["Topology-aware placer"]
-  P --> N["Nodes in fabric blocks"]
-  H["Node health feed"] --> P
-  N --> C["Checkpoint store"]
-  C --> Q
-```
+![GPU job scheduling [report]](./img/m20-17-2.svg)
+
+*Figure 20.17.3. GPU job scheduling [report], as a diagram.*
 
 **Graders look for.** (1) Gang scheduling with topology, since a job needs all its nodes in one fabric block, and the cost is fragmentation. Fragmentation means free GPUs exist but are scattered in pieces too small for the next job. (2) Fair share against utilisation: strict quotas leave GPUs idle, borrowing with preemption fills them but kills someone's work. Preemption means stopping a running job to make room for another, and a grader wants to hear you name both sides of that trade. (3) Checkpoint frequency against write cost. A grader wants the number behind the choice, not only the word checkpoint.
 
@@ -89,6 +82,10 @@ flowchart LR
 Decide: lead with topology and fairness, then show failure cost with numbers.
 
 ### 2. Model inference serving [report]
+
+![Peak demand of 90,000 tokens per second needs 28 GPUs, 29 with one spare, and a 3x burst needs 84 GPUs, which cannot be bought in minutes.](./img/x17-burst-gpus.svg)
+
+*Figure 20.17.4. A burst far above peak cannot be covered by buying GPUs in time, so the serving design must queue, shed and prioritise.*
 
 The interviewer has just described a bursty product, and you can see the worry on their face. Traffic will not arrive evenly, and one customer's spike must not spoil someone else's day.
 
@@ -109,15 +106,9 @@ The burst figure is the point. You cannot buy 55 more GPUs in five minutes, so t
 
 **40 minutes.** 0-5 questions. 5-10 the table above. 10-15 API: OpenAI-compatible streaming. 15-30 gateway, router, engine pool, batching, per-tenant limits. 30-37 overload and failure. 37-40 metrics.
 
-```mermaid
-flowchart LR
-  C["Clients"] --> G["Gateway: auth, limits"]
-  G --> R["Router"]
-  R --> E1["Engine replica"]
-  R --> E2["Engine replica"]
-  E1 --> M["Metrics"]
-  E2 --> M
-```
+![Model inference serving [report]](./img/m20-17-3.svg)
+
+*Figure 20.17.5. Model inference serving [report], as a diagram.*
 
 **Graders look for.** (1) Continuous batching raises throughput and raises tail latency, so choose a batch cap from the TTFT target. Continuous batching means adding new requests to a running batch as slots free up, and the tail is the slowest requests that wait the longest. (2) Headroom against cost: 30 percent idle GPUs is the price of surviving bursts. A grader will ask whether you can justify paying for idle capacity, and the honest answer is that the idle share buys survival. (3) Isolation by token limits and fair queues, not by request counts. Counting requests treats a short question and a long document as equal, and that is the mistake this point catches.
 
@@ -130,6 +121,10 @@ flowchart LR
 Decide: say the 3x burst number aloud and choose shed or buy.
 
 ### 3. Training data storage for thousands of GPUs [report]
+
+![Storage arithmetic showing a 16.3 GB per second checkpoint burst against a 0.54 GB per second average, and tiered cost.](./img/p3-2017-storage-burst.svg)
+
+*Figure 20.17.6. Size the checkpoint burst, not the average, and tier storage to cut cost.*
 
 Somebody asks you to think about the storage that feeds a large training run. The interviewer wants to hear about throughput, checkpoints and cost, in that order.
 
@@ -151,15 +146,9 @@ The lesson is the burst. Average write is tiny but the write must finish fast, o
 
 **40 minutes.** 0-5 questions. 5-12 numbers. 12-20 tiers: object store, parallel file system, node-local NVMe. 20-30 data loading: sharding, prefetch, caching. 30-37 checkpoint path and restore. 37-40 cost. Keep the numbers section short, because the tiers are where the design decisions live.
 
-```mermaid
-flowchart LR
-  O["Object store: cold"] --> F["Parallel FS: hot"]
-  F --> L["Node NVMe cache"]
-  L --> G["GPU data loaders"]
-  G --> K["Async checkpoint"]
-  K --> F
-  F --> O
-```
+![Training data storage for thousands of GPUs [report]](./img/m20-17-4.svg)
+
+*Figure 20.17.7. Training data storage for thousands of GPUs [report], as a diagram.*
 
 **Graders look for.** (1) Throughput and capacity are separate axes, and a tier per axis is the answer. A fast tier is expensive per byte, and a big tier is slow, so one store rarely does both jobs. (2) Asynchronous checkpoints: copy to host memory, then write in the background, trading stall time for a window of exposure. The exposure is the time when the newest state exists only in memory and could still be lost. (3) Cost per tier, and what you delete. A grader wants to hear the retention policy, not only the storage choice.
 
@@ -172,6 +161,10 @@ flowchart LR
 Decide: separate bandwidth from capacity, and size the checkpoint burst.
 
 ### 4. Detecting a failing GPU before the customer does [report]
+
+![The failing GPU drill starts with stated assumptions and a calculation ladder from 16,000 GPUs to the requests spared by detecting at two minutes instead of fifteen.](./img/p2-2017-detect-gpu-numbers.svg)
+
+*Figure 20.17.8. The failing GPU drill computes 16,000 GPUs, 2.19 failures a day and 1,560 requests spared by detecting at two minutes instead of fifteen.*
 
 The interviewer asks one short question and then goes quiet. The short prompt is a test of how you start, not of how much you know.
 
@@ -189,14 +182,9 @@ The interviewer asks one short question and then goes quiet. The short prompt is
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-20 signals: Xid events, ECC counters, temperature, throttle reasons, plus serving signals like token rate per replica. 20-28 active checks on idle nodes. 28-36 automation: cordon, drain, replace, with a blast-radius limit. 36-40 false-positive cost.
 
-```mermaid
-flowchart LR
-  D["Driver and DCGM"] --> P["Passive rules"]
-  A["Idle active test"] --> P
-  S["Serving token rate"] --> P
-  P --> Q["Quarantine, rate limited"]
-  Q --> R["Replace from spare pool"]
-```
+![Detecting a failing GPU before the customer does [report]](./img/m20-17-5.svg)
+
+*Figure 20.17.9. Detecting a failing GPU before the customer does [report], as a diagram.*
 
 **Graders look for.** (1) Passive against active checks: passive is free but late, active costs GPU time. Passive checks read what the hardware already reports, and active checks ask the GPU to prove itself, which takes the node out of service for a while. (2) A blast-radius cap, so a bad rule cannot drain the fleet. Blast radius is the size of the damage one wrong decision can cause. (3) Detecting gray failure through the serving path, not only hardware counters. A gray failure is a GPU that works but works slowly, and only the serving numbers show it.
 
@@ -209,6 +197,14 @@ flowchart LR
 Decide: name the three signal sources, then the blast-radius cap.
 
 ### 5. The SRE variant: incidents, capacity and rollout safety [report]
+
+![Three bars showing a 43.2 minute budget consumed 2, 5 and 10 percent by different burn rates and durations.](./img/p3-2017-burn-equivalence.svg)
+
+*Figure 20.17.10. Burn rate times duration over the window gives the share of budget spent.*
+
+![A capacity chain from 320 GPUs in use to an order of 84 GPUs after growth, lead time and headroom.](./img/p3-2017-order-gpus-lead-time.svg)
+
+*Figure 20.17.11. Plan against what demand will be when the GPUs arrive.*
 
 The interviewer changes the role. You are now the person on call for the whole inference platform, and the questions are about how you work, not only about what you build.
 
@@ -230,15 +226,9 @@ The burn-rate pairs are explained and sourced in [20.19](./19-slis-slos-and-aler
 
 **40 minutes.** 0-4 SLOs. 4-14 incidents: detect, page, mitigate before root cause, post-mortem. 14-24 capacity: forecast, lead time, headroom. 24-34 rollout: canary, gates, auto-rollback. 34-40 toil and automation. The incident block is the place to say the most, because the interviewer usually asks about it next.
 
-```mermaid
-flowchart LR
-  SLO["SLOs"] --> AL["Burn-rate alerts"]
-  AL --> IC["Incident process"]
-  IC --> PM["Post-mortem"]
-  PM --> RB["Runbooks, automation"]
-  CAP["Capacity forecast"] --> SLO
-  ROL["Canary rollout"] --> SLO
-```
+![The SRE variant: incidents, capacity and rollout safety [report]](./img/m20-17-6.svg)
+
+*Figure 20.17.12. The SRE variant: incidents, capacity and rollout safety [report], as a diagram.*
 
 **Graders look for.** (1) Error budget as the control knob for rollout speed. When budget is left, a rollout can move faster, and when it is spent, the rollout slows or stops. (2) Capacity planned against lead time, not today's load. Today's load tells you what is busy now, while lead time tells you what you must order now. (3) Mitigation first, cause second. Stopping the bleeding comes before the root cause is known, and that order is what a good on-call engineer does.
 
@@ -251,6 +241,10 @@ flowchart LR
 Decide: tie rollout speed to remaining budget, and order GPUs against the lead time.
 
 ### 6. Multi-region failover for dedicated endpoints [my addition]
+
+![A cold failover outage of 25 minutes uses 57.9 percent of a 43.2 minute monthly budget, while a warm failover of 10 minutes uses 23.1 percent.](./img/x17-failover-budget.svg)
+
+*Figure 20.17.13. Warm standby costs a quarter of active-active and keeps the outage inside a much smaller share of the monthly error budget than a cold rebuild.*
 
 A customer calls with a worry. Their endpoint sits in one region, that region is short of capacity, and they want to know what happens next. The interviewer asks you to design for it.
 
@@ -270,15 +264,9 @@ A customer calls with a worry. Their endpoint sits in one region, that region is
 
 **40 minutes.** 0-6 residency and RTO questions. 6-12 numbers. 12-25 three options: cold, warm, active-active, with the client-side or gateway switch. 25-34 health detection and the decision to fail over. 34-40 failback and testing.
 
-```mermaid
-flowchart LR
-  C["Customer app"] --> S["Client-side switch"]
-  S --> A["Endpoint, region A"]
-  S --> B["Warm endpoint, region B"]
-  W["Weights in both regions"] --> A
-  W --> B
-  H["Probe: real tokens"] --> S
-```
+![Multi-region failover for dedicated endpoints [my addition]](./img/m20-17-7.svg)
+
+*Figure 20.17.14. Multi-region failover for dedicated endpoints [my addition], as a diagram.*
 
 **Graders look for.** (1) Cost against RTO, shown as the table. (2) Who decides to fail over: a human with a runbook is safer than a flapping automatic switch. (3) Residency limits who the standby may be.
 
@@ -291,6 +279,10 @@ flowchart LR
 Decide: state that failover is customer-built, then price warm against cold.
 
 ### 7. Usage metering and billing correctness [my addition]
+
+![Billing arithmetic comparing 17.28 dollars of tolerated daily loss with 345.60 dollars from two percent duplicates.](./img/p3-2017-duplicate-vs-loss.svg)
+
+*Figure 20.17.15. Pick idempotency keys first because double charging costs far more than a small undercount.*
 
 A finance colleague asks for the design of billing. The interviewer adds that customers will check the invoice line by line, which changes the whole approach.
 
@@ -311,15 +303,9 @@ Duplicates are 20 times worse than the tolerated loss, so dedupe is the key desi
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-18 event: written by the engine side at request end with a unique request id. 18-28 pipeline: durable log, idempotent consumer, aggregation. 28-35 reconciliation against gateway counts. 35-40 invoice and disputes.
 
-```mermaid
-flowchart LR
-  E["Engine: usage event"] --> L["Durable log"]
-  L --> D["Dedupe by request id"]
-  D --> A["Hourly aggregates"]
-  A --> I["Invoice"]
-  G["Gateway counts"] --> R["Reconcile"]
-  A --> R
-```
+![Usage metering and billing correctness [my addition]](./img/m20-17-8.svg)
+
+*Figure 20.17.16. Usage metering and billing correctness [my addition], as a diagram.*
 
 **Graders look for.** (1) At-least-once delivery plus idempotent consumption equals effectively once. At-least-once means a message may arrive twice. Idempotent consumption means handling it twice has the same effect as handling it once. (2) Metering is separate from monitoring, as [20.15](./15-design-an-observability-pipeline-for-very-high-volume.md) argues: monitoring may drop samples, billing may not. (3) Reconciliation and an audit trail. A grader wants to see how you prove the invoice is right, not only how you produce it.
 
@@ -332,6 +318,14 @@ flowchart LR
 Decide: pick idempotency keys first, then say what you reconcile against.
 
 ### 8. A prompt-cache or KV-cache tier [my addition]
+
+![Three cache tiers with the number of 0.295 GB prefixes each holds: 171, 1,736 and 27,126.](./img/p3-2017-kv-tier-capacity.svg)
+
+*Figure 20.17.17. Only the NVMe tier can hold the whole hot set of 5,000 prefixes.*
+
+![For a 2,000-token prefix, recomputing takes 82 milliseconds, loading from host RAM takes 4.6 milliseconds, and loading from NVMe takes 42 milliseconds.](./img/x17-kv-tier-crossover.svg)
+
+*Figure 20.17.18. A cache tier is worth its cost only when loading a cached prefix is much faster than recomputing it.*
 
 The interviewer points out that many requests start with the same long system prompt, which is the instruction block that sets the model's behaviour. Then they ask whether you could save GPU time on that repetition.
 
@@ -356,14 +350,9 @@ The 400 TFLOPS is my utilisation assumption of about 40 percent against 989 TFLO
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-22 tiers, eviction, and keys by prefix hash. 22-30 routing: send a request to the replica that holds its prefix. 30-37 failure and privacy. 37-40 metrics.
 
-```mermaid
-flowchart LR
-  R["Request"] --> H["Prefix hash + tenant"]
-  H --> RT["Cache-aware router"]
-  RT --> G["GPU KV: hot"]
-  G --> M["Host RAM: warm"]
-  M --> N["NVMe: cold"]
-```
+![A prompt-cache or KV-cache tier [my addition]](./img/m20-17-9.svg)
+
+*Figure 20.17.19. A prompt-cache or KV-cache tier [my addition], as a diagram.*
 
 **Graders look for.** (1) Compare load time with recompute time, and show the crossover. The crossover is the prefix length or tier speed at which loading stops beating recomputing. (2) Cache-aware routing against load balance: sticky routing makes hot replicas. Sticky routing sends the same prefix to the same replica, which saves work and also overloads that replica. (3) Tenant isolation, since a shared cache can leak timing information.
 
@@ -376,6 +365,10 @@ flowchart LR
 Decide: justify each tier with a load-versus-recompute number.
 
 ### 9. A model weights distribution system for cold start [my addition]
+
+![Pulling 70 GB of weights to 100 nodes from one origin takes 700 seconds, while seeding one node per rack and copying inside racks takes about 163 seconds.](./img/x17-weights-tree.svg)
+
+*Figure 20.17.20. Fanning copies out inside the fabric avoids the origin bandwidth bottleneck, so a rollout does not wait on every node pulling from one place.*
 
 The interviewer describes a rollout problem. A new model version has to reach a hundred nodes, and the transfer must be fast enough that the rollout does not wait on it.
 
@@ -396,14 +389,9 @@ The rack stage is a conservative sum. In practice it overlaps with seeding, so t
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-22 design: content-addressed chunks, per-rack seeders, checksums. 22-30 node cache and pre-staging before the rollout. 30-37 failure. 37-40 observability.
 
-```mermaid
-flowchart LR
-  O["Object store"] --> S["Rack seeders"]
-  S --> N1["Node cache"]
-  S --> N2["Node cache"]
-  N1 --> N2
-  N1 --> GPU["GPU load"]
-```
+![A model weights distribution system for cold start [my addition]](./img/m20-17-10.svg)
+
+*Figure 20.17.21. A model weights distribution system for cold start [my addition], as a diagram.*
 
 **Graders look for.** (1) Origin bandwidth is the bottleneck, so fan out inside the fabric. The fabric is the fast network between nodes, and copying between nodes uses it instead of the slow origin link. (2) Pre-stage weights before traffic shifts, so cold start is only GPU load. (3) Verify checksums and keep versions immutable. A checksum is a fingerprint of the bytes, and an immutable version never changes after it is published.
 
@@ -416,6 +404,10 @@ flowchart LR
 Decide: pre-stage, fan out inside the fabric, and verify.
 
 ### 10. An inference gateway rate limiter [my addition]
+
+![A reserve then refund timeline showing 54 requests without refund versus 90 with it per full bucket.](./img/p3-2017-reserve-refund.svg)
+
+*Figure 20.17.22. Reserve the worst case at admission and refund the difference so the tenant gets the allowance.*
 
 A product manager has asked for limits that count tokens instead of requests, and the interviewer asks you to design the limiter that enforces them.
 
@@ -437,15 +429,9 @@ Without the refund, the tenant gets 54 requests where the limit should allow 90.
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-22 token bucket with reserve and refund. 22-32 where state lives: central store against local buckets with leases of 5,000 tokens each per gateway. 32-38 failure: store down. 38-40 headers.
 
-```mermaid
-flowchart LR
-  R["Request"] --> G["Gateway"]
-  G --> B["Bucket: reserve"]
-  B --> E["Engine"]
-  E --> F["Refund unused"]
-  F --> B
-  G --> L["429 + Retry-After"]
-```
+![An inference gateway rate limiter [my addition]](./img/m20-17-11.svg)
+
+*Figure 20.17.23. An inference gateway rate limiter [my addition], as a diagram.*
 
 **Graders look for.** (1) Limit tokens, not requests. A request count treats two very different calls as the same cost. (2) Central accuracy against local speed: leases bound the error to the lease size times the gateway count. A lease is a small block of allowance that a gateway holds locally, so it does not call the central store on every request. (3) Fail open or closed when the store dies, with a reason. Fail open means let traffic through when the limiter is down, and fail closed means block it.
 
@@ -458,6 +444,10 @@ flowchart LR
 Decide: reserve then refund, and state the fail-open choice.
 
 ### 11. Multi-tenant noisy-neighbour control [my addition]
+
+![KV memory arithmetic showing one tenant's 11 long requests cut capacity for others from 137 to 5 requests.](./img/p3-2017-noisy-neighbour-kv.svg)
+
+*Figure 20.17.24. Charge by tokens times context and cap each tenant's share of KV memory.*
 
 The support team forwards a complaint. One customer's requests seem to slow everyone else down, and the interviewer asks you to design the control that stops it.
 
@@ -478,14 +468,9 @@ Eleven long requests take capacity from 137 down to 5 for everyone else. That si
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-20 admission by cost, which is tokens times context. 20-30 fair queueing and a per-tenant KV cap. 30-36 isolation tiers: shared pool, long-context pool, dedicated endpoint. 36-40 detection.
 
-```mermaid
-flowchart LR
-  R["Request"] --> C["Cost: tokens x context"]
-  C --> Q["Weighted fair queues"]
-  Q --> K["Per-tenant KV cap"]
-  K --> P1["Shared pool"]
-  K --> P2["Long-context pool"]
-```
+![Multi-tenant noisy-neighbour control [my addition]](./img/m20-17-12.svg)
+
+*Figure 20.17.25. Multi-tenant noisy-neighbour control [my addition], as a diagram.*
 
 **Graders look for.** (1) Charge by resource cost, not request count. A long request uses far more memory than a short one. (2) Hard caps against borrowing: caps protect, borrowing raises utilisation. The two goals pull against each other, and a grader wants you to choose a point between them out loud. (3) Isolation tiers priced to match, ending at a dedicated endpoint.
 
@@ -498,6 +483,10 @@ flowchart LR
 Decide: charge by cost, cap the share, offer a pool.
 
 ### 12. An SLO and alerting platform for 1,000 endpoints [my addition]
+
+![A chain of counts from 468,000 raw series to 12,000 generated alert rules and 200 evaluations per second.](./img/p3-2017-slo-platform-scale.svg)
+
+*Figure 20.17.26. Generate rules from one spec and stage every rule change.*
 
 The platform team asks you to scale SLOs and alerts to every endpoint, and the interviewer adds the number of endpoints so you feel the scale.
 
@@ -516,14 +505,9 @@ The platform team asks you to scale SLOs and alerts to every endpoint, and the i
 
 **40 minutes.** 0-5 questions. 5-10 numbers. 10-20 SLO as code: one file generates recording and alert rules. 20-30 routing: page against ticket, ownership, silence rules. 30-36 reliability of the platform itself. 36-40 rollout of the rules.
 
-```mermaid
-flowchart LR
-  Y["SLO file per endpoint"] --> GEN["Rule generator"]
-  GEN --> REC["Recording rules"]
-  REC --> BR["Burn-rate alerts"]
-  BR --> RT["Routing by owner"]
-  M["Metrics store"] --> REC
-```
+![An SLO and alerting platform for 1,000 endpoints [my addition]](./img/m20-17-13.svg)
+
+*Figure 20.17.27. An SLO and alerting platform for 1,000 endpoints [my addition], as a diagram.*
 
 **Graders look for.** (1) Rules are generated from a spec, never hand-written 12,000 times. A generated rule is one that a program writes from the spec, so a change to the spec changes every rule consistently. (2) Page on symptoms and burn rate, ticket on slow burn. (3) Watch the watcher: if the metrics store dies, alerts on missing data must fire. A silent monitor is the worst kind of failure, because nothing tells you it stopped.
 
@@ -818,6 +802,10 @@ if __name__ == "__main__":
 ```
 
 ## The one-page decision checklist
+
+![A one-page decision checklist of eight steps, from requirements to operations, each with a question to ask and a sentence to say aloud.](./img/p2-2017-decision-checklist.svg)
+
+*Figure 20.17.28. The one-page decision checklist has eight steps from requirements to operations, each with a question to ask yourself and a sentence to say aloud.*
 
 Keep this table in front of you during a real round. Each row is a question you can ask yourself when the clock is running, and each row has a sentence you can say aloud, so the interviewer hears the structure instead of a pause.
 

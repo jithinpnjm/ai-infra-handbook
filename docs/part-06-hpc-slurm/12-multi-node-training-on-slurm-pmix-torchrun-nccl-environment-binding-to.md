@@ -36,15 +36,9 @@ NVLink is the fast link between GPUs inside one server. InfiniBand, or IB, and R
 
 Picture a job that starts on four nodes and then sits silent for twenty minutes. Every node shows a Python process, and every process is waiting. The first question is which layer is waiting, because each layer owns different variables and fails in different ways. Asking the question in the right order saves the most time. The diagram shows the stack from the scheduler down to the hardware.
 
-```mermaid
-flowchart TB
-  S[Slurm: allocation, cgroups, srun steps] --> L[Launcher: srun or torchrun]
-  L --> R[Rendezvous: MASTER_ADDR/PORT, c10d store or PMIx]
-  R --> F[Framework: torch.distributed, DDP/FSDP, DeepSpeed, Megatron]
-  F --> N[NCCL: topology detection, rings/trees]
-  N --> NV[NVLink / NVSwitch in node]
-  N --> IB[GPUDirect RDMA over IB or RoCE between nodes]
-```
+![Layers](./img/m6-12-1.svg)
+
+*Figure 6.12.1. Layers, as a diagram.*
 
 Read the diagram from the top down, as a list of who hands work to whom. Slurm decides *where* processes run and constrains them. The launcher then starts them. Rendezvous is how ranks find each other. For MPI programs, PMIx performs the wire-up through the Slurm step daemons. For PyTorch, the `env://` method uses a TCP store at `MASTER_ADDR:MASTER_PORT`, and that same store distributes NCCL's unique id. The unique id is a small token that every rank needs before NCCL can build its communication rings.
 
@@ -53,6 +47,10 @@ After rendezvous, NCCL talks directly over the fabric, so Slurm and PMIx are out
 Know which layer owns each variable before you change it. If you set `MASTER_ADDR` in the wrong place, the symptom looks like a network problem, but the cause is in the launcher. If you set an NCCL variable in the training script, it may be read too late to take effect.
 
 ## 2. Two launch styles
+
+![Style A starts every GPU rank from srun, while style B starts one torchrun per node that launches the eight local ranks.](./img/h12-launch-styles.svg)
+
+*Figure 6.12.2. Style A lets Slurm start every GPU rank, while style B lets torchrun start the ranks on each node.*
 
 Imagine two teams that both want to run a four-node job. One team writes a launch line that asks Slurm to start every GPU process. The other team asks torchrun to start the GPU processes on each node. Both work, and both are common. The launch style decides how much control Slurm keeps and how much work your training script has to do. There are two common styles, and you should pick one before you write the batch script.
 
@@ -82,6 +80,10 @@ Use **srun-per-GPU** for tightly controlled bare-metal clusters with strong bind
 Choose the launch style before you write the batch script, because the training code has to match it. A script written for style A may read the wrong values under style B, because Slurm sees one task per node there, while torchrun sets the per-GPU variables itself.
 
 ## 3. The glue, tested
+
+![Five Slurm variables map straight across to RANK, LOCAL_RANK, WORLD_SIZE, MASTER_ADDR and MASTER_PORT.](./img/h12-glue-translation.svg)
+
+*Figure 6.12.3. The glue maps five Slurm variables onto the PyTorch rendezvous variables, and a value you set yourself wins.*
 
 Your training script needs a rendezvous set before it can join a process group. Slurm already holds most of the values, so a small function can turn them into that set. The function is the glue between the scheduler and PyTorch, and it is where most launch bugs hide. Because it is small, you can test it on a laptop, which is much cheaper than finding a bug on a shared cluster. The file `code/part06/slurm_dist_init.py` does exactly this.
 
@@ -118,6 +120,10 @@ Run this glue test on a laptop before you trust a new launch script, because it 
 
 ## 4. Rendezvous gotchas
 
+![A five-item checklist for rendezvous stalls covering ports, MASTER_ADDR, rdzv-id, port sharing and start-time skew.](./img/p3-0612-rendezvous-checks.svg)
+
+*Figure 6.12.4. Check the port and MASTER_ADDR first because rendezvous failures look like slow starts.*
+
 A job that stalls before training starts often fails at rendezvous. Rendezvous is the meeting point, and a meeting fails when people cannot find the room or the door is locked. The checks below are the gotchas to run through first, in the order they are most likely to bite.
 
 - `MASTER_ADDR` must resolve and be reachable from every node, on the interface you intend to use. The first hostname in the nodelist is usually the management name, so ask whether the management network is the one you want. If the management and fabric networks differ, torch's TCP store uses whichever address `MASTER_ADDR` resolves to, and that is fine. NCCL's bootstrap, however, uses `NCCL_SOCKET_IFNAME`, covered below. The two can end up on different networks, which is why both need checking.
@@ -129,6 +135,14 @@ A job that stalls before training starts often fails at rendezvous. Rendezvous i
 When your job stalls at rendezvous, check the port first, derived from the job ID, and make sure the firewall allows that range between compute nodes. Port problems are quiet, so they often look like a slow start rather than a broken one.
 
 ## 5. NCCL environment variables
+
+![A healthy NCCL INFO log with IB and P2P transports compared with a misconfigured log showing socket fallback.](./img/p3-0612-nccl-info-baseline.svg)
+
+*Figure 6.12.5. Save a healthy INFO log as a baseline so a fallback to sockets is obvious.*
+
+![NCCL variables grouped into where traffic goes, how fast it moves, diagnosis switches and reliability.](./img/p3-0612-nccl-vars-groups.svg)
+
+*Figure 6.12.6. Set the minimum and keep site-wide NCCL settings in one config file.*
 
 NCCL is the library that moves tensors between GPUs, and it has many switches. Many NCCL problems come from one variable set to the wrong value. A typical case is a cluster where a container exposes the `docker0` bridge, and NCCL picks it up instead of the fast network. Nothing crashes, but the training runs slowly. The table lists the variables covered here, taken from the NCCL user guide (`env.rst`, checked in the clone).
 
@@ -165,6 +179,10 @@ Save that healthy baseline before you change any NCCL variable, so you have some
 
 ## 6. Binding for training jobs
 
+![Four Slurm binding flags each paired with the question it answers and a check recipe.](./img/p3-0612-binding-flags.svg)
+
+*Figure 6.12.7. Bind and then verify on every node before trusting throughput numbers.*
+
 Binding decides which CPU cores each rank may use. Think of a rank as a worker who needs a desk near the tools it uses. A worker placed on the far side of the building, away from its GPU and its network card, spends its time walking back and forth. Binding puts each rank close to its hardware. The target is simple. Each rank runs on cores in the socket or NUMA node closest to its GPU and NIC. Data-loader workers stay inside the same cpuset, which is the set of cores the rank is allowed to use, and nothing is oversubscribed.
 
 On Slurm, you control binding with `--cpus-per-gpu`, `--cpu-bind=cores` (or `rank` or `map_cpu`), `--gpu-bind=closest` and `--gres-flags=enforce-binding`. Each flag answers a different question. The CPU count says how many cores each GPU gets. The CPU bind says how those cores are grouped. The GPU bind says which GPU a rank should prefer, and the enforce flag makes that preference binding. Set `CoreSpecCount` to reserve cores for the system, as covered in 6.8 and 6.10, so the operating system and the daemons keep their own cores.
@@ -180,6 +198,18 @@ The `--bind-to none` flag in `mpirun` examples, covered in 6.4, is for PyTorch c
 Under Slurm, set binding with `--cpu-bind`, and check it on every node before you trust the throughput numbers. A benchmark on an unbound node measures the placement, not the fabric.
 
 ## 7. Framework patterns
+
+![Bars for bf16 weights, fp32 optimizer state, their theoretical sum and the larger measured checkpoint size.](./img/p3-0612-megatron-ckpt-math.svg)
+
+*Figure 6.12.8. A checkpoint holds optimizer state as well as weights, so it is far larger than the model.*
+
+![A table of four frameworks with the launcher, initialisation style and the Slurm variables each expects to be exported.](./img/p3-0612-framework-exports.svg)
+
+*Figure 6.12.9. Check which variables each framework expects the launcher to export before porting a script.*
+
+![A MASTER_ADDR of 127.0.0.1 gives each node its own process group, while the first host in the nodelist joins all nodes into one group.](./img/h12-master-addr-trap.svg)
+
+*Figure 6.12.10. Setting MASTER_ADDR to 127.0.0.1 on a multi-node job splits it into separate single-node groups that never sync gradients.*
 
 Each framework expects its launcher to set up variables in a slightly different way. You can think of the launcher as the person who hands out name badges at the door. Some frameworks read the badges from the launcher. Others read them from the scheduler directly, and a few need one badge written by hand. The table compares how the four major distributed training stacks work with Slurm environment variables and launchers.
 
@@ -210,6 +240,14 @@ Before you port a script to a new framework, check which variables that framewor
 
 ## 8. Failure and diagnosis
 
+![A table of eight multi-node training symptoms with likely causes and first checks.](./img/p3-0612-hang-symptoms.svg)
+
+*Figure 6.12.11. Shrink the job to one then two nodes and run nccl-tests to separate network from framework.*
+
+![A three-step check tests node reachability, then AllReduce bandwidth across sizes, then point-to-point latency.](./img/h12-diagnose-ladder.svg)
+
+*Figure 6.12.12. Check node reachability first, then all-reduce bandwidth, then point-to-point latency, because each step depends on the one below.*
+
 A job that hangs, runs slowly or loses one rank leaves you a few clues. The trick is to read the clues in order, from the most common cause to the least common. The table pairs each symptom with its likely causes and the first checks to run.
 
 | Symptom | Likely causes | First checks |
@@ -233,11 +271,19 @@ A short script can do the same job as `nccl-tests` with nothing but PyTorch. Cal
 
 ### 8.1 When the job hangs: flight recorder and ncclras
 
+![Two diagnostic tools, the PyTorch flight recorder and NCCL ncclras, with what each tells you about a hang.](./img/p3-0612-flight-recorder-ras.svg)
+
+*Figure 6.12.13. The flight recorder names the stuck collective and ncclras shows which ranks are alive.*
+
 Timeouts turn a hang into a crash, but a crash message rarely says which rank was stuck on which collective. Two tools answer that. The PyTorch flight recorder keeps a ring buffer of recent collectives on every rank. A ring buffer is a fixed-size log that overwrites its oldest entries, so it always holds the latest history. Set `TORCH_NCCL_TRACE_BUFFER_SIZE` to a non-zero entry count, for example 2000, and `TORCH_NCCL_DUMP_ON_TIMEOUT=1`. When the watchdog fires, each rank dumps its buffer to the file named by `TORCH_NCCL_DEBUG_INFO_TEMP_FILE`. Comparing the dumps shows the first collective that some ranks entered and others never did, and that points at the stuck rank.
 
 The second tool is the NCCL reliability, availability and serviceability subsystem, known as RAS, available from NCCL 2.24. While a job runs, the `ncclras` client connects to the RAS port on a node, which is 28028 by default, and prints which ranks and nodes NCCL considers alive or unresponsive. Use the flight recorder when a rank has already timed out, because its dump explains what happened. Use `ncclras` when the job is still hanging and you want to see who is missing before you cancel it. The two tools answer different moments in the same incident.
 
 ### 8.2 Six multinode communication pitfalls
+
+![Six cards for multinode pitfalls: gloo fallback, version mismatch, port exhaustion, interface fallback, stragglers and allocator fragmentation.](./img/p3-0612-six-comm-pitfalls.svg)
+
+*Figure 6.12.14. Falling back to gloo over TCP costs about 200 ms where InfiniBand costs about 4 ms for the same data.*
 
 Most multinode slowdowns and stalls trace back to a short list of host and launch mistakes. Each item below is a mistake that is easy to make, easy to miss, and easy to check once you know to look.
 
@@ -249,6 +295,10 @@ Most multinode slowdowns and stalls trace back to a short list of host and launc
 6. Allocator fragmentation under UCX and RDMA. PyTorch's caching allocator keeps freed blocks in its own cache. Reserved memory can grow while allocated memory reads zero. That happens because the blocks are free to PyTorch but still held by the process. `PYTORCH_ALLOC_CONF="max_split_size_mb:128,expandable_segments:True"` reduces it.
 
 ### 8.3 Six NCCL communicator and environment gotchas
+
+![Six cards for NCCL gotchas: communicators in the loop, subgroups, leftover diagnostics, CPU affinity, ignored warnings and no fail-fast.](./img/p3-0612-six-nccl-gotchas.svg)
+
+*Figure 6.12.15. Create communicators once, turn diagnostics off and enable fail-fast handling because failures are routine.*
 
 1. Creating communicators inside the training loop. Each `dist.init_process_group("nccl")` call performs handshakes, exchanges unique IDs, builds rings and trees, and allocates GPU buffers. Created once at startup it is cheap. Created every step it can cost tens of milliseconds, which for a `0.5 ms` collective is a slowdown of more than 98 percent. Create the global group once.
 2. Recreating subcommunicators on every step. For tensor or pipeline parallel subgroups, call `torch.distributed.new_group()` once and reuse the groups. All participating ranks must create and destroy them in lockstep, because a rank that skips the call leaves the others waiting.

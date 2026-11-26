@@ -1,0 +1,208 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>USE table, host and fabric side: CPU, memory, storage, network and software limits</title>
+  <desc>A matrix covering Utilisation, Saturation, and Errors across CPU, memory, storage, network, fabric, and container resources.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="78" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">USE table, host and fabric side:</text>
+  <text x="40" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">CPU, memory, storage, network and software limits</text>
+
+  
+  <rect x="390" y="160" width="386" height="48" rx="6" fill="#207448"/>
+  <text x="583" y="194" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Utilisation</text>
+
+  <rect x="780" y="160" width="386" height="48" rx="6" fill="#207448"/>
+  <text x="973" y="194" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Saturation</text>
+
+  <rect x="1170" y="160" width="390" height="48" rx="6" fill="#207448"/>
+  <text x="1365" y="194" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Errors</text>
+
+  
+  <rect x="40" y="212" width="346" height="116" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(54, 245)">
+    <rect x="6" y="6" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="15" y="15" width="18" height="18" rx="2" fill="none" stroke="#207448" stroke-width="2"/>
+    <line x1="14" y1="2" x2="14" y2="6" stroke="#207448" stroke-width="2.5"/>
+    <line x1="24" y1="2" x2="24" y2="6" stroke="#207448" stroke-width="2.5"/>
+    <line x1="34" y1="2" x2="34" y2="6" stroke="#207448" stroke-width="2.5"/>
+    <line x1="14" y1="42" x2="14" y2="46" stroke="#207448" stroke-width="2.5"/>
+    <line x1="24" y1="42" x2="24" y2="46" stroke="#207448" stroke-width="2.5"/>
+    <line x1="34" y1="42" x2="34" y2="46" stroke="#207448" stroke-width="2.5"/>
+    <line x1="2" y1="14" x2="6" y2="14" stroke="#207448" stroke-width="2.5"/>
+    <line x1="2" y1="24" x2="6" y2="24" stroke="#207448" stroke-width="2.5"/>
+    <line x1="2" y1="34" x2="6" y2="34" stroke="#207448" stroke-width="2.5"/>
+    <line x1="42" y1="14" x2="46" y2="14" stroke="#207448" stroke-width="2.5"/>
+    <line x1="42" y1="24" x2="46" y2="24" stroke="#207448" stroke-width="2.5"/>
+    <line x1="42" y1="34" x2="46" y2="34" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="116" y="248" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">CPU</text>
+  <text x="116" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(per logical</text>
+  <text x="116" y="306" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CPU)</text>
+
+  <rect x="390" y="212" width="386" height="116" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="408" y="260" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">mpstat -P ALL 1</text>
+  <text x="408" y="292" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">(%usr+%sys)</text>
+
+  <rect x="780" y="212" width="386" height="116" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="798" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">run queue vmstat r,</text>
+  <text x="798" y="266" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">runqlat, PSI cpu some,</text>
+  <text x="798" y="292" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">cgroup cpu.stat</text>
+  <text x="798" y="318" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">throttling</text>
+
+  <rect x="1170" y="212" width="390" height="116" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="1188" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">machine-check (rasdaemon,</text>
+  <text x="1188" y="276" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">mcelog), EDAC, thermal</text>
+  <text x="1188" y="306" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">throttling in dmesg</text>
+
+  
+  <rect x="40" y="332" width="346" height="106" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(54, 362)">
+    <rect x="4" y="10" width="40" height="24" rx="2" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="9" y="15" width="6" height="9" fill="#207448"/>
+    <rect x="18" y="15" width="6" height="9" fill="#207448"/>
+    <rect x="27" y="15" width="6" height="9" fill="#207448"/>
+    <rect x="36" y="15" width="6" height="9" fill="#207448"/>
+    <line x1="8" y1="38" x2="40" y2="38" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="116" y="394" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Host memory</text>
+
+  <rect x="390" y="332" width="386" height="106" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="408" y="392" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">free -m, MemAvailable</text>
+
+  <rect x="780" y="332" width="386" height="106" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="798" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">swapping vmstat si/so,</text>
+  <text x="798" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">reclaim sar -B pgscan,</text>
+  <text x="798" y="418" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">PSI memory, OOM events</text>
+
+  <rect x="1170" y="332" width="390" height="106" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="1188" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">dmesg OOM,</text>
+  <text x="1188" y="390" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">EDAC ECC counts,</text>
+  <text x="1188" y="418" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">failed allocations</text>
+
+  
+  <rect x="40" y="442" width="346" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(54, 474)">
+    <ellipse cx="24" cy="10" rx="18" ry="7" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 6 10 v 26 c 0 4 8 7 18 7 s 18 -3 18 -7 v -26" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 6 22 c 0 4 8 7 18 7 s 18 -3 18 -7" fill="none" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="116" y="508" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Local NVMe</text>
+
+  <rect x="390" y="442" width="386" height="114" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="408" y="474" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">iostat -x %util</text>
+  <text x="408" y="504" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">(weak for NVMe),</text>
+  <text x="408" y="534" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">throughput versus spec</text>
+
+  <rect x="780" y="442" width="386" height="114" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="798" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">aqu-sz, await,</text>
+  <text x="798" y="522" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">PSI io, biolatency</text>
+
+  <rect x="1170" y="442" width="390" height="114" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="1188" y="488" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">nvme smart-log media errors,</text>
+  <text x="1188" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">dmesg I/O errors</text>
+
+  
+  <rect x="40" y="560" width="346" height="126" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(54, 597)">
+    <line x1="4" y1="4" x2="4" y2="44" stroke="#207448" stroke-width="3"/>
+    <path d="M 4 10 h 34 v 28 h -34" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="22" y="17" width="16" height="14" rx="2" fill="none" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="116" y="595" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Network</text>
+  <text x="116" y="627" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">interface</text>
+  <text x="116" y="658" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(Ethernet or IB)</text>
+
+  <rect x="390" y="560" width="386" height="126" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="408" y="588" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">sar -n DEV, ethtool -S,</text>
+  <text x="408" y="615" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">rdma statistic,</text>
+  <text x="408" y="642" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">ibstat rate versus</text>
+  <text x="408" y="669" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">line rate</text>
+
+  <rect x="780" y="560" width="386" height="126" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="798" y="588" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">drops and overruns,</text>
+  <text x="798" y="615" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">retransmits (nstat, ss -ti),</text>
+  <text x="798" y="642" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">pause frames, ECN and CNP,</text>
+  <text x="798" y="669" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">queue depth</text>
+
+  <rect x="1170" y="560" width="390" height="126" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="1188" y="588" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CRC and symbol errors,</text>
+  <text x="1188" y="615" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">link flaps,</text>
+  <text x="1188" y="642" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">port_rcv_errors,</text>
+  <text x="1188" y="669" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">perfquery</text>
+
+  
+  <rect x="40" y="690" width="346" height="106" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(54, 720)">
+    <rect x="4" y="10" width="40" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="9" y="15" width="5" height="5" fill="#207448"/>
+    <rect x="17" y="15" width="5" height="5" fill="#207448"/>
+    <rect x="25" y="15" width="5" height="5" fill="#207448"/>
+    <rect x="33" y="15" width="5" height="5" fill="#207448"/>
+    <rect x="9" y="24" width="5" height="5" fill="#207448"/>
+    <rect x="17" y="24" width="5" height="5" fill="#207448"/>
+    <rect x="25" y="24" width="5" height="5" fill="#207448"/>
+    <rect x="33" y="24" width="5" height="5" fill="#207448"/>
+  </g>
+  <text x="116" y="733" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Fabric and</text>
+  <text x="116" y="765" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">switches</text>
+
+  <rect x="390" y="690" width="386" height="106" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="408" y="736" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">port counters</text>
+  <text x="408" y="766" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(UFM, NetQ, ibdiagnet)</text>
+
+  <rect x="780" y="690" width="386" height="106" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="798" y="726" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">buffer occupancy,</text>
+  <text x="798" y="753" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">PFC pause,</text>
+  <text x="798" y="780" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">adaptive routing stats</text>
+
+  <rect x="1170" y="690" width="390" height="106" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="1188" y="736" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">link down events,</text>
+  <text x="1188" y="766" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">bit error rate</text>
+
+  
+  <rect x="40" y="800" width="346" height="114" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  
+  <g transform="translate(54, 835)">
+    <rect x="6" y="6" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="15" y1="6" x2="15" y2="42" stroke="#207448" stroke-width="2.5"/>
+    <line x1="24" y1="6" x2="24" y2="42" stroke="#207448" stroke-width="2.5"/>
+    <line x1="33" y1="6" x2="33" y2="42" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="116" y="845" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Containers</text>
+  <text x="116" y="878" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(cgroup limits)</text>
+
+  <rect x="390" y="800" width="386" height="114" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="408" y="834" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">cpu.stat,</text>
+  <text x="408" y="862" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">memory.current versus</text>
+  <text x="408" y="890" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">memory.max, io.stat</text>
+
+  <rect x="780" y="800" width="386" height="114" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="798" y="834" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">CPU throttling,</text>
+  <text x="798" y="862" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">memory.events high and max,</text>
+  <text x="798" y="890" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">PSI per cgroup</text>
+
+  <rect x="1170" y="800" width="390" height="114" rx="6" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="1188" y="834" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">OOM kills (memory.events</text>
+  <text x="1188" y="862" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">oom_kill),</text>
+  <text x="1188" y="890" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">pids max</text>
+
+  
+  <rect x="40" y="926" width="1520" height="76" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="60" y="956" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">The interconnects are usually over-provisioned, which is exactly why nobody suspects them:</text>
+  <text x="60" y="986" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">check PCIe topology and link speed with nvidia-smi topo -m, about a minute</text>
+
+  
+  <rect x="40" y="1012" width="1520" height="74" rx="8" fill="#ffffff" stroke="#c8d6cb" stroke-width="1.5"/>
+  <text x="60" y="1042" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Also: NUMA and memory bandwidth via perf stat, pcm-memory, numastat;</text>
+  <text x="60" y="1070" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">swap and storage capacity via df -h and df -i</text>
+
+  
+  <rect x="40" y="1098" width="1520" height="62" rx="8" fill="#207448"/>
+  <text x="800" y="1138" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Map each USE cell to a tool, and list the cells with no tool</text>
+</svg>

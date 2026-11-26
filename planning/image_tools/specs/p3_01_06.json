@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "06",
+  "name": "p3-0106-check-order",
+  "title": "How the kernel checks permissions: first match wins, nothing adds up",
+  "spec": "A decision flow top to bottom. Start box 'Process asks to read report.txt' (file: owner alice UID 1042, group projx GID 2001, mode 0070 shown as '---rwx---'). Diamond 1 'Effective UID equals the file owner?' with 'yes' arrow to box 'Use the user triple only: --- so DENIED (stop)' and 'no' arrow to diamond 2 'Effective GID or a supplementary group equals the file group?' with 'yes' to box 'Use the group triple only: rwx so GRANTED (stop)' and 'no' to box 'Use the other triple: ---' . Number circles 1, 2, 3 on the diamonds and last box. Right side two result cards: 'alice (UID 1042, member of projx): matches owner first, user triple --- , denied even though she is in projx' (orange outline, the key lesson) and 'bob (UID 1043, member of projx): not the owner, matches group, group triple rwx, granted'. Small note: 'root (UID 0) passes nearly all checks through capabilities'. Bottom bar: 'The checks do not add up: the first matching class decides'.",
+  "anchor": "## 3. File permissions: read, write, execute",
+  "alt": "A decision flow showing the kernel checks owner, then group, then other, and stops at the first match, with alice denied and bob granted on a file with mode 0070.",
+  "cap": "The owner triple is used if you are the owner, even when the group triple would allow more, so alice is denied and bob is granted."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "06",
+  "name": "p3-0106-umask-table",
+  "title": "umask worked out: starting mode minus the mask",
+  "spec": "A table with a header row and three rows. Columns: 'umask', 'New file: 666 minus mask', 'New directory: 777 minus mask', 'Who it suits'. Row 1 '022': file 666 - 022 = 644 (rw-r--r--); directory 777 - 022 = 755 (rwxr-xr-x); 'lets others read what you create; single-user systems and daemons that run as pseudo-users'. Row 2 '077': file 600 (rw-------); directory 700 (rwx------); 'most restrictive; multi-user machines where others must not read your files'. Row 3 '002': file 664 (rw-rw-r--); directory 775 (rwxrwxr-x); 'collaborative group directories on systems with user-private groups'. Each result cell has a small digit-by-digit strip showing 6 6 6 over 0 2 2 giving 6 4 4. Below, a mini diagram of the shared directory recipe: 'sudo chmod 2770 /data/projx' (setgid so new files inherit group projx) plus 'members use umask 002' giving 'new files created inside: group projx, mode 664'. Orange highlight on the 022 row (the common default). Footnote: 'The umask is really a bit mask rather than a subtraction, but for normal masks the result is the same'.",
+  "anchor": "### `umask`: default permissions for new files",
+  "alt": "A table showing the file and directory modes produced by umask 022, 077 and 002 starting from 666 and 777, with who each suits.",
+  "cap": "A new file starts from 666 and a new directory from 777, and the umask removes bits from those starting modes."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "06",
+  "name": "p3-0106-pull-sync",
+  "title": "Keeping UIDs identical across nodes: pull at boot, stagger the trigger",
+  "spec": "Left: a box 'Master node (head)' with a disk icon holding '/etc/passwd', '/etc/shadow', '/etc/group'. Right: a column of three compute node boxes 'gpu01', 'gpu02', 'gpu05', each containing a gear box '/usr/sbin/master-sync'. Solid arrows go from each node to the master (pull direction) labelled once on a bracket 'rsync over SSH with a dedicated key: pull, initiated by the node'. Two numbered triggers: circle 1 'At OS startup: a rebooted or replaced node repairs its own user table before accepting jobs'; circle 2 'After a batch of account changes: master runs the trigger loop, ssh -o connecttimeout=3 node /usr/sbin/master-sync, sleep 0.1 between nodes'. A timeline strip under the master: 'sleep 0.1 per node = 10 seconds for 100 nodes' and 'watchdog (sleep 600 && kill -ALRM $$) ends the script after at most 600 seconds'. Failure callout in orange: 'alice is UID 1042 on login node but 1043 on gpu05: job cannot read her files, munge rejects the job steps'. Bottom bar: 'Pull, not push: no network shock and no stale node'.",
+  "anchor": "### 8.2 The classic file-synchronization approach and the pull-based `/usr/sbin/master-sync` design",
+  "alt": "Compute nodes pulling the account files from the master at boot and when triggered, with a staggered trigger loop and a timeout watchdog.",
+  "cap": "Each node pulls the account files from the master at boot and on a staggered trigger, so a replaced node repairs itself and the network is not shocked."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "06",
+  "name": "p3-0106-sudo-redirect",
+  "title": "Why sudo echo x > /root/file fails: your shell opens the file first",
+  "spec": "Two side-by-side timelines. Left panel 'sudo echo x > /root/f (fails)': three numbered steps down the panel. 1 box 'Your shell (unprivileged, your UID) parses the line and opens /root/f for the > redirection' ending in a red-free stop sign box 'Permission denied: sudo never starts'. A grey greyed-out box below 'sudo echo x (would have run as root)' marked 'never reached'. Right panel 'echo x | sudo tee /root/f (works)': 1 box 'Your shell runs echo x, output goes into the pipe'; 2 box 'sudo starts tee as root'; 3 box 'tee, running as root, opens /root/f and writes x'. Orange highlight on 'tee, running as root'. Below both panels a second row 'The environment trap': 'export FOO=1; sudo env | grep FOO prints nothing (env_reset and secure_path)' versus 'sudo -E, env_keep, or sudo env FOO=1 cmd keeps it'. Bottom bar: 'The redirection is done by YOUR shell, before sudo starts'.",
+  "anchor": "### 7. A `sudo` command behaves differently: environment and redirection surprises",
+  "alt": "Two timelines comparing sudo echo with a redirect, where the unprivileged shell opens the file and fails, with piping into sudo tee, where tee runs as root.",
+  "cap": "The redirection happens in your own shell before sudo runs, so let a root process such as tee open the file instead."
+ }
+]

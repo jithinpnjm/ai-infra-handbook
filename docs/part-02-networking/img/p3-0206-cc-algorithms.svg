@@ -1,0 +1,301 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Congestion control algorithms compared: what each one reacts to</title>
+  <desc>A comparative architectural infographic detailing TCP congestion control algorithms Tahoe, Reno, CUBIC, BBR, and DCTCP across reaction signals, congestion handling, strengths, and caveats.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="72" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Congestion control algorithms compared: what each one reacts to</text>
+
+  
+  <rect x="40" y="110" width="200" height="994" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(140, 175)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="-30" y="-30" width="60" height="60" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <path d="M-22 18 L-14 18 L-8 6 L0 6 L8 -12 L16 -12"/>
+    <path d="M16 -12 L16 8 L22 8"/>
+    <circle cx="16" cy="-12" r="3" fill="#207448"/>
+  </g>
+
+  
+  <text x="56" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="56" dy="0">Slow start</tspan>
+    <tspan x="56" dy="28">doubles cwnd</tspan>
+    <tspan x="56" dy="28">each RTT up</tspan>
+    <tspan x="56" dy="28">to ssthresh</tspan>
+    <tspan x="56" dy="28">(IW10 is 10</tspan>
+    <tspan x="56" dy="28">segments);</tspan>
+    <tspan x="56" dy="28">then</tspan>
+    <tspan x="56" dy="28">congestion</tspan>
+    <tspan x="56" dy="28">avoidance</tspan>
+    <tspan x="56" dy="28">adds one</tspan>
+    <tspan x="56" dy="28">segment</tspan>
+    <tspan x="56" dy="28">per RTT;</tspan>
+    <tspan x="56" dy="28">AIMD: add</tspan>
+    <tspan x="56" dy="28">slowly, cut</tspan>
+    <tspan x="56" dy="28">quickly,</tspan>
+    <tspan x="56" dy="28">converge to</tspan>
+    <tspan x="56" dy="28">a fair share</tspan>
+  </text>
+
+  
+  <g font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">
+    
+    <rect x="260" y="110" width="190" height="54" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="450" y="110" width="190" height="54" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="466" y="133">
+      <tspan x="466" dy="0">Signal it</tspan>
+      <tspan x="466" dy="23">reacts to</tspan>
+    </text>
+
+    
+    <rect x="640" y="110" width="260" height="54" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="656" y="133">
+      <tspan x="656" dy="0">On loss or</tspan>
+      <tspan x="656" dy="23">congestion</tspan>
+    </text>
+
+    
+    <rect x="900" y="110" width="380" height="54" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="916" y="145">Strength</text>
+
+    
+    <rect x="1280" y="110" width="280" height="54" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1296" y="145">Caveat</text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="260" y="164" width="190" height="100" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(355, 195)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M-18 12 L-6 -8 L4 4 L10 -4 L18 12 Z"/>
+      <path d="M-8 12 L-8 16 M8 12 L8 16"/>
+    </g>
+    <text x="355" y="244" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Tahoe</text>
+
+    
+    <rect x="450" y="164" width="190" height="100" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="466" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">loss</text>
+
+    
+    <rect x="640" y="164" width="260" height="100" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="656" y="202" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="656" dy="0">ssthresh = cwnd/2,</tspan>
+      <tspan x="656" dy="27">cwnd = IW,</tspan>
+      <tspan x="656" dy="27">restart slow start</tspan>
+    </text>
+
+    
+    <rect x="900" y="164" width="380" height="100" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <rect x="1280" y="164" width="280" height="100" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  </g>
+
+  
+  <g>
+    
+    <rect x="260" y="264" width="190" height="180" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(355, 324)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M-18 -14 L4 -14 A14 14 0 0 1 18 0 A14 14 0 0 1 4 14 L-18 14 Z"/>
+      <path d="M-6 -6 L2 0 L-6 6"/>
+      <path d="M4 -6 L12 0 L4 6"/>
+    </g>
+    <text x="355" y="388" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Reno</text>
+
+    
+    <rect x="450" y="264" width="190" height="180" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="466" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">loss</text>
+
+    
+    <rect x="640" y="264" width="260" height="180" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="656" y="302" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="656" dy="0">duplicate ACKs: halve</tspan>
+      <tspan x="656" dy="27">cwnd and stay in</tspan>
+      <tspan x="656" dy="27">congestion avoidance</tspan>
+      <tspan x="656" dy="27">with fast recovery;</tspan>
+      <tspan x="656" dy="27">only an RTO goes</tspan>
+      <tspan x="656" dy="27">back to slow start</tspan>
+    </text>
+
+    
+    <rect x="900" y="264" width="380" height="180" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="916" y="342" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="916" dy="0">NewReno and SACK-based</tspan>
+      <tspan x="916" dy="28">recovery handle several</tspan>
+      <tspan x="916" dy="28">losses within one window</tspan>
+    </text>
+
+    
+    <rect x="1280" y="264" width="280" height="180" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1296" y="342" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1296" dy="0">can need hundreds of</tspan>
+      <tspan x="1296" dy="28">RTTs to recover on</tspan>
+      <tspan x="1296" dy="28">a fat path</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="260" y="444" width="190" height="300" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(355, 520)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-24" y="-24" width="48" height="48" rx="4" fill="#e8f1ea"/>
+      <path d="M-18 16 C -6 16, -6 -6, 0 -6 C 6 -6, 6 -16, 18 -16"/>
+    </g>
+    <text x="355" y="604" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="355" dy="0">CUBIC</tspan>
+      <tspan x="355" dy="36">(Linux default)</tspan>
+    </text>
+
+    
+    <rect x="450" y="444" width="190" height="300" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="466" y="598" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">loss</text>
+
+    
+    <rect x="640" y="444" width="260" height="300" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="656" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="656" dy="0">cuts cwnd by a</tspan>
+      <tspan x="656" dy="28">factor beta = 0.7</tspan>
+    </text>
+
+    
+    <rect x="900" y="444" width="380" height="300" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="916" y="482" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="916" dy="0">window growth is a cubic</tspan>
+      <tspan x="916" dy="27">function of the time since</tspan>
+      <tspan x="916" dy="27">the last loss, concave as it</tspan>
+      <tspan x="916" dy="27">nears the previous maximum</tspan>
+      <tspan x="916" dy="27">W_max, flat near it, then</tspan>
+      <tspan x="916" dy="27">convex; climbs back quickly,</tspan>
+      <tspan x="916" dy="27">pauses, then probes gently;</tspan>
+      <tspan x="916" dy="27">independent of RTT, so fills</tspan>
+      <tspan x="916" dy="27">high-BDP paths far faster</tspan>
+      <tspan x="916" dy="27">than Reno</tspan>
+    </text>
+
+    
+    <rect x="1280" y="444" width="280" height="300" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="1296" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1296" dy="0">keep CUBIC unless you</tspan>
+      <tspan x="1296" dy="28">have measured a reason</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="260" y="744" width="190" height="215" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(355, 804)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="0" cy="0" r="22" fill="#f5f8f5"/>
+      <path d="M0 0 L10 -8"/>
+      <path d="M-14 8 A16 16 0 0 1 14 8"/>
+    </g>
+    <text x="355" y="868" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="355" dy="0">BBR</tspan>
+      <tspan x="355" dy="36">(Google)</tspan>
+    </text>
+
+    
+    <rect x="450" y="744" width="190" height="215" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="466" y="796" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="466" dy="0">a model:</tspan>
+      <tspan x="466" dy="27">estimated</tspan>
+      <tspan x="466" dy="27">bottleneck</tspan>
+      <tspan x="466" dy="27">bandwidth and</tspan>
+      <tspan x="466" dy="27">minimum RTT</tspan>
+    </text>
+
+    
+    <rect x="640" y="744" width="260" height="215" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="656" y="784" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="656" dy="0">paces at the estimated</tspan>
+      <tspan x="656" dy="27">rate and keeps in-flight</tspan>
+      <tspan x="656" dy="27">near the BDP, so avoids</tspan>
+      <tspan x="656" dy="27">filling buffers; does</tspan>
+      <tspan x="656" dy="27">not treat random</tspan>
+      <tspan x="656" dy="27">loss as congestion</tspan>
+    </text>
+
+    
+    <rect x="900" y="744" width="380" height="215" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="916" y="812" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="916" dy="0">good on lossy paths such as</tspan>
+      <tspan x="916" dy="28">Wi-Fi, satellite, long WAN;</tspan>
+      <tspan x="916" dy="28">often on edge and egress</tspan>
+      <tspan x="916" dy="28">servers</tspan>
+    </text>
+
+    
+    <rect x="1280" y="744" width="280" height="215" fill="#fff7ed" stroke="#db8129" stroke-width="2.5"/>
+    <text x="1296" y="776" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1296" dy="0">BBRv1 can be unfair to</tspan>
+      <tspan x="1296" dy="27">loss-based flows and</tspan>
+      <tspan x="1296" dy="27">cause retransmits on</tspan>
+      <tspan x="1296" dy="27">shallow buffers; older</tspan>
+      <tspan x="1296" dy="27">kernels need the fq</tspan>
+      <tspan x="1296" dy="27">qdisc; rarely inside a</tspan>
+      <tspan x="1296" dy="27">data-centre fabric</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    
+    <rect x="260" y="959" width="190" height="145" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(355, 1004)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="-22" y="-14" width="44" height="28" rx="4" fill="#e8f1ea"/>
+      <path d="M-12 0 L12 0"/>
+      <circle cx="-6" cy="0" r="2.5" fill="#207448"/>
+      <circle cx="6" cy="0" r="2.5" fill="#207448"/>
+    </g>
+    <text x="355" y="1058" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="355" dy="0">DCTCP</tspan>
+      <tspan x="355" dy="36">with ECN</tspan>
+    </text>
+
+    
+    <rect x="450" y="959" width="190" height="145" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="466" y="1006" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="466" dy="0">the fraction</tspan>
+      <tspan x="466" dy="27">of ECN-</tspan>
+      <tspan x="466" dy="27">marked</tspan>
+      <tspan x="466" dy="27">packets</tspan>
+    </text>
+
+    
+    <rect x="640" y="959" width="260" height="145" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="656" y="1032" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="656" dy="0">scales back in</tspan>
+      <tspan x="656" dy="28">proportion</tspan>
+    </text>
+
+    
+    <rect x="900" y="959" width="380" height="145" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="916" y="1032" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="916" dy="0">keeps queueing delay low</tspan>
+      <tspan x="916" dy="28">in data centres</tspan>
+    </text>
+
+    
+    <rect x="1280" y="959" width="280" height="145" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    <text x="1296" y="996" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1296" dy="0">needs ECN marking in</tspan>
+      <tspan x="1296" dy="26">the switches;</tspan>
+      <tspan x="1296" dy="26">tcp_ecn=1 (2 replies</tspan>
+      <tspan x="1296" dy="26">to peers that</tspan>
+      <tspan x="1296" dy="26">request ECN)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1120" width="1520" height="56" rx="8" fill="#207448"/>
+    <text x="800" y="1157" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">When you compare algorithms, run both on the same path</text>
+  </g>
+</svg>

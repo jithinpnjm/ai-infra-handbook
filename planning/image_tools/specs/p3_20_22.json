@@ -1,0 +1,92 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-memory-knobs",
+  "title": "Four vLLM flags that decide GPU memory",
+  "spec": "Four boxes, each with meaning, default and risk. 'gpu_memory_utilization: fraction of the GPU this instance may use; v0.32.0 default 0.92, range above 0 up to 1; per-instance limit that ignores other processes, so two instances on one GPU need fractions that add up to less than one; raising it gives more KV cache (memory left after weights) but removes headroom for activation spikes, the runtime OOM form'. 'max_model_len: longest sequence the engine accepts, prompt plus output; the start-up log Maximum concurrency line depends on it; cheapest way to make capacity numbers honest; risk is rejecting a long customer request, so set it from your traffic not the model card'. 'max_num_seqs: caps requests running in one step; class default 128 but read the start-up log for the value in force; high cap with a small cache admits work you cannot hold, so preemption (remove a running request, recompute later); lowering it is a documented fix'. 'kv_cache_memory_bytes via --kv-cache-memory: sets the cache size directly and ignores the utilisation fraction; skips memory profiling so start-up is shorter; low value caps concurrency, high value fails at allocation; valid only for the same GPU and the same free memory, a value from another machine is not safe'. Footer 'startup OOM: weights plus activation peak plus graph memory do not fit the requested fraction; runtime OOM: a spike or longer prompts consumed the headroom'. Text at least 24px.",
+  "anchor": "### 3. The knobs that decide memory",
+  "alt": "Four boxes for gpu_memory_utilization, max_model_len, max_num_seqs and kv_cache_memory_bytes with their effects and risks.",
+  "cap": "Size the cache first, then set the sequence cap and length limit to fit the real average request."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-token-budget-dial",
+  "title": "The token budget is a latency versus throughput dial",
+  "spec": "Dial drawn as a horizontal slider for max_num_batched_tokens. Left end 'smaller values, for example 2048: better inter-token latency; helps people already streaming'. Right end 'larger values: better time to first token; for throughput above 8192, especially small models on large GPUs; helps people waiting for a first token'. Mechanism strip above 'each step spends a token budget; chunked prefill (default in V1) batches decode requests first, then pending prefills fill the remaining budget, and a prefill that does not fit is cut into chunks across several steps'. Symptom 'streaming stutters when someone pastes a long document because prefill competes with decode in the same step'. Trap box 'chunked prefill off: the budget must be larger than max_model_len or the server may crash at start-up, because nothing splits a prompt longer than the budget; budget equal to max_model_len gives nearly the old scheduling policy; v0.32.0 forces chunked prefill off for encoder-decoder models; TensorRT-LLM calls the idea chunked context with a high max_num_tokens recommended for throughput'. Footer 'set the dial from your objectives and confirm with a load test'. Text at least 24px.",
+  "anchor": "### 4. The knobs that decide latency: token budget and chunked prefill",
+  "alt": "A slider from small token budgets favouring inter-token latency to large budgets favouring first-token time, with the chunked prefill trap.",
+  "cap": "Turn the budget down to protect streaming users and up to help users waiting for a first token."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-quantisation-example",
+  "title": "4-bit AWQ frees weight memory for cache: the book's numbers",
+  "spec": "Two columns from Hands-On LLM Serving and Optimization chapter 9, Qwen3-14B on one GPU (book measurements on its hardware, not yours; a reason to measure, not a forecast). Column 'Full precision': 'weights 27.5 GiB; KV cache 11.00 GiB; cache holds 72,064 tokens; throughput 474 tokens per second'. Column '4-bit AWQ': 'weights 9.36 GiB; KV cache 29.15 GiB; cache holds 191,056 tokens; throughput 1,280 tokens per second'. Between them an arrow labeled 'weights shrink, so the memory left for KV cache grows'. Risks box 'quality and hardware support: AWQ is not supported on Volta; FP8 W8A8 through LLM Compressor is listed only for Ada, Hopper and AMD GPUs; quantisation drift means answers slowly get worse with no error in the logs (chapter 20.18)'. Rollout rule 'put quantisation, prefix caching and speculative decoding each behind a canary with a quality check and keep the flag in version control so you can undo it fast'. Text at least 24px.",
+  "anchor": "### 6. Quantisation, prefix caching and speculative decoding",
+  "alt": "A comparison of full precision and 4-bit AWQ showing weights falling from 27.5 to 9.36 GiB and cache tokens rising from 72,064 to 191,056.",
+  "cap": "Smaller weights leave more memory for KV cache, but quality and hardware support need checking."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-prefix-cache-keys",
+  "title": "Prefix caching: block hashes, tenant salt and what breaks the cache",
+  "spec": "Left diagram: a request prompt split into blocks. 'v0.32.0 prefix caching is on by default; vLLM hashes each block from its tokens and its prefix; caches only full blocks'. Hash chain drawn as block 1 hash feeding block 2 hash feeding block 3 hash. Salt box 'cache salt: an extra value mixed into the hash so two tenants with the same prompt do not share cache entries (privacy)'. Right panel hash choices: 'default sha256; xxhash is not cryptographically secure and theoretically raises collision risk (two different inputs get the same hash and the cache could serve the wrong block)'; 'sha256 hashes may not be reproducible across Python or vLLM versions, which matters if a shared cache or a router depends on them'. Benefit line 'a cache hit saves prefill work, so repeated system prompts get cheaper and faster'. Footer 'cache contents and hash-based routing are not portable across versions'. Text at least 24px.",
+  "anchor": "### 6. Quantisation, prefix caching and speculative decoding",
+  "alt": "A prompt split into hashed blocks with a tenant salt and notes on sha256 versus xxhash and version portability.",
+  "cap": "The cache hash choice matters for privacy and for any router that depends on it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-startup-remedies",
+  "title": "Start-up phases and the remedy that attacks each one",
+  "spec": "Six phase boxes left to right, each with its remedy beneath. 'Pull image (vLLM v0.32.0 amd64 image is about 9.2 GB on Docker Hub, not under 5 GB as the book says): pin the tag or digest and use IfNotPresent so a node that has the image does not pull again; pre-pull'. 'Fetch and mount model: weights on a PVC, an OCI image or node-local NVMe instead of downloading from Hugging Face on every start'. 'Start runtime: a second or less per the book'. 'Load weights to GPU: bounded by I/O into GPU memory; faster loader such as Run:ai Model Streamer with --load-format runai_streamer, no repackaging'. 'Warm-up: allocate KV pool, profile, compile and capture CUDA graphs: reuse the torch.compile cache under VLLM_CACHE_ROOT, set VLLM_FORCE_AOT_LOAD=1 to fail loudly on a cache miss, pass --kv-cache-memory to skip profiling'. 'API opens: /health 200'. Footer 'book says these together can cut scale-up from many minutes to tens of seconds depending on model size; --enforce-eager and -O0 make boot fast but decode slower, use them in development only; most time goes to model download and weight load; measure each phase on your own cluster'. Text at least 24px.",
+  "anchor": "### 7. Start-up: what takes the time",
+  "alt": "Six start-up phases from image pull to the API opening, each with the remedy that shortens it.",
+  "cap": "Each remedy attacks a different phase, so measure the phases first."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-health-per-engine",
+  "title": "What each engine's health endpoint actually checks",
+  "spec": "Table of engines with endpoint and what it proves. 'vLLM v0.32.0: /health calls the engine client health check, 200 if it passes, 503 if the engine is dead; render-only servers with no engine always return 200; liveness style only, does not prove good tokens, a short queue or KV room; a hung engine can still pass'. 'Triton (KServe protocol): v2/health/live, v2/health/ready, v2/models/name/ready; server ready means all models are ready; separates process up from model loaded'. 'TensorRT-LLM v1.2.1: /health 200 or 503 from the engine health check; /health_generate runs a real one-token chat request'. 'SGLang v0.5.23: /health also sends a one-token generation by default, waits up to 20 seconds by default, 503 while starting or shutting down; under load a slow answer can fail a short-timeout probe'. 'Ray Serve: proxy /-/healthz is non-OK while draining or with no route table; each replica runs optional check_health every 10 s with a 30 s timeout by default, the controller restarts a replica whose check raises'. Rule box 'use /health for the startup probe and a forgiving liveness probe; put load and warm-up judgement in readiness through the router or a metric; only a truly dead process may cause a restart'. Text at least 24px.",
+  "anchor": "### 8. Health endpoints: what they prove and what they do not",
+  "alt": "A table of health endpoints for vLLM, Triton, TensorRT-LLM, SGLang and Ray Serve and what each proves.",
+  "cap": "Decide what each probe may kill before wiring it to Kubernetes."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-upgrade-changes",
+  "title": "What an engine upgrade silently changes",
+  "spec": "Left list 'things that move with the version': 'compile cache invalidated by any change to the model, config, relevant VLLM_ environment variables, the torch build or the GPU model, so the first start after an upgrade is slow again'; 'sha256 prefix hashes may differ across Python or vLLM versions, so cache contents and hash-based routing are not portable'; 'defaults move: V1 has chunked prefill on by default and recompute as the preemption mode'; 'Ray Serve LLM installed with pip install ray[llm] pulls in vLLM, so the engine version is chosen by the Ray release and your pin, not only the image tag: record both'. Right four-part rollout plan: '1 pin by tag or digest'; '2 pre-pull the image and warm the compile cache'; '3 canary on a small slice and compare latency percentiles, preemptions and finish_reason shares'; '4 keep the old version pods until the new ones pass'. Surge note 'maxUnavailable 0 and maxSurge 1 keeps all serving pods while the new one starts, but needs a spare GPU or the surge pod stays Pending and the roll stalls; with no spare GPU use maxUnavailable 1 and maxSurge 0 and accept lower capacity (author's reasoning)'. Rollback line 'old image plus old flags in version control'. Text at least 24px.",
+  "anchor": "### 9. Upgrades and version skew",
+  "alt": "Things an engine upgrade changes silently beside a four-part rollout plan and the surge versus spare GPU choice.",
+  "cap": "Never upgrade without a canary, a way back and a budget for a slow first start."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-metrics-by-question",
+  "title": "One dashboard row per question, not per engine",
+  "spec": "Table with rows as questions and columns as engines. 'Is work queued? vLLM: waiting-requests gauge; Triton: nv_inference_pending_request_count; Ray Serve LLM: ray_serve_deployment_queued_queries'. 'How long does it wait? vLLM: queue-time histogram; Triton: nv_inference_queue_duration_us (cumulative); Ray Serve LLM: no queue-time histogram on the metrics page, and ray_serve_deployment_processing_latency_ms excludes queue wait'. 'Is the cache full? vLLM: KV usage gauge; Triton: not on the core metrics page, backend-specific; Ray Serve LLM: vLLM engine metrics such as GPU cache utilization'. 'Is it failing? vLLM: 503 on /health when the engine is dead; Triton: nv_inference_request_failure by reason (REJECTED for scheduler timeouts, BACKEND); Ray Serve LLM: ray_serve_deployment_error_counter_total by exception type'. Gotchas strip 'Triton metrics on port 8002 at /metrics; latency histograms only when summary_latencies is simplified, otherwise counters only; TensorRT-LLM v1.2.1 /metrics returns JSON iteration stats and entries are removed once read, so poll from one collector only; SGLang needs --enable-metrics (sglang:num_queue_reqs, sglang:token_usage, sglang:queue_time_seconds)'. Text at least 24px.",
+  "anchor": "### 10. Reading each engine's metrics",
+  "alt": "A question by engine table of queue, wait, cache and failure metrics for vLLM, Triton and Ray Serve LLM.",
+  "cap": "The on-call person should read the same four answers whichever engine sits behind the endpoint."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "22",
+  "name": "p3-2022-cap-vs-cache",
+  "title": "A command line that passes review and still preempts",
+  "spec": "Command strip '--max-model-len=16384 --max-num-seqs=128 --max-num-batched-tokens=8192 --gpu-memory-utilization=0.90 on one H100 serving Llama 3.1 8B'. Three steps. 'Step 1: read the start-up log for GPU KV cache size; with the section 3 inputs the cache holds about 389,100 tokens'. 'Step 2: divide by max-num-seqs: 389,100 / 128 is about 3,040 tokens, the average request length at which 128 running requests fill the cache'. 'Step 3: compare with traffic: if the afternoon average prompt plus output is 4,000 tokens the cache cannot hold the batch, so vLLM preempts and recomputes; preemptions climb every afternoon'. Fix box 'lower max-num-seqs to what the cache holds at the real average length: 389,100 / 4,000 is about 97, so a cap near 90 leaves margin; or quantise to grow the cache'. Footer 'the reviewer prints this as information when you give it the log token count'. Text at least 24px.",
+  "anchor": "### Scenario A. The command line that passes review and still preempts",
+  "alt": "Three steps showing a 389,100 token cache and a 128 request cap preempting when the average request is 4,000 tokens.",
+  "cap": "Divide the cache by the real average request length to choose the sequence cap."
+ }
+]

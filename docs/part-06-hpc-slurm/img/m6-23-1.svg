@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <title>Common model</title>
+  <desc>Visual comparison of cluster provisioning architectures: xCAT, Warewulf 4, and NVIDIA Base Command Manager.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 15 8 L 0 14 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="15" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 0 2 L 15 8 L 0 14 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Common model</text>
+
+  
+  <g id="subgraph-xcat">
+    
+    <rect x="40" y="105" width="480" height="890" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 40 117 A 12 12 0 0 1 52 105 L 508 105 A 12 12 0 0 1 520 117 L 520 245 L 40 245 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="280" y="150" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="280" dy="0">xCAT</tspan>
+      <tspan x="280" dy="38">(Relational Tables</tspan>
+      <tspan x="280" dy="38">+ Objects)</tspan>
+    </text>
+
+    
+    <g id="node-X1">
+      <rect x="60" y="265" width="440" height="310" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="256" y="285" width="48" height="22" rx="3" />
+        <rect x="256" y="315" width="48" height="22" rx="3" />
+        <line x1="266" y1="296" x2="278" y2="296" />
+        <circle cx="292" cy="296" r="2" fill="#207448" />
+        <line x1="266" y1="326" x2="278" y2="326" />
+        <circle cx="292" cy="326" r="2" fill="#207448" />
+      </g>
+      
+      <text x="280" y="390" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">xcatd + Service Nodes</text>
+      
+      <text x="280" y="470" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="600" fill="#303a36">
+        <tspan x="280" dy="0">tabdump / chdef /</tspan>
+        <tspan x="280" dy="36">nodeset / rpower</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="280" y1="575" x2="280" y2="671" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="node-X2">
+      <rect x="60" y="675" width="440" height="290" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <ellipse cx="280" cy="707" rx="24" ry="8" />
+        <path d="M 256 707 v 14 c 0 4.4 10.7 8 24 8 c 13.3 0 24 -3.6 24 -8 v -14" />
+        <path d="M 256 727 v 14 c 0 4.4 10.7 8 24 8 c 13.3 0 24 -3.6 24 -8 v -14" />
+      </g>
+      
+      <text x="280" y="805" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="280" dy="0">statelite: NFS root +</tspan>
+        <tspan x="280" dy="40">litefile tmpfs</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="subgraph-WW4">
+    
+    <rect x="560" y="105" width="480" height="890" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 560 117 A 12 12 0 0 1 572 105 L 1028 105 A 12 12 0 0 1 1040 117 L 1040 245 L 560 245 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="168" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="800" dy="0">Warewulf 4</tspan>
+      <tspan x="800" dy="38">(GitOps + OCI)</tspan>
+    </text>
+
+    
+    <g id="node-W1">
+      <rect x="580" y="265" width="440" height="310" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 778 285 h 28 l 18 18 v 38 h -46 z" />
+        <path d="M 806 285 v 18 h 18" />
+        <line x1="788" y1="315" x2="802" y2="315" />
+        <line x1="788" y1="327" x2="814" y2="327" />
+      </g>
+      
+      <text x="800" y="378" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="800" dy="0">warewulfd +</tspan>
+        <tspan x="800" dy="36">nodes.conf (YAML)</tspan>
+      </text>
+      
+      <text x="800" y="470" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="600" fill="#303a36">
+        <tspan x="800" dy="0">wwctl configure /</tspan>
+        <tspan x="800" dy="36">node / image</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="800" y1="575" x2="800" y2="671" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="node-W2">
+      <rect x="580" y="675" width="440" height="290" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 800 696 l 24 12 l -24 12 l -24 -12 z" />
+        <path d="M 776 708 v 24 l 24 12 v -24 z" />
+        <path d="M 824 708 v 24 l -24 12 v -24 z" />
+        <path d="M 776 720 l 24 12 l 24 -12" />
+      </g>
+      
+      <text x="800" y="790" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="800" dy="0">Container Chroot +</tspan>
+        <tspan x="800" dy="38">System/Runtime</tspan>
+        <tspan x="800" dy="38">Overlays (.ww)</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="subgraph-BCM">
+    
+    <rect x="1080" y="105" width="480" height="890" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 1080 117 A 12 12 0 0 1 1092 105 L 1548 105 A 12 12 0 0 1 1560 117 L 1560 245 L 1080 245 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1320" y="168" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="1320" dy="0">NVIDIA</tspan>
+      <tspan x="1320" dy="38">Base Command Manager</tspan>
+    </text>
+
+    
+    <g id="node-B1">
+      <rect x="1100" y="265" width="440" height="310" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="1302" y="285" width="36" height="20" rx="3" />
+        <path d="M 1320 305 v 16 m -20 14 v -6 h 40 v 6" />
+        <rect x="1292" y="329" width="16" height="12" rx="2" />
+        <rect x="1332" y="329" width="16" height="12" rx="2" />
+      </g>
+      
+      <text x="1320" y="378" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="1320" dy="0">Head Node CMDaemon +</tspan>
+        <tspan x="1320" dy="36">Provisioning Nodes</tspan>
+      </text>
+      
+      <text x="1320" y="470" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="600" fill="#303a36">
+        <tspan x="1320" dy="0">cmsh / Base View /</tspan>
+        <tspan x="1320" dy="36">JSON-RPC</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="1320" y1="575" x2="1320" y2="671" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <g id="node-B2">
+      <rect x="1100" y="675" width="440" height="290" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="1320" cy="723" r="22" />
+        <circle cx="1320" cy="723" r="7" />
+        <path d="M 1320 701 v -4 m 22 26 h 4 m -26 22 v 4 m -22 -26 h -4" />
+      </g>
+      
+      <text x="1320" y="790" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="1320" dy="0">/cm/images +</tspan>
+        <tspan x="1320" dy="38">Categories +</tspan>
+        <tspan x="1320" dy="38">Node Installer</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

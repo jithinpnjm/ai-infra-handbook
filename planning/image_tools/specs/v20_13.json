@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "x13-control-data-plane",
+  "title": "Control plane and data plane are separate, and traffic survives a control outage",
+  "spec": "Two horizontal container panels stacked vertically with a clear gap between them. Top container labelled Control plane, low traffic, holding desired state, with three small boxes inside: Endpoints, Model and replicas, Region. Beside it a small shield or lock icon with the words strong consistency and audit log. Bottom container labelled Data plane, high traffic, holding a left-to-right request path of three boxes with arrows between them: Gateway, then Router, then Workers. A green cylinder icon labelled Signed snapshot sits between the two containers, with an arrow from the control plane down into the snapshot and an arrow from the snapshot up into the gateway box, so the data plane reads the cached copy. Orange highlight on the arrow from the snapshot into the gateway, labelled keeps serving when the control plane is down. A small dashed red-free note on the control plane container: if down, new endpoints blocked, traffic not dropped. Numbered steps in green circles: 1 control plane publishes state, 2 data plane caches signed snapshot, 3 traffic keeps flowing. Green takeaway bar: The control plane may be down for an hour and customers must not notice.",
+  "anchor": "### 3. The control plane and the data plane (minutes 8 to 10)",
+  "alt": "The control plane holds desired state, the data plane serves traffic from a signed snapshot, and traffic keeps flowing when the control plane is down.",
+  "cap": "Separating control from data keeps a control plane outage from dropping live requests."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "x13-token-admission",
+  "title": "Token admission: reserve at the door, refund the unused part at the end",
+  "spec": "A left-to-right decision flow with numbered steps in green circles. Start box labelled Request arrives with prompt tokens and max tokens. Step 1: diamond or box labelled Requests bucket take 1. If no, arrow down to a box labelled Reject with wait time, and a note on the side reading slot not burned. Step 2: box labelled Tokens bucket take prompt plus max tokens. If no, an arrow down to a box labelled Refund the request slot, then Reject with wait time, drawn as the failed branch. If yes, arrow to box labelled Admit, reserve held. Step 3, at the right end: box labelled Response ends, then box labelled Refund unused output tokens, with a formula line: unused = reserved minus prompt minus generated. Small side note under the request-size check: a request bigger than the whole bucket is rejected at once, never queued. Two bucket icons (jar icons) labelled Requests per second and Tokens per second. Orange highlight on the refund arrow at the end. Green takeaway bar: Count tokens, reserve at admission, refund at the end, and reject what can never fit.",
+  "anchor": "### 4. The gateway: auth, quotas and rate limits by tokens (minutes 10 to 17)",
+  "alt": "A request first takes one request slot, then reserves its prompt plus max output tokens; a token rejection refunds the request slot, and unused output tokens are refunded when the response ends.",
+  "cap": "Admission reserves tokens up front, and the limiter refunds both the rejected request slot and the output tokens that were never generated."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "x13-bounded-router",
+  "title": "The bounded cache-aware router only follows the cache while the holder is not much busier",
+  "spec": "A top-to-bottom decision flowchart with numbered steps in green circles. Start box labelled New request with prefix. Step 1 box: Does a replica hold the prefix in KV cache? If no, arrow to the right into a box labelled Send to least loaded replica. If yes, arrow down to Step 2 decision: Holder backlog within bound of least loaded replica? If yes, arrow to a box labelled Send to cache holder, prefill mostly skipped. If no, arrow to the box labelled Send to least loaded replica, which then caches the prefix too. Below the flow a small bar-style legend with three rows showing toy results: cache-only hit 0.98, p99 4.39 s, max over mean load 3.8; bounded hit 0.95, p99 0.50 s, max over mean load 2.13. Orange highlight on the cache-only row. A knob label on the bound decision: sweep the bound against p99, not hit rate. Green takeaway bar: Use the cache holder only while it is not much busier than the idlest replica.",
+  "anchor": "### 6. The router: cache-aware and load-aware (minutes 19 to 26)",
+  "alt": "The router sends a request to the replica holding its prefix only when that replica's backlog is within a bound of the least loaded replica, otherwise to the least loaded one.",
+  "cap": "A bounded cache-aware router keeps most prefix hits without creating a hotspot on one replica."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "x13-retry-amplification",
+  "title": "Retries multiply load and turn one partial outage into a pool collapse",
+  "spec": "A left-to-right failure cascade with four stages drawn as boxes connected by arrows, each with a number in a green circle in time order. Stage 1: a pool at 90 percent capacity, and some requests fail. Stage 2: each client retries three times, with no backoff. Stage 3: load becomes nearly four times the original, and the pool collapses. Stage 4, in orange: the pool stays overloaded as latency rises and timeouts trigger more retries. A feedback arrow loops from stage 3 back to stage 1 labelled every retry is a new request the pool must serve. Right side fix panel in green with four short labels stacked: retry budget of 10 percent, jittered exponential backoff, retry in one layer, retry only before the first token. A small shield icon on the fix panel. Green takeaway bar: Every retry is a new request, so failures feed themselves unless a budget caps them.",
+  "anchor": "### 13. Failure handling and retries with budgets (minutes 40 to 42)",
+  "alt": "A pool at 90 percent capacity that loses replicas and retries each failed request three times sees its load multiply, feeding more failures.",
+  "cap": "Unbudgeted retries add load exactly when the pool has the least capacity, so a partial outage becomes a full one."
+ }
+]

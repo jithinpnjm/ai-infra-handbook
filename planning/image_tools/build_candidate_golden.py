@@ -1,0 +1,180 @@
+import subprocess
+import os
+
+svg_content = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 960" width="1600" height="960">
+  <title>Golden signals drawn from RED and USE</title>
+  <desc>Visual infographic explaining how the four golden signals are drawn from the service-level RED method and the host-level USE method.</desc>
+
+  <defs>
+    <!-- Proportional green arrowhead (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="960" fill="#f5f8f5" />
+
+  <!-- Diagram Title (48px bold) -->
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Golden signals drawn from RED and USE</text>
+
+  <!-- ==================== TOP BOX: Golden signals ==================== -->
+  <g id="box-golden-signals">
+    <rect x="570" y="92" width="460" height="74" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <!-- 4-point golden star / signal beacon icon (56px) -->
+    <g transform="translate(595, 101)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="8" fill="#e8f1ea" />
+      <path d="M 28 6 L 28 14" />
+      <path d="M 28 42 L 28 50" />
+      <path d="M 6 28 L 14 28" />
+      <path d="M 42 28 L 50 28" />
+      <path d="M 12 12 L 18 18" />
+      <path d="M 38 38 L 44 44" />
+      <path d="M 12 44 L 18 38" />
+      <path d="M 38 18 L 44 12" />
+    </g>
+    <text x="670" y="141" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Golden signals</text>
+  </g>
+
+  <!-- ==================== FLOW ARROWS FROM GOLDEN SIGNALS ==================== -->
+  <!-- Arrow 1: to Latency -->
+  <path d="M 650 166 V 205 H 460 V 328" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 2: to Traffic -->
+  <path d="M 610 166 V 195 H 135 V 560 H 178" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 3: to Errors -->
+  <path d="M 580 166 V 185 H 95 V 725 H 178" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Arrow 4: to Saturation -->
+  <path d="M 950 166 V 205 H 1185 V 328" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== LEFT GROUP: RED Container ==================== -->
+  <g id="group-red">
+    <rect x="60" y="240" width="710" height="600" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Service / Gear Outline Icon (56px) -->
+    <g transform="translate(85, 258)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="10" fill="#ffffff" />
+      <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28" />
+      <path d="M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" />
+    </g>
+    <!-- Left Container Heading -->
+    <text x="155" y="297" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">RED: service health (user view)</text>
+
+    <!-- Box 1: Latency -->
+    <g id="box-latency">
+      <rect x="180" y="330" width="560" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Timer / Clock Outline Icon (56px) -->
+      <g transform="translate(205, 367)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22" />
+        <polyline points="28,14 28,28 38,28" />
+        <line x1="22" y1="2" x2="34" y2="2" />
+      </g>
+      <text x="275" y="385" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+        <tspan x="275" dy="0">Latency (duration,</tspan>
+        <tspan x="275" dy="36">use percentiles)</tspan>
+      </text>
+    </g>
+
+    <!-- Box 2: Traffic -->
+    <g id="box-traffic">
+      <rect x="180" y="495" width="560" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Rate / Flow Pulse Wave Outline Icon (56px) -->
+      <g transform="translate(205, 532)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 4 28 L 14 28 L 20 12 L 26 44 L 34 20 L 40 34 L 44 28 L 52 28" />
+      </g>
+      <text x="275" y="555" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+        <tspan x="275" dy="0">Traffic</tspan>
+        <tspan x="275" dy="36">(request rate)</tspan>
+      </text>
+    </g>
+
+    <!-- Box 3: Errors -->
+    <g id="box-errors">
+      <rect x="180" y="660" width="560" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      <!-- Alert Triangle Outline Icon (56px) -->
+      <g transform="translate(205, 697)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="28,6 52,48 4,48" />
+        <line x1="28" y1="20" x2="28" y2="34" />
+        <circle cx="28" cy="41" r="1.5" fill="#207448" stroke="none" />
+      </g>
+      <text x="275" y="720" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+        <tspan x="275" dy="0">Errors</tspan>
+        <tspan x="275" dy="36">(request errors)</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== RIGHT GROUP: USE Container ==================== -->
+  <g id="group-use">
+    <rect x="830" y="240" width="710" height="600" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <!-- Server / Host Outline Icon (56px) -->
+    <g transform="translate(855, 258)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="48" height="16" rx="3" fill="#ffffff" />
+      <rect x="4" y="30" width="48" height="16" rx="3" fill="#ffffff" />
+      <circle cx="12" cy="16" r="2.5" fill="#207448" stroke="none" />
+      <circle cx="12" cy="38" r="2.5" fill="#207448" stroke="none" />
+      <line x1="22" y1="16" x2="44" y2="16" />
+      <line x1="22" y1="38" x2="44" y2="38" />
+    </g>
+    <!-- Right Container Heading -->
+    <text x="925" y="297" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">USE: machine health (host view)</text>
+
+    <!-- Box: Saturation (USE) (Single Orange Highlight) -->
+    <g id="box-saturation">
+      <rect x="860" y="330" width="650" height="130" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+      <!-- Capacity Meter / Gauge Outline Icon in Orange (56px) -->
+      <g transform="translate(885, 367)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 8 38 A 22 22 0 1 1 48 38" />
+        <polyline points="28,28 42,18" />
+        <circle cx="28" cy="28" r="4" fill="#db8129" />
+      </g>
+      <text x="965" y="410" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Saturation (USE)</text>
+    </g>
+
+    <!-- Worked Example Card under Saturation -->
+    <g id="box-netflix-example">
+      <rect x="860" y="485" width="650" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <!-- Lightbulb / Insight Outline Icon (56px) -->
+      <g transform="translate(885, 525)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 16 22 C 16 14 21 8 28 8 C 35 8 40 14 40 22 C 40 27 36 31 34 35 L 22 35 C 20 31 16 27 16 22 Z" />
+        <line x1="22" y1="41" x2="34" y2="41" />
+        <line x1="24" y1="47" x2="32" y2="47" />
+      </g>
+      <text x="965" y="538" font-family="sans-serif" font-size="25" fill="#303a36">
+        <tspan x="965" dy="0">Netflix example: saturation</tspan>
+        <tspan x="965" dy="34">approximated by the gap between</tspan>
+        <tspan x="965" dy="34">p99 latency and the average</tspan>
+      </text>
+    </g>
+
+    <!-- Dashed Note: Utilisation and errors also live here -->
+    <g id="box-dashed-note">
+      <rect x="860" y="690" width="650" height="115" rx="14" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+      <!-- Info Note Outline Icon (56px) -->
+      <g transform="translate(885, 720)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="6" width="40" height="44" rx="4" />
+        <line x1="16" y1="18" x2="36" y2="18" />
+        <line x1="16" y1="28" x2="40" y2="28" />
+        <line x1="16" y1="38" x2="28" y2="38" />
+      </g>
+      <text x="965" y="747" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="965" dy="0">Utilisation and errors</tspan>
+        <tspan x="965" dy="34">also live here</tspan>
+      </text>
+    </g>
+  </g>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="60" y="870" width="1480" height="64" rx="12" fill="#207448" />
+    <text x="800" y="911" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">RED judges the service, USE judges the host.</text>
+  </g>
+</svg>"""
+
+with open("golden_candidate.svg", "w") as f:
+    f.write(svg_content)
+
+print("Saved golden_candidate.svg")

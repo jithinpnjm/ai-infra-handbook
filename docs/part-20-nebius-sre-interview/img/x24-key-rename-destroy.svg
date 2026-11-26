@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>A renamed pool key: from a silent destroy to a moved block</title>
+  <desc>An infographic illustrating the impact of renaming a pool key in Terraform and using a moved block to prevent node group destruction.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A renamed pool key: from a silent destroy to a moved block</text>
+
+  
+  <g id="node-1">
+    <rect x="140" y="100" width="1320" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(175, 129)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="14" cy="14" r="7" fill="#ffffff" />
+      <circle cx="14" cy="42" r="7" fill="#ffffff" />
+      <circle cx="42" cy="24" r="7" fill="#ffffff" />
+      <path d="M 14 21 L 14 35" />
+      <path d="M 42 31 C 42 42, 21 42, 21 42" />
+    </g>
+    <text x="265" y="145" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pull request renames the pool key from gpu to h100</text>
+    <text x="265" y="187" font-family="monospace" font-size="25" fill="#207448">pool["gpu"] becomes pool["h100"]</text>
+  </g>
+
+  
+  <path d="M 800 215 L 800 255" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+  
+  <g id="node-2">
+    <rect x="140" y="255" width="1320" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    <g transform="translate(175, 284)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="48" height="48" rx="8" fill="#ffffff" />
+      <path d="M 14 20 L 26 20" />
+      <path d="M 14 36 L 26 36" />
+      <path d="M 20 30 L 20 42" />
+      <path d="M 34 20 L 44 20" />
+      <path d="M 34 36 L 44 36" />
+    </g>
+    <text x="265" y="300" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Terraform sees a new address and an old address</text>
+    <text x="265" y="342" font-family="sans-serif" font-size="24" fill="#5a6862">Nothing links them, so this is a delete plus a create</text>
+  </g>
+
+  
+  <path d="M 800 370 L 800 405 L 407 405 L 407 510" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+  <path d="M 800 405 L 1192 405 L 1192 510" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+  
+  <g id="left-path">
+    
+    <rect x="30" y="430" width="755" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="55" y="448" width="310" height="48" rx="8" fill="#d0e2d4" />
+    <text x="210" y="482" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">No moved block</text>
+
+    
+    <g id="left-box">
+      <rect x="55" y="510" width="705" height="235" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <g transform="translate(85, 532)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 6 L 50 48 L 6 48 Z" fill="#ffffff" />
+        <path d="M 28 22 L 28 34" />
+        <circle cx="28" cy="41" r="2" fill="#207448" />
+      </g>
+      <text x="160" y="552" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="160" dy="0">Plan destroys stateful</tspan>
+        <tspan x="160" dy="38">nebius_mk8s_v1_node_group</tspan>
+      </text>
+      
+      <rect x="75" y="628" width="665" height="48" rx="6" fill="#f0f4f1" stroke="#c2d6c7" stroke-width="1.5" />
+      <text x="407" y="660" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">CRITICAL nebius_mk8s_v1_node_group.pool["gpu"]</text>
+      
+      <text x="407" y="718" font-family="monospace" font-size="24" fill="#5a6862" text-anchor="middle">delete_because_each_key</text>
+    </g>
+
+    
+    <path d="M 407 745 L 407 820" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+    
+    <g id="left-outcome">
+      <rect x="55" y="820" width="705" height="155" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <g transform="translate(85, 870)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="17,6 39,6 50,17 50,39 39,50 17,50 6,39 6,17" fill="#ffffff" />
+        <line x1="17" y1="28" x2="39" y2="28" />
+      </g>
+      <text x="165" y="885" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="165" dy="0">Risk script exits 1,</tspan>
+        <tspan x="165" dy="42">pipeline stops, do not merge</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="right-path">
+    
+    <rect x="815" y="430" width="755" height="660" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="840" y="448" width="330" height="48" rx="8" fill="#d0e2d4" />
+    <text x="1005" y="482" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Add a moved block</text>
+
+    
+    <g id="right-moved-block">
+      <rect x="840" y="510" width="705" height="115" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <g transform="translate(870, 540)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="40" rx="6" fill="#ffffff" />
+        <path d="M 16 28 L 36 28" />
+        <path d="M 28 20 L 36 28 L 28 36" />
+      </g>
+      <text x="950" y="577" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">moved from pool["gpu"] to pool["h100"]</text>
+    </g>
+
+    
+    <path d="M 1192 625 L 1192 695" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+    
+    <g id="right-replan-box">
+      <rect x="840" y="695" width="705" height="120" rx="14" fill="#fffdfa" stroke="#db8129" stroke-width="4" />
+      
+      <g transform="translate(870, 727)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 28 6 C 42 12, 48 18, 48 28 C 48 42, 38 50, 28 54 C 18 50, 8 42, 8 28 C 8 18, 14 12, 28 6 Z" fill="#ffffff" />
+        <path d="M 19 28 L 25 34 L 37 22" />
+      </g>
+      <text x="950" y="767" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Re-plan shows zero destroys</text>
+    </g>
+
+    
+    <path d="M 1192 815 L 1192 885" stroke="#207448" stroke-width="3.5" fill="none" marker-end="url(#arrow)" />
+
+    
+    <g id="right-outcome">
+      <rect x="840" y="885" width="705" height="155" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <g transform="translate(870, 935)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22" fill="#ffffff" />
+        <path d="M 18 28 L 25 35 L 38 21" />
+      </g>
+      <text x="950" y="950" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="950" dy="0">Reviewer requires zero destroys</tspan>
+        <tspan x="950" dy="42">before approval</tspan>
+      </text>
+    </g>
+  </g>
+</svg>

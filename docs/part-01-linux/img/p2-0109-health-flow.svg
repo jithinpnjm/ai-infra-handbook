@@ -1,0 +1,204 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>A node health check runs fast, bounded tests and exits non-zero with a reason</title>
+  <desc>Flowchart of a node health check with five sequential bounded tests, each with timeout handling, failure exits with explicit reasons, and success exit 0.</desc>
+
+  <defs>
+    <marker id="arrow-down" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 1 2 L 9 5 L 1 8 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-fail" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M 1 2 L 9 5 L 1 8 Z" fill="#d32f2f" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    A node health check runs fast, bounded tests
+    <tspan x="800" dy="58">and exits non-zero with a reason</tspan>
+  </text>
+
+  
+  
+  <rect x="80" y="175" width="760" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="125" cy="225" r="24" fill="#207448" />
+  <text x="125" y="233" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <circle cx="195" cy="225" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 191 203 L 199 203 M 195 203 L 195 207" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M 195 225 L 195 215 M 195 225 L 203 225" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <circle cx="195" cy="225" r="2.5" fill="#207448" />
+  
+  <text x="245" y="217" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    GPU count matches <tspan font-family="monospace">EXPECT_GPUS</tspan>
+    <tspan x="245" dy="34" font-size="24" font-weight="normal">(timeout 20 s)</tspan>
+  </text>
+
+  
+  <line x1="840" y1="225" x2="990" y2="225" stroke="#d32f2f" stroke-width="3" marker-end="url(#arrow-fail)" />
+  <text x="915" y="213" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c53030">no</text>
+
+  
+  <rect x="990" y="175" width="530" height="100" rx="12" fill="#fdf4f4" stroke="#d32f2f" stroke-width="3" />
+  <circle cx="1035" cy="225" r="22" fill="#fee2e2" stroke="#d32f2f" stroke-width="3" />
+  <path d="M 1035 213 L 1035 227 M 1035 235 L 1035 237" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round" />
+  <text x="1075" y="217" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#c53030">
+    HEALTH FAIL:
+    <tspan x="1075" dy="32" font-size="24" font-weight="bold" fill="#303a36">expected N GPUs, found M</tspan>
+  </text>
+
+  
+  <line x1="460" y1="275" x2="460" y2="320" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  
+  <rect x="80" y="320" width="760" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="125" cy="370" r="24" fill="#207448" />
+  <text x="125" y="378" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <circle cx="195" cy="370" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 191 348 L 199 348 M 195 348 L 195 352" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M 195 370 L 195 360 M 195 370 L 203 370" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <circle cx="195" cy="370" r="2.5" fill="#207448" />
+  
+  <text x="245" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    Uncorrected ECC errors = 0
+    <tspan x="245" dy="34" font-size="24" font-weight="normal">(timeout 20 s)</tspan>
+  </text>
+
+  
+  <line x1="840" y1="370" x2="990" y2="370" stroke="#d32f2f" stroke-width="3" marker-end="url(#arrow-fail)" />
+  <text x="915" y="358" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c53030">no</text>
+
+  
+  <rect x="990" y="320" width="530" height="100" rx="12" fill="#fdf4f4" stroke="#d32f2f" stroke-width="3" />
+  <circle cx="1035" cy="370" r="22" fill="#fee2e2" stroke="#d32f2f" stroke-width="3" />
+  <path d="M 1035 358 L 1035 372 M 1035 380 L 1035 382" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round" />
+  <text x="1075" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#c53030">
+    HEALTH FAIL:
+    <tspan x="1075" dy="32" font-size="24" font-weight="bold" fill="#303a36">uncorrectable ECC errors</tspan>
+  </text>
+
+  
+  <line x1="460" y1="420" x2="460" y2="465" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  
+  <rect x="80" y="465" width="760" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="125" cy="515" r="24" fill="#207448" />
+  <text x="125" y="523" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <circle cx="195" cy="515" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 191 493 L 199 493 M 195 493 L 195 497" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M 195 515 L 195 505 M 195 515 L 203 515" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <circle cx="195" cy="515" r="2.5" fill="#207448" />
+  
+  <text x="245" y="507" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    mountpoint <tspan font-family="monospace">/mnt/shared</tspan>
+    <tspan x="245" dy="34" font-size="24" font-weight="normal">(no timeout needed)</tspan>
+  </text>
+
+  
+  <line x1="840" y1="515" x2="990" y2="515" stroke="#d32f2f" stroke-width="3" marker-end="url(#arrow-fail)" />
+  <text x="915" y="503" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c53030">no</text>
+
+  
+  <rect x="990" y="465" width="530" height="100" rx="12" fill="#fdf4f4" stroke="#d32f2f" stroke-width="3" />
+  <circle cx="1035" cy="515" r="22" fill="#fee2e2" stroke="#d32f2f" stroke-width="3" />
+  <path d="M 1035 503 L 1035 517 M 1035 525 L 1035 527" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round" />
+  <text x="1075" y="507" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#c53030">
+    HEALTH FAIL:
+    <tspan x="1075" dy="32" font-size="24" font-weight="bold" fill="#303a36"><tspan font-family="monospace">/mnt/shared</tspan> not mounted</tspan>
+  </text>
+
+  
+  <line x1="460" y1="565" x2="460" y2="610" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  
+  <rect x="80" y="610" width="760" height="100" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="5" />
+  
+  <circle cx="125" cy="660" r="24" fill="#207448" />
+  <text x="125" y="668" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <circle cx="195" cy="660" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 191 638 L 199 638 M 195 638 L 195 642" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M 195 660 L 195 650 M 195 660 L 203 660" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <circle cx="195" cy="660" r="2.5" fill="#207448" />
+  
+  <text x="245" y="652" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan font-family="monospace">ls /mnt/shared</tspan> responds
+    <tspan x="245" dy="34" font-size="24" font-weight="normal">(timeout 5 s)</tspan>
+  </text>
+
+  
+  <line x1="840" y1="660" x2="990" y2="660" stroke="#d32f2f" stroke-width="3" marker-end="url(#arrow-fail)" />
+  <text x="915" y="648" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c53030">no</text>
+
+  
+  <rect x="990" y="610" width="530" height="100" rx="12" fill="#fdf4f4" stroke="#d32f2f" stroke-width="3" />
+  <circle cx="1035" cy="660" r="22" fill="#fee2e2" stroke="#d32f2f" stroke-width="3" />
+  <path d="M 1035 648 L 1035 662 M 1035 670 L 1035 672" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round" />
+  <text x="1075" y="652" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#c53030">
+    HEALTH FAIL:
+    <tspan x="1075" dy="32" font-size="24" font-weight="bold" fill="#303a36"><tspan font-family="monospace">/mnt/shared</tspan> not responding</tspan>
+  </text>
+
+  
+  <line x1="460" y1="710" x2="460" y2="755" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  
+  <rect x="80" y="755" width="760" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="125" cy="805" r="24" fill="#207448" />
+  <text x="125" y="813" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+  
+  <circle cx="195" cy="805" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+  <path d="M 191 783 L 199 783 M 195 783 L 195 787" stroke="#207448" stroke-width="2.5" stroke-linecap="round" />
+  <path d="M 195 805 L 195 795 M 195 805 L 203 805" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <circle cx="195" cy="805" r="2.5" fill="#207448" />
+  
+  <text x="245" y="815" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan font-family="monospace">/tmp</tspan> under 95 percent full
+  </text>
+
+  
+  <line x1="840" y1="805" x2="990" y2="805" stroke="#d32f2f" stroke-width="3" marker-end="url(#arrow-fail)" />
+  <text x="915" y="793" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#c53030">no</text>
+
+  
+  <rect x="990" y="755" width="530" height="100" rx="12" fill="#fdf4f4" stroke="#d32f2f" stroke-width="3" />
+  <circle cx="1035" cy="805" r="22" fill="#fee2e2" stroke="#d32f2f" stroke-width="3" />
+  <path d="M 1035 793 L 1035 807 M 1035 815 L 1035 817" stroke="#d32f2f" stroke-width="3.5" stroke-linecap="round" />
+  <text x="1075" y="797" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#c53030">
+    HEALTH FAIL:
+    <tspan x="1075" dy="32" font-size="24" font-weight="bold" fill="#303a36"><tspan font-family="monospace">/tmp</tspan> over 95%</tspan>
+  </text>
+
+  
+  <line x1="460" y1="855" x2="460" y2="900" stroke="#207448" stroke-width="3" marker-end="url(#arrow-down)" />
+
+  
+  
+  <rect x="80" y="900" width="760" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="4" />
+  
+  <circle cx="140" cy="950" r="24" fill="#207448" />
+  <path d="M 128 950 L 137 959 L 153 941" fill="none" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <text x="190" y="961" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">
+    <tspan font-family="monospace">exit 0</tspan>: node is healthy
+  </text>
+
+  
+  <rect x="80" y="1045" width="1440" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  <text x="800" y="1082" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    Every command that could hang has a timeout,
+    <tspan x="800" dy="34">and the checks are cheap enough to run on every job.</tspan>
+  </text>
+</svg>

@@ -1,0 +1,181 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Handler memory versus a state check</title>
+  <desc>Handler memory versus a state check</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Handler memory versus a state check</text>
+
+  
+  <rect x="50" y="125" width="730" height="115" rx="12" fill="#207448"/>
+  <text x="415" y="172" font-family="sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle">Handler</text>
+  <text x="415" y="214" font-family="sans-serif" font-size="24" fill="#ffffff" text-anchor="middle">something changed so restart</text>
+
+  
+  <rect x="820" y="125" width="730" height="115" rx="12" fill="#db8129"/>
+  <text x="1185" y="172" font-family="sans-serif" font-size="34" font-weight="bold" fill="#ffffff" text-anchor="middle">State check</text>
+  <text x="1185" y="214" font-family="sans-serif" font-size="24" fill="#ffffff" text-anchor="middle">the running thing must match the thing on disk</text>
+
+  
+  <rect x="50" y="270" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="330" r="24" fill="#207448"/>
+  <text x="95" y="330" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="144" y="308" width="34" height="44" rx="4"/>
+    <line x1="152" y1="322" x2="170" y2="322"/>
+    <line x1="152" y1="334" x2="166" y2="334"/>
+  </g>
+  <text x="205" y="340" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">config task changed</text>
+
+  
+  <line x1="415" y1="390" x2="415" y2="418" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="420" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="480" r="24" fill="#207448"/>
+  <text x="95" y="480" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M148,492 C148,474 174,474 174,492 L178,498 L144,498 Z"/>
+    <path d="M157,498 C157,504 165,504 165,498"/>
+  </g>
+  <text x="205" y="490" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">notify queued</text>
+
+  
+  <line x1="415" y1="540" x2="415" y2="568" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="570" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="630" r="24" fill="#207448"/>
+  <text x="95" y="630" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polygon points="161,608 183,648 139,648"/>
+    <line x1="161" y1="620" x2="161" y2="632"/>
+    <circle cx="161" cy="641" r="1" fill="#207448"/>
+  </g>
+  <text x="205" y="640" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">a later task fails</text>
+
+  
+  <line x1="415" y1="690" x2="415" y2="718" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="720" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="780" r="24" fill="#207448"/>
+  <text x="95" y="780" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="161" cy="780" r="20"/>
+    <line x1="147" y1="766" x2="175" y2="794"/>
+  </g>
+  <text x="205" y="790" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">handler never runs</text>
+
+  
+  <line x1="415" y1="840" x2="415" y2="868" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="870" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="95" cy="930" r="24" fill="#207448"/>
+  <text x="95" y="930" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="141" y="910" width="40" height="16" rx="3"/>
+    <rect x="141" y="934" width="40" height="16" rx="3"/>
+    <circle cx="149" cy="918" r="1" fill="#207448"/>
+    <circle cx="149" cy="942" r="1" fill="#207448"/>
+  </g>
+  <text x="205" y="940" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">service stays stale</text>
+
+  
+  <rect x="820" y="270" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="865" cy="330" r="24" fill="#207448"/>
+  <text x="865" y="330" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="911" y="308" width="44" height="44" rx="4"/>
+    <path d="M920,323 L927,330 L920,337"/>
+    <line x1="931" y1="337" x2="945" y2="337"/>
+  </g>
+  <text x="975" y="312" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="975" dy="0">systemctl show -p</tspan>
+    <tspan x="975" dy="28">ActiveEnterTimestampMonotonic</tspan>
+    <tspan x="975" dy="28">dcgm-exporter</tspan>
+  </text>
+
+  
+  <line x1="1185" y1="390" x2="1185" y2="418" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="820" y="420" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="865" cy="480" r="24" fill="#207448"/>
+  <text x="865" y="480" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="913" y="460" width="40" height="42" rx="4"/>
+    <rect x="923" y="454" width="20" height="8" rx="2"/>
+    <line x1="921" y1="474" x2="945" y2="474"/>
+    <line x1="921" y1="486" x2="939" y2="486"/>
+  </g>
+  <text x="975" y="490" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">register started</text>
+
+  
+  <line x1="1185" y1="540" x2="1185" y2="568" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="820" y="570" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="865" cy="630" r="24" fill="#207448"/>
+  <text x="865" y="630" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M913,612 L933,608 L953,612 C953,630 933,646 933,646 C933,646 913,630 913,612 Z"/>
+    <line x1="923" y1="626" x2="943" y2="626"/>
+  </g>
+  <text x="975" y="640" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">changed_when false</text>
+
+  
+  <line x1="1185" y1="690" x2="1185" y2="718" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="820" y="720" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="865" cy="780" r="24" fill="#207448"/>
+  <text x="865" y="780" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="933" cy="780" r="20"/>
+    <polyline points="933,766 933,780 943,780"/>
+  </g>
+  <text x="975" y="763" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="975" dy="0">compare with config</tspan>
+    <tspan x="975" dy="36">mtime from stat</tspan>
+  </text>
+
+  
+  <line x1="1185" y1="840" x2="1185" y2="868" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="820" y="870" width="730" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="865" cy="930" r="24" fill="#207448"/>
+  <text x="865" y="930" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+  
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M921,920 A16,16 0 1,1 919,936"/>
+    <polyline points="923,912 921,921 931,921"/>
+  </g>
+  <text x="975" y="913" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="975" dy="0">restart if process started</tspan>
+    <tspan x="975" dy="36">before the file was written</tspan>
+  </text>
+
+  
+  <rect x="50" y="1030" width="1500" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1073" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">the second statement stays true even after a failure wipes out the first</text>
+</svg>

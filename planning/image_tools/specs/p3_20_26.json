@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p3-2026-ttft-evidence-map",
+  "title": "Incident 1: from symptoms to the one lost routing setting",
+  "spec": "Drill numbers are invented for the exercise. Left evidence column: 'p99 TTFT 4.1 s against normal 0.6 s; p50 0.9 s against 0.5 s; inter-token latency flat at about 25 ms (decode is fine, so the problem is prefill or queue)'; 'waiting queue per replica about 2 to about 30 at 13:55; running requests at the batch cap'; 'KV usage about 0.45, no preemption, no OOM (not memory)'; 'prompts unchanged, all 12 replicas look the same, no errors, no restarts (not traffic, not one bad pod)'; 'deploy finished 13:50 moved router and engine image to all 12 replicas in ten minutes, no canary'. Center the key signal 'vllm:prefix_cache_hits / vllm:prefix_cache_queries fell from about 0.55 to about 0.03 at 13:52; the chat product sends the same 3,000-token system prompt on every request; GPU utilisation 70 to 95 percent, extra work is prefill'. Right conclusion 'diff: new router config lost the prefix-hash routing setting, requests with the same prefix are spread by round robin'. Fix 'kubectl rollout undo deployment, watch TTFT and hit rate recover, then diff the values file'. Strong note 'new replicas start with an empty prefix cache, so scaling out is no fix; restarting every replica empties every cache at once'. Text at least 24px.",
+  "anchor": "### Incident 1: TTFT spike after a deploy",
+  "alt": "Evidence pointing from slow first tokens and a collapsed prefix cache hit ratio to a lost prefix-aware routing setting.",
+  "cap": "Flat inter-token latency and a collapsed hit ratio point to routing, not traffic or memory."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p3-2026-429-storm-math",
+  "title": "Incident 3: why raising the rate limits is the wrong dial",
+  "spec": "Drill numbers are invented. Left KV arithmetic 'KV per token = 2 x layers x heads x head dimension x bytes = 524,288 bytes = 0.5 MB for Llama-2-7b; tenant A prompt about 28,000 tokens x 0.5 MB is about 14 GB for one request; other tenants send about 1,000 tokens; the book's L40S example fits 16 requests of 4,096 tokens in 34 GB'. Middle evidence 'KV cache 98 to 100 percent on all six replicas; many preemptions, preempted requests go back to the waiting queue and prefill again; pool output tokens per second down 40 percent while requests rose 35 percent; GPUs busy redoing work'. Limits box 'tenant A limit 600 requests per minute and 10,000,000 tokens per minute; uses about 300 RPM and 8.4 million TPM, inside both; the 429s come from the router shedding when every worker queue is over its depth limit, not from the gateway limits'. Retry box 'SDK clients retry a 429 up to three times and ignore Retry-After; retries are about 30 percent of arrivals'. Actions in order 'cap tenant A by tokens per minute or concurrent long requests; scale out (max 10 replicas, six running, 12 minutes to ready); ask clients to honour Retry-After; tell tenant A'. Strong note 'a request-per-minute limit cannot see a long prompt; the pool works on memory, so raising limits is wrong because the pool is full; do not remove the router's shedding'. Text at least 24px.",
+  "anchor": "### Incident 3: KV-cache pressure and a 429 storm",
+  "alt": "KV arithmetic showing one 28,000-token request holding about 14 GB, with preemptions and retries behind a 22 percent 429 rate.",
+  "cap": "Cap by tokens or concurrent long requests, because the pool is full of memory, not requests."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p3-2026-cert-expiry-timeline",
+  "title": "Incident 7: how a rotated DNS token became an expired certificate",
+  "spec": "Drill numbers are invented. Timeline in days. 'day 0: certificate issued by an ACME CA through cert-manager; default duration 90 days'. 'day 59: DNS provider API token used by the solver is rotated in the secrets manager (31 days ago); the cluster secret still holds the old token'. 'about day 60: renewal starts two thirds of the way through; the DNS-01 challenge fails with an authentication error; kubectl describe certificate shows Ready False; failing for 30 days'. 'day 90: notAfter Nov 9 08:59:59 2026 GMT; at 09:00:00 request rate from strict clients falls to near zero; edge shows TLS handshake failures; backend error rate is 0 because requests never arrive'. Below, the missing alert 'no alert on days to expiry; cert-manager failures were not routed to anyone'. Fix list in order 'update the token; force renewal with cmctl renew; verify with openssl s_client that the new certificate is actually served; manual certificate loaded into the TLS Secret if renewal is slow (ingress controller reloads Secret changes); add an expiry alert'. Second deadline box 'wildcard certificate for the console expires in 6 days and uses the same renewal path; control plane certificates have over 200 days left (kubeadm certs check-expiration); leaf certificates one year, CA ten years'. Risky 'telling clients to skip verification; deleting the Secret (not a recommended way to rotate)'. Text at least 24px.",
+  "anchor": "### Incident 7: Certificate expiry",
+  "alt": "A 90-day timeline from certificate issue and token rotation through 30 days of failed renewal to the 09:00 expiry.",
+  "cap": "The token changed in one place and the cluster kept the old copy, so name the second expiring certificate too."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p3-2026-ndots-amplification",
+  "title": "Incident 8: one external lookup becomes several DNS queries",
+  "spec": "Drill numbers are invented. Left resolver anatomy 'pod /etc/resolv.conf: nameserver 10.0.0.10; three search domains; options ndots:5'. Rule 'a name with fewer dots than ndots is tried with each search suffix first; a combined name that does not exist returns NXDOMAIN; then the real name is asked'. Query picture for idp.example.test: 'suffix 1 -> NXDOMAIN', 'suffix 2 -> NXDOMAIN', 'suffix 3 -> NXDOMAIN', 'idp.example.test -> answer' (the chapter's CoreDNS log shows each suffix tried first). Load box 'gateway release at 10:05 added a per-request call to an external identity provider; query rate 12,000 per second up from 3,000; CoreDNS has two replicas, CPU limit 200m, throttled; DNS latency p99 up to 2 s, some queries time out; no NodeLocal DNSCache; upstream resolver healthy, 5 ms from a node'. Result 'about 5 percent of requests fail with 502 because token validation cannot resolve its host; inference path works'. Fix from outside in: 'roll back or flag off the lookup; scale CoreDNS and lift its CPU limit; trailing-dot name or lower ndots through dnsConfig; plan NodeLocal DNSCache'. Risky 'removing every CoreDNS pod; hard-coded hosts entries'. Test note 'test from a pod, not a laptop, because a laptop uses its own resolver'. Text at least 24px.",
+  "anchor": "### Incident 8: DNS: intermittent resolution failures",
+  "alt": "A resolver with ndots 5 sending failed suffix queries before the real name, multiplying load on throttled CoreDNS.",
+  "cap": "The new external lookup multiplied DNS load, and the naming fix cuts queries for every later lookup."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "26",
+  "name": "p3-2026-etcd-fsync",
+  "title": "Incident 9: a backup on the leader's disk slows the whole control plane",
+  "spec": "Drill numbers are invented. Left chain: 'nightly backup job starts 02:00, writes a 40 GB copy to the device shared with API server logs on member 2'; 'iostat on member 2: device at 100 percent utilisation, high write await'; 'wal_fsync_duration_seconds p99 is 180 ms on member 2 against about 6 ms on the others; target under 10 ms'; 'leader is slow to confirm changes, heartbeats late, etcd logs: failed to send out heartbeat on time, apply entries took too long'; '6 leader changes in 30 minutes; API server p99 request latency 8 s; kubectl get takes eight seconds'. Right facts 'three members, all healthy, quorum intact; round trip under 1 ms; database 3.1 GB against an 8 GB quota, no alarms; etcd colocated with the API server on three control-plane VMs; incident began 02:05'. Impact box 'running pods keep serving; new pods are not created; autoscaling decisions late; node status lags; if traffic spikes the cluster cannot add capacity: the data plane works while the control plane cannot record new decisions'. Fix 'stop the backup; confirm fsync p99 and leader changes settle; then give the backup its own disk or throttle it'. Do not 'defragment a live member (blocks reads and writes) or restart or remove members (adds another leader change)'. Text at least 24px.",
+  "anchor": "### Incident 9: etcd latency",
+  "alt": "A causal chain from a 40 GB backup on member 2's disk to 180 ms fsync, leader elections and an 8 second kubectl get.",
+  "cap": "Stop the source first and wait for fsync and leader changes to settle before anything else."
+ }
+]

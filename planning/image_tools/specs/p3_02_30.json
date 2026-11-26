@@ -1,0 +1,162 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-green-not-working",
+  "title": "Green gauges are not the same as a working system",
+  "spec": "Two panels. Left 'What the gauges say' as ticks: 'all links up', 'BGP established', 'every light green', 'cable voltage and resistance readings correct'. Right 'What the purpose needs' (orange): 'the all-reduce reaches 90% of line rate', 'users read files at normal speed', 'the wind-speed system the splice fed can be calibrated'. Between them the word 'gap'. Story strip 'A cable team insisted a repaired splice was fine because voltage and resistance were correct; the wind-speed system it fed could not be calibrated; the dispute lasted days; a capacitive crosstalk test finally found the splice faulty because it matched the purpose of the splice; everyone had been measuring what was easy to measure, not what the cable was for'. Bottom strip 'Before you test: write down the purpose and one measurable target; check it at the very end after every fix'. Bottom bar: 'A system is working only if it accomplishes what it is supposed to do'.",
+  "anchor": "### Purpose first",
+  "alt": "Two panels contrasting component gauges that show green with the purpose such as an all-reduce at 90 percent of line rate, with the wind-speed cable story.",
+  "cap": "Links up and BGP established show that parts are up, but only a measurement of the purpose shows that the service works."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-three-models",
+  "title": "How models, what models and accurate models",
+  "spec": "Three columns. Column 'How models (theory)': 'why and how things work: the problem each mechanism solves, the range of solutions, how this implementation applies one', example 'BGP peer state: a finite state machine, timers and keepalives; a session must miss its hold timer before routes withdraw, so a failure takes that long to show up', 'built from protocol specifications, design rationales, real designs and their failures; best captured as flow charts or sequence diagrams', warning 'skip them and you get hunt-and-peck troubleshooting from fragments of past incidents'. Column 'What models (state of your system)': 'what is normal here: the signal path of each application, the baseline (traffic by time of day, SPF run times, jitter and delay per application, ECMP balance, PFC and ECN rates, temperatures, optic power), the source of truth for configuration, expected convergence time and loss on link failure, security boundaries', example 'write down the normal retransmit rate, latency and load on one leaf switch', story 'radar technician: a DC ohmmeter reads an inductor as a short, so it could not see the inductor failure in parallel with the shorted resistor; every tool has blind spots' (orange). Column 'Accurate models (fit to purpose)': 'accuracy means fit to purpose, not completeness', 'OSI is good for interfaces and building a stack, poor for what happens where and why', 'RINA treats error control, flow control and multiplexing as recurring at each scope', 'different questions need different models: path, control plane, queues, energy and thermal, application protocol'. Bottom bar: 'You cannot recognise broken without knowing normal'.",
+  "anchor": "## 2. Models",
+  "alt": "Three columns for how models, what models and accurate models, with the BGP hold timer example, the baseline list, the ohmmeter blind spot story and fit to purpose.",
+  "cap": "How models explain why a symptom is possible, what models record what is normal here, and the right model is the one that fits the question."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-model-tree",
+  "title": "The model tree: go deeper, then climb back when the evidence stops fitting",
+  "spec": "A tree from abstract to concrete. Root 'Network path'. It splits into 'Control plane' and 'Data plane'. Under control plane 'Convergence and shortest paths'. Under data plane 'QoS, queueing and jitter'. A dashed arrow from a deep node back to the root labelled 'new evidence changes the picture: return to the top'. Right panel as a ladder: the EIGRP incident 'Model 1: EIGRP protocol behaviour' to 'Model 2: packet transport' to 'Model 3: router input queues' to 'Cause: a broadcast flood; a backup server installed in server mode was scanning every subnet' (orange). Side note 'the team stayed at the protocol layer while the evidence kept refusing to fit; each extra test at that layer cost time without a new answer; the turn came when they climbed back up and asked what sat below the protocol'. Warning 'the classic mistake is to stay deep in one branch, staring at jitter, without asking how another branch could cause it'. Bottom bar: 'When the evidence stops fitting your current model, climb back to the top of the tree and try another branch'.",
+  "anchor": "### Shifting between models and the model tree",
+  "alt": "A model tree from network path to control plane and data plane with a climb-back arrow, and the EIGRP incident ending in a broadcast flood from a backup server.",
+  "cap": "Choose the model that fits the evidence, and when it stops fitting, climb to the top and switch branch, as the EIGRP incident showed."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-halfsplit-worked",
+  "title": "Half-split on the 5-hop Clos path: which hops get probed",
+  "spec": "A path of five boxes: 'src_host', 'leaf_a', 'spine', 'leaf_b', 'dst_host'. Rule at top: 'split the path roughly in half; test the signal at the midpoint; incorrect means move toward the source, correct means move toward the destination; repeat on the remaining half'. Example A (orange) 'leaf_b is the first failing hop': probe 1 at spine (correct) so move toward the destination; probe 2 at leaf_b (incorrect) so the fault is at or before leaf_b, and leaf_b's predecessor spine was correct, which isolates leaf_b. Example B 'leaf_a is the first failing hop': probe 1 at spine (incorrect) so move toward the source; probe 2 at leaf_a (incorrect) and src_host (correct) isolates leaf_a. A final small box 'At each test ask two questions: what is the actual state of the system and the signal here, and what should normal look like?'. Tools row 'choose the path with traceroute, ip route get or an ECMP-aware mtr; capture at the midpoint with a packet capture or counters, then bisect'. Spine and leaf worked example 'a flow fails between a spine and a host; the midpoint test is at the leaf; if the leaf's counters show the packet arrived and also left, the fault lies past the leaf, so move toward the host; if it never left the leaf, the fault lies before it, so move toward the spine'. Bottom bar: 'A long path takes a handful of tests if each test cuts it in half'.",
+  "anchor": "### Half split and move",
+  "alt": "A five hop path from src_host to dst_host probed at the spine and then at the leaf, with two cases where leaf_b or leaf_a is the first failing hop.",
+  "cap": "Each probe discards half of the remaining path, so a few tests isolate the first failing hop on a five hop path."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-manip-simplify",
+  "title": "Manipulate and simplify: from a lead to a cause",
+  "spec": "Two panels. Panel 'Manipulation' as a flow: 'Symptom coincides with an event: jitter starts every time SPF runs on router E' to 'correlation is a lead, not a proof' to 'reproduce the trigger on purpose: flap the same link, or replay the same traffic, on a quiet device; change one variable, hold the others constant' to decision 'does the effect follow?' with 'yes: you have a lever (a cause)' (orange) and 'no: coincidence, or a symptom of a deeper cause; you saved a change to the wrong component'. Note 'reality is messier: causes interact and some cannot be reproduced; then accept a correlation and try changes in order of safety and likelihood'. Panel 'Simplify before testing': 'remove components until the problem goes away or only a minimal set remains: disable ECMP to one path, drain a spine, turn off an optional feature, shift traffic to a single rail, bypass the load balancer, test on loopback or a namespace'. Reading 'problem gone early: two suspects, the removed component or a positive feedback loop or control-plane state velocity; add components back one at a time until the problem returns; that is a built-in manipulation test'. Safety strip 'drain rather than cut, under change control, and restore what you removed'. Rack example 'remove the firewall from a path with several uplinks and a bonded pair: if the problem vanishes the firewall is the suspect; put it back and watch it return'. Bottom bar: 'Correlation is cheap and causation costs a test'.",
+  "anchor": "### Manipulation: from correlation to causation",
+  "alt": "Two panels, manipulation as a test from a correlated event to a cause, and simplification as removing components then adding them back one at a time.",
+  "cap": "Manipulation turns a correlation into a cause by changing one variable, and simplification removes parts until the problem goes away."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-two-fixes",
+  "title": "Immediate fix and permanent fix: the tourniquet and the surgery",
+  "spec": "Two stages in a row. Stage 1 'Immediate fix' (restores service): 'reroute, restart, roll back a config, or replace a part'; metaphor 'tourniquet: stops the bleeding, nobody calls it a cure'. Stage 2 'Permanent fix' (removes the cause): 'correct design, automation, monitoring and documentation'; examples 'a bad optic, a wrong MTU'; metaphor 'surgery: scheduled, not skipped'. Between them 'record the temporary fix as debt, with an owner and a date' (orange). Below, a loop 'blameless post-incident review: the timeline, what you knew and when, what misled you, what detection or tooling was missing, what to change (alerts, runbooks, tests in CI, design)' to 'add the failure to your what model so the next occurrence is recognised at once'. Warning 'unfixed root causes build up as technical debt: workarounds that stay, undocumented exceptions, manual steps'. Bottom bar: 'Before you call an incident closed, record the temporary fix as debt and schedule the permanent one'.",
+  "anchor": "### Fixing the problem, technical debt and learning",
+  "alt": "An immediate fix and a permanent fix as two stages with the debt record between them, followed by the blameless review that updates the what model.",
+  "cap": "The immediate fix restores service, the permanent fix removes the cause, and the gap between them is tracked as debt with an owner and a date."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-which-direction",
+  "title": "Which way to work: bottom-up, top-down, divide, follow, compare",
+  "spec": "A table of generic aids, each with when to use it. 'Bottom-up: physical, link, network, transport, application; when many things fail at once or after a hardware change; physical problems are cheapest to rule out (a loose cable or dead optic shows in a light or counter)'. 'Top-down: when only one application misbehaves'. 'Divide and conquer (half-split): when the path is long'. 'Follow the path: trace the actual flow end to end, including NAT, overlays and load balancers'. 'Compare with a working peer: diff a good node against a bad one; check configs, firmware, ethtool, sysctls, routes and counters; configuration drift is the most common root cause in fleets' (orange). 'Change one thing at a time, and revert the experiments that fail'. 'Use the packet: a capture beats opinion'. Side contrast 'Two engineers, same alert: one changes settings at once and the evidence is gone by the time the cause would have shown; the other writes down the symptom, saves the counters, and only then changes one thing'. Bottom bar: 'Write the symptom in measurable terms before you touch a command'.",
+  "anchor": "## 4. A practical workflow",
+  "alt": "A table of troubleshooting directions: bottom-up, top-down, divide and conquer, follow the path, compare with a working peer, one change at a time and use the packet.",
+  "cap": "Work bottom-up after a hardware change, top-down for one application, divide on long paths, and diff a bad node against a good one."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-intermittent",
+  "title": "Intermittent faults: record first, then match the pattern",
+  "spec": "Left column 'Start recording before the fault appears': 'ring buffer captures (-C -W)', 'continuous telemetry', 'ping -D -i 0.2 with timestamps', 'mtr --report loops', 'scheduled ss and nstat snapshots', 'switch syslog and counters, lined up by time'. Centre 'Periodic? look for a timer': '30 s, 60 s, 5 min or 1 h', with a list 'cron jobs, backups, garbage collection, DHCP lease renewals, conntrack timeouts, BGP dampening, certificate or token expiry'; also 'does it follow the load, the temperature or specific hosts?'. Right table 'Four usual causes and the trace each leaves': 'capacity limit: a rising count that flattens at a ceiling', 'timeout: a fixed delay', 'flap: state changes in the logs', 'one bad member of an ECMP or LAG set: one device in the counters that the others do not show; only traffic that hashes onto the bad path fails' (orange). Bottom bar: 'Set up a probe that runs all the time and writes a timestamp for every failure'.",
+  "anchor": "### Intermittent faults",
+  "alt": "A three part layout for intermittent faults: what to record before the fault, which timers to check for periodic faults, and the trace left by capacity limits, timeouts, flaps and a bad ECMP member.",
+  "cap": "Record continuously with timestamps, check common timers, and read the trace to tell a capacity limit, a timeout, a flap or one bad ECMP member."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-ai-symptoms",
+  "title": "AI fabric symptoms: the first move for each",
+  "spec": "A table with columns 'Symptom' and 'First checks', six rows from the chapter. 'One rank slow in all-reduce': 'per-rail NIC counters, optics DOM, ECMP or AR imbalance, PFC pauses from and to that host, CPU, NUMA and IRQ on that node, thermal or power throttling'. 'Job hangs at init or NCCL timeout': 'NCCL_DEBUG=INFO (interfaces, GID, transport chosen), firewall or security group between nodes, MTU, wrong NCCL_SOCKET_IFNAME or NCCL_IB_HCA, DNS or hostname resolution, time skew, subnet manager state'. 'Throughput half of expected': 'link speed or FEC negotiated down, PCIe width, NUMA mismatch, MTU 1500 on one hop, PFC or ECN misconfiguration, oversubscribed tier, ECMP collision'. 'Periodic stalls (seconds)': 'PFC storm, RTO events, BGP or BFD flap, congestion from a competing job, checkpoint write incast on the storage network'. 'Errors rising without link flap': 'CRC and FEC counters, dirty or failing optics (DOM Rx power low), bad cable, switch ASIC issue'. 'After maintenance': 'config drift, wrong cable or rail mapping (LLDP versus plan), firmware mismatch, forgotten drain'. Bottom bar: 'Ordinary faults break a connection, AI fabric faults often slow a whole job while every link stays up'.",
+  "anchor": "### AI-fabric symptoms",
+  "alt": "A table of six AI fabric symptoms such as a slow rank, an NCCL init hang, half throughput, periodic stalls, rising errors and post-maintenance problems with the first checks for each.",
+  "cap": "Start with the row that matches the job's behaviour, and widen the search only when its first checks come back clean."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-case-snat-conntrack",
+  "title": "Two state-table limits that look like random timeouts: SNAT ports and conntrack",
+  "spec": "Two panels. Panel 'Case 1: SNAT port exhaustion': flow 'about 5,000 containers connect through one NAT IP to one database IP and port' with arithmetic 'one source IP has about 60,000 usable ephemeral ports per destination IP and port; each connection to that one database needs its own source port on the gateway' leading to 'ports run out, new connections get no mapping and time out; the database is healthy, CPU is low, dmesg shows no conntrack drops'; metaphor 'a car park with a fixed number of spaces: the traffic is not heavy but all the spaces are taken' ; fix 'add NAT gateway IPs and ports (Cloud NAT port allocation), use a pooler such as PgBouncer, shorten TIME_WAIT, reuse connections'; lesson 'count the tuple dimensions: source IP, destination IP and port'. Panel 'Case 3: Conntrack table full' (orange): symptom 'busy Kubernetes nodes, intermittent timeouts for new connections, CPU and bandwidth fine', evidence 'dmesg: nf_conntrack: table full, dropping packet; conntrack -C equals nf_conntrack_max; conntrack -S shows insert_failed', two causes 'established timeout of 5 days keeps dead flows forever; table too small for the load', note 'established connections keep working, only new ones fail', fix 'raise the max and hash size, lower timeouts, find chatty clients, notrack for DNS and east-west flows'. Bottom bar: 'Capacity limits in state tables look like random packet loss'.",
+  "anchor": "### Case 1: SNAT port exhaustion",
+  "alt": "Two cases side by side, NAT source port exhaustion with about 60,000 ports per destination and a full conntrack table with the table full message, each with evidence and fixes.",
+  "cap": "A full port pool or conntrack table makes only new connections time out, while the dashboard and the link stay healthy."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-case-mtu-hole",
+  "title": "Case 2: why small queries pass and large ones hang",
+  "spec": "A path drawing 'server (MTU 9000)' to 'router in the middle (MTU 1500)' to 'client', with a firewall on the return path. Step labels. 'Small packets fit everywhere, nothing needs to change: ping works, telnet to the port works, the handshake succeeds'. 'A full-sized server packet with the do-not-fragment flag cannot fit the 1500 link' . 'The router sends an ICMP fragmentation needed message back' . 'The firewall drops all ICMP' (orange) . 'The server never learns the size, so it keeps retransmitting the same large packet into the same hole; the capture shows no ICMP'. Resolution box 'align the MTUs', 'allow ICMP type 3 code 4 (and ICMPv6 type 2)', 'clamp the MSS at the edge', 'set tcp_mtu_probing=1'. Test line 'ping -M do -s N, and look for the ICMP in the capture (chapter 2.7)'. Bottom bar: 'Two facts already say a lot: the path is up, and the failure depends on packet size'.",
+  "anchor": "### Case 2: Path MTU black hole",
+  "alt": "A server at MTU 9000 sending through a 1500 router whose fragmentation needed ICMP is dropped by a firewall, so large packets are retransmitted forever, with the four fixes.",
+  "cap": "The router's ICMP reply is dropped, so the sender never learns the path MTU, and the fix is to allow ICMP 3/4, align MTUs and clamp the MSS."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-case-host-quirks",
+  "title": "Four host-level surprises: ARP flux, UDP buffer overflow, checksum offload and veth CPU",
+  "spec": "A four panel grid, each with symptom, cause and fix. Panel 'Case 4: ARP flux and rp_filter': symptom 'two hosts on the same subnet cannot communicate; ip neigh shows INCOMPLETE; captures show ARP requests and replies yet the host ignores them', cause 'a host with several interfaces on one subnet answers ARP for any local IP on any interface, so replies leave from the wrong NIC; strict rp_filter drops the asymmetric traffic', fix 'arp_ignore=1, arp_announce=2, rp_filter=2, source-based routing (chapter 2.24); better: one subnet per NIC'. Panel 'Case 5: UDP receive buffer overflow': symptom 'metric graphs have gaps under load; servers do not crash', cause 'UDP has no flow control or retransmission; when the receiver's socket buffer (rmem_default) overflows the kernel drops silently and counts UdpRcvbufErrors', fix 'monitor nstat and ss -ump, raise SO_RCVBUF and rmem_max, add receivers with SO_REUSEPORT, batch metrics, TCP where loss matters'. Panel 'Case 7: TCP checksum offload failure' (orange): symptom 'ping works, SSH hangs after the version exchange', cause 'a driver or firmware bug makes the sender's NIC compute wrong checksums with TX offload on; ping uses small packets and never reaches the failing path; the receiver drops the larger segments', fix 'ethtool -K eth0 tx off, then update driver and firmware; a bad cksum on the sender is harmless, at the receiver it is real (chapter 2.26)'. Panel 'Case 9: veth CPU bottleneck': symptom 'pod tops out near 15 Gb/s on a 100G host, one core at 100% softirq', cause 'each flow crossing a veth pair is processed in softirq on a single CPU, which sets the ceiling', fix 'host networking, ipvlan or macvlan, SR-IOV, RDMA secondary interfaces, or an eBPF host-routing CNI'. Bottom bar: 'Silent loss needs counters, so always chart drops'.",
+  "anchor": "### Case 4: ARP flux and reverse-path filtering on a multi-homed host",
+  "alt": "A four panel grid of ARP flux with rp_filter, UDP receive buffer overflow, TCP checksum offload failure and veth softirq CPU limit, each with its symptom, cause and fix.",
+  "cap": "Each host-level fault shows a distinct symptom, such as INCOMPLETE neighbours, UdpRcvbufErrors, SSH hanging after the version exchange or one core at 100 percent softirq."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-case-timers",
+  "title": "Exact-length outages are timers: find the timer",
+  "spec": "A table of three cases with their exact numbers. 'Case 6 BGP route dampening: the management network goes down for exactly five minutes, repeating at random; a failing transceiver flaps a link every few seconds; the host's FRR advertises then withdraws a route; the spine applies route-flap dampening and suppresses the route for a penalty period; each flap adds a penalty, past a threshold the route stays suppressed even after the link is stable' with 'fix: DOM showed bad Rx power so replace the optic; keep dampening, it protects the control plane'. 'Case 13 DNS 5-second delays: occasional 5-second latency on external calls; A and AAAA queries leave from one source port in parallel; conntrack and NAT race the two and one is dropped; the stub resolver waits out its default 5-second timeout; ndots:5 multiplies the queries' with 'fix: single-request-reopen, NodeLocal DNSCache, lower ndots, newer kernel (chapter 2.8)'. 'Case 10 TCP zero window: a transfer stalls for 5 to 10 seconds, then resumes; capture shows TCP Window Size: 0 from the receiver; the receiving application is not reading fast enough, disk or CPU; the network is fine' with 'fix: the receiver's I/O, CPU or buffering'. A middle column 'timer in play: dampening penalty, stub resolver timeout, window probes until the application reads again'. Bottom bar: 'An exact N-second delay is a timer, so match it to a default'.",
+  "anchor": "### Case 6: BGP route dampening after a flapping optic",
+  "alt": "A table of three cases, five minute BGP dampening outages, 5 second DNS delays and zero window stalls of 5 to 10 seconds, with the timer and fix for each.",
+  "cap": "A delay of exact length is a timer such as dampening or a resolver timeout, so match the number to a default before you chase the path."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-case-reorder-mcast",
+  "title": "Case 11 and 12: two ways an overlay or a second path changes what the network carries",
+  "spec": "Two panels. Panel 'Case 11: asymmetric ECMP and reordering': drawing 'a host advertises its loopback to two ToRs' and return traffic 'splits across both paths'; 'paths differ in delay, so one flow arrives out of sequence; TCP treats that as loss, slows down, and reacts with duplicate ACKs and SACK'; causes 'unequal path latency, per-packet or poorly keyed load balancing, bond misconfiguration on the host'; fix 'consistent per-flow hashing keeps each flow on one path while the paths stay in use; correct bonding and ECMP policy; equal-length paths'. Panel 'Case 12: multicast blackhole in an overlay' (orange): symptom 'a UDP multicast application works on physical hosts but fails on a Kubernetes overlay'; cause 'VXLAN overlays and clouds usually do not carry L2 multicast because they run no IGMP snooping or PIM; the physical switch floods multicast so it works there; without a replication plan the frame stops at the first tunnel endpoint'; fix 'unicast replication in the overlay, EVPN multicast support, or refactor the application'. Bottom bar: 'Reordering looks like loss to TCP, and overlays change what the network can carry'.",
+  "anchor": "### Case 11: Asymmetric ECMP and reordering from a host speaking BGP",
+  "alt": "Two panels: return traffic split over two paths that reorders packets and slows TCP, and a multicast application that works on physical hosts but is blackholed on a VXLAN overlay.",
+  "cap": "Unequal paths reorder packets that TCP reads as loss, and a VXLAN overlay without replication blackholes multicast that physical switches flood."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-lab-faults",
+  "title": "Fourteen injected faults and the one-line way to inject each",
+  "spec": "A table of the 14 faults. 1 'MTU mismatch on one link: ip link set eth2 mtu 1400 on a leaf'. 2 'Silent packet loss on one ECMP member: tc qdisc add dev eth1 root netem loss 3%'. 3 'One-way link failure: tc filter dropping packets in one direction, or nft drop on ingress only'. 4 'Wrong ASN or missing route-map: edit FRR config and reload'. 5 'Conntrack exhaustion: lower nf_conntrack_max and generate connections'. 6 'DNS slow path: a dead resolver first in resolv.conf'. 7 'Asymmetric routing: policy route replies out another NIC, rp_filter=1'. 8 'ECMP hash collision or elephants: two iperf3 flows crafted onto one link'. 9 'Delayed ACK or Nagle: application sending header and body as separate writes'. 10 'TCP receive-window starvation: a server that sleeps before read()'. 11 'ARP or neighbour issue: duplicate IP on the segment'. 12 'Firewall dropping ICMP: nft rule dropping type 3 code 4'. 13 'Hot spare disabled or flapping link: ip link set dev X down and up in a 2 s loop'. 14 'CPU or IRQ imbalance: pin all NIC IRQs to one core'. Right side the write-up per fault in orange: 'symptom as the application sees it, hypotheses ranked by likelihood, the half-split points chosen and the evidence that confirmed the cause, immediate and permanent fixes, the alert or test that would have caught it earlier'. Header note 'a partner injects one fault; you diagnose with the method and the kit; containerlab fabric from chapter 2.27'. Bottom bar: 'Practise the order of the work, not speed'.",
+  "anchor": "## 8. Hands-on lab: fault-injection exercises",
+  "alt": "A table of fourteen lab faults with their injection commands, such as MTU 1400, netem loss, nft drops and IRQ pinning, plus the write-up each diagnosis needs.",
+  "cap": "Each fault is injected on purpose by a partner, and the diagnosis follows the method with a symptom, ranked hypotheses, evidence and two fixes."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "30",
+  "name": "p3-0230-mistakes",
+  "title": "Nine troubleshooting habits that cost hours, each with its counter-habit",
+  "spec": "A table with columns 'Habit' and 'Counter-habit'. 'Start with tools before knowing the purpose or a measurable symptom' / 'write the purpose and a measurable symptom first'. 'Narrow too fast and fixate on the first plausible cause, such as it is always DNS' / 'write down two other causes that would produce the same symptom before you run anything; if you cannot name two, you have not looked widely enough'. 'Trust a single instrument: an ohmmeter cannot see an inductor failure, link-up lights do not show BER' / 'know what your tool cannot see'. 'Change several things at once, with no rollback and no notes' / 'one change at a time, revert failed experiments'. 'Treat correlation as cause' / 'manipulate one variable'. 'Stop at the immediate fix and skip the review' / 'record debt, review, update the what model'. 'No baselines, so abnormal cannot be recognised' / 'write the baseline down'. 'Debug the network when the application, host or storage is the real bottleneck, or the other way round' / 'half-split across the whole path'. 'Do not capture evidence before the symptom disappears, for example by rebooting first' (orange) / 'capture first; a reboot erases evidence in memory and counters; a minute spent saving a file saves the afternoon'. Bottom bar: 'Keep the first three questions on a checklist beside the terminal'.",
+  "anchor": "## 9. Common mistakes",
+  "alt": "A table pairing nine troubleshooting habits, including tools first, narrowing too fast, trusting one instrument, changing several things and rebooting before capturing, with the counter-habit for each.",
+  "cap": "Most troubleshooting mistakes are habits, so pair each one with a counter-habit, and capture evidence before any reboot."
+ }
+]

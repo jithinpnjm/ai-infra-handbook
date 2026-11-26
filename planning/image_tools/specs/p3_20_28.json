@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "p3-2028-probe-answer-shapes",
+  "title": "The probe that follows each part of your dossier",
+  "spec": "Table of seven rows with columns Part, Probe, Shape of a good answer (the author's reasoning about how technical interviewers probe, not a record of Nebius questions). 'Context | Why did this need doing at all? | the pain in one sentence a non-engineer would follow, then the number that showed it was real'. 'Numbers | How big was this? | scale, normal load, peak load and cost with units, and where each figure came from; if unknown, I did not measure that, here is how I would'. 'Architecture | Draw it. | follow one request or one deploy end to end, name the three components that mattered and why; start with the boxes the user touches'. 'Decisions | Why that? What else did you consider? What would make you switch? What did it cost? | a short chosen option, two or more alternatives with one reason each for rejecting them, the cost accepted'. 'Failures | What broke and what did you do first? | protect then diagnose: reduce user harm first, dig for the cause second'. 'What you would change | Knowing what you know now? | one change, the evidence, what you would measure first, and what you would leave alone'. 'Teamwork | Tell me about a disagreement. | the other person's position fairly, the evidence that settled it, how the relationship ended up; do not be the only wise person in the story'. Footer 'for every claim know the next question and have one number or one fact ready; ask yourself how you would know it is true and what you would say if the number were wrong'. Text at least 24px.",
+  "anchor": "### 4. What the interviewer asks at each part, and the shape of a good answer",
+  "alt": "A table of seven dossier parts with the probing question and the shape of an answer that holds up.",
+  "cap": "For every claim in the dossier know the next question and have one number ready."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "p3-2028-mistake-story",
+  "title": "The five-part mistake story and the traps to avoid",
+  "spec": "Five numbered boxes in order: '1 what you did'; '2 what it caused, with a number'; '3 how you found out'; '4 what you changed'; '5 what you now do differently'. Rule line 'keep blame out of it; use we for what the team did and I for what you did'. Trap panel with three anti-methods from Systems Performance chapter 2 and the chapter: 'blame-someone-else: pick a component you do not own, say the problem is there and hand it off (it was the network team's problem)'; 'false certainty: say I do not know why it worked, my best explanation is this, and here is how I would test it (question, hypothesis, prediction, test)'; 'streetlight: pick whichever tool is familiar and hope something obvious shows up'. Trade-off sentence strip 'Given this constraint, I chose A over B, accepting this cost, and I would revisit if this condition changed'. Footer 'an interviewer who has run production systems has made expensive mistakes of their own and listens for whether you have too; keep a list of the costs you accepted, one per decision'. Text at least 24px.",
+  "anchor": "### 5. Talking about trade-offs and mistakes honestly",
+  "alt": "Five ordered parts of a mistake story beside three traps: blame-shifting, false certainty and the streetlight habit.",
+  "cap": "State the cost of every decision and the cause of every failure, and own your share."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "p3-2028-why-card",
+  "title": "The answer card for why Nebius, why SRE, why inference",
+  "spec": "Three cards each split into two halves, 'public fact (with the page you read it from)' and 'true fact about you (from your own work)'. Card 'Why Nebius': public facts 'Token Factory offers serverless and dedicated endpoints behind an OpenAI-compatible API, with a control plane kept separate from a region-specific data plane; dedicated endpoints let a customer choose GPU type, replicas and region; a vendor-tagged case study describes lessons such as stopping retry amplification'. Card 'Why SRE': 'SRE means owning whether a service works for its users and building the tools that keep it working; the posting asks for incident detection, isolation and remediation with automation and runbooks, and for post-mortems; link one to something you have done'. Card 'Why inference': 'inference means running a trained model to answer requests; traffic is bursty; latency has two parts, time to first token and the gap between tokens; the scarce resource is GPU memory held by the KV cache; the posting names autoscaling tuned for GPU efficiency and request routing'. Rules 'a weak answer is generic praise you could give any company; never invent either fact; if you cannot fill the public half from a page you have read, drop that part; keep the whole answer under 90 seconds'. Follow-ups 'what do you know about our product; what worries you about this role: say the gap honestly and how you are closing it'. Text at least 24px.",
+  "anchor": "### 6. Why Nebius, why SRE, why inference",
+  "alt": "Three answer cards, each pairing a public fact with a true fact about the candidate.",
+  "cap": "Tie each answer to one public fact and one true fact about you."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "p3-2028-questions-for-leader",
+  "title": "Six questions to ask the team leader and what each reveals",
+  "spec": "Table with columns Topic, Question to ask, What you learn. 'On-call | How is the rota built, how often would I be paged, and what share of pages need a human? | load and alert quality'. 'SLOs | Which SLOs does the team own for Token Factory, and who decides when they are missed? | whether reliability has authority'. 'Incident review | What happened in your last significant incident, and what changed afterwards? | blameless culture in practice'. 'GPU fleet | How does the team find and replace failing GPUs or nodes, and how much is automated? | maturity of self-healing'. 'Roadmap | What is the biggest reliability risk on the roadmap for the next two quarters? | where you would spend your time'. 'Team split | How is work split between Token Factory and the cloud platform, and who owns what at the boundary? | ownership and handoffs'. Reserve question 'what would make someone fail in this role in the first six months?'. Rules 'bring six on paper, written in full sentences, ask the ones the conversation has not answered; do not ask what the posting or website already answers; a leader who cannot say how many pages a week the team gets, or answers defensively about incidents, is telling you something; salary goes to the recruiter'. Text at least 24px.",
+  "anchor": "### 7. Questions to ask the team leader",
+  "alt": "A table of six questions for the team leader on on-call, SLOs, incidents, GPU fleet, roadmap and team split.",
+  "cap": "Listen to how the leader answers as much as to what they say."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "28",
+  "name": "p3-2028-two-minute-walkthrough",
+  "title": "The two-minute project walkthrough, in order",
+  "spec": "Six numbered steps with approximate speaking order. '1 one sentence on why the project existed'; '2 one sentence on your role and the team size'; '3 the shape of the system in three components'; '4 the two biggest decisions'; '5 the result with one before-and-after number'; '6 close with: the part I would like to go deeper on is, and name the most interesting decision'. Side note 'expect a follow-up on whichever part you say last or leave vague; time it with a phone; numbers in brackets are yours to fill'. Below, a second strip for 'Why did you choose X over Y?': 'constraint first; the choice; two alternatives with one reason each for rejecting them; the cost accepted; the condition that would change your mind; expect what would that condition look like in numbers and did you test the alternative; if not, say so and why'. Third strip for 'What would you do differently?': 'one change plus its evidence; what you would measure before starting; one thing you would keep; avoid nothing and avoid ten regrets'. Text at least 24px.",
+  "anchor": "### \"Walk me through the project in two minutes\"",
+  "alt": "Six ordered steps for a two minute project walkthrough, with short templates for the follow-up questions.",
+  "cap": "Say the order first and close by naming the decision you want to go deeper on."
+ }
+]

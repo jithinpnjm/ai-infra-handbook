@@ -1,0 +1,186 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The seven-step precedence ladder, lowest to highest</title>
+  <desc>An infographic illustrating Ansible's seven-step variable precedence ladder from role defaults at the bottom to extra vars at the top, with practical rules and conflict resolution.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="78" fill="#303a36" font-size="48" font-weight="bold" font-family="system-ui, -apple-system, sans-serif">The seven-step precedence ladder, lowest to highest</text>
+  <text x="60" y="122" fill="#207448" font-size="26" font-weight="600" font-family="system-ui, -apple-system, sans-serif">about 22 levels in all; this is the practical order</text>
+
+  
+  <g id="step-7">
+    <rect x="60" y="160" width="960" height="96" rx="8" fill="#fdf5ed" stroke="#db8129" stroke-width="3"/>
+    
+    <circle cx="110" cy="208" r="24" fill="#db8129"/>
+    <text x="110" y="217" fill="#ffffff" font-size="28" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">7</text>
+    
+    <path d="M 166 226 L 166 198 L 178 214 L 188 190 L 198 214 L 210 198 L 210 226 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" stroke-linecap="round"/>
+    <line x1="166" y1="226" x2="210" y2="226" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="240" y="217" fill="#db8129" font-size="26" font-weight="bold" font-family="system-ui, -apple-system, sans-serif">extra vars passed with <tspan font-family="'SF Mono', Consolas, monospace">-e</tspan> always win</text>
+  </g>
+
+  
+  <g id="step-6">
+    <rect x="60" y="272" width="960" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="110" cy="325" r="24" fill="#207448"/>
+    <text x="110" y="334" fill="#ffffff" font-size="28" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">6</text>
+    
+    <rect x="166" y="303" width="44" height="44" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 174 317 L 178 321 L 186 313" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="192" y1="317" x2="202" y2="317" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 174 333 L 178 337 L 186 329" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="192" y1="333" x2="202" y2="333" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="240" y="316" fill="#303a36" font-size="24" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="240" dy="0">block and task vars, <tspan font-family="'SF Mono', Consolas, monospace">include_vars</tspan>, <tspan font-family="'SF Mono', Consolas, monospace">set_fact</tspan>,</tspan>
+      <tspan x="240" dy="34">registered variables and role parameters</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-5">
+    <rect x="60" y="394" width="960" height="124" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="110" cy="456" r="24" fill="#207448"/>
+    <text x="110" y="465" fill="#ffffff" font-size="28" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">5</text>
+    
+    <path d="M 170 434 L 196 434 L 206 444 L 206 478 L 170 478 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <path d="M 196 434 L 196 444 L 206 444" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="178" y1="456" x2="198" y2="456" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="178" y1="466" x2="194" y2="466" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="240" y="436" fill="#303a36" font-size="24" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="240" dy="0">play vars, <tspan font-family="'SF Mono', Consolas, monospace">vars_files</tspan>, <tspan font-family="'SF Mono', Consolas, monospace">vars_prompt</tspan> and <tspan font-family="'SF Mono', Consolas, monospace">role vars/</tspan>:</tspan>
+      <tspan x="240" dy="32">these rank above inventory, so keep overridable</tspan>
+      <tspan x="240" dy="32">settings out of <tspan font-family="'SF Mono', Consolas, monospace">role vars/</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-4">
+    <rect x="60" y="534" width="960" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="110" cy="587" r="24" fill="#207448"/>
+    <text x="110" y="596" fill="#ffffff" font-size="28" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">4</text>
+    
+    <rect x="172" y="571" width="32" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="180" y1="563" x2="180" y2="571" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="188" y1="563" x2="188" y2="571" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="196" y1="563" x2="196" y2="571" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="180" y1="603" x2="180" y2="611" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="188" y1="603" x2="188" y2="611" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="196" y1="603" x2="196" y2="611" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    
+    <text x="240" y="578" fill="#303a36" font-size="24" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="240" dy="0">host facts, <tspan font-family="'SF Mono', Consolas, monospace">set_fact</tspan> and registered variables:</tspan>
+      <tspan x="240" dy="34">facts rank among play-level variables</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-3">
+    <rect x="60" y="656" width="960" height="106" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="110" cy="709" r="24" fill="#207448"/>
+    <text x="110" y="718" fill="#ffffff" font-size="28" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">3</text>
+    
+    <rect x="166" y="687" width="44" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <line x1="188" y1="719" x2="188" y2="727" stroke="#207448" stroke-width="3.5"/>
+    <line x1="176" y1="727" x2="200" y2="727" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    
+    <text x="240" y="700" fill="#303a36" font-size="24" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="240" dy="0"><tspan font-family="'SF Mono', Consolas, monospace">host_vars</tspan> next to the inventory or playbook,</tspan>
+      <tspan x="240" dy="34">and inventory host variables</tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-2">
+    <rect x="60" y="778" width="960" height="154" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="110" cy="855" r="24" fill="#207448"/>
+    <text x="110" y="864" fill="#ffffff" font-size="28" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">2</text>
+    
+    <circle cx="188" cy="836" r="8" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="174" cy="868" r="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <circle cx="202" cy="868" r="7" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M 188 844 L 174 861" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 188 844 L 202 861" fill="none" stroke="#207448" stroke-width="3"/>
+    
+    <text x="240" y="818" fill="#303a36" font-size="24" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="240" dy="0">group variables from inventory or script,</tspan>
+      <tspan x="240" dy="32"><tspan font-family="'SF Mono', Consolas, monospace">group_vars/all</tspan> and <tspan font-family="'SF Mono', Consolas, monospace">group_vars/group</tspan>; parent groups</tspan>
+      <tspan x="240" dy="32">before child groups; same level sorted alphabetically,</tspan>
+      <tspan x="240" dy="32">then by <tspan font-family="'SF Mono', Consolas, monospace">ansible_group_priority</tspan></tspan>
+    </text>
+  </g>
+
+  
+  <g id="step-1">
+    <rect x="60" y="948" width="960" height="124" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="110" cy="1010" r="24" fill="#207448"/>
+    <text x="110" y="1019" fill="#ffffff" font-size="28" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">1</text>
+    
+    <line x1="168" y1="994" x2="208" y2="994" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="178" cy="994" r="5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <line x1="168" y1="1010" x2="208" y2="1010" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="198" cy="1010" r="5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    <line x1="168" y1="1026" x2="208" y2="1026" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="184" cy="1026" r="5" fill="#e8f1ea" stroke="#207448" stroke-width="3.5"/>
+    
+    <text x="240" y="990" fill="#303a36" font-size="24" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="240" dy="0">command-line values such as <tspan font-family="'SF Mono', Consolas, monospace">-u</tspan> (not <tspan font-family="'SF Mono', Consolas, monospace">-e</tspan>), and role</tspan>
+      <tspan x="240" dy="32">defaults in <tspan font-family="'SF Mono', Consolas, monospace">roles/x/defaults/main.yml</tspan>,</tspan>
+      <tspan x="240" dy="32">designed to be overridden</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-panel-practical-rule">
+    <rect x="1060" y="160" width="480" height="420" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <circle cx="1118" cy="214" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <polygon points="1118,198 1124,214 1118,210 1112,214" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <polygon points="1118,230 1124,214 1118,218 1112,214" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    
+    <text x="1090" y="280" fill="#303a36" font-size="24" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="1090" dy="0">practical rule: defaults in</tspan>
+      <tspan x="1090" dy="36"><tspan font-family="'SF Mono', Consolas, monospace">role defaults/</tspan>, environment</tspan>
+      <tspan x="1090" dy="36">values in <tspan font-family="'SF Mono', Consolas, monospace">group_vars</tspan>,</tspan>
+      <tspan x="1090" dy="36">per-host exceptions in</tspan>
+      <tspan x="1090" dy="36"><tspan font-family="'SF Mono', Consolas, monospace">host_vars</tspan>, <tspan font-family="'SF Mono', Consolas, monospace">-e</tspan> for one-off</tspan>
+      <tspan x="1090" dy="36">overrides and CI parameters</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-panel-conflict-note">
+    <rect x="1060" y="610" width="480" height="462" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="1100" y1="660" x2="1136" y2="660" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="1118" y1="652" x2="1118" y2="684" stroke="#207448" stroke-width="3.5"/>
+    <line x1="1106" y1="684" x2="1130" y2="684" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <path d="M 1100 660 L 1092 674 L 1108 674 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <path d="M 1136 660 L 1128 674 L 1144 674 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    
+    <text x="1090" y="746" fill="#303a36" font-size="24" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="1090" dy="0">a variable defined in two</tspan>
+      <tspan x="1090" dy="38">sibling groups is a conflict</tspan>
+      <tspan x="1090" dy="38">and group order decides</tspan>
+      <tspan x="1090" dy="38">the winner: set</tspan>
+      <tspan x="1090" dy="38"><tspan font-family="'SF Mono', Consolas, monospace">ansible_group_priority</tspan> or</tspan>
+      <tspan x="1090" dy="38">restructure the groups</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="1100" width="1480" height="60" rx="8" fill="#207448"/>
+    <text x="800" y="1140" fill="#ffffff" font-size="28" font-weight="bold" font-family="system-ui, -apple-system, sans-serif" text-anchor="middle">The more specific the place, the higher the sheet</text>
+  </g>
+</svg>

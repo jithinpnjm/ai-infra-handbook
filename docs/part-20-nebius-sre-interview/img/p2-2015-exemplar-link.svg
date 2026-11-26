@@ -1,0 +1,200 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>An exemplar links a metric spike to one trace</title>
+  <desc>Visual infographic explaining how an exemplar connects a metric latency spike to an individual distributed trace without high cardinality labels.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="16" markerHeight="16" orient="auto-start-reverse">
+      <path d="M 2 2 L 14 8 L 2 14 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="70" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">An exemplar links a metric spike to one trace</text>
+
+  
+  
+  
+
+  
+  <rect x="70" y="105" width="530" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(95, 125)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="14" y1="44" x2="14" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="44" x2="28" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="42" y1="44" x2="42" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <rect x="95" y="195" width="480" height="315" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5"/>
+
+  
+  <line x1="125" y1="215" x2="125" y2="485" stroke="#303a36" stroke-width="2"/>
+  <line x1="125" y1="485" x2="550" y2="485" stroke="#303a36" stroke-width="2"/>
+  <line x1="125" y1="420" x2="550" y2="420" stroke="#e0e8e2" stroke-width="1" stroke-dasharray="4 4"/>
+  <line x1="125" y1="355" x2="550" y2="355" stroke="#e0e8e2" stroke-width="1" stroke-dasharray="4 4"/>
+  <line x1="125" y1="290" x2="550" y2="290" stroke="#e0e8e2" stroke-width="1" stroke-dasharray="4 4"/>
+
+  
+  <rect x="145" y="445" width="38" height="40" rx="3" fill="#9dc5ab"/>
+  <rect x="193" y="385" width="38" height="100" rx="3" fill="#73aa88"/>
+  <rect x="241" y="310" width="38" height="175" rx="3" fill="#4a8f67"/>
+  <rect x="289" y="355" width="38" height="130" rx="3" fill="#73aa88"/>
+  <rect x="337" y="425" width="38" height="60" rx="3" fill="#9dc5ab"/>
+  <rect x="385" y="455" width="38" height="30" rx="3" fill="#b8d7c2"/>
+  <rect x="433" y="465" width="38" height="20" rx="3" fill="#b8d7c2"/>
+
+  
+  <rect x="485" y="240" width="50" height="245" rx="4" fill="#db8129" stroke="#b86419" stroke-width="2"/>
+
+  
+  <text x="510" y="155" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="510" dy="0">Latency</tspan>
+    <tspan x="510" dy="34">spike</tspan>
+  </text>
+
+  
+  <circle cx="510" cy="275" r="8" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+  
+  
+  
+
+  
+  <line x1="518" y1="275" x2="1000" y2="275" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="610" y="145" width="380" height="105" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <polygon points="790,250 810,250 800,267" fill="#db8129"/>
+
+  <text x="800" y="181" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Exemplar: a trace id</tspan>
+    <tspan x="800" dy="30">attached to the sample,</tspan>
+    <tspan x="800" dy="30">not a label</tspan>
+  </text>
+
+  
+  
+  
+
+  <rect x="1000" y="105" width="530" height="430" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1025, 125)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="3"/>
+    <circle cx="12" cy="9" r="3" fill="#207448"/>
+    <circle cx="22" cy="9" r="3" fill="#207448"/>
+    <line x1="12" y1="32" x2="44" y2="32" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="20" y1="42" x2="38" y2="42" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="1098" y="150" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1098" dy="0">One real request</tspan>
+    <tspan x="1098" dy="34">from the spike</tspan>
+  </text>
+
+  
+  <rect x="1025" y="205" width="480" height="305" rx="8" fill="#ffffff" stroke="#c0d4c6" stroke-width="1.5"/>
+
+  
+  <line x1="1045" y1="235" x2="1485" y2="235" stroke="#d5dfd8" stroke-width="1.5"/>
+  <line x1="1045" y1="229" x2="1045" y2="241" stroke="#9bb0a2" stroke-width="1.5"/>
+  <line x1="1155" y1="229" x2="1155" y2="241" stroke="#9bb0a2" stroke-width="1.5"/>
+  <line x1="1265" y1="229" x2="1265" y2="241" stroke="#9bb0a2" stroke-width="1.5"/>
+  <line x1="1375" y1="229" x2="1375" y2="241" stroke="#9bb0a2" stroke-width="1.5"/>
+  <line x1="1485" y1="229" x2="1485" y2="241" stroke="#9bb0a2" stroke-width="1.5"/>
+
+  <line x1="1155" y1="241" x2="1155" y2="495" stroke="#f0f5f2" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <line x1="1265" y1="241" x2="1265" y2="495" stroke="#f0f5f2" stroke-width="1.5" stroke-dasharray="3 3"/>
+  <line x1="1375" y1="241" x2="1375" y2="495" stroke="#f0f5f2" stroke-width="1.5" stroke-dasharray="3 3"/>
+
+  
+  <rect x="1055" y="255" width="415" height="32" rx="5" fill="#207448"/>
+  <rect x="1075" y="300" width="130" height="28" rx="4" fill="#4a8f67"/>
+  <rect x="1215" y="342" width="245" height="28" rx="4" fill="#4a8f67"/>
+  <rect x="1245" y="384" width="205" height="28" rx="4" fill="#207448"/>
+  <rect x="1455" y="426" width="25" height="28" rx="4" fill="#73aa88"/>
+  <rect x="1075" y="466" width="70" height="26" rx="4" fill="#73aa88"/>
+
+  
+  
+  
+
+  
+  <rect x="70" y="575" width="710" height="290" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(100, 602)">
+    <rect x="0" y="0" width="56" height="34" rx="17" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="39" cy="17" r="10" fill="#207448"/>
+  </g>
+
+  <text x="175" y="627" font-family="monospace" font-size="25" font-weight="bold" fill="#207448">--enable-feature=exemplar-storage</text>
+
+  
+  <line x1="95" y1="660" x2="755" y2="660" stroke="#c0d4c6" stroke-width="1.5"/>
+
+  
+  <g transform="translate(100, 695)">
+    <circle cx="28" cy="38" r="28" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="10" x2="28" y2="20" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="56" x2="28" y2="66" stroke="#207448" stroke-width="3"/>
+    <line x1="0" y1="38" x2="10" y2="38" stroke="#207448" stroke-width="3"/>
+    <line x1="46" y1="38" x2="56" y2="38" stroke="#207448" stroke-width="3"/>
+    <circle cx="28" cy="38" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  </g>
+
+  
+  <text x="175" y="710" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">About 100 bytes per exemplar</tspan>
+    <tspan x="175" dy="32">with just a trace id, kept in a</tspan>
+    <tspan x="175" dy="32">fixed-size circular buffer</tspan>
+  </text>
+
+  
+  <rect x="820" y="575" width="710" height="290" rx="12" fill="#fff5f5" stroke="#db8129" stroke-width="3.5"/>
+
+  
+  <g transform="translate(850, 598)">
+    <path d="M 28 4 L 54 50 L 2 50 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="42" r="2.5" fill="#207448"/>
+  </g>
+
+  
+  <text x="925" y="622" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="925" dy="0">If a tail sampler drops this trace,</tspan>
+    <tspan x="925" dy="34">the link leads nowhere</tspan>
+  </text>
+
+  
+  <g transform="translate(995, 698)">
+    
+    <rect x="0" y="0" width="360" height="135" rx="8" fill="#ffffff" stroke="#e0b4b4" stroke-width="2"/>
+    <rect x="0" y="0" width="360" height="26" rx="8" fill="#fee2e2"/>
+    <circle cx="16" cy="13" r="4" fill="#f87171"/>
+    <circle cx="28" cy="13" r="4" fill="#fca5a5"/>
+    <circle cx="40" cy="13" r="4" fill="#fca5a5"/>
+    <rect x="25" y="40" width="220" height="13" rx="3" fill="#cbd5e1"/>
+    <rect x="55" y="62" width="140" height="13" rx="3" fill="#cbd5e1"/>
+    <rect x="115" y="84" width="160" height="13" rx="3" fill="#cbd5e1"/>
+    <rect x="135" y="106" width="90" height="13" rx="3" fill="#cbd5e1"/>
+
+    
+    <line x1="-10" y1="-10" x2="370" y2="145" stroke="#dc2626" stroke-width="5" stroke-linecap="round"/>
+    <line x1="370" y1="-10" x2="-10" y2="145" stroke="#dc2626" stroke-width="5" stroke-linecap="round"/>
+  </g>
+
+  
+  
+  
+
+  <rect x="70" y="905" width="1460" height="70" rx="10" fill="#207448"/>
+  <text x="800" y="949" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Put the trace id in an exemplar, never in a label.</text>
+</svg>

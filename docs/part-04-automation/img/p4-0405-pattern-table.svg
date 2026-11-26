@@ -1,0 +1,130 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Host pattern operators in one table</title>
+  <desc>Visual reference table and contextual rules for inventory host pattern operators.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Host pattern operators in one table</text>
+
+  
+  <g id="analogy-strip">
+    <rect x="60" y="85" width="1480" height="122" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 88 118 L 136 118 L 118 144 L 118 168 L 106 162 L 106 144 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" y="122">a filter on a contact list: a group name returns everyone in it,</tspan>
+      <tspan x="160" y="154">a colon joins two selections, &amp; keeps only what two selections share,</tspan>
+      <tspan x="160" y="186">! removes a group from the result; combine them in one string</tspan>
+    </text>
+  </g>
+
+  
+  <g id="operator-table">
+    
+    <rect x="60" y="230" width="1480" height="528" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+    
+    <path d="M 60 242 A 12 12 0 0 1 72 230 L 1528 230 A 12 12 0 0 1 1540 242 L 1540 278 L 60 278 Z" fill="#207448" />
+
+    
+    <rect x="82" y="238" width="30" height="30" rx="4" fill="none" stroke="#ffffff" stroke-width="3" />
+    <line x1="82" y1="253" x2="112" y2="253" stroke="#ffffff" stroke-width="2" />
+    <line x1="97" y1="238" x2="97" y2="268" stroke="#ffffff" stroke-width="2" />
+
+    
+    <text x="124" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Pattern</text>
+    <text x="580" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Meaning</text>
+
+    
+    <line x1="550" y1="230" x2="550" y2="278" stroke="#207448" stroke-width="2" />
+
+    
+    <rect x="60" y="278" width="1480" height="48" fill="#ffffff" />
+    <line x1="60" y1="326" x2="1540" y2="326" stroke="#c2d6c6" stroke-width="1" />
+    <text x="85" y="310" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">all or *</text>
+    <text x="580" y="310" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">every host</text>
+
+    
+    <rect x="60" y="326" width="1480" height="48" fill="#f0f6f2" />
+    <line x1="60" y1="374" x2="1540" y2="374" stroke="#c2d6c6" stroke-width="1" />
+    <text x="85" y="358" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gpu</text>
+    <text x="580" y="358" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">group</text>
+
+    
+    <rect x="60" y="374" width="1480" height="48" fill="#ffffff" />
+    <line x1="60" y1="422" x2="1540" y2="422" stroke="#c2d6c6" stroke-width="1" />
+    <text x="85" y="406" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gpu:login</text>
+    <text x="580" y="406" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">union</text>
+
+    
+    <rect x="60" y="422" width="1480" height="48" fill="#fff5eb" stroke="#db8129" stroke-width="3" />
+    <rect x="60" y="422" width="10" height="48" fill="#db8129" />
+    <text x="85" y="454" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" font-weight="bold" fill="#db8129">gpu:&amp;rack_r01</text>
+    <text x="580" y="454" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">intersection</text>
+
+    
+    <rect x="60" y="470" width="1480" height="48" fill="#ffffff" />
+    <line x1="60" y1="518" x2="1540" y2="518" stroke="#c2d6c6" stroke-width="1" />
+    <text x="85" y="502" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gpu:!gpu_a100</text>
+    <text x="580" y="502" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">exclusion</text>
+
+    
+    <rect x="60" y="518" width="1480" height="48" fill="#f0f6f2" />
+    <line x1="60" y1="566" x2="1540" y2="566" stroke="#c2d6c6" stroke-width="1" />
+    <text x="85" y="550" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gpu00*</text>
+    <text x="580" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">wildcard</text>
+
+    
+    <rect x="60" y="566" width="1480" height="48" fill="#ffffff" />
+    <line x1="60" y1="614" x2="1540" y2="614" stroke="#c2d6c6" stroke-width="1" />
+    <text x="85" y="598" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">~gpu0(0[1-9]|1[0-6])</text>
+    <text x="580" y="598" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">regex</text>
+
+    
+    <rect x="60" y="614" width="1480" height="48" fill="#f0f6f2" />
+    <line x1="60" y1="662" x2="1540" y2="662" stroke="#c2d6c6" stroke-width="1" />
+    <text x="85" y="646" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gpu[0:2]</text>
+    <text x="580" y="646" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">group subscript, the first three hosts</text>
+
+    
+    <rect x="60" y="662" width="1480" height="48" fill="#ffffff" />
+    <line x1="60" y1="710" x2="1540" y2="710" stroke="#c2d6c6" stroke-width="1" />
+    <text x="85" y="694" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">gpu001,gpu002</text>
+    <text x="580" y="694" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">explicit list, commas or colons</text>
+
+    
+    <path d="M 60 710 L 1540 710 L 1540 746 A 12 12 0 0 1 1528 758 L 72 758 A 12 12 0 0 1 60 746 Z" fill="#f0f6f2" />
+    <text x="85" y="742" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="24" fill="#303a36">@retry.txt</text>
+    <text x="580" y="742" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">hosts listed in a file</text>
+
+    
+    <line x1="550" y1="278" x2="550" y2="758" stroke="#c2d6c6" stroke-width="1.5" />
+  </g>
+
+  
+  <g id="story-strip">
+    <rect x="60" y="782" width="1480" height="168" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(86, 838)">
+      <circle cx="28" cy="28" r="12" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="160" y="822">restart the Slurm daemon on every GPU node except the one under repair:</tspan>
+      <tspan x="160" y="856">typing names by hand invites a typo and a missed node is hard to notice;</tspan>
+      <tspan x="160" y="890">a pattern is checked against the inventory before anything runs,</tspan>
+      <tspan x="160" y="924">so you can see the matched hosts first</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="60" y="976" width="1480" height="74" rx="12" fill="#207448" />
+    
+    <circle cx="106" cy="1013" r="18" fill="none" stroke="#ffffff" stroke-width="3" />
+    <path d="M 97 1013 L 103 1019 L 116 1006" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="800" y="1023" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">One short string selects the exact slice</text>
+  </g>
+</svg>

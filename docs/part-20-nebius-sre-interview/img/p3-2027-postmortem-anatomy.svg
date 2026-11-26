@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Anatomy of a blameless post-mortem</title>
+  <desc>Infographic illustrating the anatomy of a blameless post-mortem: triggers decided before the incident, the section stack, and blameless rules.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Anatomy of a blameless post-mortem</text>
+
+  
+  <rect x="40" y="135" width="410" height="1025" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(217, 155)">
+    <polygon points="28,4 12,32 26,32 20,52 44,22 30,22" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="245" y="245" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">triggers decided</text>
+  <text x="245" y="282" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">before the incident</text>
+
+  
+  <rect x="55" y="315" width="380" height="110" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="360" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75">user-visible downtime</tspan>
+    <tspan x="75" dy="34">beyond a threshold</tspan>
+  </text>
+
+  
+  <rect x="55" y="450" width="380" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="498" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75">any data loss</tspan>
+  </text>
+
+  
+  <rect x="55" y="555" width="380" height="135" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75">an on-call intervention</tspan>
+    <tspan x="75" dy="34">such as a rollback or</tspan>
+    <tspan x="75" dy="34">traffic reroute</tspan>
+  </text>
+
+  
+  <rect x="55" y="715" width="380" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="763" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75">a long resolution time</tspan>
+  </text>
+
+  
+  <rect x="55" y="820" width="380" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="75" y="868" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75">a monitoring failure</tspan>
+  </text>
+
+  
+  <rect x="485" y="135" width="570" height="1025" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(742, 155)">
+    <rect x="6" y="24" width="36" height="26" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M12 16 h32 a3 3 0 0 1 3 3 v19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M18 8 h32 a3 3 0 0 1 3 3 v19" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="770" y="245" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">the section stack</text>
+
+  
+  <rect x="510" y="285" width="520" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="534" y="318" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534">Metadata: one owner, status,</tspan>
+    <tspan x="534" dy="32">incident date, severity</tspan>
+  </text>
+
+  
+  <rect x="510" y="375" width="520" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="534" y="408" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534">Summary: impact and cause in</tspan>
+    <tspan x="534" dy="32">two or three sentences</tspan>
+  </text>
+
+  
+  <rect x="510" y="465" width="520" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="534" y="497" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534">Impact: numbers, share of</tspan>
+    <tspan x="534" dy="32">traffic, minutes, errors,</tspan>
+    <tspan x="534" dy="32">budget used</tspan>
+  </text>
+
+  
+  <rect x="510" y="581" width="520" height="80" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="534" y="614" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534">Detection: how you found out</tspan>
+    <tspan x="534" dy="32">and how long it took</tspan>
+  </text>
+
+  
+  <rect x="510" y="671" width="520" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="534" y="703" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534">Timeline: timestamped events</tspan>
+    <tspan x="534" dy="32">with detect, mitigate,</tspan>
+    <tspan x="534" dy="32">resolve times</tspan>
+  </text>
+
+  
+  <rect x="510" y="787" width="520" height="106" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="534" y="819" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534">Root cause and trigger:</tspan>
+    <tspan x="534" dy="32">the system flaw, and the</tspan>
+    <tspan x="534" dy="32">event that set it off</tspan>
+  </text>
+
+  
+  <rect x="510" y="903" width="520" height="136" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="534" y="933" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534">What went well, what went</tspan>
+    <tspan x="534" dy="30">poorly, where we got lucky:</tspan>
+    <tspan x="534" dy="30">three short lists, luck</tspan>
+    <tspan x="534" dy="30">named honestly</tspan>
+  </text>
+
+  
+  <rect x="510" y="1049" width="520" height="86" rx="8" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  <text x="534" y="1084" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="534" fill="#db8129">Action items: </tspan><tspan>table with action,</tspan>
+    <tspan x="534" dy="32">type, owner, due date, measure</tspan>
+  </text>
+
+  
+  <rect x="1090" y="135" width="470" height="1025" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1297, 155)">
+    <path d="M28 6 L48 14 V28 C48 42 28 50 28 50 C28 50 8 42 8 28 V14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <polyline points="20,28 26,34 36,22" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="1325" y="245" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">rules</text>
+
+  
+  <rect x="1115" y="285" width="420" height="205" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1135" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135">blame discourages</tspan>
+    <tspan x="1135" dy="30">escalation and can lead to</tspan>
+    <tspan x="1135" dy="30">incidents being hidden;</tspan>
+    <tspan x="1135" dy="30">identify contributing</tspan>
+    <tspan x="1135" dy="30">causes without blaming</tspan>
+    <tspan x="1135" dy="30">any individual</tspan>
+  </text>
+
+  
+  <rect x="1115" y="515" width="420" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1135" y="555" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135">quantify impact even if</tspan>
+    <tspan x="1135" dy="32">estimated, with the</tspan>
+    <tspan x="1135" dy="32">method beside it</tspan>
+  </text>
+
+  
+  <rect x="1115" y="670" width="420" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1135" y="710" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135">publish while details are</tspan>
+    <tspan x="1135" dy="32">fresh, ideally within</tspan>
+    <tspan x="1135" dy="32">about a week</tspan>
+  </text>
+
+  
+  <rect x="1115" y="825" width="420" height="130" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1135" y="865" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135">leaders model blameless</tspan>
+    <tspan x="1135" dy="32">language and steer back to</tspan>
+    <tspan x="1135" dy="32">system improvements</tspan>
+  </text>
+</svg>

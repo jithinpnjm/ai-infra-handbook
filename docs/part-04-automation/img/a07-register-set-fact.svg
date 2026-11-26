@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>register keeps the raw output, set_fact keeps the clean value</title>
+  <desc>Visual infographic explaining how Ansible register retains the full dictionary response from commands like nvidia-smi while set_fact extracts and cleans specific values for later tasks.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 14" refX="16" refY="7" markerWidth="14" markerHeight="11" orient="auto">
+      <path d="M 0 1 L 16 7 L 0 13 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36"><tspan x="800" dy="0">register keeps the raw output, </tspan><tspan x="800" dy="56">set_fact keeps the clean value</tspan></text>
+
+  
+  
+  <circle cx="185" cy="180" r="24" fill="#207448"/>
+  <text x="185" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+  <g id="box-1">
+    
+    <rect x="45" y="225" width="280" height="575" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(157, 245)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="52" height="44" rx="6"/>
+      <line x1="2" y1="16" x2="54" y2="16"/>
+      <circle cx="10" cy="10" r="1.5" fill="#207448"/>
+      <circle cx="18" cy="10" r="1.5" fill="#207448"/>
+      <polyline points="12,26 20,33 12,40"/>
+      <line x1="26" y1="40" x2="40" y2="40"/>
+    </g>
+
+    
+    <text x="185" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36"><tspan x="185" dy="0">Run the </tspan><tspan x="185" dy="36">command</tspan></text>
+
+    
+    <rect x="63" y="405" width="244" height="235" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="185" y="445" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="185" dy="0">nvidia-smi </tspan><tspan x="185" dy="36">--query-gpu=</tspan><tspan x="185" dy="36">driver_version </tspan><tspan x="185" dy="36">--format=csv,</tspan><tspan x="185" dy="36">noheader</tspan></text>
+
+    
+    <rect x="63" y="660" width="244" height="115" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="185" y="710" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="185" dy="0">Ansible runs it </tspan><tspan x="185" dy="34">on the host</tspan></text>
+  </g>
+
+  
+  
+  <text x="390" y="445" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448"><tspan x="390" dy="0">register: </tspan><tspan x="390" dy="28">drv</tspan></text>
+  <line x1="325" y1="495" x2="441" y2="495" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <circle cx="595" cy="180" r="24" fill="#207448"/>
+  <text x="595" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+  <g id="box-2">
+    
+    <rect x="455" y="225" width="280" height="575" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(567, 245)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="52" height="44" rx="6"/>
+      <line x1="12" y1="16" x2="24" y2="16"/>
+      <line x1="32" y1="16" x2="44" y2="16"/>
+      <line x1="12" y1="26" x2="20" y2="26"/>
+      <line x1="28" y1="26" x2="44" y2="26"/>
+      <line x1="12" y1="36" x2="22" y2="36"/>
+      <line x1="30" y1="36" x2="44" y2="36"/>
+    </g>
+
+    
+    <text x="595" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36"><tspan x="595" dy="0">Raw result </tspan><tspan x="595" dy="36">in drv</tspan></text>
+
+    
+    <rect x="473" y="405" width="244" height="255" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="595" y="440" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="595" dy="0">rc, stdout, </tspan><tspan x="595" dy="31">stdout_lines, </tspan><tspan x="595" dy="31">stderr, </tspan><tspan x="595" dy="31">changed, </tspan><tspan x="595" dy="31">failed, start, </tspan><tspan x="595" dy="31">end, delta </tspan><tspan x="595" dy="31">and cmd</tspan></text>
+
+    
+    <rect x="473" y="680" width="244" height="95" rx="10" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="595" y="722" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="595" dy="0">the whole </tspan><tspan x="595" dy="34">dictionary</tspan></text>
+  </g>
+
+  
+  
+  <text x="800" y="465" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">set_fact</text>
+  <line x1="735" y1="495" x2="851" y2="495" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <circle cx="1005" cy="180" r="24" fill="#207448"/>
+  <text x="1005" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+  <g id="box-3">
+    
+    <rect x="865" y="225" width="280" height="575" rx="16" fill="#fffaf5" stroke="#db8129" stroke-width="4"/>
+
+    
+    <g transform="translate(977, 245)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="4,6 52,6 34,28 34,46 22,50 22,28"/>
+      <circle cx="28" cy="17" r="3" fill="#db8129"/>
+    </g>
+
+    
+    <text x="1005" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36"><tspan x="1005" dy="0">Clean value in </tspan><tspan x="1005" dy="36">current_driver</tspan></text>
+
+    
+    <rect x="883" y="405" width="244" height="175" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    <text x="1005" y="465" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36"><tspan x="1005" dy="0">drv.</tspan><tspan x="1005" dy="38">stdout_lines[0] </tspan><tspan x="1005" dy="38">| trim</tspan></text>
+
+    
+    <rect x="883" y="600" width="244" height="175" rx="10" fill="#fff5eb" stroke="#db8129" stroke-width="1.5" stroke-dasharray="4 4"/>
+    <text x="1005" y="655" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="1005" dy="0">the cleaned </tspan><tspan x="1005" dy="36">value that </tspan><tspan x="1005" dy="36">later tasks read</tspan></text>
+  </g>
+
+  
+  
+  <line x1="1145" y1="495" x2="1261" y2="495" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  
+  <circle cx="1415" cy="180" r="24" fill="#207448"/>
+  <text x="1415" y="188" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+
+  <g id="box-4">
+    
+    <rect x="1275" y="225" width="280" height="575" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <g transform="translate(1387, 245)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="16"/>
+      <line x1="34" y1="34" x2="50" y2="50"/>
+      <circle cx="22" cy="22" r="6" fill="#e8f1ea"/>
+    </g>
+
+    
+    <text x="1415" y="340" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36"><tspan x="1415" dy="0">debug </tspan><tspan x="1415" dy="36">var: drv</tspan></text>
+
+    
+    <rect x="1293" y="405" width="244" height="370" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1415" y="525" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36"><tspan x="1415" dy="0">prints the whole </tspan><tspan x="1415" dy="44">structure so you </tspan><tspan x="1415" dy="44">can check each </tspan><tspan x="1415" dy="44">piece</tspan></text>
+  </g>
+
+  
+  <rect x="40" y="870" width="1520" height="90" rx="12" fill="#207448"/>
+  <text x="800" y="908" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff"><tspan x="800" dy="0">Keep the raw output in register and the cleaned value in set_fact, </tspan><tspan x="800" dy="34">so each variable does one job.</tspan></text>
+</svg>

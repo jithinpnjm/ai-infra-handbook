@@ -1,0 +1,62 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p2-2013-usage-metering",
+  "title": "Metering is exact and durable, limiting can be approximate",
+  "spec": "Two lanes side by side. Left lane titled 'Rate limiter: fast and approximate': a gateway box feeding a fast counter box labelled 'Limits tokens and requests', with the note 'May be approximate'. Right lane titled 'Meter: exact and durable': the gateway emits one usage event per finished request, drawn as a small card listing the fields 'tenant', 'model', 'region', 'prompt tokens', 'completion tokens', 'cache hit', 'status', 'request id'. Arrow to a box 'Durable log' then to a box 'Aggregator writes hourly totals' then to a billing box 'Invoice'. A dashed loop on the usage event labelled 'Request id as idempotency key: a retried event is counted once'. Orange outline on the durable log box as the record that must survive a crash. Bottom note: 'A late bill is an annoyance. A wrong bill is a trust problem.' A small side note: 'Bill tokens actually delivered if a stream dies at token 100, a product choice to name aloud.'",
+  "anchor": "### 5. Usage metering for billing (minutes 17 to 19)",
+  "alt": "Rate limiting is fast and approximate, while metering emits one usage event per request to a durable log that aggregates hourly totals for billing.",
+  "cap": "Metering emits one usage event per finished request to a durable log, using the request id so a retried event is counted once."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p2-2013-prefill-decode-pools",
+  "title": "Prefill and decode pools, split only when interference is measured",
+  "spec": "Top: a single GPU box labelled 'Colocated: prefill and decode share one GPU' with two stacked bars inside: 'Long prefill: compute heavy' and 'Decode: memory-bandwidth heavy, one token at a time', with a red zigzag between them labelled 'Streaming users see a stall'. Below, a split design: a router box on the left with two arrows to two pools. Pool 1 'Prefill pool: picks by cache and load'. Pool 2 'Decode pool: picks by free KV memory'. An arrow from Pool 1 to Pool 2 labelled 'KV cache moved between pools, needs a fast link'. A backward arrow from Pool 2 to Pool 1 labelled 'Backpressure: decode queue full, prefill slows down'. A small note on the arrow: 'Keep prefill and decode inside one fast domain where possible'. Orange outline on the backward backpressure arrow. Bottom rule: 'Start colocated with chunked prefill. Split when p99 inter-token latency is dominated by prefill interference.'",
+  "anchor": "### 7. Prefill and decode pools (minutes 26 to 29)",
+  "alt": "Colocated prefill and decode stall streaming users, so the design splits them into pools with a KV transfer and backpressure from decode back to prefill.",
+  "cap": "Colocated prefill stalls streaming users, so prefill and decode can be split into pools with KV transfer and backpressure, but only when interference is measured."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p2-2013-scale-signals",
+  "title": "Scale on queue and KV pressure, not GPU utilisation",
+  "spec": "Left: a dashboard mock with a gauge labelled 'GPU utilisation 40%' in a green band, and a graph labelled 'TTFT up' climbing to the right in orange. Caption under them 'Users are waiting while the GPUs look half asleep'. Right: a column of signal cards. Card 'Scale on: queue depth (requests waiting)' with a green check. Card 'Scale on: KV-cache pressure (how full the cache is)' with a green check. Card 'Check the outcome: tail TTFT' with a green check. Card 'Do not scale on: GPU utilisation alone' with a red cross, noting 'Batching keeps the GPU busy while queues grow'. Bottom timeline strip: 'Scale up early (new replicas take minutes)', 'Scale down late', 'Drain before delete', with a warm pool block labelled 'Absorbs the first minutes' and a block 'X+1 spare capacity so one failure does not trigger a scramble'. Orange outline on the GPU utilisation cross card.",
+  "anchor": "### 9. Autoscaling signals (minutes 31 to 34)",
+  "alt": "A dashboard shows GPU utilisation at 40 percent while time to first token climbs, so the design scales on queue depth and KV-cache pressure instead.",
+  "cap": "GPU utilisation can look half idle while users wait, so the design scales on queue depth and KV-cache pressure and checks tail TTFT as the outcome."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p2-2013-residency-routing",
+  "title": "Route by the endpoint's region, never by nearest",
+  "spec": "A map-like layout with two region zones drawn as large rounded panels labelled 'EU region (promised region)' and 'US region'. Above both, a global band labelled 'Control plane: metadata only, global'. In the EU panel: a gateway box, a replica group, and a log store with a green lock icon labelled 'Prompts, completions and logs stay in region'. A dashed line from the EU metering box leaving the panel labelled 'Metering events leave only after content is stripped'. A request from a European customer arrives at the EU panel with a green arrow labelled 'Routed by endpoint region'. A red dashed arrow from the request toward the US panel labelled 'Nearest region: breaks the promise without an error', with a red cross. Orange outline on the red cross. Bottom note: 'Cross-region failover is off by default for residency-bound tenants.'",
+  "anchor": "### 10. Regions and data residency (minutes 34 to 36)",
+  "alt": "Requests route by the endpoint's region for data residency, with prompts and logs staying in the EU region and nearest-region routing rejected.",
+  "cap": "Requests route by the endpoint's region so prompts and logs stay in-region, because routing to the nearest region can break a residency promise silently."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p2-2013-isolation-layers",
+  "title": "Layers of isolation for noisy neighbours inside one engine",
+  "spec": "A vertical stack of four layers, top to bottom, labelled with numbers 1 to 4. Layer 1 'Gateway: token and concurrency limits per tenant'. Layer 2 'Router: caps how many slots one tenant takes on one replica'. Layer 3 'Priority classes: paid tiers get priority'. Layer 4 'Shared batch and KV cache inside one engine: the noisy-neighbour contact point'. Left side a figure of two customers: 'Short chat messages' and 'Huge document every few seconds', with an arrow from the huge-document customer into layer 4 labelled 'Takes KV blocks from others'. Right side a small card 'Platform around the engines: namespaces, RBAC, resource quotas, network policies', with the note 'A namespace alone isolates nothing'. A side card 'Shared prefix cache: timing can leak what another tenant sent'. Orange outline on layer 4 as where the noisy neighbour acts.",
+  "anchor": "### 11. Tenant isolation and noisy neighbours (minutes 36 to 38)",
+  "alt": "Isolation layers for multi-tenant inference from the gateway limits and router slot caps down to the shared batch and KV cache where noisy neighbours act.",
+  "cap": "Noisy neighbours act on the shared batch and KV cache inside one engine, so isolation adds gateway limits, router slot caps and priority classes above it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p2-2013-stream-bounds",
+  "title": "A slow reader holds a slot: bound every stream",
+  "spec": "Left: a slow client icon on a mobile link with a trickle of token chips leaving the server, labelled 'Reads tokens at a crawl'. Middle: a GPU decode slot box with a KV memory bar held full, labelled 'Server keeps the slot and KV memory until the stream ends'. A stack of many slow-client icons behind it with the note 'Thousands of these quietly eat capacity'. Right: three bound cards in a column. Card 'Per-stream write timeout: give up on a client that stops reading'. Card 'Maximum stream duration: ceiling on how long one stream holds a slot'. Card 'Stop generation on client disconnect: generating for nobody wastes GPU'. Bottom card 'Bound every queue: reject at once with 503' in a green outline. Orange outline on the decode slot box. Caption: 'Nothing looks broken on the GPU dashboard.'",
+  "anchor": "### 12. Streaming and backpressure (minutes 38 to 40)",
+  "alt": "A slow streaming client holds a decode slot and its KV memory, so the design sets a write timeout, a maximum stream duration and stops generation on disconnect.",
+  "cap": "A slow streaming client holds a decode slot and KV memory, so the design bounds each stream with a write timeout, a maximum duration and disconnect handling."
+ }
+]

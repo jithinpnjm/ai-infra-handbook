@@ -1,0 +1,221 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>How to read a flame graph</title>
+  <desc>Visual infographic explaining how to read a flame graph, showing perf sampling commands, stack depth on the vertical axis, sample share width on the horizontal axis, alphabetical ordering, and tower analysis rules.</desc>
+
+  <defs>
+    <!-- Arrowhead Green (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  <!-- Title: 48px bold -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">How to read a flame graph</text>
+
+  <!-- ==================== TOP STRIP: THREE NUMBERED STEPS ==================== -->
+
+  <!-- Step 1 Container -->
+  <g id="step-1">
+    <rect x="40" y="90" width="415" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Number Circle 1 -->
+    <circle cx="85" cy="135" r="24" fill="#207448" />
+    <text x="85" y="144" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+    <!-- CPU Chip Outline Icon (56px) -->
+    <g transform="translate(220, 107)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4" />
+      <rect x="18" y="18" width="20" height="20" rx="2" fill="#ffffff" stroke-width="3" />
+      <line x1="18" y1="4" x2="18" y2="10" />
+      <line x1="28" y1="4" x2="28" y2="10" />
+      <line x1="38" y1="4" x2="38" y2="10" />
+      <line x1="18" y1="46" x2="18" y2="52" />
+      <line x1="28" y1="46" x2="28" y2="52" />
+      <line x1="38" y1="46" x2="38" y2="52" />
+      <line x1="4" y1="18" x2="10" y2="18" />
+      <line x1="4" y1="28" x2="10" y2="28" />
+      <line x1="4" y1="38" x2="10" y2="38" />
+      <line x1="46" y1="18" x2="52" y2="18" />
+      <line x1="46" y1="28" x2="52" y2="28" />
+      <line x1="46" y1="38" x2="52" y2="38" />
+    </g>
+    <!-- Inner Command Card -->
+    <rect x="60" y="174" width="375" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <!-- Step 1 Label -->
+    <text x="248" y="232" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="248" dy="0">1 perf record -F 99</tspan>
+      <tspan x="248" dy="36">-a -g -- sleep 10</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 1: Step 1 to Step 2 -->
+  <line x1="455" y1="210" x2="500" y2="210" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Step 2 Container -->
+  <g id="step-2">
+    <rect x="500" y="90" width="600" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Number Circle 2 -->
+    <circle cx="545" cy="135" r="24" fill="#207448" />
+    <text x="545" y="144" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+    <!-- Terminal / Script Outline Icon (56px) -->
+    <g transform="translate(772, 107)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="38" rx="4" />
+      <line x1="6" y1="18" x2="50" y2="18" />
+      <polyline points="14,26 20,31 14,36" />
+      <line x1="24" y1="36" x2="34" y2="36" />
+    </g>
+    <!-- Inner Commands Card -->
+    <rect x="514" y="170" width="572" height="144" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <!-- Step 2 Label 1: perf 5.8 command -->
+    <text x="800" y="205" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">2 perf script report</tspan>
+      <tspan x="800" dy="30">flamegraph (perf 5.8 and newer)</tspan>
+    </text>
+    <!-- Step 2 Label 2: legacy script pipeline -->
+    <text x="800" y="270" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">perf script,</tspan>
+      <tspan x="800" dy="30">stackcollapse-perf.pl, flamegraph.pl</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 2: Step 2 to Step 3 -->
+  <line x1="1100" y1="210" x2="1145" y2="210" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  <!-- Step 3 Container -->
+  <g id="step-3">
+    <rect x="1145" y="90" width="415" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    <!-- Number Circle 3 -->
+    <circle cx="1190" cy="135" r="24" fill="#207448" />
+    <text x="1190" y="144" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+    <!-- Upward Inspection / Magnifier Outline Icon (56px) -->
+    <g transform="translate(1325, 107)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="24" cy="24" r="14" />
+      <line x1="34" y1="34" x2="48" y2="48" stroke-width="5" />
+      <polyline points="18,25 24,19 30,25" stroke-width="3" />
+      <line x1="24" y1="19" x2="24" y2="30" stroke-width="3" />
+    </g>
+    <!-- Inner Instruction Card -->
+    <rect x="1165" y="174" width="375" height="136" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <!-- Step 3 Label -->
+    <text x="1352" y="232" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1352" dy="0">3 Read the widest tower</tspan>
+      <tspan x="1352" dy="36">from the bottom upward</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== CENTRE: FLAME GRAPH ==================== -->
+  <g id="flame-graph">
+    <!-- Flame Graph Baseline -->
+    <line x1="480" y1="745" x2="1120" y2="745" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+
+    <!-- Base Common Level (Root Baseline Bar) -->
+    <rect x="480" y="707" width="640" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    <!-- Tower 1: Left (160px wide) -->
+    <g id="tower-1">
+      <rect x="480" y="663" width="160" height="38" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="480" y="619" width="105" height="38" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="590" y="619" width="50" height="38" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="480" y="575" width="105" height="38" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    </g>
+
+    <!-- Tower 2: Middle (WIDEST TOWER - 330px wide, Highlighted with Orange Outline) -->
+    <g id="tower-2-hotpath">
+      <rect x="650" y="663" width="330" height="38" rx="4" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+      <rect x="650" y="619" width="330" height="38" rx="4" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+      <rect x="670" y="575" width="290" height="38" rx="4" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+      <rect x="690" y="531" width="250" height="38" rx="4" fill="#fff9f2" stroke="#db8129" stroke-width="3" />
+      <rect x="710" y="487" width="210" height="38" rx="4" fill="#fff5e8" stroke="#db8129" stroke-width="3.5" />
+      <!-- Top-most box: function currently on CPU -->
+      <rect x="730" y="443" width="170" height="38" rx="4" fill="#fff0dc" stroke="#db8129" stroke-width="4" />
+    </g>
+
+    <!-- Tower 3: Right (130px wide) -->
+    <g id="tower-3">
+      <rect x="990" y="663" width="130" height="38" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="990" y="619" width="130" height="38" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <rect x="1020" y="575" width="70" height="38" rx="4" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    </g>
+  </g>
+
+  <!-- Callout 1: Vertical axis -->
+  <g id="callout-vertical-axis">
+    <rect x="40" y="380" width="390" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="235" y="432" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="235" dy="0">Vertical axis:</tspan>
+      <tspan x="235" dy="32">stack depth, the top</tspan>
+      <tspan x="235" dy="32">box is what was on CPU</tspan>
+    </text>
+  </g>
+  <!-- Arrow 3: Callout 1 to Top Box on CPU -->
+  <line x1="430" y1="462" x2="730" y2="462" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Callout 2: Each box is a function -->
+  <g id="callout-function-box">
+    <rect x="40" y="590" width="390" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="235" y="650" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="235" dy="0">Each box is</tspan>
+      <tspan x="235" dy="32">a function</tspan>
+    </text>
+  </g>
+  <!-- Arrow 4: Callout 2 to Function Box -->
+  <line x1="430" y1="650" x2="480" y2="650" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Callout 3: A wide box could be slow -->
+  <g id="callout-wide-box">
+    <rect x="1170" y="380" width="390" height="185" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1365" y="420" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1365" dy="0">A wide box could</tspan>
+      <tspan x="1365" dy="28">be slow or just</tspan>
+      <tspan x="1365" dy="28">called often,</tspan>
+      <tspan x="1365" dy="28">sampling does not</tspan>
+      <tspan x="1365" dy="28">show call counts</tspan>
+    </text>
+  </g>
+  <!-- Arrow 5: Callout 3 to Wide Tower -->
+  <line x1="1170" y1="550" x2="940" y2="550" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Callout 4: Left-to-right order -->
+  <g id="callout-alphabetical">
+    <rect x="1170" y="610" width="390" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="1365" y="660" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1365" dy="0">Left-to-right order</tspan>
+      <tspan x="1365" dy="32">has no meaning, it is</tspan>
+      <tspan x="1365" dy="32">alphabetical</tspan>
+    </text>
+  </g>
+  <!-- Arrow 6: Callout 4 to Towers -->
+  <line x1="1170" y1="675" x2="1120" y2="675" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- Callout 5: Horizontal axis -->
+  <g id="callout-horizontal-axis">
+    <rect x="470" y="790" width="660" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="800" y="830" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">Horizontal axis: share of samples,</tspan>
+      <tspan x="800" dy="32">wider means more time</tspan>
+    </text>
+  </g>
+  <!-- Arrow 7: Callout 5 to Baseline -->
+  <line x1="800" y1="790" x2="800" y2="749" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  <!-- ==================== BOTTOM NOTE ==================== -->
+  <g id="bottom-note">
+    <rect x="40" y="925" width="1520" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Lightbulb Outline Icon (56px) on Left -->
+    <g transform="translate(68, 944)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 8 A 16 16 0 0 0 16 28 C 16 34 21 38 21 42 L 35 42 C 35 38 40 34 40 28 A 16 16 0 0 0 28 8 Z" />
+      <line x1="23" y1="46" x2="33" y2="46" />
+    </g>
+    <text x="820" y="966" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="820" dy="0">One hot function may need a better algorithm.</tspan>
+      <tspan x="820" dy="32">Many small callers may need less work overall.</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="40" y="1065" width="1520" height="60" rx="10" fill="#207448" />
+    <text x="800" y="1103" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Reach for a profile only after a resource is proven short, and sample before you trace.</text>
+  </g>
+</svg>

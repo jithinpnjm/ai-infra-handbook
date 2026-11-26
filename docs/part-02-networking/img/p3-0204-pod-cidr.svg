@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1190" width="1600" height="1190">
+  <title>Sizing the Kubernetes pod range: nodes times the per-node block, not nodes alone</title>
+  <desc>A technical infographic showing the top-to-bottom calculation for sizing a Kubernetes pod CIDR range alongside GKE VPC-native networking rules.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1190" fill="#f5f8f5" />
+
+  
+  <text x="50" y="68" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Sizing the Kubernetes pod range:</text>
+  <text x="50" y="122" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">nodes times the per-node block, not nodes alone</text>
+
+  
+  <rect x="40" y="152" width="1520" height="72" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="197" font-family="monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">max_nodes x (pods_per_node rounded up to the per-node CIDR size)</text>
+
+  
+
+  
+  <rect x="40" y="255" width="740" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="82" cy="340" r="24" fill="#207448" />
+  <text x="82" y="349" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="122" y="318" width="54" height="44" rx="6" />
+    <line x1="140" y1="318" x2="140" y2="362" stroke-width="3" />
+    <line x1="158" y1="318" x2="158" y2="362" stroke-width="3" />
+  </g>
+  
+  <text x="196" y="298" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="196" font-weight="bold" fill="#207448">Pods per node: </tspan>
+    <tspan>kubelet default maxPods=110</tspan>
+    <tspan x="196" dy="34">needs a 256-address block, a /24</tspan>
+    <tspan x="196" dy="34">(a /25 is enough for fewer pods)</tspan>
+  </text>
+
+  
+  <line x1="410" y1="425" x2="410" y2="463" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="465" width="740" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="82" cy="530" r="24" fill="#207448" />
+  <text x="82" y="539" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="122" y="508" width="54" height="20" rx="4" />
+    <rect x="122" y="534" width="54" height="20" rx="4" />
+    <circle cx="134" cy="518" r="2" fill="#207448" stroke="none" />
+    <circle cx="134" cy="544" r="2" fill="#207448" stroke="none" />
+  </g>
+  
+  <text x="196" y="522" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="196">500 nodes x 256 =</tspan>
+    <tspan x="196" dy="38">128,000 addresses</tspan>
+  </text>
+
+  
+  <line x1="410" y1="595" x2="410" y2="633" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="635" width="740" height="175" rx="12" fill="#fff8f0" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="82" cy="722" r="24" fill="#db8129" />
+  <text x="82" y="731" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g stroke="#db8129" stroke-width="4" fill="none">
+    <rect x="122" y="698" width="54" height="48" rx="6" />
+    <line x1="122" y1="722" x2="176" y2="722" stroke-width="3" />
+    <line x1="149" y1="698" x2="149" y2="746" stroke-width="3" />
+  </g>
+  
+  <text x="196" y="710" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">
+    <tspan x="196">Smallest block that holds it:</tspan>
+    <tspan x="196" dy="38">a /15 has 131,072 addresses</tspan>
+  </text>
+
+  
+  <line x1="410" y1="810" x2="410" y2="848" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="850" width="740" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="82" cy="922" r="24" fill="#207448" />
+  <text x="82" y="931" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none">
+    <rect x="122" y="896" width="54" height="52" rx="5" />
+    <line x1="122" y1="914" x2="176" y2="914" stroke-width="3" />
+    <line x1="122" y1="932" x2="176" y2="932" stroke-width="3" />
+    <circle cx="164" cy="905" r="2" fill="#207448" stroke="none" />
+    <circle cx="164" cy="923" r="2" fill="#207448" stroke="none" />
+    <circle cx="164" cy="941" r="2" fill="#207448" stroke="none" />
+  </g>
+  
+  <text x="196" y="912" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="196">For 1,024 nodes</tspan>
+    <tspan x="196" dy="38">the lab gives a /14</tspan>
+  </text>
+
+
+  
+  <rect x="810" y="255" width="750" height="740" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+
+  
+  <path d="M 810 267 A 12 12 0 0 1 822 255 L 1548 255 A 12 12 0 0 1 1560 267 L 1560 315 L 810 315 Z" fill="#207448" />
+  <text x="1185" y="296" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">GKE VPC-native rules</text>
+
+  
+  <rect x="830" y="330" width="710" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="866" cy="368" r="8" />
+    <circle cx="854" cy="404" r="6" />
+    <circle cx="878" cy="404" r="6" />
+    <path d="M 866 376 L 866 388 M 866 388 L 854 398 M 866 388 L 878 398" />
+  </g>
+  <text x="906" y="363" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="906">pod and service ranges come from secondary</tspan>
+    <tspan x="906" dy="32">ranges on the subnet,</tspan>
+    <tspan x="906" dy="32">nodes use the primary range</tspan>
+  </text>
+
+  
+  <rect x="830" y="457" width="710" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="848" y="484" width="36" height="36" rx="4" />
+    <line x1="856" y1="484" x2="856" y2="476" />
+    <line x1="866" y1="484" x2="866" y2="476" />
+    <line x1="876" y1="484" x2="876" y2="476" />
+    <line x1="856" y1="520" x2="856" y2="528" />
+    <line x1="866" y1="520" x2="866" y2="528" />
+    <line x1="876" y1="520" x2="876" y2="528" />
+  </g>
+  <text x="906" y="497" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="906">default limit 110 pods per node</tspan>
+    <tspan x="906" dy="34">maps to a /24 pod range per node</tspan>
+  </text>
+
+  
+  <rect x="830" y="564" width="710" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="848" y="594" width="36" height="26" rx="4" />
+    <path d="M 856 594 L 856 584 A 10 10 0 0 1 876 584 L 876 594" />
+  </g>
+  <text x="906" y="611" font-family="sans-serif" font-size="24" fill="#303a36">pod ranges cannot be shrunk later</text>
+
+  
+  <rect x="830" y="651" width="710" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <path d="M 866 676 L 884 682 C 884 704 866 718 866 718 C 866 718 848 704 848 682 Z" />
+    <path d="M 858 694 L 864 700 L 874 690" />
+  </g>
+  <text x="906" y="691" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="906">check supported ranges including</tspan>
+    <tspan x="906" dy="34">non-RFC 1918 space and 100.64/10</tspan>
+  </text>
+
+  
+  <rect x="830" y="758" width="710" height="95" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <circle cx="866" cy="805" r="18" />
+    <line x1="853" y1="805" x2="879" y2="805" stroke-width="4" />
+  </g>
+  <text x="906" y="798" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="906">overlapping ranges block VPC peering</tspan>
+    <tspan x="906" dy="34">and VPN or Interconnect routing</tspan>
+  </text>
+
+  
+  <rect x="830" y="865" width="710" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none">
+    <rect x="848" y="888" width="16" height="16" rx="3" />
+    <rect x="870" y="888" width="16" height="16" rx="3" />
+    <rect x="859" y="914" width="16" height="16" rx="3" />
+    <line x1="856" y1="904" x2="867" y2="914" />
+    <line x1="878" y1="904" x2="867" y2="914" />
+  </g>
+  <text x="906" y="897" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="906">several clusters each need their own</tspan>
+    <tspan x="906" dy="32">pod and service ranges;</tspan>
+    <tspan x="906" dy="32">IPv6 or dual-stack relieves pressure</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="1015" width="1520" height="60" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="800" y="1053" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">VPC networks are global and subnets regional; peering requires non-overlapping ranges</text>
+
+  
+  <rect x="40" y="1095" width="1520" height="60" rx="10" fill="#207448" />
+  <text x="800" y="1134" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">The pod range is the one people get wrong</text>
+
+</svg>

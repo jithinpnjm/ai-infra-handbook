@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Why subPath mounts miss ConfigMap updates</title>
+  <desc>Comparison of Kubernetes ConfigMap directory mounts versus subPath single-file mounts and why subPath mounts do not receive live updates.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 10 5 L 0 8.5 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Why subPath mounts miss ConfigMap updates</text>
+
+  
+  <g id="analogy">
+    <rect x="40" y="100" width="1520" height="65" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="65" y="112" width="22" height="40" rx="3" />
+      <line x1="65" y1="132" x2="87" y2="132" />
+      <rect x="94" y="112" width="22" height="40" rx="3" />
+      <line x1="94" y1="125" x2="116" y2="125" />
+      <line x1="94" y1="138" x2="116" y2="138" />
+      <circle cx="105" cy="119" r="1.5" fill="#207448" />
+      <circle cx="105" cy="132" r="1.5" fill="#207448" />
+      <circle cx="105" cy="145" r="1.5" fill="#207448" />
+    </g>
+    <text x="135" y="142" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">a window on the whole cabinet versus a window on one drawer</text>
+  </g>
+
+  
+  <g id="panel-1">
+    <rect x="40" y="205" width="740" height="600" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="410" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Mounted as a directory</text>
+    <text x="410" y="280" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">(<tspan font-family="ui-monospace, monospace">mountPath /etc/config</tspan>)</text>
+
+    
+    <rect x="65" y="305" width="690" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="101" cy="353" r="24" fill="#207448" />
+    <text x="101" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 148 333 L 171 333 L 183 345 L 183 373 L 148 373 Z" />
+      <polyline points="171,333 171,345 183,345" />
+      <line x1="155" y1="353" x2="169" y2="353" />
+      <line x1="155" y1="361" x2="175" y2="361" />
+    </g>
+    <text x="210" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">ConfigMap changes</text>
+
+    
+    <line x1="410" y1="401" x2="410" y2="433" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="65" y="433" width="690" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="101" cy="481" r="24" fill="#207448" />
+    <text x="101" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="165" cy="481" r="20" />
+      <polyline points="165,469 165,481 176,481" />
+      <line x1="165" y1="463" x2="165" y2="466" />
+      <line x1="165" y1="496" x2="165" y2="499" />
+      <line x1="147" y1="481" x2="150" y2="481" />
+      <line x1="180" y1="481" x2="183" y2="481" />
+    </g>
+    <text x="210" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">kubelet syncs about every 60 s</text>
+
+    
+    <line x1="410" y1="529" x2="410" y2="561" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="65" y="561" width="690" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="101" cy="609" r="24" fill="#207448" />
+    <text x="101" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 150 600 A 15 15 0 0 1 180 595" />
+      <polyline points="181,589 182,596 175,598" />
+      <path d="M 180 618 A 15 15 0 0 1 150 623" />
+      <polyline points="149,629 148,622 155,620" />
+      <circle cx="165" cy="609" r="4" fill="#207448" />
+    </g>
+    <text x="210" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="27" font-weight="bold" fill="#303a36">atomic symlink swap on <tspan font-family="ui-monospace, monospace">..data</tspan></text>
+
+    
+    <line x1="410" y1="657" x2="410" y2="689" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="65" y="689" width="690" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="101" cy="737" r="24" fill="#207448" />
+    <text x="101" y="746" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="146" y="718" width="38" height="38" rx="6" />
+      <path d="M 152 737 C 158 728 172 728 178 737 C 172 746 158 746 152 737 Z" />
+      <circle cx="165" cy="737" r="3.5" fill="#207448" />
+    </g>
+    <text x="210" y="746" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">container sees new files</text>
+  </g>
+
+  
+  <g id="panel-2">
+    <rect x="820" y="205" width="740" height="600" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="1190" y="246" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle">Single file with subPath</text>
+    <text x="1190" y="280" font-family="ui-monospace, monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">config.yaml</text>
+
+    
+    <rect x="845" y="305" width="690" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="881" cy="353" r="24" fill="#207448" />
+    <text x="881" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="945" cy="341" rx="18" ry="7" />
+      <path d="M 927 341 L 927 365 A 18 7 0 0 0 963 365 L 963 341" />
+      <circle cx="945" cy="353" r="3" fill="#207448" />
+    </g>
+    <text x="990" y="343" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">kernel bind-mounts<tspan x="990" dy="32">that file's inode directly</tspan></text>
+
+    
+    <line x1="1190" y1="401" x2="1190" y2="433" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="845" y="433" width="690" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="881" cy="481" r="24" fill="#207448" />
+    <text x="881" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 928 471 L 938 471 L 943 476 L 960 476 A 3 3 0 0 1 963 479 L 963 497 A 3 3 0 0 1 960 500 L 928 500 A 3 3 0 0 1 925 497 L 925 474 A 3 3 0 0 1 928 471 Z" />
+      <path d="M 936 462 A 9 9 0 0 1 952 462" />
+      <polyline points="950,457 954,462 948,466" />
+    </g>
+    <text x="990" y="471" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">kubelet swaps<tspan x="990" dy="32">the directory symlink</tspan></text>
+
+    
+    <line x1="1190" y1="529" x2="1190" y2="561" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="845" y="561" width="690" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="881" cy="609" r="24" fill="#207448" />
+    <text x="881" y="618" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="927" y="595" width="20" height="28" rx="2" />
+      <line x1="932" y1="603" x2="942" y2="603" />
+      <line x1="932" y1="611" x2="940" y2="611" />
+      <line x1="963" y1="609" x2="951" y2="609" />
+      <polyline points="957,604 950,609 957,614" />
+    </g>
+    <text x="990" y="599" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">bind-mounted inode still<tspan x="990" dy="32">points to the old file</tspan></text>
+
+    
+    <line x1="1190" y1="657" x2="1190" y2="689" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="845" y="689" width="690" height="96" rx="12" fill="#fdf5ec" stroke="#db8129" stroke-width="2.5" />
+    <circle cx="881" cy="737" r="24" fill="#db8129" />
+    <text x="881" y="746" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <g stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 945 719 A 18 18 0 1 1 929 745" />
+      <polyline points="929,737 929,746 938,746" />
+      <line x1="941" y1="733" x2="949" y2="741" stroke-width="3" />
+      <line x1="949" y1="733" x2="941" y2="741" stroke-width="3" />
+    </g>
+    <text x="990" y="727" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">no update until<tspan x="990" dy="32">the pod restarts</tspan></text>
+  </g>
+
+  
+  <g id="side-note">
+    <rect x="40" y="845" width="1520" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="68" y="865" width="30" height="24" rx="4" />
+      <path d="M 75 865 L 75 857 A 8 8 0 0 1 91 857 L 91 865" />
+      <circle cx="83" cy="875" r="2.5" fill="#207448" />
+      <line x1="83" y1="877" x2="83" y2="883" stroke-width="2.5" />
+    </g>
+    <text x="125" y="889" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">env vars are fixed at container start; prefer mounted files for secrets</text>
+  </g>
+
+  
+  <g id="extra-note">
+    <rect x="40" y="955" width="1520" height="165" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="82" cy="1015" rx="18" ry="7" />
+      <path d="M 64 1015 L 64 1045 A 18 7 0 0 0 100 1045 L 100 1015" />
+      <path d="M 64 1030 A 18 7 0 0 0 100 1030" />
+      <circle cx="94" cy="1052" r="11" fill="#e8f1ea" />
+      <polyline points="94,1045 94,1052 100,1052" />
+    </g>
+    <text x="125" y="1005" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36"><tspan font-family="ui-monospace, monospace">fsGroup</tspan> with <tspan font-family="ui-monospace, monospace">fsGroupChangePolicy Always</tspan> recursively chowns the volume;</text>
+    <text x="125" y="1050" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">on 10 TB with 5 million files it can take 10 to 30 minutes in <tspan font-family="ui-monospace, monospace">ContainerCreating</tspan>;</text>
+    <text x="125" y="1095" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36"><tspan font-family="ui-monospace, monospace">OnRootMismatch</tspan> checks only the root directory</text>
+  </g>
+</svg>

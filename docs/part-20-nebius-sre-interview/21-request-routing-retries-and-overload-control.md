@@ -24,6 +24,10 @@ A realistic question in the interviewer's voice: "A quarter of your replicas are
 
 ### 1. Decide what is safe to retry before you decide how
 
+![A decision flow starts with an error. If the first token has already been sent, the stream ends with an error and is never replayed. Otherwise the flow checks for side effects without an idempotency key, client errors, and 429. Only a request that passes all of these is retried on another replica within the budget.](./img/x21-retry-commit-point-flow.svg)
+
+*Figure 20.21.1. The first output token is the commit point. Before it, a retry is safe for the customer. After it, the stream must end with an explicit error.*
+
 An error arrives and the client must choose between retrying and giving up. Picture the client as a courier with a parcel. If the parcel was never handed over, a second trip is harmless. If the parcel was already opened and read, a second trip repeats a conversation the recipient has already had. The wrong choice either shows users a failure that a retry would have hidden, or repeats work that should not be repeated. For an LLM API the dividing line is whether the first token has left the building.
 
 RFC 9110 says a client should not automatically retry a non-idempotent request unless it knows the request is safe to repeat or can tell that the original was never applied. A completion request changes nothing on the server except usage counters, so a retry that happens before any output is delivered is safe for the customer. Two costs remain. The retry repeats the prefill on another GPU, and the text may differ because sampling is random. Neither matters if no text was delivered, because the customer has only seen the request wait a little longer. The courier comparison still holds. A second trip to the same door costs time and fuel, and nobody has yet read the parcel. Once the parcel is open, the second trip is a different thing entirely.
@@ -46,6 +50,10 @@ Use the table as a checklist for every endpoint. When you walk a new endpoint th
 
 ### 2. Timeouts must nest: client above gateway above engine
 
+![Nested timeouts from client to gateway to engine, where a mismatch leaves orphan work running after the user has given up and retried.](./img/p2-2021-nested-timeouts.svg)
+
+*Figure 20.21.2. Each layer's timeout must be shorter than the one above it, because a mismatch leaves orphan work that fuels a retry storm.*
+
 A user waits 60 seconds, gives up and retries. Meanwhile the gateway is still retrying the first attempt, and the engine is still generating for nobody. Mismatched timeouts create orphan work, and orphan work is the fuel of a retry storm. Each layer is paying for a reply that the layer above has already abandoned.
 
 The rule is that each layer's timeout must be shorter than the one above it, with room for the retries it performs. The Google SRE chapter on cascading failures recommends passing a deadline down instead of inventing one at each hop. Its example is a server with a 30 second deadline that spends 7 seconds before calling a backend, which then passes 23 seconds down. It suggests subtracting a few hundred milliseconds for network time. Passing the remaining time, rather than a fresh number, keeps every hop honest about how much time is really left. A practical test is to write the deadline on the request as it enters the gateway, then read it again at each hop. If the number at the engine is larger than the number the gateway started with, a hop has invented time, and that is a bug even when every single timeout looks correct on its own.
@@ -54,21 +62,23 @@ Envoy adds three facts that matter here. All retries sit inside the overall requ
 
 A streaming API needs three separate limits. The first-token timeout is the per-try timeout and applies before output starts. The inter-token idle timeout detects a stalled stream. The maximum stream duration protects the fleet from endless generations. Each limit answers a different failure, and merging them into one number is how a healthy long answer gets cut. Imagine a single 60 second timeout on a stream that is healthy and simply long. It is cut at the sixtieth second even though every token arrived on time. Now imagine a stream that stalls after its first sentence and sends nothing for ten seconds. Only the idle timeout notices it quickly. Separate limits let the healthy stream run and the stalled one fail fast, and that separation is the whole point of the three-limit design.
 
-```mermaid
-flowchart LR
-  C["Client<br/>total 60 s"] --> G["Gateway<br/>total 40 s"]
-  G --> T1["Try 1<br/>first token 18 s"]
-  G --> T2["Try 2<br/>first token 18 s"]
-  T1 --> E["Engine<br/>abort at 15 s"]
-  T2 --> E
-  E --> K["Idle gap 10 s,<br/>max stream 120 s"]
-```
+![Timeouts must nest: client above gateway above engine](./img/m20-21-1.svg)
+
+*Figure 20.21.3. Timeouts must nest: client above gateway above engine, as a diagram.*
 
 The function `check_timeouts` tests a chain against these rules. I ran it on two chains. A client of 60 s, gateway total of 40 s, two tries of 18 s with up to 1 s backoff and an engine abort of 15 s returned no problems. A client of 30 s, gateway total of 40 s, three tries of 18 s and an engine of 20 s returned three problems, including that three tries need up to 54 s inside a 40 s total.
 
 Decide: write the four numbers on one line and check that each is smaller than the one before it.
 
 ### 3. Why per-request retries amplify an outage
+
+![Stacked retry layers with the arithmetic of 64, 243 and 1,024 attempts at the bottom of the chain.](./img/p3-2021-retry-layers.svg)
+
+*Figure 20.21.4. Every layer that retries multiplies the load on the layer below.*
+
+![A ring of four steps shows that replicas failing leads clients to retry, which puts original traffic plus retries on the survivors, which slows them so they time out and trigger more retries. The loop continues after the fault is gone. Side panels show expected attempts and layer multiplication.](./img/x21-retry-amplification-loop.svg)
+
+*Figure 20.21.5. Retries feed back into the load on the healthy replicas, so one partial failure can grow into a full outage that outlasts the original fault.*
 
 Half your replicas die. Every client that saw an error asks again, so the survivors receive the original traffic plus the retries. That extra load slows them, slow replicas time out, and timeouts trigger more retries. The loop feeds itself, and it can keep going after the original fault is gone.
 
@@ -103,6 +113,14 @@ Decide: keep queues short enough that a request cannot wait longer than its time
 
 ### 4. Retry budgets cap the damage
 
+![Two simulator tables showing retries helping with short queues but keeping the service down with deep queues unless budgeted.](./img/p3-2021-retry-sim-two-queues.svg)
+
+*Figure 20.21.6. A budget protects the fleet in the deep-queue case where jitter does nothing.*
+
+![A retry budget works like a bucket. Real traffic refills it, each retry spends one token, and when the bucket is empty the failure goes back to the user. With a budget ratio of 0.1, load stays at about 1.1 times the original traffic.](./img/x21-retry-budget-token-bucket.svg)
+
+*Figure 20.21.7. A retry budget held in one place caps retries as a share of real traffic, so a storm cannot drain it faster than successful work refills it.*
+
 A per-request limit says how many times one request may retry. It says nothing about the whole fleet. If every request retries three times, the load can quadruple. A budget limits retries as a fraction of all traffic, so the fleet has a fixed amount of extra work it is willing to do, however many requests are failing at once.
 
 The SRE overload chapter uses two limits together. Each request gets up to three attempts, and each client keeps a retry-to-request ratio and stops retrying once the ratio reaches 10 percent. The SRE cascading-failure chapter gives another form, a cap such as 60 retries per minute per process. The gRPC guide describes retry throttling with a token count. It starts at a maximum, such as 10, each failure removes 1, each success adds a ratio such as 0.1, and retries pause when the count falls below half the maximum. Envoy recommends retry budgets and also offers a circuit breaker on concurrent retries.
@@ -116,6 +134,10 @@ The SRE overload chapter adds a rule that matters for inference. If a large shar
 Decide: set the budget at the gateway, in one layer, and turn off every other retry loop.
 
 ### 5. Exponential backoff with jitter, and the maths
+
+![Backoff ceilings of 0.1 to 0.8 seconds, full jitter means, and a herd peak falling from 1,000 to 165 retries per bin.](./img/p3-2021-jitter-maths.svg)
+
+*Figure 20.21.8. Jitter spreads the stampede, and the first round is the dangerous one.*
 
 A replica restarts and a thousand connected clients all fail at the same instant. If each waits 100 ms and retries, the server sees a thousand requests at once, then another thousand 200 ms later. Backoff spaces the retries. Jitter spreads the clients so they do not move together. Without jitter, backoff only moves the stampede to a later time, and the stampede still arrives as one wave.
 
@@ -133,6 +155,10 @@ Decide: use full jitter on every retry and a cap that fits your time-to-first-to
 
 ### 6. Hedged requests and what they cost on GPUs
 
+![Hedging results showing p99 gains of 11 and 18 percent for 5 and 10 percent duplicate work, with the GPU cost rules.](./img/p3-2021-hedge-cost.svg)
+
+*Figure 20.21.9. Refuse hedging when the fleet is saturated.*
+
 A request is slow because one replica is slow. A hedge sends a second copy to another replica after a short delay and uses whichever answers first. It trims the tail and spends extra work to do it. The bet is that the slow copy and the fast copy rarely fail for the same reason, so the second copy is a cheap insurance policy on the slowest few percent of requests.
 
 Envoy supports this. Hedging happens only on a per-try timeout. Envoy sends a retry without cancelling the first request, waits for either, and returns the first acceptable response. Envoy retries on an overloaded signal as well, so its own docs warn you to use budgets or the concurrent-retry circuit breaker.
@@ -146,6 +172,10 @@ So my rule of thumb, which is reasoning and not a Nebius setting, is to hedge on
 Decide: say that hedging buys tail latency with GPU time, and refuse it when the fleet is saturated.
 
 ### 7. Circuit breakers, outlier ejection and the panic threshold
+
+![Pools of 20 and 8 hosts showing how a 10 percent ejection cap leaves bad replicas in rotation, with the panic threshold.](./img/p3-2021-ejection-cap.svg)
+
+*Figure 20.21.10. With a 10 percent cap a pool of 8 can eject no host unless always_eject_one_host is set.*
 
 A replica returns errors for the fifth time in a row. Every request routed to it is a wasted try and a wasted retry. Outlier detection removes it from the pool for a while, and a circuit breaker caps how much load can be in flight. Together they stop the router from feeding a sick replica the traffic that would only make it sicker.
 
@@ -162,6 +192,10 @@ A circuit breaker for an LLM replica should watch more than status codes. A hung
 Decide: eject on timeouts as well as 5xx, cap ejections at a share you can afford, and alert whenever the cap is hit.
 
 ### 8. Load shedding, priority, 429 versus 503 and Retry-After
+
+![A table comparing HTTP 429, 503 and timeouts by meaning, whether to retry on another replica, the client action, and who sets each code.](./img/p2-2021-429-503.svg)
+
+*Figure 20.21.11. HTTP 429 means the tenant is over its own limit and 503 means the server is overloaded, so the two need different retry and client actions.*
 
 Demand exceeds capacity and something must give. Shedding chooses what gives, deliberately, before queues grow so long that every request times out. The SRE cascading-failure chapter defines load shedding as dropping some traffic as the server nears overload, for example returning 503 above a number of in-flight requests. Graceful degradation goes further by doing less work per request, such as a shorter answer or a smaller model for the bulk traffic.
 
@@ -183,6 +217,10 @@ Decide: shed at the edge by tenant tier with 429, shed inside by queue depth wit
 
 ### 9. Backpressure on streaming responses
 
+![A pipeline from engine to slow client with bounded buffers, a write timeout and an abort that reaches the engine.](./img/p3-2021-stream-backpressure.svg)
+
+*Figure 20.21.12. A bounded buffer turns an invisible leak into a visible short abort.*
+
 A slow reader holds a stream open. The engine keeps generating, tokens pile up in buffers, and the request keeps its slot and its KV cache for as long as the reader lags. Streaming turns a slow client into a resource leak. The reader on a bad mobile connection may be the only thing holding a GPU slot, and nothing on the GPU side knows.
 
 Windowed flow control is the old answer. Computer Networking Problems and Solutions, chapter 2, explains that a window lets a sender have several packets outstanding, and the receiver slows the sender by not acknowledging. TCP does this for you, and that is the first backpressure. A reader that does not read fills the socket buffer, and the next write blocks or queues in your process. The idea is simple: the receiver controls how fast the sender may go.
@@ -195,6 +233,10 @@ Decide: every buffer between the engine and the socket needs a bound and a timeo
 
 ### 10. Cache-aware routing versus load-aware routing
 
+![A greedy cache router versus a bounded rule, with three cases where health and retries override cache affinity.](./img/p3-2021-cache-vs-load.svg)
+
+*Figure 20.21.13. Health and retries always override cache affinity.*
+
 Routing to the replica that already holds a request's prompt prefix skips the prefill and cuts time to first token. Routing to the least loaded replica keeps queues even. They pull in opposite directions, and reliability decides the winner under stress. A cache-aware router is greedy for hits, and a load-aware router is greedy for balance, and each one is right until the other is needed.
 
 Hands-On LLM Serving, chapter 3, notes that requests sharing a prefix can be routed to replicas whose KV cache is already filled. Distributed AI Systems, chapter 9, describes llm-d's prefix-cache aware routing and load-aware balancing as separate signals. The case study reports a hit rate rising from about 5 to 30 and then 50 or 60 percent [vendor]. Chapter 20.13 has a simulation. Following the cache alone gave the highest hit rate and put 3.8 times the mean load on one replica. A bounded rule, which follows the cache unless that replica is much busier than the idlest, had the lowest p99. I do not repeat that here.
@@ -204,6 +246,10 @@ What this chapter adds is the failure case. First, a retry should not follow the
 Decide: cache affinity is an optimisation that load, health and retries may always override.
 
 ### 11. Connection draining and graceful termination
+
+![A swimlane diagram with four lanes shows the kubelet running the preStop hook and sending SIGTERM and later SIGKILL to the engine pod, while the control plane removes the pod from endpoints at the same time. Clients can still send requests for a short while, and the engine aborts running requests at a zero shutdown timeout.](./img/x21-rolling-update-sigterm-race.svg)
+
+*Figure 20.21.14. Endpoint removal and SIGTERM run in parallel, so streams can be cut before every client stops sending to the pod. The grace period must cover the longest stream.*
 
 A rolling update removes a pod that is serving forty long streams. If the pod simply exits, forty users see a broken stream, and no retry policy can repair it, because the first token had already been sent. The retry rules from section 1 cannot save these streams, so the fix has to come from the shutdown itself. It helps to say the timeline out loud in the interview. The pod receives the signal, the router learns about it on its own schedule, and the engine decides what to do with the work already running. Each of those three clocks can disagree with the others, and the grace period is the one number that has to cover all of them.
 
@@ -223,6 +269,10 @@ In vLLM v0.32.0 source, the engine core catches SIGTERM. With the default `--shu
 Decide: size the grace period from the longest allowed stream, and test a rolling update while streams are running.
 
 ### 12. Failover across regions with data-residency limits
+
+![Capacity arithmetic for two and three regions plus a per-tenant allowed-region policy for failover.](./img/p3-2021-failover-headroom.svg)
+
+*Figure 20.21.15. Ask which tenants allow cross-region failover and how much spare capacity that implies.*
 
 A whole region loses capacity. The tempting answer is to send its traffic elsewhere. For a tenant whose prompts must stay in the EU, the elsewhere may be illegal. A fallback that breaks the promise is worse than an outage, because the outage is visible and the data transfer may not be. Failover is a policy question before it is a routing question. Start the answer by asking the tenant's contract what may leave the region, and only then ask the router what it can reach. A design that begins with the router will find a route, and the route may be one the contract forbids. Putting the policy first keeps the routing work inside the lines that the business has agreed.
 
@@ -713,6 +763,10 @@ spec:
 
 ### Scenario A. Two of eight replicas fail and the whole service goes down
 
+![A three-step incident ladder from comparing attempts to user requests to cutting retries, then fixes for later.](./img/p3-2021-retry-storm-ladder.svg)
+
+*Figure 20.21.16. Mitigate by cutting retries and shortening queues before looking for root cause.*
+
 Users send 52 requests per second and the fleet can serve 64. Two replicas start returning errors. Gateway attempts per second climb from about 52 to over 300, and success falls to a few percent. The outage ends, and the service stays down.
 
 Walk the incident in order. Step one is to compare gateway attempts to user requests. The attempts are six times the requests, which names retry amplification. Step two is to look for waiting that exceeds the timeout. A deep queue plus a 2 second timeout produces the orphan work in the last column of the simulation. Step three is to act before root cause. Cut the retry count at the gateway, turn on the budget and shorten the queue, so an overloaded replica rejects in milliseconds and not after seconds. Mitigation comes first because the users are still failing while you investigate. In the room, say that you are trading a little success now for a fleet that can recover, and that you will revisit the trade once the outage is over. That sentence shows the interviewer you can act under pressure and still keep the reasoning visible.
@@ -720,6 +774,10 @@ Walk the incident in order. Step one is to compare gateway attempts to user requ
 The simulation backs this order. The budgeted policy kept 99 percent success after the outage in the deep-queue case, and the naive one stayed at 2 percent. The fix later is to eject the two bad replicas with outlier detection, raise the ejection cap above 10 percent, bound queue wait below the timeout and remove the second retry layer.
 
 ### Scenario B. A timeout audit
+
+![A before and after timeout chain showing three conflicts found by the checker and the fixed 60, 40, 18 and 15 second settings.](./img/p3-2021-timeout-audit.svg)
+
+*Figure 20.21.17. Each setting looks fine alone and only fails when the whole chain is read together.*
 
 An SDK has a 30 second timeout. The gateway has a 40 second route timeout and retries up to three times with 18 second tries. The engine aborts at 20 seconds. Users report duplicated billing lines and slow answers.
 

@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1020" width="1600" height="1020">
+  <title>Truthiness: when a valid zero looks like missing</title>
+  <desc>Visual infographic explaining Python truthiness pitfalls when zero or empty containers are valid inputs, contrasting truthy checks against explicit None checks.</desc>
+
+  <defs>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#db8129"/>
+    </marker>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 0 2 L 16 9 L 0 16 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1020" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Truthiness: when a valid zero looks like missing</text>
+
+  
+  <rect x="40" y="130" width="420" height="630" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(70, 160)">
+    <rect x="4" y="4" width="48" height="48" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 16 20 L 40 20 M 16 32 L 32 32" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <rect x="65" y="240" width="370" height="230" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="285" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">empty containers, 0, 0.0, </tspan>
+    <tspan x="85" dy="36">empty string, None, False; </tspan>
+    <tspan x="85" dy="36">everything else is </tspan>
+    <tspan x="85" dy="36">truthy</tspan>
+  </text>
+
+  
+  <rect x="65" y="495" width="370" height="235" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="85" y="555" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">if not items: </tspan>
+    <tspan x="85" dy="46" font-family="sans-serif" fill="#207448" font-weight="bold">instead of </tspan>
+    <tspan x="85" dy="46">if len(items) == 0:</tspan>
+  </text>
+
+  
+  <rect x="500" y="130" width="600" height="630" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="520" y="150" width="560" height="230" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  
+  
+  <g transform="translate(540, 165)">
+    <circle cx="28" cy="28" r="22" fill="none" stroke="#db8129" stroke-width="4"/>
+    <path d="M 28 16 L 28 28 L 36 34" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <rect x="610" y="165" width="450" height="56" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2"/>
+  <text x="835" y="201" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">if not timeout: timeout = 30</text>
+
+  
+  <rect x="540" y="240" width="520" height="120" rx="8" fill="#fceddd" stroke="#db8129" stroke-width="2"/>
+  <text x="800" y="288" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="800" dy="0">treated as missing and </tspan>
+    <tspan x="800" dy="34">replaced by 30</tspan>
+  </text>
+
+  
+  <rect x="680" y="405" width="240" height="75" rx="10" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="800" y="451" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">timeout = 0</text>
+
+  
+  <rect x="520" y="505" width="560" height="235" rx="12" fill="#f5faf6" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="540" y="525" width="520" height="85" rx="8" fill="#e1efe6" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="577" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">kept as 0</text>
+
+  
+  <g transform="translate(540, 635)">
+    <circle cx="28" cy="28" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 28 16 L 28 28 L 36 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <rect x="610" y="635" width="450" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="835" y="671" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">if timeout is None: timeout = 30</text>
+
+  
+  
+  <path d="M 800 405 L 800 366" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <path d="M 800 480 L 800 519" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1140" y="130" width="420" height="630" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1170, 160)">
+    <path d="M 12 16 L 44 16 M 12 32 L 44 32 M 12 48 L 44 48" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="24" cy="16" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    <circle cx="36" cy="32" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+    <circle cx="20" cy="48" r="6" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="1245" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">or-defaulting</text>
+
+  
+  <rect x="1165" y="235" width="370" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1185" y="280" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1185" dy="0">target = </tspan>
+    <tspan x="1185" dy="36">os.environ.get("CLUSTER") </tspan>
+    <tspan x="1185" dy="36">or "staging"</tspan>
+  </text>
+
+  
+  <rect x="1165" y="405" width="370" height="75" rx="10" fill="#fceddd" stroke="#db8129" stroke-width="2"/>
+  <text x="1350" y="451" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">beware falsy valid values</text>
+
+  
+  <rect x="1165" y="500" width="370" height="235" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="1185" y="545" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1185" dy="0">and and or </tspan>
+    <tspan x="1185" dy="36">short-circuit and </tspan>
+    <tspan x="1185" dy="36">return one of their </tspan>
+    <tspan x="1185" dy="36">operands, not </tspan>
+    <tspan x="1185" dy="36">necessarily a bool</tspan>
+  </text>
+
+  
+  <rect x="40" y="785" width="1520" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="832" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">None is the single null object, and the default return value of a function without return</text>
+
+  
+  <rect x="40" y="885" width="1520" height="85" rx="10" fill="#207448"/>
+  <text x="800" y="938" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Use is None when 0 or empty are valid values</text>
+</svg>

@@ -1,0 +1,168 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>A liveness probe that removes workers from the router for good</title>
+  <desc>A circular diagram illustrating how an overly aggressive liveness probe restarts busy inference workers during large prefills, causing registration failures and permanently removing workers from the router pool, alongside recommended fixes.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">A liveness probe that removes workers</text>
+  <text x="800" y="118" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">from the router for good</text>
+
+  
+
+  
+  <g id="box-1">
+    <rect x="280" y="155" width="540" height="225" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="320" cy="205" r="24" fill="#207448" />
+    <text x="320" y="205" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <circle cx="375" cy="205" r="22" stroke="#207448" stroke-width="4" fill="none" />
+    <path d="M 375 205 L 375 193 M 375 205 L 387 205" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="420" y="198" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Large prefill,</text>
+    <text x="420" y="234" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">engine answers slowly</text>
+    
+    <text x="310" y="295" font-family="sans-serif" font-size="24" fill="#303a36">Liveness probe: HTTP check,</text>
+    <text x="310" y="335" font-family="sans-serif" font-size="24" fill="#303a36"><tspan font-family="monospace">1 s</tspan> timeout, <tspan font-family="monospace">failure threshold 1</tspan></text>
+  </g>
+
+  
+  <g id="box-2">
+    <rect x="590" y="440" width="460" height="220" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="630" cy="485" r="24" fill="#207448" />
+    <text x="630" y="485" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <circle cx="685" cy="485" r="14" stroke="#207448" stroke-width="4" fill="none" />
+    <circle cx="685" cy="485" r="5" fill="#207448" />
+    <path d="M 685 463 L 685 469 M 685 501 L 685 507 M 663 485 L 669 485 M 701 485 L 707 485 M 670 470 L 674 474 M 696 496 L 700 500 M 670 500 L 674 496 M 696 474 L 700 470" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    
+    <text x="730" y="482" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Liveness failed,</text>
+    <text x="730" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">container restarted</text>
+    
+    <text x="615" y="585" font-family="sans-serif" font-size="24" fill="#303a36">Events: liveness probe failed</text>
+  </g>
+
+  
+  <g id="box-3">
+    <rect x="590" y="740" width="460" height="235" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="630" cy="785" r="24" fill="#207448" />
+    <text x="630" y="785" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <rect x="663" y="763" width="46" height="42" rx="5" stroke="#207448" stroke-width="4" fill="none" />
+    <line x1="663" y1="777" x2="709" y2="777" stroke="#207448" stroke-width="3" />
+    <circle cx="673" cy="770" r="2.5" fill="#207448" />
+    <circle cx="682" cy="770" r="2.5" fill="#207448" />
+    <circle cx="691" cy="770" r="2.5" fill="#207448" />
+    
+    <text x="730" y="795" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Worker starts again</text>
+    
+    <text x="615" y="860" font-family="sans-serif" font-size="24" fill="#303a36">Workers register once,</text>
+    <text x="615" y="896" font-family="sans-serif" font-size="24" fill="#303a36">at startup</text>
+  </g>
+
+  
+  <g id="box-4">
+    <rect x="40" y="740" width="500" height="235" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="80" cy="785" r="24" fill="#207448" />
+    <text x="80" y="785" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <path d="M 135 763 L 157 773 C 157 798 135 813 135 813 C 135 813 113 798 113 773 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none" />
+    <path d="M 135 773 L 135 799" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="65" y="835" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Router registration fails:</text>
+    <text x="65" y="873" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">upstream not ready, no retry</text>
+    
+    <text x="65" y="930" font-family="sans-serif" font-size="24" fill="#303a36">The router keeps five workers, not eight</text>
+  </g>
+
+  
+  <g id="box-5">
+    <rect x="40" y="440" width="500" height="220" rx="16" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="80" cy="485" r="24" fill="#207448" />
+    <text x="80" y="485" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+    
+    <ellipse cx="135" cy="473" rx="22" ry="8" stroke="#207448" stroke-width="4" fill="none" />
+    <path d="M 113 473 L 113 497 C 113 505 157 505 157 497 L 157 473" stroke="#207448" stroke-width="4" fill="none" />
+    <path d="M 113 485 C 113 493 157 493 157 485" stroke="#207448" stroke-width="3" fill="none" />
+    
+    <text x="65" y="535" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Ready on Kubernetes,</text>
+    <text x="65" y="573" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">missing from the router</text>
+    
+    <text x="65" y="628" font-family="sans-serif" font-size="24" fill="#303a36">Ready and registered are two facts</text>
+  </g>
+
+  
+
+  
+  <path d="M 820 270 L 860 270 Q 880 270 880 290 L 880 436" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 820 660 L 820 736" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 590 855 L 544 855" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 290 740 L 290 664" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 60 440 L 60 245 Q 60 230 75 230 L 276 230" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+  <g id="orange-edge-label">
+    <rect x="75" y="275" width="185" height="115" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <text x="167" y="310" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">Busy worker</text>
+    <text x="167" y="342" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">is restarted</text>
+    <text x="167" y="374" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">again</text>
+  </g>
+
+  
+
+  <g id="fix-panel">
+    
+    <rect x="1090" y="155" width="470" height="820" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <text x="1130" y="215" font-family="sans-serif" font-size="36" font-weight="bold" fill="#207448">Fix</text>
+    <line x1="1130" y1="235" x2="1520" y2="235" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+
+    
+    <rect x="1120" y="265" width="410" height="195" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1155" cy="315" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <path d="M 1149 315 L 1153 319 L 1162 310" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="1185" y="322" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Re-register the</text>
+    <text x="1150" y="370" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">three workers</text>
+    <text x="1150" y="418" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">one at a time</text>
+
+    
+    <rect x="1120" y="495" width="410" height="195" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1155" cy="545" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <path d="M 1149 545 L 1153 549 L 1162 540" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="1185" y="552" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Loosen the</text>
+    <text x="1150" y="600" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">liveness probe,</text>
+    <text x="1150" y="648" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">keep readiness</text>
+
+    
+    <rect x="1120" y="725" width="410" height="215" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="1155" cy="775" r="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <path d="M 1149 775 L 1153 779 L 1162 770" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="1185" y="782" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Alert on router</text>
+    <text x="1150" y="830" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">pool size against</text>
+    <text x="1150" y="878" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">desired replicas</text>
+  </g>
+</svg>

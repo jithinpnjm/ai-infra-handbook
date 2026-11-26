@@ -1,0 +1,287 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1150" width="1600" height="1150">
+  <title>One frame crossing the Linux L2 objects on a Kubernetes node</title>
+  <desc>Visual infographic showing the path of an L2 frame across Linux networking objects on a Kubernetes node, with alternative branches and diagnostic tools.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-dotted" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1150" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">One frame crossing the Linux L2 objects on a Kubernetes node</text>
+
+  
+
+  
+  <g id="node-pod-eth0">
+    <rect x="40" y="120" width="185" height="380" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="68" cy="148" r="20" fill="#207448"/>
+    <text x="68" y="156" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(104, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round">
+      <rect x="3" y="3" width="50" height="50" rx="8"/>
+      <path d="M 3 20 L 53 20"/>
+      <circle cx="14" cy="11.5" r="3" fill="#207448"/>
+      <circle cx="25" cy="11.5" r="3" fill="#207448"/>
+      <path d="M 18 36 L 38 36"/>
+    </g>
+    
+    <text x="132" y="230" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pod eth0</text>
+    <text x="132" y="280" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="132" dy="0">(inside</tspan>
+      <tspan x="132" dy="32">the pod's</tspan>
+      <tspan x="132" dy="32">namespace)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="225" y1="310" x2="263" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-veth-pair">
+    <rect x="265" y="120" width="235" height="380" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="293" cy="148" r="20" fill="#207448"/>
+    <text x="293" y="156" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(354, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+      <circle cx="10" cy="28" r="8"/>
+      <circle cx="46" cy="28" r="8"/>
+      <path d="M 18 28 C 26 14, 30 42, 38 28"/>
+    </g>
+    
+    <text x="382" y="230" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">veth pair:</text>
+    <text x="382" y="272" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="382" dy="0">a virtual</tspan>
+      <tspan x="382" dy="30">cable,</tspan>
+      <tspan x="382" dy="30">one end in the</tspan>
+      <tspan x="382" dy="30">namespace,</tspan>
+      <tspan x="382" dy="30">the other in</tspan>
+      <tspan x="382" dy="30">a bridge</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="500" y1="310" x2="538" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-bridge">
+    <rect x="540" y="120" width="245" height="380" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    
+    <circle cx="568" cy="148" r="20" fill="#207448"/>
+    <text x="568" y="156" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(634, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="4" y="8" width="48" height="40" rx="6"/>
+      <path d="M 14 22 L 38 22"/>
+      <path d="M 32 16 L 38 22 L 32 28"/>
+      <path d="M 42 34 L 18 34"/>
+      <path d="M 24 28 L 18 34 L 24 40"/>
+    </g>
+    
+    <text x="662" y="230" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">bridge br0</text>
+    <text x="662" y="266" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="662" dy="0">or OVS or</tspan>
+      <tspan x="662" dy="28">eBPF:</tspan>
+      <tspan x="662" dy="28">software</tspan>
+      <tspan x="662" dy="28">switch, MAC</tspan>
+      <tspan x="662" dy="28">learning,</tspan>
+      <tspan x="662" dy="28">flooding, STP,</tspan>
+      <tspan x="662" dy="28">VLAN filtering</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="785" y1="310" x2="823" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-vlan-bond">
+    <rect x="825" y="120" width="255" height="380" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="853" cy="148" r="20" fill="#207448"/>
+    <text x="853" y="156" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(924, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="6" y="8" width="44" height="20" rx="4"/>
+      <path d="M 12 28 L 12 42 C 12 46, 44 46, 44 42 L 44 28"/>
+      <path d="M 28 20 L 28 36"/>
+    </g>
+    
+    <text x="952" y="220" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="952" dy="0">VLAN</tspan>
+      <tspan x="952" dy="32">subinterface</tspan>
+    </text>
+    <text x="952" y="282" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">eth0.100:</text>
+    <text x="952" y="310" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="952" dy="0">802.1Q</tspan>
+      <tspan x="952" dy="28">tagging, or</tspan>
+      <tspan x="952" dy="28">bond: link</tspan>
+      <tspan x="952" dy="28">aggregation or</tspan>
+      <tspan x="952" dy="28">active-backup</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1080" y1="310" x2="1118" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-nic">
+    <rect x="1120" y="120" width="220" height="380" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="1148" cy="148" r="20" fill="#207448"/>
+    <text x="1148" y="156" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(1202, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="6" y="10" width="44" height="28" rx="4"/>
+      <path d="M 6 18 L 2 18 L 2 44"/>
+      <path d="M 16 38 L 16 46"/>
+      <path d="M 24 38 L 24 46"/>
+      <path d="M 32 38 L 32 46"/>
+      <path d="M 40 38 L 40 46"/>
+    </g>
+    
+    <text x="1230" y="222" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1230" dy="0">physical</tspan>
+      <tspan x="1230" dy="32">NIC</tspan>
+    </text>
+    <text x="1230" y="284" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">eth0, ens4,</text>
+    <text x="1230" y="314" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">enp129s0f0:</text>
+    <text x="1230" y="344" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1230" dy="0">queues (RSS),</tspan>
+      <tspan x="1230" dy="30">offloads,</tspan>
+      <tspan x="1230" dy="30">ring sizes</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1340" y1="310" x2="1378" y2="310" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-switch">
+    <rect x="1380" y="120" width="180" height="380" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+    
+    <circle cx="1408" cy="148" r="20" fill="#207448"/>
+    <text x="1408" y="156" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(1442, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+      <rect x="4" y="14" width="48" height="28" rx="5"/>
+      <path d="M 12 28 L 20 28"/>
+      <path d="M 28 28 L 36 28"/>
+      <path d="M 44 28 L 46 28"/>
+      <path d="M 18 14 L 18 6 L 38 6 L 38 14"/>
+    </g>
+    
+    <text x="1470" y="240" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1470" dy="0">out to</tspan>
+      <tspan x="1470" dy="40">the</tspan>
+      <tspan x="1470" dy="40">switch</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g id="side-note-loopback">
+    <rect x="40" y="550" width="360" height="440" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(192, 600)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 8 A 20 20 0 1 1 12 18"/>
+      <path d="M 8 8 L 12 18 L 22 14"/>
+    </g>
+    
+    <text x="220" y="730" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">lo is loopback</text>
+    <text x="220" y="780" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">and has no L2</text>
+  </g>
+
+  
+  <line x1="662" y1="500" x2="662" y2="548" stroke="#207448" stroke-width="3" stroke-dasharray="6,6" marker-end="url(#arrow-dotted)"/>
+
+  
+  <g id="alternative-branches">
+    
+    <g id="branch-macvlan">
+      <rect x="440" y="550" width="740" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6"/>
+      
+      <g transform="translate(465, 587)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="4" y="6" width="36" height="24" rx="3"/>
+        <path d="M 12 30 L 12 48"/>
+        <path d="M 32 30 L 32 48"/>
+        <circle cx="12" cy="50" r="2" fill="#207448"/>
+        <circle cx="32" cy="50" r="2" fill="#207448"/>
+      </g>
+      <text x="545" y="605" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">macvlan or ipvlan</text>
+      <text x="545" y="645" font-family="sans-serif" font-size="24" fill="#303a36">: several L2/L3 identities on one NIC</text>
+    </g>
+
+    
+    <g id="branch-vxlan">
+      <rect x="440" y="705" width="740" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6"/>
+      
+      <g transform="translate(465, 742)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <ellipse cx="14" cy="28" rx="8" ry="16"/>
+        <path d="M 14 12 L 44 12"/>
+        <path d="M 14 44 L 44 44"/>
+        <path d="M 44 12 A 8 16 0 0 1 44 44"/>
+      </g>
+      <text x="545" y="760" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">vxlan or geneve</text>
+      <text x="545" y="800" font-family="sans-serif" font-size="24" fill="#303a36">: L2-over-L3 tunnel</text>
+    </g>
+
+    
+    <g id="branch-taptun">
+      <rect x="440" y="860" width="740" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="8,6"/>
+      
+      <g transform="translate(465, 897)" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round" stroke-linecap="round">
+        <rect x="4" y="6" width="48" height="40" rx="5"/>
+        <path d="M 14 22 L 22 28 L 14 34"/>
+        <path d="M 26 34 L 38 34"/>
+      </g>
+      <text x="545" y="915" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">tap or tun</text>
+      <text x="545" y="955" font-family="sans-serif" font-size="24" fill="#303a36">: VM or user-space L2 or L3 interface</text>
+    </g>
+  </g>
+
+  
+  <g id="right-strip-tools">
+    <rect x="1220" y="550" width="340" height="440" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1390" y="595" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Tools per object</text>
+    <line x1="1250" y1="615" x2="1530" y2="615" stroke="#207448" stroke-width="2" stroke-linecap="round"/>
+
+    
+    <rect x="1240" y="635" width="300" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1390" y="668" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ip -d link</text>
+
+    
+    <rect x="1240" y="700" width="300" height="85" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1390" y="734" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1390" dy="0">bridge fdb / vlan /</tspan>
+      <tspan x="1390" dy="32">link / mdb</tspan>
+    </text>
+
+    
+    <rect x="1240" y="800" width="300" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1390" y="833" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">ethtool</text>
+
+    
+    <rect x="1240" y="865" width="300" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1390" y="898" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">tc</text>
+
+    
+    <rect x="1240" y="930" width="300" height="50" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="1390" y="963" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">tcpdump -e</text>
+  </g>
+
+  
+  <g id="bottom-takeaway-bar">
+    <rect x="40" y="1040" width="1520" height="70" rx="8" fill="#207448"/>
+    <text x="800" y="1084" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Follow the frame through each object in turn when you trace a problem on such a node</text>
+  </g>
+</svg>

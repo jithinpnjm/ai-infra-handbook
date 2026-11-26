@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>Four steps to an SSH session and the failure at each</title>
+  <desc>Four steps to an SSH session from left to right with the failure message under each, showing how a failure at any step makes later steps impossible.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" text-anchor="middle" font-family="sans-serif, system-ui" font-size="48" font-weight="bold" fill="#303a36">Four steps to an SSH session and the failure at each</text>
+
+  
+  <line x1="385" y1="245" x2="433" y2="245" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="775" y1="245" x2="823" y2="245" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+  <line x1="1165" y1="245" x2="1213" y2="245" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  
+  <rect x="45" y="130" width="340" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="160" cy="180" r="24" fill="#207448"/>
+  <text x="160" y="189" text-anchor="middle" font-family="sans-serif, system-ui" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+  
+  <circle cx="260" cy="180" r="24" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <line x1="236" y1="180" x2="284" y2="180" stroke="#207448" stroke-width="3"/>
+  <ellipse cx="260" cy="180" rx="11" ry="24" fill="none" stroke="#207448" stroke-width="3"/>
+  
+  <text x="215" y="265" text-anchor="middle" font-family="sans-serif, system-ui" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="215" dy="0">Name resolves</tspan>
+    <tspan x="215" dy="38">to an address</tspan>
+  </text>
+  
+  <rect x="45" y="395" width="340" height="445" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <text x="215" y="530" text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan x="215" dy="0" font-family="sans-serif, system-ui">Could not resolve</tspan>
+    <tspan x="215" dy="42" font-family="sans-serif, system-ui">hostname,</tspan>
+    <tspan x="215" dy="42" font-family="sans-serif, system-ui">fix with</tspan>
+    <tspan x="215" dy="42" font-family="monospace, Courier">ansible_host</tspan>
+    <tspan x="215" dy="42" font-family="sans-serif, system-ui">or DNS.</tspan>
+  </text>
+
+  
+  
+  <rect x="435" y="130" width="340" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="550" cy="180" r="24" fill="#207448"/>
+  <text x="550" y="189" text-anchor="middle" font-family="sans-serif, system-ui" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+  
+  <path d="M 628 164 h 44 v 24 h -10 v 8 h -24 v -8 h -10 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <line x1="644" y1="170" x2="644" y2="178" stroke="#207448" stroke-width="3"/>
+  <line x1="650" y1="170" x2="650" y2="178" stroke="#207448" stroke-width="3"/>
+  <line x1="656" y1="170" x2="656" y2="178" stroke="#207448" stroke-width="3"/>
+  
+  <text x="605" y="265" text-anchor="middle" font-family="sans-serif, system-ui" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="605" dy="0">Packet reaches</tspan>
+    <tspan x="605" dy="38">the port</tspan>
+  </text>
+  
+  <rect x="435" y="395" width="340" height="445" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="605" y="530" text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan x="605" dy="0" font-family="sans-serif, system-ui">Connection</tspan>
+    <tspan x="605" dy="42" font-family="sans-serif, system-ui">timed out or</tspan>
+    <tspan x="605" dy="42" font-family="sans-serif, system-ui">No route to host,</tspan>
+    <tspan x="605" dy="42" font-family="sans-serif, system-ui">check</tspan>
+    <tspan x="605" dy="42" font-family="monospace, Courier">nc -vz host 22.</tspan>
+  </text>
+
+  
+  
+  <rect x="825" y="130" width="340" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="940" cy="180" r="24" fill="#207448"/>
+  <text x="940" y="189" text-anchor="middle" font-family="sans-serif, system-ui" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+  
+  <path d="M 1040 156 l 22 8 v 16 c 0 16 -12 25 -22 28 c -10 -3 -22 -12 -22 -28 v -16 z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  <circle cx="1040" cy="172" r="5" fill="none" stroke="#207448" stroke-width="2.5"/>
+  <path d="M 1040 177 v 16 m 0 -6 h 5 m -5 4 h 4" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  
+  <text x="995" y="265" text-anchor="middle" font-family="sans-serif, system-ui" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="995" dy="0">Server accepts</tspan>
+    <tspan x="995" dy="38">the handshake</tspan>
+  </text>
+  
+  <rect x="825" y="395" width="340" height="445" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="995" y="515" text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan x="995" dy="0" font-family="sans-serif, system-ui">Host key verification</tspan>
+    <tspan x="995" dy="40" font-family="sans-serif, system-ui">failed or</tspan>
+    <tspan x="995" dy="40" font-family="monospace, Courier">kex_exchange_</tspan>
+    <tspan x="995" dy="40" font-family="monospace, Courier">identification,</tspan>
+    <tspan x="995" dy="40"><tspan font-family="sans-serif, system-ui">check </tspan><tspan font-family="monospace, Courier">known_hosts</tspan></tspan>
+    <tspan x="995" dy="40"><tspan font-family="sans-serif, system-ui">and </tspan><tspan font-family="monospace, Courier">MaxStartups.</tspan></tspan>
+  </text>
+
+  
+  
+  <rect x="1215" y="130" width="340" height="230" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  
+  <circle cx="1330" cy="180" r="24" fill="#207448"/>
+  <text x="1330" y="189" text-anchor="middle" font-family="sans-serif, system-ui" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+  
+  <circle cx="1424" cy="171" r="10" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 1406 200 c 0 -9 8 -15 18 -15 s 18 6 18 15" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <circle cx="1445" cy="189" r="9" fill="#207448"/>
+  <path d="M 1441 189 l 3 3 l 6 -6" fill="none" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <text x="1385" y="284" text-anchor="middle" font-family="sans-serif, system-ui" font-size="30" font-weight="bold" fill="#303a36">Login succeeds</text>
+  
+  <rect x="1215" y="395" width="340" height="445" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1385" y="515" text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan x="1385" dy="0" font-family="sans-serif, system-ui">Permission denied</tspan>
+    <tspan x="1385" dy="40" font-family="monospace, Courier">(publickey,</tspan>
+    <tspan x="1385" dy="40" font-family="monospace, Courier">password),</tspan>
+    <tspan x="1385" dy="40"><tspan font-family="sans-serif, system-ui">check </tspan><tspan font-family="monospace, Courier">ssh -vvv,</tspan></tspan>
+    <tspan x="1385" dy="40" font-family="monospace, Courier">ansible_user,</tspan>
+    <tspan x="1385" dy="40" font-family="monospace, Courier">ssh-add -l.</tspan>
+  </text>
+
+  
+  <rect x="45" y="875" width="1510" height="80" rx="12" fill="#207448"/>
+  <text x="800" y="925" text-anchor="middle" font-family="sans-serif, system-ui" font-size="26" font-weight="bold" fill="#ffffff">Note: a failure at one step makes every later step impossible.</text>
+</svg>

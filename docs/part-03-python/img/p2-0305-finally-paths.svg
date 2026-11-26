@@ -1,0 +1,142 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>finally runs on every path, but control never returns after an error</title>
+  <desc>Visual comparison showing that finally executes on both success and error paths, but when an error occurs, control propagates to the caller rather than continuing after the try block.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">finally runs on every path,</text>
+  <text x="800" y="132" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">but control never returns after an error</text>
+
+  
+  <rect x="60" y="165" width="1480" height="280" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="95" y="212" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Success path</text>
+
+  
+  <rect x="95" y="240" width="410" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(300, 280)">
+    <rect x="-24" y="-18" width="48" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="-24" y1="-8" x2="24" y2="-8" stroke="#207448" stroke-width="2"/>
+    <path d="M -14 0 L -8 5 L -14 10" fill="none" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="-3" y1="10" x2="8" y2="10" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="300" y="365" font-family="'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">try: fetcher(food, 4)</text>
+
+  
+  <line x1="505" y1="330" x2="583" y2="330" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="595" y="240" width="410" height="180" rx="12" fill="#d7eadb" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(800, 278)">
+    <circle cx="0" cy="0" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M -6 0 L -1 5 L 8 -4" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="800" y="348" font-family="'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="800" dy="0">finally:</tspan>
+    <tspan x="800" dy="34">print after fetch</tspan>
+  </text>
+
+  
+  <line x1="1005" y1="330" x2="1083" y2="330" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1095" y="240" width="410" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(1300, 280)">
+    <rect x="-22" y="-18" width="44" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="-12" y1="-6" x2="12" y2="-6" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-12" y1="2" x2="6" y2="2" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="-12" y1="10" x2="0" y2="10" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+  </g>
+  <text x="1300" y="365" font-family="'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">print after try?</text>
+
+
+  
+  
+  <rect x="60" y="475" width="1480" height="445" rx="16" fill="#fcf9f5" stroke="#db8129" stroke-width="3"/>
+  <text x="95" y="522" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">Error path</text>
+
+  
+  <rect x="95" y="690" width="410" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(300, 735)">
+    <rect x="-24" y="-18" width="48" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 0 -8 L 8 8 L -8 8 Z" fill="none" stroke="#db8129" stroke-width="2.5" stroke-linejoin="round"/>
+    <circle cx="0" cy="5" r="1" fill="#db8129"/>
+  </g>
+  <text x="300" y="805" font-family="'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="300" dy="0">try: fetcher(food, 5)</tspan>
+    <tspan x="300" dy="36" fill="#c53030">raises IndexError</tspan>
+  </text>
+
+  
+  <line x1="505" y1="787" x2="583" y2="787" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="595" y="690" width="410" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(800, 733)">
+    <circle cx="0" cy="0" r="18" fill="none" stroke="#207448" stroke-width="3.5"/>
+    <path d="M -6 0 L -1 5 L 8 -4" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="800" y="792" font-family="'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">finally:</tspan>
+    <tspan x="800" dy="32">print after fetch</tspan>
+    <tspan x="800" dy="32" fill="#207448">(still runs)</tspan>
+  </text>
+
+  
+  <line x1="1005" y1="787" x2="1058" y2="787" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1070" y="690" width="370" height="195" rx="12" fill="#fff5f5" stroke="#c53030" stroke-width="3"/>
+  
+  <g transform="translate(1255, 735)">
+    <circle cx="0" cy="0" r="19" fill="none" stroke="#c53030" stroke-width="3.5"/>
+    <line x1="-9" y1="-9" x2="9" y2="9" stroke="#c53030" stroke-width="4" stroke-linecap="round"/>
+    <line x1="9" y1="-9" x2="-9" y2="9" stroke="#c53030" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="1255" y="818" font-family="'SF Mono', 'Cascadia Code', Menlo, Consolas, monospace" font-size="25" font-weight="bold" fill="#c53030" text-anchor="middle">
+    <tspan x="1255" dy="0">after try?</tspan>
+    <tspan x="1255" dy="36">is never reached</tspan>
+  </text>
+
+  
+  <path d="M 1255 690 L 1295 648" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="1100" y="520" width="410" height="115" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  
+  <g transform="translate(1145, 577)">
+    <rect x="-16" y="-6" width="32" height="20" rx="3" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    <path d="M 0 4 L 0 -16 M -7 -9 L 0 -16 L 7 -9" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="1325" y="568" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">
+    <tspan x="1325" dy="0">exception goes up</tspan>
+    <tspan x="1325" dy="30">to the caller</tspan>
+  </text>
+
+
+  
+  <rect x="60" y="945" width="1480" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="800" y="989" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">finally is for cleanup. Use except only where you can recover.</text>
+
+
+  
+  <rect x="60" y="1040" width="1480" height="80" rx="12" fill="#207448"/>
+  <text x="800" y="1090" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Cleanup after a call never runs when the call raises. Put it in finally or use with.</text>
+</svg>

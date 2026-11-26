@@ -1,0 +1,172 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>A tight liveness probe can start a restart loop that shrinks the pool</title>
+  <desc>A feedback loop showing how strict liveness probe timeouts cause cascading pod restarts and pool shrinkage.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#207448" />
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 15 8 L 1 14 Z" fill="#db8129" />
+    </marker>
+    
+    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="112%" filterUnits="userSpaceOnUse">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#143622" flood-opacity="0.07" />
+    </filter>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    A tight liveness probe can start a restart loop that shrinks the pool
+  </text>
+
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="100" y="115" width="480" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <circle cx="150" cy="165" r="24" fill="#207448" />
+  <text x="150" y="174" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="195" y="142" width="56" height="46" rx="6" />
+    <line x1="195" y1="156" x2="251" y2="156" stroke-width="3" />
+    <circle cx="206" cy="149" r="2" fill="#207448" />
+    <circle cx="214" cy="149" r="2" fill="#207448" />
+    <circle cx="222" cy="149" r="2" fill="#207448" />
+    <line x1="207" y1="172" x2="239" y2="172" stroke-width="3" />
+  </g>
+  
+  <text x="130" y="240" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    Busy worker answers slowly
+  </text>
+
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="980" y="115" width="520" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <circle cx="1030" cy="165" r="24" fill="#207448" />
+  <text x="1030" y="174" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1103" cy="165" r="25" />
+    <polyline points="1103,148 1103,165 1117,165" stroke-width="4" />
+  </g>
+  
+  <text x="1010" y="235" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    Liveness probe times out
+  </text>
+  <text x="1010" y="275" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+    timeoutSeconds 1 by default
+  </text>
+
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="980" y="470" width="520" height="250" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  </g>
+  
+  <circle cx="1030" cy="520" r="24" fill="#207448" />
+  <text x="1030" y="529" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 1090 500 A 22 22 0 1 1 1085 532" stroke-width="4" />
+    <polyline points="1078,500 1092,500 1092,514" stroke-width="4" />
+  </g>
+  
+  <text x="1010" y="585" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1010" dy="0">Kubernetes restarts a</tspan>
+    <tspan x="1010" dy="40">healthy pod,</tspan>
+  </text>
+  <text x="1010" y="660" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1010" dy="0">dropping in-flight requests and</tspan>
+    <tspan x="1010" dy="32">starting a fresh weight load</tspan>
+  </text>
+
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="980" y="740" width="520" height="110" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6" />
+  </g>
+  
+  <line x1="1240" y1="720" x2="1240" y2="740" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    
+    <ellipse cx="1025" cy="780" rx="14" ry="6" stroke="#9bbba8" stroke-dasharray="3 3" />
+    <path d="M 1011 780 v 18 c 0 3.3 6.3 6 14 6 s 14 -2.7 14 -6 v -18" stroke="#9bbba8" stroke-dasharray="3 3" />
+    
+    <ellipse cx="1060" cy="782" rx="14" ry="6" />
+    <path d="M 1046 782 v 22 c 0 3.3 6.3 6 14 6 s 14 -2.7 14 -6 v -22" />
+  </g>
+  
+  <text x="1095" y="805" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    Ready below desired, silent shrink
+  </text>
+
+  
+  
+  <g filter="url(#card-shadow)">
+    <rect x="100" y="470" width="480" height="250" rx="16" fill="#fdf4eb" stroke="#db8129" stroke-width="4" />
+  </g>
+  
+  <circle cx="150" cy="520" r="24" fill="#207448" />
+  <text x="150" y="529" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 195 538 L 222 490 L 249 538 Z" stroke-width="3.5" />
+    <line x1="222" y1="507" x2="222" y2="522" stroke-width="3.5" />
+    <circle cx="222" cy="530" r="1.5" fill="#db8129" />
+  </g>
+  
+  <text x="130" y="585" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="130" dy="0">Survivors take all traffic,</tspan>
+  </text>
+  <text x="130" y="635" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="130" dy="0">queue time rises, and</tspan>
+    <tspan x="130" dy="40">more probes fail</tspan>
+  </text>
+
+  
+  
+  <path d="M 580 210 L 976 210" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1240 305 L 1240 466" fill="none" stroke="#207448" stroke-width="5" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 980 595 L 584 595" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+
+  
+  <path d="M 340 470 L 340 309" fill="none" stroke="#db8129" stroke-width="5" marker-end="url(#arrow-orange)" />
+  
+  <g filter="url(#card-shadow)">
+    <rect x="235" y="365" width="210" height="50" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5" />
+  </g>
+  <text x="340" y="400" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    more restarts
+  </text>
+
+  
+  <g filter="url(#card-shadow)">
+    <rect x="100" y="880" width="1400" height="100" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  </g>
+  <text x="800" y="922" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="800" dy="0">the health route reads a flag and does not wait behind generation,</tspan>
+    <tspan x="800" dy="34">so a busy engine alone is not the cause unless the API server is starved.</tspan>
+  </text>
+
+  
+  <rect x="100" y="1010" width="1400" height="74" rx="12" fill="#207448" />
+  <text x="800" y="1056" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+    Liveness answers should this process be killed, readiness answers should it get traffic.
+  </text>
+</svg>

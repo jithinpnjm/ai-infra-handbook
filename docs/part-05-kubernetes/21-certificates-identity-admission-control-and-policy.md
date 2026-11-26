@@ -52,19 +52,9 @@ Suppose an API call fails with a certificate error, and you need to know which c
 
 Think of the PKI as a passport office. A certificate authority, or CA, is the office that stamps passports with its seal. Anyone who trusts that seal can accept a passport without checking the holder in person. A leaf certificate is an end-user passport. It proves an identity, but it cannot stamp anything for anyone else. The arrows in the diagram are the stamps. Each arrow means "signed by," so you read the diagram from the top down.
 
-```mermaid
-flowchart TB
-  CA["Cluster CA (ca.crt/ca.key)\n10-year"] --> API["kube-apiserver serving cert\n(SANs: DNS names, IPs, service IP)"]
-  CA --> AKC["apiserver-kubelet-client\n(API server → kubelet)"]
-  CA --> KCL["kubelet client certs\n(CN=system:node:<name>, O=system:nodes)"]
-  CA --> KSV["kubelet serving certs\n(via CSR approval)"]
-  CA --> ADM["admin.conf client cert\n(O=kubeadm:cluster-admins)"]
-  CA --> CM["controller-manager / scheduler client certs"]
-  ECA["etcd CA (etcd/ca.crt)"] --> ES["etcd server + peer certs"]
-  ECA --> AEC["apiserver-etcd-client"]
-  FCA["front-proxy CA"] --> FPC["front-proxy-client (aggregated API auth)"]
-  SA["Service account key pair\n(sa.key/sa.pub)\nsigns SA tokens"]
-```
+![The Kubernetes PKI](./img/m5-21-1.svg)
+
+*Figure 5.21.1. The Kubernetes PKI, as a diagram.*
 
 The cluster CA sits at the top of most of this tree. There are three root CAs in total: the cluster CA, the etcd CA and the front-proxy CA. Each one is a separate trust domain, which means a set of certificates that all accept the same CA. A certificate signed by one CA is not accepted by a component that trusts a different one. The CA private keys live on control-plane nodes, and you should back them up offline, as chapter 5.20 explains. Leaf certificates are valid for **1 year** by default. The CAs themselves last 10 years.
 

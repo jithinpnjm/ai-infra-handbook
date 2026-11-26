@@ -1,0 +1,132 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Why permute2 streams: the factorial explosion in numbers</title>
+  <desc>Visual comparison of permute1 list allocation versus permute2 generator streaming across factorial scale.</desc>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Why permute2 streams: the factorial explosion in numbers</text>
+
+  
+  
+  <rect x="50" y="85" width="730" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(75, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="10" rx="22" ry="7"/>
+    <path d="M6 10v16c0 4 10 7 22 7s22-3 22-7V10"/>
+    <path d="M6 26v16c0 4 10 7 22 7s22-3 22-7V26"/>
+  </g>
+  <text x="155" y="125" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="155" dy="0">permute1 (builds a list of all</tspan>
+    <tspan x="155" dy="34">factorial(N) permutations</tspan>
+    <tspan x="155" dy="34">before returning)</tspan>
+  </text>
+
+  
+  <rect x="820" y="85" width="730" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(845, 125)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="10" y="10" width="36" height="36" rx="4"/>
+    <path d="M18 4v6M28 4v6M38 4v6M18 46v6M28 46v6M38 46v6M4 18h6M4 28h6M4 38h6M46 18h6M46 28h6M46 38h6"/>
+    <path d="M22 28h12M28 22l6 6-6 6"/>
+  </g>
+  <text x="925" y="142" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="925" dy="0">permute2 (recursive yield</tspan>
+    <tspan x="925" dy="34">seq[i:i+1] + x, one at a time)</tspan>
+  </text>
+
+  
+  <rect x="50" y="235" width="1500" height="85" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(75, 250)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <path d="M18 28l8 8 14-14"/>
+  </g>
+  <text x="155" y="270" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">N = 4 (hack): 24 permutations, both give the same result,</tspan>
+    <tspan x="155" dy="32">permute1(hack) == list(permute2(hack))</tspan>
+  </text>
+
+  
+  <rect x="50" y="335" width="1500" height="125" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(75, 370)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="22"/>
+    <path d="M28 14v14l10 6"/>
+  </g>
+  <text x="155" y="372" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">N = 10: math.factorial(10) = 3,628,800; permute1 pauses about 17 seconds</tspan>
+    <tspan x="155" dy="32">while it allocates 3.6 million lists; p2 = permute2(seq);</tspan>
+    <tspan x="155" dy="32">next(p2) returns the first permutation almost immediately</tspan>
+  </text>
+
+  
+  <rect x="50" y="475" width="1500" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(75, 487)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="20,6 36,6 48,18 48,34 36,46 20,46 8,34 8,18"/>
+    <line x1="16" y1="28" x2="40" y2="28"/>
+  </g>
+  <text x="155" y="525" font-family="monospace, sans-serif" font-size="24" fill="#303a36">N = 20: 2,432,902,008,176,640,000; permute1 is physically impossible</text>
+
+  
+  <rect x="50" y="570" width="1500" height="135" rx="10" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(75, 610)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 14h10l16 24h10"/>
+    <path d="M38 14h6v6"/>
+    <path d="M38 38h6v-6"/>
+    <path d="M8 38h10l6-9"/>
+    <path d="M34 23l4-5h6"/>
+  </g>
+  <text x="155" y="608" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">N = 50: math.factorial(50) = 30414093201713378043612608166064768844377641568960512000000000000;</tspan>
+    <tspan x="155" dy="32">random.shuffle(seq); p = permute2(seq); next(p) still gives a randomised</tspan>
+    <tspan x="155" dy="32">permutation at once, in O(N) memory</tspan>
+  </text>
+
+  
+  <rect x="50" y="720" width="1500" height="80" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(75, 732)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M46 24A20 20 0 1 0 44 34"/>
+    <polyline points="46 14 46 24 36 24"/>
+  </g>
+  <text x="155" y="770" font-family="monospace, sans-serif" font-size="24" fill="#303a36">scramble1(hack) yields the four rotations hack, ackh, ckha, khac one at a time</text>
+
+  
+  
+  <rect x="50" y="815" width="730" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(75, 855)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="8" y1="12" x2="8" y2="44"/>
+    <line x1="48" y1="12" x2="48" y2="44"/>
+    <path d="M14 28h28"/>
+    <polyline points="20 22 14 28 20 34"/>
+    <polyline points="36 22 42 28 36 34"/>
+  </g>
+  <text x="155" y="855" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="155" dy="0">myzip stops at the shortest:</tspan>
+    <tspan x="155" dy="32">list(myzip(abc, xyz123)) ==</tspan>
+    <tspan x="155" dy="32">[(a, x), (b, y), (c, z)]</tspan>
+  </text>
+
+  
+  <rect x="820" y="815" width="730" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(845, 855)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="14" width="24" height="28" rx="4"/>
+    <path d="M38 28h14"/>
+    <path d="M45 21v14"/>
+  </g>
+  <text x="925" y="855" font-family="monospace, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">mymapPad(abc, xyz123, pad=99)</tspan>
+    <tspan x="925" dy="32">keeps going:</tspan>
+    <tspan x="925" dy="32">..., (99, 1), (99, 2), (99, 3)</tspan>
+  </text>
+
+  
+  <rect x="50" y="965" width="1500" height="80" rx="10" fill="#207448"/>
+  <text x="800" y="1015" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">A generator holds only its current state, so memory stays flat however many results exist</text>
+</svg>

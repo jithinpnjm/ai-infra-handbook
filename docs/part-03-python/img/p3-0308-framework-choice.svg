@@ -1,0 +1,158 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>argparse, Click or Typer: which to start with</title>
+  <desc>A decision flow comparing Python CLI libraries: argparse, Click, and Typer.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="16" markerHeight="16" refX="14" refY="8" orient="auto">
+      <path d="M 2 3 L 14 8 L 2 13 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">argparse, Click or Typer: which to start with</text>
+
+  
+  
+  <rect x="40" y="120" width="380" height="225" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="90" cy="165" r="22" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 83 158 C 83 150 97 150 97 159 C 97 165 90 167 90 172" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="90" cy="178" r="2.5" fill="#207448"/>
+  
+  <text x="65" y="235" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="65" dy="0">Must it have zero</tspan>
+    <tspan x="65" dy="32">dependencies, and</tspan>
+    <tspan x="65" dy="32">is it a tiny script?</tspan>
+  </text>
+
+  
+  <line x1="420" y1="232" x2="480" y2="232" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+  <text x="450" y="220" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <rect x="480" y="120" width="590" height="225" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="505" y="142" width="46" height="40" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <polyline points="516,156 524,162 516,168" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="528" y1="168" x2="538" y2="168" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="568" y="172" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">argparse:</text>
+  <text x="505" y="212" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="505" dy="0">subcommands, types, choices, mutually</tspan>
+    <tspan x="505" dy="32">exclusive groups, automatic <tspan font-family="monospace">--help</tspan>;</tspan>
+    <tspan x="505" dy="32">cost is verbosity and it composes</tspan>
+    <tspan x="505" dy="32">less cleanly in large trees</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="370" width="380" height="225" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="90" cy="410" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="73" cy="436" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+  <circle cx="107" cy="436" r="8" fill="none" stroke="#207448" stroke-width="3"/>
+  <path d="M 90 418 L 90 424 M 90 424 L 73 428 M 90 424 L 107 428" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="65" y="495" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="65" dy="0">Large command tree or</tspan>
+    <tspan x="65" dy="32">plug-in ecosystem?</tspan>
+  </text>
+
+  
+  <line x1="420" y1="482" x2="480" y2="482" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="480" y="370" width="590" height="225" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="528" cy="412" r="12" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <path d="M 528 394 L 528 398 M 528 426 L 528 430 M 510 412 L 514 412 M 542 412 L 546 412 M 515 399 L 518 402 M 538 422 L 541 425 M 515 425 L 518 422 M 538 402 L 541 399" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  
+  <text x="568" y="422" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Click:</text>
+  <text x="505" y="460" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="505" dy="0">decorated functions, nested groups,</tspan>
+    <tspan x="505" dy="30">prompts, colour, shell completion,</tspan>
+    <tspan x="505" dy="30"><tspan font-family="monospace">CliRunner</tspan>, context object</tspan>
+    <tspan x="505" dy="30">for shared config, client and</tspan>
+    <tspan x="505" dy="30">output format</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="620" width="380" height="245" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <polygon points="94,642 78,666 89,666 84,688 102,662 91,662" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round"/>
+  
+  <text x="65" y="745" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="65" dy="0">Want a fast tool driven</tspan>
+    <tspan x="65" dy="32">by type hints?</tspan>
+  </text>
+
+  
+  <line x1="420" y1="742" x2="480" y2="742" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)"/>
+
+  
+  <rect x="480" y="620" width="590" height="245" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  
+  <path d="M 528 640 C 538 650 540 664 537 673 L 520 656 C 529 653 543 655 528 640 Z" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+  <path d="M 520 656 L 513 663 M 537 673 L 544 680" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+  <circle cx="530" cy="657" r="3" fill="#db8129"/>
+  
+  <text x="568" y="670" font-family="sans-serif" font-size="32" font-weight="bold" fill="#db8129">Typer:</text>
+  <text x="505" y="708" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="505" dy="0">built on Click, from the author of</tspan>
+    <tspan x="505" dy="31">FastAPI; each parameter becomes an</tspan>
+    <tspan x="505" dy="31">argument or option; shell completion</tspan>
+    <tspan x="505" dy="31">for free;</tspan>
+    <tspan x="505" dy="31" font-family="monospace">Annotated[int, typer.Option(min=1)]</tspan>
+  </text>
+
+  
+  
+  <rect x="1110" y="120" width="450" height="380" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="1135" y="145" width="46" height="38" rx="5" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <line x1="1135" y1="156" x2="1181" y2="156" stroke="#207448" stroke-width="2.5"/>
+  <line x1="1143" y1="166" x2="1165" y2="166" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="1143" y1="174" x2="1173" y2="174" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="1135" y="224" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135" dy="0">Rich adds tables, progress</tspan>
+    <tspan x="1135" dy="36">bars, tracebacks, live</tspan>
+    <tspan x="1135" dy="36">displays; check</tspan>
+    <tspan x="1135" dy="36"><tspan font-family="monospace">sys.stdout.isatty()</tspan> and</tspan>
+    <tspan x="1135" dy="36">fall back to plain text</tspan>
+    <tspan x="1135" dy="36">when piped; textual for</tspan>
+    <tspan x="1135" dy="36">full terminal UIs</tspan>
+  </text>
+
+  
+  <rect x="1110" y="525" width="450" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 1158 555 L 1158 581 M 1145 568 L 1171 568 M 1149 559 L 1167 577 M 1149 577 L 1167 559" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  
+  <text x="1135" y="670" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1135" dy="0">fire and cyclopts exist</tspan>
+    <tspan x="1135" dy="40">but are less common</tspan>
+  </text>
+
+  
+  <rect x="40" y="890" width="1520" height="130" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="65" y="934" width="52" height="42" rx="6" fill="none" stroke="#207448" stroke-width="3.5"/>
+  <polyline points="74,948 82,955 74,962" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="86" y1="962" x2="98" y2="962" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="145" y="946" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">borrow Go CLI conventions from kubectl and helm:</text>
+  <text x="145" y="986" font-family="monospace" font-size="24" fill="#303a36">noun verb, -o json, --dry-run=client, --context</text>
+
+  
+  <rect x="40" y="1045" width="1520" height="100" rx="16" fill="#207448"/>
+  
+  <polyline points="74,1100 86,1088 96,1095 112,1077" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="102,1077 112,1077 112,1087" fill="none" stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <text x="135" y="1106" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Start with the standard library, and move up when the command tree grows</text>
+</svg>

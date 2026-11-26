@@ -1,0 +1,149 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Permission denied (publickey): five checks in order</title>
+  <desc>Visual diagnostic ladder for SSH Permission denied (publickey) errors: five ordered verification steps ending in Fixed, accompanied by an Also check side panel and root-cause takeaway bar.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Permission denied (publickey): five checks in order</text>
+
+  
+  <rect x="40" y="80" width="980" height="70" rx="12" fill="#ffffff" stroke="#303a36" stroke-width="2" />
+  <g transform="translate(185, 93)" stroke="#303a36" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="6" y="8" width="44" height="32" rx="4" fill="#e8f1ea" />
+    <path d="M 16 20 L 24 24 L 16 28" />
+    <line x1="28" y1="28" x2="38" y2="28" />
+  </g>
+  <text x="255" y="125" font-family="ui-monospace, monospace" font-size="32" font-weight="bold" fill="#303a36">Permission denied (publickey)</text>
+
+  
+  <line x1="530" y1="150" x2="530" y2="173" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="175" width="980" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="88" cy="222" r="24" fill="#207448" />
+  <text x="88" y="222" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(132, 194)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="28" cy="16" r="10" />
+    <path d="M 10 46 C 10 35, 18 31, 28 31 C 38 31, 46 35, 46 46" />
+  </g>
+  <text x="212" y="231" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Username correct? <tspan font-family="ui-monospace, monospace" font-weight="normal" fill="#207448">user@host</tspan></text>
+
+  
+  <line x1="530" y1="270" x2="530" y2="293" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="295" width="980" height="125" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="88" cy="357" r="24" fill="#207448" />
+  <text x="88" y="357" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(132, 329)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="20" cy="28" r="10" />
+    <line x1="30" y1="28" x2="48" y2="28" />
+    <line x1="40" y1="28" x2="40" y2="36" />
+    <line x1="46" y1="28" x2="46" y2="34" />
+  </g>
+  <text x="212" y="342" font-family="ui-monospace, monospace" font-size="25" font-weight="bold" fill="#207448">ssh -vvv user@host:<tspan font-family="system-ui, -apple-system, sans-serif" font-weight="normal" fill="#303a36"> which key files were offered?</tspan></text>
+  <text x="212" y="384" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">did <tspan font-family="ui-monospace, monospace" fill="#207448">IdentitiesOnly</tspan> block the key?</text>
+
+  
+  <line x1="530" y1="420" x2="530" y2="443" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="445" width="980" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="88" cy="497" r="24" fill="#207448" />
+  <text x="88" y="497" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(132, 469)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 14 8 L 34 8 L 44 18 L 44 48 L 14 48 Z" />
+    <path d="M 34 8 L 34 18 L 44 18" />
+    <line x1="20" y1="28" x2="38" y2="28" />
+    <line x1="20" y1="36" x2="32" y2="36" />
+  </g>
+  <text x="212" y="488" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">Is the public key line in</text>
+  <text x="212" y="524" font-family="ui-monospace, monospace" font-size="25" fill="#207448">~/.ssh/authorized_keys <tspan font-family="system-ui, -apple-system, sans-serif" fill="#303a36">on the server?</tspan></text>
+
+  
+  <line x1="530" y1="550" x2="530" y2="573" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="575" width="980" height="160" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  <circle cx="88" cy="655" r="24" fill="#db8129" />
+  <text x="88" y="655" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(132, 627)" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 19 24 L 19 16 C 19 10, 37 10, 37 16 L 37 24" />
+    <rect x="13" y="24" width="30" height="24" rx="4" />
+    <circle cx="28" cy="34" r="2.5" fill="#db8129" />
+    <line x1="28" y1="36" x2="28" y2="42" />
+  </g>
+  <text x="212" y="612" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#db8129">StrictModes: <tspan font-family="ui-monospace, monospace" font-size="24" font-weight="normal" fill="#303a36">ls -ld ~ ~/.ssh ~/.ssh/authorized_keys;</tspan></text>
+  <text x="212" y="652" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">~/.ssh must be 700, authorized_keys 600,</text>
+  <text x="212" y="692" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">home not group or world writable</text>
+
+  
+  <line x1="530" y1="735" x2="530" y2="758" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="760" width="980" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="88" cy="832" r="24" fill="#207448" />
+  <text x="88" y="832" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">5</text>
+  
+  <g transform="translate(132, 804)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="12" y="8" width="32" height="42" rx="3" />
+    <line x1="18" y1="18" x2="38" y2="18" />
+    <line x1="18" y1="26" x2="38" y2="26" />
+    <line x1="18" y1="34" x2="30" y2="34" />
+  </g>
+  <text x="212" y="798" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">Server log: <tspan font-family="ui-monospace, monospace" font-size="24" fill="#207448">/var/log/auth.log</tspan> (Debian, Ubuntu) or</text>
+  <text x="212" y="836" font-family="ui-monospace, monospace" font-size="24" fill="#207448">/var/log/secure <tspan font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">(Red Hat family);</tspan></text>
+  <text x="212" y="874" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">SELinux: <tspan font-family="ui-monospace, monospace" font-size="24" fill="#207448">restorecon -R ~/.ssh</tspan></text>
+
+  
+  <line x1="530" y1="905" x2="530" y2="928" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="40" y="930" width="980" height="70" rx="12" fill="#207448" />
+  <g transform="translate(425, 942)" stroke="#ffffff" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="23" cy="23" r="18" />
+    <path d="M 14 23 L 20 29 L 32 17" />
+  </g>
+  <text x="495" y="975" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Fixed</text>
+
+  
+  <rect x="1060" y="80" width="500" height="920" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(1085, 108)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="24" cy="24" r="16" />
+    <line x1="24" y1="16" x2="24" y2="26" />
+    <circle cx="24" cy="32" r="1.5" fill="#207448" />
+  </g>
+  <text x="1145" y="133" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Also check</text>
+
+  
+  <rect x="1085" y="175" width="450" height="340" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1110" y="260" font-family="ui-monospace, monospace" font-size="24" fill="#207448">
+    <tspan x="1110" dy="0">sshd -T | grep -i -E</tspan>
+    <tspan x="1110" dy="50">"authorizedkeys|pubkey|</tspan>
+    <tspan x="1110" dy="50">password|permitroot"</tspan>
+  </text>
+
+  
+  <rect x="1085" y="550" width="450" height="350" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1110" y="670" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="1110" dy="0">cloud OS Login</tspan>
+    <tspan x="1110" dy="48">may overwrite</tspan>
+    <tspan x="1110" dy="48" font-family="ui-monospace, monospace" font-size="25" fill="#207448">authorized_keys</tspan>
+  </text>
+
+  
+  <rect x="40" y="1040" width="1520" height="80" rx="12" fill="#207448" />
+  <text x="800" y="1089" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Fix the real cause; do not hide it by turning passwords on</text>
+</svg>

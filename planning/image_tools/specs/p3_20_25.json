@@ -1,0 +1,92 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-range-and-irate",
+  "title": "The range selector must hold enough scrapes, and irate looks at two samples",
+  "spec": "Left panel 'range too short': 'scrape every 30 s; rate(gateway_requests_total[30s]) holds one sample (range is left-open and right-closed, a sample exactly on the old edge is left out); one sample cannot give a slope, so the panel is empty while traffic flows; fix [2m]'. Timeline drawing of samples every 30 s with a bracket [30s] covering one sample and a bracket [2m] covering four. Middle rule 'two samples is the bare minimum and still thin; Grafana $__rate_interval is designed to capture at least four scrape samples: the larger of the dashboard interval plus the scrape interval, and four times the scrape interval; mismatch warning: data source set to 15 s while the real scrape is 60 s'. Right panel 'irate uses only the last two data points: good for graphs of fast counters where you want every wiggle; trap in alerts: the test feeds a counter that jumps by 100 then stays flat and at the end irate sees calm while rate over 5m still sees the burst; exercise 2 irate(gateway_errors_total[5m]) > 1 fix rate(...[5m])'. Footer 'rate: per-second average over the range, extrapolated to its ends; increase is the same maths times the seconds in the window'. Text at least 24px.",
+  "anchor": "### 2. rate versus irate, and the range-selector trap",
+  "alt": "A scrape timeline showing a 30 second range holding one sample and a 2 minute range holding four, with the irate trap.",
+  "cap": "Use a range of at least four scrape intervals and keep irate for graphs."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-ratio-trap",
+  "title": "Never average a ratio: sum both sides, then divide",
+  "spec": "Two query rows. Wrong row 'avg(errors_rate / requests_rate): each pod gets the same vote even when one pod served most of the traffic; the exercise gives 0.25'. Right row 'sum(errors_rate) / sum(requests_rate): the true ratio, 0.002 in the exercise'. Under them the recording rules from the chapter: 'model:gateway_requests:rate5m = sum by (model) (rate(gateway_requests_total[5m]))'; 'model:gateway_errors:rate5m = sum by (model) (rate(gateway_errors_total[5m]))'; 'model:gateway_errors:ratio_rate5m = model:gateway_errors:rate5m / model:gateway_requests:rate5m'. Rule strip 'rate per series, sum by the labels you want to keep, then divide; the Prometheus recording-rule guide says never take the average of a ratio or an average of an average; a ratio of two summed rates is correct'. Text at least 24px.",
+  "anchor": "### 3. Aggregate after rate, never before",
+  "alt": "A wrong averaged ratio of 0.25 against the correct summed ratio of 0.002 with the recording rules that build it.",
+  "cap": "Aggregate numerator and denominator separately, then divide."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-average-p99",
+  "title": "Averaging p99 across pods: 1.47 versus the true 0.99",
+  "spec": "Two pod bars. 'Pod A: 1,000 requests per step, p99 0.95 s'. 'Pod B: 10 requests per step, p99 1.99 s'. Wrong path 'average of the two p99 values = 1.47 s, which gives the idle pod the same vote as the busy one'. Right path 'sum bucket rates by le across both pods, take the quantile once: p99 of all requests together = 0.99 s; the busy pod dominates, as it should'. Query forms 'sum by (le) (rate(...[5m])) then histogram_quantile(0.99, ...)'; 'sum by (model, le) keeps the model label; plain sum drops le and returns nothing; sum by (pod) drops le and returns nothing'. Edge cases 'highest bucket must have an upper bound of +Inf; a histogram with no observations returns NaN, so an empty histogram looks like a broken panel'. Scenario note 'a flat p99 panel of 0.4 s while customers say slow: the panel averages per-pod quantiles; the linter reports P003; rerun as the fleet quantile and check bucket coverage near the 1 s SLO limit and traffic skew'. Text at least 24px.",
+  "anchor": "### 4. Histograms: keep le, then take the quantile once",
+  "alt": "A busy pod and an idle pod whose averaged p99 of 1.47 seconds differs from the true combined p99 of 0.99 seconds.",
+  "cap": "Merge buckets across pods and take the quantile once."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-saturation-panels",
+  "title": "A utilisation panel needs a saturation panel and the worst pod",
+  "spec": "Left three pod bars for KV cache usage: pod 1, pod 2 at lower values and pod 3 at 100 percent (rejecting work); label 'avg(vllm:kv_cache_usage_perc) shows 0.53 while one pod is at 1; max(...) shows it'. Middle mapping 'USE method: utilization is how busy a resource is, saturation is queued work it cannot service; errors first, then saturation. For an inference engine KV cache usage is utilization, the waiting queue is saturation. A busy pod with an empty queue is working as designed; a pod with a queue behind it is in trouble'. Right gauge rule 'rate over a gauge that holds at 7 returns zero and says the queue is empty (exercise 13); use the value itself, avg_over_time, max_over_time, or deriv for the trend'. Footer 'Grafana: USE suits hardware resources such as a GPU or disk, RED (request rate, errors, duration) suits services; alert on symptoms rather than causes; inference dashboard = a RED row for the gateway and a USE row for the engine, saturation next to every utilization panel'. Text at least 24px.",
+  "anchor": "### 5. Gauges, saturation and dashboards that tell the truth",
+  "alt": "Three pods where the average cache usage of 0.53 hides one pod at 1, with USE versus RED and gauge function rules.",
+  "cap": "Show the worst pod and put saturation beside every utilization panel."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-for-keepfiring",
+  "title": "for ignores blips and keep_firing_for stops flapping",
+  "spec": "Timeline of gateway queue depth over time: two short spikes, then a long plateau, then the queue drains. Three alert rows under it. Row 'no for clause: becomes active on the first evaluation; fires at the first spike (minute two); one noisy sample pages a person'. Row 'for: 5m: held in pending until active for the whole duration; stays quiet through both spikes; fires during the plateau'. Row 'for: 5m plus keep_firing_for: 3m: keeps firing for three minutes after the queue drains, preventing flapping and false resolutions caused by data gaps'. Rule from the chapter 'alert QueueDeep: gateway_queue_depth > 500, for 5m, keep_firing_for 3m, severity ticket'. Note 'a burn-rate alert from chapter 20.19 can skip for because its two windows already filter noise; everything else should have one'. Text at least 24px.",
+  "anchor": "### 8. Alert rules: for, flapping and keep_firing_for",
+  "alt": "A queue depth timeline with two spikes and a plateau and three alert variants showing when each one fires.",
+  "cap": "Use for to ignore blips and keep_firing_for to stop flapping."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-rule-layers",
+  "title": "Recording rules are built in layers named level:metric:operations",
+  "spec": "Layered stack drawn bottom to top. Bottom raw series 'gateway_requests_total, gateway_errors_total, req_seconds_bucket, vllm:kv_cache_usage_perc'. Layer 1 'model:gateway_requests:rate5m and model:gateway_errors:rate5m (sum by model of the rate over 5 minutes; rate first, then sum)'. Layer 2 'model:gateway_errors:ratio_rate5m = errors rate / requests rate (numerator and denominator summed separately, then divided)'; 'model_le:req_seconds_bucket:rate5m = sum by (model, le) of the bucket rate (keep le)'. Layer 3 'model:req_seconds:p99 = histogram_quantile(0.99, layer 2 buckets)'; 'model_name:vllm_kv_cache_usage_perc:max = max by (model_name): the worst pod, not the average'. Alerts on top 'ErrorRatioHigh: ratio above 0.05 for 5m, page'; 'KVCacheSaturated: max above 0.95 and waiting above 0 for 10m, page'. Name rule 'level = aggregation level and output labels; metric name unchanged except stripping _total; operations newest first; always a without clause; errors_ratio tells a reader nothing'. Reason 'a dashboard that takes eight seconds to refresh a heavy histogram_quantile over a week should read a precomputed series'. Text at least 24px.",
+  "anchor": "### 10. Recording rules and naming",
+  "alt": "Three layers of recording rules from rates through ratios and quantiles to alerts, with the naming convention.",
+  "cap": "Record the expensive expression once and build each layer on a clean input."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-query-mistakes-alerts",
+  "title": "Five query mistakes that look fine in review",
+  "spec": "Table with columns Bad query, What is wrong, Fix. Rows: 'absent(up{job=\"vllm\"}) | silent when one of two pods is gone; absent fires only when every target is gone | count(up{job=\"vllm\"}) < 2 (test returns 1)'. 'waiting * on (pod) kube_pod_info | many-to-one error from promtool: multiple matches for labels: many-to-one matching must be explicit (group_left/group_right) | add group_left (node), pointing at the side with more series'. 'sum(rate(errors[5m])) > 1 with $labels.model in the annotation | aggregation drops the label the annotation uses | sum by (model)'. 'increase(restarts[10m]) == 1 | extrapolated value is 1.11 | > 0'. 'rate(x[5m]) offset 1h | parse error: offset modifier must be preceded by an instant vector selector or range vector selector or a subquery | rate(x[5m] offset 1h), offset must follow the selector immediately'. Footer 'a negative offset looks ahead of the evaluation time; treat rate(sum(...)[5m:1m]) as suspect because a subquery hides a reset'. Text at least 24px.",
+  "anchor": "## The 15 exercises: what is wrong with this query",
+  "alt": "A table of five query mistakes with their errors and fixes, covering absent, joins, labels, extrapolation and offset.",
+  "cap": "A query that parses can still mean something other than what you intended."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-traceparent-anatomy",
+  "title": "Anatomy of a traceparent header and the spans of a streaming request",
+  "spec": "Top header drawn as four boxes separated by dashes: 'version (2 hex characters)' - 'trace ID (32 hex characters)' - 'parent ID (16 hex characters)' - 'trace flags (2 hex characters)'. Callout on flags 'least significant bit is the sampled bit'. Caption 'each service reads the header, creates a child span and passes it on; W3C Trace Context'. Below, a three-row span table. 'Gateway request span (server): lives until last token or abort; attributes model, status, finish reason, token counts; event first_token'. 'Router decision span (internal): until the replica is chosen; replica, retries, queue depth seen'. 'Engine request span (server): until last token; queue wait, prefill and decode times as attributes; vLLM v0.32.0 sets these on one span and does not emit a preemption event'. Two rules 'the gateway span stays open until the stream ends and its status is set to Error if the stream fails after a 200 was sent (status values Unset, Error, Ok)'; 'put the first-token moment on the span as an event'. Flags note 'vLLM tracing flags --otlp-traces-endpoint and --collect-detailed-traces (model, worker or all; can be costly or blocking)'. Text at least 24px.",
+  "anchor": "### 13. Tracing a streaming request",
+  "alt": "The four fields of a traceparent header and a table of gateway, router and engine spans for a streaming request.",
+  "cap": "One span per hop, with the gateway span covering the whole stream."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "25",
+  "name": "p3-2025-silent-outage-count",
+  "title": "One of four pods crashed and both alerts stayed quiet",
+  "spec": "Setup 'one of four vLLM pods crashes at night; requests moved to other pods'. Two alert rows with verdicts. 'Error ratio alert: quiet, and correctly so, no errors exist in the traffic that is still arriving'. 'absent(up{job=\"vllm\"}) alert: quiet because three pods still report'. Missing coverage box 'neither alert was written to notice a shrinking fleet'. Fix list 'add up == 0 for two minutes (target exists but cannot be scraped); add a count below four (counts what should be there: the chapter test deletes one of two pods and shows absent empty and the count returning 1); absent stays for the total blackout'. Second note 'also alert on lost capacity: the loss shows up as saturation on the survivors (chapter 20.18)'. Footer 'pair every no-data risk with a count or an absent alert and test it by deleting the series; a vanished series does not return zero, it returns nothing, so errors > 0 cannot fire'. Text at least 24px.",
+  "anchor": "### Scenario 2: The silent outage",
+  "alt": "Two quiet alerts during a pod loss and the up, count and absent checks that would have caught the shrinking fleet.",
+  "cap": "Count what should be there, because a vanished series returns nothing rather than zero."
+ }
+]

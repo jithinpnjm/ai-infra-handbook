@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-rendezvous-checks",
+  "title": "Rendezvous stalls: checks in the order they bite",
+  "spec": "Numbered checklist for a job that stalls before training starts. '1 Port: derive it from the job ID or ask the site which ports are free; firewalls must allow the range between compute nodes; a blocked port leaves other nodes waiting with no clear error'. '2 MASTER_ADDR must resolve and be reachable from every node on the interface you intend to use; the first hostname in the nodelist is usually the management name, so ask if the management network is the one you want; if management and fabric networks differ the torch TCP store uses whichever address MASTER_ADDR resolves to'. '3 c10d rendezvous: endpoint host reachable and --rdzv-id unique per job; reusing an ID can collide with an earlier run'. '4 One job per port per node at a time; --exclusive helps because the nodes are yours alone'. '5 Ranks starting at different times (slow image pull or module load) can fire the rendezvous timeout; raise the timeout and fix the slow start too; a longer timeout hides the symptom'. Footer 'port problems are quiet and look like a slow start rather than a broken one'. Text at least 24px.",
+  "anchor": "## 4. Rendezvous gotchas",
+  "alt": "A five-item checklist for rendezvous stalls covering ports, MASTER_ADDR, rdzv-id, port sharing and start-time skew.",
+  "cap": "Check the port and MASTER_ADDR first because rendezvous failures look like slow starts."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-nccl-vars-groups",
+  "title": "NCCL environment variables grouped by what they decide",
+  "spec": "Four groups. 'Where traffic goes: NCCL_SOCKET_IFNAME interfaces for bootstrap and sockets (prefixes, comma-separated, ^ excludes, = exact; typical ^lo,docker or an explicit fabric NIC); NCCL_IB_HCA which adapters (hca[:port[:rail[:plane]]], example mlx5_0,mlx5_1); NCCL_IB_GID_INDEX for RoCE, find with show_gids; NCCL_CROSS_NIC whether rings may use different NICs on different nodes; NCCL_NET_GDR_LEVEL maximum GPU-NIC distance for GPUDirect RDMA'. 'How fast it moves: NCCL_ALGO and NCCL_PROTO force algorithm or protocol, use only to test; NCCL_BUFFSIZE default 4 MiB (4194304), raise stepwise while watching GPU memory; NCCL_NSOCKS_PERTHREAD times NCCL_SOCKET_NTHREADS cannot exceed 64 sockets per communicator; NCCL_MIN_NCHANNELS and NCCL_MAX_NCHANNELS, each channel uses one CUDA block; NCCL_MNNVL_ENABLE for multi-node NVLink such as NVL72; NCCL_IGNORE_CPU_AFFINITY=1'. 'Diagnosis switches: NCCL_DEBUG VERSION, WARN, INFO plus NCCL_DEBUG_SUBSYS INIT,NET,GRAPH,ENV and NCCL_DEBUG_FILE=file.%h.%p; NCCL_IB_DISABLE falls back to sockets, a performance cliff; NCCL_P2P_LEVEL, NCCL_P2P_DISABLE, NCCL_SHM_DISABLE; NCCL_SHARP_DISABLE=1 to test in-network aggregation; NCCL_TOPO_DUMP_FILE and NCCL_TOPO_FILE for virtualised hosts; NCCL_IB_TIMEOUT 4.096 us times 2^value, raise if ibv_poll_cq error 12'. 'Reliability: NCCL_RAS_ENABLE'. Habits: 'set only the minimum; site-wide settings in NCCL_CONF_FILE or /etc/nccl.conf or in the module so users do not paste folklore; PyTorch adds TORCH_NCCL_ASYNC_ERROR_HANDLING, TORCH_NCCL_BLOCKING_WAIT and init_process_group(timeout=...)'. Text at least 24px.",
+  "anchor": "## 5. NCCL environment variables",
+  "alt": "NCCL variables grouped into where traffic goes, how fast it moves, diagnosis switches and reliability.",
+  "cap": "Set the minimum and keep site-wide NCCL settings in one config file."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-nccl-info-baseline",
+  "title": "Reading NCCL_DEBUG=INFO against a healthy baseline",
+  "spec": "Two log excerpts side by side as labelled boxes. Healthy run: 'transports chosen NET/IB, P2P/CUMEM, NVLS; the rings, the channels and the HCAs in use'. Misconfigured run: 'NET/Socket on an IB cluster is the classic misconfiguration; NET/Socket: using Ethernet interface eth0 means the job used eth0 where the fabric was expected; unable to enable P2P, falling back to copy means GPUs sit across PCIe root complexes that cannot do peer access'. Cause arrow: 'a container exposing the docker0 bridge can make NCCL_SOCKET_IFNAME pick docker0 instead of the fast network; nothing crashes, training is just slow'. Fix cues: 'NCCL_SOCKET_IFNAME=^lo,docker or an explicit fabric NIC; confirm /dev/infiniband is mounted in containers, RoCE GID index, and lsmod | grep nvidia_peermem'. Habit 'record INFO output from a healthy run as your baseline before changing any variable; lower NCCL_DEBUG from INFO to WARN after troubleshooting'. Text at least 24px.",
+  "anchor": "## 5. NCCL environment variables",
+  "alt": "A healthy NCCL INFO log with IB and P2P transports compared with a misconfigured log showing socket fallback.",
+  "cap": "Save a healthy INFO log as a baseline so a fallback to sockets is obvious."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-binding-flags",
+  "title": "Four binding flags, four different questions",
+  "spec": "Four rows flag to question. '--cpus-per-gpu: how many cores each GPU gets'. '--cpu-bind=cores (or rank or map_cpu): how those cores are grouped; under Slurm use --cpu-bind instead of mpirun --bind-to none because Slurm owns the binding and reports it in accounting'. '--gpu-bind=closest: which GPU a rank gets, the nearest one'. '--gres-flags=enforce-binding: restrict the job to cores bound to its GPUs'. Picture: 'typical 8-GPU HGX node has two NUMA domains with four GPUs each; NICs often distributed one per GPU in a rail-optimised layout so each GPU has a dedicated path to the fabric; rank i should use NIC i; NCCL maps this automatically'. Check recipe: 'srun ... bash -c echo $SLURM_PROCID $(taskset -pc $$) $CUDA_VISIBLE_DEVICES, then nvidia-smi topo -m, numactl -s and NCCL INFO output'. Threads: 'set OMP_NUM_THREADS to CPUs per rank minus the share used by data-loader workers; otherwise each rank starts as many threads as the node has cores and they fight; keep torch.set_num_threads and MKL_NUM_THREADS consistent'. Rule 'a benchmark on an unbound node measures the placement, not the fabric'. Text at least 24px.",
+  "anchor": "## 6. Binding for training jobs",
+  "alt": "Four Slurm binding flags each paired with the question it answers and a check recipe.",
+  "cap": "Bind and then verify on every node before trusting throughput numbers."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-framework-exports",
+  "title": "What each framework expects the launcher to export",
+  "spec": "Table framework to what to export. 'PyTorch DDP: torchrun or direct srun python; manual dist.init_process_group(backend nccl); export MASTER_ADDR, MASTER_PORT, WORLD_SIZE, RANK, LOCAL_RANK; model replicated on each GPU with DDP(model, device_ids=[local_rank]); gradients all-reduced and averaged before the optimizer step'. 'PyTorch FSDP: torchrun; same as DDP, example --cpus-per-task=28 --mem=200G for sharded CPU offload; shards parameters, gradients and optimizer states so a model too large for one GPU can train'. 'DeepSpeed ZeRO-1/2/3: srun --label bash -c ... python train.py --deepspeed; deepspeed.init_distributed() automatic; reads Slurm vars but needs explicit export LOCAL_RANK=$SLURM_LOCALID, RANK=$SLURM_PROCID, CUDA_VISIBLE_DEVICES=$SLURM_LOCALID; loop calls model_engine.backward(loss) and model_engine.step()'. 'Megatron-LM: srun --label bash -c ... torchrun ... pretrain_gpt.py; automatic via megatron.training; needs CUDA_DEVICE_MAX_CONNECTIONS=1 and OMP_NUM_THREADS=$SLURM_CPUS_PER_TASK; builds tensor, pipeline, context or sequence and data parallelism from ranks; tensor-parallel groups stay inside a node over NVLink'. Footer 'porting is where subtle bugs appear: a variable one framework sets for you is one another leaves empty; containers: pyxis or enroot with --container-image and --container-mounts, NCCL and CUDA from the image, driver and IB device nodes from the host'. Text at least 24px.",
+  "anchor": "## 7. Framework patterns",
+  "alt": "A table of four frameworks with the launcher, initialisation style and the Slurm variables each expects to be exported.",
+  "cap": "Check which variables each framework expects the launcher to export before porting a script."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-megatron-ckpt-math",
+  "title": "Sizing a Megatron-LM checkpoint: theory versus disk",
+  "spec": "Worked arithmetic for an 8B GPT model with 8.03 billion parameters. Bar 1 'bf16 weights about 16.06 GB'. Bar 2 'fp32 Adam states about 64.24 GB'. Sum 'theory 80.30 GB'. Bar 3 'measured checkpoint about 108 GB on disk'. Message 'checkpoints are larger than the weights alone; size them before you plan storage'. Resume plan strip: 'write periodic async checkpoints so the training loop does not stop while the write finishes; key resume logic on SLURM_RESTART_COUNT or whether the latest checkpoint exists; coordinate with --signal and --requeue'. Text at least 24px.",
+  "anchor": "## 7. Framework patterns",
+  "alt": "Bars for bf16 weights, fp32 optimizer state, their theoretical sum and the larger measured checkpoint size.",
+  "cap": "A checkpoint holds optimizer state as well as weights, so it is far larger than the model."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-hang-symptoms",
+  "title": "Hang, slow or lost rank: symptom to first checks",
+  "spec": "Table symptom, likely causes, first checks. 'Hangs at init_process_group: wrong MASTER_ADDR or port, firewall, a rank failed to start, version mismatch, slow image pull on one node; per-rank logs, ss -ltnp on master, srun -l hostname, compare environment per node'. 'Hangs at first collective: NCCL cannot connect, NCCL_SOCKET_IFNAME picked docker0, IB link down, GID or RoCE misconfiguration; NCCL_DEBUG=INFO, ibstat, NCCL_IB_HCA, show_gids'. 'Runs but slow: fell back to sockets, no GDR, wrong NIC mapping, cross-NIC on a rail fabric, CPU-bound data loader, oversubscribed threads, throttled GPU; INFO transports, nccl-tests all_reduce_perf, nvidia-smi dmon, top'. 'One rank dies, others hang until time limit: no -K and no NCCL async error handling or timeout; srun -K, timeouts, flight recorder'. 'Sporadic hangs at scale: flapping link or sick node, congestion, rank desync; fabric error counters, per-node GPU XID errors, rerun with --exclude'. 'NCCL WARN unhandled system error: verbs errors, memlock limits, missing devices in container; ulimit -l unlimited, device nodes, dmesg'. 'OOM only at larger scale: memory per rank, allocator fragmentation, NCCL buffers'. 'Different speed per rerun: placement and topology variance, noisy neighbours; --switches, exclusive nodes, topology config'. Strategy 'work from small to large: reproduce on 1 node then 2; run all_reduce_perf -b 8 -e 8G -f 2 -g 1 under srun on the same allocation'. Text at least 24px.",
+  "anchor": "## 8. Failure and diagnosis",
+  "alt": "A table of eight multi-node training symptoms with likely causes and first checks.",
+  "cap": "Shrink the job to one then two nodes and run nccl-tests to separate network from framework."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-flight-recorder-ras",
+  "title": "Two tools that say which rank is stuck",
+  "spec": "Two tool cards. 'PyTorch flight recorder: a ring buffer (fixed-size log that overwrites oldest entries) of recent collectives kept on every rank; after a timeout or hang you can see which rank was stuck on which collective, instead of a crash message that does not say'. 'NCCL RAS (reliability, availability and serviceability), available from NCCL 2.24: while a job runs the ncclras client connects to the RAS port on a node, 28028 by default, and prints which ranks and nodes NCCL considers alive or unresponsive'. Combined flow: 'timeouts turn a hang into a crash; set TORCH_NCCL_ASYNC_ERROR_HANDLING=1, TORCH_NCCL_ENABLE_MONITORING=1, TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC; then read the flight recorder dump per rank; use ncclras while the job is still hanging'. Text at least 24px.",
+  "anchor": "### 8.1 When the job hangs: flight recorder and ncclras",
+  "alt": "Two diagnostic tools, the PyTorch flight recorder and NCCL ncclras, with what each tells you about a hang.",
+  "cap": "The flight recorder names the stuck collective and ncclras shows which ranks are alive."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-six-comm-pitfalls",
+  "title": "Six multinode communication pitfalls with numbers",
+  "spec": "Six cards. '1 gloo instead of nccl: collectives go through host memory and TCP not GPUDirect RDMA; lower bound 400 MB over a 2 GB/s TCP path takes at least 200 ms while 100 GB/s InfiniBand takes about 4 ms'. '2 Mismatched NCCL versions across nodes (PyTorch bundled NCCL versus system libnccl): hangs or silent fallbacks; print torch.cuda.nccl.version() on every rank at startup'. '3 TCP port exhaustion in bootstrap: narrow ip_local_port_range; widen in /etc/sysctl.conf and set NCCL_SOCKET_IFNAME and MASTER_PORT explicitly'. '4 Silent fallback to eth0, docker0 or lo: missing /dev/infiniband mounts in containers or wrong RoCE GID index; read NCCL_DEBUG=INFO transport lines, lsmod | grep nvidia_peermem'. '5 Straggler nodes: the slowest GPU sets step time for everyone; TORCH_NCCL_ENABLE_MONITORING=1, TORCH_NCCL_HEARTBEAT_TIMEOUT_SEC, TORCH_NCCL_ASYNC_ERROR_HANDLING=1 so stalled ranks abort instead of hanging'. '6 Allocator fragmentation under UCX and RDMA: PyTorch caching allocator keeps freed blocks, reserved memory can grow while allocated reads zero; PYTORCH_ALLOC_CONF with max_split_size_mb:128 and expandable_segments'. Text at least 24px.",
+  "anchor": "### 8.2 Six multinode communication pitfalls",
+  "alt": "Six cards for multinode pitfalls: gloo fallback, version mismatch, port exhaustion, interface fallback, stragglers and allocator fragmentation.",
+  "cap": "Falling back to gloo over TCP costs about 200 ms where InfiniBand costs about 4 ms for the same data."
+ },
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "12",
+  "name": "p3-0612-six-nccl-gotchas",
+  "title": "Six NCCL communicator and environment gotchas",
+  "spec": "Six cards. '1 Communicators created inside the training loop: each init_process_group nccl does handshakes, exchanges unique IDs, builds rings and trees, allocates GPU buffers; cheap once at startup, tens of milliseconds each step against a 0.5 ms collective'. '2 Recreating subcommunicators every step: call torch.distributed.new_group() once and reuse; all ranks create and destroy in lockstep or the others wait'. '3 Diagnostic variables left on: NCCL_P2P_DISABLE=1 or NCCL_SHM_DISABLE=1 force same-node traffic through host memory or the network, cutting bandwidth from hundreds of GB/s to tens; lower NCCL_DEBUG from INFO to WARN'. '4 Collapsed CPU affinity for NCCL proxy threads: a very narrow CPU mask squeezes network threads onto one core; bind each rank to its GPU local NUMA domain (GPUs 0 to 3 on NUMA node 0) and set NCCL_IGNORE_CPU_AFFINITY=1 if the mask is still narrow'. '5 Ignoring NCCL warnings: unable to enable P2P, falling back to copy means GPUs across PCIe root complexes; NET/Socket: using Ethernet interface eth0 means eth0 was used where the fabric was expected'. '6 No fail-fast handling: when one rank crashes collectives on survivors hang unless TORCH_NCCL_ASYNC_ERROR_HANDLING=1; failures are routine at scale, Meta reported 419 unexpected interruptions in 54 days on 16,384 H100 GPUs, about 8 a day'. Text at least 24px.",
+  "anchor": "### 8.3 Six NCCL communicator and environment gotchas",
+  "alt": "Six cards for NCCL gotchas: communicators in the loop, subgroups, leftover diagnostics, CPU affinity, ignored warnings and no fail-fast.",
+  "cap": "Create communicators once, turn diagnostics off and enable fail-fast handling because failures are routine."
+ }
+]

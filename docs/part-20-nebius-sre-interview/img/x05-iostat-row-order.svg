@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Read one iostat row in a fixed order, and %util comes last</title>
+  <desc>Visual infographic explaining the fixed reading order for an iostat row: await first, aqu-sz second, areq-sz third, and %util last as one piece of evidence.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Read one iostat row in a fixed order, </tspan>
+    <tspan x="800" dy="56">and %util comes last</tspan>
+  </text>
+
+  
+  <g id="iostat-row">
+    
+    <rect x="50" y="140" width="1500" height="150" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <path d="M 50 156 A 16 16 0 0 1 66 140 L 1534 140 A 16 16 0 0 1 1550 156 L 1550 205 L 50 205 Z" fill="#e8f1ea"/>
+    <line x1="50" y1="205" x2="1550" y2="205" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <line x1="210" y1="140" x2="210" y2="290" stroke="#cfded2" stroke-width="1.5"/>
+    <line x1="370" y1="140" x2="370" y2="290" stroke="#cfded2" stroke-width="1.5"/>
+    <line x1="530" y1="140" x2="530" y2="290" stroke="#cfded2" stroke-width="1.5"/>
+    <line x1="780" y1="140" x2="780" y2="290" stroke="#cfded2" stroke-width="1.5"/>
+    <line x1="1030" y1="140" x2="1030" y2="290" stroke="#cfded2" stroke-width="1.5"/>
+    <line x1="1280" y1="140" x2="1280" y2="290" stroke="#cfded2" stroke-width="1.5"/>
+
+    
+    <text x="130" y="182" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">tps</text>
+    <text x="290" y="182" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">kB/s</text>
+    <text x="450" y="182" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">rqm/s</text>
+    <text x="655" y="182" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#207448">await</text>
+    <text x="905" y="182" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#207448">aqu-sz</text>
+    <text x="1155" y="182" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#207448">areq-sz</text>
+    <text x="1415" y="182" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#207448">%util</text>
+
+    
+    
+    <text x="655" y="255" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#207448">0.44</text>
+    
+    
+    <text x="1415" y="244" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="28" font-weight="bold" fill="#303a36">100.00</text>
+    <text x="1415" y="276" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">busy but fast</text>
+  </g>
+
+  
+  
+  <circle cx="655" cy="326" r="24" fill="#207448"/>
+  <text x="655" y="326" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <circle cx="905" cy="326" r="24" fill="#207448"/>
+  <text x="905" y="326" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+  
+  <circle cx="1155" cy="326" r="24" fill="#207448"/>
+  <text x="1155" y="326" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <circle cx="1415" cy="326" r="24" fill="#207448"/>
+  <text x="1415" y="326" text-anchor="middle" dominant-baseline="central" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+
+  
+
+  
+  <g id="step-1-card">
+    <rect x="50" y="375" width="1500" height="124" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(75, 409)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="28,14 28,28 38,28"/>
+    </g>
+
+    
+    <text x="160" y="432" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="160" dy="0">how long a request took </tspan>
+      <tspan x="160" dy="34">from submission to completion</tspan>
+    </text>
+
+    
+    <rect x="1010" y="405" width="510" height="64" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1265" y="446" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">the wait the application feels</text>
+  </g>
+
+  
+  <g id="step-2-card">
+    <rect x="50" y="520" width="1500" height="124" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(75, 554)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="10" rx="3"/>
+      <rect x="6" y="23" width="44" height="10" rx="3"/>
+      <rect x="6" y="38" width="44" height="10" rx="3"/>
+    </g>
+
+    
+    <text x="160" y="593" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">is a large queue forming with a high await</text>
+  </g>
+
+  
+  <g id="step-3-card">
+    <rect x="50" y="665" width="1500" height="124" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    
+    
+    <g transform="translate(75, 699)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="14" rx="22" ry="8"/>
+      <path d="M 6 14 v 28 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8 v -28"/>
+      <path d="M 6 28 c 0 4.4 9.8 8 22 8 s 22 -3.6 22 -8"/>
+    </g>
+
+    
+    <text x="160" y="738" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">8 kB or less suggests random I/O</text>
+  </g>
+
+  
+  <g id="step-4-card">
+    <rect x="50" y="810" width="1500" height="124" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+    
+    
+    <g transform="translate(75, 844)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 44 A 24 24 0 1 1 48 44"/>
+      <line x1="28" y1="28" x2="42" y2="18"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+    </g>
+
+    
+    <text x="160" y="883" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">percent of time busy</text>
+
+    
+    <text x="700" y="883" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">one piece of evidence</text>
+
+    
+    <rect x="1140" y="840" width="380" height="64" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1330" y="881" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#207448">not the verdict</text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="965" width="1500" height="72" rx="14" fill="#207448"/>
+    <text x="800" y="1010" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Look at await and queue size before you look at %util.</text>
+  </g>
+</svg>

@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Tracing the rack loop and the loop variable</title>
+  <desc>Visual trace of Jinja2 rack grouping loop, inner sorting loop, loop variables, scoping rules, and namespace.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Tracing the rack loop and the loop variable</text>
+
+  
+  <rect x="40" y="95" width="1520" height="545" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+
+  
+  <rect x="60" y="112" width="760" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="80" y="144" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">for rack, members in nodes | groupby(rack)</text>
+
+  
+  <rect x="60" y="172" width="990" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="102" cy="220" r="24" fill="#207448" />
+  <text x="102" y="229" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  
+  <g transform="translate(142, 192)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="4" width="44" height="48" rx="4" />
+    <line x1="12" y1="16" x2="44" y2="16" />
+    <line x1="12" y1="28" x2="44" y2="28" />
+    <line x1="12" y1="40" x2="44" y2="40" />
+    <circle cx="18" cy="10" r="2" fill="#207448" />
+    <circle cx="18" cy="22" r="2" fill="#207448" />
+    <circle cx="18" cy="34" r="2" fill="#207448" />
+  </g>
+  
+  <text x="218" y="212" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="218" dy="0">groupby sorts the nodes into one bundle per rack;</tspan>
+    <tspan x="218" dy="32">the outer for walks those bundles</tspan>
+  </text>
+
+  
+  <rect x="60" y="280" width="990" height="74" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="102" cy="317" r="24" fill="#207448" />
+  <text x="102" y="326" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  
+  <g transform="translate(142, 289)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="4" />
+    <path d="M12 20 L20 28 L12 36" />
+    <line x1="26" y1="36" x2="42" y2="36" />
+  </g>
+  
+  <text x="218" y="326" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">prints # rack rackname</text>
+
+  
+  <rect x="60" y="366" width="990" height="254" rx="12" fill="#dbeadd" stroke="#207448" stroke-width="2" />
+
+  
+  <rect x="80" y="380" width="670" height="42" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="96" y="409" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">for n in members | sort(attribute=name)</text>
+
+  
+  <rect x="80" y="434" width="950" height="170" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <circle cx="122" cy="482" r="24" fill="#207448" />
+  <text x="122" y="491" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  
+  <g transform="translate(94, 520)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="6" width="44" height="44" rx="4" />
+    <line x1="14" y1="18" x2="32" y2="18" />
+    <line x1="14" y1="28" x2="42" y2="28" />
+    <line x1="14" y1="38" x2="24" y2="38" />
+  </g>
+  
+  <text x="172" y="480" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="172" dy="0">the inner loop sorts each bundle by name and prints</tspan>
+    <tspan x="172" dy="34">one line per node: name loop.index/loop.length,</tspan>
+    <tspan x="172" dy="34">with first and last added for the first and last node</tspan>
+  </text>
+
+  
+  <rect x="1070" y="172" width="470" height="448" rx="12" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+  
+  <circle cx="1305" cy="235" r="24" fill="#db8129" />
+  <text x="1305" y="244" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  
+  <g transform="translate(1277, 285)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="4" width="48" height="48" rx="6" stroke-dasharray="5 3" />
+    <line x1="12" y1="16" x2="44" y2="16" stroke-dasharray="2 2" />
+    <line x1="12" y1="28" x2="44" y2="28" stroke-dasharray="2 2" />
+    <line x1="12" y1="40" x2="44" y2="40" stroke-dasharray="2 2" />
+    <circle cx="28" cy="28" r="8" fill="#db8129" fill-opacity="0.2" />
+  </g>
+  
+  <text x="1305" y="415" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="1305" dy="0">an empty rack prints</tspan>
+    <tspan x="1305" dy="38" font-family="monospace" font-size="26" font-weight="bold" fill="#db8129">(no nodes)</tspan>
+    <tspan x="1305" dy="38">from the else branch</tspan>
+  </text>
+
+  
+  <rect x="40" y="660" width="1520" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(62, 687)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="4" fill="#ffffff" />
+    <line x1="4" y1="20" x2="52" y2="20" />
+    <line x1="20" y1="6" x2="20" y2="50" />
+    <line x1="36" y1="6" x2="36" y2="50" />
+  </g>
+  
+  <rect x="135" y="674" width="1405" height="82" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="160" y="725" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">index (1-based), index0, first, last, length, revindex, cycle(a, b), previtem, nextitem</text>
+
+  
+  <rect x="40" y="790" width="1520" height="142" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(62, 833)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M28 6 L48 14 V28 C48 42 28 50 28 50 C28 50 8 42 8 28 V14 Z" fill="#ffffff" />
+    <rect x="22" y="24" width="12" height="10" rx="2" fill="#207448" />
+    <path d="M25 24 V20 C25 18 26 17 28 17 C30 17 31 18 31 20 V24" />
+  </g>
+  
+  <text x="140" y="844" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="140" dy="0" font-weight="bold">a variable set inside a for stays inside that loop:</tspan>
+    <tspan x="140" dy="40" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">use set ns = namespace(count=0) and set ns.count = ns.count + n.gpus to carry a value out</tspan>
+  </text>
+
+  
+  <rect x="40" y="952" width="1520" height="116" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(62, 982)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="4" fill="#ffffff" />
+    <path d="M14 36 L24 22 L38 22" />
+    <path d="M24 22 L38 36" />
+    <circle cx="38" cy="22" r="3" fill="#207448" />
+    <circle cx="38" cy="36" r="3" fill="#207448" />
+  </g>
+  
+  <rect x="135" y="966" width="1405" height="88" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="160" y="1021" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">if node.role == compute and node.gpus &gt; 0: Gres=gpu:N; elif login: # login node; else: # other</text>
+
+  
+  <rect x="40" y="1088" width="1520" height="74" rx="12" fill="#207448" />
+  
+  <g transform="translate(68, 1097)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="28,8 34,22 49,22 37,32 41,46 28,37 15,46 19,32 7,22 22,22" />
+  </g>
+  
+  <text x="800" y="1135" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Use namespace when a value must survive the loop</text>
+</svg>

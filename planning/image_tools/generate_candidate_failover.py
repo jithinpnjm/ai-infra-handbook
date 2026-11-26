@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import re
+import pathlib
+import subprocess
+
+def create_svg():
+    # Canvas H = 1120
+    # Title: y=65, y=115
+    # First row starts at y = 150
+    
+    svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Failover capacity: utilisation must leave room for the survivors</title>
+  <desc>Visual infographic explaining failover headroom across two regions, three regions, and inside one region, alongside residency policy and context.</desc>
+
+  <!-- Background -->
+  <rect x="0" y="0" width="1600" height="1140" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="65" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" y="65">Failover capacity: </tspan>
+    <tspan x="800" y="118">utilisation must leave room for the survivors</tspan>
+  </text>
+
+  <!-- ================= THREE ROWS OF REGIONS ================= -->
+
+  <!-- Row 1: Two regions (x=40, y=150, w=1520, h=145) -->
+  <g id="row-1">
+    <rect x="40" y="150" width="1520" height="145" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <!-- Icon: Two regions / server nodes with failover bridge (at 65, 195) -->
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="65" y="188" width="22" height="34" rx="3"/>
+      <rect x="105" y="188" width="22" height="34" rx="3"/>
+      <line x1="72" y1="198" x2="80" y2="198"/>
+      <line x1="72" y1="208" x2="80" y2="208"/>
+      <line x1="112" y1="198" x2="120" y2="198"/>
+      <line x1="112" y1="208" x2="120" y2="208"/>
+      <path d="M 87 205 L 105 205"/>
+    </g>
+    <!-- Text: Row 1 -->
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="150" y="198" font-size="30" font-weight="bold">Two regions each at utilisation u: </tspan>
+      <tspan x="150" y="234">one fails, the survivor carries 2u, so u must stay below 50 percent minus headroom </tspan>
+      <tspan x="150" y="266">or the failover just moves the outage</tspan>
+    </text>
+  </g>
+
+  <!-- Row 2: Three regions (x=40, y=335, w=1520, h=145) -->
+  <g id="row-2">
+    <rect x="40" y="335" width="1520" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Three connected regions (at 65, 380) -->
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="65" y="385" width="18" height="26" rx="2"/>
+      <rect x="108" y="385" width="18" height="26" rx="2"/>
+      <rect x="86.5" y="352" width="18" height="26" rx="2"/>
+      <path d="M 83 398 L 108 398"/>
+      <path d="M 78 385 L 89 375"/>
+      <path d="M 113 385 L 102 375"/>
+    </g>
+    <!-- Text: Row 2 -->
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="150" y="396" font-size="30" font-weight="bold">Three regions: </tspan>
+      <tspan x="150" y="440">survivors carry 1.5u each, so u can be up to about 66 percent</tspan>
+    </text>
+  </g>
+
+  <!-- Row 3: Inside one region of N replicas (x=40, y=520, w=1520, h=145) -->
+  <g id="row-3">
+    <rect x="40" y="520" width="1520" height="145" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Microchips / replicas grid (at 65, 565) -->
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="65" y="542" width="22" height="22" rx="3"/>
+      <rect x="100" y="542" width="22" height="22" rx="3"/>
+      <rect x="65" y="577" width="22" height="22" rx="3"/>
+      <rect x="100" y="577" width="22" height="22" rx="3"/>
+      <line x1="76" y1="564" x2="76" y2="577"/>
+      <line x1="111" y1="564" x2="111" y2="577"/>
+      <line x1="87" y1="553" x2="100" y2="553"/>
+      <line x1="87" y1="588" x2="100" y2="588"/>
+    </g>
+    <!-- Text: Row 3 -->
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="150" y="581" font-size="30" font-weight="bold">Inside one region of N replicas: </tspan>
+      <tspan x="150" y="625">losing one replica adds 1 / (N - 1) load to the rest; X plus 1 sizing pays for it</tspan>
+    </text>
+  </g>
+
+  <!-- ================= POLICY AND CONTEXT ================= -->
+
+  <!-- Policy box (x=40, y=705, w=740, h=395) -->
+  <g id="policy-box">
+    <rect x="40" y="705" width="740" height="395" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Shield with lock/keyhole (at 64, 730) -->
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 64 730 Q 90 720 116 730 Q 116 763 90 783 Q 64 763 64 730 Z"/>
+      <circle cx="90" cy="748" r="5"/>
+      <line x1="90" y1="753" x2="90" y2="764"/>
+    </g>
+    <!-- Text: Policy -->
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="136" y="755" font-size="30" font-weight="bold">failover is a policy question </tspan>
+      <tspan x="136" y="791" font-size="30" font-weight="bold">before it is a routing question: </tspan>
+      <tspan x="64" y="839">ask the tenant&apos;s contract what may leave the </tspan>
+      <tspan x="64" y="875">region; store an allowed-region list per </tspan>
+      <tspan x="64" y="911">tenant and the router may only retry </tspan>
+      <tspan x="64" y="947">inside it; a retry that crosses the line </tspan>
+      <tspan x="64" y="983">is itself a data transfer; logs and </tspan>
+      <tspan x="64" y="1019">traces also carry data</tspan>
+    </text>
+  </g>
+
+  <!-- Context box (x=820, y=705, w=740, h=395) -->
+  <g id="context-box">
+    <rect x="820" y="705" width="740" height="395" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Globe / map pin for residency (at 846, 735) -->
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="870" cy="762" r="24"/>
+      <path d="M 846 762 H 894"/>
+      <path d="M 870 738 C 862 748 862 776 870 786"/>
+      <path d="M 870 738 C 878 748 878 776 870 786"/>
+    </g>
+    <!-- Text: Context -->
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="914" y="755" font-size="30" font-weight="bold">dedicated endpoints choose </tspan>
+      <tspan x="914" y="789" font-size="30" font-weight="bold">a region, EU or US, with </tspan>
+      <tspan x="914" y="823" font-size="30" font-weight="bold">data residency; </tspan>
+      <tspan x="844" y="869">residency is fixed at endpoint creation and </tspan>
+      <tspan x="844" y="905">cross-region failover should be opt-in </tspan>
+      <tspan x="844" y="941">per tenant; Nebius has not published its </tspan>
+      <tspan x="844" y="977">failover design</tspan>
+    </text>
+  </g>
+
+</svg>'''
+    return svg
+
+if __name__ == '__main__':
+    svg = create_svg()
+    with open("candidate_failover.svg", "w") as f:
+        f.write(svg)
+    print("candidate_failover.svg generated.")

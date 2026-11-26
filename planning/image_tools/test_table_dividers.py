@@ -1,0 +1,23 @@
+import re
+
+svg_snippet = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <rect x="845" y="585" width="690" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <line x1="845" y1="640" x2="1535" y2="640" stroke="#e8f1ea" stroke-width="2"/>
+  <line x1="845" y1="695" x2="1535" y2="695" stroke="#e8f1ea" stroke-width="2"/>
+  <line x1="845" y1="750" x2="1535" y2="750" stroke="#e8f1ea" stroke-width="2"/>
+
+  <text x="875" y="622" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Go: automaxprocs (GOMAXPROCS)</text>
+  <text x="875" y="677" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">Java: -XX:ActiveProcessorCount</text>
+  <text x="875" y="732" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">OpenMP: OMP_NUM_THREADS</text>
+  <text font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="875" y="777">Python: os.cpu_count() reports the host,</tspan>
+    <tspan x="875" y="805">pass the limit in</tspan>
+  </text>
+</svg>'''
+
+with open("test_snippet.svg", "w") as f:
+    f.write(svg_snippet)
+
+from audit_pad_strict import check_strict_paddings
+check_strict_paddings("test_snippet.svg")

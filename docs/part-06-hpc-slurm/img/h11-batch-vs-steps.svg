@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="990" viewBox="0 0 1600 990" font-family="Helvetica, Arial, sans-serif">
+  <title>Commands without srun run once, on the first node</title>
+  <desc>Left panel: a batch script with two SBATCH directives and three lines — echo Start, srun hostname, echo End. Right panel: two allocated nodes, n10 and n11, with two task blocks each. The echo Start and echo End commands each send one arrow to n10 labelled runs once; srun sends one arrow to the allocation of both nodes. A dashed orange note explains that without srun the second node stays idle.</desc>
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <rect x="0" y="0" width="1600" height="990" fill="#f5f8f5"/>
+
+  <text x="800" y="68" text-anchor="middle" font-size="48" font-weight="700" fill="#303a36">Commands without srun run once, on the first node</text>
+
+  
+  <rect x="60" y="110" width="500" height="580" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="92" y="162" font-size="30" font-weight="700" fill="#303a36">Batch script</text>
+  <text x="92" y="214" font-size="24" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">#SBATCH --nodes 2</text>
+  <text x="92" y="248" font-size="24" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">#SBATCH --ntasks-per-node 2</text>
+
+  <rect x="88" y="280" width="444" height="290" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <text x="116" y="340" font-size="24" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">echo Start</text>
+  <text x="116" y="430" font-size="24" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">srun hostname</text>
+  <text x="116" y="520" font-size="24" fill="#303a36" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">echo End</text>
+
+  
+  <rect x="740" y="110" width="800" height="580" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="772" y="162" font-size="30" font-weight="700" fill="#303a36">Allocation of two nodes</text>
+
+  
+  <rect x="820" y="190" width="680" height="186" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(840,200)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <rect x="8" y="8" width="40" height="40" rx="6"/>
+    <rect x="20" y="20" width="16" height="16" rx="2"/>
+    <path d="M16 8V0M28 8V0M40 8V0M16 48v8M28 48v8M40 48v8M8 16H0M8 28H0M8 40H0M48 16h8M48 28h8M48 40h8"/>
+  </g>
+  <text x="916" y="242" font-size="32" font-weight="700" fill="#303a36">n10</text>
+  <rect x="990" y="204" width="490" height="44" rx="10" fill="#207448"/>
+  <text x="1235" y="233" text-anchor="middle" font-size="24" font-weight="700" fill="#ffffff">Step 0, first allocated node</text>
+
+  <rect x="940" y="282" width="200" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="1040" y="322" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">n10</text>
+  <rect x="1180" y="282" width="200" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="1280" y="322" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">n10</text>
+
+  
+  <rect x="820" y="414" width="680" height="186" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+  <g transform="translate(840,424)" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round">
+    <rect x="8" y="8" width="40" height="40" rx="6"/>
+    <rect x="20" y="20" width="16" height="16" rx="2"/>
+    <path d="M16 8V0M28 8V0M40 8V0M16 48v8M28 48v8M40 48v8M8 16H0M8 28H0M8 40H0M48 16h8M48 28h8M48 40h8"/>
+  </g>
+  <text x="916" y="466" font-size="32" font-weight="700" fill="#303a36">n11</text>
+
+  <rect x="940" y="506" width="200" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="1040" y="546" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">n11</text>
+  <rect x="1180" y="506" width="200" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <text x="1280" y="546" text-anchor="middle" font-size="30" font-weight="700" fill="#303a36">n11</text>
+
+  <text x="1160" y="636" text-anchor="middle" font-size="24" fill="#303a36">
+    <tspan x="1160" dy="0">runs four times across the two nodes,</tspan>
+    <tspan x="1160" dy="32">in arbitrary completion order</tspan>
+  </text>
+
+  
+  <path d="M532 340 H680 V232 H820" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <path d="M532 430 H700 V395 H740" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+  <path d="M532 520 H790 V266 H820" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#ah)"/>
+
+  <text x="545" y="326" font-size="24" fill="#303a36">runs once</text>
+  <text x="545" y="506" font-size="24" fill="#303a36">runs once</text>
+
+  
+  <rect x="740" y="730" width="800" height="80" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" stroke-dasharray="10 8"/>
+  <text x="1140" y="778" text-anchor="middle" font-size="24" fill="#303a36">without srun, the second node stays idle</text>
+
+  
+  <rect x="60" y="850" width="1480" height="76" rx="14" fill="#207448"/>
+  <text x="800" y="898" text-anchor="middle" font-size="30" font-weight="700" fill="#ffffff">A command without srun runs once, on the first node</text>
+</svg>

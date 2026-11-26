@@ -22,6 +22,10 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
+![Variables as the intent, facts as what each host really is and templates combining both into Slurm, NCCL, chrony, netplan and Prometheus config, versus four drifting copied playbooks.](./img/p4-0407-data-not-copies.svg)
+
+*Figure 4.7.1. Variables say what you intend, facts say what each host is, and templates combine them so one playbook serves every batch.*
+
 Suppose you have to configure a whole fleet with one playbook. Some nodes have 8 GPUs and others have 4. Some carry H100 cards and others carry A100s. The NICs differ too, with ConnectX-7 on some nodes and BlueField on others, and each rack uses its own management subnet. You could write a playbook for every machine type, but data is a better answer.
 
 Picture a week when a second batch of servers arrives from a different purchase order. The new machines look almost the same as the old ones, but they differ in a few details. Copying the playbook and editing three lines in the copy works for one batch. By the fourth batch you have four playbooks that drift apart, and a fix that lands in one of them quietly misses the others. A playbook that reads its differences from data stays one playbook, and the differences live in one place where you can read them.
@@ -47,6 +51,10 @@ A GPU fleet needs the same NCCL setting on every node, but two clusters need dif
 Imagine it is late on a Tuesday. A training job on the second cluster is slow, so you raise the NCCL debug level to get more detail in the logs. The next morning you find that the first cluster is printing the same verbose logs, and its disk is filling up. Nobody meant to change the first cluster. The setting was written in a place that reached further than you thought. The question this section answers is where a variable should be defined, so that the right value wins in the right place and nobody has to hunt for it later.
 
 ### Where and how
+
+![A ladder of variable definition places from task vars and play vars through vars_files and vars_prompt to inventory, role, extra vars, set_fact, include_vars and lookups, with the placement rule and the NCCL debug story.](./img/p4-0407-where-defined.svg)
+
+*Figure 4.7.2. A variable reaches as far as the place it is defined, so put each value where its owners will look.*
 
 Suppose one group of GPU nodes must stay on driver branch 550, while a single special node needs something different. A driver branch is the release line of the NVIDIA driver, so the value 550 means the 550 series. Ansible lets you set that value in several places, and the place you choose decides how far the value reaches. It helps to think of a note on your own desk, a note on the team whiteboard and a notice on the front door of the building. Each one is seen by a wider crowd. The simplest place is the play itself. A play is one block in a playbook that maps a group of hosts to a list of tasks.
 
@@ -80,6 +88,14 @@ In practice, put a value where the people who own it will look for it. A cluster
 
 ### Naming and types
 
+![A flow choosing between default for optional values, mandatory and assert for required values and argument specs for roles, with type conversion filters and the string no that tests as true.](./img/p4-0407-default-mandatory-assert.svg)
+
+*Figure 4.7.3. Use default for optional values, mandatory and assert to fail before any node is touched, and bool to convert string booleans.*
+
+![Variable naming rules with reserved names and role prefixes, typing by quoting a version string, and the dot versus bracket trap where my_dict.values returns a Python method instead of the key.](./img/p4-0407-names-and-brackets.svg)
+
+*Figure 4.7.4. Prefix names by owner, quote versions to keep them strings, and use brackets when a key collides with a dictionary method.*
+
 A variable name can contain letters, digits and underscores, but it cannot start with a digit. Avoid Python keywords and the names Ansible reserves for itself, such as `environment`, `name`, `hosts`, `tasks`, `connection` and `port`. A name like `port` looks harmless in one role, but it collides with a connection setting somewhere else. Variable names are not scoped by role, so start each name with the role or component that owns it, such as `slurm_` or `nvidia_`. The prefix tells the next reader who owns the value, and it keeps two roles from overwriting each other's `port` or `version`.
 
 Types come from YAML, so a value can be a string, an int, a float, a boolean, a list or a dict. Quoting decides which one you get. In `nvidia_driver_branch: 550` the value is an int, but `"550.90.07"` must be quoted to stay a string. Quoting rules are covered in 4.4, and values such as `ansible_check_mode` and similar are booleans. A version such as `550.90.07` is not a number at all, because it has two dots. Quoting it keeps it as text, so a comparison on it does what you expect. When you are unsure, quote the value.
@@ -94,6 +110,14 @@ Convert types with filters such as `| int`, `| float`, `| bool`, `| string` and 
 
 ### Scope and lifetime
 
+![A lifetime table for play vars, inventory vars, set_fact and register, run_once, include_vars, vars_files and role variables, beside lazy rendering where driver_pkg is built from each host's own nvidia_driver_branch.](./img/p4-0407-set-fact-and-lazy.svg)
+
+*Figure 4.7.5. set_fact and register are per-host for the rest of the play, and lazily rendered variables use each host's own values when read.*
+
+![Variables have nested scopes, from a single task and a single play through host-scoped facts and registered values to whole-run inventory variables and unscoped role variables.](./img/p2-0407-scope-lifetime.svg)
+
+*Figure 4.7.6. A variable's scope ranges from one task or play, through per-host facts, to whole-run inventory variables and unscoped role variables.*
+
 Scope answers the question "where can I read this value?", and lifetime answers "for how long?". Play and task `vars` are scoped to the place where they are defined. Inventory, group and host variables apply to each host for the whole run. `set_fact` and `register` create host-scoped variables that stay in place for the rest of the play run. With `cacheable: true` and fact caching enabled, they can also carry over into later runs.
 
 `set_fact` has the precedence of a task-level fact, and registered variables behave in a similar way. Each one is set per host. A task with `run_once` sets the variable only on the host that ran it, unless you distribute it with `delegate_facts` or by iterating over `hostvars`. `include_vars` loads variables at runtime, and its precedence is above play vars. `vars_files` loads at the start of the play.
@@ -105,6 +129,14 @@ Role variables are not scoped by default, so a variable set in one role is visib
 Before you rely on a value, check the precedence order in 4.5, because the most surprising results come from layers you did not expect.
 
 ## 2. Registered results and set_fact
+
+![The fields of a registered command result including rc and stdout_lines, the flow from register to set_fact to debug, the skipped-task trap on CPU-only nodes and the results list from a loop.](./img/p4-0407-register-anatomy.svg)
+
+*Figure 4.7.7. register keeps the raw result, set_fact keeps one clean value, and a skipped task still defines the variable without output.*
+
+![A command's output is registered as a raw dictionary, set_fact trims the first line into a clean value, and debug shows the whole structure.](./img/a07-register-set-fact.svg)
+
+*Figure 4.7.8. The register step keeps the whole raw result, and set_fact turns one field of it into the clean value later tasks read.*
 
 A task checks whether a driver is loaded, and the next task must decide what to do based on that answer. A human would do this without thinking. You run a command, read its output, and then choose your next step. An automation play needs the same loop, and `register` and `set_fact` are how the play keeps the answer. `register` stores the output of a task in a variable. `set_fact` turns a value you computed into a variable that the rest of the play can read. Together they let one task's result shape the work that follows.
 
@@ -135,6 +167,14 @@ Use `set_fact` to derive a value once and reuse it. Think of it as writing a lab
 Keep the raw output in `register` and the cleaned value in `set_fact`, so each variable does one job. When the cleaned value looks wrong, you still have the raw output to compare against, and that is the first thing to check.
 
 ## 3. Facts
+
+![Fact gathering speed levers of subsets, timeouts, smart gathering with a cache and on-demand fact modules, with version-aware conditions and a role that publishes GPU facts from nvidia-smi, lspci or DCGM probes.](./img/p4-0407-fact-gathering-cost.svg)
+
+*Figure 4.7.9. Gather only the subsets you need, cache facts on big fleets, and publish GPU facts from a probe role because setup does not describe GPUs.*
+
+![Three setup module commands for all facts, a filter and a gather_subset, the categories of facts, a summary line built from ansible_facts and the advice to use ansible_facts instead of short injected names.](./img/p4-0407-facts-commands.svg)
+
+*Figure 4.7.10. Read facts with setup filters and subsets, and prefer ansible_facts[name] over the short injected variable names.*
 
 Before a playbook can make a sensible decision about a node, it needs to know what the node is: its OS, its kernel, its memory. Facts are that description, gathered from the machine at the start of a play. They are the reason one playbook can handle Ubuntu and Rocky nodes without two copies of every task.
 
@@ -170,6 +210,10 @@ To branch on the distribution, use a condition such as `when: ansible_facts['os_
 
 ### Custom (local) facts
 
+![An INI site.fact and an executable gpu.fact on the target in facts.d feeding ansible_local during fact gathering, with the task that publishes and reads the GPU count.](./img/p4-0407-local-facts.svg)
+
+*Figure 4.7.11. Files and executables in facts.d appear under ansible_local, so a host can declare its own rack and GPU count.*
+
 Hosts can describe themselves. Any `.fact` file, or any executable, placed in `/etc/ansible/facts.d/` on the target is picked up during fact gathering. The file can be INI or JSON, or the executable can print JSON. Its values then appear under `ansible_local.<name>`. This is the supported way for a host to declare its own attributes, such as its rack, role or hardware class. Those attributes stay with the host, so they do not depend on the control node.
 
 Picture a sign on the node itself that says which rack it lives in. Anyone who logs in can read it, and so can an automation run. A custom fact works the same way. The node carries its own label, so the playbook does not need a separate spreadsheet that might be out of date. The INI file below is a plain `.fact` file. The task after it writes an executable one, which prints a JSON count of the GPUs found by `nvidia-smi -L`. Because the script runs on the target, it always counts the GPUs that are actually present, even if the inventory was written before a card was replaced.
@@ -196,6 +240,14 @@ rail=3
 
 ### Magic variables
 
+![A table of Ansible magic variables including inventory_hostname, groups, group_names, hostvars, play batch variables, run metadata, paths and omit, with the hostvars versus host_vars distinction and an HAProxy backend loop.](./img/p4-0407-magic-table.svg)
+
+*Figure 4.7.12. Magic variables are set by Ansible, and hostvars is a runtime dictionary that is different from the host_vars directory.*
+
+![A limited run gathers facts only for one host, so hostvars for the other hosts is empty and the template fails or writes blank addresses.](./img/a07-limit-hostvars.svg)
+
+*Figure 4.7.13. Running with --limit gathers facts for only one host, so a template that reads other hosts gets empty values.*
+
 Ansible sets magic variables for you, so you never define them yourself. The table lists the common ones.
 
 | Variable | Meaning |
@@ -215,15 +267,25 @@ Cross-host data is where `hostvars` and `groups` earn their place. Suppose you n
 
 Those address facts exist only if they were gathered for those hosts in this run, either by an earlier play with `gather_facts` or from a cache. A common bug shows up with `--limit`. Suppose you run `ansible-playbook site.yml --limit lb01` because you only want to fix the load balancer. If a play is limited to one host with `--limit lb01`, it can still template a cluster-wide file. The `hostvars` entries for `web1..3` or `gpu001..032` then come back empty or undefined, because those hosts were never gathered. The template then fails, or worse, it writes a backend list with blank addresses. Gather facts for the whole group first, with `- hosts: cluster / gather_facts: true / tasks: []` and `tags: [always]`, or cache them.
 
-```mermaid
-flowchart LR
-    Sources["Variable & Fact Sources<br/>(group_vars, host_vars, setup facts,<br/>facts.d/*.fact, register, set_fact, -e)"] --> Engine["Control-Node Jinja2 & Filter Pipeline<br/>(hostvars, groups, map('extract', ...),<br/>dict2items, combine(recursive=True))"]
-    Engine --> Targets["Generated Target Configs<br/>(/etc/hosts, slurm.conf, haproxy.cfg,<br/>Prometheus file_sd JSON)"]
-```
+![Magic variables](./img/m4-07-1.svg)
+
+*Figure 4.7.14. Magic variables, as a diagram.*
 
 Before a limited run that templates across hosts, gather facts for the whole group.
 
 ## 4. Lookups
+
+![A table of lookups env, file, template, pipe, url, password, hashi_vault, vars, loop builders, first_found and misc sources with the use of each and a note that they run on the control node.](./img/p4-0407-lookup-table.svg)
+
+*Figure 4.7.15. Lookups cover environment, files, secrets and loop builders, and all of them run on the control node at render time.*
+
+![Two lanes where lookup joins three SSH keys into one comma string that a loop runs once on, while query returns a list so the loop runs three times, with the cost and control-node rules for lookups.](./img/p4-0407-lookup-vs-query.svg)
+
+*Figure 4.7.16. lookup joins values into one string, query returns a list for loops, and both run on the control node each time they are evaluated.*
+
+![Lookups read data on the control node, while a module reads data on the target and returns it with register.](./img/a07-lookup-control-node.svg)
+
+*Figure 4.7.17. Lookups fetch values on the control node when a template is rendered, while data from a target comes back through a module and register.*
 
 Some data does not belong in the inventory. A secret lives in a vault, a value lives in a file, and a hostname comes from DNS. A lookup fetches that value at run time, so the playbook asks the source of truth instead of copying the value into code where it goes stale. Copying is tempting, because it works today. Next month the secret is rotated, the copy is not, and the job fails in the middle of the night with an error that points nowhere useful.
 
@@ -248,6 +310,10 @@ The `lookup()` call returns a string, joined with commas, by default. That is fi
 A lookup runs every time it is evaluated, so keep expensive lookups out of loops. A `url` lookup inside a loop over a large group would fetch the same page once for every host in that group. Remember that lookups run where Ansible runs, not on the targets. For data from a target, use a module and `register` instead, because a module runs on the host it describes. The `with_<lookup>:` form is the older way of writing `loop:` together with a lookup. You will still see it in older roles, and the `loop:` form does the same job more clearly.
 
 ## 5. Loops over data
+
+![Three loop patterns over a list of dicts creating users with loop_control, over a dict with dict2items for sysctl and over nested data with subelements, plus until retries polling and passing a list to a module.](./img/p4-0407-loop-patterns.svg)
+
+*Figure 4.7.18. Loop over lists of dicts, dict2items pairs or subelements, and pass lists straight to modules that accept them.*
 
 A cluster has dozens of interfaces to configure, and each one needs the same three settings. Writing one task per interface is tedious, and a single copy-paste slip breaks one of them quietly. A loop lets one task repeat over a list of data. The list is the only thing that changes from one interface to the next. Think of a loop as a checklist printed once and ticked off for each item. The steps stay the same, and only the item in the box changes.
 
@@ -286,6 +352,14 @@ Prefer `loop` with filters such as `dict2items`, `subelements`, `product`, `zip`
 
 ## 6. Filters for configuration generation
 
+![A table of Ansible filters grouped by need from dict merge and sets to regex, version, hashing, serialisation and network, with six worked expressions such as extract, unique sort, RealMemory and ipaddr.](./img/p4-0407-filter-needs.svg)
+
+*Figure 4.7.19. Reach for a filter by need, and use map extract to pull one hostvar from many hosts at once.*
+
+![The map extract filter looks up ansible_host for each host name in hostvars, and the list filter returns a plain list of addresses.](./img/a07-extract-pipeline.svg)
+
+*Figure 4.7.20. The map extract filter pulls one host variable for each name in a group, and the list filter turns the result into a plain list of addresses.*
+
 Raw data is rarely in the shape a config file needs. A list of hosts must become a comma-separated string, and a memory figure must become a rounded whole number. Filters reshape the data inline, so the template stays readable and the reshaping is visible next to the value it changes. A filter is written after a pipe character, `|`, and it takes the value on its left and returns a new value. You can think of a row of stations on an assembly line. The value enters at the left, each filter adds one change, and the finished value comes out at the right.
 
 Your template may need to merge two dictionaries, pick one address from each host and format the result. Filters let you do each step in a single expression. Ansible adds its own filters on top of the Jinja2 builtins covered in 4.4, and you will use the ones in this table often. The table is a lookup list. You do not need to memorise it, but it helps to know that a filter for your problem probably exists before you write a loop by hand.
@@ -321,6 +395,10 @@ The `extract` filter does the most work here, because it pulls one hostvar from 
 
 ## 7. Templates in practice
 
+![An annotated template task for slurm.conf with src, owner and mode, backup for undo, validate before replacing the live file and notify for a handler that runs only on change.](./img/p4-0407-template-module-options.svg)
+
+*Figure 4.7.21. backup allows undo, validate protects the live file from a broken render, and notify reloads only when the file changed.*
+
 The examples below are the templates a GPU team writes most often: a hosts file, a Slurm node list, a Prometheus target list and a YAML dump. Each one starts with data, runs it through a few filters and ends with a file that a service reads. Read each example by tracing one value from the data to the output line it produces.
 
 Suppose a new GPU node joins the cluster, and the Slurm configuration must list it. Editing that file by hand invites mistakes. You might miss the file on one controller, or type a CPU count from memory and get it slightly wrong. A template renders the file from data every time, so the new node appears in the output automatically. A template is a form letter with blanks. The text is fixed, and each blank is filled from the data for that host or that run. The `ansible.builtin.template` module renders `.j2` files (the `.j2` suffix marks a Jinja2 template), reading them from the role's `templates/` directory or from any path you give.
@@ -342,6 +420,10 @@ The `backup: true` option keeps a timestamped copy when the file changes, so a b
 
 ### Example 1: /etc/hosts for the cluster
 
+![An /etc/hosts template looping over the sorted cluster group with each host's ansible_host, name and domain, showing how a new inventory host gets a new line automatically.](./img/p4-0407-hosts-template-trace.svg)
+
+*Figure 4.7.22. A sorted loop writes one line per host from the inventory, so a new host appears without touching the file.*
+
 Start with the simplest case. A loop over the cluster group writes one line for each host. Read the template as the finished file would look. The first line is a comment that marks the file as generated, so nobody edits it by hand. The second line keeps the local loopback address. The loop then writes one line per host, in sorted order, and the sort keeps the output the same on every render.
 
 ```jinja
@@ -355,6 +437,10 @@ Start with the simplest case. A loop over the cluster group writes one line for 
 Each line uses the host's `ansible_host` and its name, so the file follows the inventory. Add a host to the inventory, run the playbook, and the new line appears without anyone touching the file.
 
 ### Example 2: Slurm node and GRES configuration derived from data
+
+![A table of each field in a Slurm NodeName line with its hostvars or fact source and default, including 95 percent RealMemory and Gres model and count, with header and partition lines.](./img/p4-0407-slurm-node-line.svg)
+
+*Figure 4.7.23. Each NodeName field comes from hostvars or a fact with a default, and RealMemory leaves 5 percent of memory for the OS and daemon.*
 
 The Slurm example takes the same idea further. It reads each GPU node's CPU count, memory and GPU details from `hostvars`, and it falls back to defaults where a value is missing. Each node gets one `NodeName` line that describes its hardware, and the last line declares the partition that groups them. A partition is Slurm's name for a pool of nodes that a user submits jobs to. The `set v` line gives the long `hostvars` path a short name, which keeps the rest of the loop readable.
 
@@ -373,6 +459,10 @@ The `RealMemory` value is 95 percent of each node's memory, because the template
 
 ### Example 3: Prometheus file_sd targets
 
+![A pipeline from the gpu group through extract, a regex_replace appending port 9400 and to_nice_json into a Prometheus file_sd file, beside to_nice_yaml with indent for YAML output validated with yamllint or kubeconform.](./img/p4-0407-file-sd-and-yaml.svg)
+
+*Figure 4.7.24. extract and regex_replace build the file_sd targets, and to_nice_yaml with indent builds YAML that is then validated.*
+
 Prometheus reads targets from a `file_sd` JSON file, where `file_sd` means "file-based service discovery". Prometheus re-reads the file on its own schedule, so a new node added to the file starts being scraped without a restart. This template writes one for the GPU group. Each GPU node gets port 9400 appended to its address, which is where the DCGM exporter listens for GPU metrics in this setup.
 
 ```jinja
@@ -387,6 +477,10 @@ Render complex YAML with `to_nice_yaml` instead of indenting it by hand, as in `
 
 ### Good template practice
 
+![Seven template habits of simple logic, check and diff first, validate with the target's checker, ansible_managed header, no timestamps, sorted output and safe modes for secrets, plus golden file tests.](./img/p4-0407-template-practice.svg)
+
+*Figure 4.7.25. Keep templates simple, sorted and validated, render with check and diff first, and protect secret files.*
+
 Keep the logic in the template simple. Precompute data with `set_fact` or filters first, and put long expressions in variables. A reader who sees a dense line of Jinja has to stop and decode it, but a reader who sees a clear variable name can move on. Always render with `--check --diff` before you run for real. `--check` shows what would change without changing anything, and `--diff` prints the difference line by line, so you can read the change the way a reviewer reads a pull request. Add `validate:` when the file has a syntax checker, such as `nginx -t -c %s`, `visudo -cf %s` or `named-checkconf %s`. The `%s` is replaced with the path of the rendered temporary file, so the checker tests the new text before it goes live.
 
 Include `{{ ansible_managed }}` so that people know not to edit the generated file. A person who edits a generated file by hand will lose the change the next time the playbook runs, so the comment protects both the file and the person. Avoid volatile values such as timestamps, because they change on every run and make the file look changed when it is not. Sort lists and dict keys with `| sort` and `dictsort`. Sorting keeps every render deterministic, so handlers do not flap. Preserve ownership and modes. For secrets, use `0600`, which means only the owner can read or write the file, along with `no_log: true` and `diff: false`, so the secret does not appear in the output. Keep a template test as well. Render the template with fixture data in CI and compare the output to a golden file, which is a saved copy of the output you have already reviewed and approved (3.9).
@@ -394,6 +488,14 @@ Include `{{ ansible_managed }}` so that people know not to edit the generated fi
 Sort every list the template reads, and render with `--check --diff` before you change the live file.
 
 ## 8. Variable precedence debugging toolkit
+
+![A four rung ladder of inventory view, live host, loaded files and grep search to find an unexpected variable value, with in-play debug checks and the most common precedence surprises.](./img/p4-0407-detective-commands.svg)
+
+*Figure 4.7.26. Ask the inventory, then the live host, then the loaded files, then grep, and expect surprises from role vars, -e, set_fact and replaced dictionaries.*
+
+![Four questions, asked in order, trace an unexpected variable from the inventory view to the live host, the loaded files and finally a search of the repository.](./img/p2-0407-precedence-detective.svg)
+
+*Figure 4.7.27. An unexpected variable is traced in four steps, from the inventory view and the live host to the loaded files and a repository search.*
 
 When a variable shows an unexpected value, guessing is slow and risky. You need to see every layer that defines the variable, and the place each value came from. The toolkit below prints the merged value and points at the layer that won.
 
@@ -413,6 +515,10 @@ The dictionary surprise deserves a closer look. When a higher layer defines a di
 When a value looks wrong, search the repository for its name. A plain `grep` finds the file that set the value, and the line number tells you where to look. Search for the name in quotes, and search for the name with `{{` around it too, because some values are built from other values and the search has to find both forms.
 
 ## 9. Security of variables and templates
+
+![A table of secret leak paths through logs, debug output, verbose mode, diffs, readable files, storage, shell injection and untrusted facts, with the setting that closes each one.](./img/p4-0407-secret-leak-paths.svg)
+
+*Figure 4.7.28. Close each leak path with no_log, diff false, mode 0600, Vault, the quote filter and the unsafe marking.*
 
 A variable that holds a password is easy to leak. It can appear in logs, in diffs and in rendered files that anyone with read access can open. This section covers the habits that keep those values out of view while the automation keeps working. A leak is hard to undo. Once a password has been written into a log that a whole team can read, you have to rotate it everywhere it was used, and that is the expensive part.
 
@@ -452,6 +558,10 @@ Next, work through the exercises below on a control node with 2–3 Linux target
 12. Clean up when you finish.
 
 ## 11. Common mistakes
+
+![Two lists of variable mistakes, one on defaults, facts and scope and one on formatting and types, with the closing habits of giving optional values defaults and gathering facts before cross-host templating.](./img/p4-0407-mistake-groups.svg)
+
+*Figure 4.7.29. Most variable mistakes come from a variable defined twice, so give values defaults, gather facts first and record which layer owns each one.*
 
 Variable mistakes look like random behaviour. A value changes between runs, or a task uses an old value that you thought was gone. Most of them come from a variable defined in two places, where nobody noticed the second definition. The fix is rarely a clever trick. It is usually a habit, applied before the problem arrives.
 

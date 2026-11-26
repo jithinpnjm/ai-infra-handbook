@@ -1,0 +1,220 @@
+<svg width="1600" height="1200" viewBox="0 0 1600 1200" xmlns="http://www.w3.org/2000/svg">
+  <title>The common lookups and what each is for</title>
+  <desc>An infographic table summarizing common Ansible lookups, their specific uses, and execution context on the control node.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="58" font-family="system-ui, -apple-system, sans-serif" font-size="48px" font-weight="bold" fill="#207448">The common lookups and what each is for</text>
+
+  
+  <g id="where-it-runs">
+    <rect x="40" y="74" width="1520" height="76" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 88)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="40" height="26" rx="3"/>
+      <path d="M0 36 h48 l-4 6 h-40 z" fill="#207448"/>
+      <path d="M14 14 l4 4 -4 4"/>
+      <line x1="22" y1="22" x2="30" y2="22"/>
+    </g>
+    <text x="135" y="106" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="135" dy="0">the control node is the machine where you type ansible-playbook, often a laptop or bastion;</tspan>
+      <tspan x="135" dy="28">rendering fills the {{ }} parts just before a task uses them</tspan>
+    </text>
+  </g>
+
+  
+  <g id="table-header">
+    <rect x="40" y="162" width="1520" height="50" rx="6" fill="#207448"/>
+    <text x="70" y="197" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">Lookup</text>
+    <text x="735" y="197" font-family="system-ui, -apple-system, sans-serif" font-size="30px" font-weight="bold" fill="#ffffff">Use</text>
+  </g>
+
+  
+  <g id="row-env">
+    <rect x="40" y="214" width="1520" height="58" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="214" x2="710" y2="272" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 224)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="36" height="30" rx="4"/>
+      <path d="M9 14 l5 5 -5 5"/>
+      <line x1="18" y1="24" x2="28" y2="24"/>
+    </g>
+    <text x="110" y="252" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#207448">env</text>
+    <text x="735" y="252" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">lookup(env, HOME): control-node environment</text>
+  </g>
+
+  
+  <g id="row-file">
+    <rect x="40" y="274" width="1520" height="82" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="274" x2="710" y2="356" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 296)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 4 h18 l12 12 v20 h-30 z"/>
+      <path d="M24 4 v12 h12"/>
+      <line x1="12" y1="24" x2="26" y2="24"/>
+    </g>
+    <text x="110" y="324" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#207448">file</text>
+    <text x="735" y="308" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="735" dy="0">read a local file's content,</tspan>
+      <tspan x="735" dy="28">for example an SSH public key</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-template">
+    <rect x="40" y="358" width="1520" height="58" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="358" x2="710" y2="416" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 368)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="32" height="32" rx="4"/>
+      <path d="M12 14 c2 0 2 3 2 4 c0 2 -2 2 -2 2 c0 0 2 0 2 2 c0 1 0 4 -2 4" stroke-width="2.5"/>
+      <path d="M28 14 c-2 0 -2 3 -2 4 c0 2 2 2 2 2 c0 0 -2 0 -2 2 c0 1 0 4 2 4" stroke-width="2.5"/>
+    </g>
+    <text x="110" y="396" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#207448">template</text>
+    <text x="735" y="396" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">render a local template to a string</text>
+  </g>
+
+  
+  <g id="row-pipe">
+    <rect x="40" y="418" width="1520" height="82" fill="#fff9f2" stroke="#db8129" stroke-width="2"/>
+    <line x1="710" y1="418" x2="710" y2="500" stroke="#db8129" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 440)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M4 14 h14 v16 h16"/>
+      <path d="M30 26 l6 4 -6 4"/>
+      <circle cx="4" cy="14" r="3" fill="#db8129"/>
+    </g>
+    <text x="110" y="468" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#db8129">pipe</text>
+    <text x="735" y="452" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="735" dy="0">run a local command and return stdout:</tspan>
+      <tspan x="735" dy="28">use sparingly, side effects on every evaluation</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-url">
+    <rect x="40" y="502" width="1520" height="58" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="502" x2="710" y2="560" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 512)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="20" r="16"/>
+      <ellipse cx="20" cy="20" rx="7" ry="16"/>
+      <line x1="4" y1="20" x2="36" y2="20"/>
+    </g>
+    <text x="110" y="540" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#207448">url</text>
+    <text x="735" y="540" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">fetch a URL on the control node</text>
+  </g>
+
+  
+  <g id="row-password">
+    <rect x="40" y="562" width="1520" height="110" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="562" x2="710" y2="672" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 598)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="16" width="28" height="20" rx="3"/>
+      <path d="M12 16 v-6 a8 8 0 0 1 16 0 v6"/>
+      <circle cx="20" cy="25" r="2.5" fill="#207448"/>
+      <line x1="20" y1="27" x2="20" y2="31"/>
+    </g>
+    <text x="110" y="626" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#207448">password</text>
+    <text x="735" y="598" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="735" dy="0">generate and persist a random password</tspan>
+      <tspan x="735" dy="28">in a local file: lookup(password, creds/db</tspan>
+      <tspan x="735" dy="28">chars=ascii_letters,digits length=24)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-vault">
+    <rect x="40" y="674" width="1520" height="58" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="674" x2="710" y2="732" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 684)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="4" width="32" height="32" rx="4"/>
+      <circle cx="20" cy="20" r="7"/>
+      <line x1="20" y1="9" x2="20" y2="13"/>
+      <line x1="20" y1="27" x2="20" y2="31"/>
+      <line x1="9" y1="20" x2="13" y2="20"/>
+      <line x1="27" y1="20" x2="31" y2="20"/>
+    </g>
+    <text x="110" y="712" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#207448">community.hashi_vault.hashi_vault</text>
+    <text x="735" y="712" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">read secrets from Vault</text>
+  </g>
+
+  
+  <g id="row-vars">
+    <rect x="40" y="734" width="1520" height="58" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="734" x2="710" y2="792" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 744)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M6 8 h14 l14 14 -14 14 h-14 z"/>
+      <circle cx="13" cy="15" r="2.5" fill="#207448"/>
+    </g>
+    <text x="110" y="772" font-family="ui-monospace, monospace" font-size="24px" font-weight="bold" fill="#207448">ansible.builtin.vars, varnames</text>
+    <text x="735" y="772" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">look up variables by name</text>
+  </g>
+
+  
+  <g id="row-loops">
+    <rect x="40" y="794" width="1520" height="82" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="794" x2="710" y2="876" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 816)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M8 20 a12 12 0 1 1 4 9"/>
+      <path d="M12 25 l-4 5 -5 -4"/>
+    </g>
+    <text x="110" y="828" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+      <tspan x="110" dy="0">dict, items, subelements, together,</tspan>
+      <tspan x="110" dy="28">nested or product, cartesian</tspan>
+    </text>
+    <text x="735" y="842" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">build loops over structures</text>
+  </g>
+
+  
+  <g id="row-first-found">
+    <rect x="40" y="878" width="1520" height="82" fill="#f5f8f5" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="878" x2="710" y2="960" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 900)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="16" r="11"/>
+      <line x1="24" y1="24" x2="34" y2="34"/>
+      <line x1="10" y1="16" x2="22" y2="16"/>
+    </g>
+    <text x="110" y="928" font-family="ui-monospace, monospace" font-size="26px" font-weight="bold" fill="#207448">first_found</text>
+    <text x="735" y="912" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="735" dy="0">pick the first existing file from a list,</tspan>
+      <tspan x="735" dy="28">for OS-specific vars</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-misc">
+    <rect x="40" y="962" width="1520" height="110" fill="#ffffff" stroke="#e8f1ea" stroke-width="1.5"/>
+    <line x1="710" y1="962" x2="710" y2="1072" stroke="#e8f1ea" stroke-width="1.5"/>
+    
+    <g transform="translate(54, 998)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="20" cy="10" rx="14" ry="6"/>
+      <path d="M6 10 v18 c0 3.3 6.3 6 14 6 s14 -2.7 14 -6 v-18"/>
+      <path d="M6 19 c0 3.3 6.3 6 14 6 s14 -2.7 14 -6"/>
+    </g>
+    <text x="110" y="998" font-family="system-ui, -apple-system, sans-serif" font-size="24px" font-weight="bold" fill="#207448">
+      <tspan x="110" dy="0">ini, csvfile,</tspan>
+      <tspan x="110" dy="28">community.general.dig (DNS),</tspan>
+      <tspan x="110" dy="28">community.general.random_pet</tspan>
+    </text>
+    <text x="735" y="1026" font-family="system-ui, -apple-system, sans-serif" font-size="24px" fill="#303a36">misc data sources</text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1088" width="1520" height="76" rx="8" fill="#207448"/>
+    
+    <g transform="translate(72, 1104)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="22" cy="22" r="18"/>
+      <line x1="22" y1="12" x2="22" y2="28"/>
+      <polyline points="15,21 22,28 29,21"/>
+    </g>
+    <text x="820" y="1136" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28px" font-weight="bold" fill="#ffffff">Lookups fetch data from outside the playbook, on the control node</text>
+  </g>
+</svg>

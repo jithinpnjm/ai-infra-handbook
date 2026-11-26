@@ -1,0 +1,223 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The ad-hoc flags worth memorising, grouped by purpose</title>
+  <desc>Visual reference guide of essential Ansible ad-hoc flags grouped by purpose.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">The ad-hoc flags worth memorising, grouped by purpose</text>
+
+  
+  <g transform="translate(40, 84)">
+    <rect width="1520" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(36, 13)">
+      <circle cx="22" cy="22" r="20" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="22" y1="22" x2="31" y2="13" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <line x1="22" y1="22" x2="22" y2="8" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="96" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">it is 2 AM, a training run is stalling: is the driver loaded on every node? one line, no playbook</text>
+  </g>
+
+  
+  
+  <g transform="translate(40, 180)">
+    <rect width="730" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(30, 20)">
+      <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4" />
+      <ellipse cx="24" cy="24" rx="10" ry="22" fill="none" stroke="#207448" stroke-width="3" />
+      <line x1="2" y1="24" x2="46" y2="24" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="90" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Who and where</text>
+
+    
+    <g transform="translate(25, 90)">
+      <rect width="680" height="58" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="38" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-i</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> inventory</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 160)">
+      <rect width="680" height="58" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="3" />
+      <text x="24" y="38" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#db8129">-l</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> or </tspan>
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">--limit</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> narrows the hosts</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 230)">
+      <rect width="680" height="58" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="38" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-u</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> user</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(830, 180)">
+    <rect width="730" height="310" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(30, 20)">
+      <rect x="8" y="18" width="32" height="26" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M14,18 V12 A10,10 0 0,1 34,12 V18" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="24" cy="31" r="3" fill="#207448" />
+    </g>
+    <text x="90" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Privilege and auth</text>
+
+    
+    <g transform="translate(25, 90)">
+      <rect width="680" height="58" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="38" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-b</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> become</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 160)">
+      <rect width="680" height="58" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="38" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-K</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> ask for the become password</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 230)">
+      <rect width="680" height="58" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="38" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-k</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> ask for the SSH password</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  
+  <g transform="translate(40, 516)">
+    <rect width="730" height="458" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(30, 20)">
+      <path d="M6,36 A22,22 0 1,1 42,36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="24" y1="28" x2="36" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="24" cy="28" r="4" fill="#207448" />
+    </g>
+    <text x="90" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Speed and output</text>
+
+    
+    <g transform="translate(25, 90)">
+      <rect width="680" height="76" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="47" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-f</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> forks</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 180)">
+      <rect width="680" height="76" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="47" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-o</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> one line per host</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 270)">
+      <rect width="680" height="76" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="3" />
+      <text x="24" y="47" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#db8129">-v</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> or </tspan>
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-vvv</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> more output</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 360)">
+      <rect width="680" height="76" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="47" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-vvvv</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> connection debugging</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(830, 516)">
+    <rect width="730" height="458" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(30, 20)">
+      <path d="M24,4 C38,4 44,10 44,24 C44,38 34,46 24,48 C14,46 4,38 4,24 C4,10 10,4 24,4 Z" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M15,24 L21,30 L33,18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="90" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Safety</text>
+
+    
+    <g transform="translate(25, 90)">
+      <rect width="680" height="64" rx="8" fill="#fdf6ee" stroke="#db8129" stroke-width="3" />
+      <text x="24" y="41" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#db8129">--check</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> and </tspan>
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">--diff</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> preview changes</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 168)">
+      <rect width="680" height="64" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="41" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-e &quot;var=value&quot;</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> sets a variable</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 246)">
+      <rect width="680" height="64" rx="8" fill="#ffffff" stroke="#c0d7c7" stroke-width="1.5" />
+      <text x="24" y="41" font-size="24" fill="#303a36">
+        <tspan font-family="ui-monospace, monospace" font-weight="bold">-t</tspan>
+        <tspan font-family="system-ui, -apple-system, sans-serif"> tree saves output per host</tspan>
+      </text>
+    </g>
+
+    
+    <g transform="translate(25, 324)">
+      <rect width="680" height="112" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="6,4" />
+      <text x="24" y="36" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="24" dy="0">read --diff like a tracked change in Git,</tspan>
+        <tspan x="24" dy="30">removed lines on one side</tspan>
+        <tspan x="24" dy="30">and added lines on the other</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(40, 1000)">
+    <rect width="1520" height="70" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(36, 15)">
+      <rect x="4" y="4" width="32" height="34" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="12" y1="14" x2="28" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="12" y1="21" x2="28" y2="21" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="12" y1="28" x2="22" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="96" y="44" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">use ad-hoc commands for discovery and quick checks, and move anything you repeat into a playbook</text>
+  </g>
+
+  
+  <g transform="translate(40, 1090)">
+    <rect width="1520" height="70" rx="12" fill="#207448" />
+    <text x="760" y="44" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">If you only learn three, learn -l, --check and -v</text>
+  </g>
+</svg>

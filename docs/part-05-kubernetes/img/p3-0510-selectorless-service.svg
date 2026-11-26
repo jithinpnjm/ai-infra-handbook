@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>A Service with no selector pointing at an outside database</title>
+  <desc>Infographic explaining Kubernetes Service with no selector manually connected to an Endpoints object pointing at an external legacy database.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="10" refX="12" refY="5" orient="auto">
+      <path d="M 0 0 L 14 5 L 0 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="50" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A Service with no selector pointing at an outside database</text>
+
+  
+  <rect x="40" y="120" width="1080" height="710" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="10 8" />
+
+  
+  <rect x="1160" y="120" width="400" height="710" rx="16" fill="#f0f4f1" stroke="#7ca98a" stroke-width="2.5" stroke-dasharray="10 8" />
+  <text x="1360" y="165" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#44554e">outside the cluster boundary</text>
+
+  
+  <rect x="65" y="180" width="355" height="360" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(95, 205)">
+    <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="4" />
+    <circle cx="12" cy="9" r="3" fill="#207448" />
+    <circle cx="22" cy="9" r="3" fill="#207448" />
+    <circle cx="32" cy="9" r="3" fill="#207448" />
+    <line x1="14" y1="34" x2="42" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  
+  <circle cx="385" cy="233" r="24" fill="#207448" />
+  <text x="385" y="241" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+
+  
+  <text x="95" y="315" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="95" dy="0">app pods inside</tspan>
+    <tspan x="95" dy="38">the cluster call</tspan>
+    <tspan x="95" dy="46" font-family="monospace" font-size="26" fill="#207448">'my-database-server'</tspan>
+    <tspan x="95" dy="42">by name</tspan>
+  </text>
+
+  
+  <line x1="420" y1="285" x2="445" y2="285" stroke="#207448" stroke-width="3" />
+  
+  <rect x="445" y="260" width="140" height="50" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="468" cy="285" r="15" fill="#207448" />
+  <text x="468" y="291" text-anchor="middle" font-family="sans-serif" font-size="18" font-weight="bold" fill="#ffffff">2</text>
+  <text x="495" y="293" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">DNS name</text>
+  <line x1="585" y1="285" x2="628" y2="285" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="630" y="180" width="460" height="190" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(655, 200)">
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 16 16 M 40 40 L 45 45 M 11 45 L 16 40 M 40 16 L 45 11" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  </g>
+  
+  <circle cx="1055" cy="228" r="24" fill="#207448" />
+  <text x="1055" y="236" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+
+  
+  <text x="655" y="280" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="655" dy="0">Service my-database-server</tspan>
+  </text>
+  <text x="655" y="318" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="655" dy="0">with the spec.selector field removed,</tspan>
+    <tspan x="655" dy="34" font-family="monospace">only metadata and ports (1433)</tspan>
+  </text>
+
+  
+  <rect x="630" y="385" width="370" height="85" rx="12" fill="#fff9f2" stroke="#db8129" stroke-width="2.5" />
+  
+  <g transform="translate(645, 403)">
+    <polygon points="24,4 46,44 2,44" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round" />
+    <line x1="24" y1="18" x2="24" y2="30" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" />
+    <circle cx="24" cy="38" r="2" fill="#db8129" />
+  </g>
+  <text x="705" y="418" font-family="sans-serif" font-size="24" font-weight="bold" fill="#964f0b">
+    <tspan x="705" dy="0">Because there is no selector,</tspan>
+    <tspan x="705" dy="32">no endpoints are created automatically</tspan>
+  </text>
+
+  
+  <line x1="1040" y1="370" x2="1040" y2="400" stroke="#207448" stroke-width="3" />
+  
+  <rect x="1005" y="400" width="70" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="1022" cy="425" r="12" fill="#207448" />
+  <text x="1022" y="430" text-anchor="middle" font-family="sans-serif" font-size="15" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1040" y="433" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">endpoint</text>
+  <line x1="1040" y1="450" x2="1040" y2="480" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="630" y="485" width="460" height="215" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(655, 502)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="28" cy="28" r="10" fill="none" stroke="#207448" stroke-width="4" />
+    <circle cx="28" cy="28" r="3" fill="#207448" />
+    <line x1="4" y1="28" x2="14" y2="28" stroke="#207448" stroke-width="4" />
+    <line x1="42" y1="28" x2="52" y2="28" stroke="#207448" stroke-width="4" />
+    <line x1="28" y1="4" x2="28" y2="14" stroke="#207448" stroke-width="4" />
+    <line x1="28" y1="42" x2="28" y2="52" stroke="#207448" stroke-width="4" />
+  </g>
+
+  
+  <text x="655" y="580" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="655" dy="0">Endpoints name my-database-server</tspan>
+  </text>
+  <text x="655" y="618" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="655" dy="0">(must match the Service name)</tspan>
+  </text>
+  <text x="655" y="656" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="655" dy="0">subsets addresses ip 1.2.3.4</tspan>
+    <tspan x="655" dy="32">ports port 1433</tspan>
+  </text>
+
+  
+  <rect x="630" y="715" width="460" height="95" rx="12" fill="#f5faf6" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(645, 732)">
+    <path d="M 24 4 L 44 12 L 44 26 C 44 38 24 46 24 46 C 24 46 4 38 4 26 L 4 12 Z" fill="none" stroke="#207448" stroke-width="3.5" />
+    <polyline points="15,25 21,31 33,19" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="705" y="753" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="705" dy="0" font-weight="bold" fill="#207448">Rule:</tspan>
+    <tspan dx="8" font-weight="bold">if the external IP changes,</tspan>
+    <tspan x="705" dy="34">update the Endpoints object</tspan>
+  </text>
+
+  
+  <line x1="1090" y1="590" x2="1195" y2="590" stroke="#207448" stroke-width="3" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="1200" y="485" width="320" height="215" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(1225, 502)">
+    <ellipse cx="28" cy="14" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 6 14 L 6 42 C 6 47 16 51 28 51 C 40 51 50 47 50 42 L 50 14" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 6 28 C 6 33 16 37 28 37 C 40 37 50 33 50 28" fill="none" stroke="#207448" stroke-width="4" />
+  </g>
+  
+  <circle cx="1480" cy="528" r="24" fill="#207448" />
+  <text x="1480" y="536" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+
+  
+  <text x="1225" y="595" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+    <tspan x="1225" dy="0">legacy database</tspan>
+    <tspan x="1225" dy="38">server</tspan>
+    <tspan x="1225" dy="46" font-family="monospace" font-size="32" fill="#207448">1.2.3.4</tspan>
+  </text>
+
+  
+  <rect x="40" y="860" width="1520" height="180" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(70, 920)">
+    <path d="M 6 18 L 44 18 M 32 6 L 44 18 L 32 30" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 50 38 L 12 38 M 24 26 L 12 38 L 24 50" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <text x="145" y="905" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+    <tspan x="145" dy="0">the other direction, reaching a Service from outside, try in order:</tspan>
+  </text>
+  <text x="145" y="955" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">internal load balancer in the private network, then NodePort behind a physical load balancer or DNS,</tspan>
+    <tspan x="145" dy="42">and only then complex options (kube-proxy on an external machine, Consul)</tspan>
+  </text>
+</svg>

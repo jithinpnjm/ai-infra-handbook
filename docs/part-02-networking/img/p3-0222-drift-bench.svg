@@ -1,0 +1,256 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>One slow node among twenty, and a throughput test that narrows the cause</title>
+  <desc>Visual infographic explaining static fleet configuration checks and sequential throughput testing on a 100G link.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <g text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <text x="800" y="55">One slow node among twenty,</text>
+    <text x="800" y="108">and a throughput test that narrows the cause</text>
+  </g>
+
+  
+  <rect x="40" y="135" width="740" height="825" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(65, 148)">
+    <rect x="0" y="2" width="48" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="8" cy="8" r="1.5" fill="#207448" />
+    <line x1="16" y1="8" x2="36" y2="8" stroke="#207448" stroke-width="2" />
+    <rect x="0" y="18" width="48" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="8" cy="24" r="1.5" fill="#207448" />
+    <line x1="16" y1="24" x2="36" y2="24" stroke="#207448" stroke-width="2" />
+    <rect x="0" y="34" width="48" height="12" rx="2" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="8" cy="40" r="1.5" fill="#207448" />
+    <line x1="16" y1="40" x2="36" y2="40" stroke="#207448" stroke-width="2" />
+  </g>
+  <text x="130" y="184" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Static check across the fleet</text>
+
+  
+  <g id="fleet-servers">
+    
+    <g transform="translate(75, 215)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(209, 215)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(343, 215)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(477, 215)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(611, 215)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+
+    
+    <g transform="translate(75, 247)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(209, 247)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(343, 247)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(477, 247)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(611, 247)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+
+    
+    <g transform="translate(75, 279)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(209, 279)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(343, 279)">
+      
+      <rect width="120" height="24" rx="3" fill="#faebd7" stroke="#db8129" stroke-width="2.5" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#db8129" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2.5" fill="#db8129" /><circle cx="108" cy="12" r="2.5" fill="#db8129" />
+    </g>
+    <g transform="translate(477, 279)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(611, 279)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+
+    
+    <g transform="translate(75, 311)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(209, 311)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(343, 311)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(477, 311)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+    <g transform="translate(611, 311)">
+      <rect width="120" height="24" rx="3" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="8" y1="12" x2="35" y2="12" stroke="#207448" stroke-width="1.5" />
+      <circle cx="98" cy="12" r="2" fill="#207448" /><circle cx="108" cy="12" r="2" fill="#207448" />
+    </g>
+  </g>
+
+  
+  <rect x="65" y="352" width="690" height="378" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="85" y="388" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">compare the slow node's configuration with</tspan>
+    <tspan x="85" dy="28">the others: negotiated link speed, duplex</tspan>
+    <tspan x="85" dy="28">and FEC, MTU consistent end to end,</tspan>
+    <tspan x="85" dy="28">offloads on, ring sizes and queue counts,</tspan>
+    <tspan x="85" dy="28">IRQ affinity, NUMA locality of the NIC and</tspan>
+    <tspan x="85" dy="28">the GPU, interrupt coalescing, qdisc, TCP</tspan>
+    <tspan x="85" dy="28">buffer limits, congestion control,</tspan>
+    <tspan x="85" dy="28">somaxconn and backlog, conntrack limits,</tspan>
+    <tspan x="85" dy="28">firewall rule counts, routing, bonding and</tspan>
+    <tspan x="85" dy="28">LACP state, DNS configuration, NIC</tspan>
+    <tspan x="85" dy="28">firmware and driver versions, kernel</tspan>
+    <tspan x="85" dy="28">version</tspan>
+  </text>
+
+  
+  <rect x="65" y="746" width="690" height="202" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+  <text x="85" y="784" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">most real problems are configuration drift:</tspan>
+    <tspan x="85" dy="28">a 1 GbE negotiated link, a wrong MTU, a</tspan>
+    <tspan x="85" dy="28">disabled offload, a different driver; one</tspan>
+    <tspan x="85" dy="28">odd machine among a hundred identical</tspan>
+    <tspan x="85" dy="28">ones is a configuration problem far more</tspan>
+    <tspan x="85" dy="28">often than a mystery</tspan>
+  </text>
+
+  
+  <rect x="820" y="135" width="740" height="825" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+  
+  <g transform="translate(845, 148)">
+    <path d="M 6 38 A 20 20 0 1 1 42 38" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="24" y1="24" x2="36" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    <circle cx="24" cy="24" r="3" fill="#207448" />
+    <line x1="10" y1="44" x2="38" y2="44" stroke="#207448" stroke-width="3" />
+  </g>
+  <text x="910" y="184" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Throughput test on a 100G link</text>
+
+  
+  <rect x="840" y="215" width="700" height="90" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="880" cy="260" r="24" fill="#207448" />
+  <text x="880" y="269" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">1</text>
+  <text x="925" y="250" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">run a single stream and record</tspan>
+    <tspan x="925" dy="28">the number</tspan>
+  </text>
+
+  
+  <line x1="1190" y1="305" x2="1190" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="840" y="335" width="700" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="880" cy="397" r="24" fill="#207448" />
+  <text x="880" y="406" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">2</text>
+  <text x="925" y="372" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">run several parallel streams</tspan>
+    <tspan x="925" dy="28">with the same tool</tspan>
+    <tspan x="925" dy="28">(<tspan font-family="monospace">iperf3 -c host -P 8 -t 30</tspan>)</tspan>
+  </text>
+
+  
+  <line x1="1190" y1="460" x2="1190" y2="490" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="840" y="490" width="700" height="142" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <polygon points="880,536 902,561 880,586 858,561" fill="none" stroke="#207448" stroke-width="3" />
+  <text x="880" y="569" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">?</text>
+  <text x="925" y="525" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">single stream reaches only part of</tspan>
+    <tspan x="925" dy="28">the link while parallel streams reach</tspan>
+    <tspan x="925" dy="28">much more: the limit is per flow,</tspan>
+    <tspan x="925" dy="28">not per link</tspan>
+  </text>
+
+  
+  <line x1="1190" y1="632" x2="1190" y2="660" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="840" y="660" width="700" height="275" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <circle cx="880" cy="720" r="24" fill="#207448" />
+  <text x="880" y="729" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">3</text>
+  <text x="925" y="695" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="925" dy="0">only then look at CPU placement:</tspan>
+    <tspan x="925" dy="28">pin CPUs to the NUMA node of the</tspan>
+    <tspan x="925" dy="28">NIC; run long enough to smooth</tspan>
+    <tspan x="925" dy="28">noise; record kernel, driver and</tspan>
+    <tspan x="925" dy="28">firmware versions; compare with</tspan>
+    <tspan x="925" dy="28">theory: at a 1500 MTU expect about</tspan>
+    <tspan x="925" dy="28">94 percent of nominal</tspan>
+  </text>
+
+  
+  <rect x="40" y="975" width="1520" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(68, 1012)">
+    <path d="M 28 6 L 36 14 L 32 18 L 40 26 L 36 30 L 28 22 L 20 30 C 14 36 6 36 2 32 C -2 28 -2 20 4 14 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <circle cx="10" cy="24" r="3" fill="#207448" />
+  </g>
+  <text x="145" y="1016" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0"><tspan font-family="monospace">iperf3</tspan> for TCP and UDP throughput, <tspan font-family="monospace">netperf TCP_RR</tspan> for latency, <tspan font-family="monospace">ping -f</tspan>, <tspan font-family="monospace">ib_write_bw</tspan> and</tspan>
+    <tspan x="145" dy="31"><tspan font-family="monospace">ib_write_lat</tspan> (RDMA), <tspan font-family="monospace">nccl-tests</tspan> (collectives), <tspan font-family="monospace">fio</tspan> over NFS or S3, <tspan font-family="monospace">wrk hey ghz</tspan>, <tspan font-family="monospace">pktgen</tspan></tspan>
+    <tspan x="145" dy="31"><tspan font-family="monospace">trafgen TRex</tspan> for packet rates, <tspan font-family="monospace">tc netem</tspan> for repeatable loss and delay</tspan>
+  </text>
+
+  
+  <rect x="40" y="1120" width="1520" height="60" rx="8" fill="#207448" />
+  <text x="800" y="1157" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Each step narrows the cause before you spend time on the next one</text>
+</svg>

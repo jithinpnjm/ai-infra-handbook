@@ -1,0 +1,177 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>The workflow and CLI reference</title>
+  <desc>Flowchart showing the Terraform workflow and CLI reference from init, fmt, validate, plan, review/policy, apply, to output/state show, with a feedback loop for code changes.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="17" refY="9" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5" />
+
+  
+  <text x="800" y="85" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">The workflow and CLI reference</text>
+
+  
+  
+  <path d="M 270 290 L 320 290" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 530 290 L 580 290" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 810 290 L 860 290" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1180 290 L 1230 290" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1385 410 L 1385 590" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1230 710 L 1180 710" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <path d="M 1020 590 L 1020 528" stroke="#db8129" stroke-width="4" fill="none" />
+  <path d="M 1020 472 L 1020 410" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)" />
+
+  
+  <rect x="915" y="475" width="210" height="50" rx="25" fill="#f5f8f5" stroke="#db8129" stroke-width="3" />
+  <text x="1020" y="509" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">change code</text>
+
+  
+
+  
+  <g id="node-init">
+    <rect x="60" y="170" width="210" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="96" cy="206" r="24" fill="#207448" />
+    <text x="96" y="206" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(165, 230)">
+      <path d="M 0 -24 L 24 -12 L 24 14 L 0 26 L -24 14 L -24 -12 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none" />
+      <path d="M 0 -24 L 0 26" stroke="#207448" stroke-width="4" />
+      <path d="M 0 -12 L 24 -23" stroke="#207448" stroke-width="4" />
+      <path d="M 0 -12 L -24 -23" stroke="#207448" stroke-width="4" />
+    </g>
+    
+    <text x="165" y="340" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">init</text>
+  </g>
+
+  
+  <g id="node-fmt">
+    <rect x="320" y="170" width="210" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="356" cy="206" r="24" fill="#207448" />
+    <text x="356" y="206" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(425, 230)">
+      <line x1="-22" y1="-18" x2="22" y2="-18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-10" y1="-6" x2="22" y2="-6" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-10" y1="6" x2="14" y2="6" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-22" y1="18" x2="18" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="425" y="340" text-anchor="middle" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">fmt</text>
+  </g>
+
+  
+  <g id="node-validate">
+    <rect x="580" y="170" width="230" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="616" cy="206" r="24" fill="#207448" />
+    <text x="616" y="206" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(695, 230)">
+      <path d="M 0 -24 L 22 -14 C 22 10 12 22 0 26 C -12 22 -22 10 -22 -14 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none" />
+      <path d="M -9 0 L -3 6 L 10 -7" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </g>
+    
+    <text x="695" y="340" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">validate</text>
+  </g>
+
+  
+  <g id="node-plan">
+    <rect x="860" y="170" width="320" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="896" cy="206" r="24" fill="#207448" />
+    <text x="896" y="206" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(1020, 230)">
+      <path d="M -18 -24 L 6 -24 L 20 -10 L 20 24 L -18 24 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none" />
+      <path d="M 6 -24 L 6 -10 L 20 -10" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none" />
+      <line x1="-10" y1="-3" x2="12" y2="-3" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-10" y1="7" x2="12" y2="7" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <line x1="-10" y1="16" x2="4" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    </g>
+    
+    <text x="1020" y="324" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1020" dy="0">plan</tspan>
+      <tspan x="1020" dy="36">-out=tfplan</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-review">
+    <rect x="1230" y="170" width="310" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1266" cy="206" r="24" fill="#207448" />
+    <text x="1266" y="206" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(1385, 230)">
+      <circle cx="-5" cy="-5" r="16" stroke="#207448" stroke-width="4" fill="none" />
+      <line x1="7" y1="7" x2="21" y2="21" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <path d="M -12 -6 L -7 -1 L 2 -10" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </g>
+    
+    <text x="1385" y="324" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1385" dy="0">review /</tspan>
+      <tspan x="1385" dy="36">policy</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-apply">
+    <rect x="1230" y="590" width="310" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1266" cy="626" r="24" fill="#207448" />
+    <text x="1266" y="626" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">6</text>
+    
+    <g transform="translate(1385, 650)">
+      <path d="M 0 -24 C 10 -12 14 2 14 16 L -14 16 C -14 2 -10 -12 0 -24 Z" stroke="#207448" stroke-width="4" stroke-linejoin="round" fill="none" />
+      <path d="M -14 10 L -22 20 L -14 18 M 14 10 L 22 20 L 14 18" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <circle cx="0" cy="0" r="5" stroke="#207448" stroke-width="3" fill="none" />
+      <path d="M -6 18 L 0 26 L 6 18" stroke="#207448" stroke-width="3" stroke-linejoin="round" fill="none" />
+    </g>
+    
+    <text x="1385" y="744" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1385" dy="0">apply</tspan>
+      <tspan x="1385" dy="36">tfplan</tspan>
+    </text>
+  </g>
+
+  
+  <g id="node-output">
+    <rect x="860" y="590" width="320" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="896" cy="626" r="24" fill="#207448" />
+    <text x="896" y="626" text-anchor="middle" dominant-baseline="central" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">7</text>
+    
+    <g transform="translate(1020, 650)">
+      <rect x="-24" y="-20" width="48" height="40" rx="5" stroke="#207448" stroke-width="4" fill="none" />
+      <path d="M -16 -6 L -9 0 L -16 6" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+      <line x1="-4" y1="6" x2="14" y2="6" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    
+    <text x="1020" y="744" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1020" dy="0">output /</tspan>
+      <tspan x="1020" dy="36">state show</tspan>
+    </text>
+  </g>
+
+</svg>

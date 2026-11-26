@@ -1,0 +1,162 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-ethtool-map",
+  "title": "ethtool by question: which command answers which hardware question",
+  "spec": "A table with the question on the left, the command in the middle and what to look at on the right. 'Is the link up and at what speed?': 'ethtool eth0': 'Link detected, Speed, Duplex, auto-negotiation, supported and advertised modes'. 'Which driver and firmware?': 'ethtool -i eth0': 'driver, firmware, bus info'. 'Is the NIC counting problems?': 'ethtool -S eth0': 'per-queue stats, rx_missed, rx_no_buffer, tx_timeouts, pause frames, ECN marks'. 'Are the rings too small?': 'ethtool -g eth0; ethtool -G eth0 rx 4096 tx 4096': 'ring buffer sizes: the queue of packet slots shared between NIC and driver'. 'How many queues?': 'ethtool -l eth0; ethtool -L eth0 combined 16': 'channel counts for RSS'. 'What is offloaded?': 'ethtool -k eth0; ethtool -K eth0 gro off': 'tso gso gro lro rxhash, checksums, tunnel segmentation'. 'Interrupt coalescing?': 'ethtool -c eth0; ethtool -C eth0 adaptive-rx on'. 'Pause frames?': 'ethtool -a eth0'. 'RSS table and flow rules?': 'ethtool -x eth0; ethtool -n eth0'. 'Optics health?': 'ethtool -m eth0': 'power, temperature, vendor' (orange). 'FEC and timestamping?': 'ethtool --show-fec eth0; ethtool -T eth0'. Right worked case 'A server moved to a new rack runs at a fraction of the rate: step 1 the speed line shows less than the NIC supports; step 2 ethtool -m shows low receive power, which points to a dirty connector; cleaning it restores the speed'. Notes 'Link detected: no means a cable pulled or switch port down; a 100 GbE NIC negotiating 25 GbE shows the lower figure in Speed; a half-duplex or wrong-speed link is a classic cause of mystery throughput loss'. Bottom bar: 'Check ethtool first whenever a link is slower than you expect'.",
+  "anchor": "### `ethtool`: the hardware side",
+  "alt": "A table pairing hardware questions about link speed, driver, counters, rings, queues, offloads, pause frames and optics with the ethtool command, plus a worked case of low receive power on a dirty connector.",
+  "cap": "Each ethtool option answers one hardware question, and low receive power in ethtool -m points at a dirty connector rather than a switch setting."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-manager-rules",
+  "title": "Who owns the interface: network managers, how NetworkManager chooses, and the rules for safe changes",
+  "spec": "Left: a table of managers and files. 'NetworkManager: /etc/NetworkManager/, connections in /etc/NetworkManager/system-connections/, nmcli nmtui nm-online, dispatcher scripts in dispatcher.d'. 'systemd-networkd: /etc/systemd/network/*.network .netdev .link, networkctl, pairs with systemd-resolved'. 'Netplan: /etc/netplan/*.yaml, YAML front end rendering for NetworkManager or networkd; netplan try, apply, generate; cloud-init writes it'. 'ifupdown: /etc/network/interfaces, if-up.d'. 'cloud-init: /etc/cloud/, generates Netplan, NM or networkd config from metadata'. 'dhclient, dhcpcd or NM internal DHCP: /var/lib/dhcp/*.leases'. 'wpa_supplicant or iwd: Wi-Fi authentication'. 'udev .link files: interface naming, net.ifnames=0'. Middle: NetworkManager's startup choice as four steps. '1 wired available: use it, otherwise try wireless', '2 scan wireless; a previously used network in range is tried again', '3 several known networks: the most recently used', '4 keep the connection until it is lost, a better network appears, or the user changes it'. Right: rules box 'Choose one manager per interface', 'keep fabric and storage NICs unmanaged or never-default', 'make configuration idempotent and declarative, rendered from inventory', 'test with netplan try or with console or serial access before cutting the link you are connected over' (orange), 'mark non-critical NICs optional so boot does not hang', 'verify the state after boot with an audit script'. Bottom bar: 'netplan try waits for you to confirm and rolls back by itself if you lose the connection'.",
+  "anchor": "## 3. Persistent configuration: managers and files",
+  "alt": "A table of NetworkManager, systemd-networkd, Netplan, ifupdown and cloud-init with their files, the four step NetworkManager connection choice, and rules for safe interface changes.",
+  "cap": "Choose one manager per interface and test changes with netplan try, which rolls back by itself if you lose the connection."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-netplan-read",
+  "title": "Reading a Netplan file with three kinds of interface",
+  "spec": "The YAML file shown as lines with colour-coded annotations. Header '# /etc/netplan/50-gpu.yaml  (apply with: sudo netplan try)'. 'version: 2' 'renderer: networkd' 'who turns this into real configuration'. 'eno1: { dhcp4: true, dhcp4-overrides: { use-routes: true } }' 'a DHCP link that also takes routes from DHCP'. 'ens1f0: addresses [10.100.0.45/24], mtu 9000, dhcp4 false, optional true' 'a static fabric NIC with jumbo MTU; optional so boot does not wait for the link' (orange). 'vlans: vlan200: { id: 200, link: eno1, addresses: [10.200.0.45/24] }' 'a VLAN on top of the first link'. Right panel 'Same job with other tools': 'nmcli connection add type ethernet ifname ens1f0 con-name fabric0 ipv4.method manual ipv4.addresses 10.100.0.45/24 802-3-ethernet.mtu 9000 ipv4.never-default yes', 'nmcli connection up fabric0; nmcli device reapply ens1f0', 'nm-online -q && echo network-up: exit code 0 when the network is up, usable in scripts', 'networkctl status; networkctl list; networkctl reload'. Side facts 'Netplan does not manage the network itself: it renders files for NetworkManager or systemd-networkd', 'ifupdown plug-in: managed=false in NetworkManager.conf; ifcfg-rh plug-in: NM_CONTROLLED=no; unmanaged-devices=mac:... in the keyfile section', 'dispatcher scripts in /etc/NetworkManager/dispatcher.d run on up and down'. Bottom bar: 'Manual ip changes vanish on reboot; move the result into the manager that owns the interface'.",
+  "anchor": "## 3. Persistent configuration: managers and files",
+  "alt": "A Netplan file annotated for a DHCP link, a static jumbo-MTU fabric NIC marked optional and a VLAN, with the equivalent nmcli and networkctl commands.",
+  "cap": "One Netplan file can describe a DHCP link, a static fabric NIC with MTU 9000 and a VLAN, rendered by networkd or NetworkManager."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-bind-reach",
+  "title": "The address a server binds to decides who can reach it",
+  "spec": "A server box with three listener variants, each with who can connect. Variant 'bind 0.0.0.0 or ::': 'listens on all addresses, reachable from every interface'. Variant 'bind 127.0.0.1': 'accepts only local clients' (orange; also 127.0.0.53 systemd-resolved example). Variant 'bind a specific address': 'listens only on that interface'. Right: the socket life cycle summary 'socket(), bind(addr:port), listen(backlog), then loop: accept() returns a new connected socket, read or recv and write or send on it, close()'. 'The server holds two kinds of sockets: the listening socket stays with the master process, each per-connection socket carries one client's reads and writes, like a receptionist who transfers each caller to a different extension'. 'Traditional servers fork() a process per connection or use pre-fork worker pools; modern servers use event loops (epoll, io_uring) to handle thousands of connections per thread'. Options row 'SO_REUSEADDR and SO_REUSEPORT: restarts and multi-process load sharing', 'SO_KEEPALIVE, TCP_NODELAY, SO_RCVBUF and SO_SNDBUF: connection behaviour'. Socket types 'SOCK_STREAM (TCP), SOCK_DGRAM (UDP), SOCK_RAW (ICMP tools), AF_PACKET (tcpdump), AF_NETLINK (kernel configuration), AF_UNIX (local), vsock (VM host and guests)'. Facts 'sockets are file descriptors: /proc/<pid>/fd, limited by ulimit -n and fs.file-max, inherited across fork'. Bottom bar: 'Check the bind address before you blame the network'.",
+  "anchor": "## 4. Sockets: how processes use the network",
+  "alt": "Three listener variants bound to all addresses, loopback only or one specific address, with the socket life cycle, the two kinds of server sockets and the socket types.",
+  "cap": "The address a server binds to decides who can connect, and a server holds one listening socket plus one socket per client."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-unix-sockets",
+  "title": "Unix domain sockets: local, permissioned and faster than loopback TCP",
+  "spec": "Two paths between two local processes. Upper path 'Loopback TCP via 127.0.0.1 or ::1': passes through the full networking stack. Lower path 'Unix domain socket': socket file at a path such as '/var/run/docker.sock', '/run/dbus/system_bus_socket', '/var/run/mysqld/mysqld.sock'; 'the kernel skips many layers of its networking subsystem, so performance is usually much better; not a network socket, so no networking configuration is needed'. Left: access control 'ordinary file permissions on the socket file decide who can connect, for example srwxrwxrwx for system_bus_socket; the socket stays off the network' and warning in orange 'access to docker.sock is equivalent to root, so protect it'. Right: reading lsof -U output. 'NAME column first: a path names a socket file; the word socket marks an unnamed socket; a process can create an unnamed Unix domain socket and share its address with another process'. Example rows 'mysqld 19701 mysql 12u unix ... /var/run/mysqld/mysqld.sock', 'tlsmgr 30480 postfix 6u unix ... private/tlsmgr'. Facts 'programs pass file descriptors and credentials with SCM_RIGHTS and SO_PEERCRED', 'daemons such as systemd and NetworkManager use D-Bus', 'mysqld accepts remote clients and also offers a Unix domain socket', 'list with ss -xlp or lsof -U as root'. Bottom bar: 'A Unix domain socket is not a network socket'.",
+  "anchor": "### Unix domain sockets",
+  "alt": "Loopback TCP through the full network stack compared with a Unix domain socket at a file path controlled by file permissions, with how to read lsof -U output.",
+  "cap": "A Unix domain socket skips the network stack, is controlled by file permissions, and is listed with ss -xlp or lsof -U."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-lsof-read",
+  "title": "Reading lsof -i: who is listening and who is connected",
+  "spec": "The lsof output rows listed with annotations. 'rpcbind 700 root 8u IPv4 TCP *:sunrpc (LISTEN)' 'an old-style RPC service on TCP and UDP 111, a common unwanted exposure, disable it if you do not need NFS v3 or NIS' (orange). 'avahi-dae 872 avahi 13u IPv4 UDP *:mdns' 'multicast DNS'. 'cupsd 1010 root 9u IPv6 TCP ip6-localhost:ipp (LISTEN)' 'an IPv6-ready printer service on the local host only'. 'ssh 14366 juser 3u IPv4 TCP thishost.local:55457->somehost.example.com:ssh (ESTABLISHED)' 'a client connection: local ephemeral port to a well-known remote port'. 'chromium- 26534 juser 8r IPv4 TCP thishost.local:41551->anotherhost.example.com:https (ESTABLISHED)' 'a secure web connection'. Right panel 'Making it fast and useful': '-n skips hostname lookups', '-P skips port-name lookups in /etc/services', 'sudo lsof -n -i on a busy host', 'sudo lsof -iTCP -sTCP:LISTEN -nP: which process listens on which port', 'sudo lsof -i :443 -nP: who uses port 443', 'sudo lsof -p <pid> -a -i -nP: a process's network sockets', 'ss -tulpn: listening TCP and UDP with owning processes', 'as a regular user you see only your own processes, as root the whole system'. Bottom strip 'Rpcbind: the portmapper on TCP/UDP 111 maps RPC program numbers to ports; rpcinfo -p host lists the services'. Bottom bar: 'Filter the output when you know the port you want'.",
+  "anchor": "### Who is using a port: `lsof -i`",
+  "alt": "Annotated lsof -i rows for rpcbind, avahi, cupsd, an SSH client and a web client connection, with the -n and -P options and related ss and lsof commands.",
+  "cap": "lsof -i shows listeners and established connections per process, and -n -P keep it fast by skipping name lookups."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-counter-types",
+  "title": "Reading a counter by its type: which layer lost the packet and what to try",
+  "spec": "A table with the counter type on the left, the layer in the middle and the fixes on the right. 'Errors labelled CRC, frame or length (ip -s link, ethtool -S rx_crc_errors)': 'physical layer: cable, optics, FEC, speed or duplex mismatch': 'swap or clean the cable or optic, check FEC and speed'. 'Dropped, missed, no_buffer (rx_missed_errors, rx_no_buffer)': 'the host could not keep up': 'larger rings, more RSS queues, correct IRQ affinity, lower per-packet cost, more CPU, or XDP'. 'Softnet dropped and time_squeeze (/proc/net/softnet_stat columns 2 and 3)': 'softirq starvation': 'tune net.core.netdev_budget and netdev_max_backlog, or RPS and RFS'. 'TCP retransmits (TcpRetransSegs)': 'loss somewhere on the path': 'compare with a baseline: Internet-facing flows retransmit more than rack-local ones'. 'ListenOverflows': 'accept queue full'. 'UdpRcvbufErrors': 'socket buffers overflowed'. 'Pause and PFC counters': 'backpressure (chapter 2.19)'. 'tc -s qdisc drops and requeues': 'egress queue saturation'. 'conntrack -S insert_failed, drop, table full in dmesg': 'connection tracking failure'. Left strip 'tool closest to the symptom: ip -s link, ethtool -S, nstat -az, netstat -s, /proc/net/dev, softnet_stat, /proc/net/snmp and netstat, sar -n DEV,EDEV,TCP,ETCP,SOCK 1, nicstat 1 (utilisation and saturation), tc -s, conntrack -S, /sys/class/net/eth0/statistics/*'. Bottom bar: 'The label on the counter tells you which layer to look at'.",
+  "anchor": "## 5. Counters: where packets disappear",
+  "alt": "A table mapping counter types such as CRC errors, dropped, softnet time_squeeze, TCP retransmits, ListenOverflows, pause counters and conntrack failures to the layer responsible and the fix.",
+  "cap": "Errors point at the physical layer, drops at a host that cannot keep up, softnet at softirq starvation, and ListenOverflows at a full accept queue."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-delta-method",
+  "title": "Counters only grow: take two readings and subtract",
+  "spec": "A timeline. Reading A 'read the counter: a large number such as a million drops' then 'wait a short time with the workload running' then Reading B 'read again' then 'subtract B minus A'. Two outcomes. Outcome 'difference is zero': 'the drops are old history, look elsewhere'. Outcome 'difference keeps rising during the job' (orange): 'the drops are live: start at the layer where the counter lives'. Tools strip 'nstat -d 1 and nstat -az report deltas', 'sar -n DEV 1', 'nicstat 1', 'watch -d'. Left note 'a counter that reads a million drops tells you nothing by itself, since those drops might have happened last year'. Bottom panel the first-pass script 'links: ip -br link; ip -br addr', 'speeds: /sys/class/net/*/speed', 'errors: ip -s link', 'tcp: nstat -az | egrep TcpRetransSegs|TcpExtListenOverflows|TcpExtTCPTimeouts|TcpExtTCPSynRetrans|IpInDiscards|UdpRcvbufErrors', 'softnet: /proc/net/softnet_stat dropped and squeezed', 'conntrack: conntrack -C and nf_conntrack_max'. Bottom bar: 'Act on the difference, not the running total'.",
+  "anchor": "## 5. Counters: where packets disappear",
+  "alt": "A timeline of reading a counter, waiting with the workload running, reading again and subtracting, with outcomes of old history or live drops, and the first pass script checks.",
+  "cap": "Read a counter twice with the workload running and subtract, because a large running total says nothing about drops happening now."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-method-order",
+  "title": "A method in order: monitoring, USE, static tuning, workload, then the specific questions",
+  "spec": "A descending list of six methods, each with a one-line question. '1 Performance monitoring: a baseline over time'. '2 USE method: utilization, saturation, errors for each interface and direction'. '3 Static performance tuning: is the configuration right before load arrives?'. '4 Workload characterization: what is the system being asked to do?'. '5 Latency analysis, TCP analysis and packet sniffing: answer specific questions'. '6 Micro-benchmarking: confirm the hypotheses'. Right: the tools method as a side box 'walk through the tools and read the key metric of each: nstat or netstat -s for retransmits and out-of-order, ip -s link for errors, drops and overruns, ss -tiepm for limiter flags, nicstat or ip -s link throughput against negotiated speed, tcplife and tcptop, tcpdump for short captures, perf, BCC or bpftrace'; weakness in orange 'it finds only what the tools show: a problem that no tool measures stays invisible'. Workload box 'throughput in bytes per second RX and TX, packet rates, TCP connection rates for active and passive opens, average packet sizes, flows by protocol, port and peer, burstiness, time of day; top talkers; small packets are packet-rate bound, large packets bandwidth bound; removing unnecessary work (chatty protocols, repeated DNS lookups, uncached fetches) is often the biggest win'. Bottom bar: 'A method tells you which numbers to read first'.",
+  "anchor": "## 6. Performance methodology",
+  "alt": "Six analysis methods in order from performance monitoring and USE to static tuning, workload characterization, specific analyses and micro-benchmarks, with the tools method and its weakness.",
+  "cap": "Follow a method, monitoring first, then USE, static tuning and workload characterization, so you know which numbers to read first."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-use-pcie",
+  "title": "The USE method applied to a NIC and its PCIe slot",
+  "spec": "Left: a three row table for each interface and direction (RX and TX). 'Utilization: the busy fraction = throughput divided by the negotiated speed, counting all headers; with cloud caps use the limit the cloud imposes'. 'Saturation: queueing: qdisc backlog and drops, application threads blocked on send, TCP retransmits as a symptom, NIC ring overruns'. 'Errors: on RX bad checksums and frames too short or too long; on TX late collisions and carrier errors; check errors first' (orange). Right: worked PCIe example drawn as two bars. 'PCIe Gen4 x16: about 252 Gb/s usable; one 400G NIC in that slot reaches only 252 / 400 = 0.63, about 63 percent of line rate'. 'PCIe Gen5 x16: about 504 Gb/s, enough for a 400G port'. Under it 'apply the same method to the NIC controller and the bus: sum the port throughputs and compare the total with the PCIe bandwidth; and to the kernel stack: softirq CPU, memory for socket buffers, the conntrack table'. Lab check 'USE report for a 400G NIC: Gen4 x16 252 Gb/s versus Gen5 x16 504 Gb/s'. Bottom bar: 'A slot can cap a NIC before the link does'.",
+  "anchor": "### USE method",
+  "alt": "The USE method of utilization, saturation and errors per interface and direction, with a PCIe Gen4 x16 slot at 252 Gb/s limiting a 400G NIC to about 63 percent versus Gen5 at 504 Gb/s.",
+  "cap": "A PCIe Gen4 x16 slot delivers about 252 Gb/s, so a 400G NIC in it reaches only about 63 percent of line rate."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-latency-split",
+  "title": "Splitting a slow request into parts, with the expected values",
+  "spec": "A horizontal bar of one request split into stages left to right, each with its measuring tool. 'Name lookup (DNS): dig +stats, can time out for tens of seconds'. 'Path round trip: ping, mtr, rtt in ss -ti'. 'TCP connection (handshake): tcpconnlat, curl -w time_connect'. 'First byte: server think time plus the RTT: curl -w time_starttransfer'. 'Per-request application latency: application tracing'. 'Connection life span: short-lived connections multiply the handshake cost'. Tools strip 'curl -w timing variables, dig +stats, tcpconnlat, tcpdump timestamps, the rtt field from ss -ti, mtr, application tracing'. Right panel 'Expected values': 'rack-local 100G: tens of microseconds', 'same-DC: 0.2 to 0.6 ms', 'cross-continent: 40 to 180 ms'. Story 'a user says the internal app is slow, but only from one office: split the wait into parts and find which one grows before changing anything' (orange on find which grows). Second story box 'File copy starts fast then sits at a fixed speed: ss -ti shows rwnd_limited as a large share of time, the receiver's window is holding the sender back; fix the receiving side (larger receive buffer or faster reads)'. Limiter flags strip 'rwnd_limited, cwnd_limited, sndbuf_limited, app_limited tell you which factor bounds each connection'. Bottom bar: 'Break latency into parts, and find the part that grows'.",
+  "anchor": "### Latency analysis",
+  "alt": "A request split into DNS lookup, path RTT, TCP handshake, first byte and per-request latency with the tool for each, expected rack, DC and cross-continent latencies and the rwnd_limited story.",
+  "cap": "Split a slow request into lookup, handshake and first-byte time, and find the part that grows before changing anything."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-ssti-story",
+  "title": "Reading one ss -ti line as a story: why the connection is slower than it could be",
+  "spec": "The line from the chapter in monospace across three rows: 'ESTAB 0 0 10.0.0.2:51234 10.0.0.5:443', 'cubic wscale:7,7 rto:204 rtt:0.31/0.12 mss:1448 pmtu:1500 cwnd:10 ssthresh:7 bytes_sent:2.1M bytes_acked:2.1M', 'bytes_retrans:12K segs_out:1500 segs_in:900 send 373Mbps pacing_rate 746Mbps delivery_rate 330Mbps', 'busy:2300ms rwnd_limited:100ms(4.3%) app_limited retrans:0/9 reordering:3 rcv_space:14480'. Numbered callouts in reading order. '1 established, cubic congestion control', '2 rtt about 0.31 ms', '3 cwnd 10 segments; about 2 MB sent with almost no retransmits', '4 delivery_rate 330 Mbps is well below pacing_rate 746 Mbps: the connection is not using all it is allowed' (orange), '5 limiter: rwnd_limited for a small share of the time (4.3 percent), and app_limited is flagged: the application is not providing data fast enough'. Right panel 'Field meanings': 'rtt:avg/var', 'cwnd and ssthresh: congestion window state', 'retrans:current/total', 'delivery_rate is what the connection actually achieves, pacing_rate is what it aims for', 'busy, rwnd_limited, sndbuf_limited, cwnd_limited limiter times as percentages', 'reordering and minrtt'. Bottom bar: 'Each field answers one question, and reading them in order gives the full picture'.",
+  "anchor": "### `ss -ti` fields",
+  "alt": "An ss -ti output line read in order, from established and cubic to rtt 0.31 ms, cwnd 10, delivery rate below pacing rate and the app_limited and small rwnd_limited share.",
+  "cap": "A delivery rate well below the pacing rate with app_limited flagged means the application, not the network, is the limit."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-drift-bench",
+  "title": "One slow node among twenty, and a throughput test that narrows the cause",
+  "spec": "Left panel 'Static check across the fleet': twenty identical servers drawn as small boxes, nineteen green and one orange. 'compare the slow node's configuration with the others: negotiated link speed, duplex and FEC, MTU consistent end to end, offloads on, ring sizes and queue counts, IRQ affinity, NUMA locality of the NIC and the GPU, interrupt coalescing, qdisc, TCP buffer limits, congestion control, somaxconn and backlog, conntrack limits, firewall rule counts, routing, bonding and LACP state, DNS configuration, NIC firmware and driver versions, kernel version'. Caption 'most real problems are configuration drift: a 1 GbE negotiated link, a wrong MTU, a disabled offload, a different driver; one odd machine among a hundred identical ones is a configuration problem far more often than a mystery'. Right panel 'Throughput test on a 100G link': step 1 'run a single stream and record the number', step 2 'run several parallel streams with the same tool (iperf3 -c host -P 8 -t 30)', decision 'single stream reaches only part of the link while parallel streams reach much more: the limit is per flow, not per link', step 3 'only then look at CPU placement: pin CPUs to the NUMA node of the NIC; run long enough to smooth noise; record kernel, driver and firmware versions; compare with theory: at a 1500 MTU expect about 94 percent of nominal'. Tools strip 'iperf3 for TCP and UDP throughput, netperf TCP_RR for latency, ping -f, ib_write_bw and ib_write_lat (RDMA), nccl-tests (collectives), fio over NFS or S3, wrk hey ghz, pktgen trafgen TRex for packet rates, tc netem for repeatable loss and delay'. Bottom bar: 'Each step narrows the cause before you spend time on the next one'.",
+  "anchor": "### Static performance tuning",
+  "alt": "Twenty identical servers with one slow outlier prompting a configuration comparison, and a throughput test ladder from a single stream to parallel streams and NUMA pinning.",
+  "cap": "One odd node among identical ones is usually configuration drift, and a single versus parallel stream test shows whether the limit is per flow or per link."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-bandwidth-caps",
+  "title": "Which cap is in force: limits that look like a slow network",
+  "spec": "A pod box in the centre labelled 'pod downloading model weights takes the whole node's bandwidth; other pods slow down and their health checks fail'. Around it five arrows to cards, each a place a cap can sit. 'tc: qdiscs and classes, htb, tbf, and fq with SO_MAX_PACING_RATE', 'cgroup v2 with eBPF (net_cls and net_prio in the legacy setup, bpf rate limiting)', 'Kubernetes bandwidth annotations: kubernetes.io/ingress-bandwidth', 'cloud instance caps', 'NIC SR-IOV VF rate limits and switch policing'. Orange note 'Each looks like a slow network from inside the pod, so ask which limit applies before you blame the network'. Right strip 'Fix: give the download pod a cap, so the others keep their share'. Footer 'limits can be per cgroup, per process or per interface'. Bottom bar: 'Know which limit is active before you blame the network'.",
+  "anchor": "### Resource controls",
+  "alt": "Five places a bandwidth cap can sit, tc, cgroup v2 eBPF, Kubernetes annotations, cloud instance caps and SR-IOV or switch policing, all of which look like a slow network from inside a pod.",
+  "cap": "Bandwidth can be capped by tc, cgroups, Kubernetes annotations, the cloud or the NIC and switch, and each looks like a slow network."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-ebpf-by-question",
+  "title": "BCC and bpftrace tools by question",
+  "spec": "A table with question on the left and tool on the right. 'Which sessions exist, how long, how much?': 'tcplife: one line per TCP session with PID, comm, addresses, TX_KB, RX_KB, duration'. 'Who sends and receives most?': 'tcptop: top TCP senders and receivers by process'. 'Who connects where?': 'tcpconnect (outbound connect), tcpaccept (inbound accept)'. 'How slow is the handshake?': 'tcpconnlat: time from connect() to established by process'. 'Which flows retransmit?': 'tcpretrans: flow, state, type RETRANS or TLP'. 'Why were packets dropped?': 'tcpdrop: packets dropped by the kernel TCP stack with a stack trace' (orange). 'How long in each state?': 'tcpstates: TCP state transitions with durations'. 'Other': 'sockstat, solisten, udpconnect, softirqs, hardirqs, runqlat'. One-liners 'bpftrace tracepoint:tcp:tcp_retransmit_skb counts by comm and daddr', 'kprobe:tcp_sendmsg histogram of send size per process', 'tracepoint:skb:kfree_skb counts by location: where packets are dropped (use ksym)', 'kprobe:__dev_queue_xmit counts per comm'. Side notes 'eBPF programs run small verified programs inside the kernel with low overhead; install bcc-tools or bpftrace, run as root, kernel with BTF for CO-RE tools; the kfree_skb tracepoint reports drop reasons on newer kernels, tcpdump-like visibility without a capture'. perf strip 'perf record -g -a -- sleep 10 with flame graphs shows CPU time in the network stack (net_rx_action, tcp_v4_rcv, the driver poll); perf trace -e net:*,skb:*; at line rate filter narrowly, truncate with -s 128, ring buffers (-C, -W), hardware timestamps, or sample with sFlow, IPFIX'. Bottom bar: 'These tools answer questions that counters cannot'.",
+  "anchor": "### BCC and bpftrace tools",
+  "alt": "A table pairing questions such as which sessions exist, who connects where, which flows retransmit and why packets dropped with tcplife, tcpconnect, tcpretrans and tcpdrop, plus bpftrace one-liners.",
+  "cap": "BCC tools such as tcplife, tcpconnlat, tcpretrans and tcpdrop answer which process, how slow and why dropped, which counters cannot."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "22",
+  "name": "p3-0222-bottom-up",
+  "title": "Bottom-up: from a hardware symptom to the application, and which direction to choose",
+  "spec": "An ascending ladder from bottom to top of ten questions with the tool. 'Is the link up?: ip -br link, ethtool'. 'Are speed and FEC correct?: ethtool, ethtool --show-fec'. 'Are errors rising?: ip -s link, ethtool -S'. 'Are the ring buffers dropping?: ethtool -S, ethtool -g'. 'Is an IRQ or CPU saturated?: mpstat -P ALL 1, /proc/interrupts, softirqs'. 'Is there a known driver or firmware issue?: ethtool -i'. 'Are qdisc drops occurring?: tc -s qdisc'. 'What do the IP-layer counters show?: nstat'. 'Are TCP retransmits rising?: nstat, tcpretrans'. 'Is the application reading its data?: ss Recv-Q' at the top. Right panel 'Choose the direction': 'if the application reports the failure, go top-down', 'if the counters are already rising, go bottom-up' (orange). Beside it the first top-down checks as a small note 'process listening? ss -tulpn and the accept queue in Recv-Q; local connect then peer connect with nc -zv; refusal or timeout; DNS and proxy variables; ip route get and ip rule; firewall and conntrack; ip neigh FAILED or INCOMPLETE; interface health; capture at both ends'. Footnote 'Loopback tests never reach the NIC: the kernel short-circuits local traffic, so they do not prove external reachability'. Bottom bar: 'Both directions end at the same place'.",
+  "anchor": "## 8. Putting it together: a top-down and bottom-up checklist",
+  "alt": "A ten step bottom-up ladder from link up through speed, errors, rings, IRQ, qdisc, IP counters and TCP retransmits to whether the application reads its data, with how to choose the direction.",
+  "cap": "Go top-down when the application reports the failure and bottom-up when counters are already rising, and both end at the same place."
+ }
+]

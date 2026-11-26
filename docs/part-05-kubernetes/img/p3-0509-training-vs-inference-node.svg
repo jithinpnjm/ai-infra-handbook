@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Tuning an 8-GPU training node versus a 1-GPU inference node</title>
+  <desc>Visual comparison table between tuning an 8-GPU distributed training node and a 1-GPU low-latency inference node.</desc>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Tuning an 8-GPU training node versus a 1-GPU inference node</text>
+
+  
+  
+  <g transform="translate(50, 80)">
+    <rect width="735" height="65" rx="10" fill="#207448"/>
+    
+    <g transform="translate(24, 15)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="36" height="34" rx="4"/>
+      <line x1="6" y1="9" x2="30" y2="9"/>
+      <line x1="6" y1="17" x2="30" y2="17"/>
+      <line x1="6" y1="25" x2="30" y2="25"/>
+      <circle cx="9" cy="9" r="1.5" fill="#ffffff"/>
+      <circle cx="9" cy="17" r="1.5" fill="#ffffff"/>
+      <circle cx="9" cy="25" r="1.5" fill="#ffffff"/>
+    </g>
+    <text x="400" y="44" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">8-GPU training node</text>
+  </g>
+
+  
+  <g transform="translate(815, 80)">
+    <rect width="735" height="65" rx="10" fill="#207448"/>
+    
+    <g transform="translate(24, 15)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="4" width="36" height="26" rx="4"/>
+      <rect x="18" y="10" width="12" height="14" rx="2"/>
+      <line x1="6" y1="17" x2="12" y2="17"/>
+    </g>
+    <text x="400" y="44" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">1-GPU inference node</text>
+  </g>
+
+  
+  <g transform="translate(50, 165)">
+    
+    <rect width="1500" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 10)" stroke="#207448" stroke-width="3.5" fill="none">
+      <rect x="0" y="0" width="12" height="12" rx="2"/>
+      <rect x="18" y="0" width="12" height="12" rx="2"/>
+      <rect x="0" y="18" width="12" height="12" rx="2"/>
+      <rect x="18" y="18" width="12" height="12" rx="2"/>
+    </g>
+    <text x="68" y="35" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">maxPods</text>
+
+    
+    <rect x="0" y="58" width="735" height="110" rx="8" fill="#ffffff" stroke="#c5d8c8" stroke-width="1.5"/>
+    <text x="24" y="105" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">low, 30 to 40</tspan>
+      <tspan x="24" dy="34">(system daemons plus one training pod)</tspan>
+    </text>
+
+    
+    <rect x="765" y="58" width="735" height="110" rx="8" fill="#ffffff" stroke="#c5d8c8" stroke-width="1.5"/>
+    <text x="789" y="93" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="789" dy="0">standard, 60 to 110 (default 110,</tspan>
+      <tspan x="789" dy="30">also limited by the pod CIDR,</tspan>
+      <tspan x="789" dy="30">a /24 gives about 254 IPs)</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 353)">
+    
+    <rect width="1500" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 10)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="6" cy="6" r="4.5"/>
+      <circle cx="24" cy="6" r="4.5"/>
+      <circle cx="6" cy="24" r="4.5"/>
+      <circle cx="24" cy="24" r="4.5"/>
+      <line x1="10.5" y1="6" x2="19.5" y2="6"/>
+      <line x1="6" y1="10.5" x2="6" y2="19.5"/>
+      <line x1="24" y1="10.5" x2="24" y2="19.5"/>
+      <line x1="10.5" y1="24" x2="19.5" y2="24"/>
+    </g>
+    <text x="68" y="35" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">topologyManagerPolicy</text>
+
+    
+    <rect x="0" y="58" width="735" height="96" rx="8" fill="#ffffff" stroke="#c5d8c8" stroke-width="1.5"/>
+    <text x="24" y="99" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">restricted or best-effort,</tspan>
+      <tspan x="24" dy="34">the pod spans two sockets</tspan>
+    </text>
+
+    
+    <rect x="765" y="58" width="735" height="96" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <text x="789" y="99" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="789" dy="0">single-numa-node, scope pod,</tspan>
+      <tspan x="789" dy="34">strict PCIe and NUMA locality</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 527)">
+    
+    <rect width="1500" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 10)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="5" y="5" width="20" height="20" rx="3"/>
+      <line x1="10" y1="0" x2="10" y2="5"/>
+      <line x1="20" y1="0" x2="20" y2="5"/>
+      <line x1="10" y1="25" x2="10" y2="30"/>
+      <line x1="20" y1="25" x2="20" y2="30"/>
+      <line x1="0" y1="10" x2="5" y2="10"/>
+      <line x1="0" y1="20" x2="5" y2="20"/>
+      <line x1="25" y1="10" x2="30" y2="10"/>
+      <line x1="25" y1="20" x2="30" y2="20"/>
+    </g>
+    <text x="68" y="35" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">cpuManagerPolicy</text>
+
+    
+    <rect x="0" y="58" width="1500" height="75" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <text x="750" y="105" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">static with full-pcpus-only true</text>
+  </g>
+
+  
+  <g transform="translate(50, 680)">
+    
+    <rect width="1500" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 10)" stroke="#207448" stroke-width="3" fill="none">
+      <circle cx="6" cy="15" r="4"/>
+      <circle cx="24" cy="6" r="4"/>
+      <circle cx="24" cy="24" r="4"/>
+      <line x1="10" y1="15" x2="16" y2="15"/>
+      <path d="M 16 15 L 16 6 L 20 6"/>
+      <path d="M 16 15 L 16 24 L 20 24"/>
+    </g>
+    <text x="68" y="35" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">podPidsLimit</text>
+
+    
+    <rect x="0" y="58" width="735" height="145" rx="8" fill="#ffffff" stroke="#c5d8c8" stroke-width="1.5"/>
+    <text x="24" y="93" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">high, 8192 to 32768, 8 ranks times</tspan>
+      <tspan x="24" dy="32">8 to 16 DataLoader workers plus</tspan>
+      <tspan x="24" dy="32">thread pools gives 500 to 2000</tspan>
+      <tspan x="24" dy="32">tasks per pod</tspan>
+    </text>
+
+    
+    <rect x="765" y="58" width="735" height="145" rx="8" fill="#ffffff" stroke="#c5d8c8" stroke-width="1.5"/>
+    <text x="789" y="137" font-family="sans-serif" font-size="24" fill="#303a36">moderate, 2048 to 4096</text>
+  </g>
+
+  
+  <g transform="translate(50, 903)">
+    
+    <rect width="1500" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(18, 10)" stroke="#207448" stroke-width="3.5" fill="none">
+      <circle cx="15" cy="15" r="13"/>
+      <polyline points="15,6 15,15 22,15"/>
+    </g>
+    <text x="68" y="35" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">shutdownGracePeriod</text>
+
+    
+    <rect x="0" y="58" width="735" height="96" rx="8" fill="#ffffff" stroke="#c5d8c8" stroke-width="1.5"/>
+    <text x="24" y="99" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="24" dy="0">long, 120s to 300s for</tspan>
+      <tspan x="24" dy="34">emergency checkpointing</tspan>
+    </text>
+
+    
+    <rect x="765" y="58" width="735" height="96" rx="8" fill="#ffffff" stroke="#c5d8c8" stroke-width="1.5"/>
+    <text x="789" y="99" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="789" dy="0">moderate, 60s to 120s for</tspan>
+      <tspan x="789" dy="34">connection draining</tspan>
+    </text>
+  </g>
+
+  
+  <g transform="translate(50, 1080)">
+    <rect width="1500" height="65" rx="10" fill="#207448"/>
+    
+    <g transform="translate(24, 15)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 18 2 L 32 7 L 32 18 C 32 26 18 32 18 32 C 18 32 4 26 4 18 L 4 7 Z"/>
+      <polyline points="11,17 16,22 25,13"/>
+    </g>
+    <text x="750" y="42" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">roll every change through a drain and a canary node first</text>
+  </g>
+</svg>

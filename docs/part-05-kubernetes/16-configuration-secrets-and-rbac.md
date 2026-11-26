@@ -43,6 +43,14 @@ If you are new to RBAC, do not try to memorize every verb in section 5 on the fi
 
 ## 1. ConfigMaps
 
+![A timeline shows a new versioned ConfigMap created, the Deployment repointed and old pods replaced.](./img/p3-0516-immutable-rollout.svg)
+
+*Figure 5.16.1. Immutable objects change by creating a new name and rolling pods onto it.*
+
+![A ConfigMap reaches a container through env vars, a directory volume, or a subPath mount, and only the directory volume picks up changes.](./img/k16-config-doors.svg)
+
+*Figure 5.16.2. Environment variables and subPath mounts keep the old value, while a directory volume mount picks up a ConfigMap change.*
+
 Suppose a training job needs a log level and a hyperparameter file. Those settings are not confidential, so they belong in a ConfigMap rather than a Secret. A ConfigMap holds non-confidential configuration as key-value pairs. Use `data` for UTF-8 text and `binaryData` for bytes. The total size is up to ~1 MiB, which is the etcd and object limit. Think of a ConfigMap as a sticky note on the fridge. Anyone in the house can read it, and nobody expects it to hold a password. You can create one from literals, files or directories:
 
 ```bash
@@ -109,17 +117,9 @@ Read that pipeline from left to right. The first command builds the ConfigMap in
 
 The diagram below ties these pieces together. A Secret moves from an external store into a pod's tmpfs volume, while RBAC decides who can read the objects. Trace the top half first. The value starts in Vault or a cloud secret manager, a controller delivers it into the pod as a file in memory, and the application reads that file. The bottom half is about access. A subject, such as a user, a group or a ServiceAccount, reaches a Role through a binding. A RoleBinding keeps the grant inside one namespace, while a ClusterRoleBinding covers the whole cluster.
 
-```mermaid
-flowchart LR
-    subgraph Sec["Secret & Config Lifecycle"]
-        Ext["Vault / Cloud Secret Mgr"] -->|"ESO / CSI / Vault Injector"| PodVol["Pod tmpfs Volume<br/>(/var/run/secrets, 0400)"]
-        KMS["KMS v2 / EncryptionConfig<br/>(key-2 write, key-1 read)"] <-->|"k8s:enc:kms:v2"| Etcd[("etcd<br/>/registry/secrets")]
-    end
-    subgraph RBAC["RBAC Authorization"]
-        Subj["Subject<br/>User / Group / ServiceAccount"] --> RB["RoleBinding (Namespace)<br/>or ClusterRoleBinding (Cluster)"]
-        RB --> Role["Role (Namespace)<br/>or ClusterRole (Cluster / Aggregated)"]
-    end
-```
+![ConfigMaps](./img/m5-16-1.svg)
+
+*Figure 5.16.3. ConfigMaps, as a diagram.*
 
 For a config change to reach running pods, pick a rollout pattern now and wire the hash into the pod template. Keep that choice in mind for the rest of the chapter. Whenever a section talks about rotating a credential or changing a setting, ask the same two questions: what has to restart, and who triggers the restart.
 
@@ -199,6 +199,10 @@ spec:
 ```
 
 ### Defense in depth for secrets
+
+![Defence in depth for secrets as a stack of layers from physical security up to application credentials, with several locks and no single lock as the plan.](./img/p2-0516-layers-secrets.svg)
+
+*Figure 5.16.4. Defence in depth for secrets is a stack of layers from physical security up to application credentials, where each layer covers a risk the one above cannot.*
 
 How well you protect secret data comes down to how deep you are willing to go. Most teams start with choices that are "safe enough," then harden them over time. That approach carries risk and technical debt, and accepting that is part of the job. A wrong call about what is "safe enough" can still end in a bad headline, so it helps to know each layer.
 
@@ -397,6 +401,10 @@ If the page loads and the files appear in the browser, the whole chain worked. T
 
 ### GitOps-safe secret management
 
+![A table compares six GitOps secret patterns by how the value reaches the pod and what is left in etcd.](./img/p3-0516-gitops-where-lives.svg)
+
+*Figure 5.16.5. Choose by where the plaintext may exist, since some patterns still create a native Secret in etcd.*
+
 Never commit plaintext Secrets to Git. The approaches below keep the values out of the repository. Related options are covered in 4.12 and 4.26. The table lists the main patterns and notes for each. Notice which rows still create a native Secret in etcd, and which keep the value out of etcd entirely. A useful way to read the table is to ask one question per row: where does the plaintext value live, and who can fetch it? Sealed Secrets and SOPS keep the value encrypted in Git, but the cluster still produces a normal Secret at the end. Workload identity removes the value altogether, because there is nothing to store.
 
 | Approach | How | Notes |
@@ -409,6 +417,10 @@ Never commit plaintext Secrets to Git. The approaches below keep the values out 
 | **CSI/Workload Identity** | Pods authenticate to cloud APIs with federated tokens, no secret at all | Best for cloud resources |
 
 ### Sealed Secrets in depth
+
+![A flow showing a public key sealing a Secret into Git and the in-cluster controller decrypting it with the private key.](./img/p3-0516-sealed-flow.svg)
+
+*Figure 5.16.6. Only the encrypted object lives in Git while the controller holds the key that turns it back into a Secret.*
 
 Declarative workflows raise a hard question. Your manifests belong in Git, but the credentials and keys they use do not. Teams that want a pure GitOps model often keep secrets out of Git entirely, and that breaks the pattern. The other option is to seal the secret, so its committed form reveals nothing useful. Picture a locked box with a mail slot. Anyone can drop a letter through the slot, but only the holder of the key can open the box and read what is inside. Sealing works the same way, with the public key as the slot and the private key as the lock's key.
 
@@ -503,9 +515,17 @@ Know the scope of this tool before you rely on it. A common misunderstanding is 
 
 ### Rotation
 
+![Two-phase rotation adds the new credential, moves each consumer over, and only then removes the old credential.](./img/k16-two-phase-rotation.svg)
+
+*Figure 5.16.7. Two-phase rotation adds the new credential first, moves every consumer, and removes the old one last.*
+
 Rotation only works when consumers reload. File mounts update automatically through the kubelet refresh, but the application still has to re-read them. Environment-variable secrets need a pod restart. You can use a reloader controller keyed on the secret hash, or run `kubectl rollout restart`. For databases and tokens, use two-phase rotation: add the new credential, switch consumers over, and then remove the old one. You can automate this with ESO refresh and Reloader, Vault dynamic leases, or cert-manager for certificates (see 5.12). Consider the two-phase rule as a bridge. The new credential goes up first, so the old and the new both work for a while. Then every consumer moves over. Only after that does the old credential get removed. If you remove it first, any consumer you forgot to update fails at once.
 
 ### HashiCorp Vault Agent Injector and Kubernetes authentication
+
+![Annotations cause a webhook to add Vault agent containers that authenticate with the pod token and write a secret file.](./img/p3-0516-vault-injector-flow.svg)
+
+*Figure 5.16.8. The pod proves its identity with its ServiceAccount token and Vault checks it through TokenReview.*
 
 Instead of syncing external secrets into etcd as Kubernetes `Secret` objects, you can let the HashiCorp Vault Agent Injector deliver them. The difference matters. A synced Secret lives in etcd and can be read through the API. An injected secret is rendered into a file inside the pod, so the value never becomes a Kubernetes object at all. The injector uses a `MutatingWebhookConfiguration`, named `vault-agent-injector-cfg`, to add two containers. The first is a `vault-agent-init` init container, which fetches initial secrets before the workload starts. The second is an optional `vault-agent` sidecar, which keeps secrets updated. Both write rendered files onto an in-memory volume mounted at `/vault/secrets`. As detailed in *Production Kubernetes* Chapter 7, the injector watches for Pod annotations:
 
@@ -646,6 +666,10 @@ Keep secret store providers unknown to your application. Applications can fetch 
 
 ### Choosing how an application reads ConfigMaps and Secrets
 
+![Config should come from the platform at runtime, with a mounted file preferred over environment variables or a client API call, and baked-in config rejected.](./img/p2-0516-config-doors.svg)
+
+*Figure 5.16.9. Config should come from the platform at runtime, and a ConfigMap or Secret mounted as a file is the preferred way to read it.*
+
 Config should come from the platform at runtime, not from inside the container image. A baked-in setting ties the binary to one environment. It also exposes secrets to anyone who can pull the image. Imagine a config file baked into an image that is pushed to a shared registry. Anyone with pull access to that registry now holds the database password, even if they never had access to the cluster. Kubernetes offers three ways to deliver config to a Pod, and they differ in how well they suit each app.
 
 Mounting a ConfigMap or Secret as a file is the preferred method. The Pod spec names the volume and the path where it appears. This example mounts the `my-config` ConfigMap at `/etc/my-app/config.json`:
@@ -727,6 +751,10 @@ Teams that run an external system get the most value when the platform handles t
 
 ## 3. Projected volumes and ServiceAccount tokens
 
+![Three sources, a token, a CA bundle and pod labels, are merged into one directory by a projected volume.](./img/p3-0516-projected-volume.svg)
+
+*Figure 5.16.10. A projected volume gathers identity, trust and self-description into a single mount.*
+
 A pod often needs a token, a CA bundle and its own labels at the same time. A projected volume gathers those in one directory. A projected volume combines several sources in one directory. The sources are `secret`, `configMap`, `downwardAPI`, `serviceAccountToken`, and `clusterTrustBundle`, which holds CA bundles. The example below combines three of them.
 
 ```yaml
@@ -763,6 +791,10 @@ Workload identity federation maps Kubernetes ServiceAccounts to cloud IAM identi
 Give each workload its own ServiceAccount, and grant it only the RBAC it needs. Workload identity works like a hotel key card issued at check-in. The cloud provider trusts the cluster's signature, so it can hand the pod a card that expires, and nobody has to store a master key inside the hotel.
 
 ### Service Account tokens and TokenReview
+
+![A pod sends its ServiceAccount token to a receiving service, which posts a TokenReview to the API server and gets back the authenticated user.](./img/k16-tokenreview.svg)
+
+*Figure 5.16.11. A receiving service asks the API server through TokenReview whether a pod's ServiceAccount token is genuine and whose account it is.*
 
 Every pod runs under a ServiceAccount, and the account gives a group of pods one identity. If no account is assigned, the pod gets the default ServiceAccount of its namespace. Each ServiceAccount has a Secret that holds a JSON Web Token (JWT). Unless you say otherwise, that token is mounted into each pod that uses the account. The pod can then call the Kubernetes API, or other services, with it. The example from *Production Kubernetes* shows the account pointing at its token Secret:
 
@@ -845,6 +877,10 @@ Create a unique ServiceAccount for each workload that needs API access, so you c
 
 ### Projected service account tokens (PSAT)
 
+![Two columns compare the long-lived ServiceAccount token with a short-lived audience-bound projected token.](./img/p3-0516-sat-vs-psat.svg)
+
+*Figure 5.16.12. Projected tokens add an expiry, an audience and pod details to the same TokenReview flow.*
+
 *Production Kubernetes* dates projected service account tokens to Kubernetes v1.12. They build on ordinary tokens and fix three weak points: no time to live (TTL), wide scope and long persistence. Before they work, the API server needs a few flags:
 
 ```yaml
@@ -904,6 +940,10 @@ The SAT and PSAT flows are nearly the same. The only real differences are the va
 
 ## 4. Authentication
 
+![A table maps humans, machines and robots to the recommended authentication method and flags static files as avoided.](./img/p3-0516-auth-methods.svg)
+
+*Figure 5.16.13. Use OIDC for people, ServiceAccount tokens for workloads and avoid static credential files.*
+
 A request arrives at the API server from a caller it has never seen before. Before it can decide anything, it needs to know who is asking. Think of authentication as the front desk asking for ID, and authorization as the rules that decide which rooms that ID opens. The API server answers the first question with the methods below. Section 5.5 covers the basics.
 
 Client certificates are one option. The certificate's CN sets the user, and its O field sets the groups. Kubelets use them, and so does the admin kubeconfig from kubeadm. Avoid long-lived admin certificates for humans.
@@ -933,6 +973,10 @@ Kubernetes has no User or Group object. Those names exist only for identificatio
 The shared secret model has one more problem, outside Kubernetes. An untrusted entity cannot authenticate to a secret store to get an identity in the first place. *Production Kubernetes* calls this the secure introduction problem, and it returns to it later. Put simply, the first credential is the hardest to hand out safely. Every credential after it can be fetched once something is trusted, but something has to be trusted first.
 
 ### Client certificates from the CSR flow
+
+![A five-step flow from key and request to an approved certificate in a kubeconfig, with its drawbacks.](./img/p3-0516-csr-lifecycle.svg)
+
+*Figure 5.16.14. Certificates identify users well but cannot be revoked early, so they are not the main login method.*
 
 The PKI model uses certificates and keys to identify users. kubeadm builds that PKI when it creates a cluster, and it gives you a kubeconfig, usually called `admin.conf`, that holds the `kubernetes-admin` user. That file is essentially the root key to the cluster. To see which user it logs in as, decode the `client-certificate-data` field and read it with `openssl`. The output shows the subject `O=system:masters, CN=kubernetes-admin`. The `CN` is the username. Any `O` (Organization) value becomes a group the user belongs to. Think of the `CN` as the name on a badge, and the `O` field as the department printed under it.
 
@@ -1024,6 +1068,10 @@ OIDC also has a limit. The specification requires users to log in through the pr
 
 ## 5. RBAC
 
+![A Role with four rules and a RoleBinding naming a group and a ServiceAccount, with allowed and denied examples.](./img/p3-0516-trainer-runner-walk.svg)
+
+*Figure 5.16.15. The Role lists permissions and the binding gives them to subjects only in its own namespace.*
+
 A new engineer joins team A and needs to read training logs, but must not be able to delete another team's jobs. Writing that rule is what RBAC is for. Each rule answers one question: who can do which verb to which resource, and where. RBAC decides whether a request proceeds. It authorises requests by verbs on resources within namespaces. Four API objects do the work, and the table compares them.
 
 | Object | Scope | Meaning |
@@ -1071,6 +1119,10 @@ Read the Role rule by rule. The first rule lets the trainer read pods and their 
 
 ### Why RBAC matters and how a request is checked
 
+![A request is first authenticated to establish who is calling, then authorized by RBAC on identity, resource and verb, with a 403 for a failed check.](./img/p2-0516-rbac-check.svg)
+
+*Figure 5.16.16. A request first passes authentication to find the caller, then RBAC checks the identity, resource and verb, and a failed check returns HTTP 403.*
+
 Think of RBAC as the badge reader at each door of a lab. Every request has to show a card, which is authentication. The reader then checks whether that card opens that room for that action, which is authorization. Role-based access control, or RBAC, is a mechanism for restricting both access to and actions on Kubernetes APIs. Its job is to make sure only authorized users get through. It is a critical part of hardening the cluster where you deploy your application. It also prevents unexpected accidents. Picture one person working in the wrong namespace who mistakenly takes down production while believing they are clearing out their test cluster.
 
 Every request to the API passes through two checks. Authentication comes first, and it establishes who is calling. The caller might be a user, a ServiceAccount, or no identity at all. Authorization comes second. It combines the identity, the resource (the HTTP path) and the verb, then decides whether the action may proceed. If the check fails, the caller gets an HTTP 403 error.
@@ -1080,6 +1132,14 @@ A simple way to say it is that RBAC decides who can ask, not what the answer doe
 > **Warning:** By default, the API server installs a ClusterRole that lets `system:unauthenticated` users reach API discovery. On a cluster exposed to the public internet, that is a poor choice, and at least one serious vulnerability has come from it. If your cluster faces a hostile environment, set `--anonymous-auth=false` on the API server.
 
 ### Verbs and HTTP methods
+
+![A Role grants a set of verbs on a resource, so a monitoring agent that holds only list and watch is denied when it tries to create a Pod.](./img/p2-0516-rbac-verbs-rule.svg)
+
+*Figure 5.16.17. A monitoring agent with only list and watch on pods is refused when it tries to create a pod, because a Role grants only the verbs it names.*
+
+![RBAC verbs mapped to HTTP methods, where get, list and watch all use GET, and a monitoring agent needs only list and watch.](./img/p2-0516-verb-map.svg)
+
+*Figure 5.16.18. RBAC verbs roughly match HTTP methods, but get, list and watch all use GET, so a monitoring agent needs only list and watch.*
 
 A Role grants a verb on a resource. Verbs match HTTP methods roughly, so you can reason about them from the API calls you already know. The commonly used verbs appear in this lookup table.
 
@@ -1097,6 +1157,10 @@ A Role grants a verb on a resource. Verbs match HTTP methods roughly, so you can
 Notice that `get`, `list` and `watch` all show up as `GET`. The HTTP method alone does not tell you what the caller can see. Start each Role from the smallest verb set the workload needs. A monitoring agent, for example, needs `list` and `watch` on pods to see what is running. It does not need `create`, `update` or `delete`. Writing down only the verbs you need makes a later audit short.
 
 ### Properties
+
+![A grid shows how Role and ClusterRole combine with RoleBinding and ClusterRoleBinding to set scope.](./img/p3-0516-role-binding-scope.svg)
+
+*Figure 5.16.19. A RoleBinding limits even a ClusterRole to one namespace.*
 
 RBAC is additive only. There are no deny rules, so the permissions are the union of all bindings. A user with `edit` cannot be denied one verb, except by removing the binding or by using an admission policy. Think of RBAC bindings as keys on a ring. Adding a key only opens more doors, and no key says "not this door." If you need to take access away, you take a key off the ring.
 
@@ -1128,6 +1192,10 @@ The patterns below cover the common cases on a shared GPU cluster. Decide who ow
 10. Store RBAC as code with owners, using CODEOWNERS. Review diffs before they merge. Reconcile declaratively with `kubectl auth reconcile -f some-rbac-config.yaml`, which supports `--dry-run`, as shown in *Kubernetes: Up and Running* Chapter 14. Run an access review regularly with `kubectl-who-can`, `rbac-tool`, `rakkess`, `kubectl auth can-i --list`, `rbac-lookup`, KubiScan, or the Kubescape, Polaris and Trivy RBAC checks.
 
 ### Least-privilege admin elevation via RBAC `impersonate` (`sudo`-style workflow)
+
+![An ops-team operator reads by default, is refused a write, and gains cluster-admin rights for one command with --as=cluster-admin.](./img/k16-impersonate-sudo.svg)
+
+*Figure 5.16.20. Operators get read-only rights by default and raise to cluster-admin for one command with the impersonation flag, which the audit log records.*
 
 Binding `cluster-admin` straight to an operator's daily identity invites accidents. An engineer with the wrong `kubeconfig` context active can run destructive commands with full rights. *Production Kubernetes* Chapter 10 recommends a `sudo`-style privilege-elevation pattern, built on Kubernetes user impersonation. It works in three steps:
 
@@ -1207,6 +1275,10 @@ Impersonation needs its own permission. An impersonated user is denied when the 
 
 ### Testing and auditing RBAC
 
+![A ladder of RBAC questions each paired with the kubectl or plugin command that answers it.](./img/p3-0516-rbac-testing-ladder.svg)
+
+*Figure 5.16.21. Run these checks on a quiet day so an overbroad role is found before an incident.*
+
 These commands test what an identity can do, and they help reveal bindings that grant too much access.
 
 ```bash
@@ -1258,6 +1330,10 @@ Decide which layer owns each setting before you add one more env var.
 
 ## 7. Failure modes and troubleshooting
 
+![A table maps eight symptoms in configuration, secrets and RBAC to causes and fixes.](./img/p3-0516-failure-ladder.svg)
+
+*Figure 5.16.22. Start from the symptom column to decide which command to run next.*
+
 Your first sign of trouble is usually a symptom, not a cause. The table maps common symptoms to their likely causes and fixes. Check the symptom column first, because it tells you which command to run next. Read each row as a short diagnosis: the symptom you see, the cause that usually produces it, and the first fix to try. If the cause is not obvious, go back to the symptom and inspect the object it names with `describe` or `auth can-i`.
 
 | Symptom | Likely cause | Fix |
@@ -1299,6 +1375,10 @@ Next, work through these exercises on a `kind` or `kubeadm` cluster. The interac
 13. Clean up.
 
 ## 9. Common mistakes
+
+![Six RBAC grants radiate toward cluster-admin with the reason each one is an escalation path.](./img/p3-0516-escalation-paths.svg)
+
+*Figure 5.16.23. Create pods, exec, secret reads, nodes proxy, escalate, bind and impersonate can each lead to full control.*
 
 Most secret and RBAC incidents are not exotic. Someone copied a convenient setting from an old example, and it stayed in place for months. This list collects the mistakes the chapter has warned about.
 

@@ -1,0 +1,108 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>RED and golden signals: from the box to the service</title>
+  <desc>A top-to-bottom diagnostic flow. An alert on p99 latency leads to a question about request rate, which branches to architecture or to load characterisation, then both converge on a USE sweep on one node and finally on hypothesis, test, narrow.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <defs>
+    <marker id="arw" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="18" markerHeight="18" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#207448"/>
+    </marker>
+    <marker id="arwO" viewBox="0 0 10 10" refX="10" refY="5" markerWidth="19" markerHeight="19" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M0 0 L10 5 L0 10 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="800" y="62" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">RED and golden signals:</text>
+  <text x="800" y="116" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36">from the box to the service</text>
+
+  <!-- ================= NODE A ================= -->
+  <rect x="570" y="160" width="460" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M622 197 V205"/>
+    <path d="M608 231 V219 A14 14 0 0 1 636 219 V231"/>
+    <path d="M602 231 H642"/>
+    <circle cx="622" cy="239" r="4"/>
+  </g>
+  <text x="666" y="231" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Alert: p99 up</text>
+
+  <!-- ================= NODE B (decision) ================= -->
+  <path d="M598 360 H1002 L1030 420 L1002 480 H598 L570 420 Z" fill="#e8f1ea" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="622" cy="420" r="22"/>
+    <path d="M613 412 A9 9 0 0 1 631 412 A9 9 0 0 1 622 426 V430"/>
+    <circle cx="622" cy="435" r="2.5" fill="#207448" stroke="none"/>
+  </g>
+  <text x="666" y="431" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Request rate?</text>
+
+  <!-- ================= NODE C ================= -->
+  <rect x="190" y="600" width="480" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="242" cy="660" r="14"/>
+    <path d="M259 660 H264"/>
+    <path d="M254 672 L258 676"/>
+    <path d="M242 677 V682"/>
+    <path d="M230 672 L226 676"/>
+    <path d="M225 660 H220"/>
+    <path d="M230 648 L226 644"/>
+    <path d="M242 643 V638"/>
+    <path d="M254 648 L258 644"/>
+  </g>
+  <text x="286" y="652" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Architecture:</text>
+  <text x="286" y="690" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">service or host</text>
+
+  <!-- ================= NODE D ================= -->
+  <rect x="930" y="600" width="480" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M956 678 H1008"/>
+    <rect x="964" y="662" width="8" height="16"/>
+    <rect x="978" y="652" width="8" height="26"/>
+    <rect x="992" y="642" width="8" height="36"/>
+  </g>
+  <text x="1026" y="652" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Load: characterise</text>
+  <text x="1026" y="690" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">workload</text>
+
+  <!-- ================= NODE E ================= -->
+  <rect x="570" y="800" width="460" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="604" y="840" width="36" height="16" rx="3"/>
+    <rect x="604" y="860" width="36" height="16" rx="3"/>
+    <circle cx="612" cy="848" r="2" fill="#207448" stroke="none"/>
+    <path d="M620 848 H632"/>
+    <circle cx="612" cy="868" r="2" fill="#207448" stroke="none"/>
+    <path d="M620 868 H632"/>
+  </g>
+  <text x="666" y="852" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">USE sweep on</text>
+  <text x="666" y="890" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">one node</text>
+
+  <!-- ================= NODE F ================= -->
+  <rect x="570" y="1000" width="460" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M602 1041 H642 L626 1061 V1077 H618 V1061 Z"/>
+  </g>
+  <text x="666" y="1052" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Hypothesis, test,</text>
+  <text x="666" y="1090" font-family="Helvetica Neue, Arial, sans-serif" font-size="30" font-weight="bold" fill="#303a36">narrow</text>
+
+  <!-- ================= ARROWS ================= -->
+
+  <!-- A -> B -->
+  <path d="M800 280 V360" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- B -> C (steady) -->
+  <path d="M690 480 V571 H430 V600" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+  <text x="560" y="551" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="26" fill="#303a36">steady</text>
+
+  <!-- B -> D (also up) -->
+  <path d="M910 480 V571 H1170 V600" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+  <text x="1040" y="551" text-anchor="middle" font-family="Helvetica Neue, Arial, sans-serif" font-size="26" fill="#303a36">also up</text>
+
+  <!-- C -> E -->
+  <path d="M430 720 V760 H720 V800" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- D -> E -->
+  <path d="M1170 720 V760 H880 V800" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arw)"/>
+
+  <!-- E -> F (single most important step) -->
+  <path d="M800 920 V1000" fill="none" stroke="#db8129" stroke-width="6" marker-end="url(#arwO)"/>
+</svg>

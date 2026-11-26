@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Debug from the object outward, cheapest question first</title>
+  <desc>Visual ladder of nine debugging steps in Kubernetes, from pod status and events through node, kubelet, container runtime, and network.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="78" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Debug from the object outward, cheapest question first</text>
+  <path d="M 125,130 Q 110,130 110,142 L 110,320.5 Q 110,332.5 95,332.5 Q 110,332.5 110,344.5 L 110,523 Q 110,535 125,535" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text transform="rotate(-90 68 333)" x="68" y="333" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Cheap: the cluster API</text>
+  <path d="M 125,681 Q 110,681 110,693 L 110,858.5 Q 110,870.5 95,870.5 Q 110,870.5 110,882.5 L 110,1048 Q 110,1060 125,1060" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text transform="rotate(-90 68 871)" x="68" y="871" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Expensive: the node</text>
+  <g id="step-1">
+    <rect x="170" y="130" width="1390" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="206" cy="162" r="24" fill="#207448" />
+    <text x="206" y="170" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <g transform="translate(246, 142)">
+      <rect x="2" y="2" width="36" height="36" rx="6" stroke="#207448" stroke-width="3.5" fill="none" /><circle cx="12" cy="14" r="3" fill="#207448" /><line x1="20" y1="14" x2="32" y2="14" stroke="#207448" stroke-width="3.5" stroke-linecap="round" /><circle cx="12" cy="24" r="3" fill="#207448" /><line x1="20" y1="24" x2="32" y2="24" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="310" y="172" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">STATUS column of the pod</text>
+    <rect x="1281" y="140" width="259" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1410" y="170" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">kubectl get pod</text>
+  </g>
+  <g id="step-2">
+    <rect x="170" y="235" width="1390" height="64" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3.5" />
+    <circle cx="206" cy="267" r="24" fill="#207448" />
+    <text x="206" y="275" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <g transform="translate(246, 247)">
+      <rect x="2" y="2" width="36" height="36" rx="6" stroke="#207448" stroke-width="3.5" fill="none" /><line x1="2" y1="13" x2="38" y2="13" stroke="#207448" stroke-width="3" /><line x1="14" y1="13" x2="14" y2="38" stroke="#207448" stroke-width="3" /><line x1="19" y1="21" x2="32" y2="21" stroke="#207448" stroke-width="3" stroke-linecap="round" /><line x1="19" y1="29" x2="29" y2="29" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="310" y="277" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Events table at the bottom</text>
+    <rect x="1207" y="245" width="333" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1373" y="275" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">kubectl describe pod</text>
+  </g>
+  <g id="step-3">
+    <rect x="170" y="340" width="1390" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="206" cy="372" r="24" fill="#207448" />
+    <text x="206" y="380" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <g transform="translate(246, 352)">
+      <circle cx="20" cy="20" r="17" stroke="#207448" stroke-width="3.5" fill="none" /><polyline points="20,9 20,20 28,24" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" />
+    </g>
+    <text x="310" y="382" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Namespace events, sorted by time</text>
+    <rect x="1237" y="350" width="303" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1388" y="380" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">kubectl get events</text>
+  </g>
+  <g id="step-4">
+    <rect x="170" y="445" width="1390" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="206" cy="490" r="24" fill="#207448" />
+    <text x="206" y="498" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <g transform="translate(246, 470)">
+      <rect x="4" y="8" width="24" height="28" rx="3" stroke="#207448" stroke-width="3.5" fill="none" /><path d="M 12 4 L 32 4 C 34 4 36 6 36 8 L 36 28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" fill="none" /><line x1="9" y1="16" x2="23" y2="16" stroke="#207448" stroke-width="3" stroke-linecap="round" /><line x1="9" y1="22" x2="23" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" /><line x1="9" y1="28" x2="19" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="310" y="483" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="310" dy="0">Logs of the running container </tspan>
+      <tspan x="310" dy="30">and the earlier one</tspan>
+    </text>
+    <rect x="1162" y="468" width="378" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1351" y="498" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">kubectl logs --previous</text>
+    <rect x="932" y="468" width="214" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1039" y="498" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">kubectl logs</text>
+  </g>
+  <g id="step-5">
+    <rect x="170" y="576" width="1390" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="206" cy="608" r="24" fill="#207448" />
+    <text x="206" y="616" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <g transform="translate(246, 588)">
+      <rect x="2" y="4" width="36" height="32" rx="5" stroke="#207448" stroke-width="3.5" fill="none" /><polyline points="8,16 15,20 8,24" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none" /><line x1="18" y1="24" x2="28" y2="24" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="310" y="618" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Exec into the container, only if the pod looks fine</text>
+    <rect x="1326" y="586" width="214" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1433" y="616" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">kubectl exec</text>
+  </g>
+  <g id="step-6">
+    <rect x="170" y="681" width="1390" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="206" cy="713" r="24" fill="#207448" />
+    <text x="206" y="721" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">6</text>
+    <g transform="translate(246, 693)">
+      <rect x="2" y="6" width="36" height="12" rx="3" stroke="#207448" stroke-width="3.5" fill="none" /><rect x="2" y="22" width="36" height="12" rx="3" stroke="#207448" stroke-width="3.5" fill="none" /><circle cx="8" cy="12" r="2" fill="#207448" /><circle cx="8" cy="28" r="2" fill="#207448" /><line x1="16" y1="12" x2="32" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" /><line x1="16" y1="28" x2="32" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="310" y="723" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Node: Conditions, Taints and Lease</text>
+    <rect x="1192" y="691" width="348" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1366" y="721" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">kubectl describe node</text>
+  </g>
+  <g id="step-7">
+    <rect x="170" y="786" width="1390" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="206" cy="818" r="24" fill="#207448" />
+    <text x="206" y="826" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">7</text>
+    <g transform="translate(246, 798)">
+      <circle cx="20" cy="20" r="7" stroke="#207448" stroke-width="3.5" fill="none" /><path d="M 20 4 L 20 9 M 20 31 L 20 36 M 4 20 L 9 20 M 31 20 L 36 20 M 8.7 8.7 L 12.2 12.2 M 27.8 27.8 L 31.3 31.3 M 8.7 31.3 L 12.2 27.8 M 27.8 12.2 L 31.3 8.7" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="310" y="828" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Kubelet journal</text>
+    <rect x="1162" y="796" width="378" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1351" y="826" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">journalctl -xeu kubelet</text>
+  </g>
+  <g id="step-8">
+    <rect x="170" y="891" width="1390" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="206" cy="923" r="24" fill="#207448" />
+    <text x="206" y="931" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">8</text>
+    <g transform="translate(246, 903)">
+      <path d="M 20 3 L 36 12 L 36 28 L 20 37 L 4 28 L 4 12 Z" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" fill="none" /><line x1="20" y1="20" x2="36" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" /><line x1="20" y1="20" x2="4" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" /><line x1="20" y1="20" x2="20" y2="37" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="310" y="933" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Container runtime</text>
+    <rect x="1415" y="901" width="125" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text x="1477" y="931" font-family="monospace" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">crictl</text>
+  </g>
+  <g id="step-9">
+    <rect x="170" y="996" width="1390" height="64" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="206" cy="1028" r="24" fill="#207448" />
+    <text x="206" y="1036" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">9</text>
+    <g transform="translate(246, 1008)">
+      <circle cx="8" cy="20" r="5" stroke="#207448" stroke-width="3.5" fill="none" /><circle cx="32" cy="10" r="5" stroke="#207448" stroke-width="3.5" fill="none" /><circle cx="32" cy="30" r="5" stroke="#207448" stroke-width="3.5" fill="none" /><line x1="13" y1="18" x2="27" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round" /><line x1="13" y1="22" x2="27" y2="28" stroke="#207448" stroke-width="3" stroke-linecap="round" /><line x1="32" y1="15" x2="32" y2="25" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="310" y="1038" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Network plugin, then DNS</text>
+  </g>
+  <g id="takeaway-bar">
+    <rect x="40" y="1100" width="1520" height="60" rx="10" fill="#207448" />
+    <text x="800" y="1139" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Each seam is a handoff between two teams, so ask who holds the object now.</text>
+  </g>
+</svg>

@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Retry layers multiply</title>
+  <desc>Architecture diagram illustrating how retry layers multiply attempts, the mathematical formula for expected attempts, and the single-layer gateway budget rule.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="9" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Retry layers multiply</text>
+  <rect x="40" y="110" width="640" height="870" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="70" y="150" width="330" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 170)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="44" rx="6" />
+    <line x1="4" y1="18" x2="52" y2="18" />
+    <circle cx="12" cy="12" r="2" fill="#207448" stroke="none" />
+    <circle cx="18" cy="12" r="2" fill="#207448" stroke="none" />
+    <polyline points="14,28 22,34 14,40" />
+    <line x1="26" y1="40" x2="38" y2="40" />
+  </g>
+  <g transform="translate(345, 180)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 14 A 12 12 0 1 1 20 6" />
+    <polyline points="20,1 20,7 26,7" />
+  </g>
+  <text x="235" y="208" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">SDK</text>
+  <line x1="235" y1="245" x2="235" y2="285" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="70" y="290" width="330" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 310)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 50 L 8 24 A 20 20 0 0 1 48 24 L 48 50" />
+    <line x1="4" y1="50" x2="52" y2="50" />
+    <path d="M 20 50 L 20 32 A 8 8 0 0 1 36 32 L 36 50" />
+  </g>
+  <g transform="translate(345, 320)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 14 A 12 12 0 1 1 20 6" />
+    <polyline points="20,1 20,7 26,7" />
+  </g>
+  <text x="235" y="348" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">gateway</text>
+  <line x1="235" y1="385" x2="235" y2="425" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="70" y="430" width="330" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 450)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="10" />
+    <path d="M 28 8 L 28 14 M 28 42 L 28 48 M 8 28 L 14 28 M 42 28 L 48 28 M 14 14 L 18 18 M 38 38 L 42 42 M 14 42 L 18 38 M 38 14 L 42 18" />
+  </g>
+  <g transform="translate(345, 460)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 14 A 12 12 0 1 1 20 6" />
+    <polyline points="20,1 20,7 26,7" />
+  </g>
+  <text x="240" y="488" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">mesh sidecar</text>
+  <line x1="235" y1="525" x2="235" y2="565" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="70" y="570" width="330" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 590)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="16" width="44" height="24" rx="4" />
+    <line x1="16" y1="28" x2="20" y2="28" />
+    <line x1="26" y1="28" x2="30" y2="28" />
+    <line x1="36" y1="28" x2="40" y2="28" />
+    <line x1="16" y1="16" x2="16" y2="8" />
+    <line x1="40" y1="16" x2="40" y2="8" />
+  </g>
+  <g transform="translate(345, 600)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 14 A 12 12 0 1 1 20 6" />
+    <polyline points="20,1 20,7 26,7" />
+  </g>
+  <text x="235" y="628" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">router</text>
+  <line x1="235" y1="665" x2="235" y2="705" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <rect x="70" y="710" width="330" height="95" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  <text x="235" y="767" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">(and sometimes more)</text>
+  <path d="M 415 170 C 428 170, 428 395, 436 407.5 C 428 420, 428 645, 415 645" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <rect x="445" y="358" width="215" height="100" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="552" y="399" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="552" dy="0">retries on</tspan>
+    <tspan x="552" dy="32">its own</tspan>
+  </text>
+  <rect x="720" y="110" width="840" height="870" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <g transform="translate(750, 130)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="4" width="40" height="48" rx="6" />
+    <line x1="14" y1="16" x2="42" y2="16" stroke-width="3" />
+    <circle cx="18" cy="26" r="2" fill="#207448" stroke="none" />
+    <circle cx="28" cy="26" r="2" fill="#207448" stroke="none" />
+    <circle cx="38" cy="26" r="2" fill="#207448" stroke="none" />
+    <circle cx="18" cy="36" r="2" fill="#207448" stroke="none" />
+    <circle cx="28" cy="36" r="2" fill="#207448" stroke="none" />
+    <circle cx="38" cy="36" r="2" fill="#207448" stroke="none" />
+  </g>
+  <text x="1140" y="166" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Arithmetic panel</text>
+  <rect x="760" y="205" width="760" height="195" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1140" y="243" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0" font-weight="bold">One client, k attempts, failure chance p:</tspan>
+    <tspan x="1140" dy="32">expected attempts = 1 + p + p squared ...</tspan>
+    <tspan x="1140" dy="32">p to the power k - 1;</tspan>
+    <tspan x="1140" dy="32">for k = 4: p 0.1 gives 1.11,</tspan>
+    <tspan x="1140" dy="32">p 0.5 gives 1.875, p 0.8 gives 2.95</tspan>
+  </text>
+  <rect x="760" y="440" width="760" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1140" y="482" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">SRE chapter: three layers each making 3 retries</tspan>
+    <tspan x="1140" dy="32">(4 attempts) can create 64 attempts</tspan>
+    <tspan x="1140" dy="32" font-weight="bold">at the bottom (4 x 4 x 4)</tspan>
+  </text>
+  <rect x="760" y="615" width="760" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="1140" y="657" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1140" dy="0">AWS builders article: 243 times for</tspan>
+    <tspan x="1140" dy="32">a five-deep call chain = 3 to the power 5,</tspan>
+    <tspan x="1140" dy="32">three attempts per layer</tspan>
+  </text>
+  <rect x="760" y="790" width="760" height="85" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+  <text x="1140" y="842" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">With 4 attempts per layer, five layers give 1,024</text>
+  <rect x="40" y="1030" width="1520" height="130" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(65, 1065)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 10 14 L 10 28 C 10 42 28 50 28 50 C 28 50 46 42 46 28 L 46 14 Z" fill="#ffffff" />
+    <polyline points="20,28 26,34 36,22" />
+  </g>
+  <text x="820" y="1070" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="820" dy="0" font-weight="bold">set the budget at the gateway in one layer and turn off every other retry loop;</tspan>
+    <tspan x="820" dy="32">retry at the layer directly above the one rejecting, not at every layer;</tspan>
+    <tspan x="820" dy="32">if a large share of backends is overloaded, do not retry at all</tspan>
+  </text>
+</svg>

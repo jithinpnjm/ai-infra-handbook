@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "p2-2003-use-grid",
+  "title": "USE sweep: one row per resource, three checks",
+  "spec": "A grid table with a left column of resource rows and three columns headed 'Utilisation', 'Saturation' and 'Errors'. A top banner arrow across the columns labelled 'Sweep order: errors first, then saturation, then utilisation'. Rows and cell text, with commands in monospace: 'CPU' | 'mpstat -P ALL 1, vmstat 1 us+sy' | 'vmstat 1 r above CPU count, sar -q' | 'dmesg machine check messages'. 'Memory' | 'free -m, vmstat 1' | 'vmstat 1 si/so, sar -B, OOM in dmesg' | 'dmesg, ECC tools'. 'Network interface' | 'ip -s link, sar -n DEV' | 'nstat TcpRetransSegs, sar -n EDEV drops' | 'ip -s link errors'. 'Disk I/O' | 'iostat -xz 1 %util' | 'iostat aqu-sz above 1 or high await' | 'smartctl, /sys error counters'. 'Disk capacity' | 'df -h' | 'not meaningful once full' | 'ENOSPC in strace or logs'. 'File descriptors' | '/proc/sys/fs/file-nr, ls /proc/PID/fd against ulimit -n' | 'not meaningful' | 'EMFILE in strace'. 'Tasks and threads' | 'top Tasks against threads-max' | 'blocked allocation' | 'can't fork errors'. Empty cells are drawn as dashed boxes with the label 'say it out loud'. Orange outline on the 'Disk I/O' saturation cell as the example to say aloud. Bottom green bar: 'Sweep every resource, then say which cells you could not fill.'",
+  "anchor": "### 6. The USE method as a sweep",
+  "alt": "A grid of Linux resources against utilisation, saturation and errors, with the command that answers each cell.",
+  "cap": "The USE checklist for Linux, with one row per resource and the command that answers each of its utilisation, saturation and error questions."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "p2-2003-golden-signals",
+  "title": "Golden signals drawn from RED and USE",
+  "spec": "Two groups side by side. Left group, green container headed 'RED: service health (user view)' containing three boxes: 'Latency (duration, use percentiles)', 'Traffic (request rate)', 'Errors (request errors)'. Right group, green container headed 'USE: machine health (host view)' containing one box 'Saturation (USE)' and a dashed note 'Utilisation and errors also live here'. Above both groups a single box 'Golden signals' with arrows down into the four boxes, the three RED boxes and the one USE box, each arrow labelled with its source group. Under the Saturation box a small worked example card with the text 'Netflix example: saturation approximated by the gap between p99 latency and the average'. Orange outline on the Saturation box as the signal that needs the host view. Bottom caption: 'RED judges the service, USE judges the host.'",
+  "anchor": "### 7. RED and golden signals: from the box to the service",
+  "alt": "The four golden signals of latency, traffic, errors and saturation, with the first three coming from the service view and saturation from the host view.",
+  "cap": "The golden signals combine RED for the service with USE for the machine, with saturation taken from the host view."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "p2-2003-prediction-chain",
+  "title": "A hypothesis lives or dies by its prediction",
+  "spec": "A horizontal chain of four cards left to right, joined by arrows. Card 1 titled 'Hypothesis': 'Noisy neighbours cause slow queries'. Card 2 titled 'Prediction': 'File system time dominates query time'. Card 3 titled 'Test': 'Trace the slow queries'. Card 4 titled 'Result': 'Tracing showed under 5 percent in the file system'. Below card 4 a fork with two outcomes: an orange-outlined box 'That rules it out, move to the next branch' pointing away from the chain, and a green box 'Reverse any change before the next hypothesis' attached under the test card. A small note under card 2: 'A hypothesis that predicts nothing cannot be tested.' Number circles 1 to 4 on the four cards.",
+  "anchor": "### 8. Hypotheses out loud: the scientific method",
+  "alt": "A worked hypothesis about noisy neighbours, showing the prediction, the trace result and why the hypothesis is ruled out.",
+  "cap": "A worked hypothesis test: the noisy neighbour idea predicted file system time, the trace showed under 5 percent, so the idea was ruled out."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "p2-2003-drilldown-halving",
+  "title": "Drill-down halves the search space",
+  "spec": "Top row of three stage boxes left to right with number circles: '1 Monitoring: records statistics and alerts', '2 Identification: narrows to one resource on one machine (the 60-second tools)', '3 Analysis: traces or profiles to find the cause'. Under stage 3, a tool row with monospace chips: 'strace', 'perf', 'BCC tools', 'bpftrace'. Below stage 2, a binary-split tree: root question 'On-CPU or off-CPU?' splitting to 'On-CPU: perf samples the CPU' and 'Off-CPU: waiting for something'. The off-CPU branch splits again to 'Queueing?' and 'Being serviced?' with a note 'Each question throws away half the causes'. Worked example card on the right, titled 'Slow-disks story': 'USE shows disk near 80 percent; iostat at one second shows 100 percent; off-CPU tracing shows the database blocked on file system reads.' Orange outline on the off-CPU branch as the key split. Bottom bar: 'Name one resource before you reach for a tracer.'",
+  "anchor": "### 9. Drill-down after the 60 seconds",
+  "alt": "Drill-down runs monitoring, identification and analysis in order, with each question splitting the causes in half until a tracer is needed.",
+  "cap": "Drill-down moves from monitoring to identification to analysis, and each question such as on-CPU or off-CPU halves the possible causes."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "03",
+  "name": "p2-2003-vmstat-anatomy",
+  "title": "Reading one vmstat row under swapping",
+  "spec": "A header strip of monospace column labels across the top, in this order: 'r', 'b', 'swpd', 'free', 'buff', 'cache', 'si', 'so', 'bi', 'bo', 'in', 'cs', 'us', 'sy', 'id', 'wa', 'st'. Below it the sample row, each value in its own cell, in the same order: '2', '0', '418036', '68172', '68', '3808', '0', '4692', '4520', '4692', '1060', '1939', '61', '38', '0', '1', '0'. Under the groups of cells a bracket with a plain label: 'Run queue r: only 1 or 2', 'Memory and cache: swpd 418036, free 68172, cache 3808', 'Swap in and out: si 0, so 4692 (non-zero means saturated)', 'Block I/O: bi 4520, bo 4692', 'CPU: us 61, sy 38, id 0 (idle reached zero)'. Orange outline on the so cell with the callout 'Memory is swapping: fix the process that grew, not the CPU'. Side note: 'The first vmstat row is since boot, so skip it.'",
+  "anchor": "### Scenario 3: swapping with a quiet run queue",
+  "alt": "One vmstat output row annotated column by column, showing the run queue, swap in and out, block I/O and CPU columns during swapping.",
+  "cap": "One vmstat sample row annotated by column, with the non-zero swap-out column showing that memory is saturated and the machine is swapping."
+ }
+]

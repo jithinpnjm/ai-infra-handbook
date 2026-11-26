@@ -1,0 +1,164 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>IPVS direct routing: one request in, a reply that skips the balancer</title>
+  <desc>Visual infographic explaining IPVS Direct Routing (DSR), where client requests reach the balancer via a VIP and are forwarded by rewriting MAC addresses, while replies return directly from real servers bypassing the balancer.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  <style>
+    text {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      fill: #303a36;
+    }
+    .mono {
+      font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, Courier, monospace;
+    }
+  </style>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="68" font-size="48" font-weight="bold">IPVS direct routing: one request in,</text>
+  <text x="40" y="118" font-size="48" font-weight="bold">a reply that skips the balancer</text>
+
+  
+
+  
+  <g id="node-client">
+    <rect x="60" y="160" width="200" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="80" y="185" width="44" height="32" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="102" y1="217" x2="102" y2="230" stroke="#207448" stroke-width="3.5" />
+    <line x1="88" y1="230" x2="116" y2="230" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="140" y="215" font-size="32" font-weight="bold">Client</text>
+  </g>
+
+  
+  <g id="node-router">
+    <rect x="640" y="160" width="240" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="680" cy="225" r="22" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="680" y1="209" x2="680" y2="241" stroke="#207448" stroke-width="3" />
+    <line x1="664" y1="225" x2="696" y2="225" stroke="#207448" stroke-width="3" />
+    <text x="718" y="235" font-size="32" font-weight="bold">Router</text>
+  </g>
+
+  
+  <line x1="260" y1="225" x2="636" y2="225" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <circle cx="310" cy="180" r="18" fill="#207448" />
+  <text x="310" y="187" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="338" y="187" font-size="24">step 1: packet to the VIP 10.0.0.100:443</text>
+
+  
+  <g id="node-ipvs-balancer">
+    <rect x="640" y="430" width="240" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="678" cy="480" r="12" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 690 480 L 702 468 M 690 480 L 702 492" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <text x="718" y="490" font-size="30" font-weight="bold">IPVS balancer</text>
+  </g>
+
+  
+  <line x1="760" y1="290" x2="760" y2="426" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <circle cx="170" cy="355" r="18" fill="#207448" />
+  <text x="170" y="362" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="198" y="347" font-size="24">step 2: delivers to the balancer host</text>
+  <text x="198" y="377" font-size="24">because the VIP is announced there</text>
+
+  
+  <g id="node-real-server">
+    <rect x="440" y="690" width="460" height="260" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <rect x="465" y="718" width="42" height="38" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="465" y1="737" x2="507" y2="737" stroke="#207448" stroke-width="2.5" />
+    <circle cx="475" cy="728" r="2" fill="#207448" />
+    <circle cx="475" cy="746" r="2" fill="#207448" />
+    <text x="522" y="736" font-size="30" font-weight="bold">Real server (holds 10.0.0.100/32 on lo)</text>
+
+    
+    <circle cx="475" cy="795" r="18" fill="#207448" />
+    <text x="475" y="802" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="505" y="802" font-size="24">step 4: sees it owns the VIP and accepts</text>
+
+    
+    <circle cx="475" cy="860" r="18" fill="#207448" />
+    <text x="475" y="867" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <text x="505" y="855" font-size="24">step 5: builds the reply with the VIP as source</text>
+    <text x="505" y="885" font-size="24">and the client as destination</text>
+  </g>
+
+  
+  <line x1="760" y1="560" x2="760" y2="686" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+  <circle cx="70" cy="565" r="18" fill="#207448" />
+  <text x="70" y="572" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="98" y="550" font-size="24">step 3: picks a real server and rewrites only</text>
+  <text x="98" y="580" font-size="24">the destination MAC; the packet still says</text>
+  <text x="98" y="610" font-size="24">VIP as destination</text>
+
+  
+  <path d="M 440 850 L 160 850 L 160 294" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  <text x="185" y="815" font-size="24" fill="#303a36">straight out through its own default gateway</text>
+
+  
+  <text x="60" y="1005" font-size="24" font-weight="bold">Only the small request crossed the balancer; the large reply went around it</text>
+
+  
+  <g id="right-panel">
+    <rect x="940" y="150" width="620" height="955" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="970" y="195" font-size="32" font-weight="bold" fill="#207448">Setup</text>
+
+    
+    <rect x="970" y="215" width="560" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="985" y="246" font-size="24" class="mono">ipvsadm -A -t 10.0.0.100:443 -s wlc</text>
+
+    
+    <rect x="970" y="275" width="560" height="46" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="985" y="306" font-size="24" class="mono">ipvsadm -a -t ... -r 10.1.0.11:443 -g -w 1</text>
+
+    
+    <text x="970" y="355" font-size="24">-g direct routing (DSR), -m masquerade (NAT), -i tunnel</text>
+
+    
+    <rect x="970" y="380" width="560" height="110" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="985" y="410" font-size="24" class="mono">on each real server: ip addr add</text>
+    <text x="985" y="440" font-size="24" class="mono">10.0.0.100/32 dev lo; sysctl</text>
+    <text x="985" y="470" font-size="24" class="mono">arp_ignore=1 arp_announce=2</text>
+
+    
+    <text x="970" y="525" font-size="24">if real servers answered ARP for the VIP,</text>
+    <text x="970" y="555" font-size="24">traffic would go to them directly and</text>
+    <text x="970" y="585" font-size="24">the balancer would be skipped</text>
+
+    
+    <line x1="970" y1="620" x2="1530" y2="620" stroke="#207448" stroke-width="1.5" stroke-dasharray="6 4" />
+
+    
+    <circle cx="980" cy="655" r="4" fill="#207448" />
+    <text x="995" y="662" font-size="24">schedulers: rr, wrr, lc, wlc, sh, dh,</text>
+    <text x="995" y="692" font-size="24">mh (Maglev), sed, nq</text>
+
+    <circle cx="980" cy="740" r="4" fill="#207448" />
+    <text x="995" y="747" font-size="24">keepalived adds VRRP active or passive VIP</text>
+    <text x="995" y="777" font-size="24">failover plus health checks</text>
+
+    <circle cx="980" cy="825" r="4" fill="#207448" />
+    <text x="995" y="832" font-size="24">NAT-mode IPVS depends on conntrack capped</text>
+    <text x="995" y="862" font-size="24">by nf_conntrack_max, DR mode does not</text>
+
+    <circle cx="980" cy="910" r="4" fill="#207448" />
+    <text x="995" y="917" font-size="24">DSR limits: L2 adjacency or tunnels, no L7</text>
+    <text x="995" y="947" font-size="24">features, health checking needs care,</text>
+    <text x="995" y="977" font-size="24">asymmetric flows complicate firewalls</text>
+  </g>
+
+  
+  <rect x="40" y="1125" width="1520" height="55" rx="8" fill="#207448" />
+  <text x="800" y="1161" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Pick the mode by asking whether replies skip the balancer</text>
+</svg>

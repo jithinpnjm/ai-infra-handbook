@@ -1,0 +1,231 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Why slow model load makes HPA overshoot</title>
+  <desc>Timeline and mitigations showing how delayed readiness causes HPA to repeatedly scale up and overshoot before load is shared.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Why slow model load makes HPA overshoot</text>
+
+  
+  <rect x="40" y="110" width="750" height="1040" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <text x="65" y="152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+    <tspan x="65" dy="0">Timeline for a GPU model server</tspan>
+    <tspan x="65" dy="36">whose readiness takes 8 minutes</tspan>
+    <tspan x="65" dy="36">because the model has to load</tspan>
+  </text>
+
+  
+  <rect x="65" y="250" width="700" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="100" cy="298" r="22" fill="#207448" />
+  <text x="100" y="298" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+  
+  <g transform="translate(136, 270)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 42 L 18 32 L 30 38 L 48 14" />
+    <polyline points="36,14 48,14 48,26" />
+    <line x1="6" y1="50" x2="50" y2="50" stroke-width="2" />
+  </g>
+  
+  <rect x="206" y="282" width="46" height="32" rx="6" fill="#207448" />
+  <text x="229" y="298" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">t0</text>
+  <text x="266" y="306" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">load rises, metric above target</text>
+
+  
+  <line x1="415" y1="346" x2="415" y2="380" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="380" width="700" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="100" cy="428" r="22" fill="#207448" />
+  <text x="100" y="428" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+  
+  <g transform="translate(136, 400)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="16" width="22" height="26" rx="4" />
+    <rect x="26" y="10" width="22" height="26" rx="4" />
+    <line x1="17" y1="29" x2="17" y2="29" stroke-width="5" />
+    <line x1="37" y1="23" x2="37" y2="23" stroke-width="5" />
+  </g>
+  <text x="206" y="436" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">HPA adds replicas</text>
+
+  
+  <line x1="415" y1="476" x2="415" y2="510" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="510" width="700" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="100" cy="558" r="22" fill="#207448" />
+  <text x="100" y="558" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+  
+  <g transform="translate(136, 530)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 12 10 L 44 10 L 32 28 L 44 46 L 12 46 L 24 28 Z" />
+    <line x1="28" y1="36" x2="28" y2="40" stroke-width="4" />
+  </g>
+  <text x="206" y="548" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="206" dy="0">new pods are created but not ready,</tspan>
+    <tspan x="206" dy="30">so they do not count</tspan>
+  </text>
+
+  
+  <line x1="415" y1="606" x2="415" y2="640" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="640" width="700" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="100" cy="688" r="22" fill="#207448" />
+  <text x="100" y="688" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+  
+  <g transform="translate(136, 660)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 10 40 A 20 20 0 1 1 46 40" />
+    <line x1="28" y1="38" x2="40" y2="24" />
+    <circle cx="28" cy="38" r="3" fill="#207448" />
+  </g>
+  <text x="206" y="696" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">metric stays high while pods start</text>
+
+  
+  <line x1="415" y1="736" x2="415" y2="770" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="770" width="700" height="96" rx="8" fill="#fff7ed" stroke="#db8129" stroke-width="2.5" />
+  <circle cx="100" cy="818" r="22" fill="#db8129" />
+  <text x="100" y="818" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">5</text>
+  
+  <g transform="translate(136, 790)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="6" y1="24" x2="50" y2="24" stroke-dasharray="4 4" stroke-width="2.5" />
+    <path d="M 8 46 L 22 36 L 36 12 L 48 8" />
+    <circle cx="36" cy="12" r="3" fill="#db8129" />
+  </g>
+  <text x="206" y="808" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="206" dy="0">HPA keeps adding replicas</tspan>
+    <tspan x="206" dy="30">and overshoots</tspan>
+  </text>
+
+  
+  <line x1="415" y1="866" x2="415" y2="900" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="900" width="700" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="100" cy="948" r="22" fill="#207448" />
+  <text x="100" y="948" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">6</text>
+  
+  <g transform="translate(136, 920)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 16 L 22 24 L 34 32 L 48 46" />
+    <polyline points="36,46 48,46 48,34" />
+    <circle cx="16" cy="18" r="8" fill="#e8f1ea" />
+    <polyline points="13,18 15,21 20,15" stroke-width="2.5" />
+  </g>
+  <text x="206" y="938" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="206" dy="0">when pods become ready after 8 minutes</tspan>
+    <tspan x="206" dy="30">load is shared, metric falls</tspan>
+  </text>
+
+  
+  <line x1="415" y1="996" x2="415" y2="1030" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
+
+  
+  <rect x="65" y="1030" width="700" height="96" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <circle cx="100" cy="1078" r="22" fill="#207448" />
+  <text x="100" y="1078" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">7</text>
+  
+  <g transform="translate(136, 1050)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="18" />
+    <polyline points="28,18 28,28 36,28" />
+    <path d="M 10 10 L 46 10" stroke-width="2" />
+  </g>
+  <text x="206" y="1068" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="206" dy="0">too many replicas, the scale-down</tspan>
+    <tspan x="206" dy="30">window must absorb them</tspan>
+  </text>
+
+  
+  <rect x="830" y="110" width="730" height="695" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <text x="855" y="152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Side by side mitigations</text>
+
+  
+  <rect x="855" y="175" width="328" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(875, 192)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 8 42 A 20 20 0 1 1 48 42" />
+    <line x1="28" y1="40" x2="20" y2="22" />
+    <circle cx="28" cy="40" r="3" fill="#207448" />
+  </g>
+  <text x="875" y="282" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="875" dy="0">rate-limit scale-up</tspan>
+    <tspan x="875" dy="32">with behavior</tspan>
+    <tspan x="875" dy="32">policies</tspan>
+  </text>
+
+  
+  <rect x="1207" y="175" width="328" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1227, 192)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 8 L 46 16 L 46 30 C 46 42 28 50 28 50 C 28 50 10 42 10 30 L 10 16 Z" />
+    <polyline points="20,28 26,34 36,22" />
+  </g>
+  <text x="1227" y="275" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1227" dy="0">readiness probe</tspan>
+    <tspan x="1227" dy="30">that only passes</tspan>
+    <tspan x="1227" dy="30">when the model</tspan>
+    <tspan x="1227" dy="30">is loaded</tspan>
+  </text>
+
+  
+  <rect x="855" y="405" width="328" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(875, 422)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="14" rx="18" ry="6" />
+    <path d="M 10 14 L 10 28 C 10 32 18 34 28 34 C 38 34 46 32 46 28 L 46 14" />
+    <path d="M 10 28 L 10 42 C 10 46 18 48 28 48 C 38 48 46 46 46 42 L 46 28" />
+  </g>
+  <text x="875" y="525" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="875" dy="0">pre-warm and</tspan>
+    <tspan x="875" dy="34">pre-pulled images</tspan>
+  </text>
+
+  
+  <rect x="1207" y="405" width="328" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <g transform="translate(1227, 422)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="8" y="10" width="16" height="24" rx="3" />
+    <rect x="30" y="10" width="16" height="24" rx="3" />
+    <line x1="6" y1="44" x2="48" y2="44" stroke-width="4" />
+  </g>
+  <text x="1227" y="515" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="1227" dy="0">set minReplicas to</tspan>
+    <tspan x="1227" dy="32">pay the cold start</tspan>
+    <tspan x="1227" dy="32">up front</tspan>
+  </text>
+
+  
+  <rect x="855" y="635" width="680" height="150" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(875, 682)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="18" />
+    <polyline points="28,18 28,28 36,28" />
+    <line x1="28" y1="6" x2="28" y2="10" />
+    <line x1="28" y1="46" x2="28" y2="50" />
+  </g>
+  <text x="945" y="682" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="945" dy="0">measure your readiness time first:</tspan>
+    <tspan x="945" dy="34">it tells you how long</tspan>
+    <tspan x="945" dy="34">a new replica is useless</tspan>
+  </text>
+
+  
+  <rect x="830" y="845" width="730" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <text x="855" y="888" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Lab reference</text>
+  <g transform="translate(1085, 856)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 22 10 L 34 10 L 34 22 L 46 42 C 48 46 44 50 38 50 L 18 50 C 12 50 8 46 10 42 L 22 22 Z" />
+    <line x1="16" y1="38" x2="40" y2="38" stroke-width="2" />
+  </g>
+
+  
+  <rect x="855" y="915" width="680" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+  <text x="875" y="960" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="875" dy="0">add a 3-minute startup delay with sleep</tspan>
+    <tspan x="875" dy="38">and no startup probe; watch HPA overshoot;</tspan>
+    <tspan x="875" dy="38">compare after adding readiness probe</tspan>
+    <tspan x="875" dy="38">and rate limits</tspan>
+  </text>
+</svg>

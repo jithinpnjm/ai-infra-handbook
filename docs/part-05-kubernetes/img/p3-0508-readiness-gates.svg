@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Ready needs the containers and every readiness gate</title>
+  <desc>Infographic explaining Kubernetes pod readiness requiring ContainersReady and spec.readinessGates conditions before Ready becomes True, with a timeline of external load balancer registration.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Ready needs the containers and every readiness gate</text>
+
+  
+
+  
+  <rect x="60" y="120" width="650" height="175" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(85, 180)">
+    <rect x="0" y="0" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="0" y1="16" x2="56" y2="16" stroke="#207448" stroke-width="3" />
+    <path d="M 16 32 L 25 40 L 42 23" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <text x="165" y="176" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">ContainersReady:</text>
+  <text x="165" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">every container passes</text>
+  <text x="165" y="258" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">its readinessProbe</text>
+
+  
+  <rect x="60" y="325" width="650" height="215" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  
+  <g transform="translate(85, 405)">
+    <path d="M 4 8 L 28 0 L 52 8 L 52 30 C 52 46 28 56 28 56 C 28 56 4 46 4 30 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <path d="M 18 24 L 18 36 M 28 18 L 28 42 M 38 24 L 38 36" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  
+  <text x="165" y="362" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">every condition in </tspan><tspan font-family="ui-monospace, monospace">spec.readinessGates</tspan>
+    <tspan x="165" dy="36">is True in </tspan><tspan font-family="ui-monospace, monospace">status.conditions</tspan><tspan> (for example</tspan>
+    <tspan x="165" dy="36" font-family="ui-monospace, monospace">target-health.alb.ingress.k8s.aws</tspan>
+    <tspan x="165" dy="36">or </tspan><tspan font-family="ui-monospace, monospace">www.example.com/feature-X)</tspan>
+  </text>
+
+  
+  <path d="M 780 185 L 840 185 A 125 125 0 0 1 840 435 L 780 435 Z" fill="#ffffff" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+
+  
+  <rect x="1040" y="205" width="500" height="210" rx="14" fill="#fef8f2" stroke="#db8129" stroke-width="3" />
+  
+  <g transform="translate(1065, 282)">
+    <circle cx="20" cy="28" r="14" fill="none" stroke="#db8129" stroke-width="4" />
+    <circle cx="48" cy="12" r="8" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <circle cx="48" cy="44" r="8" fill="none" stroke="#db8129" stroke-width="3.5" />
+    <line x1="33" y1="21" x2="41" y2="16" stroke="#db8129" stroke-width="3" />
+    <line x1="33" y1="35" x2="41" y2="40" stroke="#db8129" stroke-width="3" />
+    <path d="M 14 28 L 19 33 L 28 22" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  
+  <text x="1145" y="270" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#db8129">Ready=True:</text>
+  <text x="1145" y="322" font-family="system-ui, -apple-system, sans-serif" font-size="26" fill="#303a36">
+    <tspan x="1145" dy="0">pod IP joins</tspan>
+    <tspan x="1145" dy="40">the EndpointSlices</tspan>
+  </text>
+
+  
+  <line x1="710" y1="225" x2="780" y2="225" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="710" y1="395" x2="780" y2="395" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="965" y1="310" x2="1040" y2="310" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+  
+
+  
+  <rect x="50" y="630" width="300" height="410" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="200" cy="690" r="24" fill="#207448" />
+  <text x="200" y="699" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(172, 742)">
+    <rect x="0" y="0" width="56" height="46" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 6 23 L 18 23 L 23 12 L 31 35 L 36 23 L 50 23" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="200" y="870" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="200" dy="0">containers</tspan>
+    <tspan x="200" dy="38">pass probe</tspan>
+  </text>
+
+  
+  <rect x="385" y="630" width="375" height="410" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="572" cy="690" r="24" fill="#207448" />
+  <text x="572" y="699" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(544, 740)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="3.5" />
+    <line x1="28" y1="28" x2="28" y2="12" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="28" y1="28" x2="42" y2="36" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <line x1="23" y1="0" x2="33" y2="0" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  </g>
+  <text x="572" y="845" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="572" dy="0">external load balancer</tspan>
+    <tspan x="572" dy="38">needs 10 to 20 s to</tspan>
+    <tspan x="572" dy="38">register the pod IP</tspan>
+    <tspan x="572" dy="38">and pass health checks</tspan>
+  </text>
+
+  
+  <rect x="795" y="630" width="345" height="410" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="967" cy="690" r="24" fill="#207448" />
+  <text x="967" y="699" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(939, 740)">
+    <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="3.5" />
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 16 16 M 40 40 L 45 45 M 11 45 L 16 40 M 40 16 L 45 11" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+  </g>
+  <text x="967" y="860" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="967" dy="0">external controller</tspan>
+    <tspan x="967" dy="38">patches the custom</tspan>
+    <tspan x="967" dy="38">condition to True</tspan>
+  </text>
+
+  
+  <rect x="1175" y="630" width="375" height="410" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <circle cx="1362" cy="690" r="24" fill="#207448" />
+  <text x="1362" y="699" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1334, 740)">
+    <path d="M 10 28 A 18 18 0 1 1 44 38" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    <path d="M 39 46 L 46 38 L 47 48" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <path d="M 20 28 L 25 33 L 36 21" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+  <text x="1362" y="845" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1362" dy="0">Ready becomes True;</tspan>
+    <tspan x="1362" dy="38">until then a rolling</tspan>
+    <tspan x="1362" dy="38">update will not</tspan>
+    <tspan x="1362" dy="38">terminate old pods</tspan>
+  </text>
+
+  
+  <line x1="350" y1="690" x2="385" y2="690" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="760" y1="690" x2="795" y2="690" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <line x1="1140" y1="690" x2="1175" y2="690" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+</svg>

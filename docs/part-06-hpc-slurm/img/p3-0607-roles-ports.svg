@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Cluster roles and the doors between them</title>
+  <desc>Visual infographic explaining Slurm cluster roles, sizing requirements, network doors, and ports between them.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-green-start" viewBox="0 0 10 10" refX="2" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M 8 1.5 L 0 5 L 8 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Cluster roles and the doors between them</text>
+
+  
+  <rect x="50" y="110" width="530" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(74, 130)">
+    <rect x="0" y="0" width="54" height="42" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="12" x2="54" y2="12" stroke="#207448" stroke-width="3"/>
+    <path d="M 10 24 L 18 29 L 10 34" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="24" y1="34" x2="36" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="146" y="160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Login or submit nodes:</text>
+  <text x="74" y="210" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="74" dy="0">client tools, munge, sackd;</tspan>
+    <tspan x="74" dy="36">scale with users</tspan>
+  </text>
+
+  
+  <rect x="840" y="110" width="710" height="300" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(864, 128)">
+    <rect x="10" y="10" width="36" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="19" y="19" width="18" height="18" fill="none" stroke="#207448" stroke-width="2.5"/>
+    
+    <line x1="18" y1="3" x2="18" y2="10" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="3" x2="28" y2="10" stroke="#207448" stroke-width="3"/>
+    <line x1="38" y1="3" x2="38" y2="10" stroke="#207448" stroke-width="3"/>
+    <line x1="18" y1="46" x2="18" y2="53" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="46" x2="28" y2="53" stroke="#207448" stroke-width="3"/>
+    <line x1="38" y1="46" x2="38" y2="53" stroke="#207448" stroke-width="3"/>
+    <line x1="3" y1="18" x2="10" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="3" y1="28" x2="10" y2="28" stroke="#207448" stroke-width="3"/>
+    <line x1="3" y1="38" x2="10" y2="38" stroke="#207448" stroke-width="3"/>
+    <line x1="46" y1="18" x2="53" y2="18" stroke="#207448" stroke-width="3"/>
+    <line x1="46" y1="28" x2="53" y2="28" stroke="#207448" stroke-width="3"/>
+    <line x1="46" y1="38" x2="53" y2="38" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="936" y="158" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Controllers:</text>
+  <text x="864" y="200" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">slurmctld primary and backup;</tspan>
+    <tspan x="864" dy="32">fast CPU cores because the scheduler is</tspan>
+    <tspan x="864" dy="32">largely single-threaded in critical sections,</tspan>
+    <tspan x="864" dy="32">plenty of RAM, local SSD or very reliable</tspan>
+    <tspan x="864" dy="32">shared filesystem for StateSaveLocation;</tspan>
+    <tspan x="864" dy="32">not a GPU node</tspan>
+  </text>
+
+  
+  <line x1="580" y1="215" x2="838" y2="215" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="600" y="172" width="220" height="34" rx="6" fill="#f5f8f5"/>
+  <text x="710" y="197" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">6817 to slurmctld</text>
+
+  
+  <rect x="840" y="470" width="710" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(864, 485)">
+    <ellipse cx="27" cy="11" rx="22" ry="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 5 11 L 5 25 A 22 7 0 0 0 49 25 L 49 11" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 5 25 L 5 39 A 22 7 0 0 0 49 39 L 49 25" fill="none" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text x="936" y="515" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Accounting database host:</text>
+  <text x="864" y="558" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">MariaDB or MySQL plus slurmdbd;</tspan>
+    <tspan x="864" dy="34">own host or at least own disk; InnoDB buffer</tspan>
+    <tspan x="864" dy="34">pool sized for job history; back it up</tspan>
+  </text>
+
+  
+  <line x1="1195" y1="410" x2="1195" y2="468" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <text x="1215" y="445" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">6819 to slurmdbd</text>
+
+  
+  <rect x="50" y="600" width="530" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(74, 620)">
+    <rect x="0" y="4" width="54" height="18" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="10" cy="13" r="2.5" fill="#207448"/>
+    <line x1="18" y1="13" x2="44" y2="13" stroke="#207448" stroke-width="3"/>
+    <rect x="0" y="28" width="54" height="18" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="10" cy="37" r="2.5" fill="#207448"/>
+    <line x1="18" y1="37" x2="44" y2="37" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="146" y="650" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Compute nodes:</text>
+  <text x="74" y="700" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="74" dy="0">slurmd and munge;</tspan>
+    <tspan x="74" dy="34">reserve some CPU and memory</tspan>
+    <tspan x="74" dy="34">for OS and daemons</tspan>
+  </text>
+
+  
+  <path d="M 840 360 L 610 360 L 610 705 L 582 705" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+  <rect x="625" y="324" width="195" height="32" rx="5" fill="#f5f8f5"/>
+  <text x="722" y="348" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">6818 to slurmd</text>
+
+  
+  <rect x="50" y="340" width="530" height="240" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5" stroke-dasharray="6,4"/>
+  <line x1="85" y1="322" x2="85" y2="598" stroke="#207448" stroke-width="4" marker-start="url(#arrow-green-start)" marker-end="url(#arrow-green)"/>
+  <text x="110" y="375" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="110" dy="0">srun opens ephemeral ports</tspan>
+    <tspan x="110" dy="33">on the submit node for I/O</tspan>
+    <tspan x="110" dy="33">and step traffic; restrict with</tspan>
+    <tspan x="110" dy="33" font-family="monospace">SrunPortRange;</tspan>
+    <tspan x="110" dy="33">compute nodes must also resolve</tspan>
+    <tspan x="110" dy="33">and reach each other</tspan>
+  </text>
+
+  
+  <rect x="840" y="700" width="710" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+  
+  <g transform="translate(864, 715)">
+    <circle cx="27" cy="27" r="12" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 27 5 L 27 11 M 27 43 L 27 49 M 5 27 L 11 27 M 43 27 L 49 27 M 11 11 L 16 16 M 38 38 L 43 43 M 11 43 L 16 38 M 38 16 L 43 11" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="936" y="748" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Optional:</text>
+  <text x="864" y="792" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="864" dy="0">slurmrestd host, monitoring exporter,</tspan>
+    <tspan x="864" dy="34">often on a management node</tspan>
+  </text>
+
+  
+  <rect x="50" y="890" width="1500" height="80" rx="10" fill="#fffbf5" stroke="#db8129" stroke-width="3"/>
+  <rect x="50" y="890" width="14" height="80" rx="3" fill="#db8129"/>
+  
+  <g transform="translate(84, 908)">
+    <polygon points="22,2 42,38 2,38" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="22" y1="15" x2="22" y2="25" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="22" cy="31" r="2" fill="#db8129"/>
+  </g>
+  <text x="145" y="940" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">a shut door gives no helpful message: the sender waits until it gives up</text>
+
+  
+  <rect x="50" y="1010" width="1500" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  
+  <g transform="translate(76, 1037)">
+    <circle cx="20" cy="20" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 12 20 L 18 26 L 30 14" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="34" y1="20" x2="48" y2="20" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="42" y1="20" x2="42" y2="26" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    <line x1="48" y1="20" x2="48" y2="26" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+  </g>
+  <text x="145" y="1052" font-family="sans-serif" font-size="25" fill="#303a36">
+    <tspan x="145" dy="0">DNS or /etc/hosts consistency, time sync, consistent UIDs and GIDs,</tspan>
+    <tspan x="145" dy="36">shared home or data filesystem, dedicated unprivileged slurm system user</tspan>
+  </text>
+</svg>

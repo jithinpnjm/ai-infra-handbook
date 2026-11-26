@@ -30,20 +30,17 @@ Nothing else here is public. The pages show no detail on a weights hub, on rollo
 
 ### 1. The endpoint as a spec, owned by a control plane
 
+![A state machine with disabled, enabled and deleted states showing which actions are allowed from each.](./img/p3-2014-endpoint-lifecycle.svg)
+
+*Figure 20.14.1. Delete is allowed only from disabled, which forces a deliberate two-step removal.*
+
 An engineer opens a ticket: "disable the endpoint, the customer is over budget". If that action had to touch the machines serving traffic directly, a bug in billing could stop an API. So the endpoint is stored as a small desired-state record, and something else makes reality match it. Desired state is what you want the system to look like, as opposed to what it looks like right now. A controller compares the two and closes the gap.
 
 The record carries the model reference, the GPU type, GPUs per replica, minimum and maximum replicas, and the region. The control plane validates it, stores it with an audit trail and exposes the five lifecycle actions. Chapter 20.13 already argued that the data plane must keep serving when the control plane is down, using a cached signed snapshot of desired state. Here we add the lifecycle rules.
 
-```mermaid
-flowchart LR
-  U["Customer / CLI"] --> CP["Control plane<br/>spec + lifecycle"]
-  CP -->|"desired state"| R1["Region EU data plane"]
-  CP -->|"desired state"| R2["Region US data plane"]
-  R1 --> W1["Replicas<br/>GPU pods"]
-  R1 --> RT["Router"]
-  T["Client traffic"] --> RT --> W1
-  H["Weights hub<br/>(object store)"] -->|"pull"| W1
-```
+![The endpoint as a spec, owned by a control plane](./img/m20-14-1.svg)
+
+*Figure 20.14.2. The endpoint as a spec, owned by a control plane, as a diagram.*
 
 The file `c14_endpoint_lifecycle.py` encodes the rules as a tiny state machine. A state machine is a small set of states and the moves allowed between them. Create makes the endpoint disabled. Enable and disable flip it. Update is allowed in either state. Delete is allowed only from disabled. That last rule is my design choice, and the reason is that deleting a live endpoint is a one-click outage. Forcing a disable first gives a second, deliberate step before anything is removed.
 
@@ -61,6 +58,10 @@ Think about what the control plane does with that record once it is stored. It i
 
 ### 2. Sizing the endpoint: GPU type, GPUs per replica, min and max
 
+![A six-step sizing worked example from 140 GB of weights to a reservation of 16 GPUs including one surge replica.](./img/p3-2014-endpoint-sizing.svg)
+
+*Figure 20.14.3. Always budget one extra replica of GPUs so a rolling update has somewhere to start the new pod.*
+
 A customer asks for a 70 billion parameter model. You need the numbers before you pick hardware, or the hardware choice becomes a guess. Chapter 20.12 gives the full toolkit, so here is only the shape. The shape is simple to hold in your head. Memory for the weights comes first, then headroom for the cache, then the number of GPUs, and only after that do you worry about speed.
 
 Weights take parameters times bytes per parameter. At FP16 that is 70 x 2 = 140 GB. FP16 is a half-precision number format, so each parameter takes two bytes. Hands-On LLM Serving and Optimization, chapter 5, gives this rule. One H100 SXM has 80 GB, according to the NVIDIA H100 page fetched on 2026-11-09, so 140 GB cannot fit on one GPU, and you need at least two for the weights alone. Add KV cache and activation headroom and the honest answer is four, or fewer if you quantise. Quantising means storing each number in fewer bits, which shrinks the weights at some cost in accuracy. Activations are the temporary values the model holds while it computes, and they need memory too. The NVIDIA H100 page, fetched again on 2026-11-09, lists 80 GB for the SXM card and 94 GB for the NVL card.
@@ -72,6 +73,10 @@ One more figure matters for rollout. The GPUs the data plane must be able to res
 **Choose GPUs per replica from memory first, and always budget one extra replica for rollout.**
 
 ### 3. Cold start has three costs
+
+![Cold start for a 140 GB checkpoint runs download, load, compile and warm-up in sequence, and download takes 70 of the 170 seconds.](./img/x14-cold-start.svg)
+
+*Figure 20.14.4. A new replica is ready only after download, load, compile and warm-up have run one after another, so the largest stage sets the rollout time.*
 
 A pod is scheduled at 10:00. When can it take traffic? Many people answer "when the process starts", and that is wrong for an LLM engine, because most of the time goes to three stages that run one after another.
 
@@ -105,24 +110,19 @@ Stage two is validation before any GPU is used. Check the hash. Check that the a
 
 Stage three is the deploy to an existing endpoint, which is an update action in the control plane. The endpoint spec gains a new model version. The data plane does not edit running pods. It starts a rollout, which sections 6 to 8 describe. The old version stays addressable, so that rollback is the same update with the old id.
 
-```mermaid
-flowchart TD
-  A["Upload checkpoint"] --> B["Weights hub<br/>immutable version + hash"]
-  B --> C{"Validate:<br/>hash, arch, tokenizer"}
-  C -->|"fail"| X["Reject, no GPU used"]
-  C -->|"pass"| D["Eval on fixed prompts<br/>on a scratch replica"]
-  D -->|"fail"| X
-  D -->|"pass"| E["Update endpoint spec<br/>to new version"]
-  E --> F["Rollout: surge, canary, gates"]
-  F -->|"promote"| G["New version serves all"]
-  F -->|"rollback"| H["Old version kept"]
-```
+![Weights distribution and the custom-weights flow](./img/m20-14-2.svg)
+
+*Figure 20.14.5. Weights distribution and the custom-weights flow, as a diagram.*
 
 A design detail that interviewers like is the distribution path. If 8 replicas all download from one bucket at once, they share its bandwidth. Chapter 20.18 section 7 showed the herd arithmetic. Herd arithmetic is the calculation of how much each replica gets when many of them pull the same file at the same moment. A reasonable fix is to stage the new version onto node-local disk before the rollout begins, then start pods that read locally. That moves the long step out of the critical window, which is the stretch of time when the rollout is most fragile. Staging is also reversible. If the staged copy turns out to be wrong, you delete it from the nodes and nothing has changed for users yet.
 
 **Treat a checkpoint as an immutable, hashed, validated artifact, and make deploy an ordinary spec update that can be reversed.**
 
 ### 5. Readiness versus liveness for an engine
+
+![A startup probe covers the load and compile window for 600 seconds, then readiness checks a real request and liveness stays cheap and tolerant.](./img/x14-probe-windows.svg)
+
+*Figure 20.14.6. Each probe answers a different question, and mixing them up can restart a healthy engine or send traffic to a broken one.*
 
 Picture a rollout where the new pod says it is ready before it can answer a single request. The controller then removes a good old pod in favour of a broken new one, and users feel it within a minute. A rollout is only as safe as the signal that says a new pod can take traffic. If readiness lies, the controller makes the wrong trade. So you must be exact about the probe roles. A probe is a check that the platform runs against a pod on a timer, and each kind of probe answers a different question.
 
@@ -180,6 +180,10 @@ The grace period matters for the old pods. On shutdown Kubernetes sends SIGTERM 
 
 ### 6. Rolling, blue/green and canary when you cannot double your GPUs
 
+![Comparison of rolling update, blue/green and canary by extra GPUs needed while rolling, rollback speed and weak point, with a hybrid for scarce GPUs.](./img/p2-2014-rollout-compare.svg)
+
+*Figure 20.14.7. Rolling update, blue/green and canary compare on extra GPUs needed, rollback speed and weak point, and a hybrid suits scarce GPUs.*
+
 You have 8 replicas on H100s and the cluster has one spare GPU. The classic advice is blue/green: stand up a full copy, switch traffic, delete the old. For this workload that needs 16 GPUs. The function `blue_green_gpus` returns exactly twice the replicas. If the endpoint is large or the region is short of GPUs, that is simply not available, and the advice does not apply.
 
 Practical MLOps, chapter 4, describes the two patterns. Blue/green gets the new version running in an environment identical to production and routes traffic separately. A canary routes traffic progressively to the new model while the old one still serves, in different ratios, so that checks can catch problems in real time. The book warns that blue/green is hard when the environment is expensive to replicate, and that a canary at 100 percent can still miss a subtle break, which it shows with a boolean that became a string. A boolean that became a string is a small type change that passes every health check and still breaks the code that reads it.
@@ -209,6 +213,14 @@ The second row is the trap. The Kubernetes documentation says the Deployment con
 
 ### 7. Surge budgets when GPUs are scarce
 
+![Scattered free GPUs fail to schedule a four-GPU replica while a spare whole node lets the surge pod start.](./img/p3-2014-surge-contiguity.svg)
+
+*Figure 20.14.8. State surge in GPUs, not percent, and keep spare capacity in whole nodes.*
+
+![With eight replicas and one spare GPU, a rolling update with surge one loads each new pod into the spare slot before draining an old one, and never goes below eight available.](./img/x14-surge-slot.svg)
+
+*Figure 20.14.9. The spare GPU is the only room for a new pod, so the surge you can afford is set by the spare GPU count, not by a percentage.*
+
 An engineer proposes surge of 25 percent, and the capacity planner says "we have one spare GPU in that region". Who wins? The planner, and you should explain why using one formula. Surge is the extra room that lets new pods start before old ones stop. A budget is how much of it you can actually pay for.
 
 The pod cap in the simulator is the smaller of replicas plus surge and replicas plus spare GPU slots. Surge above the spare count buys nothing, because the extra pods stay pending. Production Kubernetes, chapter 13, describes the same pressure from the cluster side. The Cluster Autoscaler reacts to pending pods, so the cluster is already full when it acts, and node provisioning takes time. Overprovisioning with low-priority placeholder pods keeps standby capacity that real pods can evict. For GPU nodes that standby is costly, so decide on purpose how many spare GPUs you hold for rollouts.
@@ -220,6 +232,14 @@ There is also the multi-GPU twist. A replica that uses 4 GPUs needs 4 free GPUs 
 **State the surge you can afford in GPUs, not in percent, and remember that a multi-GPU replica needs its GPUs together.**
 
 ### 8. Traffic shifting with a router, and the gates
+
+![A decision flow where hard failures roll back at once, thin data holds, marginal results hold and only a clean pass promotes.](./img/p3-2014-decision-order.svg)
+
+*Figure 20.14.10. Only a clean pass with enough traffic promotes, and hard signals roll back without waiting.*
+
+![The canary moves from shadow traffic to 1, 5, 25, 50 and then 100 percent, and each step is promoted, held or rolled back by latency and quality gates.](./img/x14-canary-ladder.svg)
+
+*Figure 20.14.11. A staged traffic ladder with gates keeps a broken model from reaching all users, and a latency-only gate is not enough.*
 
 The new version is up on one replica and ready. Now what decides how much traffic it gets? A router with weights, not the replica count. If the router balanced evenly across 8 pods, one new pod would take about 12.5 percent. The function `canary_replicas` shows the point: 5 percent of 8 replicas still needs one whole replica, since a replica cannot be split. So use router weights to send 1 or 5 percent to that one pod, and let its capacity be a ceiling, not a target. A ceiling is the most traffic the pod can safely take, and the weight decides how much it actually gets.
 
@@ -265,6 +285,10 @@ The rule order is the design. Hard failures roll back even with too little traff
 
 ### 9. Automatic rollback signals
 
+![Strong rollback signals such as zero tokens and a hard error ceiling trigger automatic rollback, while latency ratios and finish reason shifts are held and paged.](./img/p2-2014-rollback-signals.svg)
+
+*Figure 20.14.12. Strong signals such as zero tokens or a hard error ceiling roll back automatically, while weaker latency and finish reason signals hold and page a person.*
+
 At 03:00 nobody is watching the canary. Which signals should flip it back by themselves? Pick the ones that are cheap, fast and unambiguous, and keep a human in the loop for the rest. A signal is unambiguous when a bad value almost never happens by chance, so an automatic reaction is safe.
 
 Strong automatic signals are the canary producing zero tokens, the error rate above a hard ceiling, a pod restarting or failing readiness repeatedly, and a quality score below the floor on the live eval probe. Weaker signals are latency ratios and finish_reason shifts, which need a baseline and enough traffic, so they should hold first and page a person if they persist. Chapter 20.19 covers SLO burn alerts that can serve as a fleet-wide backstop. A burn alert fires when a service spends its error budget too fast, which is a way to catch slow damage that no single gate sees.
@@ -277,6 +301,10 @@ Be careful about the automation itself. A rollback loop that fights an autoscale
 
 ### 10. Version skew
 
+![Four version skew cases during a rollout with the fix for each, including cache keyed by model version.](./img/p3-2014-version-skew.svg)
+
+*Figure 20.14.13. Pin weights, tokenizer and config as one version and key the cache by version.*
+
 Picture a client whose request is accepted by the old version and rejected by the new one, in the same minute. During a rollout two versions run at once, and that is where skew comes from. Version skew is any case where two components disagree because they run different versions. It can hurt anywhere two components assume the same thing. A client sends a request the old version accepts and the new version rejects. A router parses a metric that was renamed. A prefix cache holds blocks computed by the old model, and the new model must never reuse them, because the keys and values differ.
 
 The cache point is worth saying out loud. A reasonable design keys the prefix cache and cache-aware routing by model version, so no hit crosses a version boundary. That is my reasoning, and it follows from the fact that different weights produce different KV values. Reusing a block from the old weights would feed the new model numbers it never computed, and the answers would be wrong without any error being raised.
@@ -288,6 +316,10 @@ Finally, a client-facing skew: if the same user sees both versions in one conver
 **Pin tokenizer, weights and config as one version, key caches by version, and keep a session on one version during a canary.**
 
 ### 11. Scale-to-zero and the minimum replica decision
+
+![Scale-to-zero saves idle GPU hours but makes the first request after zero wait for the full cold start, so an SLA endpoint keeps at least one replica.](./img/p2-2014-scale-zero-cost.svg)
+
+*Figure 20.14.14. Scale to zero saves idle GPU hours, but the first request waits for the full cold start, so endpoints with an SLA keep at least one replica.*
 
 A customer has a quiet endpoint used twice a day. Their finance contact asks why they pay for an idle GPU. Scale-to-zero saves that cost and adds one risk, the cold request. A cold request is the first request that arrives when no replica is running, so it must wait for the full cold start.
 
@@ -329,6 +361,10 @@ python3 code/part20/c14_rollout_sim.py rolling
 
 ### Scenario B. Latency is green, quality is not
 
+![A metrics table where latency and errors match but quality and finish_reason length share regress, triggering a rollback.](./img/p3-2014-quality-regression.svg)
+
+*Figure 20.14.15. A latency-only gate would have promoted a model that cut answers short.*
+
 A canary of a fine-tuned checkpoint reaches 5 percent. TTFT and inter-token latency match the baseline. Error rate is the same. The next day support reports cut-off answers.
 
 Reasoning. The sample file holds baseline and canary metrics. Latency, errors and token rate match. Quality on the fixed eval falls from 0.90 to 0.84 and the share of finish_reason length rises from 0.05 to 0.22. I ran the decision and it returned rollback with two reasons, quality down 0.060 and a length-share shift of 0.17. A latency-only gate would have promoted. Support's report arrived a day after the rollout started, which is exactly why the early length-share signal is worth more than the complaint itself. By the time users write in, the damage has already been running for a while. The cut-off answers were the symptom support saw, and the length share was the number that showed it early.
@@ -340,6 +376,10 @@ python3 code/part20/c14_rollout_sim.py decide code/part20/samples/c14_canary_qua
 ```
 
 ### Scenario C. Shipping a custom checkpoint to a live endpoint
+
+![A timeline from upload and validation through staged weights and a surge-one rolling update to a gated canary.](./img/p3-2014-custom-checkpoint-timeline.svg)
+
+*Figure 20.14.16. Pre-stage weights so each replica skips the download and the surge slot has four GPUs together.*
 
 A customer uploads a 70 billion parameter checkpoint in FP16 and wants it live on their existing endpoint within the hour. The endpoint runs 4 replicas of 4 GPUs.
 

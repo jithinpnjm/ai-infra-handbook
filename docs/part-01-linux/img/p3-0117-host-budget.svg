@@ -1,0 +1,305 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Host memory budget for an 8 GPU node: multiplied workers add up fast</title>
+  <desc>Visual infographic explaining host memory budget breakdown for an 8 GPU training node, data-loader worker arithmetic, checkpoint storage risk, and monitoring metrics.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="75" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" dy="0">Host memory budget for an 8 GPU node:</tspan>
+    <tspan x="800" dy="58">multiplied workers add up fast</tspan>
+  </text>
+
+  
+  <g id="stacked-budget-bar">
+    
+    <rect x="40" y="170" width="670" height="790" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(65, 188)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="6"/>
+      <line x1="12" y1="16" x2="44" y2="16"/>
+      <line x1="12" y1="28" x2="44" y2="28"/>
+      <line x1="12" y1="40" x2="28" y2="40"/>
+      <circle cx="40" cy="40" r="3" fill="#207448"/>
+    </g>
+
+    
+    <rect x="65" y="260" width="620" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="375" y="300" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Operating system and daemons (a few GB)</text>
+
+    
+    <rect x="65" y="335" width="620" height="150" rx="8" fill="#db8129" stroke="#db8129" stroke-width="2"/>
+    <text x="375" y="378" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      <tspan x="375" dy="0">Data-loader workers (process overhead,</tspan>
+      <tspan x="375" dy="32">decoded batches, prefetch queue)</tspan>
+      <tspan x="375" dy="32">x number of workers x GPUs</tspan>
+    </text>
+
+    
+    <rect x="65" y="495" width="620" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="375" y="535" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Pinned staging buffers</text>
+
+    
+    <rect x="65" y="570" width="620" height="120" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="375" y="608" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="375" dy="0">Framework host allocations:</tspan>
+      <tspan x="375" dy="30">CUDA context host memory,</tspan>
+      <tspan x="375" dy="30">NCCL buffers, NCCL proxy threads</tspan>
+    </text>
+
+    
+    <rect x="65" y="700" width="620" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="375" y="740" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Page cache to keep for the dataset</text>
+
+    
+    <rect x="65" y="775" width="620" height="95" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="375" y="815" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="375" dy="0">Checkpoint staging headroom</tspan>
+      <tspan x="375" dy="32">in tmpfs or page cache</tspan>
+    </text>
+
+    
+    <rect x="65" y="880" width="620" height="60" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="375" y="918" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">Margin</text>
+  </g>
+
+  
+  <g id="worked-arithmetic">
+    <rect x="750" y="170" width="460" height="790" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(775, 188)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="6"/>
+      <rect x="10" y="10" width="36" height="12" rx="2" fill="#e8f1ea"/>
+      <line x1="12" y1="32" x2="22" y2="32"/>
+      <line x1="34" y1="32" x2="44" y2="32"/>
+      <line x1="12" y1="44" x2="22" y2="44"/>
+      <line x1="34" y1="44" x2="44" y2="44"/>
+    </g>
+
+    
+    <text x="850" y="215" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="850" dy="0">8 GPUs x 16 workers</tspan>
+      <tspan x="850" dy="32">x 2 GB = 256 GB</tspan>
+    </text>
+
+    
+    <g id="gpu-worker-grid" transform="translate(782, 275)">
+      
+      <g transform="translate(0, 0)">
+        <rect x="0" y="0" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="28" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="56" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="84" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="112" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="140" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="168" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="196" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="224" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="252" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="280" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="308" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="336" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="364" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="392" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="420" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+      </g>
+      
+      <g transform="translate(50, 0)">
+        <rect x="0" y="0" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="28" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="56" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="84" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="112" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="140" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="168" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="196" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="224" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="252" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="280" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="308" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="336" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="364" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="392" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="420" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+      </g>
+      
+      <g transform="translate(100, 0)">
+        <rect x="0" y="0" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="28" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="56" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="84" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="112" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="140" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="168" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="196" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="224" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="252" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="280" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="308" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="336" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="364" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="392" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="420" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+      </g>
+      
+      <g transform="translate(150, 0)">
+        <rect x="0" y="0" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="28" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="56" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="84" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="112" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="140" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="168" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="196" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="224" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="252" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="280" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="308" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="336" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="364" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="392" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="420" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+      </g>
+      
+      <g transform="translate(200, 0)">
+        <rect x="0" y="0" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="28" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="56" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="84" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="112" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="140" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="168" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="196" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="224" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="252" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="280" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="308" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="336" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="364" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="392" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="420" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+      </g>
+      
+      <g transform="translate(250, 0)">
+        <rect x="0" y="0" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="28" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="56" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="84" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="112" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="140" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="168" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="196" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="224" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="252" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="280" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="308" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="336" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="364" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="392" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="420" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+      </g>
+      
+      <g transform="translate(300, 0)">
+        <rect x="0" y="0" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="28" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="56" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="84" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="112" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="140" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="168" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="196" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="224" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="252" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="280" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="308" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="336" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="364" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="392" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="420" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+      </g>
+      
+      <g transform="translate(350, 0)">
+        <rect x="0" y="0" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="28" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="56" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="84" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="112" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="140" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="168" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="196" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="224" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="252" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="280" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="308" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="336" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="364" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="392" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+        <rect x="0" y="420" width="36" height="24" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" aria-label="2 GB"><title>2 GB</title></rect>
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="mistake-card">
+    <rect x="1240" y="170" width="320" height="790" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1372, 200)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="12" rx="24" ry="8"/>
+      <path d="M4 12 v16 c0 4.4 10.7 8 24 8 s24 -3.6 24 -8 V12"/>
+      <path d="M4 28 v16 c0 4.4 10.7 8 24 8 s24 -3.6 24 -8 V28"/>
+      <line x1="28" y1="20" x2="28" y2="28"/>
+      <line x1="28" y1="36" x2="28" y2="44"/>
+    </g>
+
+    
+    <text x="1400" y="300" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1400" dy="0">Checkpoints put in</tspan>
+      <tspan x="1400" dy="36" font-family="monospace">/dev/shm</tspan>
+      <tspan x="1400" dy="36">without a size cap</tspan>
+    </text>
+
+    
+    <g transform="translate(1290, 420)" stroke="#207448" stroke-width="3" fill="none">
+      <rect x="0" y="0" width="220" height="300" rx="10" fill="#e8f1ea" stroke-width="2"/>
+      <line x1="15" y1="90" x2="205" y2="90" stroke-dasharray="6 6" stroke="#207448" stroke-width="3"/>
+      <rect x="25" y="110" width="170" height="40" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="25" y="165" width="170" height="40" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      <rect x="25" y="220" width="170" height="40" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+      
+      <g transform="translate(85, 20)" stroke="#207448" stroke-width="3" fill="#ffffff">
+        <polygon points="25,5 45,45 5,45"/>
+        <line x1="25" y1="20" x2="25" y2="30"/>
+        <circle cx="25" cy="38" r="2" fill="#207448"/>
+      </g>
+    </g>
+  </g>
+
+  
+  <g id="bottom-strip">
+    <rect x="40" y="985" width="1520" height="120" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(65, 1017)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="56" rx="6"/>
+      <polyline points="8,30 20,30 26,14 34,44 40,26 48,26"/>
+    </g>
+
+    
+    <text x="145" y="1025" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">Compare the total with <tspan font-family="monospace">MemAvailable</tspan> and the cgroup limits; test with the real job</tspan>
+      <tspan x="145" dy="32">and watch <tspan font-family="monospace">RssAnon</tspan> and <tspan font-family="monospace">PSI</tspan>; monitor <tspan font-family="monospace">MemAvailable</tspan>, <tspan font-family="monospace">PSI</tspan>,</tspan>
+      <tspan x="145" dy="32">per-cgroup <tspan font-family="monospace">memory.stat</tspan> and the OOM counters</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1125" width="1520" height="55" rx="8" fill="#207448"/>
+    <text x="800" y="1161" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      A budget on paper is a starting point, not a promise
+    </text>
+  </g>
+</svg>

@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>pool.map versus as_completed with 20 hosts and a slow second host</title>
+  <desc>Comparison of pool.map and as_completed execution timelines with 20 hosts where host 2 is slow.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">pool.map versus as_completed</text>
+  <text x="800" y="106" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">with 20 hosts and a slow second host</text>
+  <text x="800" y="148" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">Two timelines of 20 hosts where host 2 is slow</text>
+
+  
+  <rect x="40" y="170" width="1520" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(65, 185)">
+    <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="28,14 28,28 40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  
+  
+  <text x="135" y="222" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#207448">pool.map(fn, hosts, timeout=..)</text>
+
+  
+  <g transform="translate(65, 250)">
+    <rect width="440" height="155" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="20" y="16" width="70" height="14" rx="3" fill="#207448"/>
+    
+    <rect x="20" y="44" width="380" height="16" rx="3" fill="#889e92"/>
+    
+    <rect x="20" y="74" width="70" height="12" rx="3" fill="#207448"/>
+    <rect x="90" y="74" width="310" height="12" fill="#e8f1ea" stroke="#889e92" stroke-width="1" stroke-dasharray="4,4"/>
+    <rect x="20" y="96" width="70" height="12" rx="3" fill="#207448"/>
+    <rect x="90" y="96" width="310" height="12" fill="#e8f1ea" stroke="#889e92" stroke-width="1" stroke-dasharray="4,4"/>
+    <rect x="20" y="118" width="70" height="12" rx="3" fill="#207448"/>
+    <rect x="90" y="118" width="310" height="12" fill="#e8f1ea" stroke="#889e92" stroke-width="1" stroke-dasharray="4,4"/>
+    
+    <line x1="400" y1="12" x2="400" y2="142" stroke="#207448" stroke-width="2" stroke-dasharray="3,3"/>
+  </g>
+
+  
+  <circle cx="545" cy="275" r="5" fill="#207448"/>
+  <text x="565" y="282" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">results come out in input order</text>
+
+  <circle cx="545" cy="325" r="5" fill="#207448"/>
+  <text x="565" y="325" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="565" dy="0">hosts 3 to 20 sit finished but unreported until host 2 returns, so a</tspan>
+    <tspan x="565" dy="30">progress display appears to freeze even though workers are busy</tspan>
+  </text>
+
+  <circle cx="545" cy="395" r="5" fill="#207448"/>
+  <text x="565" y="402" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">raises the first exception when that item is reached</text>
+
+
+  
+  <rect x="40" y="440" width="1520" height="310" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+
+  
+  <g transform="translate(65, 455)">
+    <polygon points="30,4 12,30 26,30 22,52 44,22 30,22" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="135" y="492" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#db8129">as_completed over futs = {pool.submit(check, h): h for h in hosts}</text>
+
+  
+  <g transform="translate(65, 520)">
+    <rect width="440" height="210" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="1.5"/>
+    
+    <rect x="20" y="20" width="70" height="14" rx="3" fill="#207448"/>
+    
+    <rect x="20" y="52" width="75" height="14" rx="3" fill="#207448"/>
+    <rect x="20" y="80" width="95" height="14" rx="3" fill="#207448"/>
+    <rect x="20" y="108" width="85" height="14" rx="3" fill="#207448"/>
+    <rect x="20" y="136" width="115" height="14" rx="3" fill="#207448"/>
+    
+    <rect x="20" y="168" width="380" height="18" rx="3" fill="#db8129"/>
+  </g>
+
+  
+  <circle cx="545" cy="542" r="5" fill="#db8129"/>
+  <text x="565" y="549" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">each future is yielded as soon as it finishes</text>
+
+  <circle cx="545" cy="582" r="5" fill="#db8129"/>
+  <text x="565" y="589" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">one slow host does not hold up the report</text>
+
+  <circle cx="545" cy="622" r="5" fill="#db8129"/>
+  <text x="565" y="629" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">h = futs[fut] ties each exception to the host that caused it</text>
+
+  <circle cx="545" cy="667" r="5" fill="#db8129"/>
+  <text x="565" y="667" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="565" dy="0">fut.result() re-raises the worker's exception here</tspan>
+    <tspan x="565" dy="30">inside try/except Exception that records errors[h] = repr(exc)</tspan>
+  </text>
+
+  <circle cx="545" cy="732" r="5" fill="#db8129"/>
+  <text x="565" y="739" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">overall deadline as_completed(futs, timeout=120)</text>
+
+
+  
+  <rect x="40" y="765" width="1520" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(65, 782)">
+    <circle cx="28" cy="28" r="12" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M28,6 L28,14 M28,42 L28,50 M6,28 L14,28 M42,28 L50,28 M12,12 L18,18 M38,38 L44,44 M12,44 L18,38 M38,18 L44,12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="821" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Future methods</text>
+  <text x="400" y="805" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="400" dy="0">result(timeout), exception(), add_done_callback(), done(),</tspan>
+    <tspan x="400" dy="30">cancel() works only if the task has not started</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="870" width="1520" height="150" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(65, 917)">
+    <path d="M16,14 A20,20 0 1,0 40,14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="28" y1="4" x2="28" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="955" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Shutdown</text>
+  <text x="310" y="907" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+    <tspan x="310" dy="0">leaving the with block waits for pending work (shutdown(wait=True));</tspan>
+    <tspan x="310" dy="30">on exception shutdown(wait=False, cancel_futures=True) from 3.9 drops queued tasks;</tspan>
+    <tspan x="310" dy="30">executors do not interrupt running tasks when a timeout expires,</tspan>
+    <tspan x="310" dy="30">so set timeouts on the I/O inside each task</tspan>
+  </text>
+
+
+  
+  <rect x="40" y="1035" width="1520" height="85" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(65, 1050)">
+    <rect x="4" y="8" width="48" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="14,24 22,28 14,32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="26" y1="34" x2="38" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="135" y="1088" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Output example</text>
+  <text x="400" y="1087" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">50 workers, thread_name_prefix=probe, print(len(results), ok; len(errors), failed)</text>
+
+
+  
+  <rect x="40" y="1135" width="1520" height="50" rx="8" fill="#207448"/>
+  <text x="800" y="1170" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Order of input is not order of completion</text>
+</svg>

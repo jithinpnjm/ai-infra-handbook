@@ -1,0 +1,119 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Cold failover eats most of the 43.2 minute monthly budget, warm failover eats less than a quarter</title>
+  <desc>Visual comparison of cold failover versus warm failover outage duration against monthly error budget and infrastructure cost.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Cold failover eats most of the</tspan>
+    <tspan x="800" dy="54">43.2 minute monthly budget,</tspan>
+    <tspan x="800" dy="54">warm failover eats less than a quarter</tspan>
+  </text>
+
+  
+  <g id="header-badge">
+    <rect x="35" y="190" width="1530" height="76" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(60, 200)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 4 L 52 14 L 52 30 C 52 44 28 52 28 52 C 28 52 4 44 4 30 L 4 14 Z"/>
+      <path d="M 28 18 L 28 36"/>
+      <path d="M 19 27 L 37 27"/>
+    </g>
+    <text x="135" y="240" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Failover is customer-built</text>
+  </g>
+
+  
+  <g id="left-panel">
+    <rect x="35" y="285" width="1055" height="690" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="50" y="310" width="1025" height="76" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <text x="562" y="358" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Error budget 43.2 min</text>
+
+    
+    <text x="50" y="426" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="50" dy="0">Cold plan outage: detect 5 min, decide 5 min,</tspan>
+      <tspan x="50" dy="34">create 15 min, total 25 min</tspan>
+    </text>
+
+    
+    <rect x="50" y="505" width="1025" height="110" rx="12" fill="#f5f8f5" stroke="#c4d9cb" stroke-width="2" stroke-dasharray="8,6"/>
+
+    
+    <g id="block-detect">
+      <rect x="50" y="505" width="118.6" height="110" rx="10" fill="#db8129" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="109" cy="545" r="22" fill="#207448"/>
+      <text x="109" y="553" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+        <tspan x="109" dy="0">1</tspan>
+        <tspan x="109" dy="42">detect</tspan>
+      </text>
+    </g>
+
+    <g id="block-decide">
+      <rect x="168.6" y="505" width="118.6" height="110" rx="10" fill="#db8129" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="228" cy="545" r="22" fill="#207448"/>
+      <text x="228" y="553" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+        <tspan x="228" dy="0">2</tspan>
+        <tspan x="228" dy="42">decide</tspan>
+      </text>
+    </g>
+
+    <g id="block-create">
+      <rect x="287.2" y="505" width="355.9" height="110" rx="10" fill="#db8129" stroke="#ffffff" stroke-width="2"/>
+      <circle cx="465" cy="545" r="22" fill="#207448"/>
+      <text x="465" y="553" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+        <tspan x="465" dy="0">3</tspan>
+        <tspan x="465" dy="42">create</tspan>
+      </text>
+    </g>
+
+    
+    <text x="50" y="665" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="50" dy="0">Warm plan outage: detect 5 min and decide 5 min,</tspan>
+      <tspan x="50" dy="34">total 10 min</tspan>
+    </text>
+
+    
+    <rect x="50" y="745" width="1025" height="100" rx="12" fill="#f5f8f5" stroke="#c4d9cb" stroke-width="2" stroke-dasharray="8,6"/>
+
+    
+    <rect x="50" y="745" width="237.3" height="100" rx="12" fill="#207448"/>
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="1115" y="285" width="450" height="690" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="1135" y="305" width="410" height="200" rx="12" fill="#f5f8f5" stroke="#c4d9cb" stroke-width="2"/>
+    <text x="1340" y="352" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1340" dy="0" font-weight="bold">Active-active</tspan>
+      <tspan x="1340" dy="32" font-weight="bold">second region,</tspan>
+      <tspan x="1340" dy="38">16 GPUs x 730 h x $3 =</tspan>
+      <tspan x="1340" dy="36" font-weight="bold" fill="#207448">$35,040 per month</tspan>
+    </text>
+
+    
+    <rect x="1135" y="525" width="410" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1340" y="572" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1340" dy="0" font-weight="bold">Warm standby</tspan>
+      <tspan x="1340" dy="32" font-weight="bold">at 25 percent,</tspan>
+      <tspan x="1340" dy="38">4 GPUs x 730 h x $3 =</tspan>
+      <tspan x="1340" dy="36" font-weight="bold" fill="#207448">$8,760 per month</tspan>
+    </text>
+
+    
+    <rect x="1135" y="745" width="410" height="195" rx="12" fill="#f5f8f5" stroke="#c4d9cb" stroke-width="1.5"/>
+    <text x="1340" y="825" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1340" dy="0">the $3 per GPU-hour is</tspan>
+      <tspan x="1340" dy="34">a placeholder price</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="35" y="995" width="1530" height="75" rx="14" fill="#207448"/>
+    <text x="800" y="1042" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Price warm against cold in both minutes of outage and dollars per month.</text>
+  </g>
+</svg>

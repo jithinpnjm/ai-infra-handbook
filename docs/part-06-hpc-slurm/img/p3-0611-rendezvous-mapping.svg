@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>From Slurm variables to PyTorch rendezvous values</title>
+  <desc>Infographic showing how Slurm cluster environment variables map to PyTorch distributed rendezvous configuration and process launch methods.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48px" font-weight="bold" fill="#303a36">From Slurm variables to PyTorch rendezvous values</text>
+
+  
+  <g id="definition-container">
+    <rect x="50" y="105" width="1500" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 120)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 6 8 L 28 4 L 50 8 L 50 48 L 28 44 L 6 48 Z" />
+      <line x1="28" y1="4" x2="28" y2="44" />
+      <path d="M 12 18 L 22 16" />
+      <path d="M 12 28 L 22 26" />
+      <path d="M 34 16 L 44 18" />
+      <path d="M 34 26 L 44 28" />
+    </g>
+    <text x="145" y="148" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Definition</text>
+    <text x="145" y="185" font-family="sans-serif" font-size="24px" fill="#303a36">
+      <tspan x="145" dy="0">rendezvous: the handshake where workers find each other;</tspan>
+      <tspan x="145" dy="32">PyTorch needs a master address, port, world size and rank</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 800 240 L 800 270" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g id="mapping-table-container">
+    <rect x="50" y="270" width="1500" height="515" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 285)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="6" width="48" height="44" rx="4" />
+      <line x1="4" y1="20" x2="52" y2="20" />
+      <line x1="24" y1="20" x2="24" y2="50" />
+      <line x1="10" y1="13" x2="18" y2="13" />
+      <line x1="28" y1="13" x2="46" y2="13" />
+    </g>
+    <text x="135" y="322" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Mapping table</text>
+
+    
+    <rect x="75" y="345" width="1450" height="80" rx="8" fill="#f5f8f5" stroke="#9bbca8" stroke-width="1.5" />
+    <line x1="95" y1="385" x2="145" y2="385" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <text x="165" y="375" font-family="monospace" font-size="24px" fill="#303a36">
+      <tspan x="165" dy="0">MASTER_ADDR = first host of the allocation:</tspan>
+      <tspan x="165" dy="30">scontrol show hostnames $SLURM_JOB_NODELIST | head -n 1</tspan>
+    </text>
+
+    
+    <rect x="75" y="437" width="1450" height="80" rx="8" fill="#fff8f0" stroke="#db8129" stroke-width="2.5" />
+    <line x1="95" y1="477" x2="145" y2="477" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+    <text x="165" y="467" font-family="monospace" font-size="24px" fill="#303a36">
+      <tspan x="165" dy="0">MASTER_PORT = 10000 + SLURM_JOB_ID modulo 20000:</tspan>
+      <tspan x="165" dy="30">unlikely to collide with another job on shared nodes</tspan>
+    </text>
+
+    
+    <rect x="75" y="529" width="1450" height="62" rx="8" fill="#f5f8f5" stroke="#9bbca8" stroke-width="1.5" />
+    <line x1="95" y1="560" x2="145" y2="560" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <text x="165" y="568" font-family="monospace" font-size="24px" fill="#303a36">RANK = SLURM_PROCID</text>
+
+    
+    <rect x="75" y="603" width="1450" height="62" rx="8" fill="#f5f8f5" stroke="#9bbca8" stroke-width="1.5" />
+    <line x1="95" y1="634" x2="145" y2="634" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <text x="165" y="642" font-family="monospace" font-size="24px" fill="#303a36">LOCAL_RANK = SLURM_LOCALID</text>
+
+    
+    <rect x="75" y="677" width="1450" height="62" rx="8" fill="#f5f8f5" stroke="#9bbca8" stroke-width="1.5" />
+    <line x1="95" y1="708" x2="145" y2="708" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    <text x="165" y="716" font-family="monospace" font-size="24px" fill="#303a36">WORLD_SIZE = SLURM_NTASKS</text>
+  </g>
+
+  
+  <path d="M 500 785 L 500 810 Q 500 820 490 820 L 425 820 Q 415 820 415 825 L 415 835" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+  <path d="M 1100 785 L 1100 810 Q 1100 820 1110 820 L 1175 820 Q 1185 820 1185 825 L 1185 835" stroke="#207448" stroke-width="3" fill="none" marker-end="url(#arrow-green)" />
+
+  
+  <g id="launch-line-container">
+    <rect x="50" y="835" width="730" height="325" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(75, 855)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="6" width="48" height="42" rx="4" />
+      <line x1="4" y1="18" x2="52" y2="18" />
+      <path d="M 12 28 L 18 34 L 12 40" />
+      <line x1="24" y1="40" x2="36" y2="40" />
+    </g>
+    <text x="135" y="888" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Launch line</text>
+
+    
+    <rect x="75" y="915" width="680" height="220" rx="8" fill="#ffffff" stroke="#9bbca8" stroke-width="1.5" />
+    <text x="95" y="950" font-family="monospace" font-size="24px" fill="#303a36">
+      <tspan x="95" dy="0">srun bash -c 'export RANK=$SLURM_PROCID</tspan>
+      <tspan x="95" dy="32">LOCAL_RANK=$SLURM_LOCALID</tspan>
+      <tspan x="95" dy="32">WORLD_SIZE=$SLURM_NTASKS;</tspan>
+      <tspan x="95" dy="32">exec python train.py'</tspan>
+      <tspan x="95" dy="38">(one task per GPU launched by srun)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="alternative-layout-container">
+    <rect x="820" y="835" width="730" height="325" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(845, 855)" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="4" y="6" width="48" height="16" rx="3" />
+      <rect x="4" y="30" width="48" height="16" rx="3" />
+      <circle cx="12" cy="14" r="2" fill="#207448" />
+      <circle cx="20" cy="14" r="2" fill="#207448" />
+      <circle cx="12" cy="38" r="2" fill="#207448" />
+      <circle cx="20" cy="38" r="2" fill="#207448" />
+      <line x1="28" y1="22" x2="28" y2="30" />
+    </g>
+    <text x="905" y="888" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#207448">Alternative layout</text>
+
+    
+    <rect x="845" y="915" width="680" height="220" rx="8" fill="#ffffff" stroke="#9bbca8" stroke-width="1.5" />
+    <text x="865" y="944" font-family="monospace" font-size="24px" fill="#303a36">
+      <tspan x="865" dy="0">one task per node: torchrun</tspan>
+      <tspan x="865" dy="28">--nnodes=$SLURM_NNODES --nproc-per-node=8</tspan>
+      <tspan x="865" dy="28">--rdzv-backend=c10d</tspan>
+      <tspan x="865" dy="28">--rdzv-endpoint=$MASTER_ADDR:29500</tspan>
+      <tspan x="865" dy="28">train.py; torchrun starts the per-GPU</tspan>
+      <tspan x="865" dy="28">processes on each node itself</tspan>
+    </text>
+  </g>
+</svg>

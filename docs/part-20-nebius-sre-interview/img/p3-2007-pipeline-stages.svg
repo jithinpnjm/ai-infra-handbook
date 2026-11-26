@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Top five clients: what each pipeline stage does to the data</title>
+  <desc>Horizontal five-stage data pipeline showing command stages, output table with top client highlighted, cross-check verification step, common wrong approach warning panel, and core takeaway.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="85" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Top five clients: what each pipeline stage does to the data</text>
+
+  
+  <rect x="40" y="145" width="264" height="335" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="76" cy="188" r="24" fill="#207448"/>
+  <text x="76" y="188" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">1</text>
+  
+  <polygon points="150,166 206,166 186,192 186,214 170,204 170,192" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  
+  <text x="58" y="265" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">awk print $1</text>
+  
+  <text x="58" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="58" dy="0">keep the client</tspan>
+    <tspan x="58" dy="32">address field</tspan>
+  </text>
+
+  
+  <line x1="304" y1="312" x2="332" y2="312" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="332" y="145" width="280" height="335" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="368" cy="188" r="24" fill="#207448"/>
+  <text x="368" y="188" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">2</text>
+  
+  <path d="M450,212 L450,166 M440,178 L450,166 L460,178 M482,166 L482,212 M472,200 L482,212 L492,200" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <text x="350" y="265" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">sort</text>
+  
+  <text x="350" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="350" dy="0">equal addresses</tspan>
+    <tspan x="350" dy="32">become neighbours</tspan>
+  </text>
+
+  
+  <line x1="612" y1="312" x2="640" y2="312" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="640" y="145" width="236" height="335" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="676" cy="188" r="24" fill="#207448"/>
+  <text x="676" y="188" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">3</text>
+  
+  <rect x="734" y="168" width="28" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <rect x="748" y="176" width="28" height="36" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="742" y1="182" x2="754" y2="182" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <line x1="756" y1="192" x2="768" y2="192" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  
+  <text x="658" y="265" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">uniq -c</text>
+  
+  <text x="658" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="658" dy="0">count each run</tspan>
+    <tspan x="658" dy="32">of equal lines</tspan>
+  </text>
+
+  
+  <line x1="876" y1="312" x2="904" y2="312" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="904" y="145" width="300" height="335" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="940" cy="188" r="24" fill="#207448"/>
+  <text x="940" y="188" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">4</text>
+  
+  <rect x="1022" y="168" width="20" height="42" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+  <rect x="1052" y="168" width="20" height="42" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M1032,160 C1032,150 1062,150 1062,160" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <polyline points="1057,156 1062,161 1067,156" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <text x="924" y="265" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">awk print $2, $1</text>
+  
+  <text x="924" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="924" dy="0">put address first,</tspan>
+    <tspan x="924" dy="32">count second</tspan>
+  </text>
+
+  
+  <line x1="1204" y1="312" x2="1232" y2="312" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1232" y="145" width="328" height="335" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1268" cy="188" r="24" fill="#207448"/>
+  <text x="1268" y="188" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">5</text>
+  
+  <path d="M1362,214 L1362,188 L1380,188 L1380,172 L1400,172 L1400,196 L1418,196 L1418,214 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="1356" y1="214" x2="1424" y2="214" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  
+  <text x="1252" y="250" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">sort -k2,2nr -k1,1</text>
+  <text x="1252" y="280" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">awk NR&lt;=5</text>
+  
+  <text x="1252" y="322" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1252" dy="0">rank by count,</tspan>
+    <tspan x="1252" dy="30">address breaks ties;</tspan>
+    <tspan x="1252" dy="30">awk instead of head</tspan>
+    <tspan x="1252" dy="30">so pipefail never</tspan>
+    <tspan x="1252" dy="30">reports exit 141</tspan>
+  </text>
+
+  
+  
+  <rect x="40" y="510" width="880" height="230" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="82" cy="556" r="24" fill="#207448"/>
+  <text x="82" y="556" text-anchor="middle" dominant-baseline="central" fill="#ffffff" font-family="sans-serif" font-size="28" font-weight="bold">6</text>
+  
+  <path d="M128,542 L154,530 L180,542 L180,568 C180,584 154,596 154,596 C154,596 128,584 128,568 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <polyline points="140,563 150,572 166,554" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <text x="82" y="645" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="82" dy="0">Cross-check: count the same thing</tspan>
+    <tspan x="82" dy="38">with an awk array and compare</tspan>
+  </text>
+
+  
+  <rect x="960" y="510" width="600" height="230" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="980" y="524" width="560" height="38" rx="6" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+  <text x="1000" y="551" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">203.0.113.77 362</text>
+  
+  <line x1="980" y1="568" x2="1540" y2="568" stroke="#d5e3d8" stroke-width="1"/>
+  <text x="1000" y="593" font-family="monospace" font-size="24" fill="#303a36">203.0.113.18 68</text>
+  <line x1="980" y1="610" x2="1540" y2="610" stroke="#d5e3d8" stroke-width="1"/>
+  <text x="1000" y="635" font-family="monospace" font-size="24" fill="#303a36">203.0.113.17 62</text>
+  <line x1="980" y1="652" x2="1540" y2="652" stroke="#d5e3d8" stroke-width="1"/>
+  <text x="1000" y="677" font-family="monospace" font-size="24" fill="#303a36">203.0.113.24 62</text>
+  <line x1="980" y1="694" x2="1540" y2="694" stroke="#d5e3d8" stroke-width="1"/>
+  <text x="1000" y="719" font-family="monospace" font-size="24" fill="#303a36">198.51.100.22 60</text>
+
+  
+  <rect x="40" y="765" width="1520" height="175" rx="10" fill="#fdf3f2" stroke="#d9383a" stroke-width="3"/>
+  
+  <polygon points="76,786 52,828 100,828" fill="none" stroke="#d9383a" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="76" y1="800" x2="76" y2="813" stroke="#d9383a" stroke-width="4" stroke-linecap="round"/>
+  <circle cx="76" cy="821" r="2.5" fill="#d9383a"/>
+  
+  <text x="118" y="818" font-family="sans-serif" font-size="30" font-weight="bold" fill="#b82527">Common wrong approach</text>
+  
+  <text x="68" y="865" fill="#303a36">
+    <tspan x="68" dy="0" font-family="monospace" font-size="24" font-weight="bold" fill="#b82527">cut -d space -f1 access.log | uniq -c | sort -rn | head -3</tspan>
+    <tspan x="68" dy="38" font-family="sans-serif" font-size="24" fill="#303a36">skips the first sort, so uniq counted only neighbouring lines and printed 3 203.0.113.77 twice</tspan>
+  </text>
+
+  
+  <rect x="40" y="965" width="1520" height="80" rx="10" fill="#207448"/>
+  <text x="800" y="1015" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Never report a number you have produced only one way.</text>
+</svg>

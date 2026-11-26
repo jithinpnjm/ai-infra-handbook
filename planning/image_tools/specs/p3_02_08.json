@@ -1,0 +1,122 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-delegation-glue",
+  "title": "Delegation, glue records and zone replication",
+  "spec": "Left panel 'Delegation with glue': three stacked zones 'root', 'com', 'example.com' with arrows downward labelled 'NS records point to the child zone's servers'. A callout at the com to example.com arrow in orange 'glue A and AAAA records: when the name server ns1.example.com sits inside the delegated zone, the parent also holds its address, otherwise you would have to resolve a name inside example.com to find the server for example.com (chicken and egg)'. Under it a roles strip 'Authoritative server: holds the zone and answers with the aa flag, the source of truth', 'Recursive resolver: the caching DNS server listed in resolv.conf, walks the tree for clients', 'Stub resolver: libc or systemd-resolved on each host, simply asks a recursive resolver'; warning 'a server that is both authoritative and open-recursive is a security problem: reflection and amplification'. Right panel 'Replication': 'Primary (master): holds the editable zone', arrow with 'NOTIFY' to 'Secondary (slave)', then secondary asks 'has the SOA serial gone up?' and copies by 'AXFR full copy or IXFR incremental zone transfer'. Footer 'A zone is an administrative portion of the tree served by a set of authoritative servers, a domain is a position in the tree: a domain is a place on the map and a zone is the area one office looks after; modern setups often use API-driven zone management (Route 53, Cloud DNS)'. Bottom bar: 'Decide early which server holds the editable copy of each zone'.",
+  "anchor": "## 1. The structure of DNS",
+  "alt": "A delegation from root to com to example.com with glue records, the three resolver roles, and primary to secondary replication by NOTIFY, SOA serial and AXFR or IXFR.",
+  "cap": "The parent zone delegates with NS and glue records, and secondaries copy the primary's zone by AXFR or IXFR when the SOA serial rises."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-ttl-cutover",
+  "title": "Changing a record safely: lower the TTL first, and remember negative caching",
+  "spec": "A timeline left to right. Marker 'T0: old TTL, say 3600 s, caches worldwide hold the old answer for up to that long'. Step 1 'lower the TTL well before the change, at least one old-TTL interval earlier'. Marker 'old TTL has elapsed: caches have forgotten, all now use the short TTL' (orange). Step 2 'switch the IP'. Step 3 'wait'. Step 4 'restore the TTL'. Under the timeline a trade-off bar 'Low TTL: fast failover but more queries; high TTL: less load but delayed changes'. Second panel 'Negative caching': a lookup before the name exists returns 'NXDOMAIN' which is cached for the negative TTL, the minimum field of the SOA (RFC 2308); then 'you create the record' and 'queries still fail for minutes'; example SOA from the chapter 'negative TTL 300'. Third panel 'SOA serial: increment it (YYYYMMDDnn, e.g. 2026102301) or secondaries never update'. Bottom bar: 'Before you call a record change finished, confirm that the SOA serial moved and that the secondaries picked it up'.",
+  "anchor": "## 2. How a lookup actually works",
+  "alt": "A timeline for changing a DNS record: lower the TTL one old-TTL ahead, switch the IP, wait and restore, with negative caching delays and the SOA serial reminder.",
+  "cap": "Lower the TTL at least one old-TTL interval before a change, and remember that NXDOMAIN answers are cached for the SOA negative TTL."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-transport-rcodes",
+  "title": "DNS over UDP and TCP, EDNS, and what each response code means",
+  "spec": "Left panel 'Transport': a query on 'UDP port 53 by default, most questions and answers are tiny'. If the answer is large the response carries the 'TC truncation bit', then the client retries on 'TCP port 53'. Also TCP for 'zone transfers' and 'DoT and DoH variants'. 'EDNS(0) advertises larger UDP payloads, commonly 1232 bytes, to avoid fragmentation, and carries DNSSEC flags'. Warning in orange 'firewalls that block TCP/53 or fragments break big answers, such as DNSSEC responses and long TXT records'. Right panel table 'Response codes': 'NOERROR: the query succeeded, with or without data', 'NXDOMAIN: the name does not exist', 'SERVFAIL: the resolver could not get an answer: upstream timeout, DNSSEC failure, lame delegation', 'REFUSED: the server refused for policy reasons', 'FORMERR: format error'. Bottom strip 'dig +tcp example.com TXT forces TCP; dig +bufsize=512 against 1232 tests EDNS size; the tc flag in a dig header means retry over TCP'. Latency note 'Public resolvers and root servers are anycast; your latency to your own resolver, often the cloud one at 169.254.169.254 or the VPC resolver, dominates the DNS cost: 1 ms away adds almost nothing'. Bottom bar: 'Check the latency to your own resolver first'.",
+  "anchor": "## 2. How a lookup actually works",
+  "alt": "DNS over UDP 53 with the truncation bit triggering a TCP 53 retry, EDNS 1232 byte payloads, and the response codes NOERROR, NXDOMAIN, SERVFAIL, REFUSED and FORMERR.",
+  "cap": "DNS starts on UDP 53, retries over TCP when the answer is truncated, and the response code tells you whether the name is missing, the resolver failed or policy refused."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-zone-read",
+  "title": "Reading a zone file, record by record",
+  "spec": "The zone file from the chapter as rows, each with a plain reading on the right. '$ORIGIN dc1.example.com.' 'names without a dot are relative to this'. '$TTL 300' 'default time to live'. '@ IN SOA ns1 hostmaster (serial 2026102301, refresh 3600, retry 600, expire 1209600, negative TTL 300)' 'start of authority: one per zone; serial YYYYMMDDnn; negative TTL is how long NXDOMAIN is cached'. 'IN NS ns1', 'IN NS ns2' 'the zone's name servers'. 'ns1 IN A 10.20.0.10', 'ns2 IN A 10.20.0.11' 'their addresses, the glue'. 'gpu01 IN A 10.20.0.45' 'management address'. 'gpu01-ib IN A 10.100.0.45' 'per-NIC name for the fabric interface' (orange). 'gpu01 IN AAAA 2001:db8:20::45' 'IPv6 address'. 'login IN CNAME gpu-login01' 'alias: no other records may coexist at the same name, and not allowed at the zone apex'. '_slurmctld._tcp IN SRV 0 0 6817 slurm-ctl' 'service location: priority, weight, port, target'. Right strip 'other types: MX priority and host, TXT (SPF, DKIM, DMARC, domain verification, ACME challenges), PTR reverse mapping, CAA which CAs may issue certificates, SVCB and HTTPS ALPN and ports, DS DNSKEY RRSIG NSEC(3) DNSSEC material, ALIAS or ANAME provider-specific CNAME at the apex'. Footer 'Round-robin DNS returns several A records in rotating order and clients usually try the first: no health checks; prefer health-checked records, anycast or a load balancer'. Bottom bar: 'A zone is a table of facts about names, and each record type is one kind of fact'.",
+  "anchor": "## 3. Resource records",
+  "alt": "A zone file read record by record: SOA with serial and negative TTL, NS and glue, A, per-NIC A, AAAA, CNAME and SRV records, plus other record types and round-robin DNS.",
+  "cap": "A zone file starts with SOA and NS records, then holds A, AAAA, CNAME and SRV facts, including per-NIC names for the fabric interface."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-reverse-name",
+  "title": "Reverse DNS: why the octets are flipped and why forward and reverse must agree",
+  "spec": "Top worked example: address '10.20.0.45' with its four octets drawn as boxes, an arrow flipping them to '45.0.20.10' then appending '.in-addr.arpa.' giving '45.0.20.10.in-addr.arpa.' with 'IN PTR gpu01.example.com.'. Beneath it the reason 'an address is most specific at its right end, but DNS names are most specific at their left end, so the octets are flipped to line the two up; delegation follows address block boundaries such as /8, /16, /24; the reverse zone for 10.20.0.0/24 is 0.20.10.in-addr.arpa; smaller blocks need classless delegation with CNAME tricks; IPv6 uses ip6.arpa'. Middle: two arrows 'forward: gpu01.example.com A 10.20.0.45' and 'reverse: 45.0.20.10.in-addr.arpa PTR gpu01.example.com' forming a loop labelled 'forward-confirmed reverse DNS: the two must agree' (orange). Right panel 'Who checks reverse DNS': 'SSH and mail servers', 'MPI, Slurm, Kerberos and NFS sometimes require agreement', 'logs read better with names', 'slow or missing PTR records cause multi-second stalls: sshd with UseDNS, NFS exports that use hostnames, Kerberos; UseDNS no turns it off in sshd'. Command strip 'dig -x 10.20.0.45'. Bottom bar: 'When you add a node, create its forward and reverse records together'.",
+  "anchor": "## 3. Resource records",
+  "alt": "The address 10.20.0.45 reversed to 45.0.20.10.in-addr.arpa with a PTR record, the loop of forward and reverse agreement, and the tools that check reverse DNS.",
+  "cap": "A reverse lookup flips the octets under in-addr.arpa, and forward-confirmed reverse DNS requires the forward and reverse records to agree."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-dig-anatomy",
+  "title": "Reading a dig answer, and why dig and getent can disagree",
+  "spec": "Left: a dig answer drawn as stacked sections in the order the chapter gives: 'Header: status (NOERROR) and flags qr rd ra aa tc ad, and the counts', 'Question', 'Answer: name, remaining TTL, class IN, type, data', 'Authority', 'Additional', 'Footer: query time, server, message size'. Beside the header the flags legend: 'aa authoritative answer', 'ra recursion is available', 'tc truncated, retry over TCP', 'ad the resolver validated the data with DNSSEC'. Under it 'Cache check: ask twice a few seconds apart; if the TTL has dropped you were talking to a cache'. Right: two paths diagram. Path 'dig, nslookup: DNS straight to the server you name or the first in resolv.conf; skips /etc/hosts, nsswitch, the search path logic of libc and NSS modules'. Path 'getent hosts, ping, curl: through the C library, like your application' (orange). Both end at 'the answer'. Comparison list 'resolvectl query: systemd-resolved's view, per link, shows which interface and server answered', 'dig +trace: follow the delegation chain from the root, bypassing caches', 'dig +nsid: which anycast instance answered', 'dig @8.8.8.8 name: ask a specific server'. Bottom bar: 'When dig works but the application fails, compare dig with getent hosts, then check nsswitch.conf, the search domains and which resolver the application uses'.",
+  "anchor": "## 4. Tools: `dig` and friends",
+  "alt": "The sections and flags of a dig answer, and two paths showing dig talking DNS directly while getent, ping and curl go through the C library with hosts and nsswitch.",
+  "cap": "dig talks DNS directly and skips hosts and nsswitch, while getent, ping and curl follow the same path as your application."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-resolver-timeout",
+  "title": "The dead first nameserver: where 5 and 10 second delays come from",
+  "spec": "A timeline for one lookup with a resolv.conf listing 'nameserver 10.32.45.23 (dead)' then 'nameserver 10.3.2.3 (alive)'. Default glibc: 'attempt 1 to the first server waits 5 s', 'attempt 2 waits another 5 s', then 'falls to the second server and gets an answer' so total shown as 'stalled 5 to 10 s on every lookup' (orange). Below, the improved timeline 'options timeout:1 attempts:2 rotate' showing 1 s waits and rotation across servers. Third timeline 'local caching resolver (systemd-resolved, dnsmasq, unbound): fails over quickly'. Left note 'glibc default: 5 s per attempt, 2 attempts per nameserver; up to 3 nameserver lines used'. Right panel 'Exactly N seconds means a timer: DNS problems often show up as delays of a fixed number of seconds; match the number to a resolver timeout (here 5 s from glibc, multiplied by retries) and you find the layer'. Also 'resolv.conf options: ndots:N, timeout:, attempts:, rotate, edns0; the file is often a symlink managed by systemd-resolved, NetworkManager, resolvconf or cloud-init, hand edits are overwritten, configure the manager instead: netplan nameservers, nmcli or resolved.conf'. Bottom bar: 'A dead resolver at the front of the list stalls every lookup'.",
+  "anchor": "## 5. How a Linux host resolves names",
+  "alt": "A lookup timeline where a dead first nameserver costs 5 to 10 seconds at the glibc defaults, compared with timeout 1, attempts 2 and rotate, and with a local caching resolver.",
+  "cap": "glibc waits 5 seconds per attempt with 2 attempts per server, so a dead first resolver stalls every lookup for 5 to 10 seconds."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-app-caching",
+  "title": "Who caches DNS: glibc, the JVM, Go and nginx behave differently",
+  "spec": "A four row table with columns 'Program', 'Caches?', 'Consequence'. Row 'glibc': 'does not cache, unless nscd or systemd-resolved does it for it', 'repeated lookups hit the resolver'. Row 'JVM': 'caches positive lookups per networkaddress.cache.ttl, and forever by default under a security manager' (orange), 'a DNS failover is ignored'. Row 'Go': 'caches nothing and resolves on each call', 'high query rate'. Row 'nginx': 'resolves upstream names only at startup, unless you use a variable plus a resolver', 'DNS failover is ineffective'. Side panel 'Musl and Alpine: historically handle search lists and TCP fallback differently from glibc, ndots and parallel behaviour has differed; behaviour changes by image and version, so run your DNS tests inside the same image the pod uses'. Bottom bar: 'Know your application's behaviour before you rely on DNS failover'.",
+  "anchor": "## 5. How a Linux host resolves names",
+  "alt": "A table showing that glibc does not cache, the JVM caches by networkaddress.cache.ttl, Go resolves on every call and nginx resolves upstreams only at startup.",
+  "cap": "glibc, the JVM, Go and nginx cache DNS differently, so know your application's behaviour before relying on DNS failover."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-split-dns",
+  "title": "Split DNS with systemd-resolved routing domains",
+  "spec": "A left to right flow. A host 'stub 127.0.0.53 (systemd-resolved: cache, per-interface DNS servers and routing domains)'. Two lookups arrive: 'git.corp.example.com' and 'www.example.org'. A routing decision box 'match the name against routing domains'. 'corp.example.com matches the routing domain ~corp.example.com on the VPN interface' sends the query to 'the VPN's resolver'. 'everything else' sends the query to 'the default resolver'. Commands panel 'resolvectl dns eth0 <servers>', 'resolvectl domain eth0 ~corp.example.com', 'resolvectl query name verifies the routing', 'resolvectl status shows global settings then one block per interface', 'resolvectl statistics / flush-caches', 'config in /etc/systemd/resolved.conf'. Related panel 'Split-horizon DNS: internal names return private addresses inside the network and public addresses outside it, through separate views or zones; common in cloud and VPN setups'. Also 'resolved handles LLMNR and mDNS, supports DNSSEC and DoT (DNSOverTLS=)'. Clue strip '127.0.0.53 or 127.0.0.1 in /etc/resolv.conf means a caching daemon sits between programs and the name server'. Bottom bar: 'Routing domains send each name to the right resolver'.",
+  "anchor": "## 5. How a Linux host resolves names",
+  "alt": "A host stub resolver matching a name against routing domains to send corp.example.com to the VPN resolver and everything else to the default resolver, with the resolvectl commands.",
+  "cap": "A routing domain such as ~corp.example.com sends matching names to the VPN's resolver and everything else to the default."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-cluster-names",
+  "title": "Names decide which network a job uses: per-NIC names in a cluster",
+  "spec": "Left: a node 'gpu01' with three NICs drawn as ports, each with its own name and network: 'gpu01 or gpu01-mgmt: management 10.20.0.45', 'gpu01-ib0: fabric 10.100.0.45', plus storage as another named interface. Right: two outcomes. Outcome A 'hostfile names the fabric NIC (gpu01-ib0): bootstrap traffic uses the fabric'. Outcome B in orange 'hostfile name resolves to the management NIC: bootstrap traffic takes the wrong network, and the job crawls or fails with no obvious error'. Below: a list of where names are consumed 'Slurm: NodeName and NodeAddr in slurm.conf; use NodeAddr to bind jobs to a specific interface; forward lookups must match through SlurmctldHost and NodeHostname', 'MPI and NCCL launchers: hostnames from a hostfile; set NCCL_SOCKET_IFNAME and NCCL_IB_HCA explicitly rather than relying on names', 'monitoring labels and certificates'. Hygiene box 'reverse DNS must exist for all node IPs, management and where used fabric; missing PTR records cause multi-second stalls', 'Debian 127.0.1.1 hostname line makes a host resolve its own name to loopback, which breaks MPI and Kerberos assumptions', 'generate every record from one naming scheme and inventory so Slurm, MPI and DNS always agree; predictable names such as gpu-rack03-node07; hostname -f should resolve to the primary address'. Cloud strip 'GCP: instance.zone.c.project.internal, Cloud DNS public and private zones, forwarding, peering, response policies, metadata-server resolver 169.254.169.254; AWS Route 53 Resolver; Kubernetes ExternalDNS syncs service and ingress hostnames'. Bottom bar: 'Get names right before you tune anything else'.",
+  "anchor": "## 7. DNS in HPC and AI clusters",
+  "alt": "A GPU node with management and fabric NIC names, and what happens when a hostfile name resolves to the wrong NIC, with the Slurm, MPI and reverse DNS requirements.",
+  "cap": "A hostfile name that resolves to the management NIC sends bootstrap traffic over the wrong network, so use per-NIC names and one naming scheme."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-dnssec-chain",
+  "title": "DNSSEC chain of trust, and the other DNS security controls",
+  "spec": "Left: a chain of trust from top to bottom. 'Root trust anchor' then 'DS record in the root for com' then 'com zone DNSKEY' then 'DS record for example.com published by the parent' then 'example.com zone DNSKEY' signs 'RRSIG over each RRset' then 'the answer'. A validating resolver at the side checks each link, sets the 'ad flag on verified answers' and returns 'SERVFAIL on failure' (orange). Note 'DNSSEC does not encrypt anything; expired signatures or DS and key mismatches during a rollover cause outages for validating users; automate signing and rollovers'. Right: table 'Threat to control'. 'Forged answers, cache poisoning': 'DNSSEC, source-port and query-ID randomisation'. 'Open resolvers, amplification DDoS': 'restrict recursion to your own networks, rate-limit responses'. 'DNS tunnelling exfiltrating data': 'monitor volume, long labels and TXT records'. 'Dangling CNAMEs': 'subdomain takeover, clean up records'. 'DNS rebinding': 'filter private answers'. 'Zone data': 'restrict AXFR to secondaries and authenticate with TSIG; keep authoritative and recursive roles on separate servers'. 'Untrusted network hop': 'DoT over TCP/853 and DoH over HTTPS encrypt the stub to resolver hop; mostly unnecessary inside a data centre'. Optional 'RPZ response policy zones or provider threat-blocking'. Bottom bar: 'Restrict who can use each resolver before you open it to a network'.",
+  "anchor": "## 8. Security: DNSSEC, DoT/DoH, and abuse",
+  "alt": "A DNSSEC chain from the root trust anchor through DS and DNSKEY records to RRSIG signed answers with the ad flag or SERVFAIL, beside a table of DNS threats and their controls.",
+  "cap": "DNSSEC links the root trust anchor to signed answers through DS and DNSKEY records, and other controls cover open resolvers, tunnelling, takeover and zone transfers."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "08",
+  "name": "p3-0208-k8s-dns-debug",
+  "title": "Debugging DNS in Kubernetes: the pod, CoreDNS and the fixes",
+  "spec": "Left: a pod resolver file 'search my-ns.svc.cluster.local svc.cluster.local cluster.local dc1.example.com', 'nameserver 10.96.0.10 (CoreDNS service kube-dns)', 'options ndots:5' with the note 'the kubelet generates it'. Middle: a ladder of debugging steps. '1 kubectl exec pod -- cat /etc/resolv.conf', '2 helper pod: kubectl run -it --rm dnsutils --image=registry.k8s.io/e2e-test-images/jessie-dnsutils -- sh then dig or nslookup', '3 CoreDNS logs: kubectl logs -n kube-system -l k8s-app=kube-dns', '4 Corefile: kubectl -n kube-system get cm coredns -o yaml', '5 metrics: coredns_dns_requests_total, coredns_dns_responses_total{rcode}, latency histograms', '6 confirm the nodes' own resolvers work'. Right: fixes. 'FQDNs with a trailing dot in hot paths', 'dnsConfig.options ndots 1 or 2 per pod', 'NodeLocal DNSCache: a per-node cache on a link-local IP avoiding conntrack and cross-node hops', 'scale CoreDNS with an autoscaler or more replicas, tune its cache and forward plugins' (orange on NodeLocal). Name resolution facts: 'service.namespace.svc.cluster.local resolves to ClusterIPs; headless services return pod IPs, e.g. worker-0.trainer.ns.svc.cluster.local; everything else is forwarded to the node's upstream resolvers'. Docker and Podman: 'custom networks have an embedded DNS at 127.0.0.11'. Bottom bar: 'Run your DNS tests inside the same image the pod uses'.",
+  "anchor": "## 6. DNS in Kubernetes and containers",
+  "alt": "A pod resolv.conf with ndots 5 and the CoreDNS service, a six step debug ladder with kubectl commands and metrics, and the fixes of FQDNs, ndots, NodeLocal DNSCache and scaling CoreDNS.",
+  "cap": "Check the pod's resolv.conf, then a dnsutils pod, CoreDNS logs, the Corefile and metrics, and fix with FQDNs, lower ndots or NodeLocal DNSCache."
+ }
+]

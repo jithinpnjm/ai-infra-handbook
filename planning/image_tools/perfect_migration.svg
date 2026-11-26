@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Expand and contract migration during a rolling update</title>
+  <desc>Timeline showing expand and contract database migration during a rolling update across old and new code reading one shared database.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-db" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 9 5 L 0 8.5 Z" fill="#207448" />
+    </marker>
+  </defs>
+  <!-- Background -->
+  <rect width="100%" height="100%" fill="#f5f8f5" />
+  <!-- Title -->
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Expand and contract migration during a rolling update</text>
+  <!-- Phase 1: Expand -->
+  <rect x="40" y="120" width="480" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(68, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24" />
+    <line x1="28" y1="16" x2="28" y2="40" />
+    <line x1="16" y1="28" x2="40" y2="28" />
+  </g>
+  <text x="68" y="232" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="68" dy="0">Phase 1 expand:</tspan>
+    <tspan x="68" dy="38" font-size="24" font-weight="normal">add the new piece in a way</tspan>
+    <tspan x="68" dy="34" font-size="24" font-weight="normal">old code ignores</tspan>
+  </text>
+  <!-- Arrow Phase 1 -> Phase 2 -->
+  <line x1="520" y1="225" x2="558" y2="225" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <!-- Phase 2: Rolling -->
+  <rect x="560" y="120" width="480" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(588, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 14 28 A 18 18 0 0 1 44 18" />
+    <polyline points="36,10 46,17 40,27" />
+    <path d="M 42 28 A 18 18 0 0 1 12 38" />
+    <polyline points="20,46 10,39 16,29" />
+  </g>
+  <text x="588" y="232" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="588" dy="0">Phase 2 move the code</tspan>
+    <tspan x="588" dy="38" font-size="24" font-weight="normal">over with serial rolling,</tspan>
+    <tspan x="588" dy="34" font-size="24" font-weight="normal">old and new run side by side</tspan>
+  </text>
+  <!-- Arrow Phase 2 -> Phase 3 -->
+  <line x1="1040" y1="225" x2="1078" y2="225" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <!-- Phase 3: Contract -->
+  <rect x="1080" y="120" width="480" height="210" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(1108, 140)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="24" />
+    <line x1="16" y1="28" x2="40" y2="28" />
+  </g>
+  <text x="1108" y="242" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1108" dy="0">Phase 3 contract:</tspan>
+    <tspan x="1108" dy="40" font-size="24" font-weight="normal">later remove the old piece</tspan>
+  </text>
+  <!-- Two Lanes Container -->
+  <rect x="40" y="370" width="1520" height="290" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Lane 1: Old Code -->
+  <rect x="65" y="390" width="260" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 423)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="44" height="34" rx="4" />
+    <line x1="2" y1="14" x2="46" y2="14" />
+    <circle cx="8" cy="9" r="1.5" fill="#207448" />
+    <circle cx="15" cy="9" r="1.5" fill="#207448" />
+  </g>
+  <text x="150" y="460" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">old code</text>
+  <g transform="translate(360, 410)">
+    <rect x="0" y="0" width="80" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="40" cy="26" r="10" fill="#207448" />
+    <rect x="25" y="42" width="30" height="15" rx="3" fill="#207448" />
+    <rect x="95" y="0" width="80" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="135" cy="26" r="10" fill="#207448" />
+    <rect x="120" y="42" width="30" height="15" rx="3" fill="#207448" />
+  </g>
+  <g transform="translate(700, 410)">
+    <rect x="0" y="0" width="80" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="40" cy="26" r="10" fill="#207448" />
+    <rect x="25" y="42" width="30" height="15" rx="3" fill="#207448" />
+    <rect x="95" y="0" width="80" height="70" rx="8" fill="#f5f8f5" stroke="#a0aba3" stroke-width="2" stroke-dasharray="6,4" />
+    <line x1="115" y1="20" x2="155" y2="50" stroke="#a0aba3" stroke-width="2" />
+    <line x1="155" y1="20" x2="115" y2="50" stroke="#a0aba3" stroke-width="2" />
+  </g>
+  <g transform="translate(1220, 410)">
+    <rect x="0" y="0" width="175" height="70" rx="8" fill="#f5f8f5" stroke="#a0aba3" stroke-width="2" stroke-dasharray="6,4" />
+    <line x1="25" y1="35" x2="150" y2="35" stroke="#a0aba3" stroke-width="2.5" stroke-dasharray="8,6" />
+  </g>
+  <!-- Lane 2: New Code -->
+  <rect x="65" y="525" width="260" height="115" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <g transform="translate(85, 558)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="4" width="44" height="34" rx="4" />
+    <line x1="2" y1="14" x2="46" y2="14" />
+    <polyline points="15,25 21,31 33,20" />
+  </g>
+  <text x="150" y="595" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">new code</text>
+  <g transform="translate(360, 545)">
+    <rect x="0" y="0" width="175" height="70" rx="8" fill="#f5f8f5" stroke="#a0aba3" stroke-width="2" stroke-dasharray="6,4" />
+    <line x1="25" y1="35" x2="150" y2="35" stroke="#a0aba3" stroke-width="2.5" stroke-dasharray="8,6" />
+  </g>
+  <g transform="translate(880, 545)">
+    <rect x="0" y="0" width="80" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="40" cy="26" r="10" fill="#207448" />
+    <rect x="25" y="42" width="30" height="15" rx="3" fill="#207448" />
+  </g>
+  <g transform="translate(1220, 545)">
+    <rect x="0" y="0" width="80" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="40" cy="26" r="10" fill="#207448" />
+    <rect x="25" y="42" width="30" height="15" rx="3" fill="#207448" />
+    <rect x="95" y="0" width="80" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <circle cx="135" cy="26" r="10" fill="#207448" />
+    <rect x="120" y="42" width="30" height="15" rx="3" fill="#207448" />
+  </g>
+  <!-- Database Layer -->
+  <rect x="40" y="700" width="1520" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(68, 725)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="26" cy="14" rx="22" ry="7" />
+    <path d="M 4 14 V 42 C 4 46 14 50 26 50 C 38 50 48 46 48 42 V 14" />
+    <path d="M 4 28 C 4 32 14 36 26 36 C 38 36 48 32 48 28" />
+  </g>
+  <text x="140" y="766" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">both reading one database</text>
+  <g transform="translate(640, 723)">
+    <rect x="0" y="0" width="240" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="22" cy="30" r="9" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <line x1="22" y1="25" x2="22" y2="35" stroke="#207448" stroke-width="2" />
+    <line x1="17" y1="30" x2="27" y2="30" stroke="#207448" stroke-width="2" />
+    <rect x="42" y="22" width="70" height="16" rx="3" fill="#207448" />
+    <rect x="122" y="22" width="98" height="16" rx="3" fill="#207448" opacity="0.4" />
+  </g>
+  <g transform="translate(940, 723)">
+    <rect x="0" y="0" width="240" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <rect x="20" y="22" width="95" height="16" rx="3" fill="#207448" />
+    <rect x="125" y="22" width="95" height="16" rx="3" fill="#207448" />
+  </g>
+  <g transform="translate(1240, 723)">
+    <rect x="0" y="0" width="240" height="60" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <circle cx="22" cy="30" r="9" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <line x1="17" y1="30" x2="27" y2="30" stroke="#207448" stroke-width="2" />
+    <rect x="42" y="22" width="98" height="16" rx="3" fill="#207448" />
+    <line x1="150" y1="30" x2="220" y2="30" stroke="#a0aba3" stroke-width="2" stroke-dasharray="6,4" />
+  </g>
+  <!-- Arrows from Lanes to Database -->
+  <line x1="440" y1="660" x2="440" y2="695" stroke="#207448" stroke-width="3" marker-end="url(#arrow-db)" />
+  <line x1="800" y1="660" x2="800" y2="695" stroke="#207448" stroke-width="3" marker-end="url(#arrow-db)" />
+  <line x1="1310" y1="660" x2="1310" y2="695" stroke="#207448" stroke-width="3" marker-end="url(#arrow-db)" />
+  <!-- Warning Box (Highlighted with single Orange #db8129) -->
+  <rect x="40" y="850" width="940" height="230" rx="14" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+  <g transform="translate(68, 915)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 6 L 52 48 L 4 48 Z" />
+    <line x1="28" y1="22" x2="28" y2="34" />
+    <circle cx="28" cy="41" r="1.5" fill="#db8129" />
+  </g>
+  <text x="146" y="930" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+    <tspan x="146" dy="0">a migration that removes a column</tspan>
+    <tspan x="146" dy="42">old code still uses breaks</tspan>
+    <tspan x="146" dy="42">old code mid-rollout</tspan>
+  </text>
+  <!-- Note Box -->
+  <rect x="1020" y="850" width="540" height="230" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g transform="translate(1048, 920)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="6" width="48" height="38" rx="5" />
+    <polyline points="15,19 23,25 15,31" />
+    <line x1="27" y1="31" x2="39" y2="31" />
+  </g>
+  <text x="1115" y="930" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1115" dy="0" font-family="monospace" font-weight="bold">alembic upgrade head</tspan>
+    <tspan x="1115" dy="38">runs once with <tspan font-family="monospace" font-weight="bold">run_once</tspan></tspan>
+    <tspan x="1115" dy="38">on the first host</tspan>
+  </text>
+</svg>

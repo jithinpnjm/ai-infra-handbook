@@ -1,0 +1,207 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Changing a record safely: lower the TTL first, and remember negative caching</title>
+  <desc>Visual infographic explaining DNS record modification lifecycle, TTL lowering, cache propagation delays, negative caching impact, and SOA serial incrementing for secondary nameservers.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Changing a record safely: lower the TTL first,</text>
+  <text x="800" y="118" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">and remember negative caching</text>
+
+  
+  
+  <rect x="40" y="155" width="265" height="295" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="172.5" cy="195" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+  <polyline points="172.5,178 172.5,195 186,195" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="172.5" y="252" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="172.5" dy="0">T0: old TTL,</tspan>
+    <tspan x="172.5" dy="28">say 3600 s,</tspan>
+    <tspan x="172.5" dy="28">caches worldwide</tspan>
+    <tspan x="172.5" dy="28">hold the old</tspan>
+    <tspan x="172.5" dy="28">answer for up</tspan>
+    <tspan x="172.5" dy="28">to that long</tspan>
+  </text>
+
+  
+  <line x1="305" y1="302" x2="343" y2="302" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="345" y="155" width="265" height="295" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="477.5" cy="192" r="24" fill="#207448"/>
+  <text x="477.5" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  <text x="477.5" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 1</text>
+  <text x="477.5" y="282" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="477.5" dy="0">lower the TTL</tspan>
+    <tspan x="477.5" dy="28">well before the</tspan>
+    <tspan x="477.5" dy="28">change, at least</tspan>
+    <tspan x="477.5" dy="28">one old-TTL</tspan>
+    <tspan x="477.5" dy="28">interval earlier</tspan>
+  </text>
+
+  
+  <line x1="610" y1="302" x2="648" y2="302" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="650" y="155" width="255" height="295" rx="8" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="777.5" cy="195" r="24" fill="none" stroke="#db8129" stroke-width="4"/>
+  <polyline points="767,195 774,203 790,186" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="777.5" y="262" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="777.5" dy="0">old TTL has</tspan>
+    <tspan x="777.5" dy="28">elapsed: caches</tspan>
+    <tspan x="777.5" dy="28">have forgotten,</tspan>
+    <tspan x="777.5" dy="28">all now use the</tspan>
+    <tspan x="777.5" dy="28">short TTL</tspan>
+  </text>
+
+  
+  <line x1="905" y1="302" x2="943" y2="302" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="945" y="155" width="175" height="295" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1032.5" cy="192" r="24" fill="#207448"/>
+  <text x="1032.5" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  <text x="1032.5" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 2</text>
+  
+  <rect x="1010" y="265" width="45" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1022" y1="281" x2="1043" y2="281" stroke="#207448" stroke-width="3"/>
+  <circle cx="1018" cy="281" r="2" fill="#207448"/>
+  <text x="1032.5" y="340" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1032.5" dy="0">switch</tspan>
+    <tspan x="1032.5" dy="28">the IP</tspan>
+  </text>
+
+  
+  <line x1="1120" y1="302" x2="1158" y2="302" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1160" y="155" width="155" height="295" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1237.5" cy="192" r="24" fill="#207448"/>
+  <text x="1237.5" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  <text x="1237.5" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 3</text>
+  
+  <path d="M 1222 265 L 1253 265 L 1242 281 L 1253 297 L 1222 297 L 1233 281 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  <text x="1237.5" y="354" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">wait</text>
+
+  
+  <line x1="1315" y1="302" x2="1353" y2="302" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="1355" y="155" width="205" height="295" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1457.5" cy="192" r="24" fill="#207448"/>
+  <text x="1457.5" y="200" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  <text x="1457.5" y="244" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Step 4</text>
+  
+  <path d="M 1437 288 A 20 20 0 1 1 1478 288" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="1457.5" y1="288" x2="1470" y2="275" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="1457.5" y="340" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1457.5" dy="0">restore</tspan>
+    <tspan x="1457.5" dy="28">the TTL</tspan>
+  </text>
+
+  
+  <rect x="40" y="490" width="1520" height="65" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 80 528 L 104 528 M 92 516 L 92 534 M 82 522 L 74 532 L 90 532 Z M 102 522 L 94 532 L 110 532 Z" fill="none" stroke="#207448" stroke-width="2"/>
+  <text x="800" y="532" text-anchor="middle" font-family="sans-serif" font-size="25" font-weight="bold" fill="#207448">Low TTL: fast failover but more queries; high TTL: less load but delayed changes</text>
+
+  
+  <rect x="40" y="595" width="740" height="455" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <path d="M 68 625 L 90 615 L 112 625 L 112 642 C 112 655 90 665 90 665 C 90 665 68 655 68 642 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  <text x="125" y="647" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Negative caching</text>
+
+  
+  <rect x="65" y="675" width="690" height="115" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <rect x="85" y="690" width="170" height="36" rx="6" fill="#f5f8f5" stroke="#303a36" stroke-width="2"/>
+  <text x="170" y="716" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">NXDOMAIN</text>
+  <text x="85" y="752" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" dy="0">which is cached for the negative TTL,</tspan>
+    <tspan x="85" dy="28">the minimum field of the SOA (RFC 2308)</tspan>
+  </text>
+
+  
+  <line x1="410" y1="790" x2="410" y2="813" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="65" y="815" width="690" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="102" cy="847" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="102" y1="839" x2="102" y2="855" stroke="#207448" stroke-width="3"/>
+  <line x1="94" y1="847" x2="110" y2="847" stroke="#207448" stroke-width="3"/>
+  <text x="135" y="856" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">you create the record</text>
+
+  
+  <line x1="410" y1="880" x2="410" y2="903" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <rect x="65" y="905" width="690" height="125" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="102" cy="940" r="16" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="102" y1="930" x2="102" y2="942" stroke="#207448" stroke-width="3"/>
+  <circle cx="102" cy="948" r="2" fill="#207448"/>
+  <text x="135" y="948" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">queries still fail for minutes</text>
+
+  <rect x="135" y="972" width="280" height="42" rx="6" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+  <text x="275" y="1001" text-anchor="middle" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">negative TTL 300</text>
+
+  
+  <rect x="820" y="595" width="740" height="455" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="850" y="625" width="40" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="858" y1="634" x2="868" y2="634" stroke="#207448" stroke-width="2"/>
+  <circle cx="882" cy="634" r="2" fill="#207448"/>
+  <rect x="850" y="648" width="40" height="18" rx="3" fill="none" stroke="#207448" stroke-width="3"/>
+  <line x1="858" y1="657" x2="868" y2="657" stroke="#207448" stroke-width="2"/>
+  <circle cx="882" cy="657" r="2" fill="#207448"/>
+
+  
+  <rect x="845" y="675" width="690" height="145" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="875" y="718" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">SOA serial: increment it</text>
+  <text x="875" y="756" font-family="monospace" font-size="25" font-weight="bold" fill="#303a36">(YYYYMMDDnn, e.g. 2026102301)</text>
+  <text x="875" y="794" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">or secondaries never update</text>
+
+  
+  <rect x="845" y="840" width="690" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+  
+  <g transform="translate(880, 875)">
+    <rect x="0" y="0" width="130" height="38" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <circle cx="16" cy="19" r="4" fill="#207448"/>
+    <line x1="32" y1="19" x2="80" y2="19" stroke="#207448" stroke-width="2"/>
+    <rect x="0" y="46" width="130" height="38" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <circle cx="16" cy="65" r="4" fill="#207448"/>
+    <line x1="32" y1="65" x2="80" y2="65" stroke="#207448" stroke-width="2"/>
+  </g>
+
+  
+  <g transform="translate(1045, 915)">
+    <line x1="0" y1="0" x2="115" y2="0" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+    
+    <path d="M 50 -18 A 14 14 0 1 1 65 -5" fill="none" stroke="#207448" stroke-width="3"/>
+    <polyline points="63,-12 68,-3 59,-2" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <g transform="translate(1380, 860)">
+    <rect x="0" y="0" width="130" height="34" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <circle cx="16" cy="17" r="3" fill="#207448"/>
+    <line x1="30" y1="17" x2="75" y2="17" stroke="#207448" stroke-width="2"/>
+    <rect x="0" y="40" width="130" height="34" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <circle cx="16" cy="57" r="3" fill="#207448"/>
+    <line x1="30" y1="57" x2="75" y2="57" stroke="#207448" stroke-width="2"/>
+    <rect x="0" y="80" width="130" height="34" rx="4" fill="#f5f8f5" stroke="#207448" stroke-width="2"/>
+    <circle cx="16" cy="97" r="3" fill="#207448"/>
+    <line x1="30" y1="97" x2="75" y2="97" stroke="#207448" stroke-width="2"/>
+  </g>
+
+  
+  <rect x="40" y="1090" width="1520" height="70" rx="8" fill="#207448"/>
+  <text x="800" y="1133" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Before you call a record change finished, confirm that the SOA serial moved and that the secondaries picked it up</text>
+</svg>

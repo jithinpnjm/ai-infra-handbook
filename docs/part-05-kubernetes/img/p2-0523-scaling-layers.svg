@@ -1,0 +1,193 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1160" viewBox="0 0 1600 1160">
+  <title>A scaling decision passes through a relay of layers</title>
+  <desc>Visual infographic showing how a Kubernetes scaling decision cascades from metrics through HPA/VPA, pending pods, cluster autoscaler, node provisioning, and pod scheduling, with idle node scale-down.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">A scaling decision passes through a relay of layers</text>
+
+  
+  <g id="node-metrics">
+    <rect x="80" y="115" width="1440" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(115, 137)">
+      <path d="M 6 36 A 24 24 0 1 1 50 36" stroke="#207448" stroke-width="3.5" stroke-linecap="round" fill="none"/>
+      <line x1="28" y1="28" x2="38" y2="16" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <circle cx="28" cy="28" r="3.5" fill="#207448"/>
+      <path d="M 12 48 L 20 40 L 26 44 L 34 34 L 44 48" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="195" y="154" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Metrics: CPU and memory, request rate, queue depth,</text>
+    <text x="195" y="192" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">tokens per second, KV cache, external events</text>
+  </g>
+
+  
+  <path d="M 800 215 L 800 240 M 460 240 L 1200 240" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="460" y1="240" x2="460" y2="265" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+  <line x1="1200" y1="240" x2="1200" y2="265" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-hpa">
+    <rect x="80" y="265" width="760" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(115, 287)">
+      <rect x="4" y="8" width="20" height="24" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="32" y="8" width="20" height="24" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+      <path d="M 8 44 L 48 44" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 14 39 L 8 44 L 14 49" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 42 39 L 48 44 L 42 49" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="195" y="308" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">HPA or KEDA:</text>
+    <text x="195" y="344" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">adjust replicas</text>
+  </g>
+
+  
+  <g id="node-vpa">
+    <rect x="880" y="265" width="640" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(915, 287)">
+      <rect x="14" y="14" width="28" height="28" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+      <path d="M 28 6 L 28 14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 23 10 L 28 5 L 33 10" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <path d="M 28 42 L 28 50" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 23 46 L 28 51 L 33 46" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="980" y="308" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">VPA:</text>
+    <text x="980" y="344" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">adjust requests and limits</text>
+  </g>
+
+  
+  <line x1="460" y1="365" x2="460" y2="410" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <g id="step-1">
+    <rect x="80" y="410" width="760" height="95" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="125" cy="457.5" r="24" fill="#207448"/>
+    <text x="125" y="457.5" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">1</text>
+    
+    <g transform="translate(165, 435)">
+      <rect x="4" y="6" width="22" height="26" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+      <path d="M 32 10 L 48 10 L 40 22 L 48 34 L 32 34 L 40 22 Z" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="235" y="446" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pending pods:</text>
+    <text x="235" y="482" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">no capacity</text>
+  </g>
+
+  
+  <line x1="460" y1="505" x2="460" y2="550" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <g id="step-2">
+    <rect x="80" y="550" width="760" height="95" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="125" cy="597.5" r="24" fill="#207448"/>
+    <text x="125" y="597.5" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">2</text>
+    
+    <g transform="translate(165, 575)">
+      <rect x="4" y="6" width="34" height="14" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="4" y="26" width="34" height="14" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <circle cx="10" cy="13" r="2" fill="#207448"/>
+      <circle cx="10" cy="33" r="2" fill="#207448"/>
+      <line x1="45" y1="23" x2="45" y2="35" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+      <line x1="39" y1="29" x2="51" y2="29" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="235" y="586" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cluster Autoscaler or Karpenter:</text>
+    <text x="235" y="622" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">add nodes</text>
+  </g>
+
+  
+  <line x1="460" y1="645" x2="460" y2="690" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <g id="step-3">
+    <rect x="80" y="690" width="760" height="95" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="4"/>
+    <circle cx="125" cy="737.5" r="24" fill="#207448"/>
+    <text x="125" y="737.5" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">3</text>
+    
+    <g transform="translate(165, 715)">
+      <rect x="6" y="8" width="26" height="26" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <line x1="12" y1="3" x2="12" y2="8" stroke="#207448" stroke-width="2.5"/>
+      <line x1="19" y1="3" x2="19" y2="8" stroke="#207448" stroke-width="2.5"/>
+      <line x1="26" y1="3" x2="26" y2="8" stroke="#207448" stroke-width="2.5"/>
+      <line x1="12" y1="34" x2="12" y2="39" stroke="#207448" stroke-width="2.5"/>
+      <line x1="19" y1="34" x2="19" y2="39" stroke="#207448" stroke-width="2.5"/>
+      <line x1="26" y1="34" x2="26" y2="39" stroke="#207448" stroke-width="2.5"/>
+      <circle cx="38" cy="28" r="11" stroke="#207448" stroke-width="2.5" fill="#e8f1ea"/>
+      <polyline points="38,21 38,28 43,28" stroke="#207448" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+    </g>
+    <text x="235" y="726" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">New nodes join</text>
+    <text x="235" y="762" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">(minutes for GPU)</text>
+  </g>
+
+  
+  <line x1="460" y1="785" x2="460" y2="830" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <g id="step-4">
+    <rect x="80" y="830" width="760" height="95" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="125" cy="877.5" r="24" fill="#207448"/>
+    <text x="125" y="877.5" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" dominant-baseline="central">4</text>
+    
+    <g transform="translate(165, 855)">
+      <rect x="6" y="16" width="40" height="28" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="12" y="22" width="12" height="16" rx="2" stroke="#207448" stroke-width="2" fill="none"/>
+      <rect x="28" y="22" width="12" height="16" rx="2" stroke="#207448" stroke-width="2.5" stroke-dasharray="3 2" fill="none"/>
+      <path d="M 34 6 L 34 16" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <path d="M 30 12 L 34 17 L 38 12" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="235" y="888" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Scheduler places pods</text>
+  </g>
+
+  
+  <g id="side-note">
+    <rect x="880" y="650" width="640" height="140" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
+    
+    <g transform="translate(915, 698)">
+      <circle cx="22" cy="24" r="18" stroke="#207448" stroke-width="3" fill="none"/>
+      <line x1="22" y1="6" x2="22" y2="2" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="17" y1="2" x2="27" y2="2" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <polyline points="22,14 22,24 29,24" stroke="#207448" stroke-width="3" stroke-linecap="round" fill="none"/>
+    </g>
+    <text x="980" y="710" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-style="italic" font-weight="bold" fill="#303a36">If any runner is slow,</text>
+    <text x="980" y="750" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-style="italic" font-weight="bold" fill="#303a36">the whole race slows down.</text>
+  </g>
+
+  
+  
+  <g id="node-idle">
+    <rect x="80" y="975" width="620" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(115, 998)">
+      <rect x="4" y="8" width="36" height="16" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="4" y="28" width="36" height="16" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <circle cx="10" cy="16" r="2" fill="#207448"/>
+      <circle cx="10" cy="36" r="2" fill="#207448"/>
+      <path d="M 44 8 L 52 8 L 44 18 L 52 18" stroke="#207448" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    </g>
+    <text x="195" y="1037" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Idle or underused nodes</text>
+  </g>
+
+  
+  <line x1="700" y1="1025" x2="780" y2="1025" stroke="#207448" stroke-width="3" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-scale-down">
+    <rect x="780" y="975" width="740" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(815, 998)">
+      <rect x="4" y="8" width="36" height="16" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <rect x="4" y="28" width="36" height="16" rx="3" stroke="#207448" stroke-width="3" fill="none"/>
+      <circle cx="10" cy="16" r="2" fill="#207448"/>
+      <circle cx="10" cy="36" r="2" fill="#207448"/>
+      <line x1="44" y1="26" x2="54" y2="26" stroke="#207448" stroke-width="3.5" stroke-linecap="round"/>
+    </g>
+    <text x="895" y="1018" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cluster Autoscaler scale-down:</text>
+    <text x="895" y="1054" font-family="system-ui, -apple-system, sans-serif" font-size="25" fill="#303a36">drain and remove</text>
+  </g>
+</svg>

@@ -1,0 +1,126 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200" font-family="Helvetica Neue, Helvetica, Arial, sans-serif">
+  <title>Permission checks beyond the mode bits</title>
+  <desc>Flowchart: open() fails leads to the question "Which errno?", which branches into six diagnoses — ENOENT, EROFS, EMFILE/ENFILE, ENOSPC/EDQUOT, EPERM and EACCES.</desc>
+
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  <text x="800" y="56" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36">Permission checks beyond the mode bits</text>
+
+  
+  <g stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round">
+    <path d="M 320 570 L 320 604"/>
+    <path d="M 560 655 C 700 655 745 160 880 160"/>
+    <path d="M 560 673 C 700 673 745 340 880 340"/>
+    <path d="M 560 691 C 700 691 745 520 880 520"/>
+    <path d="M 560 709 C 700 709 745 700 880 700"/>
+    <path d="M 560 727 C 700 727 745 880 880 880"/>
+    <path d="M 560 745 C 700 745 745 1060 880 1060"/>
+  </g>
+  <g fill="#207448" stroke="none">
+    <polygon points="320,614 311,596 329,596"/>
+    <polygon points="880,160 862,151 862,169"/>
+    <polygon points="880,340 862,331 862,349"/>
+    <polygon points="880,520 862,511 862,529"/>
+    <polygon points="880,700 862,691 862,709"/>
+    <polygon points="880,880 862,871 862,889"/>
+    <polygon points="880,1060 862,1051 862,1069"/>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="450" width="480" height="120" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 112 486 H 134 L 144 496 V 534 H 112 Z"/>
+      <path d="M 134 486 V 496 H 144"/>
+    </g>
+    <text x="176" y="521" font-size="32" font-weight="bold" fill="#303a36">open() fails</text>
+  </g>
+
+  
+  <g>
+    <rect x="80" y="630" width="480" height="140" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <g fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 110 700 H 124"/>
+      <path d="M 124 700 L 144 678"/>
+      <path d="M 124 700 H 144"/>
+      <path d="M 124 700 L 144 722"/>
+    </g>
+    <text x="176" y="712" font-size="34" font-weight="bold" fill="#303a36">Which errno?</text>
+  </g>
+
+  
+  <g>
+    <rect x="880" y="90" width="660" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 894 90 H 1050 V 230 H 894 A 14 14 0 0 1 880 216 V 104 A 14 14 0 0 1 894 90 Z" fill="#e8f1ea"/>
+    <path d="M 1050 90 V 230" stroke="#207448" stroke-width="2"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 943 136 V 106 H 959 L 965 113 H 987 V 136 Z"/>
+    </g>
+    <text x="965" y="196" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="ui-monospace, Menlo, Consolas, monospace">ENOENT</text>
+    <text x="1078" y="151" font-size="30" font-weight="bold" fill="#303a36">Path, cwd,<tspan x="1078" dy="38">mount namespace</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="880" y="270" width="660" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 894 270 H 1050 V 410 H 894 A 14 14 0 0 1 880 396 V 284 A 14 14 0 0 1 894 270 Z" fill="#e8f1ea"/>
+    <path d="M 1050 270 V 410" stroke="#207448" stroke-width="2"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 956 300 V 290 A 9 9 0 0 1 974 290 V 300"/>
+      <rect x="949" y="300" width="32" height="24" rx="3"/>
+    </g>
+    <text x="965" y="376" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="ui-monospace, Menlo, Consolas, monospace">EROFS</text>
+    <text x="1078" y="331" font-size="30" font-weight="bold" fill="#303a36">Read-only mount or<tspan x="1078" dy="38">pod setting</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="880" y="450" width="660" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 894 450 H 1050 V 590 H 894 A 14 14 0 0 1 880 576 V 464 A 14 14 0 0 1 894 450 Z" fill="#e8f1ea"/>
+    <path d="M 1050 450 V 590" stroke="#207448" stroke-width="2"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 945 494 A 20 20 0 0 1 985 494"/>
+      <path d="M 965 494 L 975 479"/>
+    </g>
+    <text x="965" y="538" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="ui-monospace, Menlo, Consolas, monospace">EMFILE,<tspan x="965" dy="32">ENFILE</tspan></text>
+    <text x="1078" y="530" font-size="30" font-weight="bold" fill="#303a36">Descriptor limits</text>
+  </g>
+
+  
+  <g>
+    <rect x="880" y="630" width="660" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 894 630 H 1050 V 770 H 894 A 14 14 0 0 1 880 756 V 644 A 14 14 0 0 1 894 630 Z" fill="#e8f1ea"/>
+    <path d="M 1050 630 V 770" stroke="#207448" stroke-width="2"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="965" cy="650" rx="18" ry="7"/>
+      <path d="M 947 650 V 676 A 18 7 0 0 0 983 676 V 650"/>
+    </g>
+    <text x="965" y="718" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="ui-monospace, Menlo, Consolas, monospace">ENOSPC,<tspan x="965" dy="32">EDQUOT</tspan></text>
+    <text x="1078" y="672" font-size="30" font-weight="bold" fill="#303a36">Blocks, inodes,<tspan x="1078" dy="38">deleted-open, quota,</tspan><tspan x="1078" dy="38">inotify</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="880" y="810" width="660" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 894 810 H 1050 V 950 H 894 A 14 14 0 0 1 880 936 V 824 A 14 14 0 0 1 894 810 Z" fill="#e8f1ea"/>
+    <path d="M 1050 810 V 950" stroke="#207448" stroke-width="2"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 965 820 L 985 828 V 844 C 985 856 975 862 965 866 C 955 862 945 856 945 844 V 828 Z"/>
+    </g>
+    <text x="965" y="916" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="ui-monospace, Menlo, Consolas, monospace">EPERM</text>
+    <text x="1078" y="871" font-size="30" font-weight="bold" fill="#303a36">Immutable flag,<tspan x="1078" dy="38">capability, ID mapping</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="880" y="990" width="660" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M 894 990 H 1050 V 1130 H 894 A 14 14 0 0 1 880 1116 V 1004 A 14 14 0 0 1 894 990 Z" fill="#e8f1ea"/>
+    <path d="M 1050 990 V 1130" stroke="#207448" stroke-width="2"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="965" cy="1022" r="19"/>
+      <path d="M 951 1008 L 979 1036"/>
+    </g>
+    <text x="965" y="1096" text-anchor="middle" font-size="26" font-weight="bold" fill="#207448" font-family="ui-monospace, Menlo, Consolas, monospace">EACCES</text>
+    <text x="1078" y="1051" font-size="30" font-weight="bold" fill="#303a36">Walk dirs, mode class,<tspan x="1078" dy="38">ACL mask, noexec, MAC</tspan></text>
+  </g>
+</svg>

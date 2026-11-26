@@ -1,0 +1,195 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Ten things to decide for a GPU or HPC pod's network</title>
+  <desc>A numbered table with ten decisions and rules for a GPU or HPC pod network</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="46" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Ten things to decide for a GPU or HPC pod's network</text>
+
+  
+  <g id="row-1">
+    <rect x="40" y="68" width="1520" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="54" y="82" width="44" height="28" rx="4"/>
+      <line x1="64" y1="91" x2="72" y2="91"/>
+      <line x1="64" y1="101" x2="72" y2="101"/>
+      <circle cx="86" cy="91" r="2" fill="#207448"/>
+      <circle cx="86" cy="101" r="2" fill="#207448"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="108" font-size="30" font-weight="bold">1 Primary versus data plane: </tspan>
+      <tspan x="638" y="108" font-size="24">eth0 for control, secondary RDMA</tspan>
+      <tspan x="116" y="134" font-size="24">NICs for GPU and storage traffic</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-2">
+    <rect x="40" y="154" width="1520" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="54" y="168" width="44" height="28" rx="4"/>
+      <path d="M 64,175 L 88,189 M 88,175 L 64,189"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="194" font-size="30" font-weight="bold">2 NCCL interface selection: </tspan>
+      <tspan x="620" y="194" font-size="24">NCCL_SOCKET_IFNAME, NCCL_IB_HCA,</tspan>
+      <tspan x="116" y="220" font-size="24">NCCL_IB_GID_INDEX set explicitly</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-3">
+    <rect x="40" y="240" width="760" height="188" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="54" y="256" width="44" height="28" rx="4"/>
+      <line x1="62" y1="270" x2="72" y2="270"/>
+      <circle cx="88" cy="270" r="2" fill="#207448"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="280" font-size="30" font-weight="bold">3 Host networking:</tspan>
+      <tspan x="116" y="306" font-size="24">hostNetwork true with dnsPolicy</tspan>
+      <tspan x="116" y="332" font-size="24">ClusterFirstWithHostNet; simplest</tspan>
+      <tspan x="116" y="358" font-size="24">high-performance option; costs port</tspan>
+      <tspan x="116" y="384" font-size="24">conflicts, less isolation, no per-pod</tspan>
+      <tspan x="116" y="410" font-size="24">NetworkPolicy</tspan>
+    </text>
+  </g>
+
+  
+  <g id="side-note">
+    <rect x="820" y="240" width="740" height="188" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="6,4"/>
+    <g stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="840" cy="270" r="12"/>
+      <line x1="840" y1="268" x2="840" y2="276"/>
+      <circle cx="840" cy="264" r="1.5" fill="#207448"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="856" y="278" font-size="24">hostNetwork pods share the node's IP and port</tspan>
+      <tspan x="856" y="304" font-size="24">space and skip the CNI; node agents such as</tspan>
+      <tspan x="856" y="330" font-size="24">kube-proxy, the CNI daemon, node-exporter and</tspan>
+      <tspan x="856" y="356" font-size="24">the DCGM exporter run this way; check for port</tspan>
+      <tspan x="856" y="382" font-size="24">conflicts before scheduling</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-4">
+    <rect x="40" y="432" width="1520" height="134" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="54" y="450" width="44" height="34" rx="4"/>
+      <rect x="62" y="457" width="28" height="20" rx="2"/>
+      <line x1="76" y1="461" x2="76" y2="473"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="472" font-size="30" font-weight="bold">4 Overlay costs: </tspan>
+      <tspan x="422" y="472" font-size="24">small packets, many connections and large flows suffer crossing a</tspan>
+      <tspan x="116" y="498" font-size="24">veth, a bridge and an overlay (CPU softirq and a smaller MTU); prefer native routing CNIs</tspan>
+      <tspan x="116" y="524" font-size="24">or eBPF host routing for TCP-heavy services; overlay MTU is underlay minus 50 for</tspan>
+      <tspan x="116" y="550" font-size="24">VXLAN; verify with ping -M do</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-5">
+    <rect x="40" y="570" width="1520" height="108" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="58" y="586" width="36" height="36" rx="4"/>
+      <circle cx="76" cy="604" r="6"/>
+      <line x1="58" y1="598" x2="52" y2="598"/>
+      <line x1="58" y1="610" x2="52" y2="610"/>
+      <line x1="94" y1="598" x2="100" y2="598"/>
+      <line x1="94" y1="610" x2="100" y2="610"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="610" font-size="30" font-weight="bold">5 Topology alignment: </tspan>
+      <tspan x="512" y="610" font-size="24">kubelet Topology Manager single-numa-node or</tspan>
+      <tspan x="116" y="636" font-size="24">best-effort with the CPU Manager and device plugins keeps GPU, NIC VF and CPUs</tspan>
+      <tspan x="116" y="662" font-size="24">on the same NUMA node or PCIe root; verify with nvidia-smi topo -m and ibdev2netdev</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-6">
+    <rect x="40" y="682" width="1520" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="54" y="696" width="44" height="28" rx="4"/>
+      <line x1="62" y1="710" x2="90" y2="710"/>
+      <polyline points="66,706 62,710 66,714"/>
+      <polyline points="86,706 90,710 86,714"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="722" font-size="30" font-weight="bold">6 MTU consistency: </tspan>
+      <tspan x="458" y="722" font-size="24">pod MTU is node MTU minus encapsulation; secondary rails</tspan>
+      <tspan x="116" y="748" font-size="24">often 9000 and the CNI mtu must match the fabric</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-7">
+    <rect x="40" y="768" width="1520" height="108" rx="8" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    <g stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 76,784 L 96,791 L 96,805 C 96,815 76,822 76,822 C 76,822 56,815 56,805 L 56,791 Z"/>
+      <line x1="76" y1="796" x2="76" y2="808"/>
+      <circle cx="76" cy="802" r="2" fill="#db8129"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="808" font-size="30" font-weight="bold">7 Isolation and policy: </tspan>
+      <tspan x="548" y="808" font-size="24">NetworkPolicy with default deny per namespace</tspan>
+      <tspan x="116" y="834" font-size="24">covers the primary network; secondary SR-IOV and macvlan interfaces bypass host</tspan>
+      <tspan x="116" y="860" font-size="24">policy: isolate with VLANs, VRFs or IB partitions at the switch</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-8">
+    <rect x="40" y="880" width="1520" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="54" y="894" width="44" height="28" rx="4"/>
+      <line x1="68" y1="894" x2="68" y2="922"/>
+      <line x1="82" y1="894" x2="82" y2="922"/>
+      <line x1="54" y1="908" x2="98" y2="908"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="920" font-size="30" font-weight="bold">8 IPAM: </tspan>
+      <tspan x="260" y="920" font-size="24">size the pod CIDR against nodes and pods per node; a /24 per node gives</tspan>
+      <tspan x="116" y="946" font-size="24">254 pods; secondary networks may use whereabouts or static ranges, one per rail</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-9">
+    <rect x="40" y="966" width="1520" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 56,1006 A 20,20 0 1,1 96,1006"/>
+      <line x1="76" y1="1006" x2="88" y2="994"/>
+      <circle cx="76" cy="1006" r="3" fill="#207448"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="1006" font-size="30" font-weight="bold">9 Observability: </tspan>
+      <tspan x="422" y="1006" font-size="24">Hubble or Cilium flow logs, Calico flow logs, kube-state and</tspan>
+      <tspan x="116" y="1032" font-size="24">CNI metrics, ethtool -S for VFs, RDMA counters, nsenter into a pod's namespace</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-10">
+    <rect x="40" y="1052" width="1520" height="82" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <g stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 94,1080 A 18,18 0 1,0 76,1098"/>
+      <polyline points="94,1072 94,1080 86,1080"/>
+    </g>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="116" y="1092" font-size="30" font-weight="bold">10 Upgrades: </tspan>
+      <tspan x="350" y="1092" font-size="24">CNI changes can reset pod networks; stage them, drain nodes, canary</tspan>
+      <tspan x="116" y="1118" font-size="24">clusters first; keep /opt/cni/bin and /etc/cni/net.d consistent</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1144" width="1520" height="52" rx="8" fill="#207448"/>
+    <text x="800" y="1180" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">Decide the rails before you write the pod spec</text>
+  </g>
+</svg>

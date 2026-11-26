@@ -1,0 +1,182 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>One slow rail slows every rank, because synchronous training waits for the slowest member</title>
+  <desc>Infographic showing how a degraded optic on one rail causes bit errors and retransmissions, creating a slow rail that blocks all ranks at the AllReduce barrier while link-down alerts remain green.</desc>
+
+  <defs>
+    <!-- Proportional green arrowhead (18px) -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  <!-- ==================== TITLE ==================== -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">One slow rail slows every rank,</tspan>
+    <tspan x="800" dy="54">because synchronous training waits</tspan>
+    <tspan x="800" dy="54">for the slowest member</tspan>
+  </text>
+
+  <!-- ==================== BAR CHART ==================== -->
+  <g id="bar-chart">
+    <!-- Chart Container -->
+    <rect x="40" y="205" width="1520" height="280" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    <!-- Chart baseline / Y-axis floor -->
+    <line x1="80" y1="410" x2="1520" y2="410" stroke="#303a36" stroke-width="2"/>
+
+    <!-- AllReduce barrier: horizontal dashed line across the top -->
+    <line x1="80" y1="262" x2="1520" y2="262" stroke="#207448" stroke-width="3" stroke-dasharray="10 8"/>
+    <rect x="360" y="216" width="880" height="36" fill="#ffffff" rx="6"/>
+    <text x="800" y="243" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">AllReduce barrier: every rank waits for the slowest</text>
+
+    <!-- Healthy rail waiting zone (idle time waiting for barrier) -->
+    <g fill="#f2f7f4" stroke="#c0d6c7" stroke-width="1.5" stroke-dasharray="4 4">
+      <rect x="110" y="262" width="90" height="73" rx="4"/>
+      <rect x="260" y="262" width="90" height="73" rx="4"/>
+      <rect x="410" y="262" width="90" height="73" rx="4"/>
+      <rect x="560" y="262" width="90" height="73" rx="4"/>
+      <rect x="710" y="262" width="90" height="73" rx="4"/>
+      <rect x="860" y="262" width="90" height="73" rx="4"/>
+      <rect x="1010" y="262" width="90" height="73" rx="4"/>
+    </g>
+
+    <!-- Healthy rail columns (several, drawn as pale green bars of similar height) -->
+    <g fill="#e8f1ea" stroke="#207448" stroke-width="2.5">
+      <rect x="110" y="335" width="90" height="75" rx="4"/>
+      <rect x="260" y="333" width="90" height="77" rx="4"/>
+      <rect x="410" y="336" width="90" height="74" rx="4"/>
+      <rect x="560" y="334" width="90" height="76" rx="4"/>
+      <rect x="710" y="335" width="90" height="75" rx="4"/>
+      <rect x="860" y="333" width="90" height="77" rx="4"/>
+      <rect x="1010" y="335" width="90" height="75" rx="4"/>
+    </g>
+
+    <!-- Healthy rail bracket and single label -->
+    <path d="M 110 420 L 110 432 L 605 432 L 605 440 L 605 432 L 1100 432 L 1100 420" fill="none" stroke="#207448" stroke-width="2"/>
+    <text x="605" y="468" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">healthy rail</text>
+
+    <!-- Slow rail column (one column, drawn in orange outline with a taller bar) -->
+    <rect x="1250" y="262" width="160" height="148" rx="6" fill="#fff5ea" stroke="#db8129" stroke-width="4"/>
+    <text x="1330" y="468" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">slow rail</text>
+  </g>
+
+  <!-- ==================== CHAIN OF CAUSES ==================== -->
+  <!-- Box 1: Dirty or failing optic -->
+  <g id="cause-1">
+    <rect x="40" y="525" width="340" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Optic Transceiver Outline Icon (56px) -->
+    <g transform="translate(182, 547)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="14" width="40" height="28" rx="4"/>
+      <line x1="20" y1="42" x2="20" y2="50"/>
+      <line x1="36" y1="42" x2="36" y2="50"/>
+      <line x1="16" y1="24" x2="24" y2="24"/>
+      <line x1="32" y1="24" x2="40" y2="24"/>
+      <circle cx="20" cy="33" r="3" fill="#207448"/>
+      <circle cx="36" cy="33" r="3" fill="#207448"/>
+      <path d="M 12 14 L 12 6 L 44 6 L 44 14"/>
+    </g>
+    <text x="210" y="650" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="210" dy="0">Dirty or</tspan>
+      <tspan x="210" dy="38">failing optic</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 1 -> 2 -->
+  <line x1="380" y1="645" x2="430" y2="645" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- Box 2: low DOM Rx power -->
+  <g id="cause-2">
+    <rect x="430" y="525" width="340" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Power Meter / Signal Level Gauge Icon (56px) -->
+    <g transform="translate(572, 547)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 42 A 22 22 0 0 1 48 42"/>
+      <line x1="6" y1="42" x2="50" y2="42"/>
+      <line x1="28" y1="42" x2="16" y2="22"/>
+      <circle cx="28" cy="42" r="4" fill="#207448"/>
+      <line x1="12" y1="26" x2="16" y2="29"/>
+      <line x1="28" y1="20" x2="28" y2="24"/>
+      <line x1="44" y1="26" x2="40" y2="29"/>
+    </g>
+    <text x="600" y="650" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="600" dy="0">low DOM</tspan>
+      <tspan x="600" dy="38">Rx power</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 2 -> 3 -->
+  <line x1="770" y1="645" x2="820" y2="645" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- Box 3: high pre-FEC bit error rate, rx_corrected_bits rising -->
+  <g id="cause-3">
+    <rect x="820" y="525" width="350" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Bitstream / FEC Error Icon (56px) -->
+    <g transform="translate(967, 547)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="8" width="44" height="40" rx="4"/>
+      <line x1="14" y1="18" x2="14" y2="26"/>
+      <circle cx="28" cy="22" r="4"/>
+      <line x1="42" y1="18" x2="42" y2="26"/>
+      <polyline points="14,38 24,30 32,36 42,28"/>
+      <line x1="38" y1="28" x2="42" y2="28"/>
+      <line x1="42" y1="32" x2="42" y2="28"/>
+    </g>
+    <text x="995" y="630" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="995" dy="0">high pre-FEC</tspan>
+      <tspan x="995" dy="34">bit error rate,</tspan>
+      <tspan x="995" dy="34">rx_corrected_bits</tspan>
+      <tspan x="995" dy="34">rising</tspan>
+    </text>
+  </g>
+
+  <!-- Arrow 3 -> 4 -->
+  <line x1="1170" y1="645" x2="1220" y2="645" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+  <!-- Box 4: CRC errors and RDMA go-back-N retransmissions -->
+  <g id="cause-4">
+    <rect x="1220" y="525" width="340" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Retransmit / Go-Back Loop Icon (56px) -->
+    <g transform="translate(1362, 547)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 44 26 A 18 18 0 1 0 28 46"/>
+      <polyline points="44,14 44,26 32,26"/>
+      <line x1="22" y1="22" x2="34" y2="34"/>
+      <line x1="34" y1="22" x2="22" y2="34"/>
+    </g>
+    <text x="1390" y="645" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1390" dy="0">CRC errors and</tspan>
+      <tspan x="1390" dy="36">RDMA go-back-N</tspan>
+      <tspan x="1390" dy="36">retransmissions</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== GREY NOTE ==================== -->
+  <g id="grey-note">
+    <rect x="40" y="805" width="1520" height="80" rx="14" fill="#edf1ee" stroke="#88968d" stroke-width="2.5"/>
+    <!-- Status / Info Shield Icon (56px) -->
+    <g transform="translate(72, 817)" stroke="#88968d" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 10 L 28 4 L 44 10 C 44 32 28 48 28 48 C 28 48 12 32 12 10 Z"/>
+      <polyline points="20,26 26,32 36,20"/>
+    </g>
+    <text x="820" y="855" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">The link never goes down, so link-down alerts stay green.</text>
+  </g>
+
+  <!-- ==================== GREEN BOX AT BOTTOM ==================== -->
+  <g id="mitigation-box">
+    <rect x="40" y="925" width="1520" height="110" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Wrench / Tool Action Icon (56px) -->
+    <g transform="translate(72, 952)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 38 8 A 12 12 0 0 0 24 20 L 8 36 C 6 38 6 42 8 44 C 10 46 14 46 16 44 L 32 28 A 12 12 0 0 0 44 14 L 38 20 L 32 20 L 32 14 Z"/>
+    </g>
+    <text x="820" y="975" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      <tspan x="820" dy="0">Alert on FEC and CRC trends, low DOM power and per-rail retransmits.</tspan>
+      <tspan x="820" dy="36">Drain the node, then clean or replace the optic.</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== CAPTION TAKEAWAY BAR ==================== -->
+  <g id="caption-bar">
+    <rect x="40" y="1075" width="1520" height="60" rx="12" fill="#207448"/>
+    <text x="800" y="1113" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Watch trends in error counters, not only link state.</text>
+  </g>
+</svg>

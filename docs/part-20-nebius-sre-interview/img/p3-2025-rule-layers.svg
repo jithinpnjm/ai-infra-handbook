@@ -1,0 +1,115 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1200" viewBox="0 0 1600 1200">
+  <title>Recording rules are built in layers named level:metric:operations</title>
+  <desc>Architecture infographic illustrating multi-layered Prometheus recording rules and naming conventions from bottom raw metrics to top alerts.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Recording rules are built in layers named level:metric:operations</text>
+
+  
+
+  
+  <rect x="50" y="110" width="960" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 75 125 c -6 0 -11 5 -11 11 v 6 l -3 3 h 28 l -3 -3 v -6 c 0 -6 -5 -11 -11 -11 z M 72 147 a 3 3 0 0 0 6 0" stroke="#207448" stroke-width="3" fill="none"/>
+  <text x="115" y="145" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Alerts on top</text>
+  <text x="75" y="185" font-family="monospace" font-size="24" fill="#303a36">ErrorRatioHigh: ratio above 0.05 for 5m, page</text>
+  <text x="75" y="223" font-family="monospace" font-size="24" fill="#303a36">KVCacheSaturated: max above 0.95 and waiting above 0 for 10m, page</text>
+
+  
+  <line x1="530" y1="275" x2="530" y2="245" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="275" width="960" height="190" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="75" cy="305" r="14" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="75" y1="305" x2="84" y2="296" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <text x="115" y="312" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 3</text>
+  
+  <rect x="68" y="328" width="924" height="68" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <text x="82" y="356" font-family="monospace" font-size="24" fill="#303a36">model:req_seconds:p99 =</text>
+  <text x="82" y="384" font-family="monospace" font-size="24" fill="#303a36">histogram_quantile(0.99, layer 2 buckets)</text>
+  <text x="82" y="424" font-family="monospace" font-size="24" fill="#303a36">model_name:vllm_kv_cache_usage_perc:max =</text>
+  <text x="82" y="452" font-family="sans-serif" font-size="24" fill="#303a36">max by (model_name): the worst pod, not the average</text>
+
+  
+  <line x1="530" y1="495" x2="530" y2="465" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="495" width="960" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <rect x="63" y="512" width="24" height="20" rx="4" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="68" y1="522" x2="82" y2="522" stroke="#207448" stroke-width="3"/>
+  <text x="115" y="530" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 2</text>
+  <text x="75" y="566" font-family="monospace" font-size="24" fill="#303a36">model:gateway_errors:ratio_rate5m = errors rate /</text>
+  <text x="75" y="596" font-family="sans-serif" font-size="24" fill="#303a36">requests rate (numerator and denominator summed separately, then divided)</text>
+  <text x="75" y="646" font-family="monospace" font-size="24" fill="#303a36">model_le:req_seconds_bucket:rate5m =</text>
+  <text x="75" y="676" font-family="sans-serif" font-size="24" fill="#303a36">sum by (model, le) of the bucket rate (keep le)</text>
+
+  
+  <line x1="530" y1="735" x2="530" y2="705" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="735" width="960" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <circle cx="75" cy="758" r="10" stroke="#207448" stroke-width="3" fill="none"/>
+  <line x1="75" y1="744" x2="75" y2="748" stroke="#207448" stroke-width="3"/>
+  <line x1="75" y1="768" x2="75" y2="772" stroke="#207448" stroke-width="3"/>
+  <line x1="61" y1="758" x2="65" y2="758" stroke="#207448" stroke-width="3"/>
+  <line x1="85" y1="758" x2="89" y2="758" stroke="#207448" stroke-width="3"/>
+  <text x="115" y="766" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Layer 1</text>
+  <text x="75" y="806" font-family="monospace" font-size="24" fill="#303a36">model:gateway_requests:rate5m and model:gateway_errors:rate5m</text>
+  <text x="75" y="842" font-family="sans-serif" font-size="24" fill="#303a36">(sum by model of the rate over 5 minutes; rate first, then sum)</text>
+
+  
+  <line x1="530" y1="920" x2="530" y2="890" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="50" y="920" width="960" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <ellipse cx="75" cy="940" rx="14" ry="5" stroke="#207448" stroke-width="3" fill="none"/>
+  <path d="M 61 940 v 14 c 0 2.8 6.3 5 14 5 s 14 -2.2 14 -5 v -14" stroke="#207448" stroke-width="3" fill="none"/>
+  <text x="115" y="950" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Bottom raw series</text>
+  <text x="75" y="990" font-family="monospace" font-size="24" fill="#303a36">gateway_requests_total, gateway_errors_total,</text>
+  <text x="75" y="1026" font-family="monospace" font-size="24" fill="#303a36">req_seconds_bucket, vllm:kv_cache_usage_perc</text>
+
+  
+
+  <rect x="1050" y="110" width="500" height="945" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <path d="M 1072 126 h 14 l 12 12 l -14 14 h -12 z" stroke="#207448" stroke-width="3" fill="none"/>
+  <circle cx="1079" cy="133" r="2" fill="#207448"/>
+  <text x="1120" y="148" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Name rule</text>
+
+  
+  <rect x="1070" y="180" width="460" height="120" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="228" font-family="sans-serif" font-size="24" fill="#303a36">level = aggregation level and</text>
+  <text x="1088" y="266" font-family="sans-serif" font-size="24" fill="#303a36">output labels;</text>
+
+  
+  <rect x="1070" y="325" width="460" height="120" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="373" font-family="sans-serif" font-size="24" fill="#303a36">metric name unchanged except</text>
+  <text x="1088" y="411" font-family="sans-serif" font-size="24" fill="#303a36">stripping _total;</text>
+
+  
+  <rect x="1070" y="470" width="460" height="95" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="528" font-family="sans-serif" font-size="24" fill="#303a36">operations newest first;</text>
+
+  
+  <rect x="1070" y="590" width="460" height="95" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="648" font-family="sans-serif" font-size="24" fill="#303a36">always a without clause;</text>
+
+  
+  <rect x="1070" y="710" width="460" height="120" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+  <text x="1088" y="758" font-family="sans-serif" font-size="24" fill="#303a36">errors_ratio tells a reader</text>
+  <text x="1088" y="796" font-family="sans-serif" font-size="24" fill="#303a36">nothing</text>
+
+  
+
+  <rect x="50" y="1080" width="1500" height="90" rx="10" fill="#207448"/>
+  <text x="80" y="1120" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Reason:</text>
+  <text x="180" y="1120" font-family="sans-serif" font-size="24" fill="#ffffff">a dashboard that takes eight seconds to refresh a heavy histogram_quantile</text>
+  <text x="180" y="1152" font-family="sans-serif" font-size="24" fill="#ffffff">over a week should read a precomputed series</text>
+</svg>

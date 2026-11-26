@@ -1,0 +1,62 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p3-0503-api-down-survives",
+  "title": "When the API servers are down: what still works and what stops",
+  "spec": "Two columns on a light background. Left column titled 'Keeps working' (green boxes): 'Running pods (kubelet and runtime continue)', 'kube-proxy keeps existing rules', 'An in-progress multi-node NCCL training job'. Right column titled 'Stops' (red boxes): 'Scheduling', 'Scaling', 'New deployments', 'kubectl', 'Replacing crashed pods that need a controller', 'Autoscalers and operators'. Below, a one-line banner: 'Running workloads do not depend on the control plane being up. Only changes do.' Bottom strip with a small timeline: 'node leases expire after about 40 s' then 'after the 5 min eviction timeout, pods may be evicted when the API returns and nodes look NotReady'. Large text at least 24px.",
+  "anchor": "### What fails and what happens",
+  "alt": "Two columns show what keeps working and what stops when all API servers are down.",
+  "cap": "With the API servers down, running pods carry on while every change to the cluster stops."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p3-0503-level-vs-edge",
+  "title": "Level-triggered reconciliation survives a missed event",
+  "spec": "Two horizontal lanes. Top lane 'Edge-triggered (not Kubernetes)': event 'Pod X just crashed' fires while the controller is restarting, arrow to a grey box 'controller down', result red box 'change missed for good'. Bottom lane 'Level-triggered (Kubernetes)': same event dropped during a network blip or restart, then a box 'Next resync or relist compares current with desired', then 'ReplicaSet wants 4 Pods; 3 exist; create 1', result green box 'converges to the right state'. Footer note: 'Resync is the safety net under every watch.' Text at least 24px.",
+  "anchor": "## 5. The declarative object model",
+  "alt": "A missed event is lost for an edge-triggered controller but fixed by the next resync in Kubernetes.",
+  "cap": "Kubernetes controllers compare current state with desired state, so a dropped event is repaired on the next resync."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p3-0503-optimistic-409",
+  "title": "Two writers and a 409 Conflict",
+  "spec": "Sequence diagram with three lifelines: 'Client A', 'kube-apiserver / etcd', 'Client B'. Steps numbered: 1 Client A reads object at resourceVersion 5012. 2 Client B reads the same object at resourceVersion 5012. 3 Client B writes its change; server accepts; object now at resourceVersion 5013. 4 Client A writes its change based on 5012; server rejects with HTTP 409 Conflict (red). 5 Client A re-reads the latest version from its informer cache, re-applies its change and retries (green). Side note: 'resourceVersion maps to the etcd key mod_revision' and 'Server-side apply tracks field ownership in managedFields'. Text at least 24px, no crossing arrows.",
+  "anchor": "## 5. The declarative object model",
+  "alt": "A stale write based on resourceVersion 5012 is rejected with 409 Conflict and retried.",
+  "cap": "Optimistic concurrency means the second writer is refused and retries, so neither overwrites the other unknowingly."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p3-0503-ownership-finalizer-delete",
+  "title": "Deleting an object: ownerReferences versus finalizers",
+  "spec": "Left panel 'ownerReferences (garbage collection)': a chain Deployment -> ReplicaSet -> Pod with upward arrows labelled 'ownerReference'; a note 'Delete the owner and the garbage collector deletes its dependents' and three small labels 'Foreground', 'Background', 'Orphan' as the deletion propagation policies. Right panel 'finalizers (pre-deletion hooks)': numbered steps 1 'kubectl delete pvc data', 2 'finalizers list not empty, for example kubernetes.io/pvc-protection, so the API server does not delete it', 3 'sets metadata.deletionTimestamp, object is Terminating', 4 'the responsible controller cleans up or waits for Pods that mount the PVC to exit', 5 'controller removes its string from metadata.finalizers', 6 'list empty, API server removes the object from etcd'. Text at least 24px.",
+  "anchor": "## 5. The declarative object model",
+  "alt": "Owner references cascade deletion down a chain while finalizers hold deletion until cleanup is done.",
+  "cap": "ownerReferences drive cascading deletion, and finalizers hold an object in Terminating until a controller finishes cleanup."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p3-0503-leader-election",
+  "title": "Leader election with Lease objects",
+  "spec": "Three boxes in a row labelled 'control-plane node 1', 'node 2', 'node 3', each with kube-scheduler and kube-controller-manager. Node 1 is highlighted 'active leader', nodes 2 and 3 'standby'. Below, a central box 'Lease object in kube-system (coordination.k8s.io/v1)' with arrow from the leader labelled 'renews renewTime every 2 s (retryPeriod)'. Second row after a red X over node 1: 'leader crashes, no renewal within 15 s (leaseDuration)' then arrow 'a standby acquires the Lease and takes over, failover about 15 s'. Note: 'Three active schedulers would cause conflicting bindings and duplicate ReplicaSet creations; API servers stay active-active behind a load balancer'. Command hint 'kubectl get lease -n kube-system'. Text at least 24px.",
+  "anchor": "### Topologies",
+  "alt": "A leader renews a Lease every 2 seconds and a standby takes over after 15 seconds without renewal.",
+  "cap": "Scheduler and controller-manager run active-standby, and a missed Lease renewal hands leadership to a standby in about 15 seconds."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "03",
+  "name": "p3-0503-ports-map",
+  "title": "Who connects to which port",
+  "spec": "Hub-and-spoke diagram with kube-apiserver (6443 HTTPS) in the center. Left: 'kubectl, CI, operators' arrow to 6443. Top: 'etcd 2379 client, 2380 peer, mTLS, only API servers are clients' with a double arrow to the API server. Right: 'kube-scheduler 10259' and 'kube-controller-manager 10257' each with an arrow to 6443 labelled 'watch/write'. Bottom: 'kubelet 10250 (healthz 10248 local)' with arrow to 6443 labelled 'watch pods, heartbeat Leases' and a separate arrow from the API server to the kubelet 10250 labelled 'logs, exec, attach, port-forward'. Small boxes: 'kube-proxy 10256 healthz, 10249 metrics', 'NodePort 30000-32767 on all nodes', 'CoreDNS 53 TCP/UDP, 9153 metrics'. Red callout: 'etcd holds every secret; kubelet can run commands in every container on its node'. Text at least 24px.",
+  "anchor": "## 4. Ports and trust",
+  "alt": "Hub-and-spoke map of component ports around the API server on 6443.",
+  "cap": "Every component connects to the API server on 6443, and the API server in turn reaches etcd and the kubelets."
+ }
+]

@@ -1,0 +1,140 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1140" viewBox="0 0 1600 1140">
+  <title>Layers of load balancing</title>
+  <desc>Architecture diagram showing the layers of load balancing from clients and edge L4 load balancing to in-cluster L7 gateways, cluster services, pods, and canary traffic routing.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="12" markerHeight="12" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5" />
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Layers of load balancing</text>
+
+  
+  <rect x="450" y="110" width="700" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="478" y="138" width="50" height="34" rx="4" />
+    <line x1="503" y1="172" x2="503" y2="184" />
+    <line x1="489" y1="184" x2="517" y2="184" />
+    <circle cx="503" cy="151" r="5" />
+    <path d="M 493 165 C 493 160 513 160 513 165" />
+  </g>
+  
+  <text x="555" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Clients</text>
+  <text x="555" y="194" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(Internet / corp / apps)</text>
+
+   EDGE -->
+  <line x1="800" y1="220" x2="800" y2="290" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="250" y="290" width="1100" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="288" cy="350" r="24" />
+    <ellipse cx="288" cy="350" rx="12" ry="24" />
+    <line x1="264" y1="350" x2="312" y2="350" />
+    <circle cx="274" cy="340" r="2.5" fill="#207448" />
+    <circle cx="302" cy="360" r="2.5" fill="#207448" />
+  </g>
+  
+  <text x="340" y="340" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Edge: DNS &#8594; external L4 LB or anycast/VIP</text>
+  <text x="340" y="380" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(cloud NLB, MetalLB, hardware LB)</text>
+
+   GW -->
+  <line x1="800" y1="410" x2="800" y2="470" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  <rect x="200" y="470" width="1200" height="120" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 235 555 V 518 C 235 506 277 506 277 518 V 555" />
+    <path d="M 246 555 V 530 C 246 523 266 523 266 530 V 555" />
+    <line x1="235" y1="542" x2="277" y2="542" />
+    <circle cx="256" cy="514" r="3" fill="#207448" />
+  </g>
+  
+  <text x="305" y="520" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">L7 gateway pods in cluster</text>
+  <text x="305" y="560" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(ingress-nginx / Envoy / Traefik / Cilium Gateway)</text>
+
+  
+   SVC (Main traffic) -->
+  <line x1="300" y1="590" x2="300" y2="760" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  
+  <rect x="330" y="626" width="530" height="96" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="350" y="663" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">route by host/path/header,</text>
+  <text x="350" y="700" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">TLS termination, auth, rate limit</text>
+
+  
+  <line x1="1160" y1="590" x2="1160" y2="760" stroke="#db8129" stroke-width="3.5" stroke-dasharray="8,6" marker-end="url(#arrow-orange)" />
+  
+  <rect x="1195" y="650" width="190" height="52" rx="12" fill="#fdf4eb" stroke="#db8129" stroke-width="2" />
+  <text x="1290" y="684" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">canary 5%</text>
+
+  
+  
+  <rect x="80" y="760" width="860" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="125" cy="815" r="10" />
+    <circle cx="125" cy="793" r="5" />
+    <circle cx="145" cy="828" r="5" />
+    <circle cx="105" cy="828" r="5" />
+    <line x1="125" y1="805" x2="125" y2="798" />
+    <line x1="132" y1="822" x2="141" y2="825" />
+    <line x1="118" y1="822" x2="109" y2="825" />
+  </g>
+  
+  <text x="175" y="805" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Service</text>
+  <text x="175" y="845" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(ClusterIP / headless)</text>
+
+  
+  <rect x="1000" y="760" width="520" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="1045" cy="815" r="10" />
+    <circle cx="1045" cy="793" r="5" />
+    <circle cx="1065" cy="828" r="5" />
+    <circle cx="1025" cy="828" r="5" />
+    <line x1="1045" y1="805" x2="1045" y2="798" />
+    <line x1="1052" y1="822" x2="1061" y2="825" />
+    <line x1="1038" y1="822" x2="1029" y2="825" />
+  </g>
+  
+  <text x="1095" y="825" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Service model-v2</text>
+
+  
+   P1 -->
+  <line x1="285" y1="870" x2="285" y2="970" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+   P2 -->
+  <line x1="735" y1="870" x2="735" y2="970" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+  
+  
+  <rect x="80" y="970" width="410" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="125,995 149,1007 125,1019 101,1007" />
+    <polygon points="101,1007 125,1019 125,1045 101,1033" />
+    <polygon points="149,1007 125,1019 125,1045 149,1033" />
+  </g>
+  <text x="175" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pod A (model v1)</text>
+
+  
+  <rect x="530" y="970" width="410" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <g stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="575,995 599,1007 575,1019 551,1007" />
+    <polygon points="551,1007 575,1019 575,1045 551,1033" />
+    <polygon points="599,1007 575,1019 575,1045 599,1033" />
+  </g>
+  <text x="625" y="1035" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Pod B (model v1)</text>
+</svg>

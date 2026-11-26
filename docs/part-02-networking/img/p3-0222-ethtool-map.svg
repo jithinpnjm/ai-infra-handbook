@@ -1,0 +1,260 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>ethtool by question: which command answers which hardware question</title>
+  <desc>Visual breakdown of ethtool commands by question, hardware counters, optics diagnostics, worked troubleshooting case, and link speed guidance.</desc>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <g id="title-header">
+    
+    <g transform="translate(40, 30)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="14" y="14" width="28" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="20" y1="42" x2="20" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="42" x2="28" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="42" x2="36" y2="48" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="28" y1="8" x2="28" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="115" y="52" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+      <tspan x="115" dy="0">ethtool by question: which command</tspan>
+      <tspan x="115" dy="54">answers which hardware question</tspan>
+    </text>
+  </g>
+
+  
+  <g id="table-container">
+    <rect x="30" y="135" width="1110" height="965" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="30" y="135" width="1110" height="135" fill="#e8f1ea" rx="12"/>
+    <rect x="30" y="250" width="1110" height="20" fill="#e8f1ea"/>
+    <line x1="30" y1="270" x2="1140" y2="270" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="135" x2="340" y2="270" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <line x1="720" y1="135" x2="720" y2="270" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="195" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="50" dy="0">Is the link up and</tspan>
+      <tspan x="50" dy="32">at what speed?</tspan>
+    </text>
+    <text x="360" y="210" font-family="monospace" font-size="24" fill="#303a36">ethtool eth0</text>
+    <text x="740" y="172" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="740" dy="0">Link detected, Speed,</tspan>
+      <tspan x="740" dy="28">Duplex, auto-negotiation,</tspan>
+      <tspan x="740" dy="28">supported and</tspan>
+      <tspan x="740" dy="28">advertised modes</tspan>
+    </text>
+
+    
+    <rect x="30" y="270" width="1110" height="58" fill="#ffffff"/>
+    <line x1="30" y1="328" x2="1140" y2="328" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="270" x2="340" y2="328" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <line x1="720" y1="270" x2="720" y2="328" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="307" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Which driver and firmware?</text>
+    <text x="360" y="307" font-family="monospace" font-size="24" fill="#303a36">ethtool -i eth0</text>
+    <text x="740" y="307" font-family="sans-serif" font-size="24" fill="#303a36">driver, firmware, bus info</text>
+
+    
+    <rect x="30" y="328" width="1110" height="112" fill="#e8f1ea"/>
+    <line x1="30" y1="440" x2="1140" y2="440" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="328" x2="340" y2="440" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <line x1="720" y1="328" x2="720" y2="440" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="380" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="50" dy="0">Is the NIC counting</tspan>
+      <tspan x="50" dy="32">problems?</tspan>
+    </text>
+    <text x="360" y="390" font-family="monospace" font-size="24" fill="#303a36">ethtool -S eth0</text>
+    <text x="740" y="362" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="740" dy="0">per-queue stats,</tspan>
+      <tspan x="740" dy="26">rx_missed, rx_no_buffer,</tspan>
+      <tspan x="740" dy="26">tx_timeouts, pause frames,</tspan>
+      <tspan x="740" dy="26">ECN marks</tspan>
+    </text>
+
+    
+    <rect x="30" y="440" width="1110" height="112" fill="#ffffff"/>
+    <line x1="30" y1="552" x2="1140" y2="552" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="440" x2="340" y2="552" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <line x1="720" y1="440" x2="720" y2="552" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="492" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="50" dy="0">Are the rings</tspan>
+      <tspan x="50" dy="32">too small?</tspan>
+    </text>
+    <text x="360" y="480" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="360" dy="0">ethtool -g eth0;</tspan>
+      <tspan x="360" dy="28">ethtool -G eth0</tspan>
+      <tspan x="360" dy="28">rx 4096 tx 4096</tspan>
+    </text>
+    <text x="740" y="474" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="740" dy="0">ring buffer sizes:</tspan>
+      <tspan x="740" dy="26">the queue of packet slots</tspan>
+      <tspan x="740" dy="26">shared between NIC</tspan>
+      <tspan x="740" dy="26">and driver</tspan>
+    </text>
+
+    
+    <rect x="30" y="552" width="1110" height="65" fill="#e8f1ea"/>
+    <line x1="30" y1="617" x2="1140" y2="617" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="552" x2="340" y2="617" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <line x1="720" y1="552" x2="720" y2="617" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="592" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">How many queues?</text>
+    <text x="360" y="578" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="360" dy="0">ethtool -l eth0;</tspan>
+      <tspan x="360" dy="28">ethtool -L eth0 combined 16</tspan>
+    </text>
+    <text x="740" y="592" font-family="sans-serif" font-size="24" fill="#303a36">channel counts for RSS</text>
+
+    
+    <rect x="30" y="617" width="1110" height="112" fill="#ffffff"/>
+    <line x1="30" y1="729" x2="1140" y2="729" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="617" x2="340" y2="729" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <line x1="720" y1="617" x2="720" y2="729" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="682" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">What is offloaded?</text>
+    <text x="360" y="670" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="360" dy="0">ethtool -k eth0;</tspan>
+      <tspan x="360" dy="28">ethtool -K eth0 gro off</tspan>
+    </text>
+    <text x="740" y="662" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="740" dy="0">tso gso gro lro rxhash,</tspan>
+      <tspan x="740" dy="28">checksums,</tspan>
+      <tspan x="740" dy="28">tunnel segmentation</tspan>
+    </text>
+
+    
+    <rect x="30" y="729" width="1110" height="105" fill="#e8f1ea"/>
+    <line x1="30" y1="834" x2="1140" y2="834" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="729" x2="340" y2="834" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="776" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="50" dy="0">Interrupt</tspan>
+      <tspan x="50" dy="32">coalescing?</tspan>
+    </text>
+    <text x="360" y="776" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="360" dy="0">ethtool -c eth0;</tspan>
+      <tspan x="360" dy="32">ethtool -C eth0 adaptive-rx on</tspan>
+    </text>
+
+    
+    <rect x="30" y="834" width="1110" height="58" fill="#ffffff"/>
+    <line x1="30" y1="892" x2="1140" y2="892" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="834" x2="340" y2="892" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="871" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Pause frames?</text>
+    <text x="360" y="871" font-family="monospace" font-size="24" fill="#303a36">ethtool -a eth0</text>
+
+    
+    <rect x="30" y="892" width="1110" height="75" fill="#e8f1ea"/>
+    <line x1="30" y1="967" x2="1140" y2="967" stroke="#207448" stroke-opacity="0.3" stroke-width="1.5"/>
+    <line x1="340" y1="892" x2="340" y2="967" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="926" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="50" dy="0">RSS table and</tspan>
+      <tspan x="50" dy="32">flow rules?</tspan>
+    </text>
+    <text x="360" y="938" font-family="monospace" font-size="24" fill="#303a36">ethtool -x eth0; ethtool -n eth0</text>
+
+    
+    <rect x="30" y="967" width="1110" height="58" fill="#fff5ed"/>
+    <rect x="30" y="967" width="1110" height="58" fill="none" stroke="#db8129" stroke-width="2.5"/>
+    <line x1="30" y1="1025" x2="1140" y2="1025" stroke="#db8129" stroke-opacity="0.5" stroke-width="1.5"/>
+    <line x1="340" y1="967" x2="340" y2="1025" stroke="#db8129" stroke-opacity="0.3" stroke-width="1"/>
+    <line x1="720" y1="967" x2="720" y2="1025" stroke="#db8129" stroke-opacity="0.3" stroke-width="1"/>
+    <text x="50" y="1004" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Optics health?</text>
+    <text x="360" y="1004" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">ethtool -m eth0</text>
+    <text x="740" y="1004" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">power, temperature, vendor</text>
+
+    
+    <rect x="30" y="1025" width="1110" height="75" rx="12" fill="#ffffff"/>
+    <rect x="30" y="1025" width="1110" height="20" fill="#ffffff"/>
+    <line x1="340" y1="1025" x2="340" y2="1100" stroke="#207448" stroke-opacity="0.2" stroke-width="1"/>
+    <text x="50" y="1058" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="50" dy="0">FEC and</tspan>
+      <tspan x="50" dy="32">timestamping?</tspan>
+    </text>
+    <text x="360" y="1070" font-family="monospace" font-size="24" fill="#303a36">ethtool --show-fec eth0; ethtool -T eth0</text>
+  </g>
+
+  
+  
+  <g id="worked-case-box">
+    <rect x="1165" y="135" width="405" height="470" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(1185, 150)">
+      <circle cx="24" cy="24" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="36" y1="36" x2="50" y2="50" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="16" y1="24" x2="32" y2="24" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="24" y1="16" x2="24" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="1255" y="174" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="1255" dy="0">A server moved to a new</tspan>
+      <tspan x="1185" dy="32">rack runs at a fraction</tspan>
+      <tspan x="1185" dy="32">of the rate:</tspan>
+    </text>
+
+    
+    <circle cx="1210" cy="295" r="24" fill="#207448"/>
+    <text x="1210" y="304" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="1245" y="285" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1245" dy="0">step 1 the speed line</tspan>
+      <tspan x="1245" dy="28">shows less than the</tspan>
+      <tspan x="1245" dy="28">NIC supports;</tspan>
+    </text>
+
+    
+    <circle cx="1210" cy="415" r="24" fill="#db8129"/>
+    <text x="1210" y="424" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="1245" y="388" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1245" dy="0">step 2 ethtool -m shows</tspan>
+      <tspan x="1245" dy="28">low receive power, which</tspan>
+      <tspan x="1245" dy="28">points to a dirty</tspan>
+      <tspan x="1245" dy="28">connector;</tspan>
+    </text>
+
+    
+    <g transform="translate(1185, 530)">
+      <circle cx="25" cy="25" r="20" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+      <path d="M16 26 L23 33 L34 18" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="1245" y="542" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1245" dy="0">cleaning it restores</tspan>
+      <tspan x="1245" dy="30">the speed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="notes-box">
+    <rect x="1165" y="630" width="405" height="470" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1185, 645)">
+      <path d="M10 8 L36 8 L46 18 L46 48 L10 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M36 8 L36 18 L46 18" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+      <line x1="18" y1="26" x2="38" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="34" x2="38" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="42" x2="30" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="1185" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1185" dy="0" font-weight="bold">Link detected: no means</tspan>
+      <tspan x="1185" dy="28">a cable pulled or switch</tspan>
+      <tspan x="1185" dy="28">port down;</tspan>
+
+      <tspan x="1185" dy="48">a 100 GbE NIC negotiating</tspan>
+      <tspan x="1185" dy="28">25 GbE shows the lower</tspan>
+      <tspan x="1185" dy="28">figure in Speed;</tspan>
+
+      <tspan x="1185" dy="48">a half-duplex or wrong-</tspan>
+      <tspan x="1185" dy="28">speed link is a classic</tspan>
+      <tspan x="1185" dy="28">cause of mystery</tspan>
+      <tspan x="1185" dy="28">throughput loss</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="30" y="1120" width="1540" height="60" rx="10" fill="#207448"/>
+    <text x="800" y="1160" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      Check ethtool first whenever a link is slower than you expect
+    </text>
+  </g>
+</svg>

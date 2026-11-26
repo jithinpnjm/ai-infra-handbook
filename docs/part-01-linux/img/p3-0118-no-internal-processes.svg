@@ -1,0 +1,194 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>The no-internal-processes rule: a branch distributes or holds, not both</title>
+  <desc>Visual infographic explaining the Linux cgroup v2 rule that a non-root cgroup can distribute resources to child cgroups or contain processes, but cannot do both simultaneously.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">The no-internal-processes rule:</text>
+  <text x="800" y="108" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">a branch distributes or holds, not both</text>
+
+  
+  <rect x="40" y="135" width="450" height="745" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="65" y="155" width="400" height="85" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+    <path d="M 90 207 L 90 182 L 108 182 L 116 190 L 140 190 L 140 207 Z" fill="#e8f1ea"/>
+    <path d="M 85 194 L 145 194 L 140 215 L 85 215 Z" fill="#ffffff"/>
+  </g>
+  <text x="155" y="208" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">/sys/fs/cgroup</text>
+
+  
+  <line x1="265" y1="240" x2="265" y2="283" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="65" y="285" width="400" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="90" y="325" font-family="monospace" font-size="30" font-weight="bold" fill="#207448">slice/</text>
+  
+  
+  <rect x="85" y="345" width="360" height="135" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="98" y="380" fill="#303a36">
+    <tspan x="98" font-family="monospace" font-size="24" font-weight="bold">cgroup.subtree_control:</tspan>
+    <tspan x="98" dy="32" font-family="monospace" font-size="24">+cpu +memory</tspan>
+    <tspan x="98" dy="32" font-family="sans-serif" font-size="24">(distributes resources)</tspan>
+  </text>
+
+  
+  <path d="M 265 500 L 265 530 M 162 530 L 367 530 M 162 530 L 162 563 M 367 530 L 367 563" stroke="#207448" stroke-width="3" fill="none"/>
+  <path d="M 162 550 L 162 563" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  <path d="M 367 550 L 367 563" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="65" y="565" width="195" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="162" y="605" font-family="monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">service-a/</text>
+  
+  <g transform="translate(162, 670)">
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448"/>
+    <rect x="-22" y="-4" width="44" height="8" rx="2" fill="#207448"/>
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448" transform="rotate(45)"/>
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448" transform="rotate(-45)"/>
+    <circle cx="0" cy="0" r="15" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="0" cy="0" r="6" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="162" y="775" font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="162">holds the</tspan>
+    <tspan x="162" dy="32">workload</tspan>
+  </text>
+
+  
+  <rect x="270" y="565" width="195" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="367" y="605" font-family="monospace" font-size="26" font-weight="bold" fill="#207448" text-anchor="middle">service-b/</text>
+  
+  <g transform="translate(367, 700)">
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448"/>
+    <rect x="-22" y="-4" width="44" height="8" rx="2" fill="#207448"/>
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448" transform="rotate(45)"/>
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448" transform="rotate(-45)"/>
+    <circle cx="0" cy="0" r="15" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="0" cy="0" r="6" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+
+  
+  <rect x="520" y="135" width="470" height="745" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="545" y="155" width="420" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(605, 230)">
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448"/>
+    <rect x="-22" y="-4" width="44" height="8" rx="2" fill="#207448"/>
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448" transform="rotate(45)"/>
+    <rect x="-4" y="-22" width="8" height="44" rx="2" fill="#207448" transform="rotate(-45)"/>
+    <circle cx="0" cy="0" r="15" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <circle cx="0" cy="0" r="6" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  </g>
+  <text x="665" y="240" font-family="monospace" font-size="32" font-weight="bold" fill="#303a36">slice/</text>
+
+  
+  <line x1="755" y1="305" x2="755" y2="348" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="545" y="350" width="420" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="565" y="392" font-family="monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="565">echo +cpu &gt;</tspan>
+    <tspan x="565" dy="34">cgroup.subtree_control</tspan>
+  </text>
+
+  
+  <line x1="755" y1="460" x2="755" y2="503" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+
+  
+  <rect x="545" y="505" width="420" height="120" rx="12" fill="#fff5ec" stroke="#db8129" stroke-width="2.5"/>
+  
+  <g transform="translate(585, 565)">
+    <circle cx="0" cy="0" r="20" fill="none" stroke="#db8129" stroke-width="3"/>
+    <line x1="0" y1="-10" x2="0" y2="2" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="0" cy="9" r="2" fill="#db8129"/>
+  </g>
+  <text x="625" y="555" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="625">Device or resource</tspan>
+    <tspan x="625" dy="32">busy (EBUSY)</tspan>
+  </text>
+
+  
+  <line x1="755" y1="625" x2="755" y2="676" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="545" y="680" width="420" height="180" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="755" y="730" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+    <tspan x="755">move the processes into a</tspan>
+    <tspan x="755" dy="34">child first, then enable</tspan>
+    <tspan x="755" dy="34">the controller</tspan>
+  </text>
+
+  
+  <rect x="1020" y="135" width="540" height="745" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1045, 155)">
+    <path d="M 0 10 L 20 0 L 40 10 C 40 28 20 42 20 42 C 20 42 0 28 0 10 Z" fill="#ffffff" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+  </g>
+  <text x="1105" y="186" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Delegation</text>
+
+  
+  <rect x="1045" y="215" width="490" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1065" y="250" font-size="24" fill="#303a36">
+    <tspan x="1065" font-family="sans-serif">chown the directory and the files</tspan>
+    <tspan x="1065" dy="30" font-family="monospace">cgroup.procs,</tspan>
+    <tspan x="1065" dy="30" font-family="monospace">cgroup.subtree_control and</tspan>
+    <tspan x="1065" dy="30"><tspan font-family="monospace">cgroup.threads</tspan><tspan font-family="sans-serif"> to the owner</tspan></tspan>
+  </text>
+
+  
+  <rect x="1045" y="385" width="490" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1065" y="425" font-size="24" fill="#303a36">
+    <tspan x="1065" font-family="sans-serif">with systemd set</tspan>
+    <tspan x="1065" dy="32"><tspan font-family="monospace" font-weight="bold">Delegate=yes</tspan><tspan font-family="sans-serif"> on the unit</tspan></tspan>
+  </text>
+
+  
+  <rect x="1045" y="495" width="490" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1065" y="530" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065">the delegatee can create</tspan>
+    <tspan x="1065" dy="30">descendants and set limits within</tspan>
+    <tspan x="1065" dy="30">the budget the parent grants</tspan>
+    <tspan x="1065" dy="30">but cannot exceed it</tspan>
+  </text>
+
+  
+  <rect x="1045" y="665" width="490" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1065" y="705" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065">rootless containers and</tspan>
+    <tspan x="1065" dy="32">Kubernetes pods rely on this</tspan>
+  </text>
+
+  
+  <rect x="40" y="900" width="1520" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 965)">
+    <path d="M 0 -28 L 26 20 L -26 20 Z" fill="#fff5ec" stroke="#db8129" stroke-width="3.5" stroke-linejoin="round"/>
+    <line x1="0" y1="-12" x2="0" y2="4" stroke="#db8129" stroke-width="3.5" stroke-linecap="round"/>
+    <circle cx="0" cy="12" r="2.5" fill="#db8129"/>
+  </g>
+  <text x="145" y="942" font-size="24" fill="#303a36">
+    <tspan x="145" font-family="sans-serif">Never run a second manager of the same tree: a script writing under</tspan>
+    <tspan x="145" dy="32"><tspan font-family="monospace">/sys/fs/cgroup/system.slice</tspan><tspan font-family="sans-serif"> while systemd owns it causes conflicts;</tspan></tspan>
+    <tspan x="145" dy="32" font-family="sans-serif">kubelet and the container runtime must use the same cgroup driver</tspan>
+  </text>
+
+  
+  <rect x="40" y="1050" width="1520" height="85" rx="14" fill="#207448"/>
+  <text x="800" y="1103" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Before you write to any cgroup file, check who owns that part of the tree</text>
+</svg>

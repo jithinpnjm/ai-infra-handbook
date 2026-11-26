@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Drill 7: Half the Lookups Are Slow Because One Replica Is Degraded</title>
+  <desc>Visual infographic explaining intermittent DNS timeouts caused by one overloaded CoreDNS replica in Kubernetes, debugging workflow, and prevention.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    </marker>
+    <style>
+      text { font-family: system-ui, -apple-system, sans-serif; fill: #303a36; }
+      .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+      .bold { font-weight: 700; }
+    </style>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="50" y="55" font-size="48" class="bold">Drill 7: Half the Lookups Are Slow</text>
+  <text x="50" y="105" font-size="48" class="bold">Because One Replica Is Degraded</text>
+
+  
+  
+  <g transform="translate(50, 150)">
+    <rect width="230" height="290" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="87" y="30" width="56" height="42" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    <line x1="87" y1="44" x2="143" y2="44" stroke="#207448" stroke-width="3" />
+    <circle cx="97" cy="37" r="3" fill="#207448" />
+    <circle cx="107" cy="37" r="3" fill="#207448" />
+    <text x="115" y="140" font-size="30" class="bold" text-anchor="middle">gateway pod</text>
+  </g>
+
+  
+  <path d="M 280, 295 L 450, 295" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <text x="365" y="275" font-size="24" text-anchor="middle">sends queries to</text>
+
+  
+  <g transform="translate(460, 150)">
+    <rect width="450" height="290" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="225" cy="45" r="16" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 225,21 L 225,29 M 225,61 L 225,69 M 201,45 L 209,45 M 241,45 L 249,45 M 208,28 L 214,34 M 236,56 L 242,62 M 208,62 L 214,56 M 236,34 L 242,28" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+    <text x="225" y="95" font-size="30" class="bold" text-anchor="middle">Service kube-dns</text>
+
+    
+    <rect x="20" y="120" width="410" height="150" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="225" y="160" font-size="24" class="bold" text-anchor="middle">kube-proxy iptables chain</text>
+    <text x="225" y="200" font-size="24" text-anchor="middle">sends each to one of two backends</text>
+    <text x="225" y="235" font-size="24" text-anchor="middle">with probability 0.5</text>
+  </g>
+
+  
+  <path d="M 910, 255 H 965 V 215 H 1010" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  <path d="M 910, 335 H 965 V 385 H 1010" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(1020, 150)">
+    <rect width="530" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="45" cy="45" r="22" fill="none" stroke="#207448" stroke-width="4" />
+    <path d="M 34,45 L 42,53 L 56,37" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="80" y="53" font-size="30" class="bold">CoreDNS replica A</text>
+    <text x="30" y="92" font-size="24">pod IP, healthy node,</text>
+    <text x="30" y="120" font-size="24">answers instantly</text>
+  </g>
+
+  
+  <g transform="translate(1020, 305)">
+    <rect width="530" height="155" rx="12" fill="#fff8f2" stroke="#db8129" stroke-width="3" />
+    
+    <rect x="25" y="25" width="40" height="40" rx="6" fill="none" stroke="#db8129" stroke-width="4" />
+    <path d="M 45,35 L 45,47 M 45,53 L 45,55" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+    <text x="80" y="53" font-size="30" class="bold" fill="#db8129">CoreDNS replica B</text>
+    <text x="30" y="98" font-size="24">on a node under heavy CPU pressure,</text>
+    <text x="30" y="132" font-size="24">no errors in logs, very slow</text>
+  </g>
+
+  
+  
+  <g transform="translate(50, 480)">
+    <rect width="720" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="30" y="45" font-size="30" class="bold">Result</text>
+    <text x="30" y="85" font-size="24">about half of lookups fast, half take five seconds;</text>
+    <text x="30" y="120" font-size="24" class="mono">nslookup kubernetes.default</text>
+    <text x="420" y="120" font-size="24">from a debug pod</text>
+    <text x="30" y="152" font-size="24">alternates instant and timeout</text>
+  </g>
+
+  
+  <g transform="translate(830, 480)">
+    <rect width="720" height="175" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="30" y="45" font-size="30" class="bold">Test</text>
+    <text x="30" y="90" font-size="24">query each replica by its pod IP:</text>
+    <text x="30" y="130" font-size="24" class="bold">A instant, B times out</text>
+  </g>
+
+  
+  <g transform="translate(50, 680)">
+    <rect width="1500" height="295" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="30" y="45" font-size="30" class="bold">Fix order from the Kubernetes DNS debugging page</text>
+
+    
+    <g transform="translate(20, 65)">
+      <rect width="470" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="45" cy="40" r="22" fill="#207448" />
+      <text x="45" y="48" font-size="24" class="bold" fill="#ffffff" text-anchor="middle">1</text>
+      <text x="85" y="42" font-size="24" class="mono">nslookup kubernetes.default</text>
+      <text x="85" y="75" font-size="24">from a pod</text>
+    </g>
+
+    
+    <g transform="translate(515, 65)">
+      <rect width="470" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="45" cy="40" r="22" fill="#207448" />
+      <text x="45" y="48" font-size="24" class="bold" fill="#ffffff" text-anchor="middle">2</text>
+      <text x="85" y="42" font-size="24">check</text>
+      <text x="160" y="42" font-size="24" class="mono">/etc/resolv.conf</text>
+    </g>
+
+    
+    <g transform="translate(1010, 65)">
+      <rect width="470" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="45" cy="40" r="22" fill="#207448" />
+      <text x="45" y="48" font-size="24" class="bold" fill="#ffffff" text-anchor="middle">3</text>
+      <text x="85" y="38" font-size="24">list pods with label</text>
+      <text x="85" y="68" font-size="24" class="mono">k8s-app=kube-dns in kube-system</text>
+    </g>
+
+    
+    <g transform="translate(20, 180)">
+      <rect width="470" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="45" cy="40" r="22" fill="#207448" />
+      <text x="45" y="48" font-size="24" class="bold" fill="#ffffff" text-anchor="middle">4</text>
+      <text x="85" y="48" font-size="24">read logs</text>
+    </g>
+
+    
+    <g transform="translate(515, 180)">
+      <rect width="470" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="45" cy="40" r="22" fill="#207448" />
+      <text x="45" y="48" font-size="24" class="bold" fill="#ffffff" text-anchor="middle">5</text>
+      <text x="85" y="38" font-size="24">confirm kube-dns Service</text>
+      <text x="85" y="70" font-size="24">and EndpointSlice</text>
+    </g>
+
+    
+    <g transform="translate(1010, 180)">
+      <rect width="470" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+      <circle cx="45" cy="40" r="22" fill="#207448" />
+      <text x="45" y="48" font-size="24" class="bold" fill="#ffffff" text-anchor="middle">6</text>
+      <text x="85" y="38" font-size="24">then move the unhealthy</text>
+      <text x="85" y="70" font-size="24">replica off the loaded node</text>
+    </g>
+  </g>
+
+  
+  <g transform="translate(50, 1000)">
+    <rect width="1500" height="95" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 55,25 L 75,33 L 75,55 C 75,70 55,80 55,80 C 55,80 35,70 35,55 L 35,33 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+    <text x="95" y="58" font-size="30" class="bold">Prevention</text>
+    <text x="275" y="45" font-size="24">CoreDNS replicas spread across nodes with NodeLocal DNSCache,</text>
+    <text x="275" y="76" font-size="24">a per-node DaemonSet, in front</text>
+  </g>
+
+  
+  <g transform="translate(50, 1115)">
+    <rect width="1500" height="60" rx="10" fill="#207448" />
+    <text x="750" y="40" font-size="26" class="bold" fill="#ffffff" text-anchor="middle">Note: intermittent failure tied to one replica means check backends first</text>
+  </g>
+</svg>

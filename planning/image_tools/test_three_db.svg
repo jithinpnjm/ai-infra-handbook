@@ -1,0 +1,131 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>Three layers that limit database access</title>
+  <desc>Visual diagram of the three defense-in-depth security layers—firewall port filter, network interface binding, and client address authentication—that control access between application clients and PostgreSQL on db01.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1050" fill="#f5f8f5" />
+
+  <!-- Title -->
+  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Three layers that limit database access</text>
+
+  <!-- ==================== TOP TIER: CLIENT HOSTS ==================== -->
+  <!-- Host 1: app host -->
+  <g id="node-app-host">
+    <rect x="1070" y="110" width="220" height="95" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <g transform="translate(1158, 120)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="40" height="30" rx="4" />
+      <line x1="2" y1="12" x2="42" y2="12" />
+      <circle cx="8" cy="8" r="1.5" fill="#207448" />
+      <circle cx="14" cy="8" r="1.5" fill="#207448" />
+      <polyline points="9,20 14,24 9,28" />
+      <line x1="18" y1="28" x2="26" y2="28" />
+    </g>
+    <text x="1180" y="188" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">app host</text>
+  </g>
+
+  <!-- Host 2: unlisted host -->
+  <g id="node-unlisted-host">
+    <rect x="1335" y="110" width="220" height="95" rx="10" fill="#ffffff" stroke="#7a8b84" stroke-width="2" />
+    <g transform="translate(1423, 120)" stroke="#7a8b84" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="40" height="30" rx="4" />
+      <line x1="2" y1="12" x2="42" y2="12" />
+      <circle cx="8" cy="8" r="1.5" fill="#7a8b84" />
+      <circle cx="14" cy="8" r="1.5" fill="#7a8b84" />
+      <line x1="15" y1="17" x2="29" y2="29" />
+      <line x1="29" y1="17" x2="15" y2="29" />
+    </g>
+    <text x="1445" y="188" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">unlisted host</text>
+  </g>
+
+  <!-- ==================== LAYER 1: FIREWALL (UFW) ==================== -->
+  <g id="layer-ufw">
+    <rect x="50" y="240" width="1500" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Layer 1 Content Card -->
+    <rect x="65" y="258" width="1005" height="134" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(90, 297)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 8 16 V 32 C 8 44 28 54 28 54 C 28 54 48 44 48 32 V 16 Z" />
+      <line x1="18" y1="26" x2="38" y2="26" stroke-width="2.5" />
+      <line x1="18" y1="34" x2="38" y2="34" stroke-width="2.5" />
+      <line x1="28" y1="20" x2="28" y2="40" stroke-width="2.5" />
+    </g>
+    <text x="165" y="314" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">ufw allow tcp 5432 from each app host</text>
+    <text x="165" y="364" font-family="sans-serif" font-size="24" fill="#303a36">limits the port at the firewall</text>
+
+    <!-- Layer 1 Gateway Posts -->
+    <line x1="1110" y1="258" x2="1110" y2="392" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 4" />
+    <line x1="1250" y1="258" x2="1250" y2="392" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 4" />
+    <!-- Layer 1 Gate 2: Unlisted Host Stop Barrier -->
+    <line x1="1380" y1="330" x2="1510" y2="330" stroke="#7a8b84" stroke-width="4" stroke-linecap="round" />
+  </g>
+
+  <!-- ==================== LAYER 2: NETWORK INTERFACE ==================== -->
+  <g id="layer-interface">
+    <rect x="50" y="465" width="1500" height="170" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <!-- Layer 2 Content Card -->
+    <rect x="65" y="483" width="1005" height="134" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <g transform="translate(90, 522)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="34" rx="4" />
+      <circle cx="16" cy="27" r="3" fill="#207448" />
+      <circle cx="28" cy="27" r="3" fill="#207448" />
+      <circle cx="40" cy="27" r="3" fill="#207448" />
+      <path d="M 20 44 L 20 52 L 36 52 L 36 44" />
+    </g>
+    <text x="165" y="539" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">listen_addresses = localhost plus ansible_host</text>
+    <text x="165" y="589" font-family="sans-serif" font-size="24" fill="#303a36">limits the network interface</text>
+
+    <!-- Layer 2 Gateway Posts -->
+    <line x1="1110" y1="483" x2="1110" y2="617" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 4" />
+    <line x1="1250" y1="483" x2="1250" y2="617" stroke="#207448" stroke-width="2.5" stroke-dasharray="6 4" />
+  </g>
+
+  <!-- ==================== LAYER 3: CLIENT AUTH (PG_HBA.CONF) [ORANGE] ==================== -->
+  <g id="layer-pg-hba">
+    <rect x="50" y="690" width="1500" height="170" rx="14" fill="#fdf6ee" stroke="#db8129" stroke-width="2.5" />
+    <!-- Layer 3 Content Card -->
+    <rect x="65" y="708" width="1005" height="134" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+    <g transform="translate(90, 747)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="22" width="36" height="28" rx="4" />
+      <path d="M 18 22 V 14 C 18 8 38 8 38 14 V 22" />
+      <circle cx="28" cy="34" r="3" fill="#db8129" />
+      <line x1="28" y1="37" x2="28" y2="43" stroke-width="3" />
+    </g>
+    <text x="165" y="764" font-family="monospace" font-size="24" font-weight="bold" fill="#db8129">pg_hba.conf host db_name db_user app host /32 scram-sha-256</text>
+    <text x="165" y="814" font-family="sans-serif" font-size="24" fill="#303a36">limits the client address</text>
+
+    <!-- Layer 3 Gateway Posts -->
+    <line x1="1110" y1="708" x2="1110" y2="842" stroke="#db8129" stroke-width="2.5" stroke-dasharray="6 4" />
+    <line x1="1250" y1="708" x2="1250" y2="842" stroke="#db8129" stroke-width="2.5" stroke-dasharray="6 4" />
+  </g>
+
+  <!-- ==================== BOTTOM TIER: POSTGRESQL DATABASE ==================== -->
+  <g id="node-db">
+    <rect x="950" y="915" width="460" height="85" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <g transform="translate(970, 930)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="24" cy="12" rx="18" ry="6" />
+      <path d="M 6 12 V 42 C 6 48 42 48 42 42 V 12" />
+      <path d="M 6 22 C 6 28 42 28 42 22" />
+      <path d="M 6 32 C 6 38 42 38 42 32" />
+    </g>
+    <text x="1215" y="968" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">PostgreSQL on db01</text>
+  </g>
+
+  <!-- ==================== ARROWS & OUTCOMES ==================== -->
+  <!-- Arrow 1: Passes all three layers -->
+  <path d="M 1180 205 L 1180 915" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+  <!-- Label Card 1: passes all three -->
+  <rect x="1215" y="636" width="270" height="52" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1350" y="672" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">passes all three</text>
+
+  <!-- Arrow 2: Stopped at firewall -->
+  <path d="M 1445 205 L 1445 326" stroke="#207448" stroke-width="4" fill="none" marker-end="url(#arrow-green)" />
+  <!-- Label Card 2: stopped -->
+  <rect x="1370" y="345" width="150" height="56" rx="8" fill="#ffffff" stroke="#7a8b84" stroke-width="1.5" />
+  <text x="1445" y="382" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">stopped</text>
+
+</svg>

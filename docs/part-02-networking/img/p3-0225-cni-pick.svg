@@ -1,0 +1,163 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Choosing a CNI: data path, policy and what each costs</title>
+  <desc>Choosing a CNI: data path, policy and what each costs</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Choosing a CNI: data path, policy</text>
+  <text x="800" y="102" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">and what each costs</text>
+
+  
+  <g id="first-strip">
+    <rect x="40" y="122" width="1520" height="142" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="64" y="154" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">Kubernetes network model: each pod gets its own IP; all pods communicate with all other pods</tspan>
+      <tspan x="64" dy="28">without NAT, including across nodes; agents on a node such as kubelet reach every pod on that node;</tspan>
+      <tspan x="64" dy="28">a pod sees its own IP the same way other pods see it; the CNI satisfies it with an overlay</tspan>
+      <tspan x="64" dy="28">(VXLAN, Geneve, IPIP), routing (BGP or host routes), or cloud-native pod IPs from the VPC</tspan>
+    </text>
+  </g>
+
+  
+  <g id="table-header">
+    <rect x="40" y="276" width="1520" height="46" rx="6" fill="#207448" />
+    <line x1="440" y1="276" x2="440" y2="322" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1" />
+    <line x1="1100" y1="276" x2="1100" y2="322" stroke="#ffffff" stroke-opacity="0.3" stroke-width="1" />
+    <text x="60" y="308" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">CNI</text>
+    <text x="460" y="308" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Data path</text>
+    <text x="1120" y="308" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Policy and notes</text>
+  </g>
+
+  
+  <g id="row-flannel">
+    <rect x="40" y="328" width="1520" height="96" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="440" y1="328" x2="440" y2="424" stroke="#d0ded2" stroke-width="1" />
+    <line x1="1100" y1="328" x2="1100" y2="424" stroke="#d0ded2" stroke-width="1" />
+    <text x="60" y="386" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Flannel</text>
+    <text x="460" y="360" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="460" dy="0">simple L3 overlay (VXLAN default,</tspan>
+      <tspan x="460" dy="28">host-gw routed mode), Kubernetes API</tspan>
+      <tspan x="460" dy="28">or etcd for allocations</tspan>
+    </text>
+    <text x="1120" y="374" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">minimal; no NetworkPolicy</tspan>
+      <tspan x="1120" dy="28">by itself</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-calico">
+    <rect x="40" y="430" width="1520" height="96" rx="6" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="440" y1="430" x2="440" y2="526" stroke="#d0ded2" stroke-width="1" />
+    <line x1="1100" y1="430" x2="1100" y2="526" stroke="#d0ded2" stroke-width="1" />
+    <text x="60" y="488" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Calico</text>
+    <text x="460" y="462" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="460" dy="0">routed (BGP via BIRD or Felix), optional</tspan>
+      <tspan x="460" dy="28">IPIP or VXLAN overlay, eBPF dataplane;</tspan>
+      <tspan x="460" dy="28">iptables and ipsets policy</tspan>
+    </text>
+    <text x="1120" y="462" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">strong NetworkPolicy; no</tspan>
+      <tspan x="1120" dy="28">overlay needed with BGP;</tspan>
+      <tspan x="1120" dy="28">integrates with fabric BGP</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-cilium">
+    <rect x="40" y="532" width="1520" height="120" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="440" y1="532" x2="440" y2="652" stroke="#d0ded2" stroke-width="1" />
+    <line x1="1100" y1="532" x2="1100" y2="652" stroke="#d0ded2" stroke-width="1" />
+    <text x="60" y="600" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Cilium</text>
+    <text x="460" y="558" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="460" dy="0">eBPF datapath replacing kube-proxy and</tspan>
+      <tspan x="460" dy="26">iptables, identity-based policy L3 to L7,</tspan>
+      <tspan x="460" dy="26">optional VXLAN or Geneve or native routing,</tspan>
+      <tspan x="460" dy="26">Hubble observability, BGP control plane</tspan>
+    </text>
+    <text x="1120" y="582" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">high performance;</tspan>
+      <tspan x="1120" dy="28">requires modern kernels</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-cloud">
+    <rect x="40" y="658" width="1520" height="106" rx="6" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="440" y1="658" x2="440" y2="764" stroke="#d0ded2" stroke-width="1" />
+    <line x1="1100" y1="658" x2="1100" y2="764" stroke="#d0ded2" stroke-width="1" />
+    <text x="60" y="692" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="60" dy="0">AWS VPC CNI,</tspan>
+      <tspan x="60" dy="30">GKE native,</tspan>
+      <tspan x="60" dy="30">Azure CNI</tspan>
+    </text>
+    <text x="460" y="704" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="460" dy="0">pod IPs are VPC or subnet addresses</tspan>
+      <tspan x="460" dy="28">(ENIs, alias IPs)</tspan>
+    </text>
+    <text x="1120" y="692" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">no overlay; routable pod IPs;</tspan>
+      <tspan x="1120" dy="28">IP exhaustion and</tspan>
+      <tspan x="1120" dy="28">per-node ENI limits</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-antrea">
+    <rect x="40" y="770" width="1520" height="64" rx="6" fill="#ffffff" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="440" y1="770" x2="440" y2="834" stroke="#d0ded2" stroke-width="1" />
+    <line x1="1100" y1="770" x2="1100" y2="834" stroke="#d0ded2" stroke-width="1" />
+    <text x="60" y="810" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Antrea</text>
+    <text x="460" y="810" font-family="sans-serif" font-size="24" fill="#303a36">Open vSwitch based, Geneve or VXLAN</text>
+    <text x="1120" y="810" font-family="sans-serif" font-size="24" fill="#303a36">policy; OVS offload options</text>
+  </g>
+
+  
+  <g id="row-multus">
+    <rect x="40" y="840" width="1520" height="96" rx="6" fill="#fffaf5" stroke="#db8129" stroke-width="3" />
+    <line x1="440" y1="840" x2="440" y2="936" stroke="#db8129" stroke-opacity="0.5" stroke-width="1" />
+    <line x1="1100" y1="840" x2="1100" y2="936" stroke="#db8129" stroke-opacity="0.5" stroke-width="1" />
+    <text x="60" y="896" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">Multus</text>
+    <text x="460" y="870" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="460" dy="0">meta-plugin attaching multiple CNI</tspan>
+      <tspan x="460" dy="28">interfaces to a pod with</tspan>
+      <tspan x="460" dy="28">NetworkAttachmentDefinition CRDs</tspan>
+    </text>
+    <text x="1120" y="884" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">required for secondary</tspan>
+      <tspan x="1120" dy="28">RDMA and SR-IOV interfaces</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-sriov">
+    <rect x="40" y="942" width="1520" height="136" rx="6" fill="#e8f1ea" stroke="#d0ded2" stroke-width="1.5" />
+    <line x1="440" y1="942" x2="440" y2="1078" stroke="#d0ded2" stroke-width="1" />
+    <line x1="1100" y1="942" x2="1100" y2="1078" stroke="#d0ded2" stroke-width="1" />
+    <text x="60" y="972" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="60" dy="0">SR-IOV CNI plus</tspan>
+      <tspan x="60" dy="30">device plugin,</tspan>
+      <tspan x="60" dy="30">macvlan, ipvlan,</tspan>
+      <tspan x="60" dy="30">host-device CNI</tspan>
+    </text>
+    <text x="460" y="1002" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="460" dy="0">moves a VF or NIC into the</tspan>
+      <tspan x="460" dy="28">pod's namespace</tspan>
+    </text>
+    <text x="1120" y="1002" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1120" dy="0">RDMA and GPUDirect</tspan>
+      <tspan x="1120" dy="28">data plane for AI</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1090" width="1520" height="82" rx="8" fill="#207448" />
+    <text x="800" y="1124" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="800" dy="0">Ask what each plugin adds beyond basic connectivity, such as policy, encryption</tspan>
+      <tspan x="800" dy="30">or secondary interfaces, and what it costs in return</tspan>
+    </text>
+  </g>
+</svg>

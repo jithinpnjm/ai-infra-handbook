@@ -1,0 +1,196 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1050" width="1600" height="1050">
+  <title>PyTorch bus error in a container: the 64 MiB /dev/shm</title>
+  <desc>Causal chain of PyTorch DataLoader crashing on 64 MiB default Docker /dev/shm, fixes, IPC namespace facts, and host verification command.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">PyTorch bus error in a container: the 64 MiB /dev/shm</text>
+
+  
+
+  
+  <rect x="40" y="115" width="345" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="75" cy="155" r="20" fill="#207448"/>
+  <text x="75" y="163" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+  
+  <g transform="translate(115, 128)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="10" width="44" height="34" rx="4"/>
+    <path d="M 4 20 L 48 20"/>
+    <path d="M 16 10 L 16 20"/>
+    <path d="M 26 10 L 26 20"/>
+    <path d="M 36 10 L 36 20"/>
+  </g>
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="60" y="218">Container starts in its</tspan>
+    <tspan x="60" y="252">own IPC namespace;</tspan>
+    <tspan x="60" y="286" font-family="ui-monospace, monospace">/dev/shm</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> is a tmpfs,</tspan>
+    <tspan x="60" y="320">64 MiB by default</tspan>
+    <tspan x="60" y="354">in Docker</tspan>
+  </text>
+
+  
+  <line x1="385" y1="255" x2="428" y2="255" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="432" y="115" width="345" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="467" cy="155" r="20" fill="#207448"/>
+  <text x="467" y="163" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+  
+  <g transform="translate(507, 128)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="40" height="36" rx="4"/>
+    <circle cx="18" cy="22" r="4"/>
+    <circle cx="34" cy="22" r="4"/>
+    <path d="M 12 36 L 26 28 L 40 36"/>
+  </g>
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="452" y="224">PyTorch DataLoader</tspan>
+    <tspan x="452" y="259">workers pass batches</tspan>
+    <tspan x="452" y="294">through shared</tspan>
+    <tspan x="452" y="329">memory in </tspan><tspan font-family="ui-monospace, monospace">/dev/shm</tspan>
+  </text>
+
+  
+  <line x1="777" y1="255" x2="820" y2="255" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="824" y="115" width="345" height="280" rx="12" fill="#fff9f3" stroke="#db8129" stroke-width="3"/>
+  
+  <circle cx="859" cy="155" r="20" fill="#db8129"/>
+  <text x="859" y="163" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+  
+  <g transform="translate(899, 128)" stroke="#db8129" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 38 A 20 20 0 1 1 46 38"/>
+    <line x1="26" y1="26" x2="40" y2="16"/>
+    <circle cx="26" cy="26" r="3" fill="#db8129"/>
+  </g>
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#db8129">
+    <tspan x="850" y="255">Batches exceed</tspan>
+    <tspan x="850" y="295">64 MiB</tspan>
+  </text>
+
+  
+  <line x1="1169" y1="255" x2="1211" y2="255" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="1215" y="115" width="345" height="280" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="1250" cy="155" r="20" fill="#207448"/>
+  <text x="1250" y="163" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+  
+  <g transform="translate(1290, 128)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="26,6 48,44 4,44"/>
+    <line x1="26" y1="20" x2="26" y2="30"/>
+    <circle cx="26" cy="37" r="1.5" fill="#207448"/>
+  </g>
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1235" y="222">Bus error (SIGBUS) or</tspan>
+    <tspan x="1235" y="257">DataLoader hangs;</tspan>
+    <tspan x="1235" y="292">the logs say nothing</tspan>
+    <tspan x="1235" y="327">about memory</tspan>
+  </text>
+
+  
+
+  
+  <rect x="40" y="425" width="940" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(65, 452)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="8" y1="28" x2="48" y2="28"/>
+    <circle cx="34" cy="28" r="7" fill="#e8f1ea"/>
+    <line x1="8" y1="14" x2="48" y2="14"/>
+    <circle cx="20" cy="14" r="7" fill="#e8f1ea"/>
+    <line x1="8" y1="42" x2="48" y2="42"/>
+    <circle cx="40" cy="42" r="7" fill="#e8f1ea"/>
+  </g>
+  <text x="140" y="490" font-size="25" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold">--shm-size</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> to raise the limit</tspan>
+  </text>
+
+  
+  <rect x="40" y="555" width="940" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(65, 582)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="6" y="8" width="44" height="26" rx="4"/>
+    <line x1="28" y1="34" x2="28" y2="44"/>
+    <line x1="16" y1="44" x2="40" y2="44"/>
+  </g>
+  <text x="140" y="620" font-size="25" fill="#303a36">
+    <tspan font-family="ui-monospace, monospace" font-weight="bold">--ipc=host</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> to use the host's IPC namespace</tspan>
+  </text>
+
+  
+  <rect x="40" y="685" width="940" height="120" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(65, 717)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="14" rx="20" ry="8"/>
+    <path d="M 8 14 L 8 36 A 20 8 0 0 0 48 36 L 48 14"/>
+    <path d="M 8 25 A 20 8 0 0 0 48 25"/>
+  </g>
+  <text x="140" font-size="24" fill="#303a36">
+    <tspan y="736" font-family="system-ui, -apple-system, sans-serif">a memory-backed </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">emptyDir (medium: Memory)</tspan><tspan font-family="system-ui, -apple-system, sans-serif">,</tspan>
+    <tspan x="140" y="774" font-family="system-ui, -apple-system, sans-serif">which is </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">tmpfs</tspan><tspan font-family="system-ui, -apple-system, sans-serif"> and counts toward the pod's memory</tspan>
+  </text>
+
+  
+  <rect x="1010" y="425" width="550" height="380" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1035, 442)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="16" cy="16" r="14"/>
+    <line x1="16" y1="14" x2="16" y2="22"/>
+    <circle cx="16" cy="9" r="1" fill="#207448"/>
+  </g>
+  <text x="1075" y="466" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">IPC namespace facts</text>
+  <line x1="1035" y1="486" x2="1535" y2="486" stroke="#207448" stroke-width="1.5" stroke-opacity="0.3"/>
+
+  
+  <circle cx="1045" cy="516" r="5" fill="#207448"/>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065" y="522">System V shared memory, semaphores,</tspan>
+    <tspan x="1065" y="550">message queues and POSIX message</tspan>
+    <tspan x="1065" y="578">queues are namespaced</tspan>
+  </text>
+
+  
+  <circle cx="1045" cy="610" r="5" fill="#207448"/>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065" y="616">containers in different IPC namespaces</tspan>
+    <tspan x="1065" y="644">cannot share SysV segments</tspan>
+  </text>
+
+  
+  <circle cx="1045" cy="682" r="5" fill="#207448"/>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065" y="688">within a pod all containers share the</tspan>
+    <tspan x="1065" y="716">IPC namespace by default; </tspan><tspan font-family="ui-monospace, monospace" font-weight="bold">hostIPC: true</tspan>
+    <tspan x="1065" y="744">joins the host's</tspan>
+  </text>
+
+  
+  <circle cx="1045" cy="776" r="5" fill="#207448"/>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1065" y="782">MPI ranks in separate pods on the same</tspan>
+    <tspan x="1065" y="810">node fall back to network paths</tspan>
+  </text>
+
+  
+  <rect x="40" y="830" width="1520" height="75" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 842)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="8,12 20,24 8,36"/>
+    <line x1="26" y1="36" x2="42" y2="36"/>
+  </g>
+  <text x="120" y="877" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">ipcmk -M 1024 then ipcs -m on the host; sudo unshare --ipc ipcs -m shows nothing</text>
+
+  
+  <rect x="40" y="930" width="1520" height="75" rx="10" fill="#207448"/>
+  <text x="800" y="977" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#ffffff">When a PyTorch job crashes on shared memory, check the size of /dev/shm before you change the code</text>
+</svg>

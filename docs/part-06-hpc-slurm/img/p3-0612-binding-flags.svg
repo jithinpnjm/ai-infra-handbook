@@ -1,0 +1,236 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Four binding flags, four different questions</title>
+  <desc>Visual infographic explaining Slurm binding flags, HGX node NUMA topology, diagnostic recipes, thread allocation rules, and benchmark placement.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 1 2 L 8 5 L 1 8 z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-size="48" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">Four binding flags, four different questions</text>
+
+  
+  
+  
+  <rect x="40" y="105" width="740" height="985" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(68, 125)">
+    
+    <rect x="0" y="0" width="52" height="52" rx="10" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="12" x2="16" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M 16 14 Q 28 8 38 14 L 38 28 Q 28 22 16 28 Z" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="136" y="162" font-size="30" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Four rows flag to question</text>
+
+  
+  <g transform="translate(65, 185)">
+    <rect x="0" y="0" width="690" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(20, 24)">
+      <rect x="6" y="6" width="36" height="36" rx="6" fill="none" stroke="#207448" stroke-width="3"/>
+      <rect x="15" y="15" width="18" height="18" rx="3" fill="#207448"/>
+      <line x1="14" y1="0" x2="14" y2="6" stroke="#207448" stroke-width="3"/>
+      <line x1="24" y1="0" x2="24" y2="6" stroke="#207448" stroke-width="3"/>
+      <line x1="34" y1="0" x2="34" y2="6" stroke="#207448" stroke-width="3"/>
+      <line x1="14" y1="42" x2="14" y2="48" stroke="#207448" stroke-width="3"/>
+      <line x1="24" y1="42" x2="24" y2="48" stroke="#207448" stroke-width="3"/>
+      <line x1="34" y1="42" x2="34" y2="48" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="14" x2="6" y2="14" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="24" x2="6" y2="24" stroke="#207448" stroke-width="3"/>
+      <line x1="0" y1="34" x2="6" y2="34" stroke="#207448" stroke-width="3"/>
+      <line x1="42" y1="14" x2="48" y2="14" stroke="#207448" stroke-width="3"/>
+      <line x1="42" y1="24" x2="48" y2="24" stroke="#207448" stroke-width="3"/>
+      <line x1="42" y1="34" x2="48" y2="34" stroke="#207448" stroke-width="3"/>
+    </g>
+    
+    <text x="85" y="52" font-size="24" font-weight="bold" fill="#207448" font-family="ui-monospace, monospace">--cpus-per-gpu:</text>
+    <text x="85" y="100" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">how many cores each GPU gets</text>
+  </g>
+
+  
+  <g transform="translate(65, 350)">
+    <rect x="0" y="0" width="690" height="295" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(20, 24)">
+      <circle cx="24" cy="24" r="14" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="24" cy="24" r="5" fill="#207448"/>
+      <path d="M 24 4 L 24 9 M 24 39 L 24 44 M 4 24 L 9 24 M 39 24 L 44 24 M 10 10 L 14 14 M 34 34 L 38 38 M 10 38 L 14 34 M 34 14 L 38 10" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    
+    <text x="85" y="48" font-size="24" font-weight="bold" fill="#207448" font-family="ui-monospace, monospace">--cpu-bind=cores (or rank or map_cpu):</text>
+    <text x="85" y="94" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">how those cores are grouped; under Slurm</text>
+    <text x="85" y="136" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">use --cpu-bind instead of mpirun</text>
+    <text x="85" y="178" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">--bind-to none because Slurm owns the</text>
+    <text x="85" y="220" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">binding and reports it in accounting</text>
+  </g>
+
+  
+  <g transform="translate(65, 665)">
+    <rect x="0" y="0" width="690" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(20, 24)">
+      <rect x="4" y="10" width="40" height="28" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="16" cy="24" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="32" cy="24" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+      <line x1="10" y1="38" x2="10" y2="44" stroke="#207448" stroke-width="3"/>
+      <line x1="20" y1="38" x2="20" y2="44" stroke="#207448" stroke-width="3"/>
+    </g>
+    
+    <text x="85" y="52" font-size="24" font-weight="bold" fill="#207448" font-family="ui-monospace, monospace">--gpu-bind=closest:</text>
+    <text x="85" y="104" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">which GPU a rank gets, the nearest one</text>
+  </g>
+
+  
+  <g transform="translate(65, 835)">
+    <rect x="0" y="0" width="690" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    
+    <g transform="translate(20, 24)">
+      <rect x="8" y="20" width="32" height="24" rx="4" fill="none" stroke="#207448" stroke-width="3"/>
+      <path d="M 16 20 L 16 12 Q 24 4 32 12 L 32 20" fill="none" stroke="#207448" stroke-width="3"/>
+      <circle cx="24" cy="32" r="3" fill="#207448"/>
+    </g>
+    
+    <text x="85" y="50" font-size="24" font-weight="bold" fill="#207448" font-family="ui-monospace, monospace">--gres-flags=enforce-binding:</text>
+    <text x="85" y="102" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">restrict the job to cores bound</text>
+    <text x="85" y="148" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">to its GPUs</text>
+  </g>
+
+  
+  
+  
+  <rect x="820" y="105" width="740" height="505" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(848, 125)">
+    
+    <rect x="0" y="6" width="52" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="12" cy="25" r="4" fill="#207448"/>
+    <circle cx="22" cy="25" r="4" fill="#207448"/>
+    <line x1="32" y1="25" x2="44" y2="25" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+  <text x="916" y="162" font-size="30" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Picture</text>
+
+  
+  <text x="848" y="206" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">typical 8-GPU HGX node has two NUMA domains</text>
+  <text x="848" y="238" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">with four GPUs each; NICs often distributed one per GPU</text>
+  <text x="848" y="270" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">in a rail-optimised layout so each GPU has a dedicated</text>
+  <text x="848" y="302" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">path to the fabric; rank i should use NIC i;</text>
+  <text x="848" y="334" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">NCCL maps this automatically</text>
+
+  
+  <g transform="translate(848, 360)">
+    
+    <rect x="0" y="0" width="684" height="225" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <rect x="16" y="16" width="316" height="193" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="30" y="28" width="80" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="70" cy="49" r="8" fill="#207448"/>
+    
+    <line x1="280" y1="49" x2="404" y2="49" stroke="#207448" stroke-width="3" stroke-dasharray="6,4"/>
+
+    
+    <rect x="30" y="86" width="60" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="100" y="86" width="60" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="170" y="86" width="60" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="240" y="86" width="60" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <rect x="30" y="152" width="60" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="100" y="152" width="60" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="170" y="152" width="60" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="240" y="152" width="60" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <rect x="352" y="16" width="316" height="193" rx="8" fill="#f5f8f5" stroke="#207448" stroke-width="1.5"/>
+    
+    <rect x="574" y="28" width="80" height="42" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <circle cx="614" cy="49" r="8" fill="#207448"/>
+
+    
+    <rect x="366" y="86" width="60" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="436" y="86" width="60" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="506" y="86" width="60" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="576" y="86" width="60" height="40" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <rect x="366" y="152" width="60" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="436" y="152" width="60" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="506" y="152" width="60" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <rect x="576" y="152" width="60" height="38" rx="4" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+
+    
+    <line x1="130" y1="126" x2="130" y2="152" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <line x1="200" y1="126" x2="200" y2="152" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <line x1="270" y1="126" x2="270" y2="152" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <line x1="396" y1="126" x2="396" y2="152" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <line x1="466" y1="126" x2="466" y2="152" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <line x1="536" y1="126" x2="536" y2="152" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+    <line x1="606" y1="126" x2="606" y2="152" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+    
+    <line x1="60" y1="126" x2="60" y2="152" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)"/>
+  </g>
+
+  
+  
+  
+  <rect x="820" y="630" width="740" height="210" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(848, 646)">
+    
+    <rect x="0" y="6" width="52" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 12 18 L 20 25 L 12 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="24" y1="32" x2="36" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="916" y="682" font-size="30" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Check recipe</text>
+
+  
+  <text x="848" y="724" font-size="24" font-family="ui-monospace, monospace" fill="#303a36">srun ... bash -c echo $SLURM_PROCID</text>
+  <text x="848" y="756" font-size="24" font-family="ui-monospace, monospace" fill="#303a36">$(taskset -pc $$) $CUDA_VISIBLE_DEVICES,</text>
+  <text x="848" y="788" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">then nvidia-smi topo -m, numactl -s</text>
+  <text x="848" y="820" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">and NCCL INFO output</text>
+
+  
+  
+  
+  <rect x="820" y="855" width="740" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(848, 870)">
+    
+    <circle cx="14" cy="25" r="7" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 21 25 C 28 25, 30 16, 36 16" fill="none" stroke="#207448" stroke-width="3"/>
+    <path d="M 21 25 C 28 25, 30 34, 36 34" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="43" cy="16" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+    <circle cx="43" cy="34" r="5" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="916" y="906" font-size="30" font-weight="bold" fill="#207448" font-family="system-ui, -apple-system, sans-serif">Threads</text>
+
+  
+  <text x="848" y="946" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">set OMP_NUM_THREADS to CPUs per rank minus the share</text>
+  <text x="848" y="978" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">used by data-loader workers; otherwise each rank starts</text>
+  <text x="848" y="1010" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">as many threads as the node has cores and they fight;</text>
+  <text x="848" y="1042" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">keep torch.set_num_threads and MKL_NUM_THREADS</text>
+  <text x="848" y="1074" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">consistent</text>
+
+  
+  
+  
+  <rect x="40" y="1115" width="1520" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1156" text-anchor="middle" font-size="26" font-family="system-ui, -apple-system, sans-serif" fill="#ffffff">
+    <tspan font-weight="bold">Rule: </tspan>
+    <tspan font-weight="normal">a benchmark on an unbound node measures the placement, not the fabric</tspan>
+  </text>
+</svg>

@@ -1,0 +1,148 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>LRU cache: a hash map and a linked list with sentinels</title>
+  <desc>Visual explanation of an LRU cache combining a hash map from key to node and a doubly linked list with head and tail sentinels.</desc>
+
+  <defs>
+    <marker id="arr-green" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+    <marker id="arr-grey" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#5a6862"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="60" y="80" font-size="48" font-weight="bold" fill="#303a36" font-family="sans-serif">LRU cache: a hash map and a linked list with sentinels</text>
+
+  
+  <rect x="60" y="140" width="350" height="400" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  
+  <g transform="translate(140, 160)">
+    <rect x="0" y="0" width="46" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="23" x2="46" y2="23" stroke="#207448" stroke-width="3"/>
+    <line x1="23" y1="0" x2="23" y2="46" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <text x="235" y="240" font-size="30" font-weight="bold" fill="#207448" text-anchor="middle" font-family="sans-serif">Hash map: key to node</text>
+
+  
+  
+  <rect x="85" y="275" width="300" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="145" y="318" font-size="28" font-weight="bold" fill="#303a36" font-family="sans-serif">k1</text>
+  <line x1="240" y1="275" x2="240" y2="343" stroke="#e8f1ea" stroke-width="2"/>
+  <circle cx="310" cy="309" r="7" fill="#207448"/>
+
+  
+  <rect x="85" y="360" width="300" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="145" y="403" font-size="28" font-weight="bold" fill="#303a36" font-family="sans-serif">k2</text>
+  <line x1="240" y1="360" x2="240" y2="428" stroke="#e8f1ea" stroke-width="2"/>
+  <circle cx="310" cy="394" r="7" fill="#207448"/>
+
+  
+  <rect x="85" y="445" width="300" height="68" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="145" y="488" font-size="28" font-weight="bold" fill="#303a36" font-family="sans-serif">k3</text>
+  <line x1="240" y1="445" x2="240" y2="513" stroke="#e8f1ea" stroke-width="2"/>
+  <circle cx="310" cy="479" r="7" fill="#207448"/>
+
+  
+  <rect x="450" y="280" width="180" height="46" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="540" y="312" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle" font-family="sans-serif">Most recent</text>
+
+  <rect x="1370" y="280" width="180" height="46" rx="8" fill="#e8f1ea" stroke="#7a8c82" stroke-width="2"/>
+  <text x="1460" y="312" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">Evicted first</text>
+
+  
+  
+  <rect x="460" y="360" width="160" height="180" rx="14" fill="#e2e8e5" stroke="#7a8c82" stroke-width="2"/>
+  <g transform="translate(515, 385)">
+    <path d="M 0 8 L 25 0 L 50 8 C 50 28 25 46 25 46 C 25 46 0 28 0 8 Z" fill="none" stroke="#7a8c82" stroke-width="4"/>
+  </g>
+  <text x="540" y="475" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="540" dy="0">Head</tspan>
+    <tspan x="540" dy="34">sentinel</tspan>
+  </text>
+
+  
+  <rect x="670" y="360" width="210" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(747, 385)">
+    <rect x="0" y="0" width="56" height="42" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="0" x2="28" y2="42" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="775" y="475" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="775" dy="0">k3 most</tspan>
+    <tspan x="775" dy="34" font-size="24">recent</tspan>
+  </text>
+
+  
+  <rect x="925" y="360" width="150" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(965, 415)">
+    <rect x="0" y="0" width="70" height="66" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <line x1="35" y1="0" x2="35" y2="66" stroke="#207448" stroke-width="3" stroke-dasharray="4 4"/>
+    <circle cx="17" cy="33" r="6" fill="#207448"/>
+    <circle cx="53" cy="33" r="6" fill="#207448"/>
+  </g>
+
+  
+  <rect x="1120" y="360" width="210" height="180" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+  <g transform="translate(1197, 385)">
+    <rect x="0" y="0" width="56" height="42" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    <line x1="28" y1="0" x2="28" y2="42" stroke="#db8129" stroke-width="3"/>
+  </g>
+  <text x="1225" y="475" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="1225" dy="0">k1 least</tspan>
+    <tspan x="1225" dy="34" font-size="24">recent</tspan>
+  </text>
+
+  
+  <rect x="1380" y="360" width="160" height="180" rx="14" fill="#e2e8e5" stroke="#7a8c82" stroke-width="2"/>
+  <g transform="translate(1435, 385)">
+    <path d="M 0 8 L 25 0 L 50 8 C 50 28 25 46 25 46 C 25 46 0 28 0 8 Z" fill="none" stroke="#7a8c82" stroke-width="4"/>
+  </g>
+  <text x="1460" y="475" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="sans-serif">
+    <tspan x="1460" dy="0">Tail</tspan>
+    <tspan x="1460" dy="34">sentinel</tspan>
+  </text>
+
+  
+  
+  <line x1="620" y1="425" x2="670" y2="425" stroke="#5a6862" stroke-width="3" marker-end="url(#arr-grey)"/>
+  <line x1="670" y1="475" x2="620" y2="475" stroke="#5a6862" stroke-width="3" marker-end="url(#arr-grey)"/>
+
+  
+  <line x1="880" y1="425" x2="925" y2="425" stroke="#5a6862" stroke-width="3" marker-end="url(#arr-grey)"/>
+  <line x1="925" y1="475" x2="880" y2="475" stroke="#5a6862" stroke-width="3" marker-end="url(#arr-grey)"/>
+
+  
+  <line x1="1075" y1="425" x2="1120" y2="425" stroke="#5a6862" stroke-width="3" marker-end="url(#arr-grey)"/>
+  <line x1="1120" y1="475" x2="1075" y2="475" stroke="#5a6862" stroke-width="3" marker-end="url(#arr-grey)"/>
+
+  
+  <line x1="1330" y1="425" x2="1380" y2="425" stroke="#5a6862" stroke-width="3" marker-end="url(#arr-grey)"/>
+  <line x1="1380" y1="475" x2="1330" y2="475" stroke="#5a6862" stroke-width="3" marker-end="url(#arr-grey)"/>
+
+  
+  
+  <path d="M 317 309 L 390 309 L 390 170 L 1225 170 L 1225 360" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arr-green)"/>
+
+  
+  <path d="M 317 394 L 405 394 L 405 210 L 1000 210 L 1000 360" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arr-green)"/>
+
+  
+  <path d="M 317 479 L 420 479 L 420 250 L 775 250 L 775 360" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arr-green)"/>
+
+  
+  <rect x="60" y="585" width="1480" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="90" y="635" font-size="24" font-family="monospace" font-weight="bold" fill="#303a36">get(k1): move the node to the front</text>
+
+  <rect x="60" y="705" width="1480" height="80" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="90" y="755" font-size="24" font-family="monospace" font-weight="bold" fill="#303a36">put when full: remove the node next to the tail sentinel and delete its key from the map</text>
+
+  
+  <rect x="60" y="830" width="1480" height="85" rx="12" fill="#207448"/>
+  <text x="800" y="883" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="sans-serif">Each node stores its key, so eviction can delete the map entry.</text>
+</svg>

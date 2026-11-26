@@ -1,0 +1,169 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Good template practice: seven habits</title>
+  <desc>Infographic explaining seven habits of good template practice in Ansible, test strip, and key takeaway.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="78" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Good template practice: seven habits</text>
+
+  
+  
+  <g id="card-1">
+    <rect x="50" y="125" width="725" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="74" y="145" width="48" height="48" rx="8"/>
+      <path d="M88 169h8l8-10h12"/>
+      <path d="M96 169l8 10h12"/>
+      <circle cx="88" cy="169" r="2" fill="#207448"/>
+      <circle cx="116" cy="159" r="2" fill="#207448"/>
+      <circle cx="116" cy="179" r="2" fill="#207448"/>
+    </g>
+    
+    <text x="140" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">1 Keep logic simple:</text>
+    <text x="74" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">precompute data with <tspan font-family="monospace, monospace">set_fact</tspan> or filters,</tspan>
+      <tspan x="74" dy="38">long expressions go into named variables</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-2">
+    <rect x="825" y="125" width="725" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M853 147h30l16 16v32h-46z"/>
+      <path d="M865 173h16"/>
+      <path d="M873 165v16"/>
+      <path d="M865 187h16"/>
+    </g>
+    
+    <text x="915" y="178" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      2 Render with <tspan font-family="monospace, monospace">--check --diff</tspan>
+    </text>
+    <text x="849" y="240" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="849" dy="0">before running for real: read the change</tspan>
+      <tspan x="849" dy="38">line by line like a pull request</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="card-3">
+    <rect x="50" y="370" width="725" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="74" y="390" width="48" height="48" rx="8"/>
+      <path d="M84 414l6 6-6 6"/>
+      <path d="M96 426h12"/>
+      <path d="M106 400l6 6 10-10"/>
+    </g>
+    
+    <text x="140" y="423" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">3 validate:</text>
+    <text x="74" y="465" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">when the file has a checker:</tspan>
+      <tspan x="74" dy="32" font-family="monospace, monospace">nginx -t -c %s, visudo -cf %s,</tspan>
+      <tspan x="74" dy="32"><tspan font-family="monospace, monospace">named-checkconf %s;</tspan> %s is the path</tspan>
+      <tspan x="74" dy="32">of the rendered temporary file</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-4">
+    <rect x="825" y="370" width="725" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M849 394h48v42l-24-12-24 12z"/>
+      <line x1="861" y1="408" x2="885" y2="408"/>
+      <line x1="865" y1="416" x2="881" y2="416"/>
+    </g>
+    
+    <text x="915" y="423" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      4 Include <tspan font-family="monospace, monospace">{{ ansible_managed }}</tspan>:
+    </text>
+    <text x="849" y="485" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="849" dy="0">tells people not to edit; a hand edit is lost</tspan>
+      <tspan x="849" dy="38">the next time the playbook runs</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="card-5">
+    <rect x="50" y="615" width="725" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="98" cy="639" r="24"/>
+      <polyline points="98 625 98 639 108 645"/>
+      <line x1="78" y1="619" x2="118" y2="659"/>
+    </g>
+    
+    <text x="140" y="668" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">5 Avoid volatile values</text>
+    <text x="74" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">such as timestamps: they make the file look</tspan>
+      <tspan x="74" dy="38">changed when it is not</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-6">
+    <rect x="825" y="615" width="725" height="205" rx="12" fill="#fff7f0" stroke="#db8129" stroke-width="3"/>
+    
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="851" y="649" width="10" height="14" rx="2"/>
+      <rect x="867" y="639" width="10" height="24" rx="2"/>
+      <rect x="883" y="625" width="10" height="38" rx="2"/>
+    </g>
+    
+    <text x="915" y="668" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">6 Sort lists and dict keys</text>
+    <text x="849" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="849" dy="0">with <tspan font-family="monospace, monospace">| sort</tspan> and <tspan font-family="monospace, monospace">dictsort</tspan>:</tspan>
+      <tspan x="849" dy="38">deterministic renders, so handlers do not flap</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="card-7">
+    <rect x="50" y="860" width="725" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="76" y="890" width="44" height="34" rx="6"/>
+      <path d="M86 890v-10a12 12 0 0 1 24 0v10"/>
+      <circle cx="98" cy="905" r="3" fill="#207448"/>
+      <line x1="98" y1="908" x2="98" y2="915"/>
+    </g>
+    
+    <text x="140" y="913" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">7 Preserve ownership and modes;</text>
+    <text x="74" y="975" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="74" dy="0">secrets: mode 0600 (only the owner reads</tspan>
+      <tspan x="74" dy="38">or writes), no_log: true and diff: false</tspan>
+    </text>
+  </g>
+
+  
+  <g id="test-strip">
+    <rect x="825" y="860" width="725" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6"/>
+    
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M867 876h16"/>
+      <path d="M871 876v16l-18 34a4 4 0 0 0 4 6h36a4 4 0 0 0 4-6l-18-34v-16"/>
+      <line x1="861" y1="918" x2="889" y2="918"/>
+    </g>
+    
+    <text x="915" y="913" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">render with fixture data in CI</text>
+    <text x="849" y="975" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="849" dy="0">and compare with a golden file, a saved copy</tspan>
+      <tspan x="849" dy="38">of reviewed output (3.9)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="50" y="1105" width="1500" height="55" rx="10" fill="#207448"/>
+    <text x="800" y="1141" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      Sort every list the template reads, and render with --check --diff before you change the live file
+    </text>
+  </g>
+</svg>

@@ -78,18 +78,9 @@ Say a colleague asks, "What exactly did we change in the GPU driver role last Tu
 
 Read the diagram from left to right. The newest commit, `C3`, is at the left, and each arrow points backwards to its parent. Each commit points to a tree, which is the folder snapshot at that moment. The tree points to blobs, which hold the file contents, and to smaller trees, which hold subfolders. The label `refs/heads/main` points to the newest commit, and `HEAD` points to the branch you are on. Nothing in the diagram is a list of changes. Every box is a full picture, and Git reads the changes by comparing pictures.
 
-```mermaid
-flowchart LR
-  subgraph Repo[".git/objects (content-addressed database)"]
-    C3["commit C3\nparent: C2\ntree: T3\nauthor, message"] --> C2["commit C2\nparent: C1\ntree: T2"] --> C1["commit C1\ntree: T1"]
-    C3 --> T3["tree T3\n(directory)"]
-    T3 --> B1["blob\nmain.tf"]
-    T3 --> T4["tree\nroles/"]
-    T4 --> B2["blob\ntasks/main.yml"]
-  end
-  REF["refs/heads/main"] --> C3
-  HEAD["HEAD"] --> REF
-```
+![The Git object model](./img/m4-01-1.svg)
+
+*Figure 4.1.1. The Git object model, as a diagram.*
 
 Git stores four kinds of objects. Each one is named by the hash of its content, either a SHA-1 hash or, in newer repositories, a SHA-256 hash. A hash is a short fingerprint computed from the bytes. Same bytes, same fingerprint, every time. The table lists the four kinds. Read it as a set of building blocks: a commit points to a tree, and a tree points to blobs and subtrees.
 
@@ -132,13 +123,9 @@ A useful way to hold this in your head is to picture a rack diagram. The commit 
 
 ### The three areas
 
-```mermaid
-flowchart LR
-  W["Working tree\n(files you edit)"] -- "git add" --> I["Index / staging area\n(what the next commit will contain)"]
-  I -- "git commit" --> R["Repository\n(history)"]
-  R -- "git restore / checkout" --> W
-  I -- "git restore --staged" --> W
-```
+![The three areas](./img/m4-01-2.svg)
+
+*Figure 4.1.2. The three areas, as a diagram.*
 
 The index is what lets you commit only part of your work. Think of it as a packing table. You edit files all day in the working tree, which is the messy workshop. When you are ready to commit, you carry only the items you want onto the packing table, and then you seal the box. Anything left in the workshop stays out of the shipment.
 
@@ -322,17 +309,9 @@ A teammate's push is rejected with "your branch and origin/main have diverged." 
 
 The word "diverged" is worth understanding, because it describes a fork in a road. Neither side did anything wrong. Two people made changes from the same starting point, and Git now needs a decision about how to combine them. Merging keeps the fork visible in history. Rebasing pretends the fork never happened by replaying your work on top of the newest `main`. Both answers are correct. They simply tell different stories.
 
-```mermaid
-gitGraph
-  commit id: "A"
-  commit id: "B"
-  branch feature
-  commit id: "F1"
-  commit id: "F2"
-  checkout main
-  commit id: "C"
-  merge feature id: "M"
-```
+![Merge, rebase and history shape](./img/m4-01-3.svg)
+
+*Figure 4.1.3. Merge, rebase and history shape, as a diagram.*
 
 - **Merge** creates a merge commit with two parents. That keeps the true shape of history. `--ff-only` refuses to merge unless a fast-forward is possible. `--no-ff` forces a merge commit even when a fast-forward is possible, which keeps the branch boundary visible.
 - **Rebase** replays your commits on a new base. Each replayed commit gets a new hash, and the history becomes linear. A squash merge collapses a whole branch into one commit on `main`. That is clean for atomic infrastructure changes, but the intermediate commits are gone.
@@ -532,14 +511,9 @@ In the **push-based** model, CI builds the change and then pushes it to the targ
 
 In the **pull-based (GitOps)** model, an agent inside the target environment pulls the desired state from Git. Here the site keeps its own staff. The agent checks Git on a loop, compares it with the live cluster, and corrects any difference. Argo CD and Flux are examples of such agents, and you can use either one. The agent reconciles the cluster to match Git, and it reports or automatically reverts any drift. Credentials stay inside the cluster, Git serves as the audit log, and rollback is a revert. The system also self-heals, because the agent keeps checking even when nobody has pushed anything. See 4.26.
 
-```mermaid
-flowchart LR
-  Dev["Engineer"] -- "pull request" --> Git["Git (desired state)"]
-  Git -- "merge to main" --> CI["CI: validate, plan, test, build"]
-  CI -- "push model: apply" --> Env1["Environment"]
-  Git -. "pull model" .-> Agent["GitOps agent in cluster\n(Argo CD / Flux)"]
-  Agent -- "reconcile / detect drift" --> Env2["Cluster"]
-```
+![GitOps: Git as the deployment trigger](./img/m4-01-4.svg)
+
+*Figure 4.1.4. GitOps: Git as the deployment trigger, as a diagram.*
 
 A few conventions keep this model clean. Keep application code repos apart from environment and config repos. The reason is that a code change and a deployment change have different reviewers and different rhythms. CI can then update an image tag in the config repo through a pull request, and the agent deploys the change. Pin each image by an immutable digest or tag, so the bytes you tested are the bytes that run. A digest is a fingerprint of the image, and a tag such as `latest` can quietly point at something new tomorrow. Keep one source of truth per environment, so nobody has to guess which file wins. Keep secrets out of Git by using external secret operators or SOPS-encrypted files. Choose the model before you wire the first pipeline, because it decides who holds the cluster credentials. Changing that answer later means rebuilding the trust path, which is far more work than choosing well at the start.
 

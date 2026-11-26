@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>See what the parser really produced: convert to JSON, then validate</title>
+  <desc>Visual infographic explaining YAML to JSON parsing inspection, parser vs schema validation, tooling, and format selection.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="80" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="40" dy="0">See what the parser really produced:</tspan>
+    <tspan x="40" dy="58">convert to JSON, then validate</tspan>
+  </text>
+
+  
+  
+  <g id="node-1">
+    <rect x="40" y="180" width="250" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="72" cy="212" r="24" fill="#207448"/>
+    <text x="72" y="221" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    
+    
+    <rect x="137" y="205" width="46" height="56" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="149" y1="223" x2="171" y2="223" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="149" y1="235" x2="171" y2="235" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <line x1="149" y1="247" x2="163" y2="247" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <text x="165" y="340" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">file.yml</text>
+  </g>
+
+  
+  <line x1="290" y1="305" x2="350" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-2">
+    <rect x="350" y="180" width="620" height="250" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <circle cx="382" cy="212" r="24" fill="#207448"/>
+    <text x="382" y="221" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <rect x="632" y="202" width="56" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="644,220 652,225 644,230" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="657" y1="230" x2="672" y2="230" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    <text x="375" y="295" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="375" dy="0">python3 -c import sys,yaml,json;</tspan>
+      <tspan x="375" dy="40">print(json.dumps(yaml.safe_load(</tspan>
+      <tspan x="375" dy="40">sys.stdin), indent=2)) &lt; file.yml</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="970" y1="305" x2="1030" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <g id="node-3">
+    <rect x="1030" y="180" width="530" height="250" rx="14" fill="#fff8f2" stroke="#db8129" stroke-width="3"/>
+    <circle cx="1062" cy="212" r="24" fill="#db8129"/>
+    <text x="1062" y="221" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <rect x="1267" y="202" width="56" height="46" rx="6" fill="none" stroke="#db8129" stroke-width="4"/>
+    <text x="1295" y="235" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#db8129">{ }</text>
+
+    <text x="1055" y="285" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1055" dy="0">JSON where every type is</tspan>
+      <tspan x="1055" dy="35">spelled out: quoted strings</tspan>
+      <tspan x="1055" dy="35">stay strings, unquoted no</tspan>
+      <tspan x="1055" dy="35">shows up as false</tspan>
+    </text>
+  </g>
+
+  
+  <g id="tool-strip">
+    <rect x="40" y="460" width="1520" height="90" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M72,488 C80,480 92,480 98,488 C102,492 103,497 102,501 L114,513 C117,516 117,521 114,524 L111,527 C108,530 103,530 100,527 L88,515 C84,516 79,515 75,511 C67,505 67,493 75,485 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="85" cy="498" r="4" fill="#207448"/>
+
+    <text x="145" y="496" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">yq: yq .nodes[].name nodes.yml, yq -o=json, in-place edits with yq -i;</tspan>
+      <tspan x="145" dy="34">jq for JSON; Kubernetes accepts either format</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="parser-schema">
+    <rect x="40" y="575" width="740" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M93,597 L114,606 L114,625 C114,639 93,649 93,649 C93,649 72,639 72,625 L72,606 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="93" y1="614" x2="93" y2="628" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="93" cy="637" r="2.5" fill="#207448"/>
+
+    <text x="65" y="685" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="65" dy="0">a parser only checks the text is well formed:</tspan>
+      <tspan x="65" dy="35">gpus: eight parses without complaint even though</tspan>
+      <tspan x="65" dy="35">no tool expecting a number accepts it; a schema</tspan>
+      <tspan x="65" dy="35">adds the rule saying what each key must hold</tspan>
+    </text>
+  </g>
+
+  
+  <g id="validators-list">
+    <rect x="820" y="575" width="740" height="255" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M873,597 L894,606 L894,625 C894,639 873,649 873,649 C873,649 852,639 852,625 L852,606 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    <polyline points="862,624 870,632 884,617" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+
+    <text x="845" y="685" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="845" dy="0">check-jsonschema, kubeconform for Kubernetes,</tspan>
+      <tspan x="845" dy="35">pydantic models in Python,</tspan>
+      <tspan x="845" dy="35">Ansible argument specs for roles,</tspan>
+      <tspan x="845" dy="35">yamllint for style</tspan>
+    </text>
+  </g>
+
+  
+  <g id="format-strip">
+    <rect x="40" y="860" width="1520" height="155" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <line x1="93" y1="886" x2="93" y2="930" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="71" y1="896" x2="115" y2="896" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <polygon points="71,896 63,916 79,916" fill="none" stroke="#207448" stroke-width="3"/>
+    <polygon points="115,896 107,916 123,916" fill="none" stroke="#207448" stroke-width="3"/>
+
+    <text x="145" y="905" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" dy="0">who edits the file? a person editing weekly wants comments and light punctuation: YAML;</tspan>
+      <tspan x="145" dy="40">a program sending data to an API every second wants strict rules: JSON (no comments);</tspan>
+      <tspan x="145" dy="40">alternatives TOML for Python tooling, HCL for Terraform, INI for ansible.cfg and systemd</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1045" width="1520" height="75" rx="12" fill="#207448"/>
+    <text x="800" y="1092" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Convert to JSON when a value is not what you expected</text>
+  </g>
+</svg>

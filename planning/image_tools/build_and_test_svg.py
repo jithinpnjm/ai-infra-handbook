@@ -1,0 +1,198 @@
+import xml.etree.ElementTree as ET
+import re
+
+svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which way to work: bottom-up, top-down, divide, follow, compare</title>
+  <desc>A visual troubleshooting guide comparing diagnostic directions and methodologies: bottom-up, top-down, divide and conquer, path following, peer comparison, isolated experiments, packet captures, and deliberate incident discipline.</desc>
+
+  <!-- Background Canvas -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Main Title (48px bold) -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Which way to work: bottom-up,</tspan>
+    <tspan x="800" dy="56">top-down, divide, follow, compare</tspan>
+  </text>
+
+  <!-- ==================== ROW 1 ==================== -->
+
+  <!-- Card 1: Bottom-up -->
+  <g id="card-bottom-up">
+    <rect x="40" y="155" width="740" height="260" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Layer stack with upward arrow (56px) -->
+    <g transform="translate(64, 175)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="6" y1="48" x2="50" y2="48"/>
+      <line x1="10" y1="36" x2="46" y2="36"/>
+      <line x1="14" y1="24" x2="42" y2="24"/>
+      <line x1="18" y1="12" x2="38" y2="12"/>
+      <path d="M 28 42 L 28 6 M 22 12 L 28 6 L 34 12"/>
+    </g>
+    <!-- Label 1 -->
+    <text x="144" y="192" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0" font-size="30" font-weight="bold" fill="#207448">Bottom-up:</tspan>
+      <tspan font-size="24" fill="#303a36"> physical, link, network,</tspan>
+      <tspan x="144" dy="33">transport, application; when many things</tspan>
+      <tspan x="144" dy="32">fail at once or after a hardware change;</tspan>
+      <tspan x="144" dy="32">physical problems are cheapest to rule out</tspan>
+      <tspan x="144" dy="32">(a loose cable or dead optic shows in a</tspan>
+      <tspan x="144" dy="32">light or counter)</tspan>
+    </text>
+  </g>
+
+  <!-- Card 5: Compare with a working peer (ORANGE) -->
+  <g id="card-compare-peer">
+    <rect x="820" y="155" width="740" height="260" rx="14" fill="#fff9f2" stroke="#db8129" stroke-width="3"/>
+    <!-- Icon: Two diffed server nodes (56px, orange) -->
+    <g transform="translate(844, 175)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="8" width="20" height="40" rx="3"/>
+      <rect x="32" y="8" width="20" height="40" rx="3"/>
+      <line x1="8" y1="18" x2="16" y2="18"/>
+      <line x1="8" y1="26" x2="16" y2="26"/>
+      <line x1="36" y1="18" x2="44" y2="18"/>
+      <line x1="36" y1="26" x2="44" y2="26"/>
+      <path d="M 24 24 L 28 28 M 28 24 L 24 28"/>
+    </g>
+    <!-- Label 5 -->
+    <text x="924" y="192" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="924" dy="0" font-size="30" font-weight="bold" fill="#db8129">Compare with a working peer:</tspan>
+      <tspan x="924" dy="36">diff a good node against a bad one; check</tspan>
+      <tspan x="924" dy="33">configs, firmware, ethtool, sysctls,</tspan>
+      <tspan x="924" dy="33">routes and counters; configuration drift</tspan>
+      <tspan x="924" dy="33">is the most common root cause in fleets</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 2 ==================== -->
+
+  <!-- Card 2: Top-down -->
+  <g id="card-top-down">
+    <rect x="40" y="455" width="740" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Application window with downward arrow (56px) -->
+    <g transform="translate(64, 475)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="44" rx="4"/>
+      <line x1="4" y1="18" x2="52" y2="18"/>
+      <circle cx="12" cy="12" r="2" fill="#207448"/>
+      <circle cx="18" cy="12" r="2" fill="#207448"/>
+      <path d="M 28 24 L 28 44 M 22 38 L 28 44 L 34 38"/>
+    </g>
+    <!-- Label 2 -->
+    <text x="144" y="505" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0" font-size="30" font-weight="bold" fill="#207448">Top-down:</tspan>
+      <tspan font-size="24" fill="#303a36"> when only one</tspan>
+      <tspan x="144" dy="36">application misbehaves</tspan>
+    </text>
+  </g>
+
+  <!-- Card 6: Change one thing at a time -->
+  <g id="card-change-one">
+    <rect x="820" y="455" width="740" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Stepped slider / single step knob (56px) -->
+    <g transform="translate(844, 475)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <circle cx="28" cy="28" r="5" fill="#207448"/>
+      <line x1="28" y1="28" x2="28" y2="12"/>
+      <line x1="28" y1="6" x2="28" y2="10"/>
+      <line x1="44" y1="28" x2="48" y2="28"/>
+    </g>
+    <!-- Label 6 -->
+    <text x="924" y="505" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="924" dy="0" font-size="30" font-weight="bold" fill="#207448">Change one thing at a time,</tspan>
+      <tspan x="924" dy="36">and revert the experiments that fail</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 3 ==================== -->
+
+  <!-- Card 3: Divide and conquer (half-split) -->
+  <g id="card-divide-conquer">
+    <rect x="40" y="620" width="740" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Bisected segment / split arrows (56px) -->
+    <g transform="translate(64, 640)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="6" y1="28" x2="50" y2="28"/>
+      <line x1="28" y1="12" x2="28" y2="44" stroke-dasharray="3 3"/>
+      <circle cx="28" cy="28" r="5" fill="#207448"/>
+      <path d="M 14 20 L 6 28 L 14 36"/>
+      <path d="M 42 20 L 50 28 L 42 36"/>
+    </g>
+    <!-- Label 3 -->
+    <text x="144" y="670" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0" font-size="30" font-weight="bold" fill="#207448">Divide and conquer (half-split):</tspan>
+      <tspan x="144" dy="36">when the path is long</tspan>
+    </text>
+  </g>
+
+  <!-- Card 7: Use the packet -->
+  <g id="card-use-packet">
+    <rect x="820" y="620" width="740" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Network packet frame with inspection lens (56px) -->
+    <g transform="translate(844, 640)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="10" width="40" height="32" rx="4"/>
+      <line x1="4" y1="22" x2="44" y2="22"/>
+      <circle cx="36" cy="34" r="10"/>
+      <line x1="43" y1="41" x2="52" y2="50"/>
+    </g>
+    <!-- Label 7 -->
+    <text x="924" y="670" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="924" dy="0" font-size="30" font-weight="bold" fill="#207448">Use the packet:</tspan>
+      <tspan font-size="24" fill="#303a36"> a capture beats opinion</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 4 ==================== -->
+
+  <!-- Card 4: Follow the path -->
+  <g id="card-follow-path">
+    <rect x="40" y="785" width="740" height="255" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: End-to-end traced route with hops (56px) -->
+    <g transform="translate(64, 805)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="10" cy="14" r="5" fill="#207448"/>
+      <circle cx="46" cy="14" r="5" fill="#207448"/>
+      <circle cx="14" cy="44" r="5" fill="#207448"/>
+      <circle cx="46" cy="44" r="5" fill="#207448"/>
+      <path d="M 15 14 L 41 14 Q 50 14 48 26 L 46 32 Q 44 44 20 44"/>
+    </g>
+    <!-- Label 4 -->
+    <text x="144" y="822" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0" font-size="30" font-weight="bold" fill="#207448">Follow the path:</tspan>
+      <tspan x="144" dy="36">trace the actual flow end to end,</tspan>
+      <tspan x="144" dy="33">including NAT, overlays and</tspan>
+      <tspan x="144" dy="33">load balancers</tspan>
+    </text>
+  </g>
+
+  <!-- Card 8: Side contrast (Two engineers, same alert) -->
+  <g id="card-side-contrast">
+    <rect x="820" y="785" width="740" height="255" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Side-by-side contrasting balance / clipboard and clock (56px) -->
+    <g transform="translate(844, 805)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="10" width="34" height="42" rx="4"/>
+      <line x1="16" y1="22" x2="34" y2="22"/>
+      <line x1="16" y1="30" x2="34" y2="30"/>
+      <line x1="16" y1="38" x2="26" y2="38"/>
+      <circle cx="42" cy="40" r="10"/>
+      <polyline points="42,34 42,40 46,40"/>
+    </g>
+    <!-- Label 8 -->
+    <text x="924" y="822" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="924" dy="0" font-size="30" font-weight="bold" fill="#207448">Two engineers, same alert:</tspan>
+      <tspan x="924" dy="36">one changes settings at once and the</tspan>
+      <tspan x="924" dy="33">evidence is gone by the time the cause</tspan>
+      <tspan x="924" dy="33">would have shown; the other writes down</tspan>
+      <tspan x="924" dy="33">the symptom, saves the counters, and only</tspan>
+      <tspan x="924" dy="33">then changes one thing</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR ==================== -->
+  <g id="takeaway-bar">
+    <rect x="40" y="1080" width="1520" height="70" rx="12" fill="#207448"/>
+    <!-- Label 9 -->
+    <text x="800" y="1124" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Write the symptom in measurable terms before you touch a command</text>
+  </g>
+</svg>
+'''
+
+with open("test_which_direction.svg", "w") as f:
+    f.write(svg_content)
+
+print("Wrote test_which_direction.svg successfully!")

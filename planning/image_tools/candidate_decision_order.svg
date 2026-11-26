@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Promote, hold or roll back: the order of the rules</title>
+  <desc>Visual infographic explaining the sequential evaluation of rollback, hold, and promote rules during canary model deployment, including latency, quality gates, operational caching, and traffic weights.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  <!-- Title -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Promote, hold or roll back: the order of the rules</text>
+
+  <!-- 1. Latency Gate Card -->
+  <g id="gate-latency">
+    <rect x="50" y="105" width="730" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Timer / Clock Icon (56x56) -->
+    <g transform="translate(74, 137)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="24"/>
+      <polyline points="28,14 28,28 40,28"/>
+    </g>
+    <text x="154" y="154" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="154" dy="0">latency: canary TTFT p99 and ITL p99</tspan>
+      <tspan x="154" dy="32">against baseline with a ratio limit</tspan>
+    </text>
+  </g>
+
+  <!-- 2. Quality Gate Card -->
+  <g id="gate-quality">
+    <rect x="820" y="105" width="730" height="120" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Shield / Quality Icon (56x56) -->
+    <g transform="translate(844, 137)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 48 14 C 48 34 28 48 28 48 C 28 48 8 34 8 14 Z"/>
+      <polyline points="20,26 26,32 36,20"/>
+    </g>
+    <text x="924" y="142" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="924" dy="0">quality: eval score on a fixed prompt</tspan>
+      <tspan x="924" dy="30">set, share of finish_reason equal to</tspan>
+      <tspan x="924" dy="30">length, error rate</tspan>
+    </text>
+  </g>
+
+  <!-- 3. Rule 1: Hard Failures Roll Back (Single Orange Highlight) -->
+  <g id="rule-1-rollback">
+    <rect x="50" y="265" width="1500" height="150" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3.5"/>
+    <!-- Warning / Alert Triangle Icon in Orange (56x56) -->
+    <g transform="translate(74, 312)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 50 46 H 6 Z"/>
+      <line x1="28" y1="20" x2="28" y2="32"/>
+      <circle cx="28" cy="40" r="1.5" fill="#db8129"/>
+    </g>
+    <text x="154" y="302" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="154" dy="0">1 hard failures roll back immediately even with little traffic: zero tokens while</tspan>
+      <tspan x="154" dy="30">receiving traffic, error rate above the hard limit, quality down beyond the drop limit</tspan>
+      <tspan x="154" dy="30">on the eval, finish_reason length share shifted beyond the limit, latency ratio far</tspan>
+      <tspan x="154" dy="30">above the limit (limit plus a hold band)</tspan>
+    </text>
+  </g>
+
+  <!-- 4. Rule 2: Minimum Requests Hold -->
+  <g id="rule-2-hold">
+    <rect x="50" y="455" width="1500" height="88" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <!-- Hourglass / Wait Icon (56x56) -->
+    <g transform="translate(74, 471)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 8 H 44 L 28 28 L 44 48 H 12 L 28 28 Z"/>
+    </g>
+    <text x="154" y="506" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">2 if requests are below the minimum: hold (need more evidence)</text>
+  </g>
+
+  <!-- 5. Rule 3: Soft Signals Hold -->
+  <g id="rule-3-hold">
+    <rect x="50" y="583" width="1500" height="100" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <!-- Sensor / Waveform Icon (56x56) -->
+    <g transform="translate(74, 605)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <path d="M 12 28 H 20 L 25 16 L 31 40 L 36 28 H 44"/>
+    </g>
+    <text x="154" y="626" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="154" dy="0">3 soft signals only (marginal results such as error rate up over baseline, latency ratio</tspan>
+      <tspan x="154" dy="30">above the limit but inside the band): hold</tspan>
+    </text>
+  </g>
+
+  <!-- 6. Rule 4: Clean Pass Promote -->
+  <g id="rule-4-promote">
+    <rect x="50" y="723" width="1500" height="88" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+    <!-- Checkmark Circle / Pass Icon (56x56) -->
+    <g transform="translate(74, 739)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <polyline points="18,28 25,35 38,20"/>
+    </g>
+    <text x="154" y="774" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">4 otherwise: promote, all gates passed</text>
+  </g>
+
+  <!-- 7. Operational Rule: Prefix Cache -->
+  <g id="rule-cache">
+    <rect x="50" y="851" width="730" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Chip / Cache Icon (56x56) -->
+    <g transform="translate(74, 898)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4"/>
+      <line x1="18" y1="4" x2="18" y2="10"/>
+      <line x1="28" y1="4" x2="28" y2="10"/>
+      <line x1="38" y1="4" x2="38" y2="10"/>
+      <line x1="18" y1="46" x2="18" y2="52"/>
+      <line x1="28" y1="46" x2="28" y2="52"/>
+      <line x1="38" y1="46" x2="38" y2="52"/>
+      <line x1="4" y1="18" x2="10" y2="18"/>
+      <line x1="4" y1="28" x2="10" y2="28"/>
+      <line x1="4" y1="38" x2="10" y2="38"/>
+      <line x1="46" y1="18" x2="52" y2="18"/>
+      <line x1="46" y1="28" x2="52" y2="28"/>
+      <line x1="46" y1="38" x2="52" y2="38"/>
+    </g>
+    <text x="154" y="888" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="154" dy="0">compare the canary replica against the</tspan>
+      <tspan x="154" dy="30">baseline over the same prompt mix after</tspan>
+      <tspan x="154" dy="30">warming its empty prefix cache, not</tspan>
+      <tspan x="154" dy="30">against the whole fleet</tspan>
+    </text>
+  </g>
+
+  <!-- 8. Operational Rule: Router Weights -->
+  <g id="rule-router">
+    <rect x="820" y="851" width="730" height="150" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Router / Load Balancing Icon (56x56) -->
+    <g transform="translate(844, 898)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <line x1="10" y1="28" x2="46" y2="28"/>
+      <polyline points="38,20 46,28 38,36"/>
+      <line x1="28" y1="10" x2="28" y2="46"/>
+      <polyline points="20,18 28,10 36,18"/>
+    </g>
+    <text x="924" y="902" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="924" dy="0">router weights not replica count set the</tspan>
+      <tspan x="924" dy="30">share: 5 percent of 8 replicas still</tspan>
+      <tspan x="924" dy="30">needs one whole replica</tspan>
+    </text>
+  </g>
+
+  <!-- 9. Takeaway / Reasons Bar -->
+  <g id="takeaway-bar">
+    <rect x="50" y="1041" width="1500" height="100" rx="14" fill="#207448"/>
+    <!-- Lightbulb / Insight Icon (56x56) -->
+    <g transform="translate(74, 1063)" stroke="#ffffff" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 8 C 18 8 12 16 12 24 C 12 30 16 35 20 38 V 44 H 36 V 38 C 40 35 44 30 44 24 C 44 16 38 8 28 8 Z"/>
+      <line x1="22" y1="48" x2="34" y2="48"/>
+    </g>
+    <text x="154" y="1086" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+      <tspan x="154" dy="0">the cheapest way to be wrong is to wait, the most expensive is to promote a broken</tspan>
+      <tspan x="154" dy="32">model; a 6 point quality drop on a fixed eval does not need 200 requests to be real</tspan>
+    </text>
+  </g>
+</svg>

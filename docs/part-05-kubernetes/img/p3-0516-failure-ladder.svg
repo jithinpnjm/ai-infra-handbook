@@ -1,0 +1,220 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Symptom to cause to fix for config, secret and RBAC faults</title>
+  <desc>Three-column table mapping symptoms to likely causes and fixes for Kubernetes config, secret, and RBAC faults.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Symptom to cause to fix for config, secret and RBAC faults</text>
+
+  
+  <g id="column-symptom">
+    
+    <rect x="40" y="96" width="430" height="1050" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 40 108 A 12 12 0 0 1 52 96 L 458 96 A 12 12 0 0 1 470 108 L 470 186 L 40 186 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(142, 111)">
+      <path d="M 28 6 L 50 48 L 6 48 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="2.5" fill="#207448"/>
+    </g>
+    
+    <text x="214" y="149" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Symptom</text>
+  </g>
+
+  
+  <g id="column-likely-cause">
+    
+    <rect x="510" y="96" width="460" height="1050" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 510 108 A 12 12 0 0 1 522 96 L 958 96 A 12 12 0 0 1 970 108 L 970 186 L 510 186 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(612, 111)">
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M 28 6 L 28 12 M 28 44 L 28 50 M 6 28 L 12 28 M 44 28 L 50 28 M 12 12 L 17 17 M 39 39 L 44 44 M 12 44 L 17 39 M 39 17 L 44 12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    
+    <text x="684" y="149" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Likely cause</text>
+  </g>
+
+  
+  <g id="column-fix">
+    
+    <rect x="1010" y="96" width="550" height="1050" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <path d="M 1010 108 A 12 12 0 0 1 1022 96 L 1548 96 A 12 12 0 0 1 1560 108 L 1560 186 L 1010 186 Z" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1225, 111)">
+      <path d="M 28 6 C 44 6, 48 14, 48 26 C 48 40, 36 48, 28 52 C 20 48, 8 40, 8 26 C 8 14, 12 6, 28 6 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <path d="M 18 26 L 25 34 L 38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    <text x="1297" y="149" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Fix</text>
+  </g>
+
+  
+  <g stroke="#cde0d2" stroke-width="1.5">
+    
+    <line x1="40" y1="306" x2="470" y2="306"/>
+    <line x1="510" y1="306" x2="970" y2="306"/>
+    <line x1="1010" y1="306" x2="1560" y2="306"/>
+
+    
+    <line x1="40" y1="426" x2="470" y2="426"/>
+    <line x1="510" y1="426" x2="970" y2="426"/>
+    <line x1="1010" y1="426" x2="1560" y2="426"/>
+
+    
+    <line x1="40" y1="546" x2="470" y2="546"/>
+    <line x1="510" y1="546" x2="970" y2="546"/>
+    <line x1="1010" y1="546" x2="1560" y2="546"/>
+
+    
+    <line x1="40" y1="666" x2="470" y2="666"/>
+    <line x1="510" y1="666" x2="970" y2="666"/>
+    <line x1="1010" y1="666" x2="1560" y2="666"/>
+
+    
+    <line x1="40" y1="786" x2="470" y2="786"/>
+    <line x1="510" y1="786" x2="970" y2="786"/>
+    <line x1="1010" y1="786" x2="1560" y2="786"/>
+
+    
+    <line x1="40" y1="906" x2="470" y2="906"/>
+    <line x1="510" y1="906" x2="970" y2="906"/>
+    <line x1="1010" y1="906" x2="1560" y2="906"/>
+
+    
+    <line x1="40" y1="1026" x2="470" y2="1026"/>
+    <line x1="510" y1="1026" x2="970" y2="1026"/>
+    <line x1="1010" y1="1026" x2="1560" y2="1026"/>
+  </g>
+
+  
+  <g id="row-7-highlight">
+    <rect x="42" y="908" width="426" height="116" rx="6" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    <path d="M 42 914 A 6 6 0 0 1 48 908 L 52 908 L 52 1024 L 48 1024 A 6 6 0 0 1 42 1018 Z" fill="#db8129"/>
+  </g>
+
+  
+
+  
+  <g id="row-1">
+    <text x="60" y="236" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="60">Pod</tspan>
+      <tspan x="60" dy="34">CreateContainerConfigError</tspan>
+    </text>
+    <text x="530" y="236" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530">referenced ConfigMap, Secret</tspan>
+      <tspan x="530" dy="34">or key missing</tspan>
+    </text>
+    <text x="1032" y="236" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1032">describe pod, create the object,</tspan>
+      <tspan x="1032" dy="34">mark optional if appropriate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-2">
+    <text x="60" y="372" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Config change not applied</text>
+    <text x="530" y="346" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530">env var snapshot, subPath,</tspan>
+      <tspan x="530" dy="28">app does not reload,</tspan>
+      <tspan x="530" dy="28">kubelet sync delay</tspan>
+    </text>
+    <text x="1032" y="346" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1032">rolling restart with hash</tspan>
+      <tspan x="1032" dy="28">annotation, avoid subPath,</tspan>
+      <tspan x="1032" dy="28">reload signal</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-3">
+    <text x="60" y="476" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="60">forbidden:</tspan>
+      <tspan x="60" dy="34">User cannot list resource</tspan>
+    </text>
+    <text x="530" y="492" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">missing RBAC</text>
+    <text x="1032" y="476" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1032">auth can-i, add minimal rule,</tspan>
+      <tspan x="1032" dy="34">check subresource and group names</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-4">
+    <text x="60" y="612" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Image pull unauthorized</text>
+    <text x="530" y="596" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530">missing or expired</tspan>
+      <tspan x="530" dy="34">pull secret</tspan>
+    </text>
+    <text x="1032" y="596" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1032">check SA imagePullSecrets,</tspan>
+      <tspan x="1032" dy="34">credential provider, token expiry</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-5">
+    <text x="60" y="716" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="60">401 Unauthorized</tspan>
+      <tspan x="60" dy="34">for kubectl</tspan>
+    </text>
+    <text x="530" y="716" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530">expired OIDC token or</tspan>
+      <tspan x="530" dy="34">certificate or wrong context</tspan>
+    </text>
+    <text x="1032" y="716" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1032">re-login, kubectl config view,</tspan>
+      <tspan x="1032" dy="34">clock skew</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-6">
+    <text x="60" y="836" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="60">ServiceAccount token</tspan>
+      <tspan x="60" dy="34">missing</tspan>
+    </text>
+    <text x="530" y="836" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530">auto-mount disabled or token</tspan>
+      <tspan x="530" dy="34">Secret not created from 1.24</tspan>
+    </text>
+    <text x="1032" y="836" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1032">use a projected token,</tspan>
+      <tspan x="1032" dy="34">kubectl create token</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-7">
+    <text x="60" y="956" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="60">Secret visible in logs</tspan>
+      <tspan x="60" dy="34">or describe</tspan>
+    </text>
+    <text x="530" y="956" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="530">printed by app,</tspan>
+      <tspan x="530" dy="34">env dumped</tspan>
+    </text>
+    <text x="1032" y="956" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1032">mount as file, fix logging,</tspan>
+      <tspan x="1032" dy="34">rotate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="row-8">
+    <text x="60" y="1076" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="60">Operator cannot reconcile</tspan>
+      <tspan x="60" dy="34">after upgrade</tspan>
+    </text>
+    <text x="530" y="1092" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">new RBAC rules not applied</text>
+    <text x="1032" y="1076" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1032">update ClusterRole from chart,</tspan>
+      <tspan x="1032" dy="34">review diffs</tspan>
+    </text>
+  </g>
+</svg>

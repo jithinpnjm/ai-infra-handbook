@@ -1,0 +1,212 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Nine principles for tools that run against a fleet</title>
+  <desc>A numbered grid of nine principles for tools that run against a fleet, with safe defaults, idempotency, explicit exit codes, human and machine output, timeouts, per-target isolation, audit logging, layered configuration, and a small testable core.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Main Title -->
+  <text x="800" y="48" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Nine principles for tools that run against a fleet</text>
+
+  <!-- Opening Story Strip -->
+  <rect x="40" y="68" width="1520" height="52" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="800" y="103" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">a script hangs on a down host, prints a wall of mixed output and leaves nodes half-drained</text>
+
+  <!-- ==================== ROW 1 ==================== -->
+
+  <!-- Card 1: Safe by default -->
+  <g id="card-1">
+    <rect x="40" y="160" width="480" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon 1: Shield with checkmark -->
+    <g transform="translate(60, 178)">
+      <path d="M 22 4 C 36 4, 40 10, 40 20 C 40 32, 22 40, 22 40 C 22 40, 4 32, 4 20 C 4 10, 8 4, 22 4 Z" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <path d="M 14 20 L 20 26 L 30 14" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="114" y="210" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">1 Safe by default:</text>
+    <text x="64" y="254" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">read-only needs no</tspan>
+      <tspan x="64" dy="27">confirmation; mutating</tspan>
+      <tspan x="64" dy="27">commands have <tspan font-family="monospace">--dry-run</tspan> and</tspan>
+      <tspan x="64" dy="27">need <tspan font-family="monospace">--yes</tspan> for destructive</tspan>
+      <tspan x="64" dy="27">scope; refuse wildcard</tspan>
+      <tspan x="64" dy="27">targets without an explicit</tspan>
+      <tspan x="64" dy="27">flag</tspan>
+    </text>
+  </g>
+
+  <!-- Card 2: Idempotent -->
+  <g id="card-2">
+    <rect x="560" y="160" width="480" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon 2: Circular reload arrows -->
+    <g transform="translate(580, 178)">
+      <path d="M 22 6 A 16 16 0 0 1 38 22 A 16 16 0 0 1 24 38" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <polyline points="20 40 26 38 22 32" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M 22 38 A 16 16 0 0 1 6 22 A 16 16 0 0 1 20 6" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+      <polyline points="24 4 18 6 22 12" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="634" y="210" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">2 Idempotent:</text>
+    <text x="584" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="584" dy="0">running twice gives the same</tspan>
+      <tspan x="584" dy="28">end state as once; set the</tspan>
+      <tspan x="584" dy="28">value, do not toggle;</tspan>
+      <tspan x="584" dy="28">already in desired state is</tspan>
+      <tspan x="584" dy="28">success</tspan>
+    </text>
+  </g>
+
+  <!-- Card 3: Explicit exit codes -->
+  <g id="card-3">
+    <rect x="1080" y="160" width="480" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon 3: Terminal console prompt -->
+    <g transform="translate(1100, 178)">
+      <rect x="4" y="6" width="36" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <path d="M 12 16 L 18 22 L 12 28" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="22" y1="28" x2="30" y2="28" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
+    </g>
+    <text x="1154" y="200" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1154" dy="0">3 Explicit exit</tspan>
+      <tspan x="1154" dy="32">codes:</tspan>
+    </text>
+    <text x="1104" y="274" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1104" dy="0">0 success, 1 generic</tspan>
+      <tspan x="1104" dy="27">failure, 2 usage error</tspan>
+      <tspan x="1104" dy="27">(<tspan font-family="monospace">argparse</tspan> and <tspan font-family="monospace">Click</tspan></tspan>
+      <tspan x="1104" dy="27">default); own codes for</tspan>
+      <tspan x="1104" dy="27">partial failure and nothing</tspan>
+      <tspan x="1104" dy="27">to do</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 2 ==================== -->
+
+  <!-- Card 4: Human and machine output -->
+  <g id="card-4">
+    <rect x="40" y="480" width="480" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon 4: Table and layout -->
+    <g transform="translate(60, 498)">
+      <rect x="4" y="6" width="36" height="32" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="4" y1="16" x2="40" y2="16" stroke="#207448" stroke-width="3" />
+      <line x1="18" y1="16" x2="18" y2="38" stroke="#207448" stroke-width="3" />
+    </g>
+    <text x="114" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="114" dy="0">4 Human and machine</tspan>
+      <tspan x="114" dy="32">output:</tspan>
+    </text>
+    <text x="64" y="594" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">table by default, <tspan font-family="monospace">--output</tspan></tspan>
+      <tspan x="64" dy="28"><tspan font-family="monospace">json|yaml|tsv;</tspan> data to</tspan>
+      <tspan x="64" dy="28"><tspan font-family="monospace">stdout,</tspan> logs and progress to</tspan>
+      <tspan x="64" dy="28"><tspan font-family="monospace">stderr</tspan></tspan>
+    </text>
+  </g>
+
+  <!-- Card 5: Timeout on everything -->
+  <g id="card-5">
+    <rect x="560" y="480" width="480" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon 5: Clock / timer -->
+    <g transform="translate(580, 498)">
+      <circle cx="22" cy="22" r="18" fill="none" stroke="#207448" stroke-width="3.5" />
+      <polyline points="22 10 22 22 30 22" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    <text x="634" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="634" dy="0">5 Timeout on</tspan>
+      <tspan x="634" dy="32">everything:</tspan>
+    </text>
+    <text x="584" y="600" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="584" dy="0">every network call and</tspan>
+      <tspan x="584" dy="30">subprocess</tspan>
+    </text>
+  </g>
+
+  <!-- Card 6: Isolate each target (HIGHLIGHTED IN ORANGE) -->
+  <g id="card-6">
+    <rect x="1080" y="480" width="480" height="280" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+    <!-- Icon 6: Fleet hosts with one isolated (Orange stroke) -->
+    <g transform="translate(1100, 498)">
+      <rect x="4" y="4" width="16" height="16" rx="3" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <rect x="24" y="4" width="16" height="16" rx="3" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <rect x="4" y="24" width="16" height="16" rx="3" fill="none" stroke="#db8129" stroke-width="3.5" />
+      <rect x="24" y="24" width="16" height="16" rx="3" fill="none" stroke="#db8129" stroke-width="3.5" stroke-dasharray="3 3" />
+      <line x1="27" y1="27" x2="37" y2="37" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="37" y1="27" x2="27" y2="37" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="1154" y="520" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+      <tspan x="1154" dy="0">6 Isolate each</tspan>
+      <tspan x="1154" dy="32">target:</tspan>
+    </text>
+    <text x="1104" y="600" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1104" dy="0">one bad host must not abort</tspan>
+      <tspan x="1104" dy="28">the batch; summarise and set</tspan>
+      <tspan x="1104" dy="28">the exit code to match</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 3 ==================== -->
+
+  <!-- Card 7: Log who ran what, against which targets, under which run id -->
+  <g id="card-7">
+    <rect x="40" y="800" width="480" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon 7: Audit log ledger -->
+    <g transform="translate(60, 816)">
+      <rect x="6" y="4" width="32" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3.5" />
+      <line x1="12" y1="14" x2="26" y2="14" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="12" y1="22" x2="32" y2="22" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <line x1="12" y1="30" x2="24" y2="30" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="114" y="840" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="114" dy="0">7 Log who</tspan>
+      <tspan x="114" dy="28">ran what,</tspan>
+      <tspan x="64" dy="32">against which targets,</tspan>
+      <tspan x="64" dy="32">under which run id;</tspan>
+    </text>
+    <text x="64" y="968" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">mutating actions at <tspan font-family="monospace">INFO</tspan></tspan>
+      <tspan x="64" dy="28">with state before and after</tspan>
+    </text>
+  </g>
+
+  <!-- Card 8: Layer configuration -->
+  <g id="card-8">
+    <rect x="560" y="800" width="480" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon 8: Stacked planes -->
+    <g transform="translate(580, 818)">
+      <polygon points="22 4 40 12 22 20 4 12" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <path d="M 4 20 L 22 28 L 40 20" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+      <path d="M 4 28 L 22 36 L 40 28" fill="none" stroke="#207448" stroke-width="3.5" stroke-linejoin="round" />
+    </g>
+    <text x="634" y="840" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="634" dy="0">8 Layer</tspan>
+      <tspan x="634" dy="32">configuration:</tspan>
+    </text>
+    <text x="584" y="914" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="584" dy="0">flags beat environment</tspan>
+      <tspan x="584" dy="27">variables, which beat the</tspan>
+      <tspan x="584" dy="27">config file, which beats</tspan>
+      <tspan x="584" dy="27">defaults; never a secret on</tspan>
+      <tspan x="584" dy="27">the command line (<tspan font-family="monospace">ps</tspan> and</tspan>
+      <tspan x="584" dy="27">shell history)</tspan>
+    </text>
+  </g>
+
+  <!-- Card 9: Keep the core small and testable -->
+  <g id="card-9">
+    <rect x="1080" y="800" width="480" height="280" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <!-- Icon 9: Small core cube inside boundary -->
+    <g transform="translate(1100, 818)">
+      <rect x="4" y="4" width="36" height="36" rx="5" fill="none" stroke="#207448" stroke-width="3" stroke-dasharray="5 3" />
+      <rect x="14" y="14" width="16" height="16" rx="3" fill="none" stroke="#207448" stroke-width="3.5" />
+    </g>
+    <text x="1154" y="840" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1154" dy="0">9 Keep the core</tspan>
+      <tspan x="1154" dy="32">small and testable:</tspan>
+    </text>
+    <text x="1104" y="920" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1104" dy="0">separate parsing, decision</tspan>
+      <tspan x="1104" dy="28">logic and I/O (chapter 3.9)</tspan>
+    </text>
+  </g>
+
+  <!-- Bottom Takeaway Bar -->
+  <rect x="40" y="1120" width="1520" height="52" rx="10" fill="#207448" />
+  <text x="800" y="1154" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Every later section in this chapter applies one of these principles</text>
+</svg>

@@ -1,0 +1,121 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>TCP trace signs and what each one means</title>
+  <desc>A two column table pairing TCP trace signs with their causes, with a worked example and key summary rule.</desc>
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  
+  <text x="800" y="42" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">TCP trace signs and what each one means</text>
+  
+  <rect x="40" y="54" width="744" height="44" rx="6" fill="#207448"/>
+  <text x="412.0" y="85" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">What you see in the trace</text>
+  <rect x="812" y="54" width="748" height="44" rx="6" fill="#207448"/>
+  <text x="1186.0" y="85" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">What it points to</text>
+  
+  <rect x="40" y="104" width="744" height="86" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="144" font-family="sans-serif" font-size="24" fill="#303a36">Three duplicate ACKs</text>
+  <line x1="784" y1="147.0" x2="812" y2="147.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="104" width="748" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="144" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="830" dy="0">fast retransmit; SACK blocks show which ranges</tspan>
+    <tspan x="830" dy="24">arrived</tspan>
+  </text>
+  
+  <rect x="40" y="194" width="744" height="62" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="234" font-family="sans-serif" font-size="24" fill="#303a36">Zero window</text>
+  <line x1="784" y1="225.0" x2="812" y2="225.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="194" width="748" height="62" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="234" font-family="sans-serif" font-size="24" fill="#303a36">the receiving application is slow to read</text>
+  
+  <rect x="40" y="260" width="744" height="62" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="300" font-family="sans-serif" font-size="24" fill="#303a36">Window full</text>
+  <line x1="784" y1="291.0" x2="812" y2="291.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="260" width="748" height="62" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="300" font-family="sans-serif" font-size="24" fill="#303a36">the sender is limited by the receive window</text>
+  
+  <rect x="40" y="326" width="744" height="62" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="366" font-family="sans-serif" font-size="24" fill="#303a36">Bytes in flight below cwnd</text>
+  <line x1="784" y1="357.0" x2="812" y2="357.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="326" width="748" height="62" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="366" font-family="sans-serif" font-size="24" fill="#303a36">the application itself is the limit</text>
+  
+  <rect x="40" y="392" width="744" height="62" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="432" font-family="sans-serif" font-size="24" fill="#303a36">Delayed ACK gap of 40 ms</text>
+  <line x1="784" y1="423.0" x2="812" y2="423.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="392" width="748" height="62" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="432" font-family="sans-serif" font-size="24" fill="#303a36">often the Nagle algorithm</text>
+  
+  <rect x="40" y="458" width="744" height="62" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="498" font-family="sans-serif" font-size="24" fill="#303a36">RTO gap of 200 ms or more, doubling on each retry</text>
+  <line x1="784" y1="489.0" x2="812" y2="489.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="458" width="748" height="62" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="498" font-family="sans-serif" font-size="24" fill="#303a36">retransmission timeout</text>
+  
+  <rect x="40" y="524" width="744" height="86" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="564" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="58" dy="0">Segments larger than path MTU with DF set, then</tspan>
+    <tspan x="58" dy="24">ICMP type 3 code 4</tspan>
+  </text>
+  <line x1="784" y1="567.0" x2="812" y2="567.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="524" width="748" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="564" font-family="sans-serif" font-size="24" fill="#303a36">path MTU problem</text>
+  
+  <rect x="40" y="614" width="744" height="86" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="654" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="58" dy="0">Large packets retransmitted again and again</tspan>
+    <tspan x="58" dy="24">with no ICMP reply</tspan>
+  </text>
+  <line x1="784" y1="657.0" x2="812" y2="657.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="614" width="748" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="654" font-family="sans-serif" font-size="24" fill="#303a36">black hole</text>
+  
+  <rect x="40" y="704" width="744" height="86" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="744" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="58" dy="0">RST with a different TTL, IP ID or timing from</tspan>
+    <tspan x="58" dy="24">the peer</tspan>
+  </text>
+  <line x1="784" y1="747.0" x2="812" y2="747.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="704" width="748" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="744" font-family="sans-serif" font-size="24" fill="#303a36">probably injected by a middlebox</text>
+  
+  <rect x="40" y="794" width="744" height="62" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="834" font-family="sans-serif" font-size="24" fill="#303a36">RST after a long idle period</text>
+  <line x1="784" y1="825.0" x2="812" y2="825.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="794" width="748" height="62" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="834" font-family="sans-serif" font-size="24" fill="#303a36">a NAT or load balancer timeout</text>
+  
+  <rect x="40" y="860" width="744" height="62" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="58" y="900" font-family="sans-serif" font-size="24" fill="#303a36">RST after data</text>
+  <line x1="784" y1="891.0" x2="812" y2="891.0" stroke="#207448" stroke-width="2.5" marker-end="url(#arrow-green)"/>
+  <rect x="812" y="860" width="748" height="62" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="900" font-family="sans-serif" font-size="24" fill="#303a36">an application that closed with unread data</text>
+  
+  <rect x="40" y="926" width="744" height="86" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+  <text x="58" y="966" font-family="sans-serif" font-size="24" fill="#303a36">Bad checksum on the sending host</text>
+  <line x1="784" y1="969.0" x2="812" y2="969.0" stroke="#db8129" stroke-width="2.5" marker-end="url(#arrow-orange)"/>
+  <rect x="812" y="926" width="748" height="86" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="830" y="966" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="830" dy="0">usually offload at work; a real fault only if the</tspan>
+    <tspan x="830" dy="24">receiving side sees it too</tspan>
+  </text>
+  
+  <rect x="40" y="1020" width="1520" height="86" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(60, 1039.0)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="20"/>
+    <polyline points="24,12 24,24 34,24"/>
+  </g>
+  <text x="126" y="1060" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="126" dy="0">an upload that pauses at regular intervals, each near a fifth of a second:</tspan>
+    <tspan x="126" dy="24">a timer, not a slow disk; name the timer</tspan>
+  </text>
+  
+  <rect x="40" y="1114" width="1520" height="62" rx="8" fill="#207448"/>
+  <text x="800" y="1154" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">A gap with a regular size is almost always a timer</text>
+</svg>

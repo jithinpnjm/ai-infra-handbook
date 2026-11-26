@@ -44,18 +44,9 @@ Read 4.18 to 4.21 first, and review the secrets concepts from 4.12. Those chapte
 
 Before you can protect a secret, you need to know every place it can land. In Terraform that list is longer than most people expect. Think of a secret as water. It does not stay in the glass you poured it into. It runs down every channel that connects to that glass, and each channel needs its own cover. The diagram below traces those channels.
 
-```mermaid
-flowchart LR
-  S1["Variables\n(tfvars, TF_VAR_*, CLI -var)"] --> ST["State file\n(plaintext)"]
-  S2["Resources that generate secrets\n(random_password, tls_private_key,\naws_iam_access_key, db passwords)"] --> ST
-  S3["Data sources reading secrets\n(vault_kv_secret, aws_secretsmanager_secret_version)"] --> ST
-  ST --> P["Plan files / CI artefacts"]
-  ST --> B["Backend storage & backups"]
-  ST --> L["terraform_remote_state readers"]
-  S1 --> H["Shell history, CI logs, process list"]
-  O["Outputs"] --> L2["Logs, remote state consumers"]
-  V["TF_LOG=DEBUG logs"] --> LOGS["CI logs"]
-```
+![Where secrets leak](./img/m4-22-1.svg)
+
+*Figure 4.22.1. Where secrets leak, as a diagram.*
 
 Start with the state file, since many of these paths run through it. Terraform keeps a record of every real thing it manages, and that record is the state. For each resource, the state holds every attribute value that the provider returns. That includes generated passwords and private keys, even when you never wrote them down yourself. So anyone who can read the state can read those secrets.
 
@@ -352,15 +343,9 @@ Commit the lock file, and test each provider upgrade on a branch where you can r
 
 Who may read your state, and which identity applies the change? The diagram answers both questions. It shows one pull request moving through two jobs, with a human approval between them for production. Read the arrows as the path a change must travel, and notice that no arrow skips the policy check.
 
-```mermaid
-flowchart LR
-  PR["Pull request"] --> PLAN["Plan job\nOIDC → read-only role\nstate read, no secrets in artefact"]
-  PLAN --> POL["Policy checks\n(no static keys, encryption on, tags)"]
-  POL --> APPROVE["Approval gate (prod)"]
-  APPROVE --> APPLY["Apply job (protected branch)\nOIDC → env-specific write role"]
-  APPLY --> SM[("Secret manager\nvalues set out-of-band")]
-  APPLY --> ST[("Encrypted remote state\nrestricted access")]
-```
+![Putting it together: a secure pipeline sketch](./img/m4-22-2.svg)
+
+*Figure 4.22.2. Putting it together: a secure pipeline sketch, as a diagram.*
 
 Your plan job uses a read-only role, and policy checks run next. A policy check is an automated rule that reads the plan and rejects anything unsafe. Only the apply job uses a write role, behind the prod approval gate. Check your pipeline against this list: no credentials in the repo or tfvars; different identities for plan and apply; encrypted, versioned state with narrow access; secrets referenced, not materialised; secret scanning in pre-commit and CI (4.1, 4.12). Materialised here means a secret written out in plain form somewhere it should not be. Each item on the list closes one of the leak paths from section 1.
 

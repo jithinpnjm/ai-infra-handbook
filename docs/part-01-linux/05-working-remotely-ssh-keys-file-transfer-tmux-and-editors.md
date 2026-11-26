@@ -115,6 +115,10 @@ Two details trip people up. The first is quoting. The line you give `ssh` is exp
 
 ### The config file: `~/.ssh/config`
 
+![Three ssh config blocks and the effective settings for ssh gpu01 and ssh gpu02, showing the first matching block wins for each setting.](./img/p3-0105-config-first-match.svg)
+
+*Figure 1.5.3. For each setting the first matching block sets the value, so gpu01 gets User alice while gpu02 gets User clusterdefault.*
+
 A configuration file turns long command lines into short names. It also records your access path once, so you never have to type it again. The file below is close to what most engineers end up with, and every line earns its place.
 
 ```
@@ -149,11 +153,15 @@ With this file, `ssh gpu01` means something specific. It connects to the bastion
 
 ![Reaching a private node through a jump host](./img/ch29-fig1-jump-v2.jpg)
 
-*Figure 1.5.3. A jump host lets one SSH command reach a private node; the private key stays on your laptop.*
+*Figure 1.5.4. A jump host lets one SSH command reach a private node; the private key stays on your laptop.*
 
 `ControlMaster` and ControlPersist share one TCP connection across many ssh, scp and rsync runs. That makes repeated commands, and tools such as Ansible, dramatically faster. The first matching value wins in the file, so put specific hosts before the catch-all `Host *`. When a setting seems ignored, run `ssh -G hostname` to print the effective configuration.
 
 ### Port forwarding (tunnels)
+
+![Three lanes comparing SSH local, remote and dynamic port forwarding by which machine listens and where the traffic is delivered.](./img/p3-0105-forward-compare.svg)
+
+*Figure 1.5.5. Dash L listens on your machine, dash R listens on the server, and dash D runs a SOCKS proxy on your machine.*
 
 Suppose a Jupyter server is running on a compute node that nothing outside the cluster can reach. An SSH connection can carry other TCP connections for you. That lets you reach a service that is not exposed to the network, without opening a firewall.
 
@@ -170,7 +178,7 @@ A typical use is a Jupyter or TensorBoard server running on a compute node. From
 
 ![SSH local port forward through a firewall](./img/ch05-fig2-tunnel.jpg)
 
-*Figure 1.5.4. SSH local port forward: traffic to localhost:6006 travels inside the port 22 connection.*
+*Figure 1.5.6. SSH local port forward: traffic to localhost:6006 travels inside the port 22 connection.*
 
 X11 forwarding is a separate case. When you forward graphical applications with `ssh -X` or `ssh -Y`, which chapters 1.29 and 1.30 cover, you must have the `xauth` program installed on both computers. Be careful with remote `sudo` inside such a session. You need to pass your `XAUTHORITY` environment variable through `sudo`. That is the variable `ssh` set for you after you logged in, and it lets the privileged process read your X11 authentication cookie.
 
@@ -182,7 +190,7 @@ A login fails and the server says no. Resist the urge to change settings at rand
 
 ![A goal-to-tool table for copying files over SSH and the network.](./img/l05-copy-tools.svg)
 
-*Figure 1.5.5. A one-off copy suits scp, while a directory you keep in step suits rsync.*
+*Figure 1.5.7. A one-off copy suits scp, while a directory you keep in step suits rsync.*
 
 You have a directory to move, and a choice to make. Do you want one copy, or two trees kept in step? The answer decides the tool. SSH includes two built-in file transfer protocols, `scp` and `sftp`. They pair with `rsync`, and with ad-hoc HTTP or FUSE tools. Brian Ward's *How Linux Works* summarizes when to pick each tool.
 
@@ -207,6 +215,10 @@ scp -r directory user@remote_host:dest_dir
 `scp -r` does get a first-time copy done. After a second transfer, though, the remote host may not have an exact copy of `directory`. If `directory` already exists on the remote host, `scp -r` places a *second* nested copy inside the existing directory, at `dest_dir/directory/directory`. It does not update the copy in place. It also copies every byte unconditionally, even when nothing changed.
 
 ### `rsync` properly
+
+![Three result trees showing that rsync with a trailing slash copies contents while without it nests the directory, and that scp dash r also nests, plus a dry run safety routine.](./img/p3-0105-rsync-slash.svg)
+
+*Figure 1.5.8. A trailing slash on the source copies its contents, no slash copies the directory itself, so always dry-run with dash n first.*
 
 `rsync` solves both problems. It compares source and destination, transfers only what changed, and uses SSH as its default transport. Learn this small core first, and you will use it for the rest of your career.
 
@@ -269,7 +281,7 @@ Once you are inside tmux, every command is a keystroke that follows the prefix `
 
 ![tmux detach and reattach](./img/ch05-fig3-tmux.jpg)
 
-*Figure 1.5.6. tmux keeps a session alive on the server: detach, lose the connection, reattach later.*
+*Figure 1.5.9. tmux keeps a session alive on the server: detach, lose the connection, reattach later.*
 
 Two cautions apply. First, tmux protects you from a dropped connection. It does not protect you from the machine rebooting or the job being preempted. For production batch work on a cluster, submit a batch job to the scheduler with `sbatch`, covered in chapter 6.11, instead of leaving something running in tmux on a login node. Login nodes are shared, and long CPU-heavy processes there are usually forbidden. Second, `nohup cmd &` and `disown` are lighter options for fire-and-forget background commands, and chapter 1.8 covers them. They give you no way to reattach, though.
 
@@ -277,7 +289,7 @@ Two cautions apply. First, tmux protects you from a dropped connection. It does 
 
 ![One terminal fans a command out to many nodes and the identical outputs are grouped.](./img/l05-fanout.svg)
 
-*Figure 1.5.7. A healthy fleet prints one grouped line, so an outlier node stands out.*
+*Figure 1.5.10. A healthy fleet prints one grouped line, so an outlier node stands out.*
 
 Clusters have hundreds of nodes, so logging in to each one to check is not a plan. Suppose you want the GPU count on every node. You can ask all of them at once. Here are the main options, from simplest to most capable.
 
@@ -329,7 +341,7 @@ Before you edit a production file, copy it, review the change with `diff -u`, an
 
 ![The BMC gives a second way into a server when SSH and the operating system are unavailable.](./img/l05-bmc.svg)
 
-*Figure 1.5.8. The BMC has its own network port and works even when the main system is powered off.*
+*Figure 1.5.11. The BMC has its own network port and works even when the main system is powered off.*
 
 Sometimes SSH cannot help you. The operating system may have crashed, the network configuration may be broken, or a node may refuse to boot. At that point no login, no tunnel and no key will get you in. Servers ship with a second way in for exactly this moment. The name for it is out-of-band access, because the path sits outside the normal login path.
 
@@ -347,7 +359,7 @@ Large clusters centralise this work. They use console servers, such as `conman`,
 
 ![From laptop through a bastion and login node to a compute node using srun or salloc.](./img/l05-hpc-path.svg)
 
-*Figure 1.5.9. On an HPC cluster you reach a compute node through Slurm rather than by logging in directly.*
+*Figure 1.5.12. On an HPC cluster you reach a compute node through Slurm rather than by logging in directly.*
 
 Most remote work on an AI cluster follows a handful of patterns. Each one comes with a rule you should know before you start.
 
@@ -365,6 +377,10 @@ The failures below are the ones you will meet most often. Read each one as a sho
 
 ### 1. `Permission denied (publickey)`
 The server refuses your key, and the message tells you very little. Check the likely causes in this order. First, the username may be wrong, or the public key is not in the target account's authorized_keys. Next, the permissions on `~/.ssh`, authorized_keys or the home directory may be wrong. The client may also offer the wrong key when many keys are loaded and `IdentitiesOnly` is missing. Finally, the server may disable public-key authentication. A cloud-metadata or OS Login service may overwrite authorized_keys. On Red Hat family systems, the SELinux context on `~/.ssh` may be wrong, and `restorecon -R ~/.ssh` fixes that. To diagnose, run `ssh -vvv user@host`, read the server's auth log, and inspect the modes with `ls -ld ~ ~/.ssh ~/.ssh/authorized_keys`. Then check the server settings with `sshd -T | grep -i -E "authorizedkeys|pubkey|password|permitroot"`. Fix the actual cause. Do not hide it by turning passwords on.
+
+![A five step ladder for debugging a publickey denied error: username, verbose output, authorized_keys, file modes, and server logs with SELinux.](./img/p3-0105-publickey-ladder.svg)
+
+*Figure 1.5.13. Check the username, the verbose negotiation, the authorized_keys line, the file modes and the server log, in that order.*
 
 ### 2. `WARNING: REMOTE HOST IDENTIFICATION HAS CHANGED`
 The client refuses to connect, because the host key differs from the entry in known_hosts. The usual reasons are that the node was reinstalled, the VM was recreated, or an IP address was reused by another machine. Someone intercepting the traffic is the dangerous reason. Confirm the change is legitimate through a trusted channel first. Then run `ssh-keygen -R host`, reconnect, and verify the new fingerprint. For fleets, manage host keys deliberately. Provision the same host key in the image, or publish keys through SSH certificates or DNS. That keeps this warning meaningful, instead of something people click through.

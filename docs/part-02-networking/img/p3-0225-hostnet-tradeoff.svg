@@ -1,0 +1,221 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>hostNetwork versus CNI for GPU jobs, and the mistakes that bite</title>
+  <desc>Visual comparison between hostNetwork and CNI networking modes for GPU workloads, including architectural trade-offs and operational mistakes.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">
+    <tspan x="800" y="58">hostNetwork versus CNI for GPU jobs,</tspan>
+    <tspan x="800" y="112">and the mistakes that bite</tspan>
+  </text>
+
+  
+  <g id="col-hostnetwork">
+    
+    <rect x="40" y="135" width="740" height="473" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="62" y="152" width="52" height="40" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="76" cy="172" r="4" fill="#207448"/>
+    <circle cx="90" cy="172" r="4" fill="#207448"/>
+    <line x1="72" y1="192" x2="72" y2="200" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="88" y1="192" x2="88" y2="200" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="66" y1="200" x2="94" y2="200" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+    
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="130" y="176">hostNetwork: true with</tspan>
+      <tspan x="130" y="210">dnsPolicy ClusterFirstWithHostNet</tspan>
+    </text>
+
+    
+    <rect x="55" y="228" width="710" height="94" rx="8" fill="#e8f1ea" stroke="#c0dac7" stroke-width="1"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="72" y="256">shares the node's namespace, IP and port space;</tspan>
+      <tspan x="72" y="283">skips the CNI and uses host ports; DNS policy uses</tspan>
+      <tspan x="72" y="310">the host's DNS config</tspan>
+    </text>
+
+    
+    <rect x="55" y="330" width="710" height="118" rx="8" fill="#e8f1ea" stroke="#c0dac7" stroke-width="1"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="72" y="356">pros: simplest high-performance option, no overlay,</tspan>
+      <tspan x="72" y="383">node agents such as kube-proxy, CNI daemon,</tspan>
+      <tspan x="72" y="410">node-exporter, DCGM exporter and NCCL</tspan>
+      <tspan x="72" y="437">over sockets run this way</tspan>
+    </text>
+
+    
+    <rect x="55" y="456" width="710" height="66" rx="8" fill="#e8f1ea" stroke="#c0dac7" stroke-width="1"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="72" y="482">cons: port conflicts, less isolation,</tspan>
+      <tspan x="72" y="509">no per-pod NetworkPolicy</tspan>
+    </text>
+
+    
+    <rect x="55" y="530" width="710" height="66" rx="8" fill="#e8f1ea" stroke="#c0dac7" stroke-width="1"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="72" y="556">common in single-tenant clusters and</tspan>
+      <tspan x="72" y="583">MPI or Slurm-on-Kubernetes</tspan>
+    </text>
+  </g>
+
+  
+  <g id="col-cni">
+    
+    <rect x="820" y="135" width="740" height="473" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    
+    <rect x="842" y="152" width="52" height="40" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="842" y1="172" x2="894" y2="172" stroke="#207448" stroke-width="2" stroke-dasharray="4 2"/>
+    <circle cx="858" cy="182" r="4" fill="#207448"/>
+    <circle cx="878" cy="182" r="4" fill="#207448"/>
+    <path d="M 858 182 L 868 162 L 878 182" fill="none" stroke="#207448" stroke-width="3"/>
+
+    
+    <text x="912" y="188" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Pod network through the CNI</text>
+
+    
+    <rect x="835" y="228" width="710" height="124" rx="8" fill="#e8f1ea" stroke="#c0dac7" stroke-width="1"/>
+    <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="852" y="254">own namespace, own IP, pause container</tspan>
+      <tspan x="852" y="281">owns the namespace; kubelet writes /etc/resolv.conf</tspan>
+      <tspan x="852" y="308">to point at CoreDNS with search domains</tspan>
+      <tspan x="852" y="335">and ndots:5</tspan>
+    </text>
+
+    
+    <rect x="835" y="368" width="710" height="66" rx="8" fill="#e8f1ea" stroke="#c0dac7" stroke-width="1"/>
+    <text x="852" y="408" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">pros: isolation, policy, per-pod IPs</text>
+
+    
+    <rect x="835" y="450" width="710" height="66" rx="8" fill="#e8f1ea" stroke="#c0dac7" stroke-width="1"/>
+    <text x="852" y="490" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">cons: veth, bridge and overlay costs; smaller MTU</text>
+  </g>
+
+  
+  <g id="mistakes-section">
+    
+    <path d="M 68 618 L 94 664 L 42 664 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="68" y1="634" x2="68" y2="648" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="68" cy="657" r="2.5" fill="#207448"/>
+
+    
+    <text x="110" y="654" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Eight mistakes</text>
+
+    
+    
+    <g id="mistake-1">
+      <rect x="40" y="680" width="292" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="56" y="755">lo not up inside</tspan>
+        <tspan x="56" y="785">a namespace</tspan>
+      </text>
+    </g>
+
+    
+    <g id="mistake-2">
+      <rect x="347" y="680" width="292" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="363" y="755">forgot ip_forward</tspan>
+        <tspan x="363" y="785">or masquerade</tspan>
+      </text>
+    </g>
+
+    
+    <g id="mistake-3">
+      <rect x="654" y="680" width="292" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="670" y="745">container subnets</tspan>
+        <tspan x="670" y="775">overlap with host</tspan>
+        <tspan x="670" y="805">or VPN ranges</tspan>
+      </text>
+    </g>
+
+    
+    <g id="mistake-4">
+      <rect x="961" y="680" width="292" height="180" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="977" y="730">bridged traffic</tspan>
+        <tspan x="977" y="758">invisible to iptables</tspan>
+        <tspan x="977" y="786">without br_netfilter</tspan>
+        <tspan x="977" y="814">settings</tspan>
+      </text>
+    </g>
+
+    
+    <g id="mistake-5">
+      <rect x="1268" y="680" width="292" height="180" rx="8" fill="#fff5eb" stroke="#db8129" stroke-width="3"/>
+      <rect x="1268" y="680" width="292" height="10" rx="4" fill="#db8129"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1284" y="730">eth0 used inside GPU</tspan>
+        <tspan x="1284" y="758">pods for NCCL, so</tspan>
+        <tspan x="1284" y="786">traffic goes through</tspan>
+        <tspan x="1284" y="814">the overlay</tspan>
+      </text>
+    </g>
+
+    
+    
+    <g id="mistake-6">
+      <rect x="40" y="875" width="292" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="56" y="960">overlay MTU unreduced</tspan>
+        <tspan x="56" y="990">or jumbo frames only</tspan>
+        <tspan x="56" y="1020">on some nodes</tspan>
+      </text>
+    </g>
+
+    
+    <g id="mistake-7">
+      <rect x="347" y="875" width="292" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="363" y="960">debugging with</tspan>
+        <tspan x="363" y="990">host-only tools</tspan>
+        <tspan x="363" y="1020">instead of nsenter</tspan>
+      </text>
+    </g>
+
+    
+    <g id="mistake-8">
+      <rect x="654" y="875" width="292" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="670" y="918">macvlan containers</tspan>
+        <tspan x="670" y="946">expected to reach</tspan>
+        <tspan x="670" y="974">the host, or macvlan</tspan>
+        <tspan x="670" y="1002">and ipvlan on clouds</tspan>
+        <tspan x="670" y="1030">that filter MACs</tspan>
+        <tspan x="670" y="1058">or IPs</tspan>
+      </text>
+    </g>
+
+    
+    <g id="mistake-9">
+      <rect x="961" y="875" width="292" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="977" y="945">NetworkPolicy assumed</tspan>
+        <tspan x="977" y="973">to cover SR-IOV or</tspan>
+        <tspan x="977" y="1001">RDMA secondary</tspan>
+        <tspan x="977" y="1029">interfaces</tspan>
+      </text>
+    </g>
+
+    
+    <g id="mistake-10">
+      <rect x="1268" y="875" width="292" height="210" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+      <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+        <tspan x="1284" y="960">CNI config changed</tspan>
+        <tspan x="1284" y="990">without draining</tspan>
+        <tspan x="1284" y="1020">nodes</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1105" width="1520" height="65" rx="8" fill="#207448"/>
+    <text x="800" y="1146" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff">Read the list as questions to ask before the first pod is scheduled</text>
+  </g>
+</svg>

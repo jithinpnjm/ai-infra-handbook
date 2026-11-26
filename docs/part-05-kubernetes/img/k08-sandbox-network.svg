@@ -1,0 +1,271 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1080" viewBox="0 0 1600 1080">
+  <title>The pause sandbox holds the pod network, and CNI ADD wires it up</title>
+  <desc>Visual explanation of Kubernetes pod network plumbing showing how containerd creates the pause sandbox netns, CNI ADD configures eth0 and the veth pair, and app containers join the existing network namespace.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 1 2 L 16 9 L 1 16 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1080" fill="#f5f8f5" />
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The pause sandbox holds the pod network,</tspan>
+    <tspan x="800" dy="56">and CNI ADD wires it up</tspan>
+  </text>
+
+  
+  <line x1="450" y1="180" x2="690" y2="180" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" marker-end="url(#arrow-green)" />
+
+  
+  <g id="panel-host-node">
+    <rect x="50" y="140" width="400" height="680" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(75, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="48" rx="6" />
+      <line x1="0" y1="24" x2="56" y2="24" />
+      <circle cx="12" cy="12" r="3" fill="#207448" />
+      <circle cx="22" cy="12" r="3" fill="#207448" />
+      <circle cx="12" cy="36" r="3" fill="#207448" />
+      <circle cx="22" cy="36" r="3" fill="#207448" />
+    </g>
+    <text x="145" y="190" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Host node</text>
+
+    
+    <g id="box-containerd-cri">
+      <rect x="75" y="225" width="350" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <circle cx="115" cy="285" r="24" fill="#207448" />
+      <text x="115" y="293" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      
+      <g transform="translate(150, 257)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="12" />
+        <path d="M 28 6 L 28 14 M 28 42 L 28 50 M 6 28 L 14 28 M 42 28 L 50 28 M 12 12 L 18 18 M 38 38 L 44 44 M 12 44 L 18 38 M 38 18 L 44 12" />
+      </g>
+      <text x="225" y="275" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="225" dy="0">containerd</tspan>
+        <tspan x="225" dy="36">(CRI)</tspan>
+      </text>
+    </g>
+
+    
+    <g id="box-cni-plugin-add">
+      <rect x="75" y="375" width="350" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <circle cx="115" cy="435" r="24" fill="#207448" />
+      <text x="115" y="443" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      
+      <g transform="translate(150, 407)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="16" width="38" height="28" rx="6" />
+        <line x1="18" y1="6" x2="18" y2="16" />
+        <line x1="36" y1="6" x2="36" y2="16" />
+        <line x1="27" y1="44" x2="27" y2="52" />
+      </g>
+      <text x="225" y="425" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+        <tspan x="225" dy="0">CNI plugin</tspan>
+        <tspan x="225" dy="36">ADD</tspan>
+      </text>
+    </g>
+
+    
+    <g id="box-host-side-veth">
+      <rect x="75" y="525" width="350" height="120" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" stroke-dasharray="8 6" />
+      
+      <g transform="translate(105, 557)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="10" width="44" height="34" rx="6" />
+        <circle cx="18" cy="27" r="3" fill="#207448" />
+        <circle cx="38" cy="27" r="3" fill="#207448" />
+        <line x1="28" y1="10" x2="28" y2="20" />
+      </g>
+      <text x="185" y="575" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+        <tspan x="185" dy="0">host side</tspan>
+        <tspan x="185" dy="34">of veth</tspan>
+      </text>
+    </g>
+  </g>
+
+  
+
+  
+  <g id="connection-veth-pair">
+    
+    <rect x="425" y="570" width="295" height="36" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    <line x1="425" y1="588" x2="720" y2="588" stroke="#207448" stroke-width="2" stroke-dasharray="6 4" />
+    
+    <rect x="485" y="545" width="180" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="575" y="571" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">veth pair</text>
+  </g>
+
+  
+  <g id="connection-cni-add-arrow">
+    <path d="M 425 435 L 600 435 L 600 535 L 720 535" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    
+    <rect x="460" y="350" width="230" height="74" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <text x="575" y="380" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+      <tspan x="575" dy="0">the one that</tspan>
+      <tspan x="575" dy="30">wires the pod</tspan>
+    </text>
+  </g>
+
+  
+  <g id="panel-pod-sandbox">
+    <rect x="690" y="140" width="860" height="680" rx="20" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    
+    <g transform="translate(715, 155)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="28,4 52,16 52,42 28,52 4,42 4,16" />
+      <line x1="28" y1="28" x2="28" y2="52" />
+      <line x1="28" y1="28" x2="52" y2="16" />
+      <line x1="28" y1="28" x2="4" y2="16" />
+    </g>
+    <text x="785" y="190" font-family="sans-serif" font-size="34" font-weight="bold" fill="#207448">Pod sandbox netns cni-uuid</text>
+
+    
+    <g id="container-trainer">
+      <rect x="1040" y="230" width="220" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(1122, 245)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="48" height="38" rx="6" />
+        <line x1="2" y1="16" x2="50" y2="16" />
+        <circle cx="10" cy="10" r="2.5" fill="#207448" />
+        <circle cx="18" cy="10" r="2.5" fill="#207448" />
+        <circle cx="26" cy="10" r="2.5" fill="#207448" />
+      </g>
+      <text x="1150" y="345" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">trainer</text>
+    </g>
+
+    
+    <g id="container-sidecar">
+      <rect x="1300" y="230" width="220" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(1382, 245)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="48" height="38" rx="6" />
+        <line x1="2" y1="16" x2="50" y2="16" />
+        <circle cx="10" cy="10" r="2.5" fill="#207448" />
+        <circle cx="18" cy="10" r="2.5" fill="#207448" />
+        <circle cx="26" cy="10" r="2.5" fill="#207448" />
+      </g>
+      <text x="1410" y="345" text-anchor="middle" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">sidecar</text>
+    </g>
+
+    
+    <line x1="1070" y1="370" x2="1070" y2="650" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    <line x1="1470" y1="370" x2="1470" y2="650" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <rect x="1120" y="475" width="300" height="74" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1270" y="505" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1270" dy="0">they keep this IP</tspan>
+      <tspan x="1270" dy="30">when they restart</tspan>
+    </text>
+
+    
+    <g id="step-3-ipam">
+      <rect x="720" y="325" width="240" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      
+      <circle cx="840" cy="365" r="24" fill="#207448" />
+      <text x="840" y="373" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      
+      <text x="840" y="412" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="840" dy="0">IPAM returns</tspan>
+        <tspan x="840" dy="24">IP, gateway</tspan>
+        <tspan x="840" dy="24">and routes</tspan>
+      </text>
+    </g>
+
+    
+    <g id="interface-eth0">
+      <rect x="720" y="490" width="240" height="130" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <g transform="translate(812, 502)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="38" rx="6" />
+        <rect x="18" y="24" width="20" height="14" rx="2" fill="#207448" />
+        <line x1="22" y1="16" x2="22" y2="24" />
+        <line x1="28" y1="16" x2="28" y2="24" />
+        <line x1="34" y1="16" x2="34" y2="24" />
+      </g>
+      <text x="840" y="595" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">eth0</text>
+    </g>
+
+    
+    <g id="box-pause-container">
+      <rect x="720" y="650" width="800" height="140" rx="14" fill="#dde4df" stroke="#7a8c82" stroke-width="3" />
+      
+      <g transform="translate(745, 668)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="4" width="48" height="48" rx="8" />
+        <line x1="22" y1="16" x2="22" y2="40" stroke-width="5" />
+        <line x1="34" y1="16" x2="34" y2="40" stroke-width="5" />
+      </g>
+      
+      <text x="1135" y="700" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+        <tspan x="1135" dy="0">pause container</tspan>
+        <tspan x="1135" dy="34">holds the namespace open</tspan>
+      </text>
+      
+      <text x="1135" y="768" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">net, IPC and UTS namespaces created here</text>
+    </g>
+  </g>
+
+  
+  <g id="row-three-boxes">
+    
+    <g id="box-etc-hosts">
+      <rect x="50" y="855" width="460" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <circle cx="95" cy="900" r="22" fill="#207448" />
+      <text x="95" y="908" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      
+      <g transform="translate(140, 878)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 6 4 L 32 4 L 42 14 L 42 40 L 6 40 Z" />
+        <polyline points="32,4 32,14 42,14" />
+        <line x1="14" y1="24" x2="34" y2="24" />
+        <line x1="14" y1="32" x2="28" y2="32" />
+      </g>
+      <text x="330" y="908" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">/etc/hosts</text>
+    </g>
+
+    
+    <g id="box-etc-resolv-conf">
+      <rect x="570" y="855" width="460" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <circle cx="615" cy="900" r="22" fill="#207448" />
+      <text x="615" y="908" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      
+      <g transform="translate(660, 878)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M 6 4 L 32 4 L 42 14 L 42 40 L 6 40 Z" />
+        <polyline points="32,4 32,14 42,14" />
+        <line x1="14" y1="24" x2="34" y2="24" />
+        <line x1="14" y1="32" x2="28" y2="32" />
+      </g>
+      <text x="860" y="908" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">/etc/resolv.conf</text>
+    </g>
+
+    
+    <g id="box-podip-in-status">
+      <rect x="1090" y="855" width="460" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+      
+      <circle cx="1135" cy="900" r="22" fill="#207448" />
+      <text x="1135" y="908" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+      
+      <g transform="translate(1180, 878)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="24" cy="22" r="16" />
+        <polyline points="16,22 22,28 32,16" />
+      </g>
+      <text x="1375" y="908" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">podIP in status</text>
+    </g>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="975" width="1500" height="70" rx="12" fill="#207448" />
+    <text x="800" y="1019" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">the sandbox holds the network, and app containers join it.</text>
+  </g>
+</svg>

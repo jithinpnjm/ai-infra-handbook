@@ -1,0 +1,173 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Keeping the client address behind a proxy: forwarded headers and the PROXY protocol</title>
+  <desc>Visual infographic explaining forwarded headers in L7 and the PROXY protocol in L4 for preserving client IP addresses behind proxies.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="50" y="55" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="50" dy="0">Keeping the client address behind a proxy: </tspan>
+    <tspan x="50" dy="54">forwarded headers and the PROXY protocol</tspan>
+  </text>
+
+  
+  <rect x="40" y="140" width="1040" height="310" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="70" y="180" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">L7: forwarded headers</text>
+
+  
+  <rect x="70" y="205" width="150" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="122" y="217" width="46" height="32" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="135" y1="249" x2="155" y2="249" stroke="#207448" stroke-width="4"/>
+  <line x1="127" y1="257" x2="163" y2="257" stroke="#207448" stroke-width="4"/>
+  <text x="145" y="292" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">client</text>
+
+  
+  <line x1="220" y1="257" x2="310" y2="257" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="310" y="205" width="150" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <circle cx="385" cy="235" r="16" fill="none" stroke="#207448" stroke-width="4"/>
+  <path d="M 385 213 L 385 221 M 385 249 L 385 257 M 363 235 L 371 235 M 399 235 L 407 235" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  <text x="385" y="292" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">proxy</text>
+
+  
+  <line x1="460" y1="225" x2="890" y2="225" stroke="#207448" stroke-width="4" marker-end="url(#arrow)"/>
+
+  
+  <rect x="490" y="240" width="370" height="70" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <text x="505" y="270" font-family="monospace" font-size="24" fill="#303a36">X-Forwarded-For: client IP</text>
+  <text x="505" y="298" font-family="monospace" font-size="24" fill="#303a36">Forwarded</text>
+
+  
+  <rect x="890" y="205" width="160" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="946" y="217" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="956" cy="224" r="2" fill="#207448"/>
+  <rect x="946" y="237" width="48" height="14" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="956" cy="244" r="2" fill="#207448"/>
+  <text x="970" y="292" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36" text-anchor="middle">backend</text>
+
+  
+  <rect x="70" y="330" width="980" height="100" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+  
+  <polygon points="105,355 125,395 85,395" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="105" y1="368" x2="105" y2="382" stroke="#db8129" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="105" cy="389" r="1.5" fill="#db8129"/>
+  <text x="145" y="368" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="145" dy="0">trust them only from known proxies: anyone can type a header, </tspan>
+    <tspan x="145" dy="32">so a header from the open Internet proves nothing</tspan>
+  </text>
+
+  
+  <rect x="40" y="470" width="1040" height="625" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="70" y="510" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">L4 with the PROXY protocol (v1 or v2)</text>
+
+  
+  <rect x="70" y="530" width="980" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="115" cy="575" r="24" fill="#207448"/>
+  <text x="115" y="584" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+  <text x="165" y="566" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">client opens a TCP connection to the proxy </tspan>
+    <tspan x="165" dy="30">with its real address as source</tspan>
+  </text>
+
+  
+  <rect x="70" y="635" width="980" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="115" cy="687" r="24" fill="#207448"/>
+  <text x="115" y="696" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+  <text x="165" y="665" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">proxy opens a second connection to the backend, </tspan>
+    <tspan x="165" dy="28">which carries the proxy's own address as source, </tspan>
+    <tspan x="165" dy="28">hiding the client</tspan>
+  </text>
+
+  
+  <rect x="70" y="755" width="980" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="115" cy="807" r="24" fill="#207448"/>
+  <text x="115" y="816" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+  <text x="165" y="785" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">before any application bytes the proxy writes a short </tspan>
+    <tspan x="165" dy="28">PROXY header naming the client address and port </tspan>
+    <tspan x="165" dy="28">(and TLS information)</tspan>
+  </text>
+
+  
+  <rect x="70" y="875" width="980" height="90" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <circle cx="115" cy="920" r="24" fill="#207448"/>
+  <text x="115" y="929" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+  <text x="165" y="911" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="165" dy="0">backend reads that header first, records the client as </tspan>
+    <tspan x="165" dy="30">the true source, then reads the application data</tspan>
+  </text>
+
+  
+  <rect x="70" y="980" width="980" height="95" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <polygon points="115,1005 135,1045 95,1045" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  <line x1="115" y1="1018" x2="115" y2="1032" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="115" cy="1039" r="1.5" fill="#207448"/>
+  <text x="165" y="1022" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+    <tspan x="165" dy="0">the backend must be configured to expect the header; </tspan>
+    <tspan x="165" dy="30">otherwise it treats it as garbage</tspan>
+  </text>
+
+  
+  <rect x="1110" y="140" width="450" height="955" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1140" y="185" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Other ways</text>
+
+  
+  <rect x="1135" y="210" width="400" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <path d="M 1160 250 L 1200 250 L 1200 280 L 1170 280" fill="none" stroke="#207448" stroke-width="4"/>
+  <polyline points="1178,272 1168,280 1178,288" fill="none" stroke="#207448" stroke-width="4"/>
+  <text x="1155" y="325" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1155" dy="0">DSR: the backend sees </tspan>
+    <tspan x="1155" dy="32">the real client IP</tspan>
+  </text>
+
+  
+  <rect x="1135" y="405" width="400" height="195" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <polygon points="1180,430 1205,445 1205,475 1180,490 1155,475 1155,445" fill="none" stroke="#207448" stroke-width="4"/>
+  <circle cx="1180" cy="460" r="5" fill="#207448"/>
+  <text x="1155" y="525" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1155" dy="0" font-family="monospace">externalTrafficPolicy: </tspan>
+    <tspan x="1155" dy="30">Local in Kubernetes </tspan>
+    <tspan x="1155" dy="30">avoids SNAT</tspan>
+  </text>
+
+  
+  <rect x="1135" y="620" width="400" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <path d="M 1165 665 A 12 12 0 0 1 1185 650 A 18 18 0 0 1 1215 660 A 12 12 0 0 1 1215 678 L 1165 678 Z" fill="none" stroke="#207448" stroke-width="4"/>
+  <text x="1155" y="710" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1155" dy="0">cloud load balancers </tspan>
+    <tspan x="1155" dy="30">differ on preserving </tspan>
+    <tspan x="1155" dy="30">source IP</tspan>
+  </text>
+
+  
+  <rect x="1135" y="825" width="400" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  
+  <rect x="1160" y="850" width="45" height="30" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+  <line x1="1150" y1="865" x2="1160" y2="865" stroke="#207448" stroke-width="3"/>
+  <line x1="1205" y1="865" x2="1215" y2="865" stroke="#207448" stroke-width="3"/>
+  <text x="1155" y="915" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1155" dy="0">NAT mode: replies must </tspan>
+    <tspan x="1155" dy="30">return through the </tspan>
+    <tspan x="1155" dy="30">balancer, so SNAT </tspan>
+    <tspan x="1155" dy="30">hides the client IP</tspan>
+  </text>
+
+  
+  <rect x="40" y="1115" width="1520" height="65" rx="12" fill="#207448"/>
+  <text x="800" y="1156" font-family="sans-serif" font-size="25" font-weight="bold" fill="#ffffff" text-anchor="middle">In proxy mode the backend sees the balancer's address, so preserve the client IP deliberately</text>
+</svg>

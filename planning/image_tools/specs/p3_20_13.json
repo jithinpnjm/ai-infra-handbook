@@ -1,0 +1,112 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-sizing-ladder",
+  "title": "From requests per second to a GPU count, line by line",
+  "spec": "Ladder with the worked example assumptions (not Nebius figures): peak 1,000 requests per second, average prompt 1,500 tokens, average output 300, TTFT 0.5 s, 0.03 s per output token, 8B model with 32 layers, 8 KV heads, head size 128, 16-bit values, 80 GB H100, 90 percent usable. Steps: 'prompt tokens per second 1,000 x 1,500 = 1,500,000'; 'output tokens per second 1,000 x 300 = 300,000'; 'seconds per request 0.5 + 300 x 0.03 = 9.5'; 'requests in flight by Little's law 1,000 x 9.5 = 9,500'; 'KV bytes per token 2 x 32 x 8 x 128 x 2 = 131,072'; 'KV per request at 1,800 tokens 131,072 x 1,800 = 0.236 GB'; 'KV for all in flight 9,500 x 0.236 = 2,241 GB'; 'weights 8 B x 2 bytes = 16 GB'; 'KV room per GPU 80 x 0.9 - 16 = 56 GB'; 'requests per GPU by memory 56 / 0.236 = 237'; 'GPUs by memory 9,500 / 237 = 40'. Footer 'memory alone says about 40 GPUs at peak; a compute check and headroom come on top; start from tokens and memory, not requests; say the inputs are assumptions you will change'. Text at least 24px.",
+  "anchor": "### 1. Requirements and numbers first (minutes 0 to 5)",
+  "alt": "An eleven-step ladder from 1,000 requests per second through Little's law and KV memory to about 40 GPUs.",
+  "cap": "Each line reuses the one above, so a wrong input shows up in every result below it."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-api-contract",
+  "title": "What the API promises and what it does not",
+  "spec": "Two columns. Column 'Promises': 'OpenAI-compatible streaming chat or completion call'; 'four properties of the data plane call: carries a tenant credential, names a model or an endpoint, can stream tokens back, returns token counts for billing in a usage object with prompt_tokens and completion_tokens'; 'failure is part of the contract: overload returns HTTP 429 with a Retry-After header so clients wait instead of retrying at random'. Column 'Does not promise': 'exactly-once generation: a retry after a stream started can produce different text because sampling is not repeatable; the API is at-least-once'. Footer 'keep the surface small; a customer who wrote a script on Monday expects it to work on Friday; ask clarifying questions first: chat or batch, which models and context lengths, availability target, data residency, tenants'. Text at least 24px.",
+  "anchor": "### 2. The API contract (minutes 5 to 8)",
+  "alt": "Two columns list what the inference API promises, including 429 with Retry-After, and what it explicitly does not.",
+  "cap": "Say what you will not promise, such as exactly-once generation, before the interviewer asks."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-four-fences",
+  "title": "Four limits, four different fences",
+  "spec": "Four fences in a row, each with unit and failure if missing. 'Requests per second: protects gateway, tokenizer, scheduler; unit requests; missing: connection floods'. 'Tokens per second: protects GPU compute and KV cache; unit prompt plus output tokens; missing: one tenant starves the rest'. 'Concurrent streams: protects open connections and decode slots; unit streams; missing: decode queues overrun'. 'Daily or monthly quota: protects the bill and the contract; unit tokens; missing: surprise cost'. Mechanism strip: 'token bucket: a jar that starts full, is spent per request, refills slowly, and allows bursts up to bucket size; charge prompt tokens plus max output tokens at admission, refund the unused at the end; reject at once what can never fit; a refused request must not burn a request slot; distributed choice: shared store such as Redis is exact but adds a hop and a dependency, local buckets are fast and slightly loose'. Incident: 'ten requests with 8,000 prompt tokens and a large max output made every other tenant TTFT double while a requests-per-minute limit saw nothing wrong'. Text at least 24px.",
+  "anchor": "### 4. The gateway: auth, quotas and rate limits by tokens (minutes 10 to 17)",
+  "alt": "Four rate limit types with what each protects, its unit and the failure when it is missing.",
+  "cap": "A single limit does not stop the other kinds of trouble."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-router-sim-results",
+  "title": "Toy router simulation: policies and the bound sweep",
+  "spec": "Two small tables as bar groups, labelled toy numbers chosen to show the mechanism. Setup: eight replicas, forty prefixes, one hot prefix with 40 percent of traffic, cache of six prefixes per replica, hit costs 0.10 s and miss 0.50 s. Table 1 policy: hit rate, p50 s, p99 s, max over mean load: 'round_robin 0.46, 0.50, 2.33, 1.00'; 'least_loaded 0.46, 0.50, 1.22, 1.16'; 'cache_only 0.98, 0.16, 4.39, 3.80'; 'cache_bounded 0.95, 0.10, 0.50, 2.13'. Table 2 bound in seconds of backlog: '0.0: hit 0.57, p50 0.22, p99 0.99, max/mean 1.22'; '0.1: 0.89, 0.10, 0.52, 1.56'; '0.5: 0.95, 0.10, 0.50, 2.13'; '2.0: 0.98, 0.11, 1.68, 3.39'; '100 (cache-only): 0.98, 0.16, 4.39, 3.80'. Reading: 'cache-only wins hit rate and loses the tail because one replica carries 3.8 times the average load; least-loaded keeps load flat but wastes the cache; sweep the bound against p99, not hit rate; zero bound behaves like least-loaded, a huge bound like cache-only'. Text at least 24px.",
+  "anchor": "### 6. The router: cache-aware and load-aware (minutes 19 to 26)",
+  "alt": "Four routing policies and a bound sweep compared on hit rate, p99 latency and load imbalance in a toy simulation.",
+  "cap": "Tune the cache bound against p99 latency and not against hit rate."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-hosting-shapes",
+  "title": "Model hosting: shared on demand versus dedicated always on",
+  "spec": "Two shapes. 'Cost-optimised: shares instances across many models, loads on demand, bin-packs (fitting as many models onto each machine as possible, like boxes in a van); cheap but reactive, surges hurt; maps to Nebius serverless endpoints for shared pools of popular models (my reading)'. 'Latency-optimised: dedicated always-on replicas; customer chooses GPU type, GPUs per replica and the replica range; maps to Nebius dedicated endpoints'. Cold start box: 'a tenant calls a model no replica holds; tens of GB of weights must load onto a GPU, which takes seconds to minutes; cold start latency can cause timeouts and cascading failures'. Warm pool recipe: 'keep popular models always resident with at least two replicas; keep weights on local NVMe or a node-local cache so a new replica does not download from the object store'. Text at least 24px.",
+  "anchor": "### 8. Model placement and warm pools (minutes 29 to 31)",
+  "alt": "Shared on-demand hosting contrasted with dedicated always-on hosting with the cold start and warm pool recipe.",
+  "cap": "Warm pools and local weight caches keep requests from paying the cold start."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-retry-safety",
+  "title": "Which failures are safe to retry, and the guards around retries",
+  "spec": "Decision tree. 'Request failed before the first token: user has seen nothing, safe to send to another replica'. 'Stream failed after tokens were sent: not safe to retry unless the platform can resume; the user who read half an answer would see it restart'. Guards: 'retry budget caps retries at a fraction of normal traffic, for example 10 percent (rule of thumb, not a Nebius number), per client and per hop; retry only errors that are safe and likely transient; jittered backoff; retries in one layer only'. 'Router sheds with 429 and Retry-After when queues are full'. 'Circuit breaker: stop sending to a component that keeps failing, try again after a short wait; eject a failing replica briefly and let the router try others; cap ejections to a set share so capacity does not vanish'. 'Probes need care: aggressive liveness probes restarted healthy workers that sometimes did not rejoin the pool and capacity shrank silently; a busy engine may answer a health check slowly; keep probes lenient; alert on ready versus desired replicas'. Scenario numbers 'pool loses two of ten replicas, error rate 5 percent, three retries with no backoff: load about 1.15 times at once and growing as timeouts trigger more retries'. Text at least 24px.",
+  "anchor": "### 13. Failure handling and retries with budgets (minutes 40 to 42)",
+  "alt": "A decision tree on which failures are safe to retry plus retry budget, circuit breaker and probe guidance.",
+  "cap": "Retry only before the first token, under a budget, in one layer."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-observability-slis",
+  "title": "Platform SLIs and why tenant labels need care",
+  "spec": "Left list of SLIs: 'time to first token', 'inter-token latency', 'end-to-end latency', 'error rate', 'goodput: share of requests that meet their latency target'. Customer-facing views from Nebius: 'latency percentiles, TTFT, token throughput, active replicas, errors by status code, traffic by prompt size and region'. Warning picture: 'a Grafana board with one platform-wide average looks calm while one tenant is badly hurt; a percentile tells the value below which a share of requests fall'. Cardinality rule: 'per-tenant labels explode metric cardinality (distinct series), each new label value multiplies the count; keep tenant labels on the gateway own metrics for top tenants only; use traces and logs with sampling for the long tail'. Text at least 24px.",
+  "anchor": "### 14. Observability (minutes 42 to 43)",
+  "alt": "A list of inference SLIs beside a warning about averages and per-tenant label cardinality.",
+  "cap": "Use percentiles and limit tenant labels to top tenants to keep metrics useful and affordable."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-rollout-stages",
+  "title": "Rolling out a new model or engine safely",
+  "spec": "Staircase. Stage 1 'shadow: mirror traffic to the new version and discard its output; learn speed and errors with no user risk'. Stage 2 'canary by tenant: start with internal tenants; send a small share such as 10 percent and step up through larger shares if error rate and latency hold'. Stage 3 'wider canary steps'. Stage 4 'full rollout; keep the old version capacity until the new one has served peak traffic; rollback is one command'. Gate under each step: 'TTFT, ITL, error rate and finish_reason distribution (a model change can shift finish_reason without raising errors); a gate is a check that must pass before the next step'. Contrast: 'canary versus A/B test: in an A/B test each user stays in one group so the comparison is fair'. Text at least 24px.",
+  "anchor": "### 15. Rollout (minutes 43 to 45)",
+  "alt": "A staircase from shadow traffic to tenant canary to full rollout with gates on latency, errors and finish_reason.",
+  "cap": "Gate each step on latency, errors and finish_reason and keep rollback one command away."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-forty-five-minutes",
+  "title": "The 45-minute speaking plan",
+  "spec": "Horizontal timeline in eight blocks with output per block. '0 to 5 requirements, assumptions, estimate: numbers on the board'. '5 to 10 API contract, control and data plane: boxes and the split'. '10 to 19 gateway, token limits, metering: reserve and refund, usage events'. '19 to 26 router, cache and load aware: bounded fallback and the hotspot'. '26 to 31 pools, placement, warm pools: trade-off sentence for each'. '31 to 36 autoscaling, regions: signals, residency rule'. '36 to 42 isolation, streaming, failures: retry budget, probes, silent shrink'. '42 to 45 observability and rollout: SLIs, canary gates, questions'. Rule 'if pulled into a deep dive keep a clock, say what you will skip and offer to return; the interviewer cannot score what they never heard'. Opening order for Design a multi-tenant LLM API: 'three clarifying questions and the assumptions table; the 40-GPU memory estimate in one breath; draw gateway, router, pools with control plane above; pick two areas to go deep on; finish with failure modes and rollout'. Text at least 24px.",
+  "anchor": "### The 45-minute speaking plan",
+  "alt": "A timeline of eight blocks across 45 minutes with the output expected from each block.",
+  "cap": "Keep a clock so every part of the design is spoken before the time runs out."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-quota-arithmetic",
+  "title": "Sizing a token quota: reserve, refund and burst",
+  "spec": "Worked example. Tenant pays for 10,000 tokens per second and sends chat calls of 1,500 prompt tokens with max output 500. Reservation per call: 1,500 + 500 = 2,000 tokens. Start rate: 10,000 / 2,000 = 5 requests per second. Refund when calls finish early: real output averages 300, call used 1,800, refund 200, so the sustained start rate rises to about 5.5 per second (10,000 / 1,800). Burst: set burst to 10 seconds of rate = 100,000 tokens, which allows 50 requests at once. Message 'reserving the maximum does not punish short answers for long because the refund returns the unused tokens'. Test reference 'test_finish_refunds_unused_output_tokens'. Text at least 24px.",
+  "anchor": "### Scenario 1: size a quota for a tenant",
+  "alt": "Arithmetic for a 10,000 token per second quota showing 2,000 token reservations, a 5 per second start rate and 50 request burst.",
+  "cap": "Reserve the maximum and refund the unused part so short answers do not pay for long ones."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "13",
+  "name": "p3-2013-ttft-flat-gpu",
+  "title": "TTFT doubled while GPU utilisation is flat: four checks",
+  "spec": "Four-step investigation for p99 TTFT doubling over ten minutes with utilisation flat. '1 Waiting queue and KV usage per replica: near-full KV means long contexts are evicting or queueing requests'. '2 Prefix hit rate: if it dropped, a router or cache change happened; cache drops are an alert in the public case study'. '3 Ready replicas against desired: a silent shrink explains it without any error'. '4 Per-tenant token rates: one tenant sending long prompts'. Message 'a green GPU graph and a red latency graph: utilisation is a poor signal because batching keeps a GPU busy while queues grow; scale on queue depth and KV pressure'. Text at least 24px.",
+  "anchor": "### Scenario 2: TTFT doubled, GPU utilisation 40%",
+  "alt": "Four checks for a TTFT doubling with flat GPU utilisation: queue and KV, prefix hit rate, ready replicas and per-tenant tokens.",
+  "cap": "Check queue, cache, replica count and tenant mix before trusting a flat utilisation graph."
+ }
+]

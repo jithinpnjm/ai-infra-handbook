@@ -1,0 +1,122 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-clusterip-dnat-return",
+  "title": "A ClusterIP packet: DNAT out, conntrack back",
+  "spec": "Left-to-right numbered path with node internals. 1 'Pod A sends to ClusterIP:80 (no process listens there; ss -tulpn shows nothing)'. 2 'default route to the node or bridge; netfilter PREROUTING matches KUBE-SERVICES'. 3 'KUBE-SVC chain picks a random KUBE-SEP chain'. 4 'DNAT rewrites destination to PodIP:targetPort; conntrack records the translation'. 5 'routed to the backend pod, through the local veth or over the CNI overlay or route to another node'. Return path drawn below in a different colour: 'reply from backend hits conntrack, is un-NAT'd so it appears to come from the ClusterIP'. Side notes: 'only new connections are load balanced; established flows stay on their backend via conntrack', 'KUBE-SEP -s podIP -> KUBE-MARK-MASQ handles hairpin (pod calling its own Service)', 'POSTROUTING KUBE-POSTROUTING marks 0x4000 -> MASQUERADE for NodePort or external traffic'. Analogy: 'mail office rewrites the address on every letter'. Text at least 24px.",
+  "anchor": "### iptables mode (default for many years)",
+  "alt": "A packet to a ClusterIP is rewritten by DNAT to a pod IP and the reply is reversed using conntrack.",
+  "cap": "The kernel rewrites the destination on the way out and conntrack reverses it on the way back."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-random-probabilities",
+  "title": "How iptables picks a backend: the 1 over N minus i chain",
+  "spec": "Worked example with four backends AAAA, BBBB, CCCC, DDDD in a KUBE-SVC-XXXX chain. Rule 1 'statistic mode random probability 0.25 -> KUBE-SEP-AAAA' (1/4). Rule 2 'probability 0.33333 -> KUBE-SEP-BBBB' (1/3 of the remaining 3/4). Rule 3 'probability 0.50 -> KUBE-SEP-CCCC' (1/2 of the remaining). Rule 4 'no condition -> KUBE-SEP-DDDD' always matches because nothing is left. Below, a probability bar showing each backend ends up with 25 percent of new connections: 0.25; 0.75 x 0.3333 = 0.25; 0.75 x 0.6667 x 0.5 = 0.25; remainder 0.25. Notes: 'random, not real round robin; applies to new connections only; established flows stay on their backend via conntrack'; 'rule i uses 1 / (N - i)'. Text at least 24px.",
+  "anchor": "### iptables mode (default for many years)",
+  "alt": "Four iptables rules with probabilities 0.25, 0.33333, 0.50 and 1 give each backend an equal share.",
+  "cap": "Each later rule's probability is larger so every backend ends up with an equal chance."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-ipvs-listing",
+  "title": "Reading an IPVS listing: one NodePort, four doors",
+  "spec": "Annotated ipvsadm --list --numeric output. Top: 'ip address show dev kube-ipvs0: dummy interface holding /32 addresses such as 10.110.34.183, 10.96.0.10, 10.96.0.1'. Four virtual service blocks: 'TCP 10.0.99.67:30737 rr (node IP)', 'TCP 10.110.34.183:80 rr (ClusterIP)', 'TCP 127.0.0.1:30737 rr (loopback)', 'TCP 192.168.246.64:30737 rr (secondary node interface)'. Each block shows three indented real servers '192.168.89.153:80 Masq weight 1', '192.168.89.154:80', '192.168.89.155:80' (the Service endpoints, i.e. pods). Arrows from all four blocks into the same three pods, labelled 'four doors into the same room'. Legend: 'virtual service = TCP line, real server = indented arrow line, scheduler rr, Forward Masq'. Commands: 'ipvsadm -Ln, ipvsadm -Lnc, ipset list KUBE-CLUSTER-IP'. Text at least 24px.",
+  "anchor": "### Reading IPVS listings",
+  "alt": "An annotated ipvsadm listing showing four virtual services forwarding to the same three pods.",
+  "cap": "A NodePort Service in IPVS mode appears as four virtual services that share the same real servers."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-endpoint-propagation",
+  "title": "From pod ready to every node routing to it",
+  "spec": "Timeline with five steps and a bracket. 1 'pod passes its readiness check (Ready true; readiness gates satisfied)'. 2 'EndpointSlice controller adds the pod to a slice: conditions ready, serving, terminating'. 3 'API server publishes the change'. 4 'each node kube-proxy sees it and programs rules on its next sync (batch interval)'. 5 'traffic reaches the pod'. Bracket over steps 2 to 4: 'typically 1 to 5 seconds before all nodes route to the new pod'. Second row, reverse for a terminating pod: 'pod terminating -> slice shows ready false, serving true -> proxies keep serving it only if no ready endpoints remain (graceful drain) -> removal races SIGTERM'. Fix box: 'preStop sleep plus graceful shutdown (5.7)'. Side: 'a Service with no ready endpoints: iptables REJECT sends ICMP port unreachable, client sees connection refused immediately; empty kubectl get endpointslices means selector mismatch or unready pods'. Text at least 24px.",
+  "anchor": "## 2. EndpointSlices",
+  "alt": "Steps from readiness to controller, API and kube-proxy rules showing a 1 to 5 second propagation window.",
+  "cap": "New and terminating pods take a few seconds to appear or disappear on every node."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-endpoints-watch",
+  "title": "Watching endpoints change during a rollout",
+  "spec": "Annotated kubectl get endpoints alpaca-prod --watch output, one row per event with a plain-language label beside each. Row 1 '10.112.1.54:8080,10.112.2.84:8080,10.112.2.85:8080  all three pods ready'. Row 2 '10.112.1.54:8080,10.112.2.84:8080  one pod removed'. Row 3 '<none>  no ready endpoints, connections are refused'. Row 4 '10.112.2.90:8080  first new pod ready'. Row 5 '10.112.1.57:8080,10.112.2.90:8080  second'. Row 6 '10.112.0.28:8080,10.112.1.57:8080,10.112.2.90:8080  all three new pods'. Next to it, the readiness probe example: 'GET /ready on 8080 every 2 s, failureThreshold 3: three failures remove the pod, successThreshold 1: one success adds it back'. Footer: 'each new line is one change the cluster had to handle; a watch is a subscription, not repeated asking'. Text at least 24px.",
+  "anchor": "### Watching endpoints",
+  "alt": "Six watch output lines show a Service losing and regaining endpoints during a delete and recreate.",
+  "cap": "Each line of the watch is one endpoint change, and the empty line shows the moment of no backends."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-env-vs-dns",
+  "title": "Environment variables versus DNS for finding a Service",
+  "spec": "Two timelines. Timeline 1 'Environment variables': 'Service created at T1' then 'pod created at T2 receives NGINX_SERVICE_HOST=10.110.34.183 and NGINX_SERVICE_PORT=80 only for Services that existed before the pod' ; a second pod created before the Service has no variables until it restarts; red 'badge printed at birth, never updated'. Large namespace note: 'in a namespace with 2,000 Services kubelet injects 10,000+ variables, which can exceed the Linux execve environment size limit (MAX_ARG_STRLEN) and fail container start; set enableServiceLinks false'. Timeline 2 'DNS (CoreDNS)': 'name my-svc.my-ns.svc.cluster.local resolves as soon as the Service exists; phone book anyone can look up any time'; records 'A and AAAA for the ClusterIP, SRV for named ports; headless returns pod IPs'. Footer: 'Kubernetes annotation values must be quoted strings, the text true in quotes, not a bare YAML boolean'. Text at least 24px.",
+  "anchor": "### DNS",
+  "alt": "Environment variables miss Services created after the pod while DNS finds them at once.",
+  "cap": "Prefer DNS because pod environment variables are fixed at start and can grow too large."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-selectorless-service",
+  "title": "A Service with no selector pointing at an outside database",
+  "spec": "Diagram. Left: app pods inside the cluster call 'my-database-server' by name. Center: Service my-database-server with the spec.selector field removed, only metadata and ports (1433). Because there is no selector, no endpoints are created automatically. Below it a manually created object 'Endpoints name my-database-server (must match the Service name) subsets addresses ip 1.2.3.4 ports port 1433'. Right: box outside the cluster boundary 'legacy database server 1.2.3.4'. Arrow path: app -> DNS name -> Service -> endpoint -> 1.2.3.4. Rule: 'if the external IP changes, update the Endpoints object'. Bottom: 'the other direction, reaching a Service from outside, try in order: internal load balancer in the private network, then NodePort behind a physical load balancer or DNS, and only then complex options (kube-proxy on an external machine, Consul)'. Text at least 24px.",
+  "anchor": "### Connecting to resources outside of a cluster",
+  "alt": "A selector-less Service with a hand-made Endpoints object sends cluster traffic to an outside database.",
+  "cap": "Without a selector you supply the endpoint yourself, which lets cluster DNS name an external IP."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-conntrack-fill",
+  "title": "conntrack: the hidden table that fills up",
+  "spec": "Left: table drawing with columns 'pre-NAT source IP:port', 'pre-NAT destination ClusterIP:port', 'post-NAT destination PodIP:port', 'state and timeout'; each NAT'd Service connection uses one row (overlay setups may use another on the reverse path). Middle: gauge 'nf_conntrack_count rising toward nf_conntrack_max' with a full state 'dmesg: nf_conntrack: table full, dropping packet' leading to 'random connection failures on ingress gateways, NAT egress and during DNS storms'. Right: fixes 'raise nf_conntrack_max and buckets, shorten lifetimes, avoid per-request connections, NodeLocal DNSCache, eBPF datapath, NOTRACK for NodeLocal UDP DNS'. Timeouts note: 'TCP established default 5 days; kube-proxy sets tcpEstablishedTimeout 24 h and tcpCloseWaitTimeout 1 h'. Commands strip: 'sysctl net.netfilter.nf_conntrack_max net.netfilter.nf_conntrack_count', 'conntrack -S', 'conntrack -L -d ClusterIP'. Text at least 24px.",
+  "anchor": "## 5. conntrack: the hidden state",
+  "alt": "A conntrack table fills toward its maximum and then drops new connections until limits or traffic change.",
+  "cap": "Every NAT'd Service connection needs a conntrack row, and a full table drops new connections."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-dns-udp-race",
+  "title": "The 1 to 5 second DNS delay from a UDP race",
+  "spec": "Sequence diagram. Pod resolver sends 'A lookup' and 'AAAA lookup' in parallel from the same UDP source port. Both reach the node; the kernel must insert the DNAT conntrack entry for each. Race: 'two people sign the same guest book at the same instant'; one packet loses the insertion, a reply is lost. Pod waits 1 s or 5 s then retries. Timeline bar shows normal reply in milliseconds versus 'delay of 1 s or 5 s'. Mitigations list: 'single-request-reopen in resolv.conf options, use TCP for DNS, NodeLocal DNSCache, newer kernels fix it'. Related: 'stale UDP conntrack entries can keep sending to a deleted backend until timeout; check conntrack -L -p udp | grep svc'. Text at least 24px.",
+  "anchor": "## 5. conntrack: the hidden state",
+  "alt": "Parallel A and AAAA lookups race to create a conntrack entry and one reply is lost until a retry.",
+  "cap": "Parallel DNS queries from one UDP source port can lose a race and add seconds of delay."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-topology-routing",
+  "title": "Topology-aware routing keeps requests in the zone",
+  "spec": "Three zone boxes (zone A, zone B, zone C) each with a client and endpoints. Left panel 'default': a client in zone A may land on endpoints in any zone, crossing zone boundaries (extra latency and cost). Right panel 'trafficDistribution PreferClose (earlier: annotation service.kubernetes.io/topology-mode Auto)': EndpointSlice hints with forZones keep the request inside zone A while it has endpoints. Fallback box: 'if a zone has no endpoints or endpoints are unbalanced, traffic falls back to cluster-wide routing'. Needs: 'zone labels on nodes and enough endpoints in each zone'. Analogy: 'parcel goes to the depot in the same town until it is empty'. Footer: 'check each zone has endpoints before turning it on, then watch where requests land'. Text at least 24px.",
+  "anchor": "## 6. Topology-aware routing and other features",
+  "alt": "Zone-aware hints keep a client's requests in its own zone and fall back when the zone has no endpoints.",
+  "cap": "PreferClose keeps traffic in-zone when each zone has enough endpoints."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-service-debug-ladder",
+  "title": "Debugging a Service: resolve, endpoints, rules, datapath, backend",
+  "spec": "Five-rung ladder, each rung with command and what it proves. 1 'Endpoints: kubectl get endpointslices -l kubernetes.io/service-name=vllm; Endpoints none means selector or readiness problem'. 2 'Resolve from a client pod (netshoot): nslookup vllm; curl vllm.serving.svc.cluster.local/health'. 3 'Bypass layers with three curls: by DNS name, by ClusterIP, by PodIP; works via PodIP but not ClusterIP means kube-proxy rules, conntrack or wrong targetPort'. 4 'Rules on the node: iptables-save -t nat | grep KUBE-SVC, nft list ruleset, ipvsadm -Ln, conntrack -L -d ClusterIP, kube-proxy logs'. 5 'Packets: tcpdump -ni any host ClusterIP or host PodIP; ClusterIP on the pod veth, pod IP after DNAT'. Right: symptom table 'connection refused immediately = no ready endpoints or app not on targetPort', 'timeout from some nodes only = CNI, NetworkPolicy, kube-proxy not running there, br_netfilter off', 'client IP is node IP = externalTrafficPolicy Cluster SNAT', 'uneven gRPC load = L4 on long-lived connections'. Text at least 24px.",
+  "anchor": "## 7. Debugging Services",
+  "alt": "A five-rung ladder from endpoints to packet capture with symptom hints beside it.",
+  "cap": "Work top-down because each layer depends on the one before it."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "10",
+  "name": "p3-0510-kubeproxy-scale-limits",
+  "title": "When iptables mode stops scaling",
+  "spec": "Left: iptables cost shown two ways. 'Per new connection: linear walk of KUBE-SERVICES, O(n)' and 'per change: iptables-restore rewrites the whole ruleset, takes the xtables lock (/run/xtables.lock), seconds or minutes at tens of thousands of rules, can collide with CNI plug-ins and send traffic to stale endpoints'. Middle: threshold marker 'iptables degrades beyond roughly 5,000 Services or 25,000 endpoints'. Right: three exits with one-line reason each: 'IPVS: hash lookup O(1), incremental updates, schedulers rr lc sh dh sed nq, needs ip_vs modules and ipset, strictARP true for MetalLB L2'; 'nftables: single kube-proxy table with maps, O(1), incremental nft -f deltas'; 'eBPF (Cilium kubeProxyReplacement=true): cgroup/connect4 hook rewrites the destination at connect time, no packet NAT, no conntrack for in-cluster Service traffic, kernel 5.10+ recommended'. Footer metrics: 'kubeproxy_sync_proxy_rules_duration_seconds, kubeproxy_network_programming_duration_seconds, kubeproxy_sync_proxy_rules_iptables_total'. Text at least 24px.",
+  "anchor": "## 8. Scaling guidance",
+  "alt": "The costs of iptables mode on the left and the three alternatives that avoid them on the right.",
+  "cap": "iptables pays a linear lookup per connection and a full rewrite per change, so large clusters move to IPVS, nftables or eBPF."
+ }
+]

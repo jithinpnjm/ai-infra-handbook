@@ -1,0 +1,272 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>From pod ready to every node routing to it</title>
+  <desc>SVG infographic explaining Kubernetes pod readiness propagation across the control plane to worker nodes, terminating pod drain, and resolution of removal SIGTERM races.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="800" y="60" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">From pod ready to every node routing to it</text>
+
+  
+  
+  
+
+  
+  <g>
+    <path d="M 352 140 L 352 122 L 780 122 L 800 112 L 820 122 L 1248 122 L 1248 140" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    <text x="800" y="104" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">typically 1 to 5 seconds before all nodes route to the new pod</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="150" width="272" height="370" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="84" cy="194" r="22" fill="#207448" />
+    <text x="84" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+    
+    <g transform="translate(204, 166)">
+      <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 14 28 L 24 38 L 42 18" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text x="60" y="260" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="60" dy="0">pod passes its</tspan>
+      <tspan x="60" dy="34">readiness check</tspan>
+      <tspan x="60" dy="34">(<tspan font-family="monospace">Ready true</tspan>;</tspan>
+      <tspan x="60" dy="34">readiness gates</tspan>
+      <tspan x="60" dy="34">satisfied)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="312" y1="335" x2="352" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    <rect x="352" y="150" width="272" height="370" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="396" cy="194" r="22" fill="#207448" />
+    <text x="396" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+    
+    <g transform="translate(516, 166)">
+      <rect x="0" y="4" width="56" height="12" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="0" y="22" width="56" height="12" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+      <rect x="0" y="40" width="56" height="12" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+    </g>
+    
+    <text x="372" y="254" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="372" dy="0" font-family="monospace">EndpointSlice</tspan>
+      <tspan x="372" dy="32">controller adds</tspan>
+      <tspan x="372" dy="32">the pod to</tspan>
+      <tspan x="372" dy="32">a slice:</tspan>
+      <tspan x="372" dy="32">conditions</tspan>
+      <tspan x="372" dy="32">ready, serving,</tspan>
+      <tspan x="372" dy="32">terminating</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="624" y1="335" x2="664" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    <rect x="664" y="150" width="272" height="370" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="708" cy="194" r="22" fill="#207448" />
+    <text x="708" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">3</text>
+    
+    <g transform="translate(828, 166)">
+      <rect x="4" y="10" width="48" height="36" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="28" y1="46" x2="28" y2="54" stroke="#207448" stroke-width="4" />
+      <line x1="16" y1="54" x2="40" y2="54" stroke="#207448" stroke-width="4" />
+      <circle cx="16" cy="22" r="3" fill="#207448" />
+      <circle cx="28" cy="22" r="3" fill="#207448" />
+      <circle cx="40" cy="22" r="3" fill="#207448" />
+    </g>
+    
+    <text x="684" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="684" dy="0">API server</tspan>
+      <tspan x="684" dy="36">publishes</tspan>
+      <tspan x="684" dy="36">the change</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="936" y1="335" x2="976" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    <rect x="976" y="150" width="272" height="370" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1020" cy="194" r="22" fill="#207448" />
+    <text x="1020" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">4</text>
+    
+    <g transform="translate(1140, 166)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 16 28 L 40 28 M 28 16 L 28 40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="6" fill="#207448" />
+    </g>
+    
+    <text x="996" y="254" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="996" dy="0">each node</tspan>
+      <tspan x="996" dy="32"><tspan font-family="monospace">kube-proxy</tspan> sees</tspan>
+      <tspan x="996" dy="32">it and programs</tspan>
+      <tspan x="996" dy="32">rules on its</tspan>
+      <tspan x="996" dy="32">next sync</tspan>
+      <tspan x="996" dy="32">(batch interval)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1248" y1="335" x2="1288" y2="335" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+  
+  <g>
+    <rect x="1288" y="150" width="272" height="370" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <circle cx="1332" cy="194" r="22" fill="#207448" />
+    <text x="1332" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">5</text>
+    
+    <g transform="translate(1452, 166)">
+      <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4" />
+      <path d="M 0 28 L 28 28" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    </g>
+    
+    <text x="1308" y="280" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1308" dy="0">traffic</tspan>
+      <tspan x="1308" dy="36">reaches</tspan>
+      <tspan x="1308" dy="36">the pod</tspan>
+    </text>
+  </g>
+
+  
+  
+  
+
+  <g>
+    
+    <rect x="40" y="556" width="1520" height="320" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <text x="68" y="598" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">reverse for a terminating pod</text>
+
+    
+    <g>
+      <rect x="68" y="622" width="240" height="226" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(160, 640)">
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+        <line x1="16" y1="16" x2="40" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+        <line x1="40" y1="16" x2="16" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      </g>
+      <text x="88" y="746" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="88" dy="0">pod</tspan>
+        <tspan x="88" dy="34">terminating</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="308" y1="735" x2="356" y2="735" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g>
+      <rect x="356" y="622" width="310" height="226" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(483, 640)">
+        <rect x="0" y="0" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+        <line x1="8" y1="28" x2="48" y2="28" stroke="#207448" stroke-width="3" />
+        <path d="M 14 18 L 22 24 L 38 10" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+        <line x1="14" y1="42" x2="26" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      </g>
+      <text x="376" y="730" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="376" dy="0">slice shows</tspan>
+        <tspan x="376" dy="34"><tspan font-family="monospace">ready false</tspan>,</tspan>
+        <tspan x="376" dy="34"><tspan font-family="monospace">serving true</tspan></tspan>
+      </text>
+    </g>
+
+    
+    <line x1="666" y1="735" x2="714" y2="735" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+
+    
+    <g>
+      <rect x="714" y="622" width="460" height="226" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(916, 640)">
+        <path d="M 8 8 L 48 8 L 34 32 L 34 48 L 22 48 L 22 32 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      </g>
+      <text x="734" y="722" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="734" dy="0">proxies keep serving it</tspan>
+        <tspan x="734" dy="32">only if no ready</tspan>
+        <tspan x="734" dy="32">endpoints remain</tspan>
+        <tspan x="734" dy="32">(graceful drain)</tspan>
+      </text>
+    </g>
+
+    
+    <line x1="1174" y1="735" x2="1222" y2="735" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)" />
+
+    
+    <g>
+      <rect x="1222" y="622" width="310" height="226" rx="12" fill="#fff7ed" stroke="#db8129" stroke-width="3" />
+      
+      <g transform="translate(1349, 640)">
+        <polygon points="28,4 52,48 4,48" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+        <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+        <circle cx="28" cy="42" r="2.5" fill="#db8129" />
+      </g>
+      <text x="1242" y="746" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+        <tspan x="1242" dy="0">removal races</tspan>
+        <tspan x="1242" dy="36"><tspan font-family="monospace">SIGTERM</tspan></tspan>
+      </text>
+    </g>
+  </g>
+
+  
+  
+  
+
+  
+  <g>
+    <rect x="40" y="910" width="980" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(68, 936)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="16" y1="16" x2="40" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="3" />
+    </g>
+    
+    <text x="144" y="954" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0">a Service with no ready endpoints: <tspan font-family="monospace">iptables REJECT</tspan></tspan>
+      <tspan x="144" dy="34">sends ICMP port unreachable, client sees</tspan>
+      <tspan x="144" dy="34">connection refused immediately;</tspan>
+      <tspan x="144" dy="34">empty <tspan font-family="monospace">kubectl get endpointslices</tspan> means</tspan>
+      <tspan x="144" dy="34">selector mismatch or unready pods</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="1060" y="910" width="500" height="240" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <g transform="translate(1090, 936)">
+      <path d="M 28 4 L 50 14 L 50 32 C 50 44 28 54 28 54 C 28 54 6 44 6 32 L 6 14 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 18 28 L 26 36 L 38 20" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+    
+    <text x="1164" y="1010" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1164" dy="0"><tspan font-family="monospace">preStop</tspan> sleep plus</tspan>
+      <tspan x="1164" dy="38">graceful shutdown (5.7)</tspan>
+    </text>
+  </g>
+
+</svg>

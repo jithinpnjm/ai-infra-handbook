@@ -1,0 +1,167 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Reverse DNS: why the octets are flipped and why forward and reverse must agree</title>
+  <desc>Visual infographic explaining reverse DNS octet reversal, PTR records, in-addr.arpa delegation, forward-confirmed reverse DNS loop, and operational requirements.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 1.5 L 8 5 L 0 8.5 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Reverse DNS: why the octets are flipped</tspan>
+    <tspan x="800" dy="56">and why forward and reverse must agree</tspan>
+  </text>
+
+  
+  <g id="top-worked-example">
+    <rect x="40" y="160" width="1520" height="330" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(65, 192)">
+      <circle cx="28" cy="14" r="10" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="10" cy="46" r="8" fill="none" stroke="#207448" stroke-width="4" />
+      <circle cx="46" cy="46" r="8" fill="none" stroke="#207448" stroke-width="4" />
+      <line x1="22" y1="22" x2="14" y2="39" stroke="#207448" stroke-width="4" />
+      <line x1="34" y1="22" x2="42" y2="39" stroke="#207448" stroke-width="4" />
+    </g>
+
+    
+    <g id="octets-forward">
+      <rect x="140" y="190" width="230" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="195" y1="190" x2="195" y2="254" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+      <line x1="255" y1="190" x2="255" y2="254" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+      <line x1="310" y1="190" x2="310" y2="254" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+      <text x="255" y="233" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">10.20.0.45</text>
+    </g>
+
+    
+    <line x1="385" y1="222" x2="465" y2="222" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+
+    
+    <g id="octets-flipped">
+      <rect x="480" y="190" width="230" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <line x1="535" y1="190" x2="535" y2="254" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+      <line x1="590" y1="190" x2="590" y2="254" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+      <line x1="650" y1="190" x2="650" y2="254" stroke="#207448" stroke-width="1.5" stroke-dasharray="3 3" />
+      <text x="595" y="233" text-anchor="middle" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">45.0.20.10</text>
+    </g>
+
+    
+    <rect x="730" y="190" width="220" height="64" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="840" y="233" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">.in-addr.arpa.</text>
+
+    
+    <rect x="970" y="180" width="560" height="84" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="1250" y="217" text-anchor="middle" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">45.0.20.10.in-addr.arpa.</text>
+    <text x="1250" y="249" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">IN PTR gpu01.example.com.</text>
+
+    
+    <rect x="65" y="280" width="1470" height="190" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="800" y="322" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">an address is most specific at its right end, but DNS names are most specific at their left end,</tspan>
+      <tspan x="800" dy="36">so the octets are flipped to line the two up; delegation follows address block boundaries</tspan>
+      <tspan x="800" dy="36">such as /8, /16, /24; the reverse zone for 10.20.0.0/24 is 0.20.10.in-addr.arpa;</tspan>
+      <tspan x="800" dy="36">smaller blocks need classless delegation with CNAME tricks; IPv6 uses ip6.arpa</tspan>
+    </text>
+  </g>
+
+  
+  <g id="command-strip">
+    <rect x="40" y="515" width="840" height="70" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <g transform="translate(65, 526)">
+      <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="3" />
+      <path d="M 12 18 L 22 24 L 12 30" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <line x1="26" y1="32" x2="36" y2="32" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    </g>
+    <text x="135" y="560" font-family="monospace" font-size="28" font-weight="bold" fill="#207448">dig -x 10.20.0.45</text>
+  </g>
+
+  
+  <g id="middle-loop">
+    <rect x="40" y="610" width="840" height="440" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(70, 634)">
+      <path d="M 28 4 L 48 12 C 48 34 28 48 28 48 C 28 48 8 34 8 12 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+      <path d="M 20 25 L 26 31 L 38 19" fill="none" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    </g>
+
+    
+    <text x="470" y="655" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+      <tspan x="470" dy="0">forward-confirmed reverse DNS:</tspan>
+      <tspan x="470" dy="36">the two must agree</tspan>
+    </text>
+
+    
+    <rect x="140" y="730" width="640" height="56" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="460" y="766" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">forward: gpu01.example.com A 10.20.0.45</text>
+
+    
+    <rect x="140" y="875" width="640" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="460" y="907" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="460" dy="0">reverse: 45.0.20.10.in-addr.arpa</tspan>
+      <tspan x="460" dy="30">PTR gpu01.example.com</tspan>
+    </text>
+
+    
+    <path d="M 140 913 C 75 913 75 758 132 758" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+
+    
+    <path d="M 780 758 C 845 758 845 913 788 913" fill="none" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+  </g>
+
+  
+  <g id="right-panel">
+    <rect x="910" y="515" width="650" height="535" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    
+    <g transform="translate(935, 532)">
+      <rect x="4" y="4" width="44" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="12" cy="11" r="2" fill="#207448" />
+      <rect x="4" y="24" width="44" height="14" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+      <circle cx="12" cy="31" r="2" fill="#207448" />
+    </g>
+
+    
+    <text x="1000" y="565" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Who checks reverse DNS</text>
+
+    
+    <rect x="935" y="605" width="600" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="960" y="640" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">SSH and mail servers</text>
+
+    
+    <rect x="935" y="675" width="600" height="76" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="960" y="707" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="960" dy="0">MPI, Slurm, Kerberos and NFS</tspan>
+      <tspan x="960" dy="30">sometimes require agreement</tspan>
+    </text>
+
+    
+    <rect x="935" y="767" width="600" height="54" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="960" y="802" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">logs read better with names</text>
+
+    
+    <rect x="935" y="837" width="600" height="190" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+    <text x="955" y="872" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="955" dy="0">slow or missing PTR records cause</tspan>
+      <tspan x="955" dy="34">multi-second stalls: sshd with UseDNS,</tspan>
+      <tspan x="955" dy="34">NFS exports that use hostnames,</tspan>
+      <tspan x="955" dy="34">Kerberos; UseDNS no turns it off in sshd</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1075" width="1520" height="75" rx="12" fill="#207448" />
+    <text x="800" y="1122" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">When you add a node, create its forward and reverse records together</text>
+  </g>
+</svg>

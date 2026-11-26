@@ -1,0 +1,191 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>cert-manager flow and the three ways an ingress handles TLS</title>
+  <desc>Visual infographic detailing the cert-manager lifecycle flow from Issuer to consumption, alongside cluster CA creation, service mesh workload identity, and the three ingress TLS handling patterns: edge termination, re-encryption, and layer-4 passthrough.</desc>
+
+  <defs>
+    <style>
+      .bg { fill: #f5f8f5; }
+      .panel { fill: #e8f1ea; stroke: #207448; stroke-width: 2; rx: 12px; }
+      .card { fill: #ffffff; stroke: #207448; stroke-width: 2; rx: 10px; }
+      .orange-card { fill: #fff7ed; stroke: #db8129; stroke-width: 2.5; rx: 10px; }
+      .title-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 44px; font-weight: bold; fill: #207448; }
+      .h2-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; font-weight: bold; fill: #207448; }
+      .lane-title { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; font-weight: bold; fill: #303a36; }
+      .body-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 24px; fill: #303a36; line-height: 1.35; }
+      .mono-text { font-family: "SF Mono", Consolas, Menlo, Monaco, monospace; font-size: 24px; fill: #303a36; }
+      .orange-text { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 24px; font-weight: bold; fill: #db8129; }
+      .white-num { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 24px; font-weight: bold; fill: #ffffff; text-anchor: middle; dominant-baseline: central; }
+      .arrow { stroke: #207448; stroke-width: 3.5; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+      .icon-stroke { stroke: #207448; stroke-width: 4; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+    </style>
+
+    <marker id="arrowhead" markerWidth="14" markerHeight="12" refX="10" refY="6" orient="auto">
+      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1200" class="bg" />
+
+  
+  <text x="40" y="62" class="title-text">cert-manager flow and the three ways an ingress handles TLS</text>
+
+  
+  
+  <rect x="40" y="95" width="270" height="260" class="card" />
+  <circle cx="70" cy="125" r="18" fill="#207448" />
+  <text x="70" y="125" class="white-num">1</text>
+  
+  <path d="M 235 110 L 265 120 L 265 145 C 265 160 235 170 235 170 C 235 170 205 160 205 145 L 205 120 Z" class="icon-stroke" />
+  <text x="56" y="180" class="body-text">
+    <tspan x="56" dy="0" font-weight="bold">Issuer or</tspan>
+    <tspan x="56" dy="32" font-weight="bold">ClusterIssuer:</tspan>
+    <tspan x="56" dy="32">ACME with Let's Encrypt</tspan>
+    <tspan x="56" dy="30">(HTTP-01 or DNS-01),</tspan>
+    <tspan x="56" dy="30">Vault, a private CA,</tspan>
+    <tspan x="56" dy="30">or self-signed</tspan>
+  </text>
+
+  
+  <line x1="310" y1="225" x2="340" y2="225" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="350" y="95" width="275" height="260" class="card" />
+  <circle cx="380" cy="125" r="18" fill="#207448" />
+  <text x="380" y="125" class="white-num">2</text>
+  
+  <rect x="545" y="112" width="45" height="52" rx="4" class="icon-stroke" />
+  <line x1="555" y1="126" x2="578" y2="126" class="icon-stroke" stroke-width="3" />
+  <line x1="555" y1="138" x2="578" y2="138" class="icon-stroke" stroke-width="3" />
+  <line x1="555" y1="150" x2="570" y2="150" class="icon-stroke" stroke-width="3" />
+  <text x="366" y="195" class="body-text">
+    <tspan x="366" dy="0" font-weight="bold">Certificate object:</tspan>
+    <tspan x="366" dy="34">declares the names</tspan>
+    <tspan x="366" dy="32">and renewal windows</tspan>
+  </text>
+
+  
+  <line x1="625" y1="225" x2="655" y2="225" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="665" y="95" width="275" height="260" class="card" />
+  <circle cx="695" cy="125" r="18" fill="#207448" />
+  <text x="695" y="125" class="white-num">3</text>
+  
+  <circle cx="880" cy="138" r="14" class="icon-stroke" />
+  <path d="M 880 114 L 880 120 M 880 156 L 880 162 M 856 138 L 862 138 M 898 138 L 904 138 M 863 121 L 868 126 M 892 150 L 897 155 M 863 155 L 868 150 M 892 126 L 897 121" class="icon-stroke" stroke-width="3.5" />
+  <text x="681" y="210" class="body-text">
+    <tspan x="681" dy="0">cert-manager</tspan>
+    <tspan x="681" dy="32">controller issues</tspan>
+    <tspan x="681" dy="32">and renews</tspan>
+  </text>
+
+  
+  <line x1="940" y1="225" x2="970" y2="225" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="980" y="95" width="270" height="260" class="card" />
+  <circle cx="1010" cy="125" r="18" fill="#207448" />
+  <text x="1010" y="125" class="white-num">4</text>
+  
+  <rect x="1175" y="130" width="46" height="34" rx="4" class="icon-stroke" />
+  <path d="M 1186 130 L 1186 118 C 1186 108 1210 108 1210 118 L 1210 130" class="icon-stroke" />
+  <text x="996" y="225" class="body-text" font-weight="bold">
+    <tspan x="996" dy="0">Secret object</tspan>
+  </text>
+
+  
+  <line x1="1250" y1="225" x2="1280" y2="225" class="arrow" marker-end="url(#arrowhead)" />
+
+  
+  <rect x="1290" y="95" width="270" height="260" class="card" />
+  <circle cx="1320" cy="125" r="18" fill="#207448" />
+  <text x="1320" y="125" class="white-num">5</text>
+  
+  <rect x="1485" y="115" width="46" height="46" rx="6" class="icon-stroke" />
+  <path d="M 1495 138 L 1521 138 M 1508 125 L 1508 151" class="icon-stroke" stroke-width="3" />
+  <text x="1306" y="210" class="body-text">
+    <tspan x="1306" dy="0">consumed by</tspan>
+    <tspan x="1306" dy="32">Ingress, Gateway</tspan>
+    <tspan x="1306" dy="32">or pods</tspan>
+  </text>
+
+  
+  <rect x="40" y="375" width="1520" height="60" class="orange-card" />
+  <text x="60" y="413" class="orange-text">DNS-01 is needed for wildcards and for clusters the Internet cannot reach</text>
+
+  
+  
+  <g id="cluster-pki">
+    <rect x="40" y="455" width="740" height="170" class="panel" />
+    
+    <path d="M 65 480 L 105 480 L 105 520 L 65 520 Z" class="icon-stroke" />
+    <path d="M 85 490 L 85 510 M 75 500 L 95 500" class="icon-stroke" stroke-width="3" />
+    <text x="125" y="495" class="body-text">
+      <tspan x="125" dy="0">kubeadm creates the cluster CA, API server</tspan>
+      <tspan x="125" dy="30">serving certificate, kubelet client and serving</tspan>
+      <tspan x="125" dy="30">certificates, an etcd CA with peer certificates,</tspan>
+      <tspan x="125" dy="32" class="mono-text">in /etc/kubernetes/pki</tspan>
+    </text>
+  </g>
+
+  
+  <g id="service-mesh">
+    <rect x="820" y="455" width="740" height="170" class="panel" />
+    
+    <circle cx="855" cy="485" r="8" class="icon-stroke" stroke-width="3" />
+    <circle cx="885" cy="485" r="8" class="icon-stroke" stroke-width="3" />
+    <circle cx="870" cy="515" r="8" class="icon-stroke" stroke-width="3" />
+    <line x1="855" y1="485" x2="885" y2="485" class="icon-stroke" stroke-width="2" />
+    <line x1="855" y1="485" x2="870" y2="515" class="icon-stroke" stroke-width="2" />
+    <line x1="885" y1="485" x2="870" y2="515" class="icon-stroke" stroke-width="2" />
+    <text x="910" y="488" class="h2-text">Service meshes (Istio, Linkerd, Cilium)</text>
+    <text x="840" y="528" class="body-text">
+      <tspan x="840" dy="0">sidecars or per-node proxies issue short-lived workload</tspan>
+      <tspan x="840" dy="28">certificates with SPIFFE identities and enforce mTLS and</tspan>
+      <tspan x="840" dy="28">authorization policies; watch CPU overhead and latency,</tspan>
+      <tspan x="840" dy="28">especially for token streaming and large payloads</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="40" y="645" width="1520" height="440" class="panel" />
+  <text x="65" y="685" class="h2-text">Client to ingress to backend</text>
+
+  
+  <rect x="65" y="705" width="1470" height="110" class="card" />
+  
+  <rect x="85" y="735" width="34" height="26" rx="3" class="icon-stroke" stroke-width="3" />
+  <path d="M 94 735 L 94 725 C 94 718 110 718 110 725 L 110 735" class="icon-stroke" stroke-width="3" />
+  <text x="135" y="745" class="lane-title">Terminate at the edge</text>
+  <text x="135" y="785" class="body-text">
+    <tspan font-weight="bold">TLS ends at the ingress,</tspan> simple, but the traffic is plaintext inside
+  </text>
+
+  
+  <rect x="65" y="825" width="1470" height="110" class="card" />
+  
+  <rect x="85" y="855" width="28" height="22" rx="3" class="icon-stroke" stroke-width="3" />
+  <path d="M 92 855 L 92 847 C 92 841 106 841 106 847 L 106 855" class="icon-stroke" stroke-width="3" />
+  <rect x="105" y="867" width="28" height="22" rx="3" class="icon-stroke" stroke-width="3" />
+  <path d="M 112 867 L 112 859 C 112 853 126 853 126 859 L 126 867" class="icon-stroke" stroke-width="3" />
+  <text x="150" y="865" class="lane-title">Re-encrypt to the backends</text>
+  <text x="150" y="905" class="body-text">
+    TLS ends at the ingress and a second TLS session runs to the backend
+  </text>
+
+  
+  <rect x="65" y="945" width="1470" height="115" class="card" />
+  
+  <path d="M 85 975 L 105 995 L 85 1015 M 105 975 L 125 995 L 105 1015" class="icon-stroke" stroke-width="3" />
+  <text x="145" y="985" class="lane-title">Pass through at layer 4</text>
+  <text x="145" y="1025" class="body-text">
+    the ingress forwards encrypted bytes and the backend terminates, <tspan font-weight="bold">needed for end-to-end mTLS</tspan>
+  </text>
+
+  
+  <rect x="40" y="1105" width="1520" height="65" rx="10" fill="#207448" />
+  <text x="800" y="1146" text-anchor="middle" class="body-text" font-weight="bold" fill="#ffffff">
+    cert-manager takes the repetitive job of asking for and renewing certificates off people
+  </text>
+</svg>

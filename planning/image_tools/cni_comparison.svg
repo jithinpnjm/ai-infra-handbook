@@ -1,0 +1,190 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Choosing a CNI: data path, policy and what each costs</title>
+  <desc>Choosing a CNI: data path, policy and what each costs</desc>
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+  <!-- Title -->
+  <text x="40" y="62" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Choosing a CNI: data path, policy and what each costs</text>
+  <!-- First strip: Kubernetes network model -->
+  <rect x="40" y="84" width="1520" height="152" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="88" cy="138" r="14"/>
+    <circle cx="66" cy="180" r="14"/>
+    <circle cx="110" cy="180" r="14"/>
+    <line x1="79" y1="150" x2="73" y2="168"/>
+    <line x1="97" y1="150" x2="103" y2="168"/>
+    <line x1="80" y1="180" x2="96" y2="180"/>
+  </g>
+  <text x="145" y="118" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="145" dy="0">Kubernetes network model: each pod gets its own IP; all pods communicate with</tspan>
+    <tspan x="145" dy="24">all other pods without NAT, including across nodes; agents on a node such as</tspan>
+    <tspan x="145" dy="24">kubelet reach every pod on that node; a pod sees its own IP the same way other</tspan>
+    <tspan x="145" dy="24">pods see it; the CNI satisfies it with an overlay (VXLAN, Geneve, IPIP),</tspan>
+    <tspan x="145" dy="24">routing (BGP or host routes), or cloud-native pod IPs from the VPC</tspan>
+  </text>
+  <!-- Table Container -->
+  <rect x="40" y="276" width="1520" height="760" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <!-- Table Header -->
+  <path d="M 40 284 Q 40 276 48 276 L 1552 276 Q 1560 276 1560 284 L 1560 320 L 40 320 Z" fill="#207448"/>
+  <text x="64" y="307" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">CNI</text>
+  <text x="464" y="307" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Data path</text>
+  <text x="1094" y="307" font-family="sans-serif" font-size="30" font-weight="bold" fill="#ffffff">Policy and notes</text>
+  <line x1="440" y1="276" x2="440" y2="1036" stroke="#cfe0d4" stroke-width="1.5"/>
+  <line x1="1070" y1="276" x2="1070" y2="1036" stroke="#cfe0d4" stroke-width="1.5"/>
+  <!-- Row 1: Flannel -->
+  <line x1="40" y1="410" x2="1560" y2="410" stroke="#cfe0d4" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="74" cy="365" r="9"/>
+    <circle cx="102" cy="365" r="9"/>
+    <path d="M 83 365 Q 88 349 93 365"/>
+  </g>
+  <text x="152" y="374" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="152" dy="0">Flannel</tspan>
+  </text>
+  <text x="464" y="347" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="464" dy="0">simple L3 overlay (VXLAN default, host-gw</tspan>
+    <tspan x="464" dy="25">routed mode), Kubernetes API or etcd</tspan>
+    <tspan x="464" dy="25">for allocations</tspan>
+  </text>
+  <text x="1094" y="360" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">minimal; no NetworkPolicy</tspan>
+    <tspan x="1094" dy="25">by itself</tspan>
+  </text>
+  <!-- Row 2: Calico -->
+  <rect x="41" y="410" width="1518" height="98" fill="#f9fbf9"/>
+  <line x1="40" y1="508" x2="1560" y2="508" stroke="#cfe0d4" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 72 443 L 104 443 L 104 463 C 104 475 88 481 88 481 C 88 481 72 475 72 463 Z"/>
+    <path d="M 81 459 L 86 464 L 95 454"/>
+  </g>
+  <text x="152" y="468" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="152" dy="0">Calico</tspan>
+  </text>
+  <text x="464" y="441" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="464" dy="0">routed (BGP via BIRD or Felix), optional</tspan>
+    <tspan x="464" dy="25">IPIP or VXLAN overlay, eBPF dataplane;</tspan>
+    <tspan x="464" dy="25">iptables and ipsets policy</tspan>
+  </text>
+  <text x="1094" y="441" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">strong NetworkPolicy; no overlay</tspan>
+    <tspan x="1094" dy="25">needed with BGP; integrates</tspan>
+    <tspan x="1094" dy="25">with fabric BGP</tspan>
+  </text>
+  <!-- Row 3: Cilium -->
+  <line x1="40" y1="654" x2="1560" y2="654" stroke="#cfe0d4" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <circle cx="88" cy="581" r="14"/>
+    <line x1="88" y1="561" x2="88" y2="567"/>
+    <line x1="88" y1="595" x2="88" y2="601"/>
+    <line x1="68" y1="581" x2="74" y2="581"/>
+    <line x1="102" y1="581" x2="108" y2="581"/>
+    <line x1="74" y1="567" x2="78" y2="571"/>
+    <line x1="98" y1="591" x2="102" y2="595"/>
+    <line x1="74" y1="595" x2="78" y2="591"/>
+    <line x1="98" y1="571" x2="102" y2="567"/>
+  </g>
+  <text x="152" y="590" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="152" dy="0">Cilium</tspan>
+  </text>
+  <text x="464" y="538" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="464" dy="0">eBPF datapath replacing kube-proxy</tspan>
+    <tspan x="464" dy="25">and iptables, identity-based policy</tspan>
+    <tspan x="464" dy="25">L3 to L7, optional VXLAN or Geneve</tspan>
+    <tspan x="464" dy="25">or native routing, Hubble</tspan>
+    <tspan x="464" dy="25">observability, BGP control plane</tspan>
+  </text>
+  <text x="1094" y="576" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">high performance; requires</tspan>
+    <tspan x="1094" dy="25">modern kernels</tspan>
+  </text>
+  <!-- Row 4: AWS VPC CNI, GKE native, Azure CNI -->
+  <rect x="41" y="654" width="1518" height="104" fill="#f9fbf9"/>
+  <line x1="40" y1="758" x2="1560" y2="758" stroke="#cfe0d4" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 74 716 L 102 716 A 10 10 0 0 0 102 696 A 13 13 0 0 0 80 694 A 11 11 0 0 0 74 716 Z"/>
+  </g>
+  <text x="152" y="685" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="152" dy="0">AWS VPC CNI,</tspan>
+    <tspan x="152" dy="30">GKE native,</tspan>
+    <tspan x="152" dy="30">Azure CNI</tspan>
+  </text>
+  <text x="464" y="701" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="464" dy="0">pod IPs are VPC or subnet</tspan>
+    <tspan x="464" dy="25">addresses (ENIs, alias IPs)</tspan>
+  </text>
+  <text x="1094" y="688" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">no overlay; routable pod IPs;</tspan>
+    <tspan x="1094" dy="25">IP exhaustion and per-node</tspan>
+    <tspan x="1094" dy="25">ENI limits</tspan>
+  </text>
+  <!-- Row 5: Antrea -->
+  <line x1="40" y1="812" x2="1560" y2="812" stroke="#cfe0d4" stroke-width="1.5"/>
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="70" y="771" width="36" height="28" rx="4"/>
+    <line x1="78" y1="785" x2="98" y2="785"/>
+    <path d="M 94 781 L 98 785 L 94 789"/>
+  </g>
+  <text x="152" y="794" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="152" dy="0">Antrea</tspan>
+  </text>
+  <text x="464" y="792" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="464" dy="0">Open vSwitch based, Geneve or VXLAN</tspan>
+  </text>
+  <text x="1094" y="792" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">policy; OVS offload options</tspan>
+  </text>
+  <!-- Row 6: Multus (Orange Highlight) -->
+  <rect x="41" y="812" width="1518" height="90" fill="#fff9f2"/>
+  <rect x="41" y="812" width="6" height="90" fill="#db8129"/>
+  <line x1="40" y1="902" x2="1560" y2="902" stroke="#cfe0d4" stroke-width="1.5"/>
+  <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <line x1="70" y1="857" x2="82" y2="857"/>
+    <path d="M 82 857 L 94 845 L 106 845"/>
+    <path d="M 82 857 L 94 869 L 106 869"/>
+    <circle cx="106" cy="845" r="3" fill="#db8129"/>
+    <circle cx="106" cy="869" r="3" fill="#db8129"/>
+  </g>
+  <text x="152" y="866" font-family="sans-serif" font-size="30" font-weight="bold" fill="#db8129">
+    <tspan x="152" dy="0">Multus</tspan>
+  </text>
+  <text x="464" y="839" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="464" dy="0">meta-plugin attaching multiple CNI</tspan>
+    <tspan x="464" dy="25">interfaces to a pod with</tspan>
+    <tspan x="464" dy="25">NetworkAttachmentDefinition CRDs</tspan>
+  </text>
+  <text x="1094" y="852" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">required for secondary RDMA</tspan>
+    <tspan x="1094" dy="25">and SR-IOV interfaces</tspan>
+  </text>
+  <!-- Row 7: SR-IOV CNI plus device plugin, macvlan, ipvlan, host-device CNI -->
+  <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <rect x="74" y="953" width="30" height="26" rx="2"/>
+    <line x1="70" y1="949" x2="70" y2="987"/>
+    <rect x="82" y="959" width="14" height="12"/>
+    <line x1="78" y1="979" x2="100" y2="979" stroke-dasharray="3,2"/>
+  </g>
+  <text x="152" y="933" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="152" dy="0">SR-IOV CNI plus</tspan>
+    <tspan x="152" dy="30">device plugin,</tspan>
+    <tspan x="152" dy="30">macvlan, ipvlan,</tspan>
+    <tspan x="152" dy="30">host-device CNI</tspan>
+  </text>
+  <text x="464" y="964" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="464" dy="0">moves a VF or NIC into the</tspan>
+    <tspan x="464" dy="25">pod's namespace</tspan>
+  </text>
+  <text x="1094" y="964" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1094" dy="0">RDMA and GPUDirect data plane</tspan>
+    <tspan x="1094" dy="25">for AI</tspan>
+  </text>
+  <!-- Bottom Takeaway Bar -->
+  <rect x="40" y="1076" width="1520" height="84" rx="8" fill="#207448"/>
+  <g stroke="#ffffff" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M 76 1111 C 74 1103 80 1097 88 1097 C 96 1097 102 1103 100 1111 C 98 1117 94 1123 94 1127 L 82 1127 C 82 1123 78 1117 76 1111 Z"/>
+    <line x1="84" y1="1132" x2="92" y2="1132"/>
+  </g>
+  <text x="136" y="1112" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">
+    <tspan x="136" dy="0">Ask what each plugin adds beyond basic connectivity, such as policy,</tspan>
+    <tspan x="136" dy="26">encryption or secondary interfaces, and what it costs in return</tspan>
+  </text>
+</svg>

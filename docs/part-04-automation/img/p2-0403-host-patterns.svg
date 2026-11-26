@@ -1,0 +1,290 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1120" width="1600" height="1120">
+  <title>Host patterns select machines by union, intersection, exclusion and regex</title>
+  <desc>Visual infographic explaining Ansible host pattern syntax: union of groups, intersection of groups, exclusion of a single host, and regular expressions on host names, with host list verification advice.</desc>
+
+  <defs>
+    
+    <clipPath id="panel-2-left-circle">
+      <circle cx="1120" cy="370" r="75" />
+    </clipPath>
+  </defs>
+
+  
+  <rect width="1600" height="1120" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Host patterns select machines by union,</tspan>
+    <tspan x="800" dy="54">intersection, exclusion and regex</tspan>
+  </text>
+
+  
+
+  
+  <g id="panel-1">
+    <rect x="40" y="175" width="740" height="300" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(68, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="28" r="16" />
+      <circle cx="36" cy="28" r="16" />
+      <path d="M 12 16 L 44 16" />
+    </g>
+
+    
+    <text x="145" y="220" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#207448">gpu:login</text>
+
+    
+    <text x="145" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">either group</text>
+
+    
+    <g id="panel-1-circles">
+      
+      <circle cx="345" cy="370" r="75" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+      <circle cx="455" cy="370" r="75" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+      
+      <path d="M 400 306 A 75 75 0 0 1 400 434" fill="none" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+      <path d="M 400 306 A 75 75 0 0 0 400 434" fill="none" stroke="#207448" stroke-width="1.5" stroke-dasharray="4,4" />
+
+      
+      <circle cx="305" cy="345" r="7" fill="#207448" />
+      <circle cx="335" cy="400" r="7" fill="#207448" />
+      <circle cx="295" cy="390" r="7" fill="#207448" />
+      <circle cx="345" cy="335" r="7" fill="#207448" />
+
+      
+      <circle cx="400" cy="350" r="7" fill="#207448" />
+      <circle cx="400" cy="395" r="7" fill="#207448" />
+
+      
+      <circle cx="465" cy="335" r="7" fill="#207448" />
+      <circle cx="505" cy="355" r="7" fill="#207448" />
+      <circle cx="455" cy="400" r="7" fill="#207448" />
+      <circle cx="495" cy="395" r="7" fill="#207448" />
+    </g>
+  </g>
+
+  
+  <g id="panel-2">
+    <rect x="820" y="175" width="740" height="300" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(848, 195)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="20" cy="28" r="16" />
+      <circle cx="36" cy="28" r="16" />
+      <path d="M 28 16 C 33 22 33 34 28 40 C 23 34 23 22 28 16 Z" fill="#207448" />
+    </g>
+
+    
+    <text x="925" y="220" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#207448">gpu:&amp;rack1</text>
+
+    
+    <text x="925" y="255" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">both groups</text>
+
+    
+    <g id="panel-2-circles">
+      
+      <circle cx="1120" cy="370" r="75" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <circle cx="1240" cy="370" r="75" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+
+      
+      <g clip-path="url(#panel-2-left-circle)">
+        <circle cx="1240" cy="370" r="75" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+      </g>
+
+      
+      <circle cx="1120" cy="370" r="75" fill="none" stroke="#207448" stroke-width="2.5" />
+      <circle cx="1240" cy="370" r="75" fill="none" stroke="#207448" stroke-width="2.5" />
+
+      
+      <text x="1080" y="328" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">gpu</text>
+      <text x="1280" y="328" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="26" font-weight="bold" fill="#303a36">rack1</text>
+
+      
+      <circle cx="1075" cy="365" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+      <circle cx="1105" cy="410" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+      <circle cx="1065" cy="400" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+
+      <circle cx="1255" cy="410" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+      <circle cx="1290" cy="365" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+      <circle cx="1280" cy="400" r="6" fill="#ffffff" stroke="#717a76" stroke-width="2" />
+
+      
+      <circle cx="1180" cy="345" r="7" fill="#207448" />
+      <circle cx="1180" cy="400" r="7" fill="#207448" />
+    </g>
+  </g>
+
+  
+
+  
+  <g id="panel-3">
+    
+    <rect x="40" y="520" width="740" height="300" rx="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    
+    
+    <g transform="translate(68, 540)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <line x1="16" y1="28" x2="40" y2="28" />
+    </g>
+
+    
+    <text x="145" y="565" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#db8129">gpu:!gpu02</text>
+
+    
+    <text x="145" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">this group without one host</text>
+
+    
+    <g id="panel-3-circle">
+      
+      <circle cx="400" cy="710" r="80" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+
+      
+      <circle cx="350" cy="675" r="7" fill="#207448" />
+      <circle cx="395" cy="655" r="7" fill="#207448" />
+      <circle cx="445" cy="670" r="7" fill="#207448" />
+      <circle cx="345" cy="730" r="7" fill="#207448" />
+      <circle cx="380" cy="755" r="7" fill="#207448" />
+      <circle cx="430" cy="750" r="7" fill="#207448" />
+
+      
+      <circle cx="440" cy="710" r="14" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+      <line x1="433" y1="703" x2="447" y2="717" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+      <line x1="447" y1="703" x2="433" y2="717" stroke="#db8129" stroke-width="3" stroke-linecap="round" />
+    </g>
+  </g>
+
+  
+  <g id="panel-4">
+    <rect x="820" y="520" width="740" height="300" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(848, 540)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="10" width="44" height="36" rx="6" />
+      <path d="M 16 28 L 22 28 M 28 22 L 28 34 M 24 25 L 32 31 M 32 25 L 24 31" stroke-width="3" />
+      <path d="M 38 22 L 42 22 L 42 34 L 38 34" stroke-width="3" />
+    </g>
+
+    
+    <text x="925" y="565" font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="32" font-weight="bold" fill="#207448">~gpu0[1-4]</text>
+
+    
+    <text x="925" y="600" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">regular expression on names</text>
+
+    
+    <g id="panel-4-regex-row">
+      
+      <rect x="870" y="645" width="430" height="135" rx="12" fill="#c3dec9" stroke="#207448" stroke-width="2.5" />
+      
+      
+      
+      <g transform="translate(885, 662)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="21" r="2.5" fill="#207448" />
+        <circle cx="30" cy="21" r="2.5" fill="#207448" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="43" r="2.5" fill="#207448" />
+        <circle cx="30" cy="43" r="2.5" fill="#207448" />
+        
+        <circle cx="45" cy="74" r="14" fill="#207448" />
+        <polyline points="39,74 43,78 51,70" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      
+      <g transform="translate(990, 662)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="21" r="2.5" fill="#207448" />
+        <circle cx="30" cy="21" r="2.5" fill="#207448" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="43" r="2.5" fill="#207448" />
+        <circle cx="30" cy="43" r="2.5" fill="#207448" />
+        
+        <circle cx="45" cy="74" r="14" fill="#207448" />
+        <polyline points="39,74 43,78 51,70" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      
+      <g transform="translate(1095, 662)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="21" r="2.5" fill="#207448" />
+        <circle cx="30" cy="21" r="2.5" fill="#207448" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="43" r="2.5" fill="#207448" />
+        <circle cx="30" cy="43" r="2.5" fill="#207448" />
+        
+        <circle cx="45" cy="74" r="14" fill="#207448" />
+        <polyline points="39,74 43,78 51,70" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      
+      <g transform="translate(1200, 662)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="21" r="2.5" fill="#207448" />
+        <circle cx="30" cy="21" r="2.5" fill="#207448" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+        <circle cx="22" cy="43" r="2.5" fill="#207448" />
+        <circle cx="30" cy="43" r="2.5" fill="#207448" />
+        
+        <circle cx="45" cy="74" r="14" fill="#207448" />
+        <polyline points="39,74 43,78 51,70" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round" />
+      </g>
+
+      
+      <g transform="translate(1335, 662)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#f0f3f1" stroke="#a0aba5" stroke-width="1.5" stroke-dasharray="4,3" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e2e8e4" stroke="#a0aba5" stroke-width="1" />
+        <circle cx="22" cy="21" r="2.5" fill="#a0aba5" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e2e8e4" stroke="#a0aba5" stroke-width="1" />
+        <circle cx="22" cy="43" r="2.5" fill="#a0aba5" />
+        
+        <circle cx="45" cy="74" r="12" fill="#ffffff" stroke="#a0aba5" stroke-width="1.5" />
+        <line x1="39" y1="74" x2="51" y2="74" stroke="#a0aba5" stroke-width="2" stroke-linecap="round" />
+      </g>
+
+      
+      <g transform="translate(1440, 662)">
+        <rect x="0" y="0" width="90" height="100" rx="8" fill="#f0f3f1" stroke="#a0aba5" stroke-width="1.5" stroke-dasharray="4,3" />
+        <rect x="12" y="14" width="66" height="14" rx="3" fill="#e2e8e4" stroke="#a0aba5" stroke-width="1" />
+        <circle cx="22" cy="21" r="2.5" fill="#a0aba5" />
+        <rect x="12" y="36" width="66" height="14" rx="3" fill="#e2e8e4" stroke="#a0aba5" stroke-width="1" />
+        <circle cx="22" cy="43" r="2.5" fill="#a0aba5" />
+        
+        <circle cx="45" cy="74" r="12" fill="#ffffff" stroke="#a0aba5" stroke-width="1.5" />
+        <line x1="39" y1="74" x2="51" y2="74" stroke="#a0aba5" stroke-width="2" stroke-linecap="round" />
+      </g>
+    </g>
+  </g>
+
+  
+
+  
+  <g id="box-bottom-note">
+    <rect x="40" y="865" width="1520" height="95" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    
+    
+    <g transform="translate(70, 885)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="6" width="48" height="38" rx="6" />
+      <polyline points="14,19 22,25 14,31" />
+      <line x1="26" y1="31" x2="38" y2="31" />
+    </g>
+
+    <text x="815" y="902" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="815" dy="0">Test a pattern with </tspan>
+      <tspan font-family="ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace" font-size="25" fill="#207448">--list-hosts</tspan>
+      <tspan font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36"> before a change. </tspan>
+      <tspan x="815" dy="35">A pattern that matches the wrong hosts reaches machines it should not.</tspan>
+    </text>
+  </g>
+
+  
+
+  <g id="takeaway-bar">
+    <rect id="bar-caption" x="40" y="1000" width="1520" height="70" rx="14" fill="#207448" />
+    <text x="800" y="1044" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Read the host list before you change a group.</text>
+  </g>
+</svg>

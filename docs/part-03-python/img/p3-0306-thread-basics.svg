@@ -1,0 +1,176 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1160" width="1600" height="1160">
+  <title>Thread lifecycle and the rules that keep it stoppable</title>
+  <desc>Visual explanation of Python thread lifecycle, stoppability rules, daemon threads, exception handling, and cooperative cancellation.</desc>
+
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
+      <path d="M 1 1.5 L 8 5 L 1 8.5 z" fill="#207448" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1160" fill="#f5f8f5" />
+
+  
+  <text x="800" y="70" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">Thread lifecycle and the rules that keep it stoppable</text>
+
+  
+
+  
+  <g>
+    <rect x="40" y="125" width="720" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="62" y="204" width="30" height="46" rx="4" stroke-dasharray="6,4" />
+      <path d="M 80 227 L 108 227 M 100 219 L 108 227 L 100 235" />
+    </g>
+    <text font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" y="165">daemon thread: killed abruptly at</tspan>
+      <tspan x="145" y="197">interpreter exit, no cleanup, only for</tspan>
+      <tspan x="145" y="229">chores you can afford to drop;</tspan>
+      <tspan x="145" y="261">non-daemon threads keep the process</tspan>
+      <tspan x="145" y="293">alive until they finish</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="355" width="720" height="205" rx="12" fill="#fdf3e7" stroke="#db8129" stroke-width="3" />
+    <g stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 85 432 L 114 478 L 56 478 Z" />
+      <line x1="85" y1="449" x2="85" y2="463" />
+      <circle cx="85" cy="471" r="2" fill="#db8129" stroke="none" />
+    </g>
+    <text font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" y="415">An exception inside a thread does</tspan>
+      <tspan x="145" y="450">not reach the main thread: it prints</tspan>
+      <tspan x="145" y="485">a traceback and ends; capture with</tspan>
+      <tspan x="145" y="520">futures or set threading.excepthook</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="585" width="720" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 85 662 C 103 662 108 671 108 684 C 108 701 85 712 85 712 C 85 712 62 701 62 684 C 62 671 67 662 85 662 Z" />
+      <circle cx="85" cy="685" r="7" />
+    </g>
+    <text font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" y="625">No code can kill a thread from outside:</tspan>
+      <tspan x="145" y="657">use cooperative cancellation: a</tspan>
+      <tspan x="145" y="689">threading.Event to check, plus socket</tspan>
+      <tspan x="145" y="721">timeouts or queue.get(timeout=) on</tspan>
+      <tspan x="145" y="753">every blocking call</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="815" width="720" height="205" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="62" y="897" width="46" height="18" rx="3" />
+      <rect x="62" y="921" width="46" height="18" rx="3" />
+      <line x1="85" y1="906" x2="85" y2="906.1" stroke-width="4" />
+      <line x1="85" y1="930" x2="85" y2="930.1" stroke-width="4" />
+    </g>
+    <text font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="145" y="875">threading.local() for state</tspan>
+      <tspan x="145" y="910">belonging to one thread;</tspan>
+      <tspan x="145" y="945">contextvars for context that</tspan>
+      <tspan x="145" y="980">follows tasks and threads</tspan>
+    </text>
+  </g>
+
+  
+
+  
+  <g>
+    <rect x="840" y="125" width="720" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="875" cy="200" r="24" fill="#207448" />
+    <text x="875" y="209" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="912" y="177" width="46" height="46" rx="6" />
+      <path d="M 922 200 Q 930 188 935 200 T 948 200" />
+    </g>
+    <text font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">
+      <tspan x="985" y="172">Thread(target=worker,</tspan>
+      <tspan x="985" y="206">args=(t0, 1),</tspan>
+      <tspan x="985" y="240">name=worker-0, daemon=True)</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1200" y1="275" x2="1200" y2="316" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g>
+    <rect x="840" y="320" width="720" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="875" cy="375" r="24" fill="#207448" />
+    <text x="875" y="384" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="935" cy="375" r="23" />
+      <polygon points="929,363 947,375 929,387" fill="#207448" />
+    </g>
+    <text x="985" y="384" font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="28" font-weight="bold" fill="#303a36">start()</text>
+  </g>
+
+  
+  <line x1="1200" y1="430" x2="1200" y2="471" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g>
+    <rect x="840" y="475" width="720" height="150" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="875" cy="550" r="24" fill="#207448" />
+    <text x="875" y="559" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <circle cx="935" cy="550" r="23" />
+      <polyline points="935,537 935,550 945,550" />
+    </g>
+    <text font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="985" y="536">worker runs time.sleep(delay),</tspan>
+      <tspan x="985" y="572">which releases the GIL</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1200" y1="625" x2="1200" y2="666" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g>
+    <rect x="840" y="670" width="720" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="875" cy="750" r="24" fill="#207448" />
+    <text x="875" y="759" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M 919 731 L 951 731 L 935 750 L 951 769 L 919 769 L 935 750 Z" />
+    </g>
+    <text font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="985" y="722">join(timeout=10) so a stuck</tspan>
+      <tspan x="985" y="756">thread shows up instead of</tspan>
+      <tspan x="985" y="790">freezing the script</tspan>
+    </text>
+  </g>
+
+  
+  <line x1="1200" y1="830" x2="1200" y2="871" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g>
+    <rect x="840" y="875" width="720" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="875" cy="947" r="24" fill="#207448" />
+    <text x="875" y="956" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">5</text>
+    <g stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <rect x="912" y="924" width="46" height="46" rx="6" />
+      <line x1="921" y1="937" x2="949" y2="937" />
+      <line x1="921" y1="947" x2="949" y2="947" />
+      <line x1="921" y1="957" x2="937" y2="957" />
+    </g>
+    <text font-family="'SF Mono', Consolas, 'Liberation Mono', Menlo, Courier, monospace" font-size="24" fill="#303a36">
+      <tspan x="985" y="934">threading.active_count() and</tspan>
+      <tspan x="985" y="968">current_thread().name</tspan>
+    </text>
+  </g>
+
+  
+  <rect x="40" y="1060" width="1520" height="64" rx="12" fill="#207448" />
+  <text x="800" y="1101" font-family="system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Design for cooperative stopping, because a thread cannot be killed</text>
+</svg>

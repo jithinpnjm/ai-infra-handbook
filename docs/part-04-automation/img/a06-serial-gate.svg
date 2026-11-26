@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 900" width="1600" height="900">
+  <title>Serial batches grow, and a failure gate stops the rollout</title>
+  <desc>Visual infographic explaining how serial batches grow from a canary to larger fleet percentages, with a failure gate stopping the rollout if failures exceed max_fail_percentage.</desc>
+
+  <defs>
+    
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448"/>
+    </marker>
+    
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto-start-reverse">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="900" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Serial batches grow, and a failure gate stops the rollout</text>
+
+  
+  <g id="node-batch-1">
+    
+    <rect x="50" y="140" width="300" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <circle cx="90" cy="180" r="24" fill="#207448"/>
+    <text x="90" y="189" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+
+    
+    <g transform="translate(180, 152)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="4" width="40" height="48" rx="6"/>
+      <line x1="16" y1="14" x2="30" y2="14"/>
+      <line x1="16" y1="22" x2="30" y2="22"/>
+      <circle cx="38" cy="18" r="2.5" fill="#207448"/>
+      <circle cx="28" cy="38" r="4"/>
+    </g>
+
+    
+    <text x="200" y="250" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Canary</text>
+
+    
+    <text x="200" y="300" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="200" dy="0">serial: 1, </tspan>
+      <tspan x="200" dy="34">one host runs </tspan>
+      <tspan x="200" dy="34">the whole play</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 350 280 H 410" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="decision-gate">
+    
+    <polygon points="650,140 890,280 650,420 410,280" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <text x="650" y="265" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+      <tspan x="650" dy="0">Failures within </tspan>
+      <tspan x="650" dy="36">max_fail_percentage: 5?</tspan>
+    </text>
+  </g>
+
+  
+  <path d="M 890 280 H 970" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+  
+  <text x="930" y="260" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">yes</text>
+
+  
+  <path d="M 650 420 V 560" fill="none" stroke="#db8129" stroke-width="3" marker-end="url(#arrow-orange)"/>
+  
+  <text x="675" y="495" text-anchor="start" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#db8129">no</text>
+
+  
+  <g id="node-batch-2">
+    
+    <rect x="970" y="140" width="280" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <circle cx="1010" cy="180" r="24" fill="#207448"/>
+    <text x="1010" y="189" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+
+    
+    <g transform="translate(1096, 152)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="28" cy="12" rx="22" ry="7"/>
+      <path d="M 6 12 v 12 c 0 3.8 9.8 7 22 7 s 22 -3.2 22 -7 V 12"/>
+      <path d="M 6 24 v 12 c 0 3.8 9.8 7 22 7 s 22 -3.2 22 -7 V 24"/>
+    </g>
+
+    
+    <text x="1110" y="250" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Next batch</text>
+
+    
+    <text x="1110" y="318" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">10% of the group</text>
+  </g>
+
+  
+  <path d="M 1250 280 H 1300" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)"/>
+
+  
+  <g id="node-batch-3">
+    
+    <rect x="1300" y="140" width="260" height="280" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+    
+    <circle cx="1340" cy="180" r="24" fill="#207448"/>
+    <text x="1340" y="189" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+
+    
+    <g transform="translate(1416, 152)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="8" y="4" width="40" height="48" rx="4"/>
+      <line x1="8" y1="20" x2="48" y2="20"/>
+      <line x1="8" y1="36" x2="48" y2="36"/>
+      <circle cx="16" cy="12" r="2" fill="#207448"/>
+      <circle cx="24" cy="12" r="2" fill="#207448"/>
+      <circle cx="16" cy="28" r="2" fill="#207448"/>
+      <circle cx="24" cy="28" r="2" fill="#207448"/>
+      <circle cx="16" cy="44" r="2" fill="#207448"/>
+      <circle cx="24" cy="44" r="2" fill="#207448"/>
+    </g>
+
+    
+    <text x="1430" y="250" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">The rest</text>
+
+    
+    <text x="1430" y="305" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1430" dy="0">25% for the </tspan>
+      <tspan x="1430" dy="34">remaining hosts</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="panel-note-serial">
+    <rect x="1050" y="560" width="450" height="84" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1275" y="612" text-anchor="middle" font-family="'SF Mono', 'Courier New', Courier, Consolas, Menlo, monospace" font-size="24" font-weight="bold" fill="#207448">serial: [1, &quot;10%&quot;, &quot;25%&quot;]</text>
+  </g>
+
+  
+  <g id="box-play-aborted">
+    <rect x="310" y="560" width="680" height="84" rx="14" fill="#db8129" stroke="#db8129" stroke-width="2"/>
+    <text x="650" y="612" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Play aborted; no later batch starts</text>
+  </g>
+
+  
+  <text x="650" y="700" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">A bad canary stops the rollout before it reaches the fleet.</text>
+
+</svg>

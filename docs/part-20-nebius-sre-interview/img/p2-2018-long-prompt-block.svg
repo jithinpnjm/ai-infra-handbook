@@ -1,0 +1,170 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1060" width="1600" height="1060">
+  <title>One long prefill blocks the short requests behind it</title>
+  <desc>Visual infographic explaining how a single long prefill blocks subsequent short requests in a shared GPU engine batch, causing p99 latency spikes.</desc>
+
+  
+  <rect width="1600" height="1060" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="70" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle">One long prefill blocks the short requests behind it</text>
+
+  
+  <g id="shared-batch-container">
+    <rect x="50" y="110" width="1500" height="265" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(75, 125)">
+      <rect x="8" y="8" width="40" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="18" y="18" width="20" height="20" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+      
+      <line x1="16" y1="2" x2="16" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="2" x2="28" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="2" x2="40" y2="8" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="16" y1="48" x2="16" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="48" x2="28" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="48" x2="40" y2="54" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="2" y1="16" x2="8" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="2" y1="28" x2="8" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="2" y1="40" x2="8" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="48" y1="16" x2="54" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="48" y1="28" x2="54" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="48" y1="40" x2="54" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="145" y="162" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Shared batch</text>
+
+    
+    <rect x="75" y="195" width="1450" height="155" rx="12" fill="#f5f8f5" stroke="#b0c4b8" stroke-width="1.5"/>
+
+    
+    <rect x="95" y="210" width="840" height="125" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+    <text x="515" y="258" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="515" dy="0">Long prefill from one tenant:</tspan>
+      <tspan x="515" dy="38">a large compute job before the first token</tspan>
+    </text>
+
+    
+    <rect x="965" y="220" width="245" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1087" y="263" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1087" dy="0">Short chat</tspan>
+      <tspan x="1087" dy="34">prompt A</tspan>
+    </text>
+
+    
+    <rect x="1240" y="220" width="245" height="105" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1362" y="263" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="1362" dy="0">Short chat</tspan>
+      <tspan x="1362" dy="34">prompt B</tspan>
+    </text>
+  </g>
+
+  
+  <g id="latency-box-container">
+    <rect x="50" y="400" width="1500" height="105" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(75, 425)">
+      <circle cx="28" cy="30" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="28" y1="30" x2="28" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="30" x2="38" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="24" y1="4" x2="32" y2="4" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="4" x2="28" y2="8" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    
+    <text x="155" y="445" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">
+      <tspan x="155" dy="0">Inter-token latency p99 rises</tspan>
+      <tspan x="155" dy="35" font-size="25" font-weight="normal">although the queue is short and KV usage is moderate</tspan>
+    </text>
+  </g>
+
+  
+  <g id="histogram-panel">
+    <rect x="50" y="525" width="875" height="375" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(75, 545)">
+      <line x1="4" y1="4" x2="4" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="4" y1="52" x2="52" y2="52" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="16" y1="52" x2="16" y2="36" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
+      <line x1="28" y1="52" x2="28" y2="24" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
+      <line x1="40" y1="52" x2="40" y2="12" stroke="#207448" stroke-width="6" stroke-linecap="round"/>
+    </g>
+
+    
+    <text x="145" y="583" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">vllm:request_prompt_tokens</text>
+
+    
+    <text x="85" y="645" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">p50, median prompt length</text>
+    <rect x="85" y="660" width="50" height="36" rx="6" fill="#207448"/>
+
+    
+    <text x="85" y="745" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">p99, the long tail</text>
+    <rect x="85" y="760" width="400" height="36" rx="6" fill="#207448"/>
+
+    
+    <rect x="515" y="625" width="385" height="245" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(680, 645)">
+      <polygon points="28,6 52,48 4,48" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="28" y1="20" x2="28" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="42" r="2.5" fill="#207448"/>
+    </g>
+
+    
+    <text x="707" y="735" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">
+      <tspan x="707" dy="0">Tail eight or more</tspan>
+      <tspan x="707" dy="35">times the median</tspan>
+      <tspan x="707" dy="35">is a warning sign</tspan>
+    </text>
+  </g>
+
+  
+  <g id="mitigation-panel">
+    <rect x="955" y="525" width="595" height="375" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="980" y="555" width="545" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1005, 600)">
+      <line x1="6" y1="16" x2="50" y2="16" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="20" cy="16" r="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <line x1="6" y1="40" x2="50" y2="40" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="36" cy="40" r="8" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    <text x="1080" y="625" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1080" dy="0">Lower</tspan>
+      <tspan x="1080" dy="40">max_num_batched_tokens</tspan>
+    </text>
+
+    
+    <rect x="980" y="730" width="545" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(1005, 775)">
+      <circle cx="12" cy="28" r="6" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <path d="M 18,28 L 30,28 Q 38,28 42,16 L 44,14" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M 18,28 L 30,28 Q 38,28 42,40 L 44,42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="48" cy="12" r="5" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+      <circle cx="48" cy="44" r="5" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    </g>
+
+    <text x="1080" y="798" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      <tspan x="1080" dy="0">Route long prompts</tspan>
+      <tspan x="1080" dy="40">to a separate pool</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="925" width="1500" height="95" rx="12" fill="#207448"/>
+    <text x="800" y="963" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">
+      <tspan x="800" dy="0">If tail latency rises with the prompt-length tail,</tspan>
+      <tspan x="800" dy="35">isolate long prompts rather than adding replicas to the shared pool.</tspan>
+    </text>
+  </g>
+</svg>

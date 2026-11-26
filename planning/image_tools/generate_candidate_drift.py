@@ -1,0 +1,212 @@
+#!/usr/bin/env python3
+import xml.etree.ElementTree as ET
+import subprocess
+
+def create_svg():
+    svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="1050" viewBox="0 0 1600 1050">
+  <title>Code, state and the real cloud: reading drift</title>
+  <desc>Infographic explaining Terraform code, state, real cloud drift, refresh-only plans, detailed exit codes, scheduled drift detection, and remediation decisions.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1050" fill="#f5f8f5"/>
+
+  <!-- Diagram Title -->
+  <text x="800" y="58" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Code, state and the real cloud: reading drift</text>
+
+  <!-- ==================== TRIANGLE CONNECTIONS ==================== -->
+  <!-- Line: Code (top) to Edge 1 (bottom) -->
+  <line x1="240" y1="375" x2="240" y2="325" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Line: Edge 1 (right) to State (left) -->
+  <line x1="540" y1="215" x2="590" y2="215" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Line: State (right) to Edge 3 (left) -->
+  <line x1="1010" y1="215" x2="1060" y2="215" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Line: Edge 3 (bottom) to Cloud (top) -->
+  <line x1="1360" y1="325" x2="1360" y2="375" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Line: Code (right) to Edge 2 Drift (left) -->
+  <line x1="420" y1="480" x2="460" y2="480" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 4"/>
+
+  <!-- Line: Edge 2 Drift (right) to Cloud (left) -->
+  <line x1="1140" y1="480" x2="1180" y2="480" stroke="#db8129" stroke-width="3" stroke-linecap="round" stroke-dasharray="6 4"/>
+
+  <!-- ==================== ROW 1: PLAN, STATE, IMPORT ==================== -->
+
+  <!-- Edge 1: Plan compares code and state -->
+  <g id="edge-plan">
+    <rect x="60" y="105" width="480" height="220" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <!-- Refresh / Diff Icon -->
+    <g transform="translate(272, 122)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 10 24 A 18 18 0 0 1 44 14 L 44 6 M 44 14 L 36 14"/>
+      <path d="M 46 24 A 18 18 0 0 1 12 34 L 12 42 M 12 34 L 20 34"/>
+    </g>
+    <text x="300" y="202" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="300" dy="0">plan compares code</tspan>
+      <tspan x="300" dy="34">and state, after refreshing</tspan>
+      <tspan x="300" dy="34">state from the cloud</tspan>
+    </text>
+  </g>
+
+  <!-- Corner 2: State (Terraform's notebook of what it built) -->
+  <g id="node-state">
+    <rect x="590" y="105" width="420" height="220" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Notebook / Ledger Icon -->
+    <g transform="translate(772, 122)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="2" width="44" height="50" rx="4"/>
+      <line x1="16" y1="2" x2="16" y2="52"/>
+      <line x1="24" y1="14" x2="42" y2="14"/>
+      <line x1="24" y1="26" x2="42" y2="26"/>
+      <line x1="24" y1="38" x2="42" y2="38"/>
+      <circle cx="11" cy="14" r="2" fill="#207448"/>
+      <circle cx="11" cy="26" r="2" fill="#207448"/>
+      <circle cx="11" cy="38" r="2" fill="#207448"/>
+    </g>
+    <text x="800" y="210" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="800" dy="0">State</tspan>
+      <tspan x="800" dy="38" font-size="24" font-weight="normal"> (Terraform's notebook</tspan>
+      <tspan x="800" dy="34" font-size="24" font-weight="normal"> of what it built)</tspan>
+    </text>
+  </g>
+
+  <!-- Edge 3: Import brings an object into state -->
+  <g id="edge-import">
+    <rect x="1060" y="105" width="480" height="220" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <!-- Import into box Icon -->
+    <g transform="translate(1272, 122)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 26 L 8 46 L 48 46 L 48 26"/>
+      <line x1="28" y1="6" x2="28" y2="34"/>
+      <path d="M 18 24 L 28 34 L 38 24"/>
+    </g>
+    <text x="1300" y="196" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1300" dy="0">import brings an object</tspan>
+      <tspan x="1300" dy="32">created by hand into state so</tspan>
+      <tspan x="1300" dy="32">apply does not collide; plan</tspan>
+      <tspan x="1300" dy="32">only knows what is in state</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 2: CODE, DRIFT GAP, CLOUD ==================== -->
+
+  <!-- Corner 1: Code (what you want) -->
+  <g id="node-code">
+    <rect x="60" y="375" width="360" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Code Editor Window Icon -->
+    <g transform="translate(212, 395)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="0" y="0" width="56" height="46" rx="5"/>
+      <line x1="0" y1="14" x2="56" y2="14"/>
+      <circle cx="10" cy="7" r="2" fill="#207448"/>
+      <circle cx="18" cy="7" r="2" fill="#207448"/>
+      <path d="M 18 26 L 12 32 L 18 38 M 38 26 L 44 32 L 38 38 M 30 22 L 26 42"/>
+    </g>
+    <text x="240" y="490" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="240" dy="0">Code</tspan>
+      <tspan x="240" dy="38" font-size="24" font-weight="normal"> (what you want)</tspan>
+    </text>
+  </g>
+
+  <!-- Edge 2: Drift gap (THE ORANGE HIGHLIGHT) -->
+  <g id="edge-drift">
+    <rect x="460" y="375" width="680" height="210" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5"/>
+    <!-- Warning Alert Triangle Icon in Orange -->
+    <g transform="translate(772, 392)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 28 6 L 52 46 L 4 46 Z"/>
+      <line x1="28" y1="20" x2="28" y2="32"/>
+      <circle cx="28" cy="40" r="2.5" fill="#db8129"/>
+    </g>
+    <text x="800" y="470" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="800" dy="0">drift is the gap between code and reality:</tspan>
+      <tspan x="800" dy="32">someone scaled a pool from the console</tspan>
+      <tspan x="800" dy="32">during an incident, the next apply</tspan>
+      <tspan x="800" dy="32">would undo it</tspan>
+    </text>
+  </g>
+
+  <!-- Corner 3: Cloud (what really exists) -->
+  <g id="node-cloud">
+    <rect x="1180" y="375" width="360" height="210" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2.5"/>
+    <!-- Cloud Outline Icon -->
+    <g transform="translate(1332, 395)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 12 38 L 44 38 A 10 10 0 0 0 44 18 A 14 14 0 0 0 20 20 A 11 11 0 0 0 12 38 Z"/>
+    </g>
+    <text x="1360" y="490" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+      <tspan x="1360" dy="0">Cloud</tspan>
+      <tspan x="1360" dy="38" font-size="24" font-weight="normal"> (what really exists)</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 3: COMMANDS ==================== -->
+
+  <!-- Command 1: terraform plan -refresh-only -->
+  <g id="cmd-refresh-only">
+    <rect x="60" y="630" width="710" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Terminal Icon -->
+    <g transform="translate(85, 690)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="6" width="52" height="42" rx="4"/>
+      <path d="M 12 20 L 22 27 L 12 34"/>
+      <line x1="26" y1="34" x2="38" y2="34"/>
+    </g>
+    <text x="165" y="676" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0" font-family="monospace" font-weight="bold">terraform plan -refresh-only</tspan>
+      <tspan x="165" dy="38" font-family="sans-serif"> updates state to match the outside world</tspan>
+      <tspan x="165" dy="34" font-family="sans-serif"> without proposing changes to resources</tspan>
+    </text>
+  </g>
+
+  <!-- Command 2: terraform plan -detailed-exitcode -->
+  <g id="cmd-detailed-exitcode">
+    <rect x="830" y="630" width="710" height="175" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Exit Code / Return Icon -->
+    <g transform="translate(855, 690)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="6" width="52" height="42" rx="4"/>
+      <path d="M 12 22 L 20 27 L 12 32"/>
+      <path d="M 26 27 L 42 27 M 36 21 L 42 27 L 36 33"/>
+    </g>
+    <text x="935" y="676" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="935" dy="0" font-family="monospace" font-weight="bold">terraform plan -detailed-exitcode</tspan>
+      <tspan x="935" dy="38" font-family="sans-serif"> returns 0 for no changes, 1 for error,</tspan>
+      <tspan x="935" dy="34" font-family="sans-serif"> 2 for changes present</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== ROW 4: JOB & DECISION ==================== -->
+
+  <!-- Scheduled drift job -->
+  <g id="scheduled-drift-job">
+    <rect x="60" y="850" width="710" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Clock / Timer Icon -->
+    <g transform="translate(85, 897)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <polyline points="28 14 28 28 38 28"/>
+    </g>
+    <text x="165" y="913" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">exit code 2 opens a ticket without</tspan>
+      <tspan x="165" dy="36">a human reading the whole plan</tspan>
+    </text>
+  </g>
+
+  <!-- Decision per drift item -->
+  <g id="decision-per-drift-item">
+    <rect x="830" y="850" width="710" height="150" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Branching Decisions Icon -->
+    <g transform="translate(855, 897)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="14" r="5" fill="#207448"/>
+      <line x1="28" y1="19" x2="28" y2="32"/>
+      <path d="M 14 44 L 14 36 Q 14 32 28 32 Q 42 32 42 36 L 42 44"/>
+      <polyline points="8 38 14 44 20 38"/>
+      <polyline points="36 38 42 44 48 38"/>
+    </g>
+    <text x="935" y="899" text-anchor="start" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="935" dy="0">if the emergency change was right,</tspan>
+      <tspan x="935" dy="34">fix the code; if wrong, re-apply;</tspan>
+      <tspan x="935" dy="34">never leave it</tspan>
+    </text>
+  </g>
+
+</svg>'''
+    with open("candidate_drift.svg", "w") as f:
+        f.write(svg_content)
+    print("candidate_drift.svg updated.")
+
+create_svg()

@@ -1,0 +1,189 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Jumbo frames for AI clusters: the saving and the rules</title>
+  <desc>Visual comparison of MTU 1500 versus MTU 9000 header overhead, the MTU stack hierarchy, and configuration rules for AI cluster networking.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="80" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Jumbo frames for AI clusters: the saving and the rules</text>
+
+  
+  
+  <rect x="40" y="130" width="450" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(65, 150)">
+    <rect x="0" y="0" width="56" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="16" y1="0" x2="16" y2="44" stroke="#207448" stroke-width="4"/>
+    <line x1="28" y1="16" x2="44" y2="16" stroke="#207448" stroke-width="3"/>
+    <line x1="28" y1="28" x2="44" y2="28" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <rect x="65" y="215" width="400" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="85" y="235" width="360" height="36" rx="6" fill="#e8f1ea"/>
+  <rect x="85" y="235" width="75" height="36" rx="6" fill="#207448"/>
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="85" y="312" font-size="30" font-weight="bold">MTU 1500:</tspan>
+    <tspan x="85" y="348" font-size="24">about 3.5 percent</tspan>
+    <tspan x="85" y="380" font-size="24">TCP/IP overhead</tspan>
+  </text>
+
+  
+  <rect x="65" y="420" width="400" height="170" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <rect x="85" y="440" width="360" height="36" rx="6" fill="#e8f1ea"/>
+  <rect x="85" y="440" width="20" height="36" rx="6" fill="#207448"/>
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="85" y="518" font-size="30" font-weight="bold">MTU 9000:</tspan>
+    <tspan x="85" y="558" font-size="25">about 0.9 percent</tspan>
+  </text>
+
+  
+  <rect x="65" y="610" width="400" height="325" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 630)">
+    <rect x="0" y="8" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="24" cy="32" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="0" x2="12" y2="8" stroke="#207448" stroke-width="3"/>
+    <line x1="24" y1="0" x2="24" y2="8" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="0" x2="36" y2="8" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="56" x2="12" y2="64" stroke="#207448" stroke-width="3"/>
+    <line x1="24" y1="56" x2="24" y2="64" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="56" x2="36" y2="64" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="85" y="725">the same data in fewer,</tspan>
+    <tspan x="85" y="760">bigger packets cuts</tspan>
+    <tspan x="85" y="795">per-packet CPU cost and</tspan>
+    <tspan x="85" y="830">header overhead; storage</tspan>
+    <tspan x="85" y="865">and bulk transfers gain</tspan>
+    <tspan x="85" y="900">throughput</tspan>
+  </text>
+
+  
+  
+  <rect x="525" y="130" width="510" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(550, 150)">
+    <path d="M 0 14 L 28 0 L 56 14 L 28 28 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 0 26 L 28 40 L 56 26" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M 0 38 L 28 52 L 56 38" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+  </g>
+
+  
+  <rect x="550" y="215" width="460" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(575, 255)">
+    <rect x="0" y="0" width="48" height="48" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="24" cy="24" r="10" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="-6" x2="12" y2="0" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="-6" x2="36" y2="0" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="48" x2="12" y2="54" stroke="#207448" stroke-width="3"/>
+    <line x1="36" y1="48" x2="36" y2="54" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text x="645" y="295" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">host 9000</text>
+
+  
+  <rect x="550" y="370" width="460" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(575, 410)">
+    <rect x="0" y="0" width="56" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <rect x="8" y="14" width="8" height="10" rx="1" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="24" y="14" width="8" height="10" rx="1" fill="none" stroke="#207448" stroke-width="3"/>
+    <rect x="40" y="14" width="8" height="10" rx="1" fill="none" stroke="#207448" stroke-width="3"/>
+  </g>
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="645" y="440" font-size="26" font-weight="bold">switch ports at least host</tspan>
+    <tspan x="645" y="476" font-size="26" font-weight="bold">MTU plus headers: 9216</tspan>
+  </text>
+
+  
+  <rect x="550" y="565" width="460" height="370" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(575, 595)">
+    <rect x="0" y="0" width="56" height="44" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="0" y1="30" x2="40" y2="30" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="44" x2="32" y2="44" stroke="#207448" stroke-width="4"/>
+  </g>
+  <text font-family="sans-serif" fill="#303a36">
+    <tspan x="575" y="680" font-size="28" font-weight="bold">RoCE v2 NIC MTU 4096</tspan>
+    <tspan x="575" y="722" font-size="24">(InfiniBand MTU values</tspan>
+    <tspan x="575" y="758" font-size="24">256, 512, 1024, 2048, 4096)</tspan>
+    <tspan x="575" y="800" font-size="24">inside an Ethernet MTU</tspan>
+    <tspan x="575" y="836" font-size="24">of 9000 or so</tspan>
+  </text>
+
+  
+  
+  <rect x="1070" y="130" width="490" height="830" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+  
+  <g transform="translate(1095, 150)">
+    <rect x="0" y="6" width="48" height="50" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M 14 6 L 14 0 L 34 0 L 34 6 Z" fill="none" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="22" x2="36" y2="22" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="34" x2="36" y2="34" stroke="#207448" stroke-width="3"/>
+    <line x1="12" y1="46" x2="26" y2="46" stroke="#207448" stroke-width="3"/>
+  </g>
+
+  
+  <rect x="1092" y="215" width="445" height="88" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1122" cy="259" r="16" fill="#207448"/>
+  <path d="M 1115 259 L 1120 264 L 1129 253" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+    <tspan x="1152" y="250">configure the MTU</tspan>
+    <tspan x="1152" y="282">end to end</tspan>
+  </text>
+
+  
+  <rect x="1092" y="315" width="445" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1122" cy="350" r="16" fill="#207448"/>
+  <path d="M 1115 350 L 1120 355 L 1129 344" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1152" y="348">keep it consistent across</tspan>
+    <tspan x="1152" y="380">hosts, switch ports, VLAN</tspan>
+    <tspan x="1152" y="412">interfaces, bond members</tspan>
+    <tspan x="1152" y="444">and the overlay</tspan>
+  </text>
+
+  
+  <rect x="1092" y="482" width="445" height="102" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+  <circle cx="1122" cy="533" r="16" fill="#db8129"/>
+  <line x1="1122" y1="525" x2="1122" y2="536" stroke="#ffffff" stroke-width="3" stroke-linecap="round"/>
+  <circle cx="1122" cy="542" r="2" fill="#ffffff"/>
+  <text font-family="sans-serif" font-size="25" font-weight="bold" fill="#db8129">
+    <tspan x="1152" y="527">never mix MTUs within</tspan>
+    <tspan x="1152" y="560">an L2 domain</tspan>
+  </text>
+
+  
+  <rect x="1092" y="596" width="445" height="130" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <circle cx="1122" cy="635" r="16" fill="#207448"/>
+  <path d="M 1115 635 L 1120 640 L 1129 629" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  <text fill="#303a36">
+    <tspan x="1152" y="635" font-family="sans-serif" font-size="24">test every pair of nodes</tspan>
+    <tspan x="1152" y="670" font-family="sans-serif" font-size="24">with </tspan><tspan font-family="monospace" font-size="24" font-weight="bold">ping -M do -s 8972</tspan>
+    <tspan x="1152" y="705" font-family="sans-serif" font-size="24">or </tspan><tspan font-family="monospace" font-size="24" font-weight="bold">nccl-tests</tspan>
+  </text>
+
+  
+  <rect x="1092" y="738" width="445" height="207" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(1110, 755)">
+    <polygon points="12,0 24,24 0,24" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round"/>
+    <line x1="12" y1="8" x2="12" y2="15" stroke="#207448" stroke-width="2.5" stroke-linecap="round"/>
+    <circle cx="12" cy="19.5" r="1.5" fill="#207448"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1152" y="770">jumbo set on hosts but</tspan>
+    <tspan x="1152" y="800">not on every switch port,</tspan>
+    <tspan x="1152" y="830">or forgetting the</tspan>
+    <tspan x="1152" y="860">encapsulation overhead</tspan>
+    <tspan x="1152" y="890">for overlays and VPNs,</tspan>
+    <tspan x="1152" y="920">causes black holes</tspan>
+  </text>
+
+  
+  <rect x="40" y="990" width="1520" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="1034" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Before you call a fabric ready, test every node pair at the jumbo size</text>
+</svg>

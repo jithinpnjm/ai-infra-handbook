@@ -1,0 +1,22 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "25",
+  "name": "p2-0225-pod-debug-ladder",
+  "title": "Debug pod-to-pod traffic in eight checks, from the pod's own routes out to the capture",
+  "anchor": "## 7. Debugging container networking",
+  "spec": "A vertical ladder of eight numbered steps, drawn as stacked boxes with downward arrows. Top label, grey: 'Pod A cannot reach pod B'. Step 1 box: 'Both pods have IPs and routes: ip route in each namespace'. Step 2 box: 'Pod A reaches its gateway and the host: ARP resolves, veth and host-side interface are up'. Step 3 box: 'Node forwarding: ip_forward, rp_filter, bridge-nf-call-iptables'. Step 4 box: 'Cross-node path: route or tunnel to node B, underlay ping, MTU, UDP 8472 or 4789, BGP TCP 179'. Step 5 box: 'NetworkPolicy and iptables: counters and conntrack -L'. Step 6 box: 'Destination listens on the right address: ss -tulpn inside pod B'. Step 7 box: 'Names involved: check DNS'. Step 8 box, orange outline: 'Capture on the veth of A, the uplink of node 1, the uplink of node 2 and the veth of B'. Side note on the right, monospace: 'nsenter -t PID -n ip route'. Caption: 'Each check removes one layer from the suspect list.'",
+  "alt": "An eight-step checklist for pod-to-pod failures walks from pod routes and gateway ARP through node forwarding, cross-node tunnels, policy, listening sockets, DNS and packet captures.",
+  "cap": "Pod-to-pod failures are narrowed by eight checks in order, from pod routes and gateway ARP through forwarding, tunnels, policy and listeners to packet captures."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "25",
+  "name": "p2-0225-clusterip-dnat",
+  "title": "A ClusterIP is a virtual address that the node rewrites to one real pod",
+  "anchor": "### Pod to service and to the outside",
+  "spec": "Two horizontal flows stacked. Top flow, heading 'Pod to a ClusterIP service': box 'Pod A calls service VIP 10.96.0.10:80', arrow labelled 'kube-proxy (iptables, IPVS or eBPF) DNAT' to a choice of three small boxes 'backend pod 10.244.2.7', 'backend pod 10.244.1.5', 'backend pod 10.244.2.9', with one chosen box in orange outline and an arrow back to Pod A labelled 'reply rewritten back, Pod A never sees the change'. Bottom flow, heading 'Pod to the outside': box 'Pod 10.244.1.5 sends to the internet', arrow labelled 'SNAT (masquerade) to the node IP', then a box 'Internet sees the node IP'. Note under the bottom flow: 'Skipped when pod IPs are routable and ipMasq is off.' Caption: 'Pods call a stable name; the node decides which backend answers.'",
+  "alt": "A pod calling a ClusterIP is DNATed by kube-proxy to one backend pod, and traffic leaving the cluster is masqueraded to the node IP.",
+  "cap": "A pod calling a ClusterIP is rewritten by kube-proxy to one backend pod, and traffic to the outside is masqueraded to the node IP."
+ }
+]

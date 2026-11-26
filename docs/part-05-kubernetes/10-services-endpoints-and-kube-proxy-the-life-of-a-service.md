@@ -69,6 +69,10 @@ spec:
 
 ### Why a Service is needed
 
+![A client that remembers old Pod addresses sends requests to machines that no longer exist after a rollout, while a Service gives a stable address that routes to the new Pods.](./img/p2-0510-why-service.svg)
+
+*Figure 5.10.1. After a rollout replaces the Pods, a client holding old Pod addresses fails, while a Service keeps one stable address that routes to the new Pods.*
+
 Kubernetes moves things around constantly. It places pods on nodes, keeps them running and moves them when needed. It also changes the number of pods with load, through Horizontal Pod Autoscaling. That makes it easy to run many things and hard to find them. Most traditional network infrastructure was never built for this much change.
 
 Consider what that means for a client. Yesterday the pods had two addresses. Today a rollout has replaced them with two others. A client that remembered the old addresses now sends its requests to machines that no longer exist, and nothing in the client tells it so.
@@ -127,6 +131,10 @@ Then open http://localhost:48858 in your browser. You should see the `alpaca` po
 
 ### Types
 
+![Service types stacked from ClusterIP to NodePort to LoadBalancer, with headless Services as a separate choice that skips the virtual IP.](./img/p2-0510-service-types.svg)
+
+*Figure 5.10.2. Service types build on each other from ClusterIP to NodePort to LoadBalancer, while a headless Service skips the virtual IP entirely.*
+
 Services come in several types, and the type decides what gets created. Pick the one that matches where the traffic comes from. The default is ClusterIP, and NodePort and LoadBalancer each build on the type before them.
 
 | Type | What it creates | Notes |
@@ -149,6 +157,10 @@ Each port entry has a few fields to keep straight. The `port` is the Service's p
 Think of a Service as the front desk of a large office, and the pod ports as the rooms behind it. Visitors ask the desk for a name, and the desk sends them to the right room. The desk's number stays the same even when the rooms are renumbered. Naming a port and pointing `targetPort` at that name is what lets the desk keep up with the renumbering.
 
 ### DNS
+
+![Environment variables miss Services created after the pod while DNS finds them at once.](./img/p3-0510-env-vs-dns.svg)
+
+*Figure 5.10.3. Prefer DNS because pod environment variables are fixed at start and can grow too large.*
 
 Each Service gets a name in the form `my-svc.my-ns.svc.cluster.local`. That name resolves to A and AAAA records for the ClusterIP, and named ports also get SRV records. Pods can resolve short names through search domains, which section 5.11 explains. A headless Service resolves to endpoint IPs instead. This is why `curl http://vllm` works from inside the same namespace without any IP address on hand. The name lookup returns the ClusterIP, and the rules described in section 3 take it from there.
 
@@ -219,6 +231,14 @@ Press `Ctrl-C` to stop both the `port-forward` and the `watch` commands. Before 
 
 ## 2. EndpointSlices
 
+![Steps from readiness to controller, API and kube-proxy rules showing a 1 to 5 second propagation window.](./img/p3-0510-endpoint-propagation.svg)
+
+*Figure 5.10.4. New and terminating pods take a few seconds to appear or disappear on every node.*
+
+![A legacy Endpoints object resends the whole pod list on every change, while EndpointSlices split it into shards of up to 100 endpoints.](./img/k10-endpoint-slices.svg)
+
+*Figure 5.10.5. A legacy Endpoints object resends the whole pod list on every change, whereas an EndpointSlice shard updates only the slice that changed.*
+
 Picture a Service with a few thousand pods behind it and a rolling update that replaces pods one at a time. Every replacement changes the list of addresses, and every node needs the new list before it can route traffic correctly. How the cluster stores that list decides how much work each change causes.
 
 Every Service has endpoints, which track the pods behind it. The legacy Endpoints object holds one big list per Service, and that list does not scale. Each change rewrites and re-sends the whole list to every node. Think of it as a printed phone directory that has to be reprinted and mailed to every office whenever one person changes desks. The EndpointSlice object, the default since 1.21, shards endpoints into slices of up to 100 (configurable). Shards work like separate volumes of that directory, so one change reprints only one volume. Each endpoint in a slice carries its own fields:
@@ -257,6 +277,10 @@ A Service with no ready endpoints fails its connections. In iptables mode, the `
 Think of an empty Service as a shop with its shutters down. A client that walks up gets a clear answer straight away, which is far better than a request that hangs until it times out. That is why the failure appears as a refused connection instead of a silent wait.
 
 ### Watching endpoints
+
+![Six watch output lines show a Service losing and regaining endpoints during a delete and recreate.](./img/p3-0510-endpoints-watch.svg)
+
+*Figure 5.10.6. Each line of the watch is one endpoint change, and the empty line shows the moment of no backends.*
 
 Some apps, and the system itself, want the list of pod IPs behind a Service rather than its cluster IP. For that reason, Kubernetes creates a buddy Endpoints object for every Service, holding the IP addresses behind it. Think of it as the older, plainer view of the same data. It has the same name as its Service, so one command finds it:
 
@@ -347,6 +371,14 @@ Its configuration lives in `KubeProxyConfiguration`, which is stored in the Conf
 
 ### iptables mode (default for many years)
 
+![Four iptables rules with probabilities 0.25, 0.33333, 0.50 and 1 give each backend an equal share.](./img/p3-0510-random-probabilities.svg)
+
+*Figure 5.10.7. Each later rule's probability is larger so every backend ends up with an equal chance.*
+
+![A packet to a ClusterIP is rewritten by DNAT to a pod IP and the reply is reversed using conntrack.](./img/p3-0510-clusterip-dnat-return.svg)
+
+*Figure 5.10.8. The kernel rewrites the destination on the way out and conntrack reverses it on the way back.*
+
 For each Service and endpoint, `kube-proxy` writes chains in the `nat` table, and in the `filter` table for rejects:
 
 ```text
@@ -371,6 +403,10 @@ The practical effect is that the cost is paid in two places. Each new connection
 
 ### Why iptables struggles at scale
 
+![The iptables mode walks a rule list linearly for each packet and rewrites the whole table on update, while IPVS finds the Service in one hash lookup.](./img/p2-0510-iptables-walk.svg)
+
+*Figure 5.10.9. iptables mode walks a list of rules whose cost grows with the number of Services, while IPVS looks up the Service in a hash table.*
+
 The iptables rules are stored as a list. When a pod opens a new connection to a Service, the first packet walks through that list until it finds a match. In the worst case, the packet must walk the entire list. The cost therefore grows linearly with the number of Services. `O(n)` is shorthand for work that grows in step with n, the number of items being checked. Put simply, a long guest list takes longer to check than a short one, and every new connection has to check it. In complexity terms, the iptables mode is O(n) when it processes packets. Connections to Services get slower as the cluster grows.
 
 Updates are the bigger problem. iptables rules are not incremental, so kube-proxy must write out the entire table for every update. On a large cluster, that write can take minutes, which risks sending traffic to stale endpoints. kube-proxy also holds the iptables lock (`/run/xtables.lock`) during the update. Other processes that change iptables rules, such as CNI plug-ins, can then contend with it.
@@ -393,6 +429,10 @@ ip addr show kube-ipvs0 | head
 ```
 
 ### Reading IPVS listings
+
+![An annotated ipvsadm listing showing four virtual services forwarding to the same three pods.](./img/p3-0510-ipvs-listing.svg)
+
+*Figure 5.10.10. A NodePort Service in IPVS mode appears as four virtual services that share the same real servers.*
 
 IPVS does not walk a list when a new connection arrives. It finds the destination right away, based on the Service IP address. kube-proxy in `ipvs` mode first adds the ClusterIP to a dummy interface named `kube-ipvs0`:
 
@@ -465,20 +505,9 @@ To run it, set `kubeProxyReplacement=true` for Cilium, and disable kube-proxy wi
 
 The diagram shows how a packet reaches a backend in each mode. Read the iptables and nftables path first, then compare the IPVS and eBPF paths against it.
 
-```mermaid
-flowchart LR
-    subgraph IPT["iptables / nftables mode"]
-        P1["Pod eth0 -> ClusterIP:80"] --> PR["netfilter PREROUTING<br/>KUBE-SERVICES -> KUBE-SVC-XXXX"]
-        PR --> SEP["KUBE-SEP-AAAA (p = 1/(N-i))<br/>DNAT -> PodIP:8000 + conntrack"]
-    end
-    subgraph IPVS["IPVS mode"]
-        P2["Pod eth0 -> ClusterIP:80<br/>(bound on dummy kube-ipvs0)"] --> VS["IPVS Virtual Server O(1) hash<br/>rr / lc / dh / sh / sed / nq"]
-        VS --> RS["Real Server DNAT -> PodIP:8000"]
-    end
-    subgraph EBPF["Cilium eBPF socket-LB mode"]
-        P3["connect(ClusterIP:80) syscall"] --> CG["cgroup/connect4 eBPF hook<br/>Rewrites dst sockaddr in-place<br/>to PodIP:8000 (zero packet NAT)"]
-    end
-```
+![Mode comparison](./img/m5-10-1.svg)
+
+*Figure 5.10.11. Mode comparison, as a diagram.*
 
 The table puts the same comparison into rows. The Scale row shows why iptables is the first mode to strain as Services grow.
 
@@ -525,6 +554,10 @@ A team has a Service that works inside the cluster, but a laptop on the office n
 
 ### NodePort path
 
+![A request to a node's NodePort is DNATed to a Pod that may sit on another node, then SNATed so the reply returns through the receiving node.](./img/p2-0510-nodeport-path.svg)
+
+*Figure 5.10.12. A NodePort request is DNATed to a Pod, possibly on another node, and SNATed under the Cluster policy so the reply returns through the receiving node.*
+
 An external client connects to `<nodeIP>:30080` on any node. The traffic then passes `KUBE-NODEPORTS` and the Service chains, and DNAT sends it to a pod, which may sit on another node. Under the `Cluster` policy, **SNAT** then masquerades the source as the node's IP, so replies return through the node that received the connection. That path has costs. It adds an extra hop, the source IP is lost so pods see the node IP, and the load can become uneven.
 
 Here is that path in order. The packet arrives at a node on the NodePort. The node's rules recognize the port and jump into the Service's chains. DNAT picks a pod, and that pod may sit on another node. SNAT then rewrites the source so that the reply returns through the node that took the request. The pod sees the node as the client, which is the price of the extra hop.
@@ -560,6 +593,10 @@ $ ssh <node> -L 8080:localhost:32711
 Point your browser to http://localhost:8080, and you are connected to the Service. Each request goes to one of the pods at random. Reload the page a few times, and you land on different pods. When you are done, exit the SSH session. The random choice is why the same page can come from a different pod on each reload. Nothing is wrong with the Service when that happens.
 
 ### `externalTrafficPolicy`
+
+![With Cluster the node may forward to a pod elsewhere and rewrite the source, while with Local only pods on the receiving node answer.](./img/k10-traffic-policy.svg)
+
+*Figure 5.10.13. With Cluster traffic may reach a pod on another node and the client IP is lost, while with Local only local pods answer and the client IP is kept.*
 
 The `externalTrafficPolicy` setting decides which pods can answer external traffic. It has two values. Think of it as the rule at a taxi stand. With `Cluster`, any taxi in the city may pick up the fare. With `Local`, only the taxis parked at that stand may pick it up.
 
@@ -617,6 +654,10 @@ This example comes from a cluster on Google Cloud, run through GKE. How a load b
 
 ### Session affinity and long-lived connections
 
+![A ClusterIP Service pins one long-lived gRPC connection to a single pod, while a headless Service with client-side round robin spreads requests.](./img/k10-grpc-pinning.svg)
+
+*Figure 5.10.14. A ClusterIP Service pins one long-lived gRPC connection to a single pod, so spreading requests needs a headless Service or an L7 proxy.*
+
 `sessionAffinity: ClientIP` pins a client IP to one backend for `timeoutSeconds`, which defaults to 10800. It works through the `recent` module in iptables, or through IPVS persistence. It breaks behind NAT, where many clients share one IP.
 
 Layer 4 balancing works per connection. HTTP/2 and gRPC multiplex many requests over one connection, so a client opens one connection and all its requests hit one pod. This is the well-known uneven gRPC load problem, and it is severe for inference gateways. Put simply, a client that opens one connection is like a shopper who sends every order through one cashier, no matter how many cashiers are open. You have several fixes. You can use a headless Service with client-side load balancing (gRPC `round_robin`, or xDS). You can use L7 proxies such as Envoy, Istio, Linkerd or an ingress. You can set connection age limits with `MAX_CONNECTION_AGE` on servers, or use a service mesh (5.28).
@@ -630,6 +671,10 @@ Pod-to-own-Service traffic, called hairpin, requires `KUBE-MARK-MASQ` for same-e
 Real applications often span environments. A cloud cluster may need to reach systems that run on-premise, and newer cloud native apps may need to talk to legacy ones. This part of Kubernetes is still being explored and developed.
 
 ### Connecting to resources outside of a cluster
+
+![A selector-less Service with a hand-made Endpoints object sends cluster traffic to an outside database.](./img/p3-0510-selectorless-service.svg)
+
+*Figure 5.10.15. Without a selector you supply the endpoint yourself, which lets cluster DNS name an external IP.*
 
 To connect Kubernetes to a legacy resource outside the cluster, use a selector-less Service. You give it a manually assigned IP address outside the cluster. Kubernetes DNS then works as expected, and traffic flows to the external resource. To make one, remove the `spec.selector` field and leave `metadata` and `ports` unchanged.
 
@@ -662,6 +707,14 @@ If neither option works, more complex choices remain. You can run the full `kube
 
 ## 5. conntrack: the hidden state
 
+![Parallel A and AAAA lookups race to create a conntrack entry and one reply is lost until a retry.](./img/p3-0510-dns-udp-race.svg)
+
+*Figure 5.10.16. Parallel DNS queries from one UDP source port can lose a race and add seconds of delay.*
+
+![A conntrack table fills toward its maximum and then drops new connections until limits or traffic change.](./img/p3-0510-conntrack-fill.svg)
+
+*Figure 5.10.17. Every NAT'd Service connection needs a conntrack row, and a full table drops new connections.*
+
 Picture a busy ingress node on a Friday afternoon. Some connections fail at random, and the Service, the pods and the logs all look normal. Nothing about the Service has changed. The cause is a table on the node itself that has filled up, and that table is conntrack.
 
 Every NAT'd Service connection uses a `conntrack` entry on the node. Often it also uses one on the destination node's reverse path in overlay setups. Those entries are limited. `net.netfilter.nf_conntrack_max` sets the maximum number of entries, and its default scales with memory. Hash buckets and per-state timeouts also apply. Think of conntrack as the guest list at a hotel front desk. Each active connection gets a line, and the desk checks that list to know which guest a reply belongs to. A full list turns new guests away, even when the rooms are empty. TCP established connections default to 5 days. kube-proxy sets `tcpEstablishedTimeout` to 24 h and `tcpCloseWaitTimeout` to 1 h.
@@ -691,6 +744,10 @@ When the table is full, the kernel starts dropping or rejecting connections. Som
 
 ## 6. Topology-aware routing and other features
 
+![Zone-aware hints keep a client's requests in its own zone and fall back when the zone has no endpoints.](./img/p3-0510-topology-routing.svg)
+
+*Figure 5.10.18. PreferClose keeps traffic in-zone when each zone has enough endpoints.*
+
 A team runs inference pods in several zones. Each request that crosses a zone boundary adds time and cost, and the bill grows with traffic. Topology-aware routing tries to keep each request in the zone where it started.
 
 **Topology Aware Routing** is set with `trafficDistribution: PreferClose`. In earlier releases, the annotation `service.kubernetes.io/topology-mode: Auto` did the same job. EndpointSlice **hints** keep traffic inside the same zone when endpoints are balanced, which reduces cross-zone latency and cost. It needs zone labels on nodes and enough endpoints in each zone. Otherwise it falls back to cluster-wide routing. Think of it as a delivery company that sends each parcel to the depot in the same town while that depot has capacity. Only when the local depot is empty does a parcel travel farther.
@@ -706,6 +763,10 @@ ServiceInternalTrafficPolicy covers node-local Services. Per-node daemons, such 
 Turn on topology-aware routing only after you confirm that each zone has enough endpoints, or the traffic falls back to cluster-wide routing. Put simply, the feature is only as good as the zone balance behind it. Check that each zone has endpoints before you turn it on, and watch where requests land after the change.
 
 ## 7. Debugging Services
+
+![A five-rung ladder from endpoints to packet capture with symptom hints beside it.](./img/p3-0510-service-debug-ladder.svg)
+
+*Figure 5.10.19. Work top-down because each layer depends on the one before it.*
 
 A user reports that the vLLM Service is slow, and nobody can say whether the fault is in DNS, the Service, kube-proxy or the pod. Guessing wastes time. Working from the top down narrows the fault quickly.
 
@@ -759,6 +820,10 @@ A quick way to use the table is to start from the symptom, not the component. A 
 Watch the kube-proxy metrics as well. `kubeproxy_sync_proxy_rules_duration_seconds` and `kubeproxy_sync_proxy_rules_last_timestamp_seconds` show how long syncs take and when they last ran. `kubeproxy_network_programming_duration_seconds` measures the time from an endpoint change to its programming, and `kubeproxy_sync_proxy_rules_iptables_total` counts the iptables rules. Alert if programming latency exceeds a few seconds or syncs stall.
 
 ## 8. Scaling guidance
+
+![The costs of iptables mode on the left and the three alternatives that avoid them on the right.](./img/p3-0510-kubeproxy-scale-limits.svg)
+
+*Figure 5.10.20. iptables pays a linear lookup per connection and a full rewrite per change, so large clusters move to IPVS, nftables or eBPF.*
 
 A platform team has grown from a handful of Services to several thousand. kube-proxy on each node now uses noticeable CPU every time something changes, and deploys feel slow. The first question is how many objects the cluster holds, and the second is how often they change.
 

@@ -1,0 +1,138 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Start-up phases and the remedy that attacks each one</title>
+  <desc>Visual infographic explaining the six start-up phases of model serving and the remedy attacking each phase.</desc>
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Start-up phases and the remedy that attacks each one</text>
+  <!-- ==================== BOX 1: Pull image ==================== -->
+  <g id="box-1">
+    <rect x="40" y="90" width="480" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="90" cy="138" r="24" fill="#207448" />
+    <text x="90" y="147" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">1</text>
+    <g transform="translate(440, 110)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="16" width="48" height="36" rx="4" />
+      <path d="M 28 4 L 28 32 M 18 22 L 28 32 L 38 22" />
+    </g>
+    <rect x="56" y="260" width="448" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="280" y="138" font-size="30" font-weight="bold" fill="#207448">Pull image </tspan>
+      <tspan x="280" y="168">(vLLM v0.32.0 amd64 </tspan>
+      <tspan x="280" y="196">image is about 9.2 GB on </tspan>
+      <tspan x="280" y="224">Docker Hub, not under 5 GB </tspan>
+      <tspan x="280" y="252">as the book says): </tspan>
+      <tspan x="280" y="320">pin the tag or digest and </tspan>
+      <tspan x="280" y="354">use <tspan font-family="monospace">IfNotPresent</tspan> so a node </tspan>
+      <tspan x="280" y="388">that has the image does not </tspan>
+      <tspan x="280" y="422">pull again; pre-pull</tspan>
+    </text>
+  </g>
+  <!-- ==================== BOX 2: Fetch and mount model ==================== -->
+  <g id="box-2">
+    <rect x="560" y="90" width="480" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="610" cy="138" r="24" fill="#207448" />
+    <text x="610" y="147" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">2</text>
+    <g transform="translate(960, 110)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 8 16 C 8 10 48 10 48 16 C 48 22 8 22 8 16 Z" />
+      <path d="M 8 16 L 8 40 C 8 46 48 46 48 40 L 48 16" />
+      <path d="M 8 28 C 8 34 48 34 48 28" />
+    </g>
+    <rect x="576" y="260" width="448" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" y="195" font-size="30" font-weight="bold" fill="#207448">Fetch and mount model: </tspan>
+      <tspan x="800" y="320">weights on a PVC, an OCI </tspan>
+      <tspan x="800" y="354">image or node-local NVMe </tspan>
+      <tspan x="800" y="388">instead of downloading from </tspan>
+      <tspan x="800" y="422">Hugging Face on every start</tspan>
+    </text>
+  </g>
+  <!-- ==================== BOX 3: Start runtime ==================== -->
+  <g id="box-3">
+    <rect x="1080" y="90" width="480" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="1130" cy="138" r="24" fill="#207448" />
+    <text x="1130" y="147" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">3</text>
+    <g transform="translate(1480, 110)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="11" />
+      <path d="M 28 8 L 28 14 M 28 42 L 28 48 M 8 28 L 14 28 M 42 28 L 48 28 M 14 14 L 18 18 M 38 38 L 42 42 M 14 42 L 18 38 M 38 14 L 42 18" />
+    </g>
+    <rect x="1096" y="260" width="448" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1320" y="195" font-size="30" font-weight="bold" fill="#207448">Start runtime: </tspan>
+      <tspan x="1320" y="354">a second or less </tspan>
+      <tspan x="1320" y="388">per the book</tspan>
+    </text>
+  </g>
+  <!-- ==================== BOX 4: Load weights to GPU (Orange Highlight) ==================== -->
+  <g id="box-4">
+    <rect x="40" y="560" width="480" height="430" rx="16" fill="#ffffff" stroke="#db8129" stroke-width="3" />
+    <circle cx="90" cy="608" r="24" fill="#db8129" />
+    <text x="90" y="617" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">4</text>
+    <g transform="translate(440, 580)" stroke="#db8129" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="12" y="12" width="32" height="32" rx="4" />
+      <rect x="20" y="20" width="16" height="16" rx="2" fill="#e8f1ea" />
+      <line x1="18" y1="6" x2="18" y2="12" /><line x1="28" y1="6" x2="28" y2="12" /><line x1="38" y1="6" x2="38" y2="12" />
+      <line x1="18" y1="44" x2="18" y2="50" /><line x1="28" y1="44" x2="28" y2="50" /><line x1="38" y1="44" x2="38" y2="50" />
+      <line x1="6" y1="18" x2="12" y2="18" /><line x1="6" y1="28" x2="12" y2="28" /><line x1="6" y1="38" x2="12" y2="38" />
+      <line x1="44" y1="18" x2="50" y2="18" /><line x1="44" y1="28" x2="50" y2="28" /><line x1="44" y1="38" x2="50" y2="38" />
+    </g>
+    <rect x="56" y="730" width="448" height="245" rx="12" fill="#e8f1ea" stroke="#db8129" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="280" y="665" font-size="30" font-weight="bold" fill="#db8129">Load weights to GPU: </tspan>
+      <tspan x="280" y="775">bounded by I/O into GPU </tspan>
+      <tspan x="280" y="808">memory; faster loader such </tspan>
+      <tspan x="280" y="841">as Run:ai Model Streamer </tspan>
+      <tspan x="280" y="874">with <tspan font-family="monospace">--load-format</tspan> </tspan>
+      <tspan x="280" y="907" font-family="monospace">runai_streamer, </tspan>
+      <tspan x="280" y="940">no repackaging</tspan>
+    </text>
+  </g>
+  <!-- ==================== BOX 5: Warm-up ==================== -->
+  <g id="box-5">
+    <rect x="560" y="560" width="480" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="610" cy="608" r="24" fill="#207448" />
+    <text x="610" y="617" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">5</text>
+    <g transform="translate(960, 580)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="28,14 28,28 38,28" />
+      <line x1="24" y1="2" x2="32" y2="2" />
+    </g>
+    <rect x="576" y="730" width="448" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" y="612" font-size="30" font-weight="bold" fill="#207448">Warm-up: </tspan>
+      <tspan x="800" y="640">allocate KV pool, profile, </tspan>
+      <tspan x="800" y="668">compile and capture </tspan>
+      <tspan x="800" y="696">CUDA graphs: </tspan>
+      <tspan x="800" y="756">reuse the </tspan>
+      <tspan x="800" y="784"><tspan font-family="monospace">torch.compile</tspan> cache </tspan>
+      <tspan x="800" y="812">under <tspan font-family="monospace">VLLM_CACHE_ROOT,</tspan> </tspan>
+      <tspan x="800" y="840">set <tspan font-family="monospace">VLLM_FORCE_AOT_LOAD=1</tspan> </tspan>
+      <tspan x="800" y="868">to fail loudly on a </tspan>
+      <tspan x="800" y="896">cache miss, pass </tspan>
+      <tspan x="800" y="924" font-family="monospace">--kv-cache-memory </tspan>
+      <tspan x="800" y="952">to skip profiling</tspan>
+    </text>
+  </g>
+  <!-- ==================== BOX 6: API opens ==================== -->
+  <g id="box-6">
+    <rect x="1080" y="560" width="480" height="430" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+    <circle cx="1130" cy="608" r="24" fill="#207448" />
+    <text x="1130" y="617" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">6</text>
+    <g transform="translate(1480, 580)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22" />
+      <polyline points="10,28 18,28 23,16 29,40 34,24 38,28 46,28" />
+    </g>
+    <rect x="1096" y="730" width="448" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="1320" y="665" font-size="30" font-weight="bold" fill="#207448">API opens: </tspan>
+      <tspan x="1320" y="855" font-family="monospace">/health 200</tspan>
+    </text>
+  </g>
+  <!-- ==================== FOOTER ==================== -->
+  <g id="footer">
+    <rect x="40" y="1030" width="1520" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text font-family="sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+      <tspan x="800" y="1062">book says these together can cut scale-up from many minutes </tspan>
+      <tspan x="800" y="1090">to tens of seconds depending on model size; <tspan font-family="monospace">--enforce-eager</tspan> and </tspan>
+      <tspan x="800" y="1118"><tspan font-family="monospace">-O0</tspan> make boot fast but decode slower, use them in development only; </tspan>
+      <tspan x="800" y="1146">most time goes to model download and weight load; measure each phase on your own cluster</tspan>
+    </text>
+  </g>
+</svg>

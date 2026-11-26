@@ -1,0 +1,152 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-ipc-regimes",
+  "title": "Busy is not efficient: IPC tells you whether the CPU is stalled or executing",
+  "spec": "A horizontal IPC scale from 0 to 2 with three marked positions from the chapter exercise. Position 'IPC 0.30' in the left zone labelled 'mostly stalled, usually on memory (below about 0.2 to 0.5)': advice box 'Faster memory, better locality, fewer memory accesses; check NUMA, cache misses, TLB; consider huge pages, binding, data layout'. Position 'IPC 0.91' (the pmcarch sample: 87,166,313 instructions over 96,163,187 cycles, BMR% 3.44, LLC% 73.45) in the middle. Position 'IPC 1.80' in the right zone labelled 'busy executing (above about 1 to 2)': advice box 'Run fewer instructions: a better algorithm, vectorisation, compiler options'. Under the scale a callout 'Utilisation counts every cycle that is not idle, including cycles spent waiting on memory, so a CPU at 100% busy is not necessarily 100% efficient' (orange). Right strip 'How to measure': 'perf stat -e cycles,instructions,cache-misses,context-switches,cpu-migrations ./prog' and 'pmcarch prints K_CYCLES, K_INSTR, IPC, BR_RETIRED, BR_MISPRED, BMR%, LLCREF, LLCMISS, LLC%'. Footer 'A training job whose host threads show high CPU use and low IPC is memory-bound on the host'. Bottom bar: 'Keep utilisation and efficiency apart'.",
+  "anchor": "## 1. CPU basics",
+  "alt": "An IPC scale showing a memory stall region below about 0.5 and an instruction execution region above about 1, with the chapter examples at 0.30, 0.91 and 1.80 and the fix for each.",
+  "cap": "Low IPC means the CPU is mostly stalled on memory, while high IPC means it is executing and fewer instructions are the lever."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-nice-weight",
+  "title": "Nice values become weights: worked vruntime example",
+  "spec": "Left: a horizontal nice scale from -20 to +19 with 0 marked as default. Three points with weights: 'nice -20: weight about 88761', 'nice 0: weight 1024', 'nice 19: weight about 15'. A note 'each nice step changes the weight by about 25%'. Middle: the chapter worked example as two bars of CPU time used in the same 10 ms of actual execution. 'nice 0 task (weight 1024): vruntime advances 10 ms'. 'nice -5 task (weight 3121): vruntime advances about 3.3 ms' (10 ms x 1024 / 3121). Arrow note 'the scheduler always picks the task with the smallest vruntime, the leftmost in the red-black tree, so the nice -5 task stays near the left and runs more; under contention it gets roughly 3x the CPU of a nice 0 task' (orange). Right: two caveats 'Nice matters only when tasks compete for the same CPU; on idle CPUs it changes nothing' and 'Autogroup (since 2.6.38) groups tasks by session so nice between sessions behaves per group; on a systemd host cgroups give the real weighting through CPUWeight'. Commands 'nice -n 10 cmd', 'renice -n 10 -p PID'. Bottom bar: 'Nice is a weight, not a cap'.",
+  "anchor": "### Nice values and weights",
+  "alt": "A nice scale from -20 to 19 with weights 88761, 1024 and 15, and a worked example where a nice minus 5 task's vruntime advances about 3.3 ms in 10 ms.",
+  "cap": "A lower nice value means a larger weight, so its vruntime grows more slowly and it runs more under contention."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-rt-valve",
+  "title": "Real-time starvation and the safety valve",
+  "spec": "A timeline bar of one 1,000,000 microsecond period, split into a long segment '950000 us: real-time tasks may run (kernel.sched_rt_runtime_us default)' and a short segment '50000 us: left for everything else' in orange. Above the bar a CPU with a task 'SCHED_FIFO priority 50 spinning' and a shell icon 'the shell you need to fix it' crossed out with the label 'starved: a busy real-time task starves everything of lower priority on that CPU'. Left note 'FIFO runs until it blocks or a higher priority preempts it; RR round-robins among equals with a time slice; priorities 1 to 99'. Right panel 'Safety valves': 'kernel.sched_rt_runtime_us / sched_rt_period_us = 950000 / 1000000', 'RLIMIT_RTTIME', 'combine with CPU isolation'. Message box 'dmesg shows: sched: RT throttling activated means a real-time task used its 95% share: fix the task, not the limit'. Commands 'chrt -p $$', 'sudo chrt -f 50 ./latency_task', 'chrt -m', 'ps -eo pid,cls,rtprio,ni,pri,comm'. Container note 'Runtimes usually forbid real-time priorities; cgroup v2 has no cpu.rt_runtime_us, so real-time work inside containers on v2 is hard'. Bottom bar: 'Use real-time policies sparingly'.",
+  "anchor": "### Scheduling classes and policies",
+  "alt": "A one million microsecond period split into 950000 for real-time tasks and 50000 for everything else, showing how the RT bandwidth limit stops starvation.",
+  "cap": "The RT bandwidth limit leaves about 5% of each period for other tasks, so a spinning real-time task cannot starve the machine forever."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-irq-path",
+  "title": "Interrupt path: why one core is busy with network work",
+  "spec": "A left to right flow. Box 1 'NIC, NVMe or GPU raises a hardware interrupt'. Arrow to box 2 'Runs on the CPU the IRQ is routed to and preempts whatever runs there (shows as hi in top and mpstat)'. Arrow to box 3 'The driver does the urgent part at once and schedules the rest: a softirq (shows as si; ksoftirqd handles it; network receive processing is one example)'. Orange outline on box 3. Below, a column 'Find it': 'mpstat -P ALL 1 and look for one CPU with high %soft', 'cat /proc/softirqs to see which softirq is busy', 'watch -n1 grep -E \"mlx|nvme|eth\" /proc/interrupts'. A column 'Control it': 'IRQ affinity: /proc/irq/N/smp_affinity_list', 'network queues: ethtool -l and ethtool -L; RSS and RPS through /sys/class/net/eth0/queues/rx-*/rps_cpus', 'irqaffinity=0-1 at boot', 'irqbalance spreads IRQs for you but can fight manual pinning: stop it or set IRQBALANCE_BANNED_CPUS'. Bottom bar: 'Keep interrupts away from the cores that feed GPUs'.",
+  "anchor": "### Interrupts and softirqs",
+  "alt": "A flow from a hardware interrupt to a softirq on one CPU, with the commands to find the busy CPU and the settings that control where interrupts land.",
+  "cap": "A hardware interrupt preempts the CPU it lands on and defers the rest to a softirq, so heavy network traffic can take whole cores."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-load-and-mpstat",
+  "title": "Reading load average and mpstat: is the CPU really busy",
+  "spec": "Left panel 'Load average (uptime, 1/5/15 min)': a stacked tally 'running + runnable + uninterruptible sleep (D)' with the chapter example 'load 90 on 64 logical CPUs may mean queuing, or many D tasks stuck on I/O' and the instruction 'compare with the number of logical CPUs (nproc, lscpu)'. Right panel 'mpstat -P ALL 1: four patterns' as four rows with pattern and meaning. 'One CPU at 100%, others idle': 'single-threaded bottleneck, or interrupts pinned to one core: check %soft and %irq'. 'Sustained %steal on a VM': 'the hypervisor ran other guests on your vCPU: noisy neighbour or over-committed host'. '%iowait': 'idle time with I/O outstanding, a poor metric'. 'PSI cpu some non-zero (cat /proc/pressure/cpu)': 'runnable tasks waited: saturation' in orange. Bottom strip 'True measures of saturation: scheduler latency from pidstat -u %wait, perf sched latency, runqlat; container CPU limits add throttling'. Bottom bar: 'Load average is the first number people quote and the easiest to misread'.",
+  "anchor": "## 3. Observing CPUs",
+  "alt": "Load average as running plus runnable plus uninterruptible tasks, and four mpstat patterns: one hot CPU, steal, iowait and PSI cpu some.",
+  "cap": "Load counts running, runnable and D-state tasks, so compare it with the logical CPU count and look at per-CPU, steal and PSI numbers."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-cpu-method",
+  "title": "Seven steps for a CPU problem, finish the first three before tuning",
+  "spec": "A vertical stepped ladder of seven numbered boxes. 1 'Monitor utilisation and saturation per CPU: mpstat, PSI, runqlat; include container limits and throttling'. 2 'USE method: utilisation, saturation, errors (machine-check and EDAC events, offlined CPUs, thermal events: dmesg, mcelog, rasdaemon)'. 3 'Characterise the workload: user to system ratio, syscall rate, context-switch rate (voluntary = blocked, involuntary = preempted; pidstat -w shows both), interrupt rate, thread count'. A bracket around steps 1 to 3 labelled 'Finish these before you tune anything' in orange. 4 'Profile the code: which parts burn the cycles; if CPU-bound, cycle analysis with IPC and stall types'. 5 'Review the static setup: CPU model, microcode, BIOS power, SMT and NUMA settings, kernel version and scheduler, governors, mitigations, cgroup limits'. 6 'Tune priority, binding, isolation and limits'. 7 'Micro-benchmarks only to establish the limits of the machine: sysbench cpu, stress-ng; they often test compiler flags more than CPUs'. Bottom bar: 'A tuning change made without measurements is only a guess'.",
+  "anchor": "### The method for CPU problems",
+  "alt": "A seven step ladder for CPU problems from monitoring and the USE method to profiling, static setup review, tuning and benchmarks.",
+  "cap": "Monitor, apply the USE method and characterise the workload before profiling, reviewing setup, tuning and benchmarking."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-affinity-fence",
+  "title": "Affinity and cpuset: the fence and the spot you stand on",
+  "spec": "A field drawn as a rectangle of eight CPU cells numbered 0 to 7 in a row. A thick dashed fence around cells 4 to 7 labelled 'cgroup cpuset: the allowed set, set from outside (cpuset.cpus 4-7)'. A smaller marker around cells 4 and 5 labelled 'taskset -c 4-5: affinity, narrows the set'. An arrow from the marker toward cell 1 outside the fence crossed out with 'affinity can only narrow the cpuset, never escape it' in orange. Right panel 'Commands': 'taskset -c 0-7 ./prog', 'taskset -cp 8-15 PID (all threads: -a)', 'taskset -pc PID shows the list', 'grep -E Cpus_allowed_list|Mems_allowed_list /proc/PID/status', 'python3 -c os.sched_setaffinity(0, {0,1,2,3})'. Bottom panel 'Pitfalls' as four bullets: 'Pinning on a shared host can collide with other tenants pinning the same cores', 'Pins go stale after hardware or topology changes', 'Pinning a multithreaded process to fewer cores than it has busy threads causes contention', 'OpenMP, MKL and BLAS thread pools can oversubscribe: check OMP_NUM_THREADS, MKL_NUM_THREADS, OMP_PROC_BIND, OMP_PLACES'. Note 'One thread per physical core avoids SMT contention'. Bottom bar: 'Affinity passes down to children and to threads created later'.",
+  "anchor": "### Affinity",
+  "alt": "Eight CPU cells with a cpuset fence around four of them and a taskset affinity marker inside it, showing affinity can only narrow the allowed set.",
+  "cap": "A cpuset sets the allowed CPUs from outside and affinity can only narrow that set, never escape it."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-cgroup-version-check",
+  "title": "Which cgroup version does this node run?",
+  "spec": "A decision flow. Start 'Run: stat -fc %T /sys/fs/cgroup/'. Diamond 'What does it print?'. Branch 'cgroup2fs' to green box 'Pure v2: one unified hierarchy, one cgroup2 mount at /sys/fs/cgroup'. Branch 'tmpfs' to box 'v1 or hybrid' with sub-decision 'cat /proc/self/cgroup': 'one line 0::/path means v2' versus 'many lines N:controller:/path means v1'. Hybrid note 'Hybrid systems mount both, usually v2 at /sys/fs/cgroup/unified'. Right panel 'More checks': 'mount | grep cgroup', 'cat /sys/fs/cgroup/cgroup.controllers', 'grep cgroup /proc/filesystems'. Switch strip 'boot parameter systemd.unified_cgroup_hierarchy=1 (v2) or =0 (v1); RHEL 8 defaulted to v1, RHEL 9 is v2'. Warning card in orange 'Older tooling expects v1: old Docker, Kubernetes before 1.25 v2 support, some NVIDIA container toolkit and GPU monitoring tools, old cAdvisor, Java before 15 or jdk8u372 container awareness; check compatibility before moving a fleet to v2'. Bottom bar: 'Run the version check on every node you touch'.",
+  "anchor": "### v1 versus v2",
+  "alt": "A decision flow using stat on /sys/fs/cgroup to tell pure v2 from v1 or hybrid, with extra checks and a list of tools that expect v1.",
+  "cap": "The type of the cgroup mount tells you whether a node runs pure v2, and old tooling may expect v1."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-no-internal-processes",
+  "title": "The no-internal-processes rule: a branch distributes or holds, not both",
+  "spec": "A small cgroup tree drawn top to bottom. Root '/sys/fs/cgroup'. Child 'slice/' with a tag 'cgroup.subtree_control: +cpu +memory (distributes resources)' and NO process icon. Two leaves under it 'service-a/' with process icons 'holds the workload' and 'service-b/' with process icons. Beside it a second drawn tree where 'slice/' holds a process icon and an attempt 'echo +cpu > cgroup.subtree_control' fails with the message 'Device or resource busy (EBUSY)' in orange; below it the fix arrow 'move the processes into a child first, then enable the controller'. Right panel 'Delegation': 'chown the directory and the files cgroup.procs, cgroup.subtree_control and cgroup.threads to the owner', 'with systemd set Delegate=yes on the unit', 'the delegatee can create descendants and set limits within the budget the parent grants but cannot exceed it', 'rootless containers and Kubernetes pods rely on this'. Warning strip 'Never run a second manager of the same tree: a script writing under /sys/fs/cgroup/system.slice while systemd owns it causes conflicts; kubelet and the container runtime must use the same cgroup driver'. Bottom bar: 'Before you write to any cgroup file, check who owns that part of the tree'.",
+  "anchor": "### The no-internal-processes rule and delegation",
+  "alt": "A cgroup tree where interior branches distribute controllers and only leaves hold processes, with the EBUSY failure when a branch that holds processes enables a controller.",
+  "cap": "A cgroup that enables controllers for its children cannot also hold processes, so put workloads in leaves."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-throttle-oversubscribe",
+  "title": "Detecting throttling, and why thread pools sized from nproc make it worse",
+  "spec": "Left panel 'Detect throttling': read cpu.stat with fields 'usage_usec, user_usec, system_usec, nr_periods, nr_throttled, throttled_usec, nr_bursts, burst_usec'; the rule 'compare nr_throttled with nr_periods and check throttled_usec'; cAdvisor metrics 'container_cpu_cfs_throttled_periods_total and container_cpu_cfs_periods_total'; 'cpu.pressure (PSI)'. Right panel 'The oversubscription trap': a container box with 'cpu.max = 200000 100000 (2 CPUs)' inside a host box '64 CPUs'; the runtime reads 'nproc = 64' (orange) and starts a 64 thread pool; result 'the quota is burned early in each period, then every thread pauses even though other CPUs are idle'. Under it a fix table 'Go: automaxprocs (GOMAXPROCS)', 'Java: -XX:ActiveProcessorCount', 'OpenMP: OMP_NUM_THREADS', 'Python: os.cpu_count() reports the host, pass the limit in'. Footer cards 'Kernels before 5.4 (slice-expiry fix) could throttle even with unused quota: use a recent kernel', 'cpu.max.burst (kernel 5.14 and later) lets a group save unused quota for short bursts', 'Inside a container, nproc and /proc/cpuinfo still show the host unless you use lxcfs or a runtime that understands limits'. Bottom bar: 'Average usage can look healthy while the pauses hide inside each period'.",
+  "anchor": "### Quota: hard ceiling (CFS bandwidth control)",
+  "alt": "The cpu.stat fields and cAdvisor metrics that reveal CPU throttling, and how a thread pool sized from the host's CPU count oversubscribes a two CPU quota.",
+  "cap": "Compare nr_throttled with nr_periods to detect throttling, and pass the container's CPU limit to runtimes that size thread pools from the host."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-cpuset-vs-quota",
+  "title": "cpuset says where, quota says how much, weight says how fairly",
+  "spec": "Three columns, one per control, each with a question, a file, a picture and a use. Column 'cpuset: where may it run?': file 'cpuset.cpus and cpuset.mems (effective values in cpuset.cpus.effective and cpuset.mems.effective)'; picture CPUs 4 to 7 highlighted out of 0 to 7; note 'a hard allow-list, no throttling; an empty cpuset.cpus inherits the parent's'; use 'a job that must run on cores 4 to 7; Slurm task/cgroup and the Kubernetes CPU Manager use cpusets for exclusive cores'. Column 'quota (cpu.max): how much time?': file 'cpu.max = $MAX $PERIOD in microseconds (200000 100000 = 2 CPUs worth)'; picture a fuel gauge that empties mid-period; use 'a job that may run on any cores as long as it gets 4 CPUs worth of time'. Column 'weight (cpu.weight): how fairly under contention?': file 'cpu.weight 1 to 10000, default 100; v1 cpu.shares default 1024'; picture two sibling bars 100 and 300 splitting 25% and 75%; note 'invisible on an idle machine, never wastes capacity, never limits alone; Kubernetes CPU request becomes shares or weight'. Bottom strip 'v2 partitions: cpuset.cpus.partition set to root or isolated makes a group with exclusive CPUs, a runtime alternative to isolcpus'. Orange on the cpuset column. Bottom bar: 'Choose placement, ceiling or proportion by what the job needs'.",
+  "anchor": "### cpuset: which CPUs and memory nodes",
+  "alt": "Three columns comparing cpuset for where a group may run, cpu.max quota for how much time, and cpu.weight for fairness under contention.",
+  "cap": "A cpuset restricts where a group runs, a quota caps how much CPU time it gets, and a weight sets its share under contention."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-manager-to-files",
+  "title": "Who creates the cgroup: systemd directive, Docker flag or Slurm setting to cgroup file",
+  "spec": "Three horizontal bands, one per manager, each mapping settings to files. Band 'systemd (owns the tree through slices: -.slice, system.slice, user.slice, machine.slice)': mapping chips 'CPUWeight= to cpu.weight', 'CPUQuota=200% to cpu.max', 'AllowedCPUs= to cpuset.cpus', 'MemoryMax=, MemoryHigh=, MemoryLow= to the memory files', 'IOWeight=, IOReadBandwidthMax= to the I/O files', 'TasksMax= to pids.max'. Test line 'systemd-run --scope -p CPUQuota=100% -p MemoryMax=2G command'. Band 'Docker and containerd (runc creates the cgroup, writes the limits, moves the init process in)': the chapter command 'docker run --cpus 2 --cpu-shares 512 --cpuset-cpus 0-3 --memory 8g --memory-swap 8g --pids-limit 512 --device /dev/nvidia0 --gpus all'; note 'with the systemd driver the cgroup is a transient scope named docker-<id>.scope; --cpus sets the quota'; 'inside the container /proc/self/cgroup shows 0::/ (the cgroup namespace view)'. Band 'Slurm (Part 6)': chips 'ProctrackType=proctrack/cgroup', 'TaskPlugin=task/cgroup,task/affinity', 'cgroup.conf: ConstrainCores=yes, ConstrainRAMSpace=yes, ConstrainDevices=yes, ConstrainSwapSpace=yes', 'CgroupPlugin=autodetect or cgroup/v2'; note 'each job gets a cgroup under the slurmstepd tree; memory overshoot is an OOM kill reported as OUT_OF_MEMORY; Slurm must match the cgroup version the node mounts'. Orange on the systemd band. Bottom bar: 'Before you blame a limit, look at the cgroup tree from inside the container and from the host'.",
+  "anchor": "## 8. Systemd, Docker, Slurm and the cgroup tree",
+  "alt": "Three bands showing how systemd directives, Docker run flags and Slurm cgroup settings each map onto cgroup files and the tree.",
+  "cap": "Whichever manager you use, its settings end up as cgroup files, so read the tree to see what is really enforced."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-k8s-static-cpu",
+  "title": "Exclusive cores for a GPU pod: CPU Manager static plus Topology Manager",
+  "spec": "Left to right flow. Box 1 'Pod classified Guaranteed: requests equal limits for every container, for CPU and memory, with integer CPU requests (Burstable: some request or limit but not all equal; BestEffort: none)'. Arrow to box 2 'kubelet --cpu-manager-policy=static gives the pod exclusive cores, taken out of the shared pool and set through a cpuset'. Arrow to box 3 'Topology Manager (single-numa-node or best-effort) with the Memory Manager and Device Manager aligns CPU, memory and GPUs or NICs to one NUMA node'. Arrow to result box (orange) 'Stable host-thread performance for GPU training pods; quota is irrelevant for pods with exclusive cores'. Under it a side box 'Reserve system cores: --reserved-cpus, or kubeReserved and systemReserved'. A second row 'Cgroup driver must match': 'kubelet cgroupDriver: systemd' paired with 'containerd SystemdCgroup = true in config.toml' as a green match, and a mismatched pair in red-free outline 'cgroupfs on one side and systemd on the other: nodes that run but misbehave under pressure, or a kubelet that fails to start'. Check commands 'crictl info', 'stat -fc %T /sys/fs/cgroup'. Footer 'Kubernetes supports cgroup v2 as GA from 1.25; use a kernel 5.8 or newer, preferably 5.14 or newer'. Bottom bar: 'On systemd hosts always use the systemd driver so there is one writer of the tree'.",
+  "anchor": "## 9. Kubernetes and cgroups",
+  "alt": "A flow from a Guaranteed pod through the CPU Manager static policy and Topology Manager to exclusive NUMA aligned cores, with the matching cgroup driver rule.",
+  "cap": "A Guaranteed pod with integer CPUs gets exclusive cores under the static policy, and the kubelet and runtime must use the same cgroup driver."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-cgroup-write-failures",
+  "title": "A cgroup write failed: what to check",
+  "spec": "A table of six rows, left column the symptom, right column the checks, each row with a number circle. 1 'echo ... > cgroup.subtree_control fails': 'the group still has processes, or the parent has not enabled that controller yet; enable controllers from the top down'. 2 'A controller is missing in v2': 'probably mounted in a v1 hierarchy (hybrid mode), or unsupported by the kernel config: cat /proc/cgroups'. 3 'A process will not move into a group': 'you wrote a TID instead of a PID; the target is a threaded or invalid cgroup; no write permission on the closest common ancestor's cgroup.procs (v2 delegation rule)'. 4 'A limit looks ineffective inside a container' (orange): 'the tool reads the host's /proc; check /sys/fs/cgroup from inside the container'. 5 'dmesg: sched: RT throttling activated': 'a real-time task used its 95% share: fix the task, not the limit; also check systemd CPUAffinity, tuned isolation, the irqbalance ban mask'. 6 'Large nr_dying_descendants in cgroup.stat': 'dying cgroups pile up after heavy container churn, memory not yet reclaimed; a known source of slowdowns that depends on kernel version'. Side note 'Remove a cgroup with rmdir, not rm -r, and only when it has no processes and no children'. Side note 'Docker or Kubernetes failing after a distro upgrade usually means the distro moved to v2; old cAdvisor, Docker before 20.10 and NVIDIA toolkit before 1.4 can misbehave'. Bottom bar: 'Read the failure message, then check ownership, controllers and version'.",
+  "anchor": "## 10. Troubleshooting",
+  "alt": "A table of six cgroup failures with their likely causes, including failed subtree_control writes, missing controllers, processes that will not move and RT throttling.",
+  "cap": "Most cgroup write failures come from a group that still holds processes, a controller not enabled from the top, or the wrong version or owner."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "18",
+  "name": "p3-0118-gpu-device-control",
+  "title": "GPUs are not a cgroup controller: how a container gets /dev/nvidia*",
+  "spec": "A layered diagram. Top row 'Who decides how many GPUs': 'Kubernetes device plugin and scheduler' and 'Slurm GRES with ConstrainDevices=yes'. Middle row 'Who exposes the device nodes': 'Runtime hook such as the NVIDIA Container Toolkit' leading to 'devices cgroup allows /dev/nvidia0, /dev/nvidiactl, /dev/nvidia-uvm'. A side note 'In v1 devices.allow and devices.deny; in v2 implemented as eBPF programs attached to the cgroup'. Bottom row 'Container opens the nodes'. Failure panel in orange 'Container loses GPU access after systemctl daemon-reload or a cgroup driver mismatch because the device rules reset'. Fix box 'nvidia-ctk runtime configure --runtime=containerd --cdi.enabled, plus matching driver settings; verify against the current NVIDIA Container Toolkit docs'. Side note 'Memory: pinned, GPU-registered host memory and hugetlbfs count differently, so a data loader with large pinned buffers hits memory.max sooner than expected'. Bottom bar: 'GPU quantity is policy; GPU access is a device rule'.",
+  "anchor": "### Other controllers in brief",
+  "alt": "A layered view where the scheduler or Slurm decides how many GPUs, the container toolkit and devices cgroup expose the nvidia device nodes, and a daemon reload can reset the rules.",
+  "cap": "GPU quantity comes from the scheduler while access comes from the devices cgroup, which a reload or driver mismatch can reset."
+ }
+]

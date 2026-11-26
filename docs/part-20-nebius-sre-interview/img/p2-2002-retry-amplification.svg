@@ -1,0 +1,100 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 980" width="1600" height="980">
+  <title>Retries that multiply load in a partial outage</title>
+  <desc>Visual infographic contrasting healthy system retries hiding transient failure versus retry storms multiplying load in a partial outage.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="980" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Retries that multiply load in a partial outage</text>
+
+  
+  <rect x="60" y="110" width="280" height="740" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(172, 135)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="56" height="46" rx="6"/>
+    <line x1="0" y1="14" x2="56" y2="14"/>
+    <circle cx="12" cy="7" r="2" fill="#207448"/>
+    <circle cx="20" cy="7" r="2" fill="#207448"/>
+    <line x1="16" y1="52" x2="40" y2="52"/>
+    <line x1="28" y1="46" x2="28" y2="52"/>
+  </g>
+  <text x="200" y="222" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Client</text>
+
+  
+  <rect x="380" y="110" width="1160" height="300" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="415" y="156" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Healthy system</text>
+
+  
+  <rect x="1200" y="160" width="300" height="205" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1322, 185)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="14"/>
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 11 L 45 15"/>
+  </g>
+  <text x="1350" y="285" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#303a36">Service</text>
+
+  
+  <line x1="340" y1="305" x2="1200" y2="305" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <rect x="520" y="195" width="580" height="66" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  <g transform="translate(540, 210)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="18" cy="18" r="16" fill="#e8f1ea"/>
+    <polyline points="10,18 16,24 26,12"/>
+  </g>
+  <text x="595" y="238" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Transient failure hidden from user</text>
+
+  
+  <g transform="translate(680, 435)">
+    <rect x="0" y="32" width="28" height="14" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="36" y="32" width="28" height="14" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="36" y="16" width="28" height="14" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="72" y="32" width="28" height="14" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="72" y="16" width="28" height="14" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <rect x="72" y="0" width="28" height="14" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+  </g>
+  <text x="805" y="468" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Load keeps rising</text>
+
+  
+  <rect x="380" y="510" width="1160" height="340" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="415" y="556" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">Partial outage</text>
+
+  
+  <rect x="1200" y="570" width="310" height="235" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+  <g transform="translate(1280, 595)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="28" cy="28" r="14"/>
+    <path d="M 28 4 L 28 10 M 28 46 L 28 52 M 4 28 L 10 28 M 46 28 L 52 28 M 11 11 L 15 15 M 41 41 L 45 45 M 11 45 L 15 41 M 41 11 L 45 15"/>
+  </g>
+  <g transform="translate(1380, 603)" stroke="#d93838" stroke-width="3.5" fill="none" stroke-linecap="round">
+    <circle cx="20" cy="20" r="18" fill="#fdf2f2" stroke-width="3"/>
+    <line x1="12" y1="12" x2="28" y2="28"/>
+    <line x1="28" y1="12" x2="12" y2="28"/>
+  </g>
+  <text x="1355" y="695" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="1355" dy="0">Service, </tspan>
+    <tspan x="1355" dy="36">partly working</tspan>
+  </text>
+
+  
+  <line x1="340" y1="600" x2="1200" y2="600" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+
+  
+  <path d="M 340 645 C 470 645, 470 725, 344 725" stroke="#db8129" stroke-width="4" fill="none" marker-end="url(#arrow-orange)"/>
+  <text x="495" y="692" font-family="sans-serif" font-size="28" font-weight="bold" fill="#db8129">Retry</text>
+
+  
+  <line x1="340" y1="770" x2="1200" y2="770" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)"/>
+  <text x="770" y="755" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Retry again</text>
+
+  
+  <rect x="60" y="880" width="1480" height="70" rx="12" fill="#207448"/>
+  <text x="800" y="924" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Retries hide a transient failure, but in a partial outage the same retries multiply load.</text>
+</svg>

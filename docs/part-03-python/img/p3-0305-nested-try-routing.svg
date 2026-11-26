@@ -1,0 +1,162 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Where an exception lands: the stack of active try statements</title>
+  <desc>Visual infographic explaining exception propagation through stacked active try statements, finally clauses, and loop-level error handling.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect x="0" y="0" width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="50" y="65" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Where an exception lands: the stack of active try statements</text>
+
+  
+
+  
+  <g id="frame-action1">
+    <rect x="50" y="110" width="890" height="130" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="75" y="125" width="46" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="75" y1="137" x2="121" y2="137" stroke="#207448" stroke-width="2" />
+    <circle cx="85" cy="131" r="2" fill="#207448" />
+    <circle cx="93" cy="131" r="2" fill="#207448" />
+    <text x="135" y="152" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">action1</text>
+    <text x="75" y="205" font-family="monospace" font-size="24" fill="#303a36">try: action2() except TypeError: print(Outer try)</text>
+  </g>
+
+  
+  <g id="routing-action2-to-action1">
+    <line x1="100" y1="350" x2="100" y2="248" stroke="#db8129" stroke-width="4" marker-end="url(#arrow-orange)" />
+    
+    <circle cx="100" cy="295" r="20" fill="#db8129" />
+    <text x="100" y="303" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="140" y="303" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">Outer try runs only because action2 re-raised</text>
+  </g>
+
+  
+  <g id="frame-action2">
+    <rect x="50" y="350" width="890" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="75" y="365" width="46" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="75" y1="377" x2="121" y2="377" stroke="#207448" stroke-width="2" />
+    <circle cx="85" cy="371" r="2" fill="#207448" />
+    <circle cx="93" cy="371" r="2" fill="#207448" />
+    <text x="135" y="392" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">action2</text>
+    <text x="75" y="445" font-family="monospace" font-size="24" fill="#303a36">try: action3() except TypeError: print(Inner try); raise</text>
+  </g>
+
+  
+  <g id="routing-action3-to-action2">
+    <line x1="100" y1="610" x2="100" y2="493" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)" />
+    
+    <circle cx="100" cy="552" r="20" fill="#207448" />
+    <text x="100" y="560" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="140" y="525" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">Python returns to the most recent matching try;</tspan>
+      <tspan x="140" dy="32">only this first match handles it;</tspan>
+      <tspan x="140" dy="32">Inner try is printed</tspan>
+    </text>
+  </g>
+
+  
+  <g id="frame-action3">
+    <rect x="50" y="610" width="890" height="135" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="75" y="625" width="46" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="75" y1="637" x2="121" y2="637" stroke="#207448" stroke-width="2" />
+    <circle cx="85" cy="631" r="2" fill="#207448" />
+    <circle cx="93" cy="631" r="2" fill="#207448" />
+    <text x="135" y="652" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">action3</text>
+    <text x="75" y="705" font-family="monospace" font-size="24" fill="#303a36">print(1 + [])</text>
+    
+    <circle cx="340" cy="697" r="18" fill="#207448" />
+    <text x="340" y="704" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <rect x="370" y="677" width="150" height="40" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <text x="445" y="705" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">TypeError</text>
+  </g>
+
+  
+  <g id="output-box">
+    <rect x="50" y="775" width="890" height="135" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    
+    <rect x="75" y="795" width="46" height="36" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <polyline points="83,810 93,815 83,820" fill="none" stroke="#207448" stroke-width="2" />
+    <line x1="97" y1="822" x2="109" y2="822" stroke="#207448" stroke-width="2" />
+    <text x="135" y="852" font-family="monospace" font-size="24" fill="#303a36">$ python3 nested_exc_normal.py: Inner try, Outer try</text>
+  </g>
+
+  
+
+  
+  <g id="variant-finally">
+    <rect x="980" y="110" width="570" height="340" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 1010 130 Q 1030 125 1050 130 Q 1050 155 1030 170 Q 1010 155 1010 130 Z" fill="none" stroke="#207448" stroke-width="3" />
+    <text x="1065" y="155" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">try with only finally</text>
+    <text x="1005" y="205" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1005" dy="0">each finally runs as the error</tspan>
+      <tspan x="1005" dy="34">moves up the stack; it does not</tspan>
+      <tspan x="1005" dy="34">stop the error; Inner try,</tspan>
+      <tspan x="1005" dy="34">Outer try, then the traceback:</tspan>
+      <tspan x="1005" dy="34">TypeError: unsupported operand</tspan>
+      <tspan x="1005" dy="34">type(s) for +: int and list</tspan>
+    </text>
+  </g>
+
+  
+  <g id="variant-loop">
+    <rect x="980" y="475" width="570" height="435" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <path d="M 1010 500 A 16 16 0 1 1 1035 515" fill="none" stroke="#207448" stroke-width="3" />
+    <polygon points="1035,507 1042,518 1029,520" fill="#207448" />
+    
+    <text x="1055" y="505" font-family="monospace" font-size="24" font-weight="bold" fill="#207448">
+      <tspan x="1055" dy="0">for func in (raise1,</tspan>
+      <tspan x="1055" dy="30">noraise, raise2): try /</tspan>
+      <tspan x="1055" dy="30">except IndexError /</tspan>
+      <tspan x="1055" dy="30">finally / print(...)</tspan>
+    </text>
+
+    
+    <rect x="1005" y="625" width="520" height="260" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+
+    
+    <text x="1025" y="670" font-family="sans-serif" font-size="24" fill="#303a36">raise1: caught IndexError, finally run, ...</text>
+    <line x1="1005" y1="710" x2="1525" y2="710" stroke="#e8f1ea" stroke-width="2" />
+
+    
+    <text x="1025" y="755" font-family="sans-serif" font-size="24" fill="#303a36">noraise: finally run, ...</text>
+    <line x1="1005" y1="795" x2="1525" y2="795" stroke="#e8f1ea" stroke-width="2" />
+
+    
+    <text x="1025" y="840" font-family="sans-serif" font-size="24" fill="#303a36">raise2: finally run, then Traceback SyntaxError</text>
+  </g>
+
+  
+  <g id="rules-strip">
+    <rect x="50" y="935" width="1500" height="155" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    
+    <rect x="75" y="960" width="44" height="52" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="85" y1="975" x2="107" y2="975" stroke="#207448" stroke-width="2" />
+    <line x1="85" y1="987" x2="107" y2="987" stroke="#207448" stroke-width="2" />
+    <line x1="85" y1="999" x2="101" y2="999" stroke="#207448" stroke-width="2" />
+    <text x="140" y="975" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="140" dy="0">once an except block finishes, execution continues after the try statement, not at the line that raised;</tspan>
+      <tspan x="140" dy="34">Python does not undo earlier changes: L.append(added) stays in L and a global assigned before the error stays changed;</tspan>
+      <tspan x="140" dy="34">local variables in exited functions are lost</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="50" y="1115" width="1500" height="60" rx="8" fill="#207448" />
+    <text x="800" y="1153" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Handler routing is a matter of runtime control flow, not only of how the statements are written</text>
+  </g>
+</svg>

@@ -22,6 +22,10 @@ lab_venue: "GCP / GKE"
 
 ## Why this matters for AI infrastructure
 
+![Three questions to ask of a playbook before a change window, what it changes, whether it is safe to run twice and how to stop it, mapped to layout, idempotency and execution controls.](./img/p4-0406-three-questions.svg)
+
+*Figure 4.6.1. A good playbook answers what it changes, whether rerunning is safe, and how you stop it.*
+
 Suppose a driver update has to reach every node in your fleet on the same day. Logging in to each server by hand is slow, and it is easy to miss one. A playbook is the unit of operational change on a fleet. It can install a driver, set kernel parameters, deploy a Slurm configuration, rotate a certificate, or drain and patch a node.
 
 A well-written playbook reads like a runbook. It is safe to run twice, it shows you the diff before it changes anything, and it stops at the first sign of trouble. A badly written one is a shell script in YAML. It always reports "changed", it cannot be dry-run, and it breaks differently on every host.
@@ -40,6 +44,14 @@ This chapter assumes 4.3 to 4.5. When you finish it, you will be able to:
 - Read play recaps and exit codes, and design runs that work well in CI.
 
 ## 1. Playbook anatomy
+
+![An annotated two-play site.yml showing play keywords, an OS assertion in pre_tasks, a common role, a package task with tags, a post_tasks record and a chrony handler, with the gate and handler flush notes.](./img/p4-0406-site-yml-annotated.svg)
+
+*Figure 4.6.2. Each play sets hosts, privilege, batching and variables, then runs pre_tasks, roles, tasks and post_tasks with handlers flushing at fixed points.*
+
+![A play runs pre_tasks, then a handler flush, then roles and tasks, another flush, then post_tasks, and a final flush, so handlers run at fixed boundaries.](./img/p2-0406-play-phases.svg)
+
+*Figure 4.6.3. A play runs pre_tasks, roles and tasks, then post_tasks, and handlers run at flush points between these phases.*
 
 A playbook is the written version of a runbook. Instead of an engineer reading ten steps from a wiki page and typing each one by hand, the file lists the same steps in order, and Ansible runs them the same way every time. The Friday change that used to depend on who was on shift becomes a file that anyone on the team can read, review and repeat. Picture a runbook that lives in one person's head. When that person is on leave, the change waits. A playbook removes that wait, because the steps and their order are written down and reviewed like any other code.
 
@@ -93,16 +105,19 @@ Use separate plays when different host groups need different steps. A play can a
 
 The diagram shows the same sequence. Each flush step is where notified handlers run.
 
-```mermaid
-flowchart LR
-    Pre["1. pre_tasks<br/>(assert OS, check Slurm DRAIN)"] --> Flush1["2. Flush handlers<br/>(notified by pre_tasks)"]
-    Flush1 --> Main["3. roles -> tasks<br/>(packages, sysctl, templates)"]
-    Main --> Flush2["4. Flush handlers<br/>(Restart service once even if<br/>notified by multiple tasks)"]
-    Flush2 --> Post["5. post_tasks<br/>(nvidia-smi / uri smoke test)"]
-    Post --> Flush3["6. Flush handlers<br/>(notified by post_tasks)"]
-```
+![site.yml](./img/m4-06-1.svg)
+
+*Figure 4.6.4. site.yml, as a diagram.*
 
 ### Walkthrough from *Ansible: Up and Running* Chapter 3: `webservers-tls.yml`
+
+![An annotated uri smoke test task delegated to localhost with validate_certs false, return_content and a failed_when on missing Running on text, tagged test.](./img/p4-0406-smoke-test-task.svg)
+
+*Figure 4.6.5. The smoke test runs from the control node and fails unless the page body contains the expected text.*
+
+![Five playbook idioms from webservers-tls.yml: an executable shebang, play vars with the file module, a copy loop for TLS files, handler deduplication so four notifies cause one restart, and an HTTP smoke test.](./img/p4-0406-five-patterns.svg)
+
+*Figure 4.6.6. Four tasks notify one handler, which runs once on the first run and zero times on the second.*
 
 In *Ansible: Up and Running* chapter 3, the authors build a complete playbook, `webservers-tls.yml`. It configures NGINX with TLS and then verifies the deployment. The walkthrough covers `Examples 3-1` to `3-10`, and the authors describe seven idiomatic playbook patterns in it. Five of them are worth seeing up close.
 
@@ -135,6 +150,10 @@ The `uri` module makes the request, and `register` saves the result. `failed_whe
 Walk through what the task does at runtime. `delegate_to: localhost` sends the request from the control node, not from the server under test, so the check sees the same network path a user would use. `validate_certs: false` accepts the self-signed certificate that the earlier pattern created. `return_content: true` copies the page body into `this.content`, and the `failed_when` line then searches that text. The check is short, but it is a real test. A page that returns a success code with an error message still fails, because the expected words are missing.
 
 ### Task anatomy and common keywords
+
+![Task keywords grouped into what to run, whether to run, what it leaves behind, how the result is judged, retries and timeout, scope and environment, with the inheritance rule from play to task.](./img/p4-0406-task-knobs.svg)
+
+*Figure 4.6.7. Group the task keywords by job: run, whether, leave behind, judge, retry and scope, and name every task as a desired state.*
 
 Every task has the same shape, and the keywords below are the ones you will set most often. Think of a task as one line on a work order. It names the thing to do, the tool to use, and the rules around it, such as who may run it, when, and what counts as success. Always name a task. The name is what appears in the log and in the documentation, so a good name is the first thing a responder reads in the middle of the night.
 
@@ -172,6 +191,22 @@ Read the keywords in the example as a set of knobs on one task. `when` decides w
 Most keywords can be set at the play, block or task level, and they pass down to the levels below. Examples include `become`, `environment`, `tags`, `when`, `vars` and `ignore_errors`. Run `ansible-doc -t keyword -l` to see the full list. Name tasks as desired states, such as "Ensure X is Y", rather than as actions.
 
 ## 2. Idempotency, the heart of playbooks
+
+![Three guarded command tasks: mkdir with creates, a read-only DCGM probe with changed_when false and an MIG enable gated by when and judged by changed_when.](./img/p4-0406-three-command-tasks.svg)
+
+*Figure 4.6.8. creates guards a one-time command, changed_when false marks a probe, and when plus changed_when gate a state change.*
+
+![A timestamp rendered into a template causing a changed report and handler trigger on every run, beside the advice to pin driver versions and the twice-run test showing changed zero.](./img/p4-0406-timestamp-and-pinning.svg)
+
+*Figure 4.6.9. Timestamps and random values make files change on every run, so keep them out of templates and pin versions.*
+
+![A flow in which a module compares desired and actual state and reports ok or changed, contrasted with a toggle-style command that appends a line each run, with the rules to prefer declarative modules and guards.](./img/p4-0406-idempotent-mechanism.svg)
+
+*Figure 4.6.10. Idempotent modules compare desired and actual state, and command tasks need creates, removes or changed_when to behave the same way.*
+
+![An idempotent task reports changed=0 on the second run, while a rendered timestamp makes every run report a change.](./img/a06-idempotent-runs.svg)
+
+*Figure 4.6.11. An idempotent playbook reports changed=0 on its second run, while a timestamp in a template changes every run.*
 
 A playbook runs at 2 AM after a partial failure. Half the hosts were already changed before the run stopped, and nobody is sure which half. The question is whether running it again is safe. An idempotent task makes the answer yes. It changes what is wrong, and it leaves alone what is already right. Every other habit in this chapter exists to protect that property.
 
@@ -219,11 +254,19 @@ If a module can express the state you want, use the module. Keep `command` for t
 
 ## 3. Module families you will use daily
 
+![A table of module families for packages, files, users, services and boot, and kernel and system settings with the module names in each and how to find a module with ansible-doc.](./img/p4-0406-module-families.svg)
+
+*Figure 4.6.12. Know the families, packages, files, users, services and kernel, and find modules with ansible-doc -l.*
+
 Modules are the vocabulary of a playbook. A new engineer learns a few families first: packages, files, users, services. Knowing which family a task belongs to tells you which module to reach for, and what check mode will report for it. The families below are the ones you will meet on almost every GPU node.
 
 Think of the module set as a toolbox with labelled drawers. You do not need to memorize every drawer. You need to know where to look when a task calls for a particular tool. To find a module, run `ansible-doc -l | grep -i <topic>`, or read the examples at the end of `ansible-doc ansible.builtin.copy`. The module index for each collection works too, and it is often faster when you are not sure of a module's exact name.
 
 ### Packages and repositories
+
+![A dpkg_selections task holding nvidia-driver-550 and linux-image-generic on Debian-family hosts to stop a routine upgrade from breaking the driver and kernel match, with pinning options.](./img/p4-0406-hold-driver.svg)
+
+*Figure 4.6.13. Hold the driver and kernel packages on Debian-family hosts so a routine upgrade cannot break the match.*
 
 | Module | Notes |
 |---|---|
@@ -245,6 +288,10 @@ Picture a Tuesday morning when the package manager upgrades the kernel on half t
 ```
 
 ### Files, templates and content
+
+![Two lanes showing a copy task validated with sshd -t before replacing the file and notifying a reload only on change, and a get_url download skipped or rejected by its sha256 checksum.](./img/p4-0406-validate-and-checksum.svg)
+
+*Figure 4.6.14. validate checks a new config before it replaces the old one, and a checksum skips good downloads and rejects damaged ones.*
 
 `ansible.builtin.file` sets the state of a path to `file`, `directory`, `link`, `absent` or `touch`, along with owner, group, mode and recurse. `copy` places a static file or inline `content:`, and it accepts `backup`, `validate`, `force` and `remote_src`. `template` renders Jinja2 (see 4.4). `lineinfile` ensures one line is present. Pair it with `regexp` and `backrefs`, and be careful, because a regex can match several lines or none.
 
@@ -283,6 +330,10 @@ Users, groups and SSH keys have their own modules: `user`, `group`, `authorized_
 
 ### Services and boot
 
+![A sysctl_settings dictionary converted with dict2items and looped through one ansible.posix.sysctl task that writes five persistent settings to 90-ai.conf and only changes keys that differ.](./img/p4-0406-sysctl-loop.svg)
+
+*Figure 4.6.15. dict2items and a loop write five kernel settings to one persistent file, and only differing keys change on a rerun.*
+
 `service` and `systemd_service` manage a service's state, with `daemon_reload`, `masked`, `enabled` and `state`. `ansible.builtin.reboot` reboots a host and waits for it, using `reboot_timeout` and `test_command`. `wait_for` waits for a port, a file or a regex match, and `wait_for_connection` sits beside it.
 
 Kernel and system settings have modules too. Think of kernel parameters as the dials on the machine's control panel. Some dials only need a value for this boot, and others must survive a reboot. Use `ansible.posix.sysctl` to persist kernel parameters, `ansible.posix.mount` for mounts and `community.general.modprobe` to load kernel modules. The table below lists the rest.
@@ -320,6 +371,10 @@ All the settings go to `/etc/sysctl.d/90-ai.conf`, so they persist across reboot
 
 ### Information, control flow and debugging
 
+![A table of information, control-flow and debugging modules grouped by job, with the platform collections list and the rule to prefer built-in modules before adding a collection.](./img/p4-0406-instrument-modules.svg)
+
+*Figure 4.6.16. Instrument modules gather and steer without changing config, and each extra collection is another version to pin.*
+
 Some modules gather information, control the flow of a run, or help you debug one. They do not change the machine's configuration by themselves. Think of them as the instruments on a dashboard, not the controls. The table groups them by job.
 
 | Job | Modules |
@@ -340,6 +395,14 @@ GPU automation covers drivers, Fabric Manager, DCGM and the container toolkit. I
 Look for a built-in module first, and add a collection only when you cannot do the job with the built-in set. The reason is that every extra collection is one more version to pin and one more thing to upgrade on the control node. A built-in module ships with Ansible itself, so fewer moving parts means fewer surprises during a change window.
 
 ## 4. command, shell, script, raw: when and how
+
+![An annotated shell probe counting GPUs with nvidia-smi -L piped to wc -l, failing when the count differs from expected_gpus, with the pipe trap where a failing nvidia-smi is hidden and the pipefail fix.](./img/p4-0406-gpu-probe-pipefail.svg)
+
+*Figure 4.6.17. The probe fails on a wrong GPU count, and set -o pipefail with bash stops a failing nvidia-smi from hiding behind wc.*
+
+![A four row table of command, shell, script and raw with shell features and use, plus the rules to guard with creates, removes or when, check rc and quote variables to avoid injection.](./img/p4-0406-command-family.svg)
+
+*Figure 4.6.18. Prefer a module, use command by default, shell only for pipes with quoted variables, and always set changed_when and failed_when.*
 
 Picture a Friday afternoon. A vendor tool has no Ansible module, and you need it to run once on each of forty nodes. The quick fix is a `command` task, and the risk is that it runs again on every future run. A quick fix needs one command on forty nodes, and no module exists for it. The `command` and `shell` modules fill that gap, but on their own they cannot tell Ansible whether anything changed. This section explains when that gap is acceptable. It also shows how to close the gap with `creates`, `removes` or `changed_when`, so the recap stays honest.
 
@@ -374,6 +437,18 @@ A pipe can hide failures. Picture `nvidia-smi` failing with an error while `wc` 
 
 ## 5. Check mode and diff
 
+![A timeline where a hand-made change is either silently reverted by the next normal run or revealed by a scheduled check run that exits non-zero or reports changed above zero.](./img/p4-0406-drift-detection.svg)
+
+*Figure 4.6.19. A scheduled --check run reveals manual changes as a non-zero exit or changed above zero, before a normal run reverts them.*
+
+![Five check mode rules: most modules preview, command and shell skip unless guarded, dependent tasks mispredict, diff can leak secrets and a clean check run is a risk reducer, with the per-task check_mode override.](./img/p4-0406-check-mode-rules.svg)
+
+*Figure 4.6.20. Check mode previews declarative modules, skips unguarded commands, mispredicts dependent tasks, and is not proof of safety.*
+
+![Check mode simulates declarative modules and skips command, shell and raw tasks unless they have a guard or check_mode false.](./img/a06-check-scope.svg)
+
+*Figure 4.6.21. Check mode simulates declarative modules, but it skips command, shell and raw tasks unless they have a guard.*
+
 Before a change touches a production node, you want to know what it would do. Check mode runs the playbook without applying the changes, and diff mode shows the content differences. Together they give you a preview. The preview is only as good as the modules behind it, so this section also names the places where it falls short.
 
 Think of check mode as a dress rehearsal. The actors walk through their marks, but the curtain stays down and the audience sees nothing. Before a playbook touches a GPU fleet, you want to see what it would change. `ansible-playbook --check` (`-C`) asks the modules to report what they would change, without changing anything. `--diff` (`-D`) adds the before and after content for files and templates. Together they act as the fleet's "terraform plan". You can run both at once:
@@ -404,6 +479,10 @@ Most runs do not need to touch the whole fleet, and most playbooks contain tasks
 
 ### Targeting and iteration
 
+![A table of ansible-playbook targeting flags for limit, tags, skip-tags, start-at-task, step, list options, extra vars, syntax check and forks, with the always and never tags and the warning that tags are not a safety mechanism.](./img/p4-0406-targeting-flags.svg)
+
+*Figure 4.6.22. Tags save time on a run you understand but skip dependencies, so they are a convenience and not a safety mechanism.*
+
 ```bash
 ansible-playbook site.yml --limit 'gpu_h100:&rack_r01'        # slice of the fleet
 ansible-playbook site.yml --tags packages,monitoring          # only tagged tasks
@@ -419,6 +498,22 @@ ansible-playbook site.yml -f 50 -vv
 The `--step` flag makes you confirm each task, and the `--list-*` flags show what a run would touch. Tags are set with `tags:` on tasks, blocks, plays, roles and imports. Two special tags behave differently. `always` runs unless you pass `--skip-tags always`, and `never` runs only when you request it. Use a small, consistent tag vocabulary such as `packages`, `config`, `services`, `firewall` and `monitoring`. Tags are a convenience, not a safety mechanism, because a tagged partial run skips dependencies and can leave nodes half-configured. Picture a `--tags config` run that rewrites a Slurm config on a node whose packages were never updated. The file is correct on paper, and the node cannot read it. Use tags to save time on a run that you already understand, not to skip the steps you have not checked.
 
 ### Batching, strategies and failure semantics
+
+![A table of failure policy knobs any_errors_fatal, max_fail_percentage, ignore_errors, ignore_unreachable and force_handlers with the question each answers and the default behaviour of removing failed hosts.](./img/p4-0406-failure-policy.svg)
+
+*Figure 4.6.23. Each failure knob answers a different question, and by default a failed host leaves the play and its handlers do not run.*
+
+![Four panels for strategy linear versus free, throttle and run_once, delegate_to and async with poll for long firmware flashes, with the three kinds of timeout.](./img/p4-0406-strategy-delegate-async.svg)
+
+*Figure 4.6.24. linear waits for all, free lets hosts run ahead, delegate_to moves a task, and async with poll keeps a long job alive past SSH timeouts.*
+
+![A walk through a serial play of one canary host then 10 percent then 25 percent with the max_fail_percentage gate between batches and the meaning of each batching and failure setting.](./img/p4-0406-serial-walk.svg)
+
+*Figure 4.6.25. serial runs one canary host first and grows the batch, and max_fail_percentage decides at each boundary whether the play continues.*
+
+![Serial batches run a one-host canary, then 10 percent, then 25 percent, and a failure above the threshold aborts the play.](./img/a06-serial-gate.svg)
+
+*Figure 4.6.26. Serial batches start with one canary host, grow in steps, and stop the play when failures pass the threshold.*
 
 Batches limit the damage. Think of a batch as a small test flight. If a bad change reaches two nodes out of forty, you stop there and investigate, and the other thirty-eight are still healthy. The cost of the test flight is time, and the benefit is that a mistake stays small. Failure semantics decide what happens to the other hosts when one of them fails. Learn these rules before you rely on them, because the default behaviour is not always the one you would choose during an incident.
 
@@ -447,6 +542,14 @@ Timeouts come in three forms: `timeout:` on tasks, the `timeout` setting in `ans
 
 ### Exit codes and recap
 
+![A two-host recap where gpu002 shows failed equal to one, beside the ansible-playbook exit codes 0, 1, 2, 3, 4, 5, 99 and 250 and the CI rule to treat any non-zero exit as failure.](./img/p4-0406-recap-exit-reading.svg)
+
+*Figure 4.6.27. Every recap line matters, and the exit code compresses it into one number that CI treats as pass or fail.*
+
+![Exit codes from ansible-playbook map success, generic error, failed hosts, unreachable hosts, parse errors, bad options and interruption, and a recap line marks the host with a failure.](./img/p2-0406-exit-codes.svg)
+
+*Figure 4.6.28. Exit codes from ansible-playbook range from 0 for success to 2 for failed hosts and 3 for unreachable hosts, and the recap shows each host's counts.*
+
 Think of the recap as the end-of-shift report a supervisor reads. It lists every host and says what happened to each one. Read the recap as a scorecard. Each counter says how many tasks passed, changed, failed or were skipped on each host. The exit code is the same story in one number, which is what a CI job or a scheduler sees.
 
 `ansible-playbook` exits with 0 on success and 1 for a generic error. Exit code 2 means one or more hosts failed, and 3 means one or more hosts were unreachable. Exit code 4 means a parse error, and 5 means bad or incomplete options. Exit code 99 means the run was interrupted, and 250 means an unexpected error.
@@ -462,6 +565,14 @@ gpu002 : ok=12 changed=3 unreachable=0 failed=1 skipped=2 rescued=0 ignored=0   
 In this recap, `gpu002` reports one failed task, and that line is marked. The other host finished with no failures, even though both hosts ran the same play. A single failed counter is enough to make the whole run worth investigating, so read every line, not only the first one.
 
 ## 7. Worked example: a safe driver-parameter rollout
+
+![The canary host timeline of a driver tuning play: a Slurm DRAIN pre-check, sysctl and template tasks, a persistenced restart handler and a GPU count validation that stops the play before the 10 percent batch.](./img/p4-0406-canary-walk.svg)
+
+*Figure 4.6.29. The canary checks DRAIN first, applies the change, restarts the service only if needed, validates the GPU count, and a failure stops the rollout.*
+
+![A driver change runs a check first, then a one-host canary with a Slurm DRAIN check, sysctl and template tasks, and a GPU count validation, before growing batches and a stop rule.](./img/p2-0406-driver-rollout.svg)
+
+*Figure 4.6.30. A driver change runs a check, then a one-host canary with validation, and only then grows to larger batches, stopping if validation fails.*
 
 This worked example follows a real kind of change. A driver parameter must change across a GPU fleet. The steps show how check mode, batching and a stop rule combine, so one bad batch does not reach the rest of the fleet. Follow the order closely, because each step catches a different kind of mistake.
 
@@ -536,6 +647,10 @@ Think of the exercises as practice on a small lab cluster, where a broken change
 12. Clean up.
 
 ## 9. Common mistakes
+
+![A grouped table of playbook mistakes covering naming, module choice, unplanned upgrades, ignore_errors, non-idempotent templates, check mode assumptions, blast radius, unquoted modes and missing timeouts, each with its fix.](./img/p4-0406-mistake-groups.svg)
+
+*Figure 4.6.31. Playbook mistakes show up on the second run as noise, so name tasks, pin versions, guard commands and stage the rollout.*
 
 Playbook mistakes usually show up on the second run, not the first. The first run is usually a success, because everything is new and every task has work to do. The second run is where the hidden problems show up, as a stream of changes that should not be there. A task that reports `changed` every time, or a shell command with no guard, looks fine until someone reruns the playbook and sees the noise. Keep the second run in mind as you read this list.
 

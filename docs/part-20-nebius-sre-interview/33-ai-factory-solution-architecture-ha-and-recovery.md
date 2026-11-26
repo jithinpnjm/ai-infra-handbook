@@ -128,16 +128,9 @@ Billing follows readiness. The billing policy says an endpoint is billable when 
 
 An application needs a hosted open model, a stable region and a small operations team. A Dedicated Endpoint fits when the template, region, performance and contract fit. The application still needs a gateway of its own for end-user identity, tenant quotas, retry budgets and fallback. The gateway is the piece you own. It holds the rules the provider does not know about, such as which user may call which model.
 
-```mermaid
-flowchart LR
-  U["User or agent"] --> G["Your gateway<br/>auth, quotas, retries"]
-  G --> A["Token Factory<br/>regional API"]
-  A --> E["Dedicated endpoint"]
-  E --> G
-  G --> F["Alternate endpoint<br/>same legal region"]
-  E --> M["Endpoint metrics"]
-  G --> T["Your traces, tenant metrics"]
-```
+![Pattern A: a managed Dedicated Endpoint behind your own gateway](./img/m20-33-1.svg)
+
+*Figure 20.33.1. Pattern A: a managed Dedicated Endpoint behind your own gateway, as a diagram.*
 
 Read the diagram left to right. The user never talks to the endpoint directly, so you can change the endpoint behind the gateway without changing the application.
 

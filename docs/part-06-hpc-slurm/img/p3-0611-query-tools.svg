@@ -1,0 +1,219 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which query command for which question</title>
+  <desc>A comprehensive visual guide matching Slurm job questions to query commands, parameters, job states, and diagnostic rules.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="48" font-family="sans-serif" font-size="48" font-weight="bold" fill="#207448">Which query command for which question</text>
+  <text x="1560" y="46" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="end">Question and command pairs</text>
+
+  
+  <rect x="40" y="68" width="1520" height="88" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="60" y="122" font-family="sans-serif" font-size="26" font-weight="bold" fill="#207448">States:</text>
+
+  
+  <rect x="180" y="78" width="190" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="275" y="101" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">PENDING</text>
+
+  <rect x="385" y="78" width="190" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="480" y="101" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">RUNNING</text>
+
+  <rect x="590" y="78" width="220" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="700" y="101" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">COMPLETING</text>
+
+  <rect x="825" y="78" width="220" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="935" y="101" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">COMPLETED</text>
+
+  <rect x="1060" y="78" width="190" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1155" y="101" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">FAILED</text>
+
+  <rect x="1265" y="78" width="275" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1402" y="101" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">CANCELLED</text>
+
+  
+  <rect x="180" y="116" width="190" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="275" y="139" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">TIMEOUT</text>
+
+  <rect x="385" y="116" width="190" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="480" y="139" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">NODE_FAIL</text>
+
+  <rect x="590" y="116" width="250" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="715" y="139" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">OUT_OF_MEMORY</text>
+
+  <rect x="855" y="116" width="220" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="965" y="139" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">PREEMPTED</text>
+
+  <rect x="1090" y="116" width="195" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1187" y="139" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">REQUEUED</text>
+
+  <rect x="1300" y="116" width="240" height="32" rx="6" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="1420" y="139" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36" text-anchor="middle">SUSPENDED</text>
+
+  
+  
+  <g id="card-1">
+    <rect x="40" y="172" width="745" height="206" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 186)">
+      <circle cx="24" cy="24" r="16" stroke="#207448" stroke-width="4" fill="none"/>
+      <line x1="36" y1="36" x2="48" y2="48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="24" cy="24" r="4" fill="#207448"/>
+    </g>
+    <text x="132" y="206" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">
+      <tspan x="132" dy="0">Where is my job and</tspan>
+      <tspan x="132" dy="34">why is it waiting:</tspan>
+    </text>
+    <text x="64" y="278" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">squeue -u $USER -o %.10i %.9P</tspan>
+      <tspan x="64" dy="30">  %.20j %.8T %.10M %.6D %R</tspan>
+    </text>
+    <text x="64" y="340" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">(job id, partition, name, state, runtime,</tspan>
+      <tspan x="64" dy="28"> nodes, reason or nodes)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-2">
+    <rect x="815" y="172" width="745" height="206" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(839, 186)">
+      <circle cx="28" cy="28" r="22" stroke="#207448" stroke-width="4" fill="none"/>
+      <polyline points="28,14 28,28 40,28" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <line x1="28" y1="8" x2="28" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="915" y="224" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">When will it start:</text>
+    <text x="839" y="295" font-family="monospace" font-size="24" fill="#303a36">squeue -j JOBID --start</text>
+  </g>
+
+  
+  
+  <g id="card-3">
+    <rect x="40" y="392" width="745" height="202" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(64, 406)">
+      <path d="M 10 6 L 36 6 L 46 16 L 46 50 L 10 50 Z" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round"/>
+      <polyline points="36,6 36,16 46,16" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round"/>
+      <line x1="18" y1="26" x2="34" y2="26" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="34" x2="38" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="18" y1="42" x2="30" y2="42" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="140" y="444" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Everything about it:</text>
+    <text x="64" y="504" font-family="monospace" font-size="24" fill="#303a36">scontrol show job JOBID</text>
+    <text x="64" y="542" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">(Reason, TresPerNode, StdOut,</tspan>
+      <tspan x="64" dy="30"> WorkDir, NodeList)</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-4">
+    <rect x="815" y="392" width="745" height="202" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(839, 406)">
+      <line x1="8" y1="14" x2="48" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="20" cy="14" r="6" stroke="#207448" stroke-width="4" fill="#e8f1ea"/>
+      <line x1="8" y1="28" x2="48" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="36" cy="28" r="6" stroke="#207448" stroke-width="4" fill="#e8f1ea"/>
+      <line x1="8" y1="42" x2="48" y2="42" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="16" cy="42" r="6" stroke="#207448" stroke-width="4" fill="#e8f1ea"/>
+    </g>
+    <text x="915" y="444" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Change it:</text>
+    <text x="839" y="500" font-family="monospace" font-size="24" fill="#303a36">scontrol update job JOBID TimeLimit=+2:00:00</text>
+    <text x="839" y="538" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="839" dy="0">(extend is privileged), Dependency=afterok:123,</tspan>
+      <tspan x="839" dy="30">scontrol hold and release</tspan>
+    </text>
+  </g>
+
+  
+  
+  <g id="card-5">
+    <rect x="40" y="608" width="745" height="204" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(64, 622)">
+      <rect x="6" y="6" width="44" height="44" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+      <line x1="16" y1="38" x2="16" y2="28" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="28" y1="38" x2="28" y2="18" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="40" y1="38" x2="40" y2="14" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="140" y="660" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">What did a finished job do:</text>
+    <text x="64" y="712" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">sacct -j JOBID --format=JobID,JobName,</tspan>
+      <tspan x="64" dy="30">  Partition,State,ExitCode,Elapsed,</tspan>
+      <tspan x="64" dy="30">  TotalCPU,MaxRSS,AllocTRES%50</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-6">
+    <rect x="815" y="608" width="745" height="204" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(839, 622)">
+      <rect x="12" y="12" width="32" height="32" rx="4" stroke="#207448" stroke-width="4" fill="none"/>
+      <rect x="21" y="21" width="14" height="14" rx="2" fill="#207448"/>
+      <line x1="20" y1="6" x2="20" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="6" x2="36" y2="12" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="20" y1="44" x2="20" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="36" y1="44" x2="36" y2="50" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="6" y1="20" x2="12" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="6" y1="36" x2="12" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="44" y1="20" x2="50" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+      <line x1="44" y1="36" x2="50" y2="36" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="915" y="660" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">What is a running step using:</text>
+    <text x="839" y="730" font-family="monospace" font-size="24" fill="#303a36">sstat -j JOBID.0 --format=JobID,AveCPU,MaxRSS</text>
+  </g>
+
+  
+  
+  <g id="card-7">
+    <rect x="40" y="826" width="745" height="216" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(64, 840)">
+      <polygon points="18,6 38,6 50,18 50,38 38,50 18,50 6,38 6,18" stroke="#207448" stroke-width="4" fill="none" stroke-linejoin="round"/>
+      <line x1="20" y1="20" x2="36" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <line x1="36" y1="20" x2="20" y2="36" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="140" y="878" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Stop it:</text>
+    <text x="64" y="926" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="64" dy="0">scancel JOBID, scancel -u $USER</tspan>
+      <tspan x="64" dy="30">--state=PENDING, scancel --signal=USR1 JOBID;</tspan>
+      <tspan x="64" dy="30">scancel 12345_7 ends one array task,</tspan>
+      <tspan x="64" dy="30">scancel 12345 ends all</tspan>
+    </text>
+  </g>
+
+  
+  <g id="card-8">
+    <rect x="815" y="826" width="745" height="216" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(839, 840)">
+      <rect x="6" y="8" width="44" height="38" rx="5" stroke="#207448" stroke-width="4" fill="none"/>
+      <line x1="6" y1="18" x2="50" y2="18" stroke="#207448" stroke-width="2"/>
+      <polyline points="14,27 20,32 14,37" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+      <line x1="26" y1="37" x2="34" y2="37" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="915" y="878" font-family="sans-serif" font-size="30" font-weight="bold" fill="#207448">Peek inside a running job:</text>
+    <text x="839" y="930" font-family="monospace" font-size="24" fill="#303a36">
+      <tspan x="839" dy="0">srun --overlap --jobid=JOBID --pty bash, or</tspan>
+      <tspan x="839" dy="32">srun --overlap --jobid=JOBID</tspan>
+      <tspan x="839" dy="32">-w NODE nvidia-smi; site policy decides</tspan>
+    </text>
+  </g>
+
+  
+  <g id="takeaway-bar">
+    <rect x="40" y="1058" width="1520" height="114" rx="12" fill="#207448"/>
+    
+    <rect x="65" y="1087" width="100" height="56" rx="8" fill="#db8129"/>
+    <text x="115" y="1126" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle">Rule</text>
+    
+    <text x="190" y="1110" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">
+      <tspan x="190" dy="0">sstat for a running step, sacct once finished;</tspan>
+      <tspan x="190" dy="34" font-weight="normal" fill="#e8f1ea">sacct too early shows a job that looks unfinished</tspan>
+    </text>
+  </g>
+</svg>

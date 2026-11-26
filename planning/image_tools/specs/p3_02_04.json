@@ -1,0 +1,82 @@
+[
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p3-0204-special-ranges",
+  "title": "Spot the address: what each special IPv4 range tells you on sight",
+  "spec": "A grid of nine cards, each with the range in large monospace type and its meaning below. '0.0.0.0/8: this network; 0.0.0.0 as a listen address is all interfaces, as a route is default'. '10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16: private RFC 1918, not routable on the public Internet, overlaps are common'. '100.64.0.0/10: shared address space or CGNAT, used by ISPs and some clouds and Kubernetes designs to avoid RFC 1918 clashes'. '127.0.0.0/8: loopback, the whole /8 is the host itself; systemd-resolved stub on 127.0.0.53'. '169.254.0.0/16: link-local APIPA, self-assigned when DHCP fails; cloud metadata server 169.254.169.254' (orange card: the log clue 'this host failed to get an address'). '192.0.2.0/24, 198.51.100.0/24, 203.0.113.0/24 (and 192.0.0.0/24): documentation TEST-NET, never on real networks'. '198.18.0.0/15: benchmarking, test labs'. '224.0.0.0/4: multicast; 224.0.0.1 all hosts, 224.0.0.5 and 224.0.0.6 OSPF, 224.0.0.18 VRRP, 239/8 administratively scoped'. '240.0.0.0/4: reserved Class E; 255.255.255.255 limited broadcast'. Bottom strip 'Overlap traps: on-premises networks, VPNs, cloud VPCs and peerings, Kubernetes pod and service CIDRs, container bridge defaults (Docker uses 172.17.0.0/16, which can clash with 172.16/12), lab ranges; keep a central registry (IPAM: NetBox, phpIPAM, Infoblox)'. Bottom bar: 'Check every new range against your VPN and peering plans before you assign it'.",
+  "anchor": "## 4. Special-purpose IPv4 ranges",
+  "alt": "A grid of cards for the special IPv4 ranges 0.0.0.0/8, RFC 1918 private, 100.64/10, loopback, link-local, documentation, benchmarking, multicast and reserved, with the overlap traps.",
+  "cap": "Special IPv4 ranges have fixed meanings, such as 169.254.x.x meaning a failed DHCP, and overlaps between them cause the biggest planning problems."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p3-0204-v6-compress",
+  "title": "Writing an IPv6 address short: two rules, one worked example",
+  "spec": "Vertical steps with the same address changing. Line 1 'Full: 2001:0db8:0a0b:12f0:0000:0000:0000:8b6e' with the eight groups labelled 'hextets, 16 bits each, four hex digits'. Line 2 'Rule 1: drop leading zeros in each group: 2001:db8:a0b:12f0:0:0:0:8b6e' with the leading zeros of 0db8 and 0a0b highlighted. Line 3 'Rule 2: replace the one longest run of all-zero groups with ::  gives 2001:db8:a0b:12f0::8b6e' with the three zero groups highlighted in orange. Warning box 'Use :: only once per address; otherwise nobody could tell how many zero groups each one stood for'. Right panel 'Writing it in other places': 'prefix: 2001:db8:a0b:12f0::/64', 'in a URL wrap it in brackets: http://[2001:db8::10]:8080/ because colons would be read as the port separator', 'link-local needs an interface scope: fe80::1%eth0', 'expand with python3 -c import ipaddress as i; print(i.ip_address of 2001:db8::1 .exploded)'. Second small example 'Compress 2001:0db8:0000:0000:0000:ff00:0042:8329 gives 2001:db8::ff00:42:8329'. Bottom bar: 'Eight groups of 16 bits, two compression rules'.",
+  "anchor": "### Notation",
+  "alt": "An IPv6 address shortened in two steps, dropping leading zeros and replacing the longest zero run with a double colon used once, with URL and scope notation.",
+  "cap": "Drop leading zeros in each group, then replace one longest run of zero groups with a double colon, which may appear only once."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p3-0204-v6-delegation",
+  "title": "How an IPv6 allocation is carved up: from a provider /32 down to a /64 and a cluster plan",
+  "spec": "Left: nested delegation as a descending ladder of boxes. 'ISP or cloud gives a /32 to a provider network', then 'a site or customer gets a /48: 65,536 /64 subnets', then 'a home may get a /56: 256 /64 subnets', then 'every subnet is a /64: SLAAC and Neighbor Discovery assume a 64-bit interface ID'. Side note 'Divide on hex nibble boundaries: /52, /56, /60, /64, which keeps prefixes readable and lets them aggregate'. Exceptions in orange 'point-to-point router links: /127 (RFC 6164)', 'loopbacks: /128'. Right: a worked plan on one /48. Row 'Cluster: 2001:db8:100::/48'. Row 'Management: 2001:db8:100:1::/64'. Row '16 rail subnets: 2001:db8:100:10::/60, from ...:10::/64 through ...:1f::/64'. Row 'Per-rack /64s: 2001:db8:100:100::/56'. Footer line 'Address types by first digits: 2000::/3 global unicast (starts with 2 or 3), fc00::/7 unique local (in practice fd00::/8), fe80::/10 link-local, ff00::/8 multicast; there is no broadcast in IPv6'. Bottom bar: 'If a /64 feels wasteful, remember the point of IPv6 is to stop counting addresses'.",
+  "anchor": "### Structure and the /64 convention",
+  "alt": "A ladder from a provider /32 to a site /48 holding 65,536 /64 subnets, with a worked cluster plan of management, 16 rail subnets and per-rack /64s inside one /48.",
+  "cap": "A /48 holds 65,536 /64 subnets, and a cluster plan can carve management, rails and racks from it on nibble boundaries."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p3-0204-v4-v6-header",
+  "title": "IPv4 and IPv6 headers side by side: what moved, what went away",
+  "spec": "A two column comparison of the fields. Column 'IPv4 header, 20 bytes minimum': 'Version 4', 'IHL: header length in 32-bit words, 5 means 20 bytes', 'DSCP (6 bits) and ECN (2 bits)', 'Total Length up to 65,535', 'Identification, Flags (DF, MF), Fragment Offset: fragmentation lives in the base header; routers may fragment unless DF is set', 'TTL: drops by one per router, at 0 the router drops the packet and sends ICMP Time Exceeded', 'Protocol: 6 TCP, 17 UDP, 1 ICMP, 47 GRE, 50 ESP, 89 OSPF', 'Header checksum: recomputed at every hop because the TTL changes', 'source and destination 32-bit addresses', 'options (rare)'. Column 'IPv6 header, 40 bytes fixed': 'Version 4 bits', 'Traffic Class 8 bits = DSCP 6 + ECN 2', 'Flow Label 20 bits: helps routers keep a flow on one path when ECMP spreads traffic', 'Payload Length 16', 'Next Header 8: extension headers chained (hop-by-hop, routing, fragment, destination options, AH, ESP)', 'Hop Limit 8: plays the role of the TTL', 'source and destination 128-bit addresses'. Arrows between columns: 'TTL to Hop Limit', 'Protocol to Next Header', 'DSCP+ECN to Traffic Class'. Crossed-out items on the IPv6 side in orange: 'no header checksum (link and transport layers cover errors)', 'no fragmentation fields in the base header: only the source host may fragment, through an extension header; routers never do'. Bottom bar: 'A fixed header keeps hardware parsing simple, and extension headers keep the design flexible'.",
+  "anchor": "### IPv6 header (40 bytes, fixed)",
+  "alt": "A side by side of IPv4 and IPv6 header fields, mapping TTL to hop limit and protocol to next header, with the checksum and fragmentation fields removed in IPv6.",
+  "cap": "IPv6 keeps the TTL as hop limit and the protocol as next header, and drops the header checksum and the router fragmentation fields."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p3-0204-blackhole-fixes",
+  "title": "Fixing a PMTU black hole: four options and the ping arithmetic that finds it",
+  "spec": "Left panel 'Four ways to fix a black hole': '1 allow the required ICMP messages (IPv4 type 3 code 4 Fragmentation Needed, IPv6 type 2 Packet Too Big)', '2 clamp the TCP MSS on tunnels: iptables -t mangle -A FORWARD -p tcp --tcp-flags SYN,RST SYN -j TCPMSS --clamp-mss-to-pmtu', '3 use a consistent MTU across the path', '4 enable PLPMTUD with net.ipv4.tcp_mtu_probing'. Right panel 'Ping sizes add up to 1500': a bar for IPv4 'payload 1472 + ICMP 8 + IPv4 20 = 1500 (ping -M do -s 1472)' and a bar for IPv6 'payload 1452 + ICMP 8 + IPv6 40 = 1500 (ping -6 -M do -s 1452)'. Under them 'MSS at MTU 1500: IPv4 1500 - 20 - 20 = 1460; IPv6 1500 - 40 - 20 = 1440' (orange on 1440). Below: 'Fragmentation costs: each fragment carries an ID, an offset in 8-byte units and the MF flag; lose one fragment and you lose the whole packet; firewalls often drop fragments; some hardware paths send them to the CPU'. Bottom strip 'tracepath target, ip route get target, ss -ti dst target | grep mss pmtu: find the narrow door'. Bottom bar: 'If the largest working size is smaller than you expected, you have found a narrow door'.",
+  "anchor": "### Fragmentation and path MTU",
+  "alt": "Four fixes for a PMTU black hole, and the ping size arithmetic of 1472 plus 8 plus 20 and 1452 plus 8 plus 40 giving 1500, with the TCP MSS of 1460 for IPv4 and 1440 for IPv6.",
+  "cap": "A PMTU black hole is fixed by allowing ICMP, clamping the MSS, a consistent MTU or PLPMTUD, and ping sizes of 1472 and 1452 test a 1500 byte path."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p3-0204-address-persist",
+  "title": "Runtime versus persistent address changes, and the three checks after any change",
+  "spec": "Left: two lanes. Lane 'Runtime change (lost on reboot)': 'ip addr add 10.23.2.4/24 dev ens4', 'ip link set ens4 up', 'ip route add default via 10.23.2.1 dev ens4', 'ip addr del 10.23.2.4/24 dev ens4', 'second address with a label: ip addr add 10.23.2.5/24 dev ens4 label ens4:vip'. Lane 'Persistent (survives reboot)': a Netplan file '/etc/netplan/60-fabric.yaml' with 'addresses: [10.23.2.4/24, 2001:db8:100:1::4/64]', 'routes: to default via 10.23.2.1', 'nameservers 10.23.0.2', 'mtu: 9000'; apply with 'netplan try' then 'netplan apply'; alternatives 'NetworkManager (nmcli connection modify ... ipv4.method manual, then nmcli connection up)', 'systemd-networkd', 'distribution files'. Right panel 'Check three things after any change (each fails quietly)': '1 subnets must not overlap on the host: overlapping prefixes on two interfaces lead to ambiguous routing', '2 the mask must match the network's: a /16 on a /24 network makes the host ARP for off-link addresses', '3 only one DHCP server should answer per subnet'. Footer 'Several interfaces may coexist: the kernel picks by longest prefix match, then by metric'. Bottom bar: 'Runtime changes apply now but are lost on reboot'.",
+  "anchor": "## 8. Configuring addresses on Linux",
+  "alt": "Runtime ip commands lost on reboot beside a persistent Netplan or nmcli configuration, and the three checks of overlap, mask match and a single DHCP server.",
+  "cap": "Runtime ip changes vanish on reboot while Netplan or nmcli changes persist, and after either one check overlap, mask and DHCP."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p3-0204-cluster-plan",
+  "title": "A 1,024-GPU cluster address plan: one range per purpose",
+  "spec": "Top: the sizing sentence as boxes '128 nodes x 8 GPUs = 1,024 GPUs' and 'each node: 8 back-end NICs (one per GPU), 2 front-end NICs, 1 BMC'. Main: a table drawn as rows of range, purpose and why. 'Out-of-band (BMC, IPMI, Redfish, switch management): 10.10.0.0/20, 4,094 addresses'. 'In-band management and front end (SSH, Slurm, Kubernetes node IPs): 10.20.0.0/20'. 'Storage (parallel FS, NFS): 10.30.0.0/20'. 'Back-end compute fabric, rail r from 0 to 7: 10.100.r.0/21 or 10.(100+r).0.0/22, one subnet per rail so each rail is its own L3 domain or VLAN' (orange row). 'Kubernetes pod CIDR: 10.64.0.0/14 (262,144 IPs) with /24 per node, 254 pods per node'. 'Kubernetes service CIDR: 10.96.0.0/16, 65,534 services, cannot overlap anything routed'. 'Loopbacks: 10.255.0.0/24, one /32 per router, leaf and spine'. 'Point-to-point leaf-spine links: 10.250.0.0/16, each link a /31 or unnumbered BGP'. Right strip 'Plan rules: hierarchical, aligned, summarisable; no overlap with anything you may connect to; room to grow four times; documented in IPAM; one purpose per range'. Footer 'Consistent numbering: 10.100.<rail>.<node> tells you the rail and node, and the NIC, without a database lookup; when an alert names an address you know which machine and cable to check'. Bottom bar: 'Renumbering a live cluster is painful, so settle the plan before the first cable goes in'.",
+  "anchor": "### A worked cluster plan (illustrative)",
+  "alt": "A table of address ranges for a 1,024 GPU cluster covering out-of-band, front end, storage, eight rail subnets, Kubernetes pod and service ranges, loopbacks and point-to-point links.",
+  "cap": "Each address range in a 1,024 GPU plan serves one purpose, with one subnet per rail and a numbering scheme that names the rail and node."
+ },
+ {
+  "part": "part-02-networking",
+  "ch": "04",
+  "name": "p3-0204-pod-cidr",
+  "title": "Sizing the Kubernetes pod range: nodes times the per-node block, not nodes alone",
+  "spec": "A worked calculation top to bottom. Step 1 'Pods per node: kubelet default maxPods=110 needs a 256-address block, a /24 (a /25 is enough for fewer pods)'. Step 2 '500 nodes x 256 = 128,000 addresses'. Step 3 'Smallest block that holds it: a /15 has 131,072 addresses' (orange). Step 4 'For 1,024 nodes the lab gives a /14'. Formula strip 'max_nodes x (pods_per_node rounded up to the per-node CIDR size)'. Right panel 'GKE VPC-native rules': 'pod and service ranges come from secondary ranges on the subnet, nodes use the primary range', 'default limit 110 pods per node maps to a /24 pod range per node', 'pod ranges cannot be shrunk later', 'check supported ranges including non-RFC 1918 space and 100.64/10', 'overlapping ranges block VPC peering and VPN or Interconnect routing', 'several clusters each need their own pod and service ranges; IPv6 or dual-stack relieves pressure'. Footer 'VPC networks are global and subnets regional; peering requires non-overlapping ranges'. Bottom bar: 'The pod range is the one people get wrong'.",
+  "anchor": "## 9. Address planning for AI clusters and clouds",
+  "alt": "A worked calculation of 500 nodes times 256 addresses per node giving 128,000 and a /15, with the GKE secondary range rules and the 1,024 node /14 result.",
+  "cap": "500 nodes at a /24 each need 128,000 addresses, so the pod range must be a /15, and it cannot be shrunk later."
+ }
+]

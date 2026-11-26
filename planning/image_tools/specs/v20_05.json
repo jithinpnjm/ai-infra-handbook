@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "x05-load-counts-d-state",
+  "title": "Load average of 30 with idle CPUs: what the number is counting",
+  "spec": "Left: a tall vertical stacked bar labelled load average 30, with three segments from top to bottom: a green segment labelled running on a CPU, a light green segment labelled runnable and waiting for a CPU, and a grey-hatched segment labelled state D, uninterruptible, waiting on disk. The stacked bar is taller than a short horizontal line marked CPUs, labelled 16 CPUs in the example. Right of the bar: a panel labelled CPU, with a gauge reading 40 percent busy, drawn as a mostly empty gauge, and a caption: the CPUs are not the full part of the picture. Under the panel, a small disk cylinder icon labelled slow disk with arrow from the grey D segment to the disk icon, showing the stuck tasks wait on the disk. Numbered steps 1 to 3 in green circles along the bottom: 1 say load counts demand, not only CPU, 2 check vmstat 1 for r and b, 3 check the trend in uptime. Monospace for uptime, vmstat 1, state D. Orange outline on the state D segment as the non-obvious part. Title: Load average counts state D tasks, so high load can come from disk waits. Green takeaway bar: A load of 30 with idle CPUs points at the storage path, not the CPU.",
+  "anchor": "### 1. Load average, utilisation and saturation",
+  "alt": "A load average of 30 can be made of tasks stuck in state D waiting on disk, so the CPUs may sit idle.",
+  "cap": "Linux counts tasks waiting on disk in the load average, so a high load can come from storage while the CPUs are idle."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "x05-psi-load-vs-pressure",
+  "title": "Load keeps climbing, pressure stops at 100",
+  "spec": "Two aligned lanes drawn as a simple chart with four columns for 1 busy thread, 2 busy threads, 3 busy threads and 4 busy threads, on a 2-CPU host. Top lane titled Load average with bars of heights 1.0, 2.0, 3.0 and 4.0, the bars keep growing and an arrow labelled keeps climbing runs along the top. Bottom lane titled PSI cpu some, with bars of heights 0.0, 0.0, 50.0 and 100.0, with a dashed horizontal ceiling line at 100 labelled ceiling, and an arrow labelled stops at ceiling. Use a green fill for load bars and a light green fill for PSI bars, with the 100 ceiling line in orange. Under the columns, a short row of small icons: two CPU boxes drawn as chips, each column showing that many busy threads inside the two CPU boxes. Monospace for /proc/pressure/cpu and the values. Numbered steps along the bottom: 1 read /proc/pressure/* first, 2 compare the 10 second value with the 300 second value. Title: Load counts threads, pressure counts the time somebody waited. Green takeaway bar: Load is how much work piled up, pressure is how much of the time something waited.",
+  "anchor": "### 2. The run queue and pressure stall information",
+  "alt": "On two CPUs, load average keeps rising as busy threads increase, while CPU pressure stops at 100 once threads queue.",
+  "cap": "Load average grows with the number of busy threads, but CPU pressure only measures the share of time something waited, so it stops at 100."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "x05-reclaim-order",
+  "title": "How Linux frees memory: four drawers, each costlier than the last",
+  "spec": "Four drawers stacked as a staircase from left to right, numbered 1 to 4 in green circles, each drawer slightly taller and darker than the one before to show rising cost. Drawer 1 labelled free list, sub-label empty memory, opened first, green check. Drawer 2 labelled page cache, sub-label clean file pages dropped, data can be read again from disk. Drawer 3 labelled swap, sub-label application pages written out, slow. Drawer 4 labelled OOM killer, sub-label last resort, orange outline. Arrows between drawers point rightward and are orthogonal. Below the staircase, a row of two small icons with monospace labels: MemAvailable from /proc/meminfo, with the words memory available without swapping, and a grey crossed-out MemFree card labelled do not alert on this. Monospace for vm.swappiness, MemAvailable, MemFree, /proc/meminfo. A setting label beside drawers 2 and 3: vm.swappiness, 0 to 100, default 60, tilts the choice between swap and cache. Title: Free memory is the first drawer, not the whole cupboard. Green takeaway bar: Alert on MemAvailable and memory pressure, never on MemFree.",
+  "anchor": "### 6. Page cache, anonymous memory and swap",
+  "alt": "Linux reclaims memory in order: the free list, then page cache, then swap, and the OOM killer last.",
+  "cap": "The kernel frees memory from the cheapest source first, and the OOM killer is only the last resort."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "x05-oom-log-four-steps",
+  "title": "Reading an OOM log in four steps",
+  "spec": "A vertical stack of four numbered steps with green number circles (r=24), each step a rounded card with an outline icon at left, a monospace line from the kernel log in the middle, and a sans explanation on the right. Step 1 card, lens icon, monospace oom-kill:constraint=CONSTRAINT_MEMCG, explanation 'Scope: a cgroup limit, not the node. CONSTRAINT_NONE with global_oom would mean the node.' Step 2 card, folder icon, monospace oom_memcg=PATH, explanation 'Which cgroup. The path maps to a pod through its container.' Step 3 card, memory chip icon, monospace anon-rss in the Memory cgroup out of memory line, explanation 'Compare the victim anonymous resident memory with the limit.' Step 4 card, list icon, monospace Tasks state table, explanation 'Who else was large. Look for other big candidates in the table.' Right margin: a small terminal icon with monospace dmesg -T, grep for invoked oom-killer. Under the stack, a verdict strip: CONSTRAINT_MEMCG plus anon-rss near the limit means the container really used its allowance, then the question is leak or mis-sized. Orange outline on step 1 as the first decision. Monospace for CONSTRAINT_MEMCG, CONSTRAINT_NONE, oom_memcg, anon-rss, dmesg -T. Green takeaway bar: Read the constraint line first, because it separates a node problem from a limit problem.",
+  "anchor": "### 7. The OOM killer and how to read its log",
+  "alt": "Four reading steps for an OOM kill log: scope from the constraint, the cgroup, the victim memory, and the other tasks.",
+  "cap": "An OOM kill log is read by checking the constraint, the cgroup it names, the victim's memory and the other large tasks."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "05",
+  "name": "x05-iostat-row-order",
+  "title": "Read one iostat row in a fixed order, and %util comes last",
+  "spec": "A single wide iostat-style row across the top, in monospace, with column names above and values below: tps, kB/s, rqm/s, await, aqu-sz, areq-sz, %util. Four numbered green circles (r=24) placed under the columns in reading order: step 1 under await, step 2 under aqu-sz, step 3 under areq-sz, step 4 under %util. Each step has a short card below with a sans question and answer: 1 await, how long a request took from submission to completion, the wait the application feels. 2 aqu-sz, is a large queue forming with a high await. 3 areq-sz, 8 kB or less suggests random I/O. 4 %util, percent of time busy, one piece of evidence, not the verdict. Use an orange outline on the step 4 card with the label not the verdict. Two example values in small monospace under the row: 0.44 for await and 100.00 for %util with a note busy but fast. Green takeaway bar: Look at await and queue size before you look at %util. Monospace for iostat, await, aqu-sz, areq-sz, %util, tps.",
+  "anchor": "### 9. Disk latency versus throughput",
+  "alt": "Reading one iostat row in a fixed order: await, queue size, request size, then utilisation as one piece of evidence.",
+  "cap": "Utilisation is read last, after await, queue size and request size, because busy time alone does not show that anyone waited."
+ }
+]

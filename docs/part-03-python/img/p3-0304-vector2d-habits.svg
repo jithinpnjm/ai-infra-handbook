@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Five habits of a well-built domain object, shown on Vector2d</title>
+  <desc>Visual breakdown of five habits for implementing robust domain objects in Python using Vector2d as an example.</desc>
+
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="65" font-size="48" font-weight="bold" fill="#303a36" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Five habits of a well-built domain object, shown on Vector2d</text>
+
+  
+  <g>
+    <rect x="40" y="98" width="180" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="130" y="128" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Habit</text>
+
+    <rect x="230" y="98" width="410" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="435" y="128" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Code</text>
+
+    <rect x="660" y="98" width="900" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="1110" y="128" font-size="28" font-weight="bold" fill="#207448" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">What it gives you</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="152" width="600" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 179)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 44 26 A 20 20 0 1 1 26 6"/>
+      <polyline points="26 0 26 12 38 12"/>
+      <circle cx="26" cy="26" r="5" fill="#207448"/>
+    </g>
+    <text x="134" y="198" font-size="24" font-weight="bold" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">
+      <tspan x="134" dy="0">1 __iter__ returns</tspan>
+      <tspan x="134" dy="32">(i for i in (self.x, self.y))</tspan>
+    </text>
+
+    <rect x="660" y="152" width="900" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="690" y="214" font-size="24" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">x, y = v1 and tuple(self) work automatically</text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="274" width="600" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 301)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="2" y="4" width="48" height="42" rx="6"/>
+      <line x1="2" y1="16" x2="50" y2="16"/>
+      <polyline points="10 26 18 32 10 38"/>
+      <line x1="22" y1="38" x2="34" y2="38"/>
+    </g>
+    <text x="134" y="309" font-size="24" font-weight="bold" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">
+      <tspan x="134" dy="0">2 __repr__ uses</tspan>
+      <tspan x="134" dy="30">&quot;{}({!r}, {!r})&quot;.format(</tspan>
+      <tspan x="134" dy="30">type(self).__name__, *self)</tspan>
+    </text>
+
+    <rect x="660" y="274" width="900" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="690" y="323" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="690" dy="0">eval(repr(v1)) == v1 holds, and subclasses</tspan>
+      <tspan x="690" dy="32">inherit the right class name</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="396" width="600" height="162" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 449)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <ellipse cx="26" cy="12" rx="22" ry="8"/>
+      <path d="M 4 12 V 40 C 4 45 48 45 48 40 V 12"/>
+      <path d="M 4 26 C 4 31 48 31 48 26"/>
+    </g>
+    <text x="134" y="471" font-size="24" font-weight="bold" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">
+      <tspan x="134" dy="0">3 __bytes__ plus classmethod</tspan>
+      <tspan x="134" dy="34">frombytes(cls, octets)</tspan>
+    </text>
+
+    <rect x="660" y="396" width="900" height="162" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="690" y="432" font-size="24" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">
+      <tspan x="690" dy="0">bytes([ord(self.typecode)]) +</tspan>
+      <tspan x="690" dy="28">bytes(array(self.typecode, self));</tspan>
+      <tspan x="690" dy="28">frombytes reads typecode = chr(octets[0]);</tspan>
+      <tspan x="690" dy="28">memv = memoryview(octets[1:]).cast(typecode);</tspan>
+      <tspan x="690" dy="28">return cls(*memv)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="570" width="600" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 597)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="26" cy="26" r="22"/>
+      <line x1="26" y1="4" x2="26" y2="48"/>
+      <line x1="4" y1="26" x2="48" y2="26"/>
+      <circle cx="26" cy="26" r="8"/>
+    </g>
+    <text x="134" y="622" font-size="24" font-weight="bold" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">
+      <tspan x="134" dy="0">4 custom __format__(</tspan>
+      <tspan x="134" dy="32">self, fmt_spec)</tspan>
+    </text>
+
+    <rect x="660" y="570" width="900" height="110" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="690" y="618" font-size="24" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">
+      <tspan x="690" dy="0">a p suffix for polar coordinates:</tspan>
+      <tspan x="690" dy="32">format(Vector2d(1, 1), 0.5fp) == &lt;1.41421, 0.78540&gt;</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="692" width="600" height="162" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(62, 745)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="20" width="40" height="30" rx="6"/>
+      <path d="M 14 20 V 12 C 14 6 38 6 38 12 V 20"/>
+      <circle cx="26" cy="33" r="3" fill="#207448"/>
+      <line x1="26" y1="36" x2="26" y2="42"/>
+    </g>
+    <text x="134" y="781" font-size="26" font-weight="bold" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="134" dy="0">5 hashable and immutable</tspan>
+    </text>
+
+    <rect x="660" y="692" width="900" height="162" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="690" y="730" font-size="24" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">
+      <tspan x="690" dy="0">read-only @property getters backed by self.__x</tspan>
+      <tspan x="690" dy="30">and self.__y; __hash__ returns hash((self.x, self.y));</tspan>
+      <tspan x="690" dy="30">__match_args__ = (x, y) allows case Vector2d(0, 0):;</tspan>
+      <tspan x="690" dy="30">__slots__ = (__x, __y)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="868" width="740" height="232" rx="10" fill="#fffaf5" stroke="#db8129" stroke-width="3"/>
+    <text x="68" y="912" font-size="24" fill="#303a36" font-family="'SF Mono', Menlo, Consolas, monospace">
+      <tspan x="68" dy="0">typecode = d (an 8-byte IEEE 754 float) is a</tspan>
+      <tspan x="68" dy="35">class attribute read through self.typecode;</tspan>
+      <tspan x="68" dy="35">change one instance with v1.typecode = f,</tspan>
+      <tspan x="68" dy="35">or subclass: class ShortVector2d(Vector2d):</tspan>
+      <tspan x="68" dy="35">typecode = f (a 4-byte float)</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="868" width="740" height="232" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <text x="848" y="912" font-size="24" fill="#303a36" font-family="system-ui, -apple-system, sans-serif">
+      <tspan x="848" dy="0">@property keeps callers writing node.state</tspan>
+      <tspan x="848" dy="35">while validation happens behind the name;</tspan>
+      <tspan x="848" dy="35">start with plain attributes and add a property</tspan>
+      <tspan x="848" dy="35">later; also functools.cached_property for</tspan>
+      <tspan x="848" dy="35">lazy computation; keep __init__ cheap, no IO</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="1118" width="1520" height="60" rx="10" fill="#207448"/>
+    <text x="800" y="1157" font-size="28" font-weight="bold" fill="#ffffff" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif">Copy these five habits into your own classes</text>
+  </g>
+</svg>

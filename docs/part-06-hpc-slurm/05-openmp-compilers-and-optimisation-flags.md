@@ -42,19 +42,9 @@ Picture a team of cooks in one kitchen. One cook starts the work alone. When the
 
 This design has a useful side effect. An OpenMP directive is a compiler pragma (a line the compiler reads as an instruction) or a special comment. A compiler that does not know OpenMP simply skips it. So the exact same source file compiles cleanly as a standard sequential program when the OpenMP flag is omitted. You can check a parallel program against its serial version without maintaining two code bases.
 
-```mermaid
-flowchart LR
-  M0[Master thread: serial setup] --> F((Fork: #pragma omp parallel for))
-  F --> T0[Thread 0: chunk 0, local NUMA 0]
-  F --> T1[Thread 1: chunk 1, local NUMA 0]
-  F --> T2[Thread 2: chunk 2, local NUMA 1]
-  F --> T3[Thread 3: chunk 3, local NUMA 1]
-  T0 --> J((Implicit barrier & reduction join))
-  T1 --> J
-  T2 --> J
-  T3 --> J
-  J --> M1[Master thread: serial continuation]
-```
+![OpenMP in one page: the fork-join shared-memory model](./img/m6-05-1.svg)
+
+*Figure 6.5.1. OpenMP in one page: the fork-join shared-memory model, as a diagram.*
 
 ```c
 #pragma omp parallel for schedule(static)

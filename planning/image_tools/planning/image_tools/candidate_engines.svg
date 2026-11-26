@@ -1,0 +1,150 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Which engine is reading the braces in front of you</title>
+  <desc>A comparison table of templating engines across DevOps tools showing their syntax, differences, and habits for clean templates.</desc>
+
+  <!-- Canvas Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title: 48px bold -->
+  <text x="800" y="55" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Which engine is reading the braces in front of you</text>
+
+  <!-- ==================== TABLE ==================== -->
+  <!-- Table Header -->
+  <rect x="40" y="85" width="360" height="45" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="220" y="117" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Tool</text>
+  <rect x="400" y="85" width="400" height="45" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="600" y="117" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Language</text>
+  <rect x="800" y="85" width="760" height="45" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <text x="1180" y="117" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">Notes</text>
+
+  <!-- Row 1 -->
+  <rect x="40" y="130" width="360" height="58" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="220" y="154" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="220" dy="0">Ansible, Salt,</tspan>
+    <tspan x="220" dy="26">Cookiecutter, dbt</tspan>
+  </text>
+  <rect x="400" y="130" width="400" height="58" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="600" y="167" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Jinja2</text>
+  <rect x="800" y="130" width="760" height="58" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1180" y="167" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">{{ }}, {% %}, filters</text>
+
+  <!-- Row 2 -->
+  <rect x="40" y="188" width="360" height="120" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="220" y="255" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Helm</text>
+  <rect x="400" y="188" width="400" height="120" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="600" y="242" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">Go text/template</tspan>
+    <tspan x="600" dy="28">plus Sprig functions</tspan>
+  </text>
+  <rect x="800" y="188" width="760" height="120" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1180" y="217" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1180" dy="0">{{ .Values.image.tag | quote }},</tspan>
+    <tspan x="1180" dy="26">{{- if .Values.gpu }},</tspan>
+    <tspan x="1180" dy="26">{{ include "chart.fullname" . }},</tspan>
+    <tspan x="1180" dy="26">toYaml | nindent 4; trim with {{- and -}}</tspan>
+  </text>
+
+  <!-- Row 3 -->
+  <rect x="40" y="308" width="360" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="220" y="347" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Terraform or OpenTofu</text>
+  <rect x="400" y="308" width="400" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="600" y="333" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">HCL expressions and</tspan>
+    <tspan x="600" dy="26">templatefile()</tspan>
+  </text>
+  <rect x="800" y="308" width="760" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1180" y="333" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">
+    <tspan x="1180" dy="0">"${var.name}", for expressions,</tspan>
+    <tspan x="1180" dy="26">%{ if } directives</tspan>
+  </text>
+
+  <!-- Row 4 -->
+  <rect x="40" y="370" width="360" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="220" y="409" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Kustomize</text>
+  <rect x="400" y="370" width="400" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="600" y="409" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">no templating</text>
+  <rect x="800" y="370" width="760" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1180" y="395" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1180" dy="0">overlays and patches</tspan>
+    <tspan x="1180" dy="26">(JSON6902, strategic merge)</tspan>
+  </text>
+
+  <!-- Row 5 -->
+  <rect x="40" y="432" width="360" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="220" y="465" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">GitHub Actions</text>
+  <rect x="400" y="432" width="400" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="600" y="465" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">${{ expression }}</text>
+  <rect x="800" y="432" width="760" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1180" y="465" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">different syntax and contexts</text>
+
+  <!-- Row 6 -->
+  <rect x="40" y="484" width="360" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="220" y="517" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Docker Compose</text>
+  <rect x="400" y="484" width="400" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="600" y="517" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">${VAR:-default}</text>
+  <rect x="800" y="484" width="760" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1180" y="517" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">shell-like</text>
+
+  <!-- Row 7 -->
+  <rect x="40" y="536" width="360" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="220" y="575" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">cloud-init</text>
+  <rect x="400" y="536" width="400" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="600" y="561" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="600" dy="0">Jinja2 optional header</tspan>
+    <tspan x="600" dy="26">## template: jinja</tspan>
+  </text>
+  <rect x="800" y="536" width="760" height="62" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1180" y="575" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">{{ v1.local_hostname }}</text>
+
+  <!-- Row 8 -->
+  <rect x="40" y="598" width="360" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="220" y="631" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">Packer</text>
+  <rect x="400" y="598" width="400" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="600" y="631" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">HCL2</text>
+  <rect x="800" y="598" width="760" height="52" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text x="1180" y="631" text-anchor="middle" font-family="monospace" font-size="24" fill="#303a36">templatefile, locals</text>
+
+  <!-- Row 9 (orange highlight for Prometheus and Alertmanager) -->
+  <rect x="40" y="650" width="360" height="94" rx="0" fill="#fffaf5" stroke="#db8129" stroke-width="2.5" />
+  <text x="220" y="690" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">
+    <tspan x="220" dy="0">Prometheus and</tspan>
+    <tspan x="220" dy="28">Alertmanager</tspan>
+  </text>
+  <rect x="400" y="650" width="400" height="94" fill="#fffaf5" stroke="#db8129" stroke-width="2.5" />
+  <text x="600" y="704" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">Go templates</text>
+  <rect x="800" y="650" width="760" height="94" fill="#fffaf5" stroke="#db8129" stroke-width="2.5" />
+  <text x="1180" y="678" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1180" dy="0" font-family="monospace">{{ $labels.instance }};</tspan>
+    <tspan x="1180" dy="26">conflicts with Jinja in Ansible-templated</tspan>
+    <tspan x="1180" dy="26">rule files: use raw</tspan>
+  </text>
+
+  <!-- Habits strip -->
+  <rect x="40" y="774" width="1520" height="200" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  <!-- Outline icon: Shield/checklist icon (56x56) -->
+  <g transform="translate(68, 846)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 28 4 L 50 12 L 50 28 C 50 42 28 52 28 52 C 28 52 6 42 6 28 L 6 12 Z" />
+    <polyline points="18,28 25,35 38,20" />
+  </g>
+  <text x="146" y="806" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="146" dy="0">separate data from templates; keep templates light on logic;</tspan>
+    <tspan x="146" dy="28">prefer declarative overlays such as Kustomize or typed config;</tspan>
+    <tspan x="146" dy="28">avoid templating a templating language, such as Helm values</tspan>
+    <tspan x="146" dy="28">rendered by Jinja then rendered again by Terraform;</tspan>
+    <tspan x="146" dy="28">keep logic in code or modules, not 200-line Jinja files;</tspan>
+    <tspan x="146" dy="28">validate generated YAML with yamllint, kubeconform or kubectl --dry-run=server</tspan>
+  </text>
+
+  <!-- Reviewer test -->
+  <rect x="40" y="994" width="1520" height="76" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Outline icon: Eye / inspection icon (56x56) -->
+  <g transform="translate(68, 1004)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M 6 28 C 14 14 42 14 50 28 C 42 42 14 42 6 28 Z" />
+    <circle cx="28" cy="28" r="8" />
+  </g>
+  <text x="146" y="1041" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">could a reviewer understand the change without running anything?</text>
+
+  <!-- Bottom Takeaway Bar -->
+  <rect x="40" y="1090" width="1520" height="60" rx="10" fill="#207448" />
+  <text x="800" y="1128" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">The same double brace can mean three different things</text>
+</svg>

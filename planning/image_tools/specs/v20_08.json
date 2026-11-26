@@ -1,0 +1,32 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "x08-compress-trace",
+  "title": "Tracing compress on aaa: one variable state per step",
+  "spec": "A large table drawn as a grid with five columns and rows for each step, headed by the column names: step, ch read, run_char, run_len, parts. Rows in order: start, where run_char is a and run_len is 1 and parts is empty; step 1, ch is a, equal, so run_len becomes 2 (drawn as the first repeat); step 2, ch is a, equal, run_len becomes 3; after the loop, the last run is appended: parts becomes a3. A final result row: packed is a3, length 2 is less than length 3 of aaa, so return a3, drawn with a green check. A second, smaller strip below the table for aa: packed a2 has length 2, not less than 2, so return aa, with an orange callout labelled this is why the comparison is less than and not less than or equal. Each row has a monospace value in each cell. Numbered green circles (r=24) beside the rows in time order: 1 start, 2 first repeat, 3 second repeat, 4 close the last run, 5 compare lengths. Monospace for run_char, run_len, parts, aaa, a3, aa, a2. Title: Trace the example by hand, one line of state per step. Green takeaway bar: The line after the loop closes the last run, and the final comparison keeps the result from growing.",
+  "anchor": "### 6. Writing code that runs first time in a plain editor",
+  "alt": "A hand trace of compress on aaa and aa, showing the run character, run length and the final length comparison at each step.",
+  "cap": "Tracing the example by hand shows each variable at each step, including the final comparison that decides between the packed form and the original."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "x08-grid-aliasing",
+  "title": "[[0] * 2] * 2 gives two rows that are one list",
+  "spec": "Two panels side by side, each showing a grid of two rows and two columns drawn as boxes with values. Left panel titled Multiplying a list copies references: an outer list of two cells labelled row 0 and row 1, both arrows pointing to the same single inner list box drawn in orange, labelled one shared list object. Monospace label above: [[0] * 2] * 2. Below the shared list show the values 1 and 0 with the note: setting one cell changes both rows. Result strip: [[1, 0], [1, 0]] with an orange cross mark titled wrong. Right panel titled Comprehension makes separate rows: two outer cells pointing to two different inner list boxes, each in green, labelled separate list object. Monospace label above: [[0] * 2 for _ in range(2)]. Below, the values for the first row show 1 and 0, and the second row shows 0 and 0. Result strip: [[1, 0], [0, 0]] with a green check mark titled right. A thin dividing line between the panels. Monospace for [[0] * 2] * 2, [[0] * 2 for _ in range(2)], and the result lists. Green takeaway bar: Build the grid with a comprehension so each row is its own list.",
+  "anchor": "### 11. Pitfalls that cost points",
+  "alt": "Multiplying a list of lists repeats one shared row, while a comprehension builds a separate row for each position.",
+  "cap": "Repeating a list with the multiply operator copies references to the same row, so a comprehension is needed for independent rows."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "08",
+  "name": "x08-merge-intervals-sorted",
+  "title": "Merge intervals: after sorting by start, only the last merged interval can overlap",
+  "spec": "Three stacked horizontal number-line strips, each showing bars for intervals on a shared number axis from 0 to 10. Strip 1 titled unsorted input with bars [2,3] and [1,2] drawn in reversed vertical order, with a grey question mark and the words any pair might overlap. Strip 2 titled sorted by start with the same bars now ordered [1,2] then [2,3] and a green arrow labelled sort by start. Strip 3 titled merged result with a single combined bar from 1 to 3 in green, matching the example [(1,2),(2,3)] giving [(1,3)]. Between strips 2 and 3 a sweep arrow with a marker labelled last merged end, showing the current merged interval grows when the next start is less than or equal to its end. A touching-ends callout at the point 2, where [1,2] and [2,3] meet, labelled less than or equal merges touching intervals, orange outline. Monospace for [1,2], [2,3], start <= merged[-1][1], and the result [(1,3)]. Numbered steps 1 to 3 in green circles at the bottom: 1 sort by start, 2 keep the last merged interval, 3 extend it or append. Green takeaway bar: After sorting, an interval can only overlap the last merged one.",
+  "anchor": "### Scenario 3: you are stuck on merge intervals",
+  "alt": "Merge intervals: sort by start, then extend the last merged interval whenever the next start is within its end.",
+  "cap": "Once intervals are sorted by start, each new interval can only overlap the most recent merged interval, so one sweep is enough."
+ }
+]

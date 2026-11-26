@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-exit-code-decoder",
+  "title": "Reading a container exit code",
+  "spec": "Decoder table. Column Exit code, who ended the process, first checks. '137: something forced it to stop (SIGKILL), most often the memory limit or a kill from the runtime: check OOMKilled, node pressure, memory limit against /dev/shm and page cache'. '139: segfault: image or driver mismatch or a bad CUDA library'. '143: something asked it to stop politely (SIGTERM), most often the kubelet during shutdown or a probe failure'. '126 and 127: entrypoint is missing or not executable'. '1 and 2: the app stopped itself because of an error it chose to report: config, missing secret or env var, dependency'. Steps strip: '1 kubectl logs --previous --timestamps; 2 read State and Last State in kubectl describe pod for exit code and reason; 3 reproduce with kubectl debug --copy-to overriding command to sleep infinity (keeps volumes, environment and labels); 4 check mounts, env, DNS, GPU visibility with nvidia-smi, permissions'. Reminder 'CrashLoopBackOff is a symptom, the cause is in the logs or the exit code'. Text at least 24px.",
+  "anchor": "### 4.3 `CrashLoopBackOff`",
+  "alt": "A decoder table maps container exit codes 137, 139, 143, 126, 127, 1 and 2 to who ended the process and what to check.",
+  "cap": "The exit code tells you who ended the process, so read it before changing anything."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-debug-modes",
+  "title": "Three ways to run kubectl debug",
+  "spec": "Three-column comparison with the chapter commands. 'Ephemeral container: kubectl debug -it POD --image=nicolaka/netshoot --target=CONTAINER --share-processes; adds a toolbox container that shares namespaces with the running pod; use when the image has no shell or tools (distroless)'. 'Copy of the pod: kubectl debug POD -it --copy-to=POD-debug --container=CONTAINER --image=ubuntu -- bash; copy with changed image or command; use for a crashing app, override command to sleep infinity'. 'Node debug pod: kubectl debug node/NODE -it --image=ubuntu -- chroot /host; host filesystem appears at /host; use for node-level evidence'. Footer: 'plan a team-approved toolbox image such as netshoot, busybox, or your own with curl, dig, nc, tcpdump, iperf3, strace, perf, nvidia-smi; restrict who may use it with RBAC and policy; clean up privileged debug pods and ephemeral containers afterwards'. Also 'kubectl attach -it POD -c C attaches to PID 1 stdin and stdout when no shell is installed'. Text at least 24px.",
+  "anchor": "## 2. kubectl toolkit",
+  "alt": "Three kubectl debug modes compared by command and when to use each.",
+  "cap": "Pick ephemeral, copy or node mode depending on whether the pod is healthy, crashing or the node is suspect."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-connectivity-bisect",
+  "title": "Bisecting pod connectivity one layer at a time",
+  "spec": "Vertical test ladder from the client pod, each rung removing one layer. Rung 1 'by DNS name: dig +short svc.ns.svc.cluster.local @COREDNS-IP'. Rung 2 'by Service ClusterIP: tests kube-proxy rules'. Rung 3 'by a specific backend pod IP: bypasses kube-proxy'. Rung 4 'same test from the node in the host namespace and from inside the pod namespace (nsenter -n)'. Rung 5 'capture on the client veth, the node uplink and the server veth to see where packets disappear'. Rung 6 'policy counters: iptables -L -nv, cilium monitor --type drop, hubble observe --verdict DROPPED; conntrack -E for live events; MTU with ping -M do -s 1422; ARP and neighbour state with ip neigh'. Two deductions: 'name fails but ClusterIP works: fault is in DNS, not the Service'; 'ClusterIP fails but backend pod IP works: kube-proxy or the Service routing rules'. Tip 'the last test that fails points at the layer that broke'. Timing command: curl -sv with -w dns=time_namelookup connect=time_connect ttfb=time_starttransfer total=time_total. Text at least 24px.",
+  "anchor": "### 3.3 Networking tools",
+  "alt": "A ladder of connectivity tests from DNS name to ClusterIP to backend pod IP to packet captures with two deductions.",
+  "cap": "Each test removes one layer, so the last rung that fails names the broken layer."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-tool-picker",
+  "title": "Which node tool answers which question",
+  "spec": "Two-column picker. 'What does the runtime think exists: crictl pods, crictl ps -a, crictl inspectp, crictl inspect (pid, exit code, mounts, resources), crictl logs, crictl stats; ctr -n k8s.io tasks ls'. 'What do the kubelet and runtime say: journalctl -u kubelet -u containerd --since -30 min'. 'Which namespaces does this process live in: lsns -p PID, ls -l /proc/PID/ns, /proc/PID/cgroup; get PID with crictl inspect template info.pid'. 'What is the pod network doing: nsenter -t PID -n ip addr, ip route, ss -tnap, tcpdump'. 'What does the pod filesystem look like: nsenter -t PID -m ls, cat /proc/mounts, df -h'. 'Kernel network counters: ip -s link, nstat, conntrack -S, ethtool -S, iptables-save, nft list ruleset, ipvsadm -Ln'. 'Storage: findmnt, lsblk, df -hT, df -i, iostat -x, fio'. 'CPU, memory, I/O of the process: top -H, pidstat, perf, strace, py-spy, gdb'. 'GPU and fabric: nvidia-smi, dcgmi, journalctl -k grep Xid, lspci -vv, ibstat, all_reduce_perf'. Text at least 24px.",
+  "anchor": "## 3. Node-level toolkit",
+  "alt": "A picker table pairs nine node-level questions with the commands that answer them.",
+  "cap": "Start from the question you need answered and reach for the matching tool."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-storage-ladder",
+  "title": "Storage fault ladder on the node",
+  "spec": "Ladder, broad to narrow. Rung 1 'Is the volume mounted where the pod expects: findmnt -T /var/lib/kubelet/pods/UID/volumes/kubernetes.io~csi/PV/mount; findmnt -R /var/lib/kubelet; kubectl get volumeattachment; kubectl get pv,pvc -A | grep -v Bound'. Rung 2 'Is the filesystem full, by bytes or by inodes: df -hT, df -i, lsblk -f, blkid; read-only after kernel errors: dmesg -T | grep ext4 xfs nfs lustre blk_update_request I/O error nvme'. Rung 3 'Is I/O slow: iostat -x 1 5, pidstat -d, cat /proc/pressure/io, iotop, nfsstat -c, mountstats; measure with fio randread bs 4k iodepth 32 direct'. Rung 4 'Is a process stuck: ps -eo pid,stat,wchan:30,cmd | awk state D (uninterruptible sleep); cat /proc/PID/stack'. Notes: 'a missing, read-only or hung mount blocks the app before it reads a byte', 'a filesystem can turn read-only after the kernel detects errors and the app then reports odd write failures', 'NFS and Lustre hangs usually show as D-state'. Text at least 24px.",
+  "anchor": "### 3.4 Storage and filesystem",
+  "alt": "A four-rung ladder from mount to filesystem to I/O latency to stuck processes with the command for each.",
+  "cap": "Check the mount first, then space, then latency, then stuck processes."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-process-tools",
+  "title": "Process tools by the question they answer",
+  "spec": "Question and tool pairs, broad to narrow. 'Which threads are busy: top -H, pidstat -u -r -w 1, mpstat -P ALL 1, vmstat 1'. 'Which code burns time: perf top -p PID, perf record -F 99 -g -p PID -- sleep 30, bpftrace tracepoint on sys_enter_openat'. 'Which system calls does it make: strace -f -tt -T -p PID -e trace=network,file (careful with overhead)'. 'Python stacks without a debugger: py-spy dump --pid PID, py-spy top'. 'Native stacks of a hung C, C++ or CUDA process: gdb -p PID -batch -ex thread apply all bt'. 'Why is it sleeping: cat /proc/PID/stack, /proc/PID/wchan, /proc/PID/sched'. 'What are its cgroup limits and events: memory.events, cpu.stat, memory.max, memory.current, pids.current under /sys/fs/cgroup'. 'Kernel messages: dmesg -T | tail -100; journalctl -k grep oom xid nvrm mlx error'. Rule 'start broad and get narrower'. Text at least 24px.",
+  "anchor": "### 3.5 Processes and performance",
+  "alt": "A list pairs process-level questions with the tool that answers each, from threads to cgroup limits.",
+  "cap": "Start broad with thread views and narrow to stacks and cgroup limits."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-gpu-symptom-table",
+  "title": "GPU workload symptoms and first checks",
+  "spec": "Two-column table symptom then checks. 'Pod cannot see GPU: nvidia.com/gpu requested, device plugin or ClusterPolicy healthy, runtime configured, crictl inspect devices and mounts, NVIDIA_VISIBLE_DEVICES, driver loaded on host, RuntimeClass'. 'CUDA error no kernel image or driver version insufficient: host driver versus image CUDA; compute capability build flags'. 'Job slow, GPUs idle: dataloader or storage bottleneck, CPU throttling, /dev/shm, NCCL fallback to TCP, straggler rank; DCGM tensor activity; py-spy on workers'. 'NCCL hang at init: rendezvous or DNS (headless Service, publishNotReadyAddresses), firewall or NetworkPolicy, NCCL_SOCKET_IFNAME, MTU, IB device missing in container; NCCL_DEBUG=INFO per rank; run all_reduce_perf across the same nodes'. 'NCCL timeout mid-training: failing link or GPU (Xid, PCIe or IB errors), straggler, preemption of one rank, switch congestion; correlate time with node events'. 'One node slow: GPU throttling (clocks_throttle_reasons), ECC page retirements, PCIe link downtrained (LnkSta), NIC speed, noisy neighbour, power cap'. 'Xid 79 GPU has fallen off the bus: hardware, power or PCIe; drain node, reset or RMA'. 'MIG mismatch: nvidia-smi mig -lgi, MIG manager logs, labels versus resource names'. 'Training hung, all ranks idle: deadlock in collective ordering or data loader; py-spy dump per rank; torch.distributed timeouts; NCCL flight recorder'. Note 'a straggler is one slow rank; the slowest rank sets the pace for all'. Text at least 24px.",
+  "anchor": "### 4.10 GPU workloads",
+  "alt": "A table maps nine GPU workload symptoms to the checks that narrow each one.",
+  "cap": "Match the symptom row and work through its checks before changing the job."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-notready-checklist",
+  "title": "Node NotReady: confirm the cause before restarting",
+  "spec": "Two halves. Left 'Control plane view: the heartbeat stopped; kubectl describe node for reason and message'. Right 'On the node, in order: systemctl status kubelet containerd; journalctl -u kubelet -n 200; disk use under /var/lib/kubelet and /var/lib/containerd; free -h; dmesg -T | tail; kubelet client certificate expiry with openssl x509 -in /var/lib/kubelet/pki/kubelet client cert'. Bottom row of usual causes as chips: 'kubelet certificate expiry', 'runtime hang', 'full disk', 'OOM of system daemons', 'NIC down', 'time skew', 'firewall change'. Warning 'a restart can make the node look healthy for a while and the cause returns on the next busy hour; confirm each suspect first'. Lab drills: 'fill the disk, kill containerd, expire a kubelet client certificate, block API access with iptables, skew the clock'. Text at least 24px.",
+  "anchor": "### 4.5 Node `NotReady`",
+  "alt": "A checklist for a NotReady node with the usual causes shown as chips and a warning against restarting first.",
+  "cap": "Confirm each suspect on the node before you restart, or the cause returns."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-service-failure-chain",
+  "title": "Service failures: follow the datapath outward",
+  "spec": "Left-to-right chain, each hop with its check. 'DNS (5.11): dig from inside the pod'; 'endpoints: does the Service have ready backends'; 'rules: kube-proxy iptables or IPVS (ipvsadm -Ln)'; 'datapath: CNI, node, underlay'; 'backend app'. Branches off the chain: 'pod egress to the Internet may depend on SNAT or a NAT gateway'; 'cross-node pods point to CNI, the underlay or MTU'; 'policy drops show in Hubble or Calico logs'; 'asymmetric routing with multiple NICs ties to reverse path filtering; check sysctl net.ipv4.conf.all.rp_filter (a reply must be able to leave by the interface the request arrived on)'. Rule 'work from the first hop outward because a fault near the pod can hide faults further away'. Related: 'testing only through Service names adds DNS, NAT and policy to the test; a direct pod IP test localises faster'. Text at least 24px.",
+  "anchor": "### 4.4 Network and Service failures",
+  "alt": "A chain from DNS to endpoints to rules to datapath to backend with side branches for SNAT, MTU, policy and reverse path filtering.",
+  "cap": "Check hops from the pod outward and keep a direct pod IP test to localise faults."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "25",
+  "name": "p3-0525-evidence-loop",
+  "title": "During and after an incident: evidence, updates, review",
+  "spec": "Three-stage loop. 'Collect as you go: incident log with UTC timeline, observations, commands run, changes made, who did what; exact error strings; kubectl get -o yaml snapshots, describe output, pod logs including --previous, node journals, dmesg, pcaps, metric screenshots with time ranges, nvidia-bug-report, Hubble flows, audit log excerpts; for support kubectl cluster-info dump, sosreport, vendor bundles'. 'Communicate: status updates at fixed intervals, state the impact clearly, give an ETA only when you have a basis for it'. 'Blameless review: timeline, contributing factors (not one single root cause), detection gaps, how well the mitigation worked, action items with owners for automation, alerts, guardrails, docs and tests; turn recurring manual diagnosis into automated checks'. Side: 'game day: planned drill with a fault the team has not seen; measure time-to-detect and time-to-recover; tools tc netem, Chaos Mesh NetworkChaos, kill pods and nodes, fill disks, stop kubelet, break CNI'. Text at least 24px.",
+  "anchor": "## 6. Evidence, communication and learning",
+  "alt": "A three-stage loop of evidence collection, status updates and blameless review with game days feeding it.",
+  "cap": "Snapshots taken during the incident are worth far more than memory afterwards."
+ }
+]

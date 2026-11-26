@@ -1,0 +1,98 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Reading a node affinity block: AND, OR, hard, soft</title>
+  <desc>Visual infographic explaining Kubernetes node affinity syntax: nodeSelector, requiredDuringScheduling, matchExpressions, and preferredDuringScheduling with boolean logic rules.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  
+  <text x="40" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Reading a node affinity block: AND, OR, hard, soft</text>
+
+  
+  <rect x="40" y="105" width="1520" height="745" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3" />
+  
+  
+  <rect x="70" y="128" width="30" height="38" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="77" y1="138" x2="93" y2="138" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="77" y1="146" x2="93" y2="146" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="77" y1="154" x2="87" y2="154" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="115" y="157" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Annotated YAML</text>
+
+  
+  <rect x="70" y="180" width="1460" height="105" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <rect x="95" y="205" width="56" height="56" rx="8" fill="none" stroke="#207448" stroke-width="4" />
+  <rect x="111" y="221" width="24" height="24" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+  <line x1="107" y1="197" x2="107" y2="205" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="123" y1="197" x2="123" y2="205" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="139" y1="197" x2="139" y2="205" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="107" y1="261" x2="107" y2="269" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="123" y1="261" x2="123" y2="269" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <line x1="139" y1="261" x2="139" y2="269" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  
+  <text x="180" y="226" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+    <tspan x="180" dy="0">nodeSelector nvidia.com/gpu.product: NVIDIA-H100-80GB-HBM3:</tspan>
+    <tspan x="180" dy="34">simple equality, all pairs AND</tspan>
+  </text>
+
+  
+  <rect x="70" y="305" width="1460" height="340" rx="8" fill="#e8f1ea" stroke="#db8129" stroke-width="3.5" />
+  
+  <path d="M123 325 L145 336 V356 C145 371 123 381 123 381 C123 381 101 371 101 356 V336 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+  
+  <text x="180" y="344" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="180" dy="0">requiredDuringSchedulingIgnoredDuringExecution:</tspan>
+    <tspan x="180" dy="32">hard rule, acts as a filter</tspan>
+  </text>
+
+  
+  <rect x="100" y="395" width="1400" height="60" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <path d="M120 415 L135 425 L120 435" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <line x1="135" y1="425" x2="148" y2="425" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+  <text x="175" y="434" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" font-weight="bold" fill="#303a36">nodeSelectorTerms: terms are OR'd</text>
+
+  
+  <rect x="100" y="470" width="1400" height="155" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <rect x="120" y="495" width="22" height="22" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M124 506 L129 511 L138 500" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+  <text x="175" y="512" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+    <tspan x="175" dy="0">matchExpressions inside one term are AND'd:</tspan>
+    <tspan x="175" dy="34">key topology.kubernetes.io/zone In [us-central1-a, us-central1-b] AND</tspan>
+    <tspan x="175" dy="34">key node.kubernetes.io/instance-type NotIn [a3-edgegpu-8g]</tspan>
+  </text>
+
+  
+  <rect x="70" y="665" width="1460" height="160" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+  
+  <path d="M123 685 L128 702 H146 L131 713 L137 730 L123 719 L109 730 L115 713 L100 702 H118 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round" />
+  
+  <text x="180" y="718" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="24" fill="#303a36">
+    <tspan x="180" dy="0">preferredDuringSchedulingIgnoredDuringExecution: soft rule, acts as a score;</tspan>
+    <tspan x="180" dy="38">weight 80 for example.com/nvlink-domain In [domain-3]</tspan>
+  </text>
+
+  
+  <rect x="40" y="875" width="1520" height="110" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+  
+  <circle cx="95" cy="930" r="24" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="95" cy="930" r="12" fill="none" stroke="#207448" stroke-width="3" />
+  <path d="M88 930 L93 935 L104 923" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <text x="160" y="924" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+    <tspan x="160" dy="0">node must be an H100, in one of the two zones, and not the edge type;</tspan>
+    <tspan x="160" dy="34">among those, domain-3 nodes score higher</tspan>
+  </text>
+
+  
+  <rect x="40" y="1010" width="1520" height="150" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <rect x="75" y="1055" width="44" height="60" rx="4" fill="none" stroke="#207448" stroke-width="4" />
+  <circle cx="110" cy="1085" r="3.5" fill="#207448" />
+  <line x1="71" y1="1115" x2="123" y2="1115" stroke="#207448" stroke-width="4" stroke-linecap="round" />
+  
+  <text x="160" y="1055" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="160" dy="0">operators In, NotIn, Exists, DoesNotExist, Gt, Lt;</tspan>
+    <tspan x="160" dy="34">IgnoredDuringExecution means a running pod is not evicted when node labels change</tspan>
+    <tspan x="160" dy="34">(a rule applied at the door only)</tspan>
+  </text>
+</svg>

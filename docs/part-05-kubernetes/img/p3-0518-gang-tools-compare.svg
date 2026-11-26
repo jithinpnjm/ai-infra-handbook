@@ -1,0 +1,143 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Kueue, Volcano and coscheduling compared</title>
+  <desc>Comparison table contrasting Kueue, Volcano, Coscheduling plugin, and JobSet batch scheduling architectures in Kubernetes.</desc>
+
+  
+  <rect width="1600" height="1100" fill="#f5f8f5"/>
+
+  
+  <text x="40" y="82" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Kueue, Volcano and coscheduling compared</text>
+  
+  
+  <rect x="1330" y="48" width="230" height="42" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1445" y="77" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Comparison table</text>
+
+  
+  <g>
+    <rect x="40" y="128" width="740" height="464" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3"/>
+    
+    
+    <g transform="translate(68, 152)">
+      <rect x="2" y="8" width="34" height="10" rx="3" fill="none" stroke="#db8129" stroke-width="4"/>
+      <rect x="2" y="24" width="46" height="10" rx="3" fill="none" stroke="#db8129" stroke-width="4"/>
+      <rect x="2" y="40" width="26" height="10" rx="3" fill="none" stroke="#db8129" stroke-width="4"/>
+      <path d="M42 10 L48 16 L54 6" fill="none" stroke="#db8129" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    
+    
+    <text x="142" y="190" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Kueue (SIG Scheduling)</text>
+    <line x1="68" y1="226" x2="752" y2="226" stroke="#c4d7cb" stroke-width="1.5"/>
+
+    
+    <text x="68" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="68" dy="0">complements the default scheduler;</tspan>
+      <tspan x="68" dy="33">admits suspended Jobs against quota;</tspan>
+      <tspan x="68" dy="33">objects ResourceFlavor, ClusterQueue,</tspan>
+      <tspan x="68" dy="33">LocalQueue, Cohort, Workload,</tspan>
+      <tspan x="68" dy="33">WorkloadPriorityClass, AdmissionCheck;</tspan>
+      <tspan x="68" dy="33">job types Job, JobSet, MPIJob, PyTorchJob,</tspan>
+      <tspan x="68" dy="33">TFJob, RayJob, RayCluster and more;</tspan>
+      <tspan x="68" dy="33">topology-aware scheduling places pods</tspan>
+      <tspan x="68" dy="33">at a block or rack</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="128" width="740" height="464" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(848, 152)">
+      <rect x="4" y="6" width="48" height="46" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M14 44 L22 22 L28 32 L34 18 L42 44 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+      <line x1="16" y1="2" x2="16" y2="6" stroke="#207448" stroke-width="3"/>
+      <line x1="28" y1="2" x2="28" y2="6" stroke="#207448" stroke-width="3"/>
+      <line x1="40" y1="2" x2="40" y2="6" stroke="#207448" stroke-width="3"/>
+    </g>
+
+    
+    <text x="922" y="190" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#303a36">Volcano (CNCF)</text>
+    <line x1="848" y1="226" x2="1532" y2="226" stroke="#c4d7cb" stroke-width="1.5"/>
+
+    
+    <text x="848" y="260" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="848" dy="0">runs its own scheduler binary and CRDs</tspan>
+      <tspan x="848" dy="36">Queue, PodGroup with minMember and</tspan>
+      <tspan x="848" dy="36">minResources, Job (vcjob);</tspan>
+      <tspan x="848" dy="36">pods set schedulerName volcano;</tspan>
+      <tspan x="848" dy="36">replaces kube-scheduler for batch pods,</tspan>
+      <tspan x="848" dy="36">richer batch policy but more intrusive</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="614" width="740" height="312" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(68, 638)">
+      <rect x="4" y="6" width="20" height="20" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="32" y="6" width="20" height="20" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M4 36 L52 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M4 30 L4 42 M52 30 L52 42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M22 46 L28 52 L34 46" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="142" y="660" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Coscheduling plugin</text>
+    <text x="142" y="696" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">(scheduler-plugins)</text>
+    <line x1="68" y1="722" x2="752" y2="722" stroke="#c4d7cb" stroke-width="1.5"/>
+
+    
+    <text x="68" y="760" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="68" dy="0">PodGroup CRD plus a Permit plugin holding</tspan>
+      <tspan x="68" dy="36">pods until minMember can be placed;</tspan>
+      <tspan x="68" dy="36">runs in the same scheduler</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="820" y="614" width="740" height="312" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(848, 638)">
+      <rect x="18" y="4" width="20" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="4" y="34" width="20" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+      <rect x="32" y="34" width="20" height="16" rx="3" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M28 20 L28 28 M14 28 L42 28 M14 28 L14 34 M42 28 L42 34" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    
+    <text x="922" y="678" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">JobSet (SIG Apps/Batch)</text>
+    <line x1="848" y1="722" x2="1532" y2="722" stroke="#c4d7cb" stroke-width="1.5"/>
+
+    
+    <text x="848" y="760" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="848" dy="0">groups of Jobs, startup order, success and</tspan>
+      <tspan x="848" dy="36">failure policies, DNS via headless Service;</tspan>
+      <tspan x="848" dy="36">integrates with Kueue</tspan>
+    </text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="948" width="1520" height="114" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g transform="translate(68, 976)">
+      <rect x="4" y="4" width="48" height="46" rx="5" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="4" y1="19" x2="52" y2="19" stroke="#207448" stroke-width="3"/>
+      <line x1="4" y1="35" x2="52" y2="35" stroke="#207448" stroke-width="3"/>
+      <circle cx="12" cy="11" r="2.5" fill="#207448"/>
+      <circle cx="12" cy="27" r="2.5" fill="#207448"/>
+      <circle cx="12" cy="43" r="2.5" fill="#207448"/>
+    </g>
+
+    
+    <text x="144" y="993" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="144" dy="0">Kubeflow Training Operator, MPI Operator v2 and KubeRay use PodGroup or Kueue integration;</tspan>
+      <tspan x="144" dy="36">Slurm on Kubernetes via Slinky, SUNK or Soperator</tspan>
+    </text>
+  </g>
+</svg>

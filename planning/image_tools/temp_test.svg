@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1040" width="1600" height="1040">
+  <rect width="1600" height="1040" fill="#f5f8f5" />
+  <rect x="1080" y="135" width="480" height="125" rx="14" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <text x="1320" y="174" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="1320" dy="0">Figures from the 2009 slide: </tspan>
+    <tspan x="1320" dy="29">use the order of magnitude </tspan>
+    <tspan x="1320" dy="29">and say the year.</tspan>
+  </text>
+</svg>

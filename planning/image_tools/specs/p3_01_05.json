@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "05",
+  "name": "p3-0105-config-first-match",
+  "title": "ssh_config: the first matching Host block wins for each setting",
+  "spec": "Left column: a stack of three config blocks in order, each a labelled card. Card 1 'Host gpu01' with 'HostName 10.20.0.11' and 'User alice'. Card 2 'Host gpu* login*' with 'User clusterdefault' and 'ProxyJump bastion'. Card 3 'Host *' with 'ServerAliveInterval 30' and 'User fallback'. Right: two result panels. Panel 'ssh gpu01 matches cards 1, 2, 3' with a table: HostName 10.20.0.11 (from card 1), User alice (card 1 wins over cards 2 and 3), ProxyJump bastion (card 2), ServerAliveInterval 30 (card 3). Panel 'ssh gpu02 matches cards 2, 3' with: HostName gpu02 (no card sets it), User clusterdefault (card 2), ProxyJump bastion (card 2), ServerAliveInterval 30 (card 3). Arrows from each value to the card that supplied it, colour-coded by card, never crossing text. Orange outline on the User alice row. Bottom bar: 'Put specific hosts above wildcards; ssh -G hostname prints the effective result'.",
+  "anchor": "### The config file: `~/.ssh/config`",
+  "alt": "Three ssh config blocks and the effective settings for ssh gpu01 and ssh gpu02, showing the first matching block wins for each setting.",
+  "cap": "For each setting the first matching block sets the value, so gpu01 gets User alice while gpu02 gets User clusterdefault."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "05",
+  "name": "p3-0105-forward-compare",
+  "title": "SSH forwards compared: which side listens and where traffic goes",
+  "spec": "Three horizontal lanes, each with two machine boxes 'Your machine' (left) and 'Server' (right) joined by a thick line labelled 'SSH connection, port 22'. Lane 1 '-L local forward': command 'ssh -L 6006:localhost:6006 gpu01'; a listening socket marker on Your machine 'listens on 6006'; arrow of traffic going left to right through the SSH line to 'localhost:6006 on gpu01'; note 'open http://localhost:6006 to reach TensorBoard'. Lane 2 '-R remote forward': command 'ssh -R 9000:localhost:8000 server'; listening marker on Server 'listens on 9000'; traffic arrow right to left to 'localhost:8000 on your machine'. Lane 3 '-D dynamic forward': command 'ssh -D 1080 bastion'; listening marker on Your machine 'SOCKS proxy on 1080'; traffic goes through bastion to any destination. A header row asks the two questions 'Which side listens?' and 'Where does the traffic go?'. Footer note: '-N -f: no remote command, go to background'. Orange on the listening marker of lane 1 only.",
+  "anchor": "### Port forwarding (tunnels)",
+  "alt": "Three lanes comparing SSH local, remote and dynamic port forwarding by which machine listens and where the traffic is delivered.",
+  "cap": "Dash L listens on your machine, dash R listens on the server, and dash D runs a SOCKS proxy on your machine."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "05",
+  "name": "p3-0105-rsync-slash",
+  "title": "The rsync trailing slash: contents versus the directory itself",
+  "spec": "Source box: directory 'data' containing 'a.pt' and 'b.pt'. Destination existing directory '/scratch/data' on gpu01. Three result cards. Card A 'rsync -a data/ gpu01:/scratch/data' result tree: '/scratch/data/a.pt' and '/scratch/data/b.pt' (contents copied into the destination). Card B 'rsync -a data gpu01:/scratch/data' result tree: '/scratch/data/data/a.pt' and '/scratch/data/data/b.pt' (the directory itself, nested copy, shown in orange as the common mistake). Card C 'scp -r data gpu01:/scratch/data' result tree: '/scratch/data/data/a.pt' and '/scratch/data/data/b.pt', with the note 'also copies every byte again, even when nothing changed'. Under the cards a safety strip with three numbered steps: 1 'rsync -avhn --delete data/ gpu01:/scratch/data/ (dry run)', 2 'read the list', 3 'run again without -n'. Warning note: '--delete makes the destination match the source; an empty source deletes the destination contents'.",
+  "anchor": "### `rsync` properly",
+  "alt": "Three result trees showing that rsync with a trailing slash copies contents while without it nests the directory, and that scp dash r also nests, plus a dry run safety routine.",
+  "cap": "A trailing slash on the source copies its contents, no slash copies the directory itself, so always dry-run with dash n first."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "05",
+  "name": "p3-0105-publickey-ladder",
+  "title": "Permission denied (publickey): five checks in order",
+  "spec": "Vertical ladder of five numbered boxes, each with a command or file and what it proves, ending in a 'Fixed' box. Top symptom box: 'Permission denied (publickey)'. 1 'Username correct? user@host' ; 2 'ssh -vvv user@host: which key files were offered? did IdentitiesOnly block the key?' ; 3 'Is the public key line in ~/.ssh/authorized_keys on the server?' ; 4 'StrictModes: ls -ld ~ ~/.ssh ~/.ssh/authorized_keys; ~/.ssh must be 700, authorized_keys 600, home not group or world writable' ; 5 'Server log: /var/log/auth.log (Debian, Ubuntu) or /var/log/secure (Red Hat family); SELinux: restorecon -R ~/.ssh'. Side panel 'Also check': 'sshd -T | grep -i -E \"authorizedkeys|pubkey|password|permitroot\"' and 'cloud OS Login may overwrite authorized_keys'. Each box has a small icon (person, key, file, lock, log). Orange on step 4 (most common cause). Bottom bar: 'Fix the real cause; do not hide it by turning passwords on'.",
+  "anchor": "### 1. `Permission denied (publickey)`",
+  "alt": "A five step ladder for debugging a publickey denied error: username, verbose output, authorized_keys, file modes, and server logs with SELinux.",
+  "cap": "Check the username, the verbose negotiation, the authorized_keys line, the file modes and the server log, in that order."
+ }
+]

@@ -1,0 +1,224 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>The ARP cache: states, timers, gratuitous ARP and the table size limit</title>
+  <desc>Visual infographic explaining the 28-byte ARP packet format, Linux neighbour cache states, timers and tunables, Gratuitous ARP behavior, and kernel table limits.</desc>
+
+  
+  <rect width="1600" height="1200" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="58" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">The ARP cache: states, timers,</tspan>
+    <tspan x="800" dy="56">gratuitous ARP and the table size limit</tspan>
+  </text>
+
+  
+  <g id="left-column">
+    <rect x="40" y="145" width="440" height="945" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="60" y="165" width="400" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(75, 197)">
+      <rect x="0" y="0" width="56" height="52" rx="8" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="18" x2="56" y2="18" stroke="#207448" stroke-width="3"/>
+      <line x1="12" y1="34" x2="44" y2="34" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    </g>
+    <text x="148" y="208" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="148" dy="0">sits after the</tspan>
+      <tspan x="148" dy="30">Ethernet header,</tspan>
+      <tspan x="148" dy="30" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">EtherType 0x0806</tspan>
+    </text>
+
+    
+    <rect x="60" y="303" width="400" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="260" y="332" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="260" dy="0">hardware type</tspan>
+      <tspan x="260" dy="28" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">(Ethernet = 1)</tspan>
+    </text>
+
+    
+    <rect x="60" y="385" width="400" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="260" y="414" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="260" dy="0">protocol type</tspan>
+      <tspan x="260" dy="28" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">(IPv4 = 0x0800)</tspan>
+    </text>
+
+    
+    <rect x="60" y="467" width="194" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="157" y="504" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">HLEN 6</text>
+
+    <rect x="266" y="467" width="194" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="363" y="504" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#207448">PLEN 4</text>
+
+    
+    <rect x="60" y="537" width="400" height="70" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="260" y="566" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="260" dy="0">opcode</tspan>
+      <tspan x="260" dy="28" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">(1 request, 2 reply)</tspan>
+    </text>
+
+    
+    <rect x="60" y="619" width="400" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="260" y="656" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">sender MAC</text>
+
+    
+    <rect x="60" y="689" width="400" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="260" y="726" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">sender IP</text>
+
+    
+    <rect x="60" y="759" width="400" height="185" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="260" y="796" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="260" dy="0" font-weight="bold">target MAC</tspan>
+      <tspan x="260" dy="34" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">(00:00:.. in a request,</tspan>
+      <tspan x="260" dy="34">because the requester</tspan>
+      <tspan x="260" dy="34">does not know it yet)</tspan>
+    </text>
+
+    
+    <rect x="60" y="956" width="400" height="58" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="260" y="993" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">target IP</text>
+  </g>
+
+  
+  <g id="middle-column">
+    <rect x="510" y="145" width="520" height="945" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="535" y="165" width="470" height="84" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(548, 179)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="28" y1="18" x2="28" y2="30" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <circle cx="28" cy="38" r="3" fill="#207448"/>
+    </g>
+    <text x="618" y="200" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="618" dy="0" font-size="30" font-weight="bold" fill="#207448">INCOMPLETE:</tspan>
+      <tspan x="618" dy="32" font-size="24">a request has gone out</tspan>
+    </text>
+
+    
+    <rect x="535" y="261" width="470" height="108" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(548, 287)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <polyline points="28,14 28,28 39,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="618" y="295" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="618" dy="0" font-size="30" font-weight="bold" fill="#207448">REACHABLE:</tspan>
+      <tspan x="618" dy="32" font-size="24">confirmed recently,</tspan>
+      <tspan x="618" dy="30" font-size="24">about 30 s</tspan>
+    </text>
+
+    
+    <rect x="535" y="381" width="470" height="108" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(548, 407)">
+      <rect x="8" y="6" width="40" height="44" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="8" y1="28" x2="48" y2="28" stroke="#207448" stroke-width="3" stroke-dasharray="4,4"/>
+    </g>
+    <text x="618" y="415" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="618" dy="0" font-size="30" font-weight="bold" fill="#207448">STALE:</tspan>
+      <tspan x="618" dy="32" font-size="24">still usable, must be</tspan>
+      <tspan x="618" dy="30" font-size="24">revalidated when used</tspan>
+    </text>
+
+    
+    <rect x="535" y="501" width="470" height="108" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(548, 527)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M16,28 L24,20 L32,36 L40,28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+    <text x="618" y="535" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="618" dy="0" font-size="30" font-weight="bold" fill="#207448">DELAY and PROBE:</tspan>
+      <tspan x="618" dy="32" font-size="24">the unicast probes</tspan>
+      <tspan x="618" dy="30" font-size="24">that follow</tspan>
+    </text>
+
+    
+    <rect x="535" y="621" width="470" height="88" rx="10" fill="#fdf6ee" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(548, 637)">
+      <circle cx="28" cy="28" r="24" fill="none" stroke="#db8129" stroke-width="4"/>
+      <line x1="18" y1="18" x2="38" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+      <line x1="38" y1="18" x2="18" y2="38" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="618" y="657" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="618" dy="0" font-size="30" font-weight="bold" fill="#db8129">FAILED:</tspan>
+      <tspan x="618" dy="32" font-size="24">resolution did not succeed</tspan>
+    </text>
+
+    
+    <rect x="535" y="721" width="470" height="88" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(548, 737)">
+      <path d="M28,8 L48,16 L48,30 C48,42 28,50 28,50 C28,50 8,42 8,30 L8,16 Z" fill="none" stroke="#207448" stroke-width="4"/>
+    </g>
+    <text x="618" y="757" font-family="system-ui, -apple-system, sans-serif" fill="#303a36">
+      <tspan x="618" dy="0" font-size="28" font-weight="bold" fill="#207448">PERMANENT and NOARP</tspan>
+      <tspan x="618" dy="32" font-size="24">complete the list</tspan>
+    </text>
+
+    
+    <rect x="535" y="825" width="470" height="235" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <g transform="translate(742, 843)">
+      <circle cx="28" cy="28" r="14" fill="none" stroke="#207448" stroke-width="4"/>
+      <path d="M28,6 L28,14 M28,42 L28,50 M6,28 L14,28 M42,28 L50,28 M12,12 L18,18 M38,38 L44,44 M12,44 L18,38 M38,18 L44,12" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="770" y="928" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">
+      <tspan x="770" dy="0" font-weight="bold" fill="#207448">base_reachable_time_ms and</tspan>
+      <tspan x="770" dy="34" font-weight="bold" fill="#207448">gc_stale_time under</tspan>
+      <tspan x="770" dy="34">/proc/sys/net/</tspan>
+      <tspan x="770" dy="34">ipv4/neigh/&lt;if&gt;/</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-column">
+    <rect x="1060" y="145" width="500" height="945" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <rect x="1080" y="165" width="460" height="465" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1102, 185)">
+      <circle cx="28" cy="28" r="8" fill="#207448"/>
+      <path d="M14,14 A20,20 0 0,0 14,42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M42,14 A20,20 0 0,1 42,42" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M4,4 A34,34 0 0,0 4,52" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+      <path d="M52,4 A34,34 0 0,1 52,52" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    </g>
+    <text x="1175" y="222" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Gratuitous ARP:</text>
+    <text x="1102" y="278" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1102" dy="0">sender IP equals target IP;</tspan>
+      <tspan x="1102" dy="34">updates neighbours' caches</tspan>
+      <tspan x="1102" dy="34">and switch tables at once</tspan>
+      <tspan x="1102" dy="34">after a failover or VM</tspan>
+      <tspan x="1102" dy="34">migration (VRRP, keepalived,</tspan>
+      <tspan x="1102" dy="34">load balancers);</tspan>
+      <tspan x="1102" dy="38"><tspan font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">arping -D</tspan> uses it for</tspan>
+      <tspan x="1102" dy="34">duplicate address detection</tspan>
+    </text>
+
+    
+    <rect x="1080" y="650" width="460" height="410" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    
+    <g transform="translate(1102, 670)">
+      <rect x="0" y="8" width="56" height="40" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+      <line x1="0" y1="28" x2="56" y2="28" stroke="#207448" stroke-width="3" stroke-dasharray="4,4"/>
+      <polygon points="28,28 22,40 34,40" fill="#207448"/>
+      <circle cx="28" cy="28" r="4" fill="#207448"/>
+    </g>
+    <text x="1175" y="707" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#207448">Table limit:</text>
+    <text x="1102" y="760" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="1102" dy="0" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">net.ipv4.neigh.default.</tspan>
+      <tspan x="1102" dy="34" font-family="ui-monospace, monospace" font-weight="bold" fill="#207448">gc_thresh1/2/3 default</tspan>
+      <tspan x="1102" dy="34" font-weight="bold">128, 512, 1024;</tspan>
+      <tspan x="1102" dy="34">the kernel logs neighbour</tspan>
+      <tspan x="1102" dy="34">table overflow in large</tspan>
+      <tspan x="1102" dy="34">flat networks;</tspan>
+      <tspan x="1102" dy="34" font-weight="bold" fill="#207448">raise the limits</tspan>
+    </text>
+  </g>
+
+  
+  <g id="bottom-bar">
+    <rect x="40" y="1115" width="1520" height="60" rx="12" fill="#207448"/>
+    <text x="800" y="1154" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      Choose the timeout by how often your hosts move
+    </text>
+  </g>
+</svg>

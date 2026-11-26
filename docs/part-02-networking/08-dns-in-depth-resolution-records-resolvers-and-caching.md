@@ -42,13 +42,17 @@ When you have finished, use this list as a self-check. Each line is something yo
 
 ## 1. The structure of DNS
 
+![A delegation from root to com to example.com with glue records, the three resolver roles, and primary to secondary replication by NOTIFY, SOA serial and AXFR or IXFR.](./img/p3-0208-delegation-glue.svg)
+
+*Figure 2.8.1. The parent zone delegates with NS and glue records, and secondaries copy the primary's zone by AXFR or IXFR when the SOA serial rises.*
+
 When a name does not resolve, you first need a picture of what DNS stores. Think of a phone book that has been split across thousands of offices, each responsible for its own pages, with a clear rule for finding the right office. DNS maps **names to data**, mostly addresses. It is a distributed, hierarchical, replicated database, and its namespace is a tree. At the top sits the root (`.`). Below it come top-level domains such as `com`, `org`, `io` and country codes, then second-level domains such as `example.com`, then subdomains such as `gpu01.dc1.example.com`.
 
 A **fully qualified domain name (FQDN)** ends with a dot, as in `gpu01.dc1.example.com.`. The trailing dot marks the name as absolute, which means "start from the root, do not guess". Without it, a resolver may append **search domains** to the name.
 
 ![The structure of DNS](./img/m2-08-1.svg)
 
-*Figure 2.8.1. The structure of DNS, as a diagram.*
+*Figure 2.8.2. The structure of DNS, as a diagram.*
 
 The rest of the section explains the terms that describe this tree. A **zone** is an administrative portion of the tree, served by a set of authoritative servers. `example.com` can hold its subdomains inside the same zone, or delegate them to other zones with NS records. A **domain** is a position in the tree, while a zone is a unit of management. A useful way to keep them apart is that a domain is a place on the map and a zone is the area one office looks after.
 
@@ -62,11 +66,19 @@ When you set up replication, decide early which server holds the editable copy o
 
 ## 2. How a lookup actually works
 
+![DNS over UDP 53 with the truncation bit triggering a TCP 53 retry, EDNS 1232 byte payloads, and the response codes NOERROR, NXDOMAIN, SERVFAIL, REFUSED and FORMERR.](./img/p3-0208-transport-rcodes.svg)
+
+*Figure 2.8.3. DNS starts on UDP 53, retries over TCP when the answer is truncated, and the response code tells you whether the name is missing, the resolver failed or policy refused.*
+
+![A timeline for changing a DNS record: lower the TTL one old-TTL ahead, switch the IP, wait and restore, with negative caching delays and the SOA serial reminder.](./img/p3-0208-ttl-cutover.svg)
+
+*Figure 2.8.4. Lower the TTL at least one old-TTL interval before a change, and remember that NXDOMAIN answers are cached for the SOA negative TTL.*
+
 Suppose a service calls a hostname and the answer is slow or wrong. To find the cause, you need to know which server walks the tree and how long each answer is kept. The diagram follows one lookup from the application to the authoritative server.
 
 ![How a DNS lookup is resolved](./img/n08-fig1-dns.jpg)
 
-*Figure 2.8.2. The resolver asks root, TLD and authoritative servers in turn and caches the answer.*
+*Figure 2.8.5. The resolver asks root, TLD and authoritative servers in turn and caches the answer.*
 
 ```mermaid
 sequenceDiagram
@@ -109,9 +121,17 @@ Check the latency to your own resolver first, because it usually decides how fas
 
 ## 3. Resource records
 
+![The address 10.20.0.45 reversed to 45.0.20.10.in-addr.arpa with a PTR record, the loop of forward and reverse agreement, and the tools that check reverse DNS.](./img/p3-0208-reverse-name.svg)
+
+*Figure 2.8.6. A reverse lookup flips the octets under in-addr.arpa, and forward-confirmed reverse DNS requires the forward and reverse records to agree.*
+
+![A zone file read record by record: SOA with serial and negative TTL, NS and glue, A, per-NIC A, AAAA, CNAME and SRV records, plus other record types and round-robin DNS.](./img/p3-0208-zone-read.svg)
+
+*Figure 2.8.7. A zone file starts with SOA and NS records, then holds A, AAAA, CNAME and SRV facts, including per-NIC names for the fabric interface.*
+
 ![DNS record types](./img/n08-records.svg)
 
-*Figure 2.8.3. Each record type answers a different question about a name.*
+*Figure 2.8.8. Each record type answers a different question about a name.*
 
 Each record type answers a different question, so know which one you need before you edit a zone. If you think of the zone as a table of facts about names, each record type is one kind of fact. The table lists the types you will meet most often.
 
@@ -163,6 +183,10 @@ When you add a node, create its forward and reverse records together, because so
 
 ## 4. Tools: `dig` and friends
 
+![The sections and flags of a dig answer, and two paths showing dig talking DNS directly while getent, ping and curl go through the C library with hosts and nsswitch.](./img/p3-0208-dig-anatomy.svg)
+
+*Figure 2.8.9. dig talks DNS directly and skips hosts and nsswitch, while getent, ping and curl follow the same path as your application.*
+
 When a name misbehaves, start with these commands. Each one asks a different layer, so their answers can disagree, and the disagreement is itself the clue.
 
 ```bash
@@ -194,11 +218,23 @@ Run `getent hosts` on the failing machine before you blame the DNS server.
 
 ## 5. How a Linux host resolves names
 
+![A host stub resolver matching a name against routing domains to send corp.example.com to the VPN resolver and everything else to the default resolver, with the resolvectl commands.](./img/p3-0208-split-dns.svg)
+
+*Figure 2.8.10. A routing domain such as ~corp.example.com sends matching names to the VPN's resolver and everything else to the default.*
+
+![A table showing that glibc does not cache, the JVM caches by networkaddress.cache.ttl, Go resolves on every call and nginx resolves upstreams only at startup.](./img/p3-0208-app-caching.svg)
+
+*Figure 2.8.11. glibc, the JVM, Go and nginx cache DNS differently, so know your application's behaviour before relying on DNS failover.*
+
+![A lookup timeline where a dead first nameserver costs 5 to 10 seconds at the glibc defaults, compared with timeout 1, attempts 2 and rotate, and with a local caching resolver.](./img/p3-0208-resolver-timeout.svg)
+
+*Figure 2.8.12. glibc waits 5 seconds per attempt with 2 attempts per server, so a dead first resolver stalls every lookup for 5 to 10 seconds.*
+
 When a name lookup hangs on one host and not another, the cause is often the local path rather than the server. Before a question ever leaves the machine, it passes through several local files and helpers. The diagram shows the path a `getaddrinfo()` call takes on a host.
 
 ![How a Linux host resolves names](./img/m2-08-3.svg)
 
-*Figure 2.8.4. How a Linux host resolves names, as a diagram.*
+*Figure 2.8.13. How a Linux host resolves names, as a diagram.*
 
 Each file in this path has its own job, and the order matters.
 
@@ -271,9 +307,13 @@ Check the current settings with `resolvectl status`. It lists global settings, t
 
 ## 6. DNS in Kubernetes and containers
 
+![A pod resolv.conf with ndots 5 and the CoreDNS service, a six step debug ladder with kubectl commands and metrics, and the fixes of FQDNs, ndots, NodeLocal DNSCache and scaling CoreDNS.](./img/p3-0208-k8s-dns-debug.svg)
+
+*Figure 2.8.14. Check the pod's resolv.conf, then a dnsutils pod, CoreDNS logs, the Corefile and metrics, and fix with FQDNs, lower ndots or NodeLocal DNSCache.*
+
 ![ndots search expansion in a pod](./img/n08-ndots.svg)
 
-*Figure 2.8.5. A name with fewer dots than ndots is tried through every search domain before the real name.*
+*Figure 2.8.15. A name with fewer dots than ndots is tried through every search domain before the real name.*
 
 When a pod resolves names slowly, look at its resolver settings first. A pod is just a process in its own small network world, and its resolver settings are different from the node's. Inside a pod, the kubelet generates `/etc/resolv.conf`:
 
@@ -297,6 +337,10 @@ Alpine and musl have historically handled search lists and TCP fallback differen
 
 ## 7. DNS in HPC and AI clusters
 
+![A GPU node with management and fabric NIC names, and what happens when a hostfile name resolves to the wrong NIC, with the Slurm, MPI and reverse DNS requirements.](./img/p3-0208-cluster-names.svg)
+
+*Figure 2.8.16. A hostfile name that resolves to the management NIC sends bootstrap traffic over the wrong network, so use per-NIC names and one naming scheme.*
+
 Suppose a launcher reads a hostfile, and one node name points at the management NIC instead of the fabric NIC. The bootstrap traffic then takes the wrong network, and the job crawls or fails with no obvious error. Names in a cluster decide which network a job uses, so get them right before you tune anything else.
 
 Slurm resolves node names from `NodeName` and `NodeAddr` in `slurm.conf`. By default it requires forward lookups to match, through `SlurmctldHost` and `NodeHostname`. Use `NodeAddr` to bind jobs to a specific interface, such as the fabric network. Keep one naming scheme with per-NIC names, such as `gpu01`, `gpu01-ib0` and `gpu01-mgmt`.
@@ -314,6 +358,10 @@ Cloud DNS integrations differ by provider. GCP Cloud DNS offers public and priva
 Generate every record from one naming scheme, so the names in Slurm, MPI and DNS always agree.
 
 ## 8. Security: DNSSEC, DoT/DoH, and abuse
+
+![A DNSSEC chain from the root trust anchor through DS and DNSKEY records to RRSIG signed answers with the ad flag or SERVFAIL, beside a table of DNS threats and their controls.](./img/p3-0208-dnssec-chain.svg)
+
+*Figure 2.8.17. DNSSEC links the root trust anchor to signed answers through DS and DNSKEY records, and other controls cover open resolvers, tunnelling, takeover and zone transfers.*
 
 Suppose a resolver accepts a forged answer, and traffic goes to the wrong server. The user sees the right name in the address bar and the wrong machine behind it. DNSSEC protects against that, and it is the first thing this section covers.
 
@@ -357,7 +405,7 @@ A name that will not resolve can fail at any layer, so the way to stay calm is t
 
 ![Diagnosing DNS problems](./img/m2-08-4.svg)
 
-*Figure 2.8.6. Diagnosing DNS problems, as a diagram.*
+*Figure 2.8.18. Diagnosing DNS problems, as a diagram.*
 
 Work through the routine in order.
 
@@ -374,7 +422,7 @@ Start with step 1 every time, because it tells you which layer to test next.
 
 ![DNS 5-second stall](./img/n08-5sec.svg)
 
-*Figure 2.8.7. Two parallel UDP queries can race in conntrack, so one is lost and the resolver waits for its 5 second timeout.*
+*Figure 2.8.19. Two parallel UDP queries can race in conntrack, so one is lost and the resolver waits for its 5 second timeout.*
 
 An inference service in a GPU cluster calls `https://models.internal.example.com` from its pods. Now and then, a call stalls for exactly 5 s. Nothing is broken, and nothing logs an error, which is what makes it so annoying. A `tcpdump` on the node showed two UDP queries, `A` and `AAAA`, sent from the same source port within microseconds. The AAAA query was lost in the node's conntrack. The cause was a race on parallel same-5-tuple UDP flows through NAT, a known kernel behaviour that newer kernels fix. The stub then retried after its default 5 s timeout.
 

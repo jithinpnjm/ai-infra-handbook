@@ -1,0 +1,153 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1080" width="1600" height="1080">
+  <title>Response time climbs steeply as utilisation rises, so queues need headroom</title>
+  <desc>A queueing theory line chart showing response time rising steeply as utilisation approaches 100 percent in an M/D/1 queue, contrasting throughput jobs against latency-sensitive services.</desc>
+
+  <!-- Background -->
+  <rect width="1600" height="1080" fill="#f5f8f5"/>
+
+  <!-- ==================== TITLE ==================== -->
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">Response time climbs steeply as utilisation rises,</tspan>
+    <tspan x="800" dy="54">so queues need headroom</tspan>
+  </text>
+
+  <!-- ==================== MAIN CHART CONTAINER ==================== -->
+  <rect x="50" y="135" width="1500" height="835" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5"/>
+
+  <!-- ==================== GRID & AXES ==================== -->
+  <!-- Target zone vertical shaded band (60% to 70%) -->
+  <rect x="940" y="210" width="120" height="590" fill="#e8f1ea" fill-opacity="0.8"/>
+  <line x1="940" y1="210" x2="940" y2="800" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6"/>
+  <line x1="1060" y1="210" x2="1060" y2="800" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6"/>
+
+  <!-- Horizontal grid lines for response time 1 to 6 -->
+  <line x1="220" y1="703" x2="1420" y2="703" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="220" y1="607" x2="1420" y2="607" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="220" y1="510" x2="1420" y2="510" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="220" y1="413" x2="1420" y2="413" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="220" y1="317" x2="1420" y2="317" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="220" y1="220" x2="1420" y2="220" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+
+  <!-- Vertical grid lines for utilisation ticks -->
+  <line x1="460" y1="220" x2="460" y2="800" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="700" y1="220" x2="700" y2="800" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="1180" y1="220" x2="1180" y2="800" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="1300" y1="220" x2="1300" y2="800" stroke="#e8f1ea" stroke-width="1.5" stroke-dasharray="4 4"/>
+  <line x1="1420" y1="210" x2="1420" y2="800" stroke="#d5dfd8" stroke-width="2" stroke-dasharray="6 4"/>
+
+  <!-- Chart Axes lines -->
+  <!-- Y axis (from r=0 at y=800 to r=6 at y=210) -->
+  <line x1="220" y1="800" x2="220" y2="210" stroke="#303a36" stroke-width="3" stroke-linecap="round"/>
+  <!-- X axis (from rho=0 at x=220 to rho=1.0 at x=1420) -->
+  <line x1="220" y1="800" x2="1420" y2="800" stroke="#303a36" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- Ticks on Y axis (r=0, 1, 2, 3, 4, 5, 6) -->
+  <line x1="210" y1="800" x2="220" y2="800" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="210" y1="703" x2="220" y2="703" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="210" y1="607" x2="220" y2="607" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="210" y1="510" x2="220" y2="510" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="210" y1="413" x2="220" y2="413" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="210" y1="317" x2="220" y2="317" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="210" y1="220" x2="220" y2="220" stroke="#303a36" stroke-width="2.5"/>
+
+  <!-- Ticks on X axis (0%, 20%, 40%, 60%, 70%, 80%, 90%, 100%) -->
+  <line x1="220" y1="800" x2="220" y2="810" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="460" y1="800" x2="460" y2="810" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="700" y1="800" x2="700" y2="810" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="940" y1="800" x2="940" y2="810" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="1060" y1="800" x2="1060" y2="810" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="1180" y1="800" x2="1180" y2="810" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="1300" y1="800" x2="1300" y2="810" stroke="#303a36" stroke-width="2.5"/>
+  <line x1="1420" y1="800" x2="1420" y2="810" stroke="#303a36" stroke-width="2.5"/>
+
+  <!-- ==================== VERTICAL AXIS LABEL BOX ==================== -->
+  <rect x="80" y="152" width="680" height="48" rx="10" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="100" y="185" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Response time (multiple of service time s)</text>
+
+  <!-- ==================== FORMULA BOX ==================== -->
+  <g id="formula-box">
+    <rect x="240" y="222" width="600" height="135" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    <!-- Icon: Queue buffer with service head (56px) -->
+    <g transform="translate(256, 238)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="4" y="10" width="48" height="36" rx="6"/>
+      <line x1="18" y1="10" x2="18" y2="46"/>
+      <line x1="32" y1="10" x2="32" y2="46"/>
+      <circle cx="11" cy="28" r="3" fill="#207448"/>
+      <circle cx="25" cy="28" r="3" fill="#207448"/>
+      <circle cx="39" cy="28" r="3" fill="#207448"/>
+    </g>
+    <!-- Monospace formula -->
+    <text x="325" y="266" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">r = s(2 - rho) / (2(1 - rho))</text>
+    <!-- Note under formula -->
+    <text font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="325" y="304">M/D/1 queue, random arrivals,</tspan>
+      <tspan x="325" y="336">fixed service time</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== TARGET ZONE BAND LABEL ==================== -->
+  <g id="target-zone-label">
+    <rect x="850" y="152" width="300" height="126" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">
+      <tspan x="1000" y="188">Target zone for</tspan>
+      <tspan x="1000" y="222">latency services:</tspan>
+      <tspan x="1000" y="256">about 60 to 70%</tspan>
+    </text>
+  </g>
+
+  <!-- ==================== QUEUEING CURVE ==================== -->
+  <!-- Mathematical M/D/1 curve r = s(2 - rho)/(2(1 - rho)) passing exactly through the milestones -->
+  <path d="M 220 703.3 C 460.0 693.7, 700.0 691.3, 940.0 630.8 C 1020.0 610.7, 1100.0 590.6, 1180.0 510.0 C 1220.0 469.7, 1260.0 429.4, 1300.0 268.3 C 1310.0 228.1, 1320.0 178.8, 1330.0 145.0" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round"/>
+
+  <!-- ==================== CURVE POINTS & CALLOUTS ==================== -->
+  <!-- Point 1: 0%: r = s -->
+  <g id="point-0">
+    <circle cx="220" cy="703.3" r="8" fill="#207448"/>
+    <line x1="220" y1="711" x2="245" y2="735" stroke="#207448" stroke-width="1.5"/>
+    <rect x="245" y="722" width="170" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="268" y="755" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">0%: r = s</text>
+  </g>
+
+  <!-- Point 2: 60%: 1.75 s -->
+  <g id="point-60">
+    <circle cx="940" cy="630.8" r="9" fill="#207448" stroke="#ffffff" stroke-width="2.5"/>
+    <line x1="940" y1="640" x2="940" y2="670" stroke="#207448" stroke-width="2"/>
+    <rect x="840" y="670" width="200" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="860" y="703" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">60%: 1.75 s</text>
+  </g>
+
+  <!-- Point 3: 80%: 3 s -->
+  <g id="point-80">
+    <circle cx="1180" cy="510" r="8" fill="#207448"/>
+    <line x1="1180" y1="510" x2="1210" y2="510" stroke="#207448" stroke-width="2"/>
+    <rect x="1210" y="485" width="160" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+    <text x="1232" y="518" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">80%: 3 s</text>
+  </g>
+
+  <!-- Point 4: 90%: 5.5 s (SINGLE ORANGE ACCENT) -->
+  <g id="point-90">
+    <circle cx="1300" cy="268.3" r="10" fill="#ffffff" stroke="#db8129" stroke-width="4.5"/>
+    <line x1="1300" y1="268.3" x2="1335" y2="268.3" stroke="#db8129" stroke-width="2.5"/>
+    <rect x="1335" y="242" width="190" height="52" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2.5"/>
+    <text x="1355" y="277" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129">90%: 5.5 s</text>
+  </g>
+
+  <!-- ==================== HORIZONTAL AXIS LABEL ==================== -->
+  <rect x="670" y="830" width="320" height="50" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5"/>
+  <text x="696" y="864" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36">Utilisation (rho)</text>
+
+  <!-- ==================== NOTE UNDER CHART ==================== -->
+  <rect x="460" y="900" width="720" height="50" rx="8" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+  <text x="495" y="934" font-family="sans-serif" font-size="24" fill="#303a36">The curve diverges as utilisation nears 100%.</text>
+
+  <!-- ==================== BOTTOM TAKEAWAY BAR ==================== -->
+  <g id="bottom-takeaway-bar">
+    <rect x="50" y="990" width="1500" height="65" rx="12" fill="#207448"/>
+    <!-- Icon: Shield checkmark (white, 40px) -->
+    <g transform="translate(80, 1002)" stroke="#ffffff" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M 20 4 L 36 10 V 22 C 36 32 20 38 20 38 C 20 38 4 32 4 22 V 10 Z"/>
+      <polyline points="12,20 18,26 28,14"/>
+    </g>
+    <text x="145" y="1032" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Throughput jobs can run hot. Latency services cannot.</text>
+  </g>
+</svg>

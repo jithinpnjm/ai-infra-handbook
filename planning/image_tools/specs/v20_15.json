@@ -1,0 +1,42 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "x15-cardinality-math",
+  "title": "One tenant label multiplies the series count past the budget",
+  "spec": "A left-to-right multiplication chain drawn as stacked step boxes, numbered in time order with green circles. Step 1 box: Gateway counter, model 20 x code 8 x route 5 = 800 combinations, times 12 gateway pods = 9,600 series. Step 2 box: add tenant with 1,000 values, fill 0.1, so 800 x 1,000 x 0.1 = 80,000 combinations, times 12 pods = 960,000 series. Step 3 box, the largest: histogram with 14 buckets plus 3 series = 17 series per combination, 10,000 combinations x 17 x 12 pods = 2,040,000 series. Step 4 box, at the end: total about 3 million series against a budget of 2,000,000, drawn in orange. A horizontal budget bar at the bottom: a green bar for the 2,000,000 budget and an orange bar extending past it for about 3 million. Small callout on step 3: the histogram family does most of the damage, not the counter. Green takeaway bar: One extra label with many values can multiply the whole platform total, so write the budget down first.",
+  "anchor": "### Scenario 1: A tenant label breaks Prometheus",
+  "alt": "Adding a tenant label with a thousand values to the gateway metrics raises the series count from about 9,600 to about 3 million, past a 2 million budget.",
+  "cap": "Cardinality multiplies across labels, pods and histogram buckets, so one high-cardinality label can break the series budget."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "x15-tail-sampling-tiers",
+  "title": "Tail sampling needs two tiers so every span of a trace reaches one sampler",
+  "spec": "A left-to-right two-tier diagram. On the far left a box labelled Engines and gateway emit OTLP spans, with a small window icon. Arrow to Tier 1 container labelled Edge agents, holding three small boxes in order: OTLP receiver, memory_limiter, batch, then a box labelled load_balancing exporter with the routing key traceID. An arrow labelled by trace id from the exporter to Tier 2 container labelled Tail samplers, a stacked group of three small boxes in order: memory_limiter, tail_sampling, batch. Inside tail_sampling a short policy list: keep-errors (status ERROR), keep-slow (latency over 5000 ms), keep-some-healthy (probabilistic 1 percent). Arrow from Tier 2 to a cylinder icon labelled Trace store. A side note under the tail samplers with the sizing arithmetic: 5,000 new traces per second times 30 s decision_wait equals 150,000 traces held, num_traces 200,000. Numbered steps 1 to 3 in green circles along the flow. Orange highlight on the trace-id routing arrow, labelled every span of one trace reaches the same sampler. Green takeaway bar: Keep every error and slow trace, route by trace id to a stateful tier, and size memory from decision wait times trace rate.",
+  "anchor": "### 10. Traces: head sampling is cheap, tail sampling keeps what matters",
+  "alt": "Spans from engines pass an edge tier that routes by trace id to a stateful tail sampling tier, which keeps errors, slow traces and a share of healthy ones.",
+  "cap": "Tail sampling holds whole traces in memory, so all spans of a trace must reach the same sampler instance."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "x15-metering-split",
+  "title": "Operational metrics and the billing ledger are two separate paths",
+  "spec": "Two parallel horizontal lanes, one above the other, sharing one source box on the left labelled Gateway, one row per finished request. Top lane labelled Operational path, approximate: arrow to a box labelled Prometheus scrape every 30 seconds, then a box labelled Recording rules dropping labels, then a box labelled Dashboards, with a warning icon and the note sampled, increase extrapolates, lost increments when a pod dies. Bottom lane labelled Billing path, exact: arrow to a box labelled Usage record with request id, tenant, model, input tokens, output tokens, timestamp, then a box labelled Durable queue, then a box labelled Ledger, an append-only cylinder, with the note request id as idempotency key. Orange highlight on the ledger box. Between the two lanes at the far right, a reconcile arrow labelled reconcile daily, with a note the ledger is the source of truth. Green takeaway bar: Charge from an exactly-once ledger and explain with approximate metrics, and tell customers which is which.",
+  "anchor": "### 12. Metering for billing is a different system from operational metrics",
+  "alt": "The gateway feeds an approximate sampled metrics path for dashboards and an exactly-once ledger path for billing, and the two are reconciled daily.",
+  "cap": "Operational metrics explain trends while the billing ledger holds the exact charge record, so the two must be kept as separate systems."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "15",
+  "name": "x15-where-data-drops",
+  "title": "The pipeline can lose data in four places, and the memory limiter goes first",
+  "spec": "A left-to-right pipeline of five stages drawn as boxes with arrows, from left to right: Scrape (Prometheus pulls metrics), Remote write (queue to the long-term store), Collector (receiver with memory limiter, then exporter queue), Log agent (node buffer), Log store. Each stage has a small drop marker, a down-arrow pointing out of the pipeline, and a short label beside it: Scrape, a sample or label limit fails the whole scrape; Remote write, store slow for more than 2 hours; Collector, memory limiter refuses data; Log agent, buffer overflow; Log store, rate limit or stream limit hit. Inside the Collector box a small highlighted block labelled memory_limiter first, with a numbered step 1 circle, then batch as step 2. A drop-order strip below the pipeline with four green boxes in order: 1 drop debug logs, 2 drop healthy traces, 3 drop low-value per-pod metrics, and a final box in orange reading never drop SLI series or the ledger. Green takeaway bar: Put the memory limiter first, choose the drop order in advance, and alert on every place data can disappear.",
+  "anchor": "### 13. The pipeline loses data too, so decide where and in what order",
+  "alt": "Telemetry can be dropped at five stages, and the collector's memory limiter placed first lets backpressure reach senders before data is lost.",
+  "cap": "Every stage of the telemetry path can drop data under load, so the drop order should be chosen before an incident."
+ }
+]

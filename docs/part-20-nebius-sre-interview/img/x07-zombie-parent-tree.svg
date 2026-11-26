@@ -1,0 +1,160 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>A zombie is a finished child waiting on its parent: fix the parent</title>
+  <desc>Visual infographic explaining zombie processes, why kill -9 fails on them, and why fixing or stopping the parent is the only solution.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 14 14" refX="11" refY="7" markerUnits="userSpaceOnUse" markerWidth="14" markerHeight="14" orient="auto-start-reverse">
+      <path d="M 1 2 L 11 7 L 1 12 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <rect width="1600" height="1000" fill="#f5f8f5" />
+
+  <text x="800" y="56" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">A zombie is a finished child waiting on its parent: <tspan x="800" dy="54">fix the parent</tspan></text>
+
+  <g id="panel-tree">
+    <rect x="60" y="150" width="1020" height="490" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+
+    <path d="M 410 235 L 736 235" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+    
+    <text x="575" y="186" text-anchor="middle" font-family="sans-serif" font-size="24" fill="#303a36">
+      <tspan x="575" dy="0">would reap them</tspan>
+      <tspan x="575" dy="28">only if the parent stops</tspan>
+    </text>
+
+    <g id="box-parent">
+      <rect x="90" y="175" width="320" height="120" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4" />
+      
+      <g transform="translate(108, 207)">
+        <path d="M 28 6 L 52 48 L 4 48 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round" />
+        <line x1="28" y1="22" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round" />
+        <circle cx="28" cy="42" r="2.5" fill="#db8129" />
+      </g>
+      
+      <text x="178" y="218" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">PID 902</text>
+      <text x="178" y="252" font-family="sans-serif" font-size="24" fill="#303a36">
+        <tspan x="178" dy="0">failed to reap</tspan>
+        <tspan x="178" dy="28">its children</tspan>
+      </text>
+    </g>
+
+    <g id="box-pid1">
+      <rect x="740" y="175" width="310" height="120" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+      
+      <g transform="translate(758, 207)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="6" y="8" width="44" height="40" rx="6" />
+        <circle cx="28" cy="28" r="8" />
+        <line x1="28" y1="12" x2="28" y2="16" />
+        <line x1="28" y1="40" x2="28" y2="44" />
+        <line x1="12" y1="28" x2="16" y2="28" />
+        <line x1="40" y1="28" x2="44" y2="28" />
+      </g>
+      
+      <text x="828" y="222" font-family="monospace" font-size="30" font-weight="bold" fill="#303a36">PID 1</text>
+      <text x="828" y="262" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">adopts orphans</text>
+    </g>
+
+    <g id="tree-lines">
+      <path d="M 250 295 L 250 340 M 235 340 L 895 340" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+      <path d="M 235 340 L 235 366" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+      <path d="M 565 340 L 565 366" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+      <path d="M 895 340 L 895 366" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow-green)" />
+    </g>
+
+    <g id="child-1">
+      <rect x="90" y="370" width="290" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6" />
+      <g transform="translate(108, 397)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="8" width="40" height="40" rx="6" stroke-dasharray="6 4" />
+        <line x1="20" y1="28" x2="36" y2="28" />
+      </g>
+      <text x="175" y="416" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">defunct</text>
+      <text x="175" y="452" font-family="sans-serif" font-size="24" fill="#303a36">state <tspan font-family="monospace" font-weight="bold" font-size="26">Z</tspan></text>
+    </g>
+
+    <g id="child-2">
+      <rect x="420" y="370" width="290" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6" />
+      <g transform="translate(438, 397)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="8" width="40" height="40" rx="6" stroke-dasharray="6 4" />
+        <line x1="20" y1="28" x2="36" y2="28" />
+      </g>
+      <text x="505" y="416" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">defunct</text>
+      <text x="505" y="452" font-family="sans-serif" font-size="24" fill="#303a36">state <tspan font-family="monospace" font-weight="bold" font-size="26">Z</tspan></text>
+    </g>
+
+    <g id="child-3">
+      <rect x="750" y="370" width="290" height="110" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2.5" stroke-dasharray="8 6" />
+      <g transform="translate(768, 397)" stroke="#207448" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="8" y="8" width="40" height="40" rx="6" stroke-dasharray="6 4" />
+        <line x1="20" y1="28" x2="36" y2="28" />
+      </g>
+      <text x="835" y="416" font-family="monospace" font-size="26" font-weight="bold" fill="#303a36">defunct</text>
+      <text x="835" y="452" font-family="sans-serif" font-size="24" fill="#303a36">state <tspan font-family="monospace" font-weight="bold" font-size="26">Z</tspan></text>
+    </g>
+
+    <g id="bracket-zombies">
+      <path d="M 120 500 L 120 518 Q 120 526 130 526 L 555 526 Q 565 526 565 536 Q 565 526 575 526 L 1000 526 Q 1010 526 1010 518 L 1010 500" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+      <text x="565" y="574" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">count of zombies 3</text>
+    </g>
+  </g>
+
+  <g id="panel-kill9">
+    <rect x="1110" y="150" width="430" height="490" rx="16" fill="#ffffff" stroke="#c8dcd0" stroke-width="2" />
+
+    <g id="action-kill9" transform="translate(1135, 220)">
+      <rect width="380" height="135" rx="12" fill="#fdf2f2" stroke="#e0b4b4" stroke-width="2" />
+      
+      <g transform="translate(20, 39)" stroke="#606a66" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="4" y="6" width="48" height="40" rx="6" />
+        <polyline points="14,20 22,26 14,32" />
+        <line x1="26" y1="32" x2="38" y2="32" />
+      </g>
+      
+      <text x="88" y="60" font-family="monospace" font-size="28" font-weight="bold" fill="#303a36">kill -9</text>
+      <text x="88" y="96" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">on a zombie</text>
+
+      <line x1="15" y1="15" x2="365" y2="120" stroke="#c0392b" stroke-width="4.5" stroke-linecap="round" opacity="0.85" />
+      <line x1="15" y1="120" x2="365" y2="15" stroke="#c0392b" stroke-width="4.5" stroke-linecap="round" opacity="0.85" />
+    </g>
+
+    <g id="note-dead" transform="translate(1135, 390)">
+      <rect width="380" height="150" rx="12" fill="#f5f8f5" stroke="#207448" stroke-width="2" />
+      
+      <g transform="translate(20, 47)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="28" cy="28" r="22" />
+        <line x1="12" y1="44" x2="44" y2="12" stroke-width="4" />
+      </g>
+
+      <text x="95" y="68" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">
+        <tspan x="95" dy="0">does nothing,</tspan>
+        <tspan x="95" dy="34">it is already dead</tspan>
+      </text>
+    </g>
+  </g>
+
+  <g id="steps" transform="translate(60, 675)">
+    <g id="step-1">
+      <rect width="720" height="150" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="55" cy="75" r="24" fill="#207448" />
+      <text x="55" y="83" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">1</text>
+      
+      <text x="105" y="60" font-family="monospace" font-size="26" font-weight="bold" fill="#207448">ps -eo pid,ppid,stat,comm</text>
+      <text x="105" y="104" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">match the STAT column for <tspan font-family="monospace" font-size="26">Z</tspan></text>
+    </g>
+
+    <g id="step-2" transform="translate(760, 0)">
+      <rect width="720" height="150" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="55" cy="75" r="24" fill="#207448" />
+      <text x="55" y="83" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#ffffff">2</text>
+      
+      <text x="105" y="68" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+        <tspan x="105" dy="0">fix or stop the parent,</tspan>
+        <tspan x="105" dy="36">not the zombie</tspan>
+      </text>
+    </g>
+  </g>
+
+  <g id="takeaway-bar" transform="translate(60, 860)">
+    <rect width="1480" height="85" rx="16" fill="#207448" />
+    <text x="740" y="52" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Fix the parent: a zombie cannot be killed because it is already dead.</text>
+  </g>
+</svg>

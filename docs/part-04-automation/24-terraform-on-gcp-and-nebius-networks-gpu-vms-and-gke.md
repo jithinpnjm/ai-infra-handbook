@@ -42,17 +42,9 @@ This chapter assumes 4.18 to 4.23 and the networking basics from Part 2. Read th
 
 Before you write any Terraform, you need a map of where things live. The landing zone is that map. It starts at the organisation, runs through the projects and the network, and ends at the GPU pools, storage and monitoring. A landing zone is the agreed starting structure that every later workload is built inside. Read the diagram from the top down.
 
-```mermaid
-flowchart TB
-  ORG["Organisation / folders"] --> PRJ["Projects: ai-shared, ai-dev, ai-prod\n(billing, quotas, IAM boundary)"]
-  PRJ --> NET["VPC: custom subnets\nprivate Google access, Cloud NAT, firewall"]
-  NET --> GKE["GKE cluster (private nodes)\nsystem pool + GPU pools"]
-  NET --> VMS["GPU VMs / Slurm cluster\n(compact placement, multi-NIC)"]
-  PRJ --> ST["GCS buckets: datasets, checkpoints\nCMEK, versioning, uniform access"]
-  PRJ --> IAM["Service accounts + Workload Identity\nno JSON keys"]
-  PRJ --> AR["Artifact Registry (images)"]
-  PRJ --> MON["Cloud Monitoring/Logging,\nbudgets & alerts"]
-```
+![Designing the landing zone (GCP)](./img/m4-24-1.svg)
+
+*Figure 4.24.1. Designing the landing zone (GCP), as a diagram.*
 
 Four decisions shape everything below, and you should make them before you write code. Each decision is cheap to make now and expensive to change later, because every stack built afterwards depends on it.
 

@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1180" width="1600" height="1180">
+  <title>Architecture</title>
+  <desc>Architecture diagram showing Git repo with CI, Terraform, and Ansible managing Infrastructure and Nodes with validation, inventory generation, and nightly drift job.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 10 10" refX="7" refY="3.5" markerWidth="8" markerHeight="8" orient="auto">
+      <polygon points="0 0, 8 3.5, 0 7" fill="#207448" />
+    </marker>
+    <marker id="arrow-orange" viewBox="0 0 10 10" refX="7" refY="3.5" markerWidth="8" markerHeight="8" orient="auto">
+      <polygon points="0 0, 8 3.5, 0 7" fill="#db8129" />
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1180" fill="#f5f8f5" />
+
+  
+  <text x="800" y="62" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Architecture</text>
+
+  
+  <rect x="40" y="110" width="450" height="700" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2" stroke-dasharray="8 6" />
+  <text x="75" y="156" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">Git repo</text>
+
+  
+  <g transform="translate(425, 128)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <circle cx="8" cy="8" r="4" fill="#207448" />
+    <circle cx="8" cy="24" r="4" fill="#207448" />
+    <circle cx="24" cy="14" r="4" fill="#207448" />
+    <path d="M8 12 L8 20 M8 12 C8 16 14 14 20 14" />
+  </g>
+
+  
+  <rect x="110" y="180" width="350" height="130" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(130, 204)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <circle cx="8" cy="18" r="6" />
+    <circle cx="28" cy="8" r="6" />
+    <circle cx="28" cy="28" r="6" />
+    <circle cx="48" cy="18" r="6" />
+    <path d="M14 18 L22 10 M14 18 L22 26 M34 10 L42 16 M34 26 L42 20" />
+  </g>
+  <text x="195" y="222" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#303a36">ci/</text>
+  <text x="195" y="262" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(pipeline)</text>
+
+  
+  <rect x="110" y="360" width="350" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(130, 380)" stroke="#207448" stroke-width="3" fill="none" stroke-linejoin="round">
+    <path d="M24 4 L44 14 L24 24 L4 14 Z" />
+    <path d="M4 14 L4 34 L24 44 L24 24 Z" />
+    <path d="M44 14 L44 34 L24 44 L24 24 Z" />
+  </g>
+  <text x="195" y="412" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#303a36">terraform/</text>
+  <text x="130" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(modules + live/lab)</text>
+
+  
+  <rect x="110" y="555" width="350" height="225" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(130, 575)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <rect x="4" y="4" width="40" height="42" rx="4" />
+    <line x1="12" y1="16" x2="20" y2="16" />
+    <line x1="26" y1="16" x2="36" y2="16" />
+    <line x1="12" y1="26" x2="20" y2="26" />
+    <line x1="26" y1="26" x2="36" y2="26" />
+    <line x1="12" y1="36" x2="20" y2="36" />
+    <line x1="26" y1="36" x2="36" y2="36" />
+  </g>
+  <text x="195" y="608" font-family="ui-monospace, monospace" font-size="30" font-weight="bold" fill="#303a36">ansible/</text>
+  <text x="130" y="668" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(roles, playbooks,</text>
+  <text x="130" y="718" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">inventory plugin)</text>
+
+  
+
+  
+  <rect x="570" y="355" width="450" height="175" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(595, 375)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M12 36 A12 12 0 0 1 20 14 A16 16 0 0 1 44 18 A12 12 0 0 1 46 36 Z" />
+    <rect x="16" y="26" width="24" height="14" rx="2" fill="#ffffff" stroke="#207448" stroke-width="2" />
+    <circle cx="22" cy="33" r="1.5" fill="#207448" />
+    <circle cx="28" cy="33" r="1.5" fill="#207448" />
+  </g>
+  <text x="665" y="412" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Infrastructure</text>
+  <text x="595" y="465" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">network + storage + nodes</text>
+  <text x="595" y="505" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(Docker or cloud)</text>
+
+  
+  <rect x="570" y="595" width="450" height="135" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(595, 615)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8 4 L30 4 L42 16 L42 44 L8 44 Z" />
+    <path d="M30 4 L30 16 L42 16" />
+    <line x1="16" y1="26" x2="34" y2="26" />
+    <line x1="16" y1="34" x2="28" y2="34" />
+  </g>
+  <text x="665" y="650" font-family="ui-monospace, monospace" font-size="28" font-weight="bold" fill="#303a36">inventory.yml</text>
+  <text x="665" y="694" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">(generated)</text>
+
+  
+  <rect x="570" y="780" width="450" height="145" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(595, 800)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round">
+    <rect x="6" y="8" width="40" height="16" rx="2" />
+    <line x1="12" y1="16" x2="26" y2="16" />
+    <circle cx="38" cy="16" r="2" fill="#207448" />
+    <rect x="6" y="28" width="40" height="16" rx="2" />
+    <line x1="12" y1="36" x2="26" y2="36" />
+    <circle cx="38" cy="36" r="2" fill="#207448" />
+  </g>
+  <text x="665" y="835" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Nodes:</text>
+  <text x="595" y="888" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">login01, ctl01, gpu01-gpu03</text>
+
+  
+  <rect x="570" y="975" width="450" height="160" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(595, 995)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M24 6 L42 12 C42 28 32 40 24 44 C16 40 6 28 6 12 Z" />
+    <path d="M16 24 L22 30 L32 18" stroke-width="3.5" />
+  </g>
+  <text x="665" y="1030" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Validation:</text>
+  <text x="595" y="1076" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">nvidia-smi (stub), DCGM,</text>
+  <text x="595" y="1114" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">Slurm sinfo, NCCL stub</text>
+
+  
+
+  
+  <rect x="1070" y="550" width="490" height="215" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  
+  <g transform="translate(1095, 570)" stroke="#207448" stroke-width="3" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="24" cy="24" r="18" />
+    <polyline points="24 14, 24 24, 32 24" />
+    <path d="M40 10 A22 22 0 0 1 46 24" />
+    <polyline points="42 26, 46 24, 48 29" />
+  </g>
+  <text x="1165" y="605" font-family="system-ui, -apple-system, sans-serif" font-size="30" font-weight="bold" fill="#303a36">Nightly drift job</text>
+  <text x="1095" y="668" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">terraform plan -detailed-exitcode</text>
+  <text x="1095" y="718" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">ansible --check --diff</text>
+
+  
+
+   TF -->
+  <path d="M 285 310 L 285 352" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   AN -->
+  <path d="M 110 245 L 75 245 L 75 668 L 102 668" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   INF (HIGHLIGHTED IN ORANGE) -->
+  <path d="M 460 432 L 562 432" fill="none" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
+  <rect x="444" y="394" width="142" height="34" rx="6" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="515" y="418" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#db8129">plan/apply</text>
+
+   INV -->
+  <path d="M 795 530 L 795 544" fill="none" stroke="#207448" stroke-width="3.5" />
+  <rect x="635" y="544" width="320" height="38" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="795" y="571" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" fill="#303a36">terraform output -json</text>
+  <path d="M 795 582 L 795 587" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   AN -->
+  <path d="M 570 662 L 468 662" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   N (labeled with "ssh") -->
+  <path d="M 460 740 L 515 740 L 515 852 L 562 852" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <rect x="480" y="834" width="70" height="34" rx="6" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="515" y="858" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">ssh</text>
+
+   V -->
+  <path d="M 795 925 L 795 967" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   INF -->
+  <path d="M 1070 610 L 1045 610 L 1045 442 L 1028 442" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+   N -->
+  <path d="M 1070 705 L 1045 705 L 1045 852 L 1028 852" fill="none" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+
+</svg>

@@ -1,0 +1,102 @@
+[
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-retry-layers",
+  "title": "Retry layers multiply",
+  "spec": "Stack of layers from top to bottom: 'SDK', 'gateway', 'mesh sidecar', 'router' (and sometimes more). Each layer box says 'retries on its own'. Arithmetic panel. 'One client, k attempts, failure chance p: expected attempts = 1 + p + p squared ... p to the power k - 1; for k = 4: p 0.1 gives 1.11, p 0.5 gives 1.875, p 0.8 gives 2.95'. 'SRE chapter: three layers each making 3 retries (4 attempts) can create 64 attempts at the bottom (4 x 4 x 4)'. 'AWS builders article: 243 times for a five-deep call chain = 3 to the power 5, three attempts per layer'. 'With 4 attempts per layer, five layers give 1,024'. Rule 'set the budget at the gateway in one layer and turn off every other retry loop; retry at the layer directly above the one rejecting, not at every layer; if a large share of backends is overloaded, do not retry at all'. Text at least 24px.",
+  "anchor": "### 3. Why per-request retries amplify an outage",
+  "alt": "Stacked retry layers with the arithmetic of 64, 243 and 1,024 attempts at the bottom of the chain.",
+  "cap": "Every layer that retries multiplies the load on the layer below."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-retry-sim-two-queues",
+  "title": "Same retries, two queue depths, opposite outcomes",
+  "spec": "Setup 'eight replicas, 4 slots each, 0.5 s service time = 64 requests per second capacity; users send 52 per second; seconds 30 to 70 two of eight replicas fail fast; 2 s attempt timeout; simulator output'. Two small tables. 'Short queue (rejects fast): no_retry amplification 1.0, success during 0.748, after 0.992; naive 4 immediate 1.8, 0.914, 1.0, peak 144 attempts per second; full_jitter_4 1.892, 0.917; full_jitter_4_budget10 1.104, 0.81, peak 74'. 'Deep queue (waits pass the timeout): no_retry 1.0, 0.75, 0.973, 72 wasted; naive_4_immediate 3.442, 0.223, after 0.026, peak 326, 4,923 wasted; full_jitter_4 3.445, 0.222, 0.017; full_jitter_4_budget10 1.109, 0.75, 0.993, 237 wasted'. Verdicts. 'Short queue: retries help, success 0.75 to 0.91 at 1.8 times the load; the budget gives up some success to hold load at 1.1 times'. 'Deep queue: attempts time out while replicas still complete them later (wasted work); the service stays broken after the fault is gone, only 2 percent succeed; jitter changes almost nothing, the budget does'. Note 'a budget of 0.5 left the deep-queue service down at 8 percent success, so a generous budget is not a budget'. Rule 'keep queues short enough that a request cannot wait longer than its timeout, then add a budget'. Text at least 24px.",
+  "anchor": "### 4. Retry budgets cap the damage",
+  "alt": "Two simulator tables showing retries helping with short queues but keeping the service down with deep queues unless budgeted.",
+  "cap": "A budget protects the fleet in the deep-queue case where jitter does nothing."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-jitter-maths",
+  "title": "Backoff ceilings, full jitter and the herd measurement",
+  "spec": "Formula 'ceiling for retry n = smaller of cap and base x 2 to the power (n - 1); full jitter sleeps a random time between 0 and the ceiling, mean half the ceiling'. Worked row with base 0.1 s, cap 5 s: 'ceilings 0.1, 0.2, 0.4, 0.8 = total 1.5 s'; 'full-jitter means 0.05, 0.1, 0.2, 0.4 = total 0.75 s'. Herd measurement: '1,000 clients fail together and keep failing for three rounds; largest number of retries in one 10 ms bin: 1,000 without jitter (lockstep) versus 165 with full jitter; first round ceiling is only 0.1 s so a thousand clients land in about ten bins, the dangerous round'. Defaults strip 'Envoy: fully jittered exponential, 25 ms base, maximum 10 times base = 250 ms; first three retries wait 0 to 24 ms, 0 to 74 ms, 0 to 174 ms; tuned for web calls, an inference call that fails after a 20 s wait needs bigger numbers; gRPC uses plus or minus 20 percent jitter'. Rule 'jitter fixes bunching, a budget fixes volume; honour Retry-After: sleep the larger of the server hint and your own jittered delay'. Text at least 24px.",
+  "anchor": "### 5. Exponential backoff with jitter, and the maths",
+  "alt": "Backoff ceilings of 0.1 to 0.8 seconds, full jitter means, and a herd peak falling from 1,000 to 165 retries per bin.",
+  "cap": "Jitter spreads the stampede, and the first round is the dangerous one."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-hedge-cost",
+  "title": "Hedging buys tail latency with GPU time",
+  "spec": "Left timeline of a hedge 'request is slow because one replica is slow; after a short delay (only on a per-try timeout) send a second copy to another replica without cancelling the first; use whichever answers first; cancel the loser at once'. Middle toy-model results (lognormal latency, shape 0.6, independent copies): 'hedge at the 95th percentile: duplicates 5 percent of requests, p99 from 4.02 to 3.57, about 11 percent better'; 'hedge at the 90th: duplicates 10 percent, p99 from 4.01 to 3.30, about 18 percent better'; 'gain per duplicate is modest and shrinks as the delay grows'. Right GPU cost: 'a hedge repeats the whole prefill on a second GPU and holds KV cache until the loser is cancelled; 5 percent duplicates is roughly 5 percent more prefill work; a fleet at 80 percent utilisation moves to about 84 percent and queueing delay rises steeply near the top; independence fails exactly when you need hedging most'. Rule box (author's reasoning, not a Nebius setting) 'hedge only before the first token, only for tail time to first token, only below a fleet utilisation threshold, only inside the retry budget'. Text at least 24px.",
+  "anchor": "### 6. Hedged requests and what they cost on GPUs",
+  "alt": "Hedging results showing p99 gains of 11 and 18 percent for 5 and 10 percent duplicate work, with the GPU cost rules.",
+  "cap": "Refuse hedging when the fleet is saturated."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-ejection-cap",
+  "title": "The 10 percent ejection cap and the panic threshold",
+  "spec": "Envoy outlier detection defaults strip: '5 consecutive errors; check interval 10 s; base ejection time 30 s, growing with consecutive ejections of the same host; cap 10 percent of hosts ejected'. Cap rule 'Envoy tests whether ejected hosts plus one, as a share of the pool, stays at or under the cap'. Two pool pictures. 'Pool of 20 hosts: can lose at most 2 (3 of 20 would be 15 percent), so most bad replicas stay in rotation when a quarter fail'. 'Pool of 8 hosts: can lose none, because one host is already 12.5 percent; always_eject_one_host overrides'. Panic box 'panic threshold default 50 percent: when fewer than half the hosts are available Envoy ignores health status and spreads traffic across all hosts; set to 0 and an all-unhealthy pool returns 503; the docs do not describe how panic interacts with outlier ejection, test it'. Circuit breaker note 'caps connections, pending requests, requests and active retries per cluster; Envoy example 1024 connections per cluster; Istio connection pool defaults are 4294967295, effectively no limit'. LLM rule 'eject on time-to-first-token timeouts and zero tokens with work queued, not only 5xx; alert whenever the cap is hit'. Text at least 24px.",
+  "anchor": "### 7. Circuit breakers, outlier ejection and the panic threshold",
+  "alt": "Pools of 20 and 8 hosts showing how a 10 percent ejection cap leaves bad replicas in rotation, with the panic threshold.",
+  "cap": "With a 10 percent cap a pool of 8 can eject no host unless always_eject_one_host is set."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-stream-backpressure",
+  "title": "A slow reader holds a GPU slot unless every buffer is bounded",
+  "spec": "Left to right pipeline 'engine generates tokens' to 'gateway per-stream buffer' to 'socket buffer (TCP window)' to 'slow client on a bad mobile connection'. Leak story below: 'reader does not read, socket buffer fills, the next write blocks or queues in your process; an async gateway can accept tokens faster than it can write them and queue them in memory without limit; the request keeps its slot and its KV cache for as long as the reader lags'. Fix markers on the pipeline (author's reasoning): 'bound every per-stream buffer'; 'set a write timeout'; 'abort the generation when the client is too slow, and the abort must reach the engine so the slot and KV cache come back'. Second strip 'between pools: with separate prefill and decode pools the router stops sending prefill outputs to a decode pool whose queue is full and sheds new requests at the front; pressure flows backwards from the busy stage to the source'. Text at least 24px.",
+  "anchor": "### 9. Backpressure on streaming responses",
+  "alt": "A pipeline from engine to slow client with bounded buffers, a write timeout and an abort that reaches the engine.",
+  "cap": "A bounded buffer turns an invisible leak into a visible short abort."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-cache-vs-load",
+  "title": "Cache affinity is an optimisation that health and load may override",
+  "spec": "Two routers side by side. Left 'greedy for cache hits: highest hit rate but 3.8 times the mean load on one replica (chapter 20.13 simulation)'. Right 'bounded rule: follow the cache unless that replica is much busier than the idlest: lowest p99'. Below, three override rules. 'A retry does not follow the cache: the first replica is probably the sick one, so retry on the best healthy replica and accept a cache miss (Envoy has a retry host predicate for the same reason)'. 'A cache holder that is ejected, draining or over its bound loses its affinity at once'. 'The router's cache map is a guess; a wrong guess costs a miss, so never make correctness depend on it'. Test question 'what does the router do when its favourite replica is sick at the exact moment a popular prefix arrives? still sends there means the cache rule overruled health; sends to a healthy replica and accepts the miss is the right priority'. Vendor note 'case study reports hit rate rising from about 5 to 30 and then 50 or 60 percent [vendor]'. Text at least 24px.",
+  "anchor": "### 10. Cache-aware routing versus load-aware routing",
+  "alt": "A greedy cache router versus a bounded rule, with three cases where health and retries override cache affinity.",
+  "cap": "Health and retries always override cache affinity."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-failover-headroom",
+  "title": "Failover capacity: utilisation must leave room for the survivors",
+  "spec": "Three rows of regions. 'Two regions each at utilisation u: one fails, the survivor carries 2u, so u must stay below 50 percent minus headroom or the failover just moves the outage'. 'Three regions: survivors carry 1.5u each, so u can be up to about 66 percent'. 'Inside one region of N replicas: losing one replica adds 1 / (N - 1) load to the rest; X plus 1 sizing pays for it'. Policy box 'failover is a policy question before it is a routing question: ask the tenant's contract what may leave the region; store an allowed-region list per tenant and the router may only retry inside it; a retry that crosses the line is itself a data transfer; logs and traces also carry data'. Context 'dedicated endpoints choose a region, EU or US, with data residency; residency is fixed at endpoint creation and cross-region failover should be opt-in per tenant; Nebius has not published its failover design'. Text at least 24px.",
+  "anchor": "### 12. Failover across regions with data-residency limits",
+  "alt": "Capacity arithmetic for two and three regions plus a per-tenant allowed-region policy for failover.",
+  "cap": "Ask which tenants allow cross-region failover and how much spare capacity that implies."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-retry-storm-ladder",
+  "title": "Two of eight replicas fail and the whole service goes down",
+  "spec": "Setup 'users send 52 requests per second, fleet serves 64; two replicas return errors; gateway attempts climb from about 52 to over 300 per second; success falls to a few percent; the outage ends and the service stays down'. Ladder. Step 1 'compare gateway attempts to user requests: six times means retry amplification'. Step 2 'look for waiting longer than the timeout: a deep queue plus a 2 second timeout produces orphan work (the wasted column)'. Step 3 'act before root cause: cut the retry count at the gateway, turn on the budget, shorten the queue so an overloaded replica rejects in milliseconds'. Say aloud 'I am trading a little success now for a fleet that can recover'. Fix later 'eject the two bad replicas with outlier detection, raise the ejection cap above 10 percent, bound queue wait below the timeout, remove the second retry layer'. Result strip 'budgeted policy kept 99 percent success after the outage in the deep-queue case, the naive one stayed at 2 percent'. Text at least 24px.",
+  "anchor": "### Scenario A. Two of eight replicas fail and the whole service goes down",
+  "alt": "A three-step incident ladder from comparing attempts to user requests to cutting retries, then fixes for later.",
+  "cap": "Mitigate by cutting retries and shortening queues before looking for root cause."
+ },
+ {
+  "part": "part-20-nebius-sre-interview",
+  "ch": "21",
+  "name": "p3-2021-timeout-audit",
+  "title": "A timeout audit: three small bugs that interact",
+  "spec": "Left the original chain 'SDK timeout 30 s; gateway route timeout 40 s with up to 3 tries of 18 s each; engine abort at 20 s; symptoms: duplicated billing lines and slow answers'. Check function result 'check_timeouts(30, 40, 18, 3, 20) returns three problems'. Problem 1 'engine abort 20 is not below the per-try limit 18: the gateway gives up on an attempt the engine is still running'. Problem 2 'three tries need up to 3 x 18 = 54 seconds inside a 40 second total: the third try can never finish'. Problem 3 'client quits at 30, before the gateway finishes, so it retries a call the gateway is still working on'. Right the fixed chain that passed the checker: 'client 60 s above gateway total 40 s, two tries of 18 s each, engine abort 15 s'. Extra notes 'meter usage only for the attempt whose output was delivered; Envoy default route timeout of 15 seconds would cut long streams, so set an idle timeout for streaming routes; re-run the checker after any change to any of the four numbers'. Text at least 24px.",
+  "anchor": "### Scenario B. A timeout audit",
+  "alt": "A before and after timeout chain showing three conflicts found by the checker and the fixed 60, 40, 18 and 15 second settings.",
+  "cap": "Each setting looks fine alone and only fails when the whole chain is read together."
+ }
+]

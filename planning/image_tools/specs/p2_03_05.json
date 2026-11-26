@@ -1,0 +1,62 @@
+[
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "p2-0305-finally-paths",
+  "title": "finally runs on every path, but control never returns after an error",
+  "anchor": "### Termination actions with `finally`",
+  "spec": "Two horizontal flows stacked. Top flow, heading 'Success path': a box 'try: fetcher(food, 4)' then an arrow to a green box 'finally: print after fetch' then an arrow to a box 'print after try?'. Bottom flow, orange outline, heading 'Error path': a box 'try: fetcher(food, 5) raises IndexError' then an arrow to a box 'finally: print after fetch (still runs)' then an arrow to a red-outline cross box 'after try? is never reached' and a further arrow up-right to a box 'exception goes up to the caller'. Note under the bottom flow: 'finally is for cleanup. Use except only where you can recover.' Caption: 'Cleanup after a call never runs when the call raises. Put it in finally or use with.'",
+  "alt": "A finally block runs on success and on an error, but after an error control does not return to the statement after the try.",
+  "cap": "A finally block runs whether or not the body raises, but after an error control never returns to the code after the try."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "p2-0305-baseexception-tree",
+  "title": "Why except Exception does not catch Ctrl-C or sys.exit",
+  "anchor": "### Exception design tips and gotchas",
+  "spec": "A class tree drawn top-down. Root box at the top: 'BaseException'. Two children below it. Left child, green: 'Exception: where ordinary errors live. Catch here.' Right children, orange outline: 'KeyboardInterrupt (Ctrl-C)' and 'SystemExit (sys.exit)'. Under the left child, a fan of boxes: 'OSError (FileNotFoundError, PermissionError, TimeoutError)', 'ValueError', 'TypeError', 'LookupError (KeyError, IndexError)', 'NameError'. Arrow from the 'except Exception' label pointing at the Exception box, and a note on the right: 'A bare except: catches all three branches, which hides typos and swallows exits.' Caption: 'except Exception is narrower than a bare except, but still broad.'",
+  "alt": "BaseException has Exception as one child, where ordinary errors live, and KeyboardInterrupt and SystemExit as separate children, so except Exception misses them.",
+  "cap": "KeyboardInterrupt and SystemExit sit beside Exception under BaseException, so an except Exception clause lets Ctrl-C and sys.exit through."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "p2-0305-main-exit-codes",
+  "title": "A main function maps each class of failure to one exit code",
+  "anchor": "### Error-handling strategy for tools and services",
+  "spec": "A flow chart top-down. Start oval 'main(argv)'. Box 'parse_args and run'. Diamonds branch to four outcomes on the right side. Branch 1: 'OpsError (expected, user-facing)' leads to a box 'log.error, message only' then a box 'return 2'. Branch 2: 'KeyboardInterrupt' leads to 'log.warning interrupted' then 'return 130'. Branch 3, orange outline: 'Any other Exception (a bug)' leads to 'log.exception, full traceback' then 'return 1'. Branch 4, normal return: 'Results list' leads to a diamond 'any failed?' with 'yes' to 'log each failure, return 1' and 'no' to 'return 0'. Bottom note: 'raise SystemExit(main()) at the entry point.' Caption: 'Expected errors get a message, bugs get a traceback.'",
+  "alt": "A main function returns exit code 2 for expected errors, 130 for an interrupt, 1 for unexpected bugs with a traceback, and 0 or 1 depending on whether any item failed.",
+  "cap": "A main function returns 2 for expected errors, 130 for Ctrl-C, 1 for unexpected bugs, and 0 or 1 depending on partial failure."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "p2-0305-toctou-lock",
+  "title": "Check-then-create leaves a race window; attempt-then-handle does not",
+  "anchor": "### Locking and races",
+  "spec": "Two columns side by side. Left column, orange outline, heading 'Check, then create (race)': three boxes stacked with arrows: 'if not exists(path)', then a gap marked with a red warning 'another process can create the file here', then 'open(path, w)'. Right column, green heading 'Attempt, then handle (safe)': two boxes stacked: 'open(path, x) or os.mkdir(path)', then a box 'FileExistsError handled in one step'. Below the columns, a separate lock lane: 'fcntl.flock(fd, LOCK_EX | LOCK_NB)' with two arrows labelled 'first run gets the lock' and 'second run gets BlockingIOError, exits'. Note: 'The lock is advisory, and the kernel releases it when the process exits.' Caption: 'Remove the gap between the check and the use.'",
+  "alt": "A check-then-create sequence leaves a gap another process can enter, while an exclusive open fails in one step, and a non-blocking flock lets only one instance run.",
+  "cap": "Checking whether a file exists before creating it leaves a race gap, while an exclusive open and a non-blocking flock avoid it."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "p2-0305-decode-boundary",
+  "title": "Decode at the input boundary, work in str, and encode at the output boundary",
+  "anchor": "## 4. Text, bytes and encodings in practice",
+  "spec": "A left-to-right pipeline with three zones. Zone 1, left, grey: 'Input boundary: bytes from a file, socket or command output'. An arrow labelled 'decode(encoding=utf-8)' into zone 2, a large green-outlined central block 'Program logic works in str: Unicode code points'. An arrow labelled 'encode(encoding=utf-8)' into zone 3, grey: 'Output boundary: bytes to a file, socket or stdout'. Below the arrows, two failure callouts: on the left arrow, a red box 'UnicodeDecodeError: bytes do not match the encoding you assumed'; on the right arrow, a red box 'UnicodeEncodeError: target encoding cannot represent a character'. A small monospace note: 'Always pass encoding explicitly. Set PYTHONUTF8=1 in containers.' Caption: 'bytes are what disks and sockets carry; str is what your code should handle.'",
+  "alt": "Bytes are decoded to str at the input boundary, handled as str in the program, and encoded back to bytes at the output boundary, with decode and encode errors marked.",
+  "cap": "Data is decoded from bytes to str at input, handled as str in the program, and encoded back to bytes at output."
+ },
+ {
+  "part": "part-03-python",
+  "ch": "05",
+  "name": "p2-0305-pipe-deadlock",
+  "title": "A full stderr pipe deadlocks a parent that reads only stdout",
+  "anchor": "### Streaming, pipelines and process control",
+  "spec": "A diagram of two boxes, 'Parent (Python)' on the left and 'Child process' on the right. Two pipes between them drawn as tubes: the stdout pipe, with an arrow from the child to the parent labelled 'parent reads stdout until EOF' in a green tube, and the stderr pipe, drawn as a tube that is full, marked with a red fill label 'stderr pipe buffer full, about 64 KB'. The child box has an orange outline with the label 'blocked on write to stderr'. The parent box has the label 'waiting for stdout EOF'. A circular arrow between the two boxes labelled 'each waits for the other: deadlock, no error printed'. Right-side green box with the fixes: 'communicate(timeout=...), capture_output=True, or stderr=subprocess.STDOUT'. Caption: 'Drain both pipes at once, and the child never blocks.'",
+  "alt": "A child process fills its stderr pipe while the parent waits for stdout to end, so each side waits for the other and the job hangs.",
+  "cap": "A child that fills its stderr pipe blocks while the parent waits for stdout to end, so the two wait on each other and the job hangs."
+ }
+]

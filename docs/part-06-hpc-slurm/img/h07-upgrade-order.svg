@@ -1,0 +1,84 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="ttl dsc">
+  <title id="ttl">Upgrade order: database, controller, then nodes</title>
+  <desc id="dsc">Three-step upgrade chain: slurmdbd first, slurmctld second, slurmd and clients last. A preparation panel above lists a database backup and copying StateSaveLocation, a note below states the supported compatibility window, and a green bar carries the takeaway.</desc>
+
+  <rect x="0" y="0" width="1600" height="900" fill="#f5f8f5"/>
+
+  <text x="800" y="88" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="48" font-weight="700" fill="#303a36">Upgrade order: database, controller, then nodes</text>
+
+  
+  <g>
+    <rect x="540" y="150" width="520" height="140" rx="14" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <path d="M615 194 L641 203 L641 222 C641 240 630 251 615 256 C600 251 589 240 589 222 L589 203 Z" fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round"/>
+    <text x="661" y="200" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#303a36">take a database backup</text>
+    <text x="661" y="244" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#303a36">copy <tspan font-family="Menlo, Consolas, monospace" font-size="26">StateSaveLocation</tspan></text>
+  </g>
+
+  
+  <g>
+    <rect x="40" y="380" width="420" height="260" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g fill="none" stroke="#207448" stroke-width="4" stroke-linejoin="round">
+      <ellipse cx="250" cy="440" rx="30" ry="10"/>
+      <path d="M220 440 V486 A30 10 0 0 0 280 486 V440"/>
+      <path d="M220 459 A30 10 0 0 0 280 459"/>
+    </g>
+    <text x="250" y="540" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#303a36">slurmdbd</text>
+    <text x="250" y="586" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#303a36">database first</text>
+    <circle cx="82" cy="422" r="24" fill="#207448"/>
+    <text x="82" y="431" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">1</text>
+  </g>
+
+  
+  <g>
+    <rect x="590" y="380" width="420" height="260" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g fill="none" stroke="#207448" stroke-width="4">
+      <circle cx="800" cy="458" r="18"/>
+      <circle cx="800" cy="458" r="8"/>
+    </g>
+    <g fill="none" stroke="#207448" stroke-width="9" stroke-linecap="round">
+      <path d="M818 458 L828 458"/>
+      <path d="M812.7 445.3 L819.8 438.2"/>
+      <path d="M800 440 L800 430"/>
+      <path d="M787.3 445.3 L780.2 438.2"/>
+      <path d="M782 458 L772 458"/>
+      <path d="M787.3 470.7 L780.2 477.8"/>
+      <path d="M800 476 L800 486"/>
+      <path d="M812.7 470.7 L819.8 477.8"/>
+    </g>
+    <text x="800" y="540" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#303a36">slurmctld</text>
+    <text x="800" y="586" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#303a36">controller second</text>
+    <circle cx="632" cy="422" r="24" fill="#207448"/>
+    <text x="632" y="431" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">2</text>
+  </g>
+
+  
+  <g>
+    <rect x="1140" y="380" width="420" height="260" rx="18" fill="#e8f1ea" stroke="#207448" stroke-width="3"/>
+    <g fill="none" stroke="#207448" stroke-width="4">
+      <rect x="1322" y="428" width="56" height="24" rx="5"/>
+      <rect x="1322" y="460" width="56" height="24" rx="5"/>
+    </g>
+    <g fill="#207448">
+      <circle cx="1336" cy="440" r="3.5"/>
+      <circle cx="1336" cy="472" r="3.5"/>
+    </g>
+    <text x="1350" y="540" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="30" font-weight="700" fill="#303a36">slurmd and clients</text>
+    <text x="1350" y="586" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" fill="#303a36">nodes last</text>
+    <circle cx="1182" cy="422" r="24" fill="#207448"/>
+    <text x="1182" y="431" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="26" font-weight="700" fill="#ffffff">3</text>
+  </g>
+
+  
+  <path d="M462 510 H572" stroke="#207448" stroke-width="5" stroke-linecap="butt"/>
+  <path d="M590 510 L572 501 L572 519 Z" fill="#207448"/>
+
+  <path d="M1012 510 H1122" stroke="#db8129" stroke-width="6" stroke-linecap="butt"/>
+  <path d="M1140 510 L1122 500.5 L1122 519.5 Z" fill="#db8129"/>
+
+  <text x="800" y="700" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="24" fill="#303a36">stay within the supported compatibility window</text>
+
+  <g>
+    <rect x="80" y="760" width="1440" height="88" rx="12" fill="#207448"/>
+    <text x="800" y="814" text-anchor="middle" font-family="Helvetica, Arial, sans-serif" font-size="28" fill="#ffffff">Reversing that order is how a rolling upgrade turns into a stuck cluster.</text>
+  </g>
+</svg>

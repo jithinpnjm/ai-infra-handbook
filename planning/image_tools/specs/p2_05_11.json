@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "11",
+  "name": "p2-0511-service-name-parts",
+  "title": "Anatomy of alpaca-prod.default.svc.cluster.local",
+  "spec": "A horizontal row of four labelled segments of one long monospace name, with dots between them, drawn as four connected blocks: 'alpaca-prod', 'default', 'svc', 'cluster.local.'. Under each block a label and a short explanation: under 'alpaca-prod' the label 'Name of the Service'; under 'default' the label 'Namespace the Service lives in'; under 'svc' the label 'Says this is a Service, room for other object types'; under 'cluster.local.' the label 'Base domain, default, administrators can change it'. Above the row, a bracket spanning the first two blocks labelled 'Short form across namespaces: alpaca-prod.default'. Above the full row, a bracket labelled 'Fully qualified name'. Below the explanations, a small answer box in monospace showing 'alpaca-prod.default.svc.cluster.local. 30 IN A 10.115.245.13' with an arrow labelled 'The Service cluster IP'. Orange outline on the 'default' block with the note 'Write the namespace into every cross-namespace reference.' Caption: 'Inside your own namespace, the short name alpaca-prod is enough.'",
+  "anchor": "### Reading a Service name",
+  "alt": "A Service DNS name split into the service name, namespace, svc marker and cluster domain, with the A record answer giving the cluster IP.",
+  "cap": "The Service DNS name alpaca-prod.default.svc.cluster.local has four parts, and its A record answers with the Service cluster IP."
+ }
+]

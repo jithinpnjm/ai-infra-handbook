@@ -270,6 +270,10 @@ Use `sed` when you need a quick, simple edit. The moment your change has several
 
 ## 6. `awk`: the Swiss army knife for columns
 
+![A lookup table keyed by name updating line by line as awk reads five lines, then printing counts at the end, compared with uniq -c on unsorted input.](./img/p3-0104-awk-groupby.svg)
+
+*Figure 1.4.6. awk keeps a count per key while it reads, prints once at END, and so needs no sort before it, unlike uniq -c.*
+
 Picture a `ps` or `nvidia-smi` table. Its columns are lined up with runs of spaces, and you want just one of them. `awk` is a small programming language built for data made of lines and fields, and it reads that kind of table correctly.
 
 Its basic form is `awk 'PATTERN { ACTION }' file`. For every input line, awk splits the text into fields on runs of whitespace by default. Field one is `$1`, field two is `$2`, and so on. The variable `$0` holds the whole line, `NF` holds the number of fields, and `NR` holds the current line number. When the PATTERN is true, the ACTION runs.
@@ -305,7 +309,7 @@ When a field carries units, strip them before you do any arithmetic on it.
 
 ![How awk splits a line into fields](./img/ch04-fig2-awk-v2.jpg)
 
-*Figure 1.4.6. How awk reads a line: fields, NF, NR and `pattern  action `.*
+*Figure 1.4.7. How awk reads a line: fields, NF, NR and `pattern  action `.*
 
 ## 7. Fan-out: `find`, `xargs`, and parallelism
 
@@ -334,7 +338,7 @@ For any fan-out job, start with `-print0` and `-0`, so that odd file names canno
 
 ![xargs fan-out](./img/ch04-fig3-xargs.jpg)
 
-*Figure 1.4.7. Fan-out with find -print0 and xargs -0.*
+*Figure 1.4.8. Fan-out with find -print0 and xargs -0.*
 
 ## 8. Comparing files and handling structured text
 
@@ -354,6 +358,10 @@ sha256sum model.bin                # compare by checksum when files are huge
 `diff -u` marks removed lines with `-` and added lines with `+`. The command `patch -p1 < change.diff` applies such a diff to a source tree. Before you edit any production config, copy it and run `diff -u` on the result. That is the cheapest change review there is.
 
 ### JSON and friends: use a parser, not regex
+
+![A jq filter applied to a JSON list of two GPUs: iterate the array, keep the one with more than 80000 memory, and print its id.](./img/p3-0104-jq-filter.svg)
+
+*Figure 1.4.9. Each jq stage passes items to the next: iterate the array, keep matching items, then read one field.*
 
 Modern tools emit JSON, and a lot of it. Parsing that with `grep` and `sed` works for a while, then it breaks. `jq` is the tool for the job, and you can think of it as `sed` for JSON: it reads the nested structure instead of the raw characters.
 
@@ -406,6 +414,10 @@ Large files. These tools stream their input, so a 50 GB log does not need 50 GB 
 Before you run a pipeline on a large file, filter it with `grep` first.
 
 ## 10. Recipes for AI and HPC work
+
+![A five stage pipeline of grep, sed, sort, uniq and sort that masks numbers in error lines so two NCCL timeout messages are counted together.](./img/p3-0104-mask-rank-errors.svg)
+
+*Figure 1.4.10. After the numbers are masked to N, the two NCCL timeout lines become identical, sort puts them side by side, and uniq -c counts them as 2.*
 
 You are on call, and a user asks which GPU is running hot. Then someone asks which node is down, and someone else asks why their job is still queued. Questions like these come up again and again on a GPU cluster, and the ten recipes below are the short answers. They are patterns you will adapt to your own cluster, not commands to paste blindly. Before you trust any of them, run its first stage alone and look at the data it produces.
 

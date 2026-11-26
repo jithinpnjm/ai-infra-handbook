@@ -38,12 +38,9 @@ Picture a shared research cluster where a dozen teams each want their own versio
 
 The diagram below shows the path a container takes on a well-run cluster. Read it from left to right. Each box is a step that someone performs, and each step has a clear owner.
 
-```mermaid
-flowchart LR
-  Recipe["1. Pinned Recipe in Git<br/>@sha256 + requirements.lock<br/>+ container_lint.py"] --> Build["2. CI Build & Sign<br/>apptainer build --fakeroot<br/>%test + syft SBOM + sign"]
-  Build --> Store["3. Shared FS / Registry<br/>/shared/containers/app.sif<br/>or Enroot .sqsh"]
-  Store --> Run["4. Slurm Launch (srun --mpi=pmix)<br/>apptainer exec --nv --cleanenv<br/>(Hybrid MPI + Host Driver)"]
-```
+![What a container is, and why HPC needed new runtimes](./img/m6-29-1.svg)
+
+*Figure 6.29.1. What a container is, and why HPC needed new runtimes, as a diagram.*
 
 The first box is the recipe, which is the text that says how the image is built. It lives in Git, pins its base image by digest and lists its Python packages with a lock file. The second box is a build that runs in a continuous integration system, which is an automated build server, and not on someone's laptop. The build runs the image's tests and produces a software bill of materials (SBOM), a list of every component inside the image. Then it signs the result. The third box is where the finished image sits, either on a shared file system or in a registry. The fourth box is the moment a job starts. Slurm launches the container on each node, and the container uses the host's GPU driver and MPI launcher.
 

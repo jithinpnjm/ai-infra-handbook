@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" width="1600" height="1000">
+  <title>A host dictionary replaces the group dictionary, combine keeps both</title>
+  <desc>Dictionaries replace across layers, so merge them on purpose.</desc>
+
+  <defs>
+    <marker id="arrowhead" markerWidth="14" markerHeight="14" refX="10" refY="7" orient="auto">
+      <polygon points="0 2, 12 7, 0 12" fill="#207448"/>
+    </marker>
+  </defs>
+
+  
+  <rect width="1600" height="1000" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">
+    <tspan x="800" dy="0">A host dictionary replaces the group dictionary,</tspan>
+    <tspan x="800" dy="56">combine keeps both</tspan>
+  </text>
+
+  
+  <rect x="50" y="160" width="310" height="706" rx="16" fill="#e8f1ea"/>
+
+  
+  <g transform="translate(177, 185)">
+    <rect x="0" y="12" width="44" height="34" rx="4" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M10 12 V4 A 4 4 0 0 1 14 0 H48 A 4 4 0 0 1 52 4 V28 A 4 4 0 0 1 48 32 H44" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="8" y1="24" x2="36" y2="24" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <line x1="8" y1="34" x2="26" y2="34" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="205" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="205" dy="0">Group dictionary</tspan>
+    <tspan x="205" dy="36">(group_vars)</tspan>
+  </text>
+
+  
+  <rect x="75" y="340" width="260" height="500" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="95" y="380" width="220" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="205" y="425" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">key 1</text>
+
+  
+  <rect x="95" y="490" width="220" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="205" y="535" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">key 2</text>
+
+  
+  <rect x="95" y="600" width="220" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="205" y="645" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">key 3</text>
+
+  
+  <rect x="400" y="160" width="310" height="706" rx="16" fill="#e8f1ea"/>
+
+  
+  <g transform="translate(527, 185)">
+    <rect x="0" y="0" width="56" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <circle cx="14" cy="19" r="4" fill="#207448"/>
+    <line x1="28" y1="19" x2="44" y2="19" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <path d="M16 38 V48 M40 38 V48 M8 48 H48" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+  </g>
+
+  
+  <text x="555" y="275" text-anchor="middle" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">
+    <tspan x="555" dy="0">Host override</tspan>
+    <tspan x="555" dy="36">(host_vars)</tspan>
+  </text>
+
+  
+  <rect x="425" y="340" width="260" height="190" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+
+  
+  <rect x="445" y="365" width="220" height="70" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="555" y="410" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">key 1</text>
+
+  
+  <text x="555" y="485" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">one key</text>
+
+  
+  <path d="M685 435 H766" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrowhead)"/>
+
+  
+
+  
+  <rect x="750" y="160" width="800" height="320" rx="16" fill="#e8f1ea"/>
+
+  
+  <g transform="translate(775, 185)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M14 24 H34 M26 16 L34 24 L26 32" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="835" y="218" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">Default: replace</text>
+
+  
+  <rect x="770" y="250" width="760" height="210" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="4"/>
+
+  
+  <rect x="795" y="265" width="180" height="50" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="885" y="300" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">key 1</text>
+
+  
+  <rect x="795" y="330" width="180" height="50" rx="6" fill="#f4f5f4" stroke="#a5b0a9" stroke-width="2" stroke-dasharray="4,4"/>
+  <text x="885" y="365" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#88968f">key 2</text>
+  <line x1="815" y1="355" x2="955" y2="355" stroke="#75827b" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <rect x="795" y="395" width="180" height="50" rx="6" fill="#f4f5f4" stroke="#a5b0a9" stroke-width="2" stroke-dasharray="4,4"/>
+  <text x="885" y="430" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#88968f">key 3</text>
+  <line x1="815" y1="420" x2="955" y2="420" stroke="#75827b" stroke-width="4" stroke-linecap="round"/>
+
+  
+  <circle cx="1065" cy="355" r="22" fill="#fbebe4" stroke="#db8129" stroke-width="3"/>
+  <line x1="1054" y1="355" x2="1076" y2="355" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+  <text x="1105" y="364" font-family="sans-serif" font-size="28" font-weight="bold" fill="#303a36">keys 2 and 3 disappear</text>
+
+  
+  <rect x="750" y="500" width="800" height="290" rx="16" fill="#e8f1ea"/>
+
+  
+  <g transform="translate(775, 520)">
+    <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="4"/>
+    <path d="M12 14 C18 14 20 24 32 24 M12 34 C18 34 20 24 32 24 M32 24 H38" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  
+  <text x="835" y="553" font-family="sans-serif" font-size="30" font-weight="bold" fill="#303a36">combine(recursive=True)</text>
+
+  
+  <rect x="770" y="570" width="760" height="205" rx="12" fill="#ffffff" stroke="#207448" stroke-width="3"/>
+
+  
+  <rect x="795" y="585" width="180" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="885" y="618" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">key 1</text>
+
+  
+  <rect x="795" y="647" width="180" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="885" y="680" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">key 2</text>
+
+  
+  <rect x="795" y="709" width="180" height="46" rx="6" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="885" y="742" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">key 3</text>
+
+  
+  <circle cx="1110" cy="672" r="26" fill="#e8f1ea" stroke="#207448" stroke-width="4"/>
+  <path d="M1098 672 L1107 681 L1124 661" fill="none" stroke="#207448" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="1155" y="682" font-family="sans-serif" font-size="28" font-weight="bold" fill="#207448">keys are kept</text>
+
+  
+  <rect x="750" y="810" width="800" height="56" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  <text x="1150" y="846" text-anchor="middle" font-family="monospace, Courier, monospace" font-size="24" font-weight="bold" fill="#303a36">{{ base_cfg | combine(env_cfg, recursive=True) }}</text>
+
+  
+  <rect x="50" y="890" width="1500" height="64" rx="10" fill="#207448"/>
+  <text x="800" y="931" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#ffffff">Dictionaries replace across layers, so merge them on purpose.</text>
+</svg>

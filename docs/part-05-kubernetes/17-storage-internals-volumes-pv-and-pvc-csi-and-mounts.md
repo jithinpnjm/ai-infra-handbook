@@ -69,13 +69,9 @@ Applications usually reach object stores directly. They use a library to authent
 
 A training engineer asks for "2 TB for checkpoints" and expects it to appear on the right machine. Three objects make that happen. The claim states the need, the PersistentVolume is the storage that satisfies it, and the StorageClass describes how new storage should be created. Think of the claim as a purchase order, the PV as the item that arrives, and the StorageClass as the catalog that says how each item is made. The diagram shows how they connect.
 
-```mermaid
-flowchart LR
-  U["Pod spec: volumes[].persistentVolumeClaim"] --> PVC["PersistentVolumeClaim\n(request: size, accessModes, storageClass)"]
-  PVC -->|"binds 1:1"| PV["PersistentVolume\n(capacity, accessModes, reclaimPolicy, nodeAffinity, CSI volumeHandle)"]
-  SC["StorageClass\n(provisioner, parameters, reclaimPolicy, volumeBindingMode, allowVolumeExpansion, mountOptions)"] -->|"dynamic provisioning creates"| PV
-  PV --> BE["Backend volume (cloud disk, Ceph RBD image, NFS export, Lustre dir, local NVMe)"]
-```
+![PersistentVolumes, Claims and StorageClasses](./img/m5-17-1.svg)
+
+*Figure 5.17.1. PersistentVolumes, Claims and StorageClasses, as a diagram.*
 
 A PersistentVolume is a cluster-scoped record of a piece of storage. It holds the capacity, access modes, reclaim policy, mount options, node affinity, and a source that names the CSI driver, a `volumeHandle` and its attributes. An administrator can create one by hand, which is called static provisioning. A provisioner can also create one on demand, which is called dynamic provisioning. A PersistentVolumeClaim is the namespaced request. It names a size, access modes, a volume mode, a StorageClass and optionally a selector or a `volumeName`. The PV controller then binds the claim to a suitable volume. It prefers the smallest volume that meets the capacity, class, modes, selector and node affinity. The binding is exclusive and one to one.
 
@@ -295,23 +291,9 @@ Which pattern you pick depends on whether the data must be replicated or simply 
 
 The Container Storage Interface, or CSI, is a gRPC specification between an orchestrator and a storage driver. Kubernetes uses sidecar containers around the driver. This means a driver author implements only the CSI services and leaves the Kubernetes wiring to the sidecars. Think of CSI as a standard power socket. Each storage vendor builds its own device, and the cluster offers one standard socket. The sidecars are the adapters that connect that socket to Kubernetes objects.
 
-```mermaid
-flowchart TB
-  subgraph CP["CSI Controller Service (Deployment, any node)"]
-    EXT1["external-provisioner"] --> CTRL["CSI driver (Controller RPCs):\nCreateVolume / DeleteVolume\nControllerPublish / Expand / Snapshot"]
-    EXT2["external-attacher"] --> CTRL
-    EXT3["external-resizer"] --> CTRL
-    EXT4["external-snapshotter"] --> CTRL
-  end
-  subgraph Node["CSI Node Service (DaemonSet on every node)"]
-    REG["node-driver-registrar"] --> KL["kubelet (plugin registration socket)"]
-    NODE["CSI driver (Node RPCs):\nNodeStageVolume / NodeUnstageVolume\nNodePublish / Unpublish / GetVolumeStats"]
-    LIV["livenessprobe"]
-  end
-  API["API server objects: PVC, PV, VolumeAttachment, CSINode, VolumeSnapshot"] <--> EXT1
-  API <--> EXT2
-  KL -->|"gRPC on unix socket /var/lib/kubelet/plugins/<driver>/csi.sock"| NODE
-```
+![The CSI architecture](./img/m5-17-2.svg)
+
+*Figure 5.17.2. The CSI architecture, as a diagram.*
 
 The controller runs as a Deployment on any node. The node service runs as a DaemonSet on every node. The diagram shows which sidecar watches which object and calls which driver function. Read the controller side first, then the node side. If you are tracing a failed volume, follow the steps in order until you find where it stops. Think of the sidecars as office staff on the Kubernetes side. They take requests from the API objects and pass them along. The driver is the crew on the storage side, and it does not need to understand Kubernetes objects at all.
 

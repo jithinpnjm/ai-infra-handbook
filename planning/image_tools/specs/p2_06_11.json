@@ -1,0 +1,12 @@
+[
+ {
+  "part": "part-06-hpc-slurm",
+  "ch": "11",
+  "name": "p2-0611-step-inside-allocation",
+  "title": "A second srun inside an allocation can wait for GPUs",
+  "spec": "A split diagram of two terminals drawn side by side. Left terminal 'Terminal 1: interactive allocation' holding a box 'GPUs held by the first step' with a bar showing all GPUs in use. Right terminal 'Terminal 2: srun nvidia-smi' with the prompt shown as a waiting spinner and the monospace text 'no output yet'. A dashed arrow from terminal 2 to the held GPUs labelled 'Waits, or is rejected, unless resources are free'. A note 'Steps do not share resources by default'. Below, a two-line flag comparison card: 'Without --exact: the step may use all non-GRES resources on each node' and 'With --exact: the step takes only what it asks for'. A third flag card 'With -K (--kill-on-bad-exit): one non-zero exit ends the whole step'. Orange outline on the waiting spinner. Caption at the bottom: 'Nothing is broken; the first terminal already holds the GPUs.'",
+  "anchor": "## 3. srun",
+  "alt": "A second srun in the same allocation waits for GPUs already held by the first step, and --exact limits what a step takes.",
+  "cap": "A second srun inside the same allocation waits for GPUs held by the first step, and --exact stops a step taking more than it asks for."
+ }
+]

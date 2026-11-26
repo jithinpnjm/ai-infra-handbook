@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p2-0518-anti-affinity",
+  "title": "Keep replicas off the same node with anti-affinity",
+  "spec": "Two side-by-side panels with green headings. Left panel 'Without anti-affinity': one node box labelled 'Node 1' holding two replica boxes 'vLLM replica' and 'vLLM replica', a red cross on Node 1 labelled 'Node fails', and a note 'Both replicas disappear at once'. Right panel 'With podAntiAffinity on hostname': three node boxes 'Node 1', 'Node 2', 'Node 3', each holding one 'vLLM replica' box, a dashed barrier line between nodes labelled 'Avoid nodes that already run a replica', and a note 'topologyKey: a node label that defines the domain, here the hostname'. A monospace chip under the right panel 'requiredDuringSchedulingIgnoredDuringExecution'. Orange outline on the left panel's Node 1 red cross. Caption: 'Anti-affinity expresses the opposite intent: keep the replicas apart.'",
+  "anchor": "### Pod affinity and anti-affinity",
+  "alt": "Two vLLM replicas on one node both disappear when the node fails, while pod anti-affinity places each replica on its own node.",
+  "cap": "Pod anti-affinity keeps replicas on separate nodes, so one node failure no longer removes both replicas at once."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p2-0518-zone-spread",
+  "title": "Topology spread keeps replicas across zones",
+  "spec": "Three zone columns side by side, each a tall box labelled 'Zone a', 'Zone b' and 'Zone c'. Left illustration titled 'Three replicas in one zone': all three vLLM replica boxes stacked in Zone a, Zone a has a red cross labelled 'Zone outage: service offline', Zones b and c are green and empty. Right illustration titled 'topologySpreadConstraints, maxSkew 1': one replica in each of the three zones, with a bracket across the columns labelled 'Counts differ by at most 1'. A monospace chip under the right illustration 'topology.kubernetes.io/zone' and a second chip 'whenUnsatisfiable: DoNotSchedule'. Orange outline on the left illustration's zone outage cross. Caption: 'Dealing cards around a table: no seat holds more than one card more than another.'",
+  "anchor": "### Topology spread constraints",
+  "alt": "Three replicas in one zone are all lost in a zone outage, while a topology spread constraint with maxSkew 1 places one replica in each zone.",
+  "cap": "Three replicas in one zone are all lost in a zone outage, while maxSkew 1 across zones keeps the counts within one of each other."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p2-0518-egg-carton",
+  "title": "Replicas as eggs in cartons: spread across failure domains",
+  "spec": "A large carton drawn as a grid with compartments, one row per zone. Left carton titled 'All three replicas in one compartment': three egg icons labelled 'web server replica' in a single compartment, and an arrow from a dropped-box icon labelled 'Zone outage' that empties all of them. Right carton titled 'Spread across zones with preferred anti-affinity': one egg per compartment across three compartments labelled 'zone label on each node'. A monospace chip 'podAntiAffinity, preferredDuringScheduling' under the right carton. Orange outline on the left carton's compartment as the single failure domain. Caption: 'Running several replicas helps only when they do not share a failure.'",
+  "anchor": "### Spreading replicas across failure domains",
+  "alt": "Replicas of one web server placed in a single zone are lost together, while spreading them across zones with anti-affinity keeps the service up.",
+  "cap": "Several replicas help only when they do not share a failure, so anti-affinity spreads web server replicas across zones."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p2-0518-priority-floors",
+  "title": "Priority classes: floors in a tower",
+  "spec": "A tall tower drawn as stacked floors, top to bottom. Top floor 'system-node-critical (2000001000)' and 'system-cluster-critical (2000000000)' labelled 'Reserved for core components'. Floor 'inference-critical: value 1000000, PreemptLowerPriority, may preempt training' highlighted with an orange outline. Floor 'training-low: value 1000, preemptionPolicy Never, waits in the queue, never evicts others'. Bottom floor 'Default pods (no class)'. An elevator icon at the side labelled 'Higher floors win the scheduling queue'. Right side three job boxes labelled 'Orders the scheduling queue', 'Decides preemption victims', 'Influences node-pressure eviction order'. Caption: 'Priority is an integer, and a larger value means more important.'",
+  "anchor": "### PriorityClass",
+  "alt": "Priority classes as floors in a tower, with inference-critical able to preempt low-priority training that waits in the queue.",
+  "cap": "Priority classes act as floors in a tower, where inference-critical can preempt lower-priority training and training-low waits without evicting others."
+ },
+ {
+  "part": "part-05-kubernetes",
+  "ch": "18",
+  "name": "p2-0518-preempt-steps",
+  "title": "Preemption: simulate first, evict only if it fits",
+  "spec": "A vertical sequence of five numbered steps top to bottom with arrows. Step 1 box 'High-priority pod fits on no node (PostFilter)'. Step 2 box 'Simulate removing lower-priority pods on candidate nodes' with a small simulation icon. Step 3 box 'Would the new pod fit if these pods were gone?' drawn as a diamond with a yes branch and a no branch; the no branch loops back to step 2 for another candidate node. Step 4 box 'Pick the candidate node that needs the fewest victims' with a ranking chip list in order: 'fewest PDB violations', 'lowest highest-victim priority', 'fewest victims', 'latest start time'. Step 5 box 'Set status.nominatedNodeName and delete the victims, which finish their grace periods'. A final arrow to a box 'Preemptor schedules once resources free up, though other pods may take them'. Orange outline on step 3's yes branch as the only path that evicts anyone. A side warning card 'Preemption can cascade: a victim rescheduled may preempt another pod'.",
+  "anchor": "## 4. Priority, preemption and disruption",
+  "alt": "Preemption simulates removing lower-priority pods on candidate nodes, picks the node with the fewest victims, and evicts only when the new pod would then fit.",
+  "cap": "Preemption simulates removing lower-priority pods, picks the node with the fewest victims, and evicts only when the new pod would fit."
+ }
+]

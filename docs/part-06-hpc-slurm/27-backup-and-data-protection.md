@@ -58,22 +58,9 @@ Write down an RPO and an RTO for each class before you choose any tools. A tool 
 
 Suppose an administrator deletes a project directory by mistake, and the team asks whether it can come back. Whether you can get it back depends on where the other copies live and how independent they are. The principles below are about that question, because a copy that fails with the original is not really a copy.
 
-```mermaid
-flowchart LR
-  subgraph Primary["1. Primary Cluster Data"]
-    CP["Control Plane: slurmdbd, LDAP,<br/>BCM/xCAT/Warewulf, Vault, Git"]
-    Data["User /home & Curated Models"]
-  end
-  subgraph Local["2. Second Medium (On-Site)"]
-    Dedup["restic / borg / rsync --link-dest<br/>or Bacula (:9101/:9102/:9103)"]
-  end
-  subgraph Offsite["3. Offsite + 1 Immutable Copy"]
-    WORM["S3 Object Lock (WORM) /<br/>Offline Tape (/dev/nst0)"]
-  end
-  Primary --> Dedup
-  Dedup --> WORM
-  WORM -->|"0 Errors: Automated Restore & --read-data"| Verify["Quarterly DR Drill"]
-```
+![Principles](./img/m6-27-1.svg)
+
+*Figure 6.27.1. Principles, as a diagram.*
 
 Read the diagram from left to right. Primary cluster data is copied to a second medium on site. From there it goes to an offsite copy that is also immutable, which means nobody can change it after it is written. A quarterly disaster-recovery drill then checks that the restore really works.
 

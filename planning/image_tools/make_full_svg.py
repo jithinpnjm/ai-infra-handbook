@@ -1,0 +1,175 @@
+import xml.etree.ElementTree as ET
+import re
+
+svg_content = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1200" width="1600" height="1200">
+  <title>Text and bytes only meet at the boundaries</title>
+  <desc>Visual explanation of the boundary pattern in Python: decoding bytes to Unicode text on input, processing text internally, encoding text to bytes on output, with error handling strategies, encoding rules, and common pitfalls.</desc>
+
+  <defs>
+    <!-- Green marker (18px) for pipeline arrows -->
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="16" refY="9" markerUnits="userSpaceOnUse" markerWidth="18" markerHeight="18" orient="auto">
+      <path d="M 2 3 L 16 9 L 2 15 Z" fill="#207448" />
+    </marker>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1600" height="1200" fill="#f5f8f5" />
+
+  <!-- Title (48px bold) -->
+  <text x="800" y="60" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#303a36">Text and bytes only meet at the boundaries</text>
+
+  <!-- ======================================================== -->
+  <!-- TOP PIPELINE CONTAINER (x=40, y=95, w=1520, h=295)       -->
+  <!-- ======================================================== -->
+  <rect x="40" y="95" width="1520" height="295" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  <!-- Left Node: bytes in (x=60, y=110, w=320, h=185) -->
+  <rect x="60" y="110" width="320" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Storage / Cylinder Outline Icon (56px, stroke 4) -->
+  <g transform="translate(192, 120)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="10" rx="24" ry="7" />
+    <path d="M 4 10 V 38 C 4 45, 52 45, 52 38 V 10" />
+    <path d="M 4 24 C 4 31, 52 31, 52 24" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="220" y="195" font-weight="bold" fill="#207448">bytes in:</tspan>
+    <tspan x="220" y="223">file in binary mode,</tspan>
+    <tspan x="220" y="251">socket reads,</tspan>
+    <tspan x="220" y="279">subprocess output</tspan>
+  </text>
+
+  <!-- Arrow 1: Left to Middle (from x=380 to x=720, y=242) -->
+  <line x1="380" y1="242" x2="720" y2="242" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <!-- Arrow 1 Label (centered at x=550) -->
+  <text font-size="24" text-anchor="middle" fill="#207448">
+    <tspan x="550" y="186" font-family="ui-monospace, monospace" font-weight="bold">data.decode("utf-8")</tspan>
+    <tspan x="550" y="218" font-family="system-ui, -apple-system, sans-serif">when input arrives</tspan>
+  </text>
+
+  <!-- Middle Node: str: Unicode text (x=720, y=110, w=360, h=185) -->
+  <rect x="720" y="110" width="360" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Application Window Outline Icon (56px, stroke 4) -->
+  <g transform="translate(872, 120)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="2" y="2" width="52" height="42" rx="6" />
+    <line x1="2" y1="14" x2="54" y2="14" stroke-width="3" />
+    <circle cx="10" cy="8" r="2" fill="#207448" />
+    <circle cx="18" cy="8" r="2" fill="#207448" />
+    <line x1="12" y1="24" x2="44" y2="24" stroke-width="3" />
+    <line x1="12" y1="32" x2="32" y2="32" stroke-width="3" />
+  </g>
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36" text-anchor="middle">
+    <tspan x="900" y="195" font-weight="bold" fill="#207448">str: Unicode text</tspan>
+    <tspan x="900" y="223">(code points);</tspan>
+    <tspan x="900" y="251">JSON, YAML and regular</tspan>
+    <tspan x="900" y="279">expressions work here</tspan>
+  </text>
+
+  <!-- Arrow 2: Middle to Right (from x=1080 to x=1380, y=242) -->
+  <line x1="1080" y1="242" x2="1380" y2="242" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <!-- Arrow 2 Label (centered at x=1230) -->
+  <text font-size="24" text-anchor="middle" fill="#207448">
+    <tspan x="1230" y="186" font-family="ui-monospace, monospace" font-weight="bold">s.encode("utf-8")</tspan>
+    <tspan x="1230" y="218" font-family="system-ui, -apple-system, sans-serif">when output leaves</tspan>
+  </text>
+
+  <!-- Right Node: bytes out (x=1380, y=110, w=160, h=185) -->
+  <rect x="1380" y="110" width="160" height="185" rx="12" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <!-- Storage / Output Outline Icon (56px, stroke 4) -->
+  <g transform="translate(1432, 120)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <ellipse cx="28" cy="10" rx="24" ry="7" />
+    <path d="M 4 10 V 38 C 4 45, 52 45, 52 38 V 10" />
+    <path d="M 4 24 C 4 31, 52 31, 52 24" />
+  </g>
+  <text x="1460" y="235" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448">bytes out</text>
+
+  <!-- Errors Argument Row (x=60, y=315, w=1480, h=55) -->
+  <rect x="60" y="315" width="1480" height="55" rx="10" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="800" y="350" text-anchor="middle" font-family="ui-monospace, monospace" font-size="24" font-weight="bold" fill="#303a36">strict, replace, ignore, surrogateescape, backslashreplace</text>
+
+  <!-- ======================================================== -->
+  <!-- LEFT COLUMN: Traps Panel (orange) (x=40, y=430, w=740)   -->
+  <!-- ======================================================== -->
+  <rect x="40" y="430" width="740" height="625" rx="16" fill="#fff9f3" stroke="#db8129" stroke-width="3" />
+
+  <!-- Trap 1 Card (x=60, y=448, w=700, h=136) -->
+  <rect x="60" y="448" width="700" height="136" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" y="478">locale.getpreferredencoding() changes with</tspan>
+    <tspan x="80" y="506">the environment; containers that set</tspan>
+    <tspan x="80" y="534">LANG=C surprise people; always pass</tspan>
+    <tspan x="80" y="562">encoding="utf-8" to open()</tspan>
+  </text>
+
+  <!-- Trap 2 Card (x=60, y=596, w=700, h=164) -->
+  <rect x="60" y="596" width="700" height="164" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" y="626">the same visible text can have different</tspan>
+    <tspan x="80" y="654">code point sequences: é as one code point</tspan>
+    <tspan x="80" y="682">or e plus a combining accent; normalise</tspan>
+    <tspan x="80" y="710">both with unicodedata.normalize("NFC", s)</tspan>
+    <tspan x="80" y="738">before comparing</tspan>
+  </text>
+
+  <!-- Trap 3 Card (x=60, y=772, w=700, h=52) -->
+  <rect x="60" y="772" width="700" height="52" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text x="80" y="806" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">str.casefold() for caseless matching</text>
+
+  <!-- Trap 4 Card (x=60, y=836, w=700, h=80) -->
+  <rect x="60" y="836" width="700" height="80" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" y="866">len() counts code points, not bytes or</tspan>
+    <tspan x="80" y="894">graphemes</tspan>
+  </text>
+
+  <!-- Trap 5 Card (x=60, y=928, w=700, h=80) -->
+  <rect x="60" y="928" width="700" height="80" rx="10" fill="#ffffff" stroke="#db8129" stroke-width="1.5" />
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="80" y="958">sorting follows code point order; use</tspan>
+    <tspan x="80" y="986">locale.strxfrm or ICU for human order</tspan>
+  </text>
+
+  <!-- ======================================================== -->
+  <!-- RIGHT COLUMN TOP: Encodings Panel (x=820, y=430, w=740)  -->
+  <!-- ======================================================== -->
+  <rect x="820" y="430" width="740" height="235" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  <!-- Encodings Card (x=840, y=455, w=700, h=160) -->
+  <rect x="840" y="455" width="700" height="160" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="860" y="492">UTF-8 default for new work, ASCII is a</tspan>
+    <tspan x="860" y="522">subset, Latin-1 maps bytes one to one onto</tspan>
+    <tspan x="860" y="552">code points 0 to 255 which carries</tspan>
+    <tspan x="860" y="582">arbitrary bytes through text APIs</tspan>
+  </text>
+
+  <!-- ======================================================== -->
+  <!-- RIGHT COLUMN BOTTOM: Bytes Facts (x=820, y=705, w=740)   -->
+  <!-- ======================================================== -->
+  <rect x="820" y="705" width="740" height="350" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  <!-- Bytes Fact 1 Card (x=840, y=735, w=700, h=100) -->
+  <rect x="840" y="735" width="700" height="100" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="860" y="776">b"abc"[0] == 97 indexing bytes returns</tspan>
+    <tspan x="860" y="806">integers</tspan>
+  </text>
+
+  <!-- Bytes Fact 2 Card (x=840, y=860, w=700, h=155) -->
+  <rect x="840" y="860" width="700" height="155" rx="10" fill="#ffffff" stroke="#207448" stroke-width="1.5" />
+  <text font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+    <tspan x="860" y="904">bytes.hex(), bytes.fromhex,</tspan>
+    <tspan x="860" y="936">int.from_bytes, struct.pack and unpack for</tspan>
+    <tspan x="860" y="968">binary protocols, base64, hashlib</tspan>
+  </text>
+
+  <!-- ======================================================== -->
+  <!-- BOTTOM TAKEAWAY BAR (x=40, y=1095, w=1520, h=65)        -->
+  <!-- ======================================================== -->
+  <rect x="40" y="1095" width="1520" height="65" rx="12" fill="#207448" />
+  <text x="800" y="1136" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Convert only at the boundaries of your program</text>
+</svg>'''
+
+with open("test_output_candidate.svg", "w") as f:
+    f.write(svg_content)
+
+print("Wrote test_output_candidate.svg")

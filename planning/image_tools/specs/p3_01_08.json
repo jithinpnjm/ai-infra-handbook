@@ -1,0 +1,52 @@
+[
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p3-0108-slurm-checkpoint",
+  "title": "Checkpoint before the time limit: SIGUSR1 reaches the batch shell, then the trainer",
+  "spec": "A horizontal timeline for a Slurm job. Left end 'Job starts', right end 'Time limit: SIGTERM, then SIGKILL after KillWait (default 30 s)'. A marker 180 seconds before the right end labelled '#SBATCH --signal=B:USR1@180: Slurm sends SIGUSR1 to the batch shell' (orange, the key event). Below the timeline, three process boxes in a column: 'Batch shell (script)' with 'trap kill -USR1 $pid; wait $pid USR1'; 'python train.py running in the background (&), pid saved in $pid'; and the batch shell line 'wait $pid'. Numbered arrows: 1 'Slurm sends SIGUSR1 to the batch shell', 2 'trap fires at once because the shell is in wait, not in a foreground command', 3 'kill -USR1 forwards the signal to the training process', 4 'training writes the checkpoint', 5 'wait returns, job ends cleanly'. A small contrast box to the right: 'If python train.py ran in the foreground, the shell would defer the trap until it finished'. Bottom bar: 'Start long-running children in the background and wait for them'.",
+  "anchor": "### Catching signals in shell scripts",
+  "alt": "A timeline where Slurm sends SIGUSR1 to the batch shell 180 seconds before the time limit, the trap forwards it to the training process, which saves a checkpoint.",
+  "cap": "Run training in the background and wait for it, so the trap fires immediately and forwards SIGUSR1 to save a checkpoint before the time limit."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p3-0108-limit-layers",
+  "title": "Which layer sets the limit for your job: login, service, container or Slurm",
+  "spec": "Four horizontal rows, each a layer with an icon and the place the limit is set and an example. Row 1 'Login session (SSH)': PAM reads '/etc/security/limits.conf' and 'limits.d/*.conf', example line '* soft memlock unlimited'. Row 2 'systemd service': limits.conf does NOT apply; set in the unit 'LimitNOFILE=' and 'LimitMEMLOCK=infinity'. Row 3 'Container': the runtime sets it, 'docker run --ulimit memlock=-1:-1', Kubernetes inherits from the container runtime and node configuration. Row 4 'Slurm job': limits propagate from the submitting environment unless 'PropagateResourceLimits' says otherwise. Right of rows a vertical arrow labelled 'children inherit soft limits' pointing down into a small box 'Your process: check cat /proc/PID/limits'. A strip along the bottom lists the two classic errors 'Too many open files (nofile, default soft limit 1024)' and 'Cannot allocate memory when pinning for RDMA or GPU (memlock)'. Orange outline on the systemd row (the common surprise). Bottom bar: 'Before you raise a limit, check which layer actually sets it for the job'.",
+  "anchor": "## 7. Limits: `ulimit` and `prlimit`",
+  "alt": "Four layers that set process limits, login sessions, systemd services, containers and Slurm jobs, each with where the limit is configured.",
+  "cap": "Raising limits.conf does nothing for a systemd service or container, so find which layer actually starts the process."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p3-0108-time-classify",
+  "title": "Reading time output: where did the wall-clock time go?",
+  "spec": "A top box with the three lines 'real: elapsed wall-clock time', 'user: CPU time in the program's own code', 'sys: CPU time the kernel spent on its behalf'. Below, a rule box: 'real minus (user + sys) = time NOT on a CPU (disk, network, locks, scheduler)' and 'user + sys larger than real = several cores used'. Then three worked cards side by side, each with a horizontal bar made from segments. Card A 'real 0.442 s, user 0.052 s, sys 0.091 s': a long bar mostly grey labelled 'about 0.3 s waiting' with small user and sys segments; verdict 'The job is waiting, not computing'. Card B 'real 10.0 s, user 75.0 s, sys 3.0 s': user plus sys bar far longer than the real bar; verdict 'Multi-core CPU-bound: about 7.8 cores busy'. Card C '/usr/bin/time cal > /dev/null: (2major+254minor)pagefaults 0swaps': two small boxes '2 major: read from disk' and '254 minor: page already in RAM, no disk I/O'; verdict 'Cheap start-up faults'. Orange on card A verdict.",
+  "anchor": "### Measuring CPU time: `time`",
+  "alt": "Three worked examples of time output showing a job that mostly waits, a job using several cores, and a start-up with two major and 254 minor page faults.",
+  "cap": "When real is much bigger than user plus sys the job is waiting, and when user plus sys is bigger than real it used several cores."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p3-0108-cgroup-exceed",
+  "title": "What happens when a cgroup exceeds its limits: throttled, killed or refused",
+  "spec": "Centre box 'cgroup /sys/fs/cgroup/demo' with three limit files listed: 'cpu.max = 50000 100000 (50 ms per 100 ms period = half a core)', 'memory.max = 200M', 'pids.max = 100'. Three outgoing arrows to three result boxes. Result 1 'Over cpu.max: THROTTLED, paused until the next period; shows as nr_throttled and throttled_usec in cpu.stat; latency spikes in containers with small CPU limits'. Result 2 'Over memory.max and cannot reclaim: cgroup OOM killer kills a process inside the group; oom_kill count in memory.events; container exit code 137' (orange, most important). Result 3 'Over pids.max: fork() fails'. Left side small box 'Setup: mkdir demo; echo +cpu +memory +pids into cgroup.subtree_control; echo PID into cgroup.procs'. Right note box 'Rules: processes only in leaf cgroups; a child uses only controllers its parent enabled; one unified tree in v2'. Bottom bar: 'Before you cap a workload, check which cgroup it actually runs in'.",
+  "anchor": "### Creating and changing cgroups",
+  "alt": "A cgroup with cpu.max, memory.max and pids.max limits and what happens on exceeding each: throttling, an OOM kill, and failing fork.",
+  "cap": "Exceeding the CPU quota throttles the group, exceeding the memory limit triggers an OOM kill, and exceeding the pids limit makes fork fail."
+ },
+ {
+  "part": "part-01-linux",
+  "ch": "08",
+  "name": "p3-0108-page-faults",
+  "title": "Minor and major page faults: map a page, or read it from disk",
+  "spec": "Left to right flow. Box 1 'Program touches an address that is not mapped yet' (chip icon) with arrow to box 2 'CPU raises a page fault; MMU asked, kernel takes over'. Branch into two lanes. Upper lane 'Minor page fault': the page is already in RAM (shared library code another process loaded, or a newly allocated page); kernel only updates the mapping; cheap; 'thousands per second are normal'. Lower lane 'Major page fault': page must be read from disk (program code on first execution, or memory that was swapped out); slow; 'a burst at first run is normal; a continuous stream means memory pressure and thrashing'. Both lanes rejoin at 'Program continues'. Right panel 'How to see it': 'ps -o pid,min_flt,maj_flt,rss,comm -p 1234', '/usr/bin/time cal > /dev/null prints (2major+254minor)pagefaults 0swaps', 'free -h: read available, not free; sustained vmstat so means thrashing'. Orange highlight on the major lane.",
+  "anchor": "### Memory in brief, and page faults",
+  "alt": "A flow from an unmapped address to a page fault that branches into a cheap minor fault and a slow major fault that reads from disk.",
+  "cap": "A minor fault only updates a mapping, while a major fault must read from disk and a steady stream of them means memory pressure."
+ }
+]

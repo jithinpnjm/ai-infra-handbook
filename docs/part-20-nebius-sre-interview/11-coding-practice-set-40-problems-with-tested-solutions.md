@@ -32,14 +32,9 @@ Picture the empty editor and the running clock. Most people feel the pull to sta
 
 The routine has five steps. Restate the problem in one sentence, so you know what you are answering. Write two examples, one of them empty, so the edge cases are on the page. Say the brute-force idea and its cost out loud. Only then look for the pattern that removes the waste. After the code, trace one example by hand and walk through the edge cases again.
 
-```mermaid
-flowchart LR
-  A["Restate + 2 examples"] --> B["Brute force + cost"]
-  B --> C["Name the waste"]
-  C --> D["Better approach + cost"]
-  D --> E["Code, then trace an example"]
-  E --> F["Edge cases, then follow-up"]
-```
+![Run every problem the same way](./img/m20-11-1.svg)
+
+*Figure 20.11.1. Run every problem the same way, as a diagram.*
 
 Brute force gives you a fallback and, later, an oracle. An oracle is a slow version you trust because it is obviously correct, and you use it to check the fast version. The tests in this chapter use the same idea: where it is cheap, each solution is checked against a slow, obviously correct version on thousands of random small inputs. **Write the slow version first, in your head or on paper.**
 

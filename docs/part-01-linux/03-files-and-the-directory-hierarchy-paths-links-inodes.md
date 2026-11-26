@@ -193,6 +193,10 @@ Use `ls -F` when you want a quick hint about each name's type. It appends a mark
 
 ## 4. Inodes: what a file really is
 
+![A chain of three directory tables resolving the path home, alice and train.py to inode numbers, ending at the file inode and its data blocks.](./img/p3-0103-path-walk.svg)
+
+*Figure 1.3.4. The kernel resolves a path one component at a time, each lookup returning an inode number, and only the last inode leads to the file data.*
+
 Here are two puzzles you will meet in your first month. You rename a file that is huge, and the command returns at once. You delete a file that a program still has open, and the disk can stay full. Both behaviours come from the inode.
 
 A file in Linux is not its name. For every file, the filesystem keeps an object called an **inode**, short for index node. Think of the inode as the file's record card, kept by the filesystem rather than by the name. The inode holds everything about the file except its name and its data:
@@ -207,7 +211,7 @@ A **directory** is a special file that holds a simple table. Each entry maps a n
 
 ![A directory entry maps a name to an inode, and the inode holds the metadata and data block pointers.](./img/ch03-fig1-inode.jpg)
 
-*Figure 1.3.4. The name lives in the directory; everything else about the file lives in the inode.*
+*Figure 1.3.5. The name lives in the directory; everything else about the file lives in the inode.*
 
 You can look at the inode yourself with these commands. The `ls -li` output shows the inode number in its first column.
 
@@ -287,7 +291,7 @@ Notice the row for a deleted original, because it decides most real incidents. A
 
 ![A hard link is a second name for one inode, and a symbolic link is a small file that names a path.](./img/ch03-fig2-links.jpg)
 
-*Figure 1.3.5. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
+*Figure 1.3.6. Deleting one hard-linked name leaves the data; deleting a symlink's target leaves a dangling link.*
 
 ### The atomic "latest" pattern
 
@@ -302,11 +306,15 @@ The `-f` flag replaces an existing link. `-n` treats an existing directory symli
 
 ![A temporary symlink is created, then renamed over latest in one atomic step.](./img/ch03-fig3-atomic-latest.jpg)
 
-*Figure 1.3.6. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
+*Figure 1.3.7. Create latest.tmp first, then rename it over latest; readers see the old target or the new one.*
 
 Before you point a `latest` link at a new checkpoint, use this two-step swap so readers never find it missing.
 
 ## 6. Timestamps
+
+![A matrix of five file actions against the three timestamps mtime, ctime and atime, showing which ones change for each action.](./img/p3-0103-timestamps-matrix.svg)
+
+*Figure 1.3.8. Writing changes mtime and ctime, changing permissions changes only ctime, and reading changes atime only occasionally because of relatime.*
 
 You ask what changed recently, and Linux gives you three different answers depending on which time you read. That is not a trick. Every inode records three times, and `stat` shows all of them.
 
@@ -443,6 +451,10 @@ Most filesystem failures look like something other than a filesystem problem. Th
 
 ### 1. "No space left on device" but `df -h` shows free space
 
+![A troubleshooting ladder for a disk that looks full, branching to out of inodes, a deleted but open file, or a quota or container layer limit.](./img/p3-0103-disk-full-ladder.svg)
+
+*Figure 1.3.9. Run df -h and df -i first, then compare du with df to find deleted-but-open files, then check quotas.*
+
 **Symptom:** writes fail with ENOSPC, yet `df -h` shows free space. You may be sure the disk has room, and that is the trap. **Cause:** the filesystem ran out of **inodes**, not bytes. That is typically millions of tiny files. Or a per-user or project quota has been reached, or a container's writable layer is full. **Diagnose:** run `df -h` **and** `df -i` on the path. Then run `find /dir -xdev -type f | wc -l`, and `quota -s` where quotas are used. **Fix:** delete or pack the small files. Or recreate the filesystem with more inodes, using `mkfs.ext4 -N`, or choose a different filesystem such as XFS, which allocates inodes dynamically. You can also move the data. **Prevention:** shard your datasets.
 
 ### 2. A dangling symlink: `latest -> checkpoints/step_900` but the directory was cleaned
@@ -457,7 +469,7 @@ Most filesystem failures look like something other than a filesystem problem. Th
 
 ![A deleted file that a process still holds open keeps using disk space that du cannot see.](./img/l03-deleted-open.svg)
 
-*Figure 1.3.7. df counts the space while a process holds the file open, but du no longer finds the name.*
+*Figure 1.3.10. df counts the space while a process holds the file open, but du no longer finds the name.*
 
 **Symptom:** `df` shows 95% used, but `du -sh /*` totals much less. **Cause:** a large log or temporary file was deleted while a process still had it open. The data is kept until that process closes the file or exits. The name is gone, but the space is not. **Diagnose:** run `sudo lsof +L1`, which lists open files with a link count below 1. Or run `ls -l /proc/<pid>/fd | grep deleted`. **Fix:** restart the process, or signal it to reopen its log. `logrotate` with `copytruncate` or `postrotate` handles this properly. You can also truncate the file through its descriptor with `: > /proc/<pid>/fd/<n>`.
 

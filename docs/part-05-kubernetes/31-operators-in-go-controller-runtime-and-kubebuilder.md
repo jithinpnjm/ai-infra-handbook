@@ -45,31 +45,9 @@ If any of those earlier chapters is unfamiliar, read it before you go on. Each o
 
 Picture an operator as a single Pod that watches the API server and reacts to what it sees. The Pod is one process, but inside that process several parts cooperate. Each part has one job, and the diagram shows how they connect. Read it as a team: the manager is the foreman, the cache is the shared notebook, and the controllers are the workers who use the notebook to decide what to do.
 
-```mermaid
-flowchart TB
-  subgraph Process["operator process (one Pod)"]
-    M[Manager]
-    C[(Shared cache<br/>informers)]
-    CL[Caching client<br/>reads from cache<br/>writes to API]
-    R1[Controller A<br/>queue + Reconcile]
-    R2[Controller B]
-    W[Webhook server]
-    LE[Leader election]
-    ME[Metrics and probes]
-    M --> C
-    M --> R1
-    M --> R2
-    M --> W
-    M --> LE
-    M --> ME
-    R1 --> CL
-    R2 --> CL
-    CL --> C
-  end
-  API[(kube-apiserver)]
-  C -- list and watch --> API
-  CL -- create update patch delete --> API
-```
+![Where controller-runtime sits](./img/m5-31-1.svg)
+
+*Figure 5.31.1. Where controller-runtime sits, as a diagram.*
 
 Read the diagram from the bottom up. The layers work like this:
 

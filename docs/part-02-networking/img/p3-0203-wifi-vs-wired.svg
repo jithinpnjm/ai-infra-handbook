@@ -1,0 +1,161 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1140" width="1600" height="1140">
+  <title>Wired versus Wi-Fi medium access: collision detection, collision avoidance and the hidden node</title>
+  <desc>Visual comparison between Wired Ethernet CSMA/CD and modern full-duplex switching versus Wi-Fi 802.11 CSMA/CA, the hidden node problem, and goodput realities.</desc>
+
+  <defs>
+    <marker id="arrow-green" viewBox="0 0 18 18" refX="15" refY="9" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 0 2 L 16 9 L 0 16 z" fill="#207448"/>
+    </marker>
+    <clipPath id="col2-clip">
+      <rect x="825" y="535" width="725" height="370" rx="12"/>
+    </clipPath>
+  </defs>
+
+  
+  <rect width="1600" height="1140" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="52" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">Wired versus Wi-Fi medium access:</text>
+  <text x="800" y="106" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">collision detection, collision avoidance</text>
+  <text x="800" y="160" text-anchor="middle" font-family="sans-serif" font-size="48" font-weight="bold" fill="#303a36">and the hidden node</text>
+
+  
+  <rect x="50" y="195" width="725" height="55" rx="8" fill="#207448"/>
+  <text x="412.5" y="233" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Wired Ethernet</text>
+
+  
+  <rect x="50" y="270" width="725" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(80, 290)">
+    <line x1="0" y1="22" x2="60" y2="22" stroke="#207448" stroke-width="4"/>
+    <circle cx="0" cy="22" r="5" fill="#207448"/>
+    <circle cx="60" cy="22" r="5" fill="#207448"/>
+    <line x1="15" y1="22" x2="15" y2="40" stroke="#207448" stroke-width="3"/>
+    <rect x="8" y="40" width="14" height="10" rx="2" fill="#207448"/>
+    <line x1="45" y1="22" x2="45" y2="40" stroke="#207448" stroke-width="3"/>
+    <rect x="38" y="40" width="14" height="10" rx="2" fill="#207448"/>
+    <path d="M 30 10 L 33 18 L 41 15 L 35 22 L 42 27 L 33 26 L 30 34 L 27 26 L 18 27 L 25 22 L 19 15 L 27 18 Z" fill="#207448"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" y="360">CSMA/CD: listen first, transmit only when idle;</tspan>
+    <tspan x="75" y="394">on collision send a jam signal, then binary</tspan>
+    <tspan x="75" y="428">exponential back-off with a random wait;</tspan>
+    <tspan x="75" y="462">minimum frame 64 bytes so a sender is still</tspan>
+    <tspan x="75" y="496">transmitting when a far-end collision arrives</tspan>
+  </text>
+
+  
+  <rect x="50" y="535" width="725" height="180" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(80, 550)">
+    <rect x="0" y="5" width="60" height="38" rx="6" fill="none" stroke="#207448" stroke-width="4"/>
+    <line x1="12" y1="18" x2="48" y2="18" stroke="#207448" stroke-width="3"/>
+    <polyline points="42,13 48,18 42,23" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+    <line x1="48" y1="30" x2="12" y2="30" stroke="#207448" stroke-width="3"/>
+    <polyline points="18,25 12,30 18,35" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" y="622">each host has its own link to a switch port,</tspan>
+    <tspan x="75" y="656">full duplex, separate transmit and receive pairs:</tspan>
+    <tspan x="75" y="690">no collision and no CSMA/CD</tspan>
+  </text>
+
+  
+  <rect x="50" y="735" width="725" height="170" rx="12" fill="#fdf5ec" stroke="#db8129" stroke-width="3"/>
+  
+  <g transform="translate(80, 750)">
+    <path d="M 28 6 L 54 48 L 2 48 Z" fill="none" stroke="#db8129" stroke-width="4" stroke-linejoin="round"/>
+    <line x1="28" y1="20" x2="28" y2="34" stroke="#db8129" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="28" cy="42" r="2.5" fill="#db8129"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="75" y="820">duplex mismatch (one side half,</tspan>
+    <tspan x="75" y="854">the other forced full) causes late collisions,</tspan>
+    <tspan x="75" y="888">CRC errors and terrible throughput</tspan>
+  </text>
+
+  
+  <rect x="825" y="195" width="725" height="55" rx="8" fill="#207448"/>
+  <text x="1187.5" y="233" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#ffffff">Wi-Fi 802.11</text>
+
+  
+  <rect x="825" y="270" width="725" height="245" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(855, 290)">
+    <line x1="28" y1="20" x2="28" y2="48" stroke="#207448" stroke-width="4"/>
+    <circle cx="28" cy="18" r="6" fill="#207448"/>
+    <path d="M 16 10 A 18 18 0 0 0 16 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 40 10 A 18 18 0 0 1 40 26" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 8 4 A 30 30 0 0 0 8 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+    <path d="M 48 4 A 30 30 0 0 1 48 32" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text font-family="sans-serif" font-size="24" fill="#303a36">
+    <tspan x="850" y="360">radio is a shared broadcast medium; a station cannot</tspan>
+    <tspan x="850" y="394">listen while it transmits, so collision detection</tspan>
+    <tspan x="850" y="428">is impossible; CSMA/CA: listen, random back-off,</tspan>
+    <tspan x="850" y="462">transmit the whole frame, wait for an ACK;</tspan>
+    <tspan x="850" y="496">no ACK means lost, back off and retry</tspan>
+  </text>
+
+  
+  <g>
+    <rect x="825" y="535" width="725" height="370" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+    
+    
+    <g clip-path="url(#col2-clip)">
+      <circle cx="940" cy="685" r="260" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.35"/>
+      <circle cx="1435" cy="685" r="260" fill="none" stroke="#207448" stroke-width="2" stroke-dasharray="6 6" opacity="0.35"/>
+    </g>
+
+    
+    <text x="1187.5" y="574" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#303a36">A and C cannot hear each other</text>
+
+    
+    <path d="M 955 640 Q 1187.5 595 1420 640" fill="none" stroke="#718096" stroke-width="3" stroke-dasharray="8 8"/>
+    
+    <g transform="translate(1172.5, 595)">
+      <circle cx="15" cy="15" r="14" fill="#ffffff" stroke="#718096" stroke-width="2"/>
+      <line x1="6" y1="6" x2="24" y2="24" stroke="#718096" stroke-width="3" stroke-linecap="round"/>
+      <line x1="24" y1="6" x2="6" y2="24" stroke="#718096" stroke-width="3" stroke-linecap="round"/>
+    </g>
+
+    
+    <line x1="985" y1="685" x2="1140" y2="685" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+    <line x1="1390" y1="685" x2="1235" y2="685" stroke="#207448" stroke-width="4" marker-end="url(#arrow-green)"/>
+
+    
+    <circle cx="940" cy="685" r="38" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <text x="940" y="695" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">A</text>
+
+    
+    <circle cx="1187.5" cy="685" r="38" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <text x="1187.5" y="695" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">B</text>
+
+    
+    <circle cx="1435" cy="685" r="38" fill="#ffffff" stroke="#207448" stroke-width="4"/>
+    <text x="1435" y="695" text-anchor="middle" font-family="sans-serif" font-size="32" font-weight="bold" fill="#207448">C</text>
+
+    
+    <rect x="855" y="810" width="665" height="65" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2"/>
+    <text x="1187.5" y="851" text-anchor="middle" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448">RTS/CTS can mitigate, but is optional</text>
+  </g>
+
+  
+  <rect x="50" y="935" width="1500" height="75" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+  
+  <g transform="translate(85, 946)">
+    <path d="M 6 36 A 24 24 0 1 1 48 36" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round"/>
+    <circle cx="27" cy="34" r="4" fill="#207448"/>
+    <line x1="27" y1="34" x2="38" y2="20" stroke="#207448" stroke-width="3" stroke-linecap="round"/>
+  </g>
+  <text x="800" y="982" text-anchor="middle" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36">Real goodput is typically 40 to 60 percent of the nominal PHY rate</text>
+
+  
+  <rect x="50" y="1035" width="1500" height="70" rx="12" fill="#207448"/>
+  
+  <g transform="translate(85, 1045)">
+    <circle cx="25" cy="25" r="20" fill="none" stroke="#ffffff" stroke-width="3"/>
+    <polyline points="15,25 22,32 35,18" fill="none" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="800" y="1079" text-anchor="middle" font-family="sans-serif" font-size="28" font-weight="bold" fill="#ffffff">Plan with goodput, not the headline rate</text>
+</svg>

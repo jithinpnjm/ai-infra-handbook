@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1100" width="1600" height="1100">
+  <title>Repair time moves the spare count more than failure rate</title>
+  <desc>Infographic illustrating how fleet spare count scales dramatically with repair turnaround time compared to pooled vs per-customer spare allocation strategies.</desc>
+
+  
+  <rect width="100%" height="100%" fill="#f5f8f5"/>
+
+  
+  <text x="800" y="68" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="48" font-weight="bold" fill="#207448">Repair time moves the spare count more than failure rate</text>
+
+  
+  <g id="left-column">
+    
+    <rect x="40" y="110" width="740" height="865" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(68, 138)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="4" width="44" height="14" rx="2"/>
+      <rect x="6" y="22" width="44" height="14" rx="2"/>
+      <rect x="6" y="40" width="44" height="14" rx="2"/>
+      <line x1="14" y1="11" x2="16" y2="11"/>
+      <line x1="14" y1="29" x2="16" y2="29"/>
+      <line x1="14" y1="47" x2="16" y2="47"/>
+    </g>
+
+    
+    <text x="140" y="152" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="140" dy="0">table for a 512-node fleet at an assumed</tspan>
+      <tspan x="140" dy="32">10 percent per year failure rate with</tspan>
+      <tspan x="140" dy="32">Poisson coverage 99.9 percent</tspan>
+    </text>
+
+    
+    <rect x="70" y="260" width="680" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(92, 290)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <polyline points="28,14 28,28 38,28"/>
+    </g>
+    <text x="165" y="306" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">24 hours repair: 0.14 nodes in repair on average:</tspan>
+      <tspan x="165" dy="36" font-weight="bold" font-size="28" fill="#207448">2 spares</tspan>
+    </text>
+
+    
+    <rect x="70" y="395" width="680" height="115" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(92, 425)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <polyline points="28,14 28,28 40,36"/>
+    </g>
+    <text x="165" y="462" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">
+      72 hours: 0.42: 3 spares
+    </text>
+
+    
+    <rect x="70" y="530" width="680" height="135" rx="12" fill="#ffffff" stroke="#db8129" stroke-width="3"/>
+    <g transform="translate(92, 568)" stroke="#db8129" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M28 8 L50 48 L6 48 Z"/>
+      <line x1="28" y1="22" x2="28" y2="34"/>
+      <circle cx="28" cy="42" r="1.5" fill="#db8129"/>
+    </g>
+    <text x="165" y="582" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="165" dy="0">336 hours (14 days via vendor):</tspan>
+      <tspan x="165" dy="38" font-size="28" font-weight="bold" fill="#db8129">1.96: 7 spares</tspan>
+    </text>
+
+    
+    <rect x="70" y="690" width="680" height="120" rx="12" fill="#f7faf8" stroke="#207448" stroke-width="2" stroke-dasharray="6 4"/>
+    <g transform="translate(92, 722)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <line x1="28" y1="24" x2="28" y2="38"/>
+      <circle cx="28" cy="16" r="2" fill="#207448"/>
+    </g>
+    <text x="165" y="742" font-family="system-ui, -apple-system, sans-serif" font-size="25" font-weight="bold" fill="#303a36">
+      <tspan x="165" dy="0">the fleet did not get less reliable;</tspan>
+      <tspan x="165" dy="34">the repair loop got slower</tspan>
+    </text>
+  </g>
+
+  
+  <g id="right-column">
+    
+    <rect x="820" y="110" width="740" height="865" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2"/>
+
+    
+    <g transform="translate(850, 138)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="16" cy="18" r="10"/>
+      <circle cx="40" cy="18" r="10"/>
+      <circle cx="28" cy="42" r="10"/>
+      <line x1="22" y1="24" x2="25" y2="34"/>
+      <line x1="34" y1="24" x2="31" y2="34"/>
+    </g>
+
+    
+    <text x="925" y="174" font-family="system-ui, -apple-system, sans-serif" font-size="32" font-weight="bold" fill="#207448">
+      pooled versus per-customer
+    </text>
+
+    
+    <rect x="850" y="225" width="680" height="155" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(872, 275)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="6" y="6" width="18" height="18" rx="3"/>
+      <rect x="32" y="6" width="18" height="18" rx="3"/>
+      <rect x="6" y="32" width="18" height="18" rx="3"/>
+      <rect x="32" y="32" width="18" height="18" rx="3"/>
+    </g>
+    <text x="945" y="265" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="945" dy="0" font-weight="bold">Per-customer X+1: 16 dedicated endpoints</tspan>
+      <tspan x="945" dy="34">of 32 nodes each keep their own spare</tspan>
+      <tspan x="945" dy="34">= 16 spare nodes for 512 nodes</tspan>
+    </text>
+
+    
+    <rect x="850" y="405" width="680" height="105" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(872, 430)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="28" cy="28" r="22"/>
+      <circle cx="28" cy="28" r="10"/>
+      <line x1="28" y1="6" x2="28" y2="18"/>
+      <line x1="28" y1="38" x2="28" y2="50"/>
+      <line x1="6" y1="28" x2="18" y2="28"/>
+      <line x1="38" y1="28" x2="50" y2="28"/>
+    </g>
+    <text x="945" y="468" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">
+      shared pool: 3 to 7 spares
+    </text>
+
+    
+    <rect x="850" y="535" width="680" height="305" rx="12" fill="#ffffff" stroke="#207448" stroke-width="1.5"/>
+    <g transform="translate(872, 560)" stroke="#207448" stroke-width="4" fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <rect x="10" y="10" width="36" height="36" rx="4"/>
+      <line x1="4" y1="22" x2="10" y2="22"/>
+      <line x1="4" y1="34" x2="10" y2="34"/>
+      <line x1="46" y1="22" x2="52" y2="22"/>
+      <line x1="46" y1="34" x2="52" y2="34"/>
+      <line x1="22" y1="4" x2="22" y2="10"/>
+      <line x1="34" y1="4" x2="34" y2="10"/>
+      <line x1="22" y1="46" x2="22" y2="52"/>
+      <line x1="34" y1="46" x2="34" y2="52"/>
+    </g>
+    <text x="945" y="595" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#207448">
+      Constraints for the pool:
+    </text>
+    <text x="880" y="650" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#303a36">
+      <tspan x="880" dy="0">spare must match GPU type and region;</tspan>
+      <tspan x="880" dy="38">must load the customer's model weights</tspan>
+      <tspan x="880" dy="38">before it can serve; a cold spare takes minutes,</tspan>
+      <tspan x="880" dy="38">so keep a warm tier for the most demanding customers</tspan>
+    </text>
+  </g>
+
+  
+  <g id="footer">
+    <rect x="40" y="1005" width="1520" height="65" rx="12" fill="#207448"/>
+    <text x="800" y="1047" text-anchor="middle" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#ffffff">
+      shorten the repair loop before buying nodes
+    </text>
+  </g>
+</svg>
