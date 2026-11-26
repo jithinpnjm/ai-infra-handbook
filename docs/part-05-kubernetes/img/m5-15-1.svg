@@ -1,206 +1,197 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1350" width="1600" height="1350">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1500" width="1600" height="1500">
   <title>How enforcement works in the kernel</title>
-  <desc>Flowchart illustrating Kubernetes network policy enforcement flow from packet arrival through conntrack, AdminNetworkPolicy, Namespace NetworkPolicy, and BaselineAdminNetworkPolicy.</desc>
+  <desc>Flowchart showing packet processing stages in kernel network policy enforcement including conntrack, AdminNetworkPolicy, Namespace NetworkPolicy, and BaselineAdminNetworkPolicy.</desc>
 
   <defs>
     
-    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#207448" />
+    <marker id="arrow" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#207448" />
     </marker>
-    <marker id="arrow-orange" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="9" markerHeight="9" orient="auto-start-reverse">
-      <path d="M 1 2 L 10 6 L 1 10 Z" fill="#db8129" />
-    </marker>
-
     
-    <filter id="card-shadow" x="-5%" y="-5%" width="110%" height="115%" filterUnits="userSpaceOnUse">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#143b25" flood-opacity="0.08" />
-    </filter>
+    <marker id="arrow-red" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
+      <path d="M 1 2 L 10 6 L 1 10 z" fill="#c53030" />
+    </marker>
   </defs>
 
   
-  <rect width="1600" height="1350" fill="#f5f8f5" />
+  <rect width="1600" height="1500" fill="#f5f8f5" />
 
   
-  <text x="800" y="55" font-family="sans-serif" font-size="44" font-weight="bold" fill="#303a36" text-anchor="middle">How enforcement works in the kernel</text>
+  <text x="800" y="48" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#207448" text-anchor="middle">How enforcement works in the kernel</text>
 
   
-  <g id="node-pkt" filter="url(#card-shadow)">
-    <rect x="400" y="90" width="600" height="100" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+
+  
+  <line x1="800" y1="200" x2="800" y2="238" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1000" y1="305" x2="1268" y2="305" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="800" y1="370" x2="800" y2="518" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="600" y1="590" x2="342" y2="590" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="800" y1="660" x2="800" y2="808" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="1020" y1="880" x2="1258" y2="880" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="800" y1="950" x2="800" y2="1088" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <line x1="560" y1="1160" x2="382" y2="1160" stroke="#c53030" stroke-width="4" marker-end="url(#arrow-red)" />
+
+  
+  <line x1="800" y1="1230" x2="800" y2="1338" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+
+  
+
+  
+  <rect x="1020" y="248" width="240" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1140" y="278" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">Yes: Stateful Reply</text>
+
+  
+  <rect x="830" y="425" width="320" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="990" y="455" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129" text-anchor="middle">No: New Connection (SYN)</text>
+
+  
+  <rect x="350" y="534" width="240" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="470" y="564" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">Action: Allow / Deny</text>
+
+  
+  <rect x="830" y="715" width="310" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="985" y="745" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">Action: Pass / No Match</text>
+
+  
+  <rect x="1035" y="824" width="210" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="1140" y="854" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#303a36" text-anchor="middle">No: Non-Isolated</text>
+
+  
+  <rect x="610" y="1000" width="170" height="42" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
+  <text x="695" y="1030" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#db8129" text-anchor="middle">Yes: Isolated</text>
+
+  
+  <rect x="425" y="1104" width="90" height="42" rx="8" fill="#ffffff" stroke="#c53030" stroke-width="2" />
+  <text x="470" y="1134" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#c53030" text-anchor="middle">No</text>
+
+  
+  <rect x="830" y="1264" width="90" height="42" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+  <text x="875" y="1294" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+
+
+  
+
+  
+  <g>
+    <rect x="580" y="80" width="440" height="120" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(425, 112)">
-      <rect x="0" y="8" width="46" height="38" rx="6" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 0 16 L 23 32 L 46 16" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
-      <circle cx="23" cy="27" r="4" fill="#207448" />
-    </g>
-    <text x="720" y="132" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="720" dy="0">Packet Leaving Source Pod</tspan>
-      <tspan x="720" dy="32">or Arriving at Dest Pod</tspan>
-    </text>
+    <rect x="782" y="94" width="36" height="26" rx="4" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 782 101 L 800 112 L 818 101" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="800" y="152" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">Packet Leaving Source Pod</text>
+    <text x="800" y="184" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">or Arriving at Dest Pod</text>
   </g>
 
   
-  <line x1="700" y1="190" x2="700" y2="242" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-
-  
-  <g id="node-ct" filter="url(#card-shadow)">
-    <rect x="385" y="245" width="630" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g>
+    <rect x="600" y="240" width="400" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(410, 268)">
-      <ellipse cx="24" cy="12" rx="22" ry="8" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 2 12 V 32 C 2 40 46 40 46 32 V 12" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 2 22 C 2 30 46 30 46 22" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 2 32 C 2 40 46 40 46 32" fill="none" stroke="#207448" stroke-width="3" />
-    </g>
-    <text x="720" y="292" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="720" dy="0">Existing Established Flow</tspan>
-      <tspan x="720" dy="32">in conntrack / BPF CT Map?</tspan>
-    </text>
+    <rect x="784" y="254" width="32" height="26" rx="3" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="784" y1="264" x2="816" y2="264" stroke="#207448" stroke-width="2" />
+    <line x1="800" y1="264" x2="800" y2="280" stroke="#207448" stroke-width="2" />
+    
+    <text x="800" y="316" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">Existing Established Flow</text>
+    <text x="800" y="350" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">in conntrack / BPF CT Map?</text>
   </g>
 
   
-  <line x1="1015" y1="300" x2="1218" y2="300" stroke="#db8129" stroke-width="3.5" marker-end="url(#arrow-orange)" />
-  <rect x="1035" y="250" width="160" height="36" rx="8" fill="#ffffff" stroke="#db8129" stroke-width="2" />
-  <text x="1115" y="275" font-family="sans-serif" font-size="24" font-weight="bold" fill="#db8129" text-anchor="middle">Yes: Stateful Reply</text>
-
-  
-  <g id="node-allowct" filter="url(#card-shadow)">
-    <rect x="1220" y="245" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#db8129" stroke-width="3" />
+  <g>
+    <rect x="1270" y="240" width="310" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(1240, 272)">
-      <path d="M 24 4 L 44 12 V 26 C 44 40 24 50 24 50 C 24 50 4 40 4 26 V 12 Z" fill="none" stroke="#db8129" stroke-width="3" />
-      <path d="M 14 26 L 22 34 L 34 18" fill="none" stroke="#db8129" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    <text x="1420" y="310" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">ALLOW immediately</text>
+    <circle cx="1425" cy="272" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 1417 272 L 1423 278 L 1434 266" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="1425" y="332" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">ALLOW immediately</text>
   </g>
 
   
-  <line x1="700" y1="355" x2="700" y2="395" stroke="#207448" stroke-width="3" />
-  <line x1="700" y1="440" x2="700" y2="480" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="540" y="398" width="320" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="700" y="426" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">No: New Connection (SYN)</text>
-
-  
-  <g id="node-anp" filter="url(#card-shadow)">
-    <rect x="410" y="485" width="580" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g>
+    <rect x="600" y="520" width="400" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(435, 510)">
-      <path d="M 24 4 L 44 12 V 26 C 44 40 24 50 24 50 C 24 50 4 40 4 26 V 12 Z" fill="none" stroke="#207448" stroke-width="3" />
-      <text x="24" y="34" font-family="sans-serif" font-size="22" font-weight="bold" fill="#207448" text-anchor="middle">1</text>
-    </g>
-    <text x="720" y="532" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="720" dy="0">1. AdminNetworkPolicy</tspan>
-      <tspan x="720" dy="32">(Cluster Guardrails)</tspan>
-    </text>
+    <path d="M 800 534 L 816 542 L 816 556 C 816 566 800 572 800 572 C 800 572 784 566 784 556 L 784 542 Z" fill="none" stroke="#207448" stroke-width="3" stroke-linejoin="round" />
+    
+    <text x="800" y="608" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#207448" text-anchor="middle">1. AdminNetworkPolicy</text>
+    <text x="800" y="642" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">(Cluster Guardrails)</text>
   </g>
 
   
-  <line x1="990" y1="540" x2="1218" y2="540" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="1015" y="490" width="180" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="1105" y="515" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Action: Allow / Deny</text>
-
-  
-  <g id="node-verdict1" filter="url(#card-shadow)">
-    <rect x="1220" y="485" width="340" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g>
+    <rect x="20" y="520" width="320" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(1240, 510)">
-      <path d="M 6 42 L 20 28" fill="none" stroke="#207448" stroke-width="4" stroke-linecap="round" />
-      <rect x="18" y="14" width="24" height="14" rx="3" transform="rotate(-45 30 21)" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 32 44 L 46 44" stroke="#207448" stroke-width="3" stroke-linecap="round" />
-    </g>
-    <text x="1420" y="548" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Enforce Admin Verdict</text>
+    <rect x="165" y="536" width="30" height="14" rx="2" transform="rotate(-30 180 543)" fill="none" stroke="#207448" stroke-width="3" />
+    <line x1="180" y1="545" x2="195" y2="568" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="180" y="622" font-family="sans-serif" font-size="25px" font-weight="bold" fill="#303a36" text-anchor="middle">Enforce Admin Verdict</text>
   </g>
 
   
-  <line x1="700" y1="595" x2="700" y2="635" stroke="#207448" stroke-width="3" />
-  <line x1="700" y1="680" x2="700" y2="720" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="560" y="638" width="280" height="40" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="700" y="666" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Action: Pass / No Match</text>
-
-  
-  <g id="node-np" filter="url(#card-shadow)">
-    <rect x="390" y="725" width="620" height="110" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g>
+    <rect x="580" y="810" width="440" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(415, 750)">
-      <path d="M 24 4 L 44 12 V 26 C 44 40 24 50 24 50 C 24 50 4 40 4 26 V 12 Z" fill="none" stroke="#207448" stroke-width="3" />
-      <text x="24" y="34" font-family="sans-serif" font-size="22" font-weight="bold" fill="#207448" text-anchor="middle">2</text>
-    </g>
-    <text x="720" y="772" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="720" dy="0">2. Namespace NetworkPolicy</tspan>
-      <tspan x="720" dy="32">Is Pod Isolated for Direction?</tspan>
-    </text>
+    <circle cx="790" cy="838" r="8" fill="none" stroke="#207448" stroke-width="2.5" />
+    <circle cx="810" cy="838" r="8" fill="none" stroke="#207448" stroke-width="2.5" />
+    <path d="M 782 856 C 782 848 818 848 818 856" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="800" y="896" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">2. Namespace NetworkPolicy</text>
+    <text x="800" y="930" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">Is Pod Isolated for Direction?</text>
   </g>
 
   
-  <path d="M 1010 780 L 1330 780 L 1330 920" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="1055" y="730" width="210" height="38" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="1160" y="756" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">No: Non-Isolated</text>
-
-  
-  <g id="node-banp" filter="url(#card-shadow)">
-    <rect x="1120" y="925" width="420" height="145" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g>
+    <rect x="1260" y="810" width="320" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(1145, 965)">
-      <path d="M 24 4 L 44 12 V 26 C 44 40 24 50 24 50 C 24 50 4 40 4 26 V 12 Z" fill="none" stroke="#207448" stroke-width="3" />
-      <text x="24" y="34" font-family="sans-serif" font-size="22" font-weight="bold" fill="#207448" text-anchor="middle">3</text>
-    </g>
-    <text x="1355" y="968" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="1355" dy="0">3. Baseline</tspan>
-      <tspan x="1355" dy="32">AdminNetworkPolicy</tspan>
-      <tspan x="1355" dy="30" font-size="24" font-weight="normal">(Default Cluster Posture)</tspan>
-    </text>
+    <path d="M 1420 826 L 1434 834 L 1434 846 C 1434 855 1420 860 1420 860 C 1420 860 1406 855 1406 846 L 1406 834 Z" fill="none" stroke="#207448" stroke-width="2.5" stroke-linejoin="round" />
+    <line x1="1402" y1="864" x2="1438" y2="864" stroke="#207448" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="1420" y="896" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448" text-anchor="middle">3. BaselineAdminNetworkPolicy</text>
+    <text x="1420" y="930" font-family="sans-serif" font-size="24px" fill="#303a36" text-anchor="middle">(Default Cluster Posture)</text>
   </g>
 
   
-  <line x1="580" y1="835" x2="580" y2="865" stroke="#207448" stroke-width="3" />
-  <line x1="580" y1="905" x2="580" y2="940" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="495" y="868" width="170" height="38" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="580" y="895" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes: Isolated</text>
-
-  
-  <g id="node-matchnp" filter="url(#card-shadow)">
-    <rect x="290" y="945" width="580" height="115" rx="16" fill="#ffffff" stroke="#207448" stroke-width="2.5" />
+  <g>
+    <rect x="560" y="1090" width="480" height="140" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(315, 975)">
-      <circle cx="16" cy="24" r="14" fill="none" stroke="#207448" stroke-width="3" />
-      <circle cx="32" cy="24" r="14" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 24 13 A 14 14 0 0 1 24 35 A 14 14 0 0 1 24 13 Z" fill="#207448" opacity="0.3" />
-    </g>
-    <text x="600" y="992" font-family="sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">
-      <tspan x="600" dy="0">Matches Union of</tspan>
-      <tspan x="600" dy="32">Calico ipsets / Cilium Identities?</tspan>
-    </text>
+    <circle cx="792" cy="1120" r="14" fill="none" stroke="#207448" stroke-width="2.5" />
+    <circle cx="808" cy="1120" r="14" fill="none" stroke="#207448" stroke-width="2.5" />
+    
+    <text x="800" y="1174" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">Matches Union of</text>
+    <text x="800" y="1208" font-family="monospace" font-size="24px" fill="#303a36" text-anchor="middle">Calico ipsets / Cilium Identities?</text>
   </g>
 
   
-  <path d="M 430 1060 L 430 1115 L 285 1115 L 285 1170" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="325" y="1096" width="70" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="360" y="1122" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
-
-  
-  <path d="M 730 1060 L 730 1115 L 805 1115 L 805 1170" fill="none" stroke="#207448" stroke-width="3" marker-end="url(#arrow)" />
-  <rect x="735" y="1096" width="65" height="36" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
-  <text x="767" y="1122" font-family="sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">No</text>
-
-  
-  <g id="node-allownp" filter="url(#card-shadow)">
-    <rect x="80" y="1175" width="410" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g>
+    <rect x="20" y="1090" width="360" height="140" rx="12" fill="#fbebe8" stroke="#c53030" stroke-width="3" />
     
-    <g transform="translate(100, 1205)">
-      <circle cx="24" cy="24" r="22" fill="none" stroke="#207448" stroke-width="3" />
-      <path d="M 14 24 L 21 32 L 34 16" fill="none" stroke="#207448" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    <text x="300" y="1238" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">ALLOW + Create CT Entry</text>
+    <circle cx="200" cy="1124" r="16" fill="none" stroke="#c53030" stroke-width="3" />
+    <line x1="190" y1="1114" x2="210" y2="1134" stroke="#c53030" stroke-width="3" stroke-linecap="round" />
+    <line x1="210" y1="1114" x2="190" y2="1134" stroke="#c53030" stroke-width="3" stroke-linecap="round" />
+    
+    <text x="200" y="1195" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#c53030" text-anchor="middle">DROP (Log / Hubble DROPPED)</text>
   </g>
 
   
-  <g id="node-dropnp" filter="url(#card-shadow)">
-    <rect x="580" y="1175" width="450" height="110" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" />
+  <g>
+    <rect x="580" y="1340" width="440" height="130" rx="12" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
     
-    <g transform="translate(605, 1205)">
-      <polygon points="16,2 32,2 44,14 44,30 32,42 16,42 4,30 4,14" fill="none" stroke="#207448" stroke-width="3" />
-      <line x1="16" y1="14" x2="32" y2="30" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-      <line x1="32" y1="14" x2="16" y2="30" stroke="#207448" stroke-width="3.5" stroke-linecap="round" />
-    </g>
-    <text x="825" y="1238" font-family="sans-serif" font-size="25" font-weight="bold" fill="#303a36" text-anchor="middle">DROP (Log / Hubble DROPPED)</text>
+    <circle cx="800" cy="1374" r="16" fill="none" stroke="#207448" stroke-width="3" />
+    <path d="M 792 1374 L 797 1380 L 808 1368" fill="none" stroke="#207448" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" />
+    
+    <text x="800" y="1434" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448" text-anchor="middle">ALLOW + Create CT Entry</text>
   </g>
+
 </svg>

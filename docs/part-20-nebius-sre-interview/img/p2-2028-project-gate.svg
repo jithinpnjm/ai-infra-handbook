@@ -1,262 +1,188 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1320" width="1600" height="1320">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1340" width="1600" height="1340">
   <title>Pick one project with five honest yeses out of six tests</title>
-  <desc>Flowchart guiding selection and deep preparation of a single engineering project using a six-test scoring system, verification dossier, and multi-length rehearsal.</desc>
+  <desc>Flowchart detailing how to select and prepare a candidate project for technical deep dives using rigorous gating tests.</desc>
 
   <defs>
     
-    <marker id="arrow-green" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#207448" />
+    <marker id="arrow" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#207448" />
     </marker>
     
-    <marker id="arrow-grey" viewBox="0 0 12 12" refX="10" refY="6" markerWidth="10" markerHeight="10" orient="auto-start-reverse">
-      <path d="M 1 2 L 11 6 L 1 10 Z" fill="#667770" />
+    <marker id="arrow-muted" viewBox="0 0 16 16" refX="14" refY="8" markerWidth="12" markerHeight="12" orient="auto-start-reverse">
+      <path d="M 2 3 L 14 8 L 2 13 z" fill="#708077" />
     </marker>
-    <filter id="card-shadow" x="-3%" y="-3%" width="106%" height="108%">
-      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#143622" flood-opacity="0.08" />
+    <filter id="shadow" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="3" stdDeviation="4" flood-color="#143621" flood-opacity="0.08" />
     </filter>
   </defs>
 
   
-  <rect width="1600" height="1320" fill="#f5f8f5" />
+  <rect width="1600" height="1340" fill="#f5f8f5" />
 
   
-  <text x="800" y="65" text-anchor="middle" font-family="sans-serif" font-size="44px" font-weight="bold" fill="#303a36">
-    Pick one project with five honest yeses out of six tests
-  </text>
+  <text x="80" y="70" font-family="system-ui, -apple-system, sans-serif" font-size="44" font-weight="bold" fill="#303a36">Pick one project with five honest yeses out of six tests</text>
 
   
-  <g transform="translate(240, 115)">
+
+  
+  
+  <g transform="translate(260, 120)" filter="url(#shadow)">
+    <rect width="560" height="90" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
     
-    <rect x="0" y="0" width="480" height="96" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)" />
-    
-    <circle cx="50" cy="48" r="24" fill="#207448" />
-    <text x="50" y="56" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">1</text>
-    
-    <g transform="translate(94, 26)" stroke="#207448" stroke-width="3" fill="none">
-      <rect x="0" y="0" width="38" height="44" rx="4" fill="#ffffff" />
-      <line x1="8" y1="12" x2="30" y2="12" stroke-linecap="round" />
-      <line x1="8" y1="22" x2="30" y2="22" stroke-linecap="round" />
-      <line x1="8" y1="32" x2="22" y2="32" stroke-linecap="round" />
-    </g>
-    
-    <text x="156" y="57" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">List 3 candidate projects</text>
+    <circle cx="50" cy="45" r="24" fill="#207448" />
+    <text x="50" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">1</text>
+    <text x="100" y="54" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">List 3 candidate projects</text>
   </g>
 
   
-  <line x1="480" y1="211" x2="480" y2="266" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
+  <path d="M 540 210 L 540 270" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
 
   
-  <g transform="translate(190, 268)">
+  <g transform="translate(80, 270)" filter="url(#shadow)">
     
-    <rect x="0" y="0" width="580" height="114" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)" />
+    <rect width="920" height="230" rx="16" fill="#e8f1ea" stroke="#c0d7c5" stroke-width="2" />
     
-    <circle cx="50" cy="57" r="24" fill="#207448" />
-    <text x="50" y="65" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">2</text>
     
-    <g transform="translate(90, 31)" stroke="#207448" stroke-width="3" fill="none">
-      <rect x="0" y="0" width="46" height="52" rx="5" fill="#ffffff" />
-      <path d="M10 16 L16 22 L26 12" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="32" y1="16" x2="38" y2="16" stroke-linecap="round" />
-      <path d="M10 34 L16 40 L26 30" stroke-linecap="round" stroke-linejoin="round" />
-      <line x1="32" y1="34" x2="38" y2="34" stroke-linecap="round" />
+    <rect x="20" y="25" width="400" height="180" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="65" cy="65" r="24" fill="#207448" />
+    <text x="65" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">2</text>
+    <text x="108" y="74" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Score 6 tests,</text>
+    <text x="40" y="125" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">yes or no for each</text>
+
+    
+    
+    <g transform="translate(440, 25)">
+      <rect width="455" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="24" cy="23" r="10" fill="#207448" />
+      <text x="48" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Made or shaped the key decisions</text>
     </g>
+
     
-    <text x="158" y="52" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
-      <tspan x="158" dy="0">Score 6 tests,</tspan>
-      <tspan x="158" dy="34">yes or no for each</tspan>
+    <g transform="translate(440, 82)">
+      <rect width="455" height="46" rx="8" fill="#ffffff" stroke="#207448" stroke-width="2" />
+      <circle cx="24" cy="23" r="10" fill="#207448" />
+      <text x="48" y="32" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#303a36">Ran in production</text>
+    </g>
+
+    
+    <g transform="translate(440, 138)">
+      <rect width="215" height="32" rx="6" fill="#dde4df" stroke="#b0beba" stroke-width="2" />
+      <rect x="20" y="12" width="130" height="8" rx="4" fill="#8f9d98" />
+    </g>
+    <g transform="translate(680, 138)">
+      <rect width="215" height="32" rx="6" fill="#dde4df" stroke="#b0beba" stroke-width="2" />
+      <rect x="20" y="12" width="140" height="8" rx="4" fill="#8f9d98" />
+    </g>
+    <g transform="translate(440, 178)">
+      <rect width="215" height="32" rx="6" fill="#dde4df" stroke="#b0beba" stroke-width="2" />
+      <rect x="20" y="12" width="110" height="8" rx="4" fill="#8f9d98" />
+    </g>
+    <g transform="translate(680, 178)">
+      <rect width="215" height="32" rx="6" fill="#dde4df" stroke="#b0beba" stroke-width="2" />
+      <rect x="20" y="12" width="125" height="8" rx="4" fill="#8f9d98" />
+    </g>
+  </g>
+
+  
+  <path d="M 540 500 L 540 560" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  
+  <g transform="translate(540, 650)">
+    
+    <path d="M 0 -80 L 190 0 L 0 80 L -190 0 Z" fill="#ffffff" stroke="#db8129" stroke-width="5" filter="url(#shadow)" />
+    <text x="0" y="8" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36" text-anchor="middle">Five or more yes?</text>
+  </g>
+
+  
+  <path d="M 350 650 L 220 650 L 220 740" fill="none" stroke="#708077" stroke-width="3" marker-end="url(#arrow-muted)" />
+  
+  <g transform="translate(245, 634)">
+    <rect width="64" height="32" rx="8" fill="#e8f1ea" stroke="#708077" stroke-width="2" />
+    <text x="32" y="23" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#708077" text-anchor="middle">No</text>
+  </g>
+
+  
+  <g transform="translate(40, 740)" filter="url(#shadow)">
+    <rect width="360" height="110" rx="14" fill="#ffffff" stroke="#708077" stroke-dasharray="6 6" stroke-width="3" />
+    <text x="180" y="48" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#586762" text-anchor="middle">Drop it, or keep</text>
+    <text x="180" y="84" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#586762" text-anchor="middle">as a second story</text>
+  </g>
+
+  
+  <path d="M 540 730 L 540 820" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  
+  <g transform="translate(508, 755)">
+    <rect width="64" height="32" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="32" y="23" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+  </g>
+
+  
+  <g transform="translate(370, 820)" filter="url(#shadow)">
+    <rect width="340" height="84" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="45" cy="42" r="22" fill="#207448" />
+    <text x="45" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">3</text>
+    <text x="85" y="51" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#303a36">Fill the dossier</text>
+  </g>
+
+  
+  <path d="M 540 904 L 540 950" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+
+  
+  <g transform="translate(540, 1020)">
+    <path d="M 0 -65 L 170 0 L 0 65 L -170 0 Z" fill="#ffffff" stroke="#207448" stroke-width="3" filter="url(#shadow)" />
+    <text x="0" y="8" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" text-anchor="middle">Checker clean?</text>
+  </g>
+
+  
+  <path d="M 710 1020 L 780 1020 L 780 862 L 720 862" fill="none" stroke="#708077" stroke-width="3" marker-end="url(#arrow-muted)" />
+  
+  <g transform="translate(748, 930)">
+    <rect width="64" height="32" rx="8" fill="#e8f1ea" stroke="#708077" stroke-width="2" />
+    <text x="32" y="23" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#708077" text-anchor="middle">No</text>
+  </g>
+
+  
+  <path d="M 540 1085 L 540 1130" fill="none" stroke="#207448" stroke-width="4" marker-end="url(#arrow)" />
+  
+  <g transform="translate(508, 1088)">
+    <rect width="64" height="32" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="2" />
+    <text x="32" y="23" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#207448" text-anchor="middle">Yes</text>
+  </g>
+
+  
+  <g transform="translate(190, 1130)" filter="url(#shadow)">
+    <rect width="700" height="84" rx="14" fill="#ffffff" stroke="#207448" stroke-width="3" />
+    <circle cx="45" cy="42" r="22" fill="#207448" />
+    <text x="45" y="50" font-family="system-ui, -apple-system, sans-serif" font-size="24" font-weight="bold" fill="#ffffff" text-anchor="middle">4</text>
+    <text x="82" y="51" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36">Rehearse at 2 minutes, 10 minutes and 90 minutes</text>
+  </g>
+
+  
+  <g transform="translate(1050, 270)" filter="url(#shadow)">
+    <rect width="470" height="420" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" />
+    
+    <circle cx="50" cy="55" r="20" fill="#207448" />
+    
+    <path d="M 50 42 L 53 51 L 62 55 L 53 59 L 50 68 L 47 59 L 38 55 L 47 51 Z" fill="#ffffff" />
+    
+    <text x="85" y="63" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="bold" fill="#207448">Selection Rule</text>
+    <line x1="30" y1="95" x2="440" y2="95" stroke="#c0d7c5" stroke-width="2" />
+
+    
+    <text x="35" y="150" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#303a36" line-height="1.4">
+      <tspan x="35" dy="0">Choose the project</tspan>
+      <tspan x="35" dy="44">where you know the</tspan>
+      <tspan x="35" dy="44">numbers and the mistakes,</tspan>
+      <tspan x="35" dy="44">not the one that sounds</tspan>
+      <tspan x="35" dy="44">biggest.</tspan>
     </text>
   </g>
 
   
-  <line x1="770" y1="325" x2="848" y2="325" stroke="#207448" stroke-width="2" stroke-dasharray="6,6" />
-
-  
-  <g transform="translate(850, 230)">
-    <rect x="0" y="0" width="670" height="190" rx="14" fill="#ffffff" stroke="#c0d4c6" stroke-width="2" filter="url(#card-shadow)" />
-    
-    <g transform="translate(24, 22)">
-      <rect x="0" y="0" width="622" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-      <circle cx="24" cy="22" r="10" fill="#207448" />
-      <path d="M19 22 L22 25 L29 18" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" />
-      <text x="46" y="30" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Made or shaped the key decisions</text>
-    </g>
-    
-    <g transform="translate(24, 76)">
-      <rect x="0" y="0" width="622" height="44" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-      <circle cx="24" cy="22" r="10" fill="#207448" />
-      <path d="M19 22 L22 25 L29 18" stroke="#ffffff" stroke-width="2.5" fill="none" stroke-linecap="round" />
-      <text x="46" y="30" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Ran in production</text>
-    </g>
-    
-    <g transform="translate(24, 130)">
-      <rect x="0" y="0" width="144" height="38" rx="8" fill="#f0f3f1" stroke="#aab7b0" stroke-width="1.5" />
-      <circle cx="20" cy="19" r="6" fill="#aab7b0" />
-      <rect x="36" y="14" width="90" height="10" rx="4" fill="#c3cec7" />
-
-      <rect x="158" y="0" width="144" height="38" rx="8" fill="#f0f3f1" stroke="#aab7b0" stroke-width="1.5" />
-      <circle cx="178" cy="19" r="6" fill="#aab7b0" />
-      <rect x="194" y="14" width="90" height="10" rx="4" fill="#c3cec7" />
-
-      <rect x="316" y="0" width="144" height="38" rx="8" fill="#f0f3f1" stroke="#aab7b0" stroke-width="1.5" />
-      <circle cx="336" cy="19" r="6" fill="#aab7b0" />
-      <rect x="352" y="14" width="90" height="10" rx="4" fill="#c3cec7" />
-
-      <rect x="474" y="0" width="148" height="38" rx="8" fill="#f0f3f1" stroke="#aab7b0" stroke-width="1.5" />
-      <circle cx="494" cy="19" r="6" fill="#aab7b0" />
-      <rect x="510" y="14" width="90" height="10" rx="4" fill="#c3cec7" />
-    </g>
-  </g>
-
-  
-  <line x1="480" y1="382" x2="480" y2="466" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-  
-  <g transform="translate(480, 560)">
-    
-    <polygon points="0,-90 230,0 0,90 -230,0" fill="#ffffff" stroke="#db8129" stroke-width="4.5" filter="url(#card-shadow)" />
-    
-    <text x="0" y="8" text-anchor="middle" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">
-      Five or more yes?
-    </text>
-  </g>
-
-  
-  
-  <line x1="710" y1="560" x2="936" y2="560" stroke="#667770" stroke-width="3.5" marker-end="url(#arrow-grey)" />
-
-  
-  <rect x="780" y="534" width="60" height="36" rx="8" fill="#f0f3f1" stroke="#8c9c94" stroke-width="1.5" />
-  <text x="810" y="559" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#667770">No</text>
-
-  
-  <g transform="translate(940, 498)">
-    <rect x="0" y="0" width="580" height="124" rx="16" fill="#f7faf8" stroke="#aab7b0" stroke-width="2.5" stroke-dasharray="8,6" filter="url(#card-shadow)" />
-    
-    <g transform="translate(30, 36)" stroke="#8c9c94" stroke-width="3" fill="none">
-      <path d="M8 14 L44 14" stroke-linecap="round" />
-      <path d="M14 14 L17 46 C17 48 19 50 21 50 L31 50 C33 50 35 48 35 46 L38 14" stroke-linejoin="round" />
-      <path d="M20 14 V8 C20 6 22 4 24 4 H28 C30 4 32 6 32 8 V14" stroke-linecap="round" />
-      <line x1="22" y1="22" x2="22" y2="40" stroke-linecap="round" />
-      <line x1="30" y1="22" x2="30" y2="40" stroke-linecap="round" />
-    </g>
-    
-    <text x="100" y="52" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#667770">
-      <tspan x="100" dy="0">Drop it, or keep as a</tspan>
-      <tspan x="100" dy="36">second story</tspan>
-    </text>
-  </g>
-
-  
-  
-  <line x1="480" y1="650" x2="480" y2="726" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-  
-  <rect x="495" y="666" width="66" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <text x="528" y="691" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Yes</text>
-
-  
-  <g transform="translate(230, 728)">
-    <rect x="0" y="0" width="500" height="104" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)" />
-    
-    <circle cx="50" cy="52" r="24" fill="#207448" />
-    <text x="50" y="60" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">3</text>
-    
-    <g transform="translate(92, 28)" stroke="#207448" stroke-width="3" fill="none">
-      <path d="M4 10 L16 10 L22 18 L46 18 C48 18 50 20 50 22 L50 44 C50 46 48 48 46 48 L4 48 C2 48 0 46 0 44 L0 14 C0 12 2 10 4 10 Z" fill="#ffffff" />
-      <line x1="12" y1="30" x2="38" y2="30" stroke-linecap="round" />
-      <line x1="12" y1="38" x2="28" y2="38" stroke-linecap="round" />
-    </g>
-    
-    <text x="160" y="61" font-family="sans-serif" font-size="30px" font-weight="bold" fill="#303a36">Fill the dossier</text>
-  </g>
-
-  
-  <line x1="480" y1="832" x2="480" y2="888" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-
-  
-  <g transform="translate(480, 960)">
-    <polygon points="0,-70 210,0 0,70 -210,0" fill="#ffffff" stroke="#207448" stroke-width="3.5" filter="url(#card-shadow)" />
-    
-    <text x="0" y="8" text-anchor="middle" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
-      Checker clean?
-    </text>
-  </g>
-
-  
-  
-  <path d="M 270 960 L 130 960 L 130 780 L 226 780" fill="none" stroke="#667770" stroke-width="3" stroke-dasharray="7,5" marker-end="url(#arrow-grey)" />
-  
-  <rect x="98" y="855" width="64" height="34" rx="8" fill="#ffffff" stroke="#8c9c94" stroke-width="1.5" />
-  <text x="130" y="879" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#667770">No</text>
-
-  
-  <line x1="480" y1="1030" x2="480" y2="1084" stroke="#207448" stroke-width="3.5" marker-end="url(#arrow-green)" />
-  <rect x="495" y="1036" width="66" height="34" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-  <text x="528" y="1060" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Yes</text>
-
-  
-  <g transform="translate(100, 1086)">
-    <rect x="0" y="0" width="760" height="106" rx="16" fill="#e8f1ea" stroke="#207448" stroke-width="3" filter="url(#card-shadow)" />
-    
-    <circle cx="50" cy="53" r="24" fill="#207448" />
-    <text x="50" y="61" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#ffffff">4</text>
-    
-    <g transform="translate(92, 28)" stroke="#207448" stroke-width="3" fill="none">
-      <circle cx="25" cy="25" r="23" fill="#ffffff" />
-      <polyline points="25,12 25,25 36,30" stroke-linecap="round" stroke-linejoin="round" />
-    </g>
-    
-    <text x="156" y="44" font-family="sans-serif" font-size="28px" font-weight="bold" fill="#303a36">
-      <tspan x="156" dy="0">Rehearse at 2 minutes,</tspan>
-      <tspan x="156" dy="34">10 minutes and 90 minutes</tspan>
-    </text>
-  </g>
-
-  
-  <g transform="translate(940, 720)">
-    <rect x="0" y="0" width="580" height="370" rx="20" fill="#ffffff" stroke="#207448" stroke-width="2.5" filter="url(#card-shadow)" />
-    
-    <rect x="0" y="0" width="580" height="70" rx="20" fill="#e8f1ea" />
-    <rect x="0" y="50" width="580" height="20" fill="#e8f1ea" />
-    
-    <g transform="translate(28, 14)" stroke="#207448" stroke-width="3" fill="none">
-      <circle cx="21" cy="20" r="14" fill="#ffffff" />
-      <path d="M14 34 H28" stroke-linecap="round" />
-      <path d="M17 40 H25" stroke-linecap="round" />
-      <line x1="21" y1="2" x2="21" y2="6" stroke-linecap="round" />
-    </g>
-    <text x="80" y="47" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#207448">Selection Principle</text>
-    
-    <text x="36" y="125" font-family="sans-serif" font-size="28px" font-weight="normal" fill="#303a36">
-      <tspan x="36" dy="0">Choose the project where you</tspan>
-      <tspan x="36" dy="44">know the numbers and the</tspan>
-      <tspan x="36" dy="44">mistakes, not the one that</tspan>
-      <tspan x="36" dy="44">sounds biggest.</tspan>
-    </text>
-    
-    <g transform="translate(36, 310)">
-      <rect x="0" y="0" width="220" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-      <text x="110" y="25" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Know the numbers</text>
-    </g>
-    <g transform="translate(270, 310)">
-      <rect x="0" y="0" width="220" height="36" rx="8" fill="#e8f1ea" stroke="#207448" stroke-width="1.5" />
-      <text x="110" y="25" text-anchor="middle" font-family="sans-serif" font-size="24px" font-weight="bold" fill="#207448">Own the mistakes</text>
-    </g>
-  </g>
-
-  
-  <g transform="translate(100, 1220)">
-    <rect x="0" y="0" width="1400" height="74" rx="14" fill="#207448" />
-    
-    <g transform="translate(28, 17)" stroke="#ffffff" stroke-width="3" fill="none">
-      <circle cx="15" cy="20" r="12" />
-      <line x1="27" y1="20" x2="48" y2="20" stroke-linecap="round" />
-      <line x1="40" y1="20" x2="40" y2="28" stroke-linecap="round" />
-      <line x1="47" y1="20" x2="47" y2="26" stroke-linecap="round" />
-    </g>
-    
-    <text x="90" y="47" font-family="sans-serif" font-size="26px" font-weight="bold" fill="#ffffff">
-      Breadth is punished in a deep dive: prepare one project deeply.
-    </text>
+  <g transform="translate(80, 1245)">
+    <rect width="1440" height="65" rx="12" fill="#207448" />
+    <text x="720" y="42" font-family="system-ui, -apple-system, sans-serif" font-size="26" font-weight="bold" fill="#ffffff" text-anchor="middle">Breadth is punished in a deep dive: prepare one project deeply.</text>
   </g>
 </svg>
